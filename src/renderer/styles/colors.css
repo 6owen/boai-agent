@@ -1,6 +1,6 @@
 /*
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
- * [OUTPUT]: 中性启动色、离线 Geist/系统字体、13px 基准、圆角、尺寸、阴影、shadcn 语义别名与背景图层。
+ * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影、shadcn 语义别名与背景图层。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,7 +21,7 @@
   --muted:#f5f5f5;
   --muted-foreground:#5d5d5d;
   --border:#e5e5e5;
-  --primary:#000;
+  --primary:#2563eb;
   --primary-foreground:#fff;
   --accent:#f5f5f5;
   --selection:#e9e9e9;
@@ -39,7 +39,7 @@
   --radius-frame:12px;
   --toolbar-height:44px;
   --rail-width:52px;
-  --radius-control:10px;
+  --radius-control:16px;
   --radius:var(--radius-control);
   --sidebar-primary:var(--primary);
   --sidebar-primary-foreground:var(--primary-foreground);
@@ -49,14 +49,33 @@
   --chart-3:var(--warning);
   --chart-4:var(--destructive);
   --chart-5:var(--muted-foreground);
-  --radius-card:16px;
-  --radius-composer:28px;
+  --radius-card:20px;
+  --radius-composer:48px;
   --radius-pill:999px;
-  --control-height:40px;
+  --control-height:32px;
   --content-width:768px;
-  --shadow-small:0 1px 2px var(--shadow);
-  --shadow-popover:0 8px 28px var(--shadow);
-  --shadow-composer:0 0 0 1px var(--border),0 4px 24px var(--shadow);
+  /* Shared by shadcn and existing desktop controls; surfaces inherit the chosen theme. */
+  --soft-highlight:#ffffff;
+  --soft-highlight-bottom:#ffffffcc;
+  --soft-edge-top:#00000014;
+  --soft-edge-bottom:#00000029;
+  --soft-hairline:#00000029;
+  --soft-shade:#0000000a;
+  --soft-hover:#00000009;
+  --soft-surface-tint:#ffffff26;
+  --soft-surface-highlight:#ffffff85;
+  --soft-outer-highlight:#ffffff99;
+  --soft-emphasis-top:#ffffff26;
+  --soft-emphasis-highlight:#ffffff4d;
+  --soft-emphasis-edge:#00000026;
+  --soft-thumb:#ffffff;
+  --shadow-small:0 2px 2px -1px #0000000a,0 4px 4px -2px #00000005;
+  --shadow-control:inset 0 0 0 .5px var(--soft-hairline),inset 0 .5px 0 var(--soft-edge-top),inset 0 -.5px 0 var(--soft-edge-bottom),inset 0 2px 0 -1px var(--soft-highlight),inset 0 -2px 0 -1px var(--soft-highlight-bottom),var(--shadow-small);
+  --shadow-emphasis:inset 0 0 0 1px var(--soft-emphasis-edge),inset 0 2px 0 -1px var(--soft-emphasis-highlight),var(--shadow-small);
+  --shadow-field:inset 0 1px 2px #00000006,0 1px 0 var(--soft-surface-highlight);
+  --shadow-card:inset 0 1px 0 var(--soft-surface-highlight),0 2px 4px -2px #0000000a;
+  --shadow-popover:0 0 0 1px var(--soft-outer-highlight),0 1px 2px #3333331a,0 10px 24px -8px #33333347,0 28px 48px -20px #33333338;
+  --shadow-composer:inset 0 1px 0 var(--soft-surface-highlight),0 0 0 1px var(--border),var(--shadow-popover);
   --app:var(--surface-app);
   --list:var(--surface-list);
   --content:var(--surface-content);
@@ -67,6 +86,25 @@
   --legacy-muted:var(--muted-foreground);
   --legacy-primary:var(--primary);
   --focus:var(--ring);
+}
+.dark {
+  --soft-highlight:#ffffff1f;
+  --soft-highlight-bottom:#ffffff08;
+  --soft-edge-top:#ffffff0f;
+  --soft-edge-bottom:#00000080;
+  --soft-hairline:#ffffff1a;
+  --soft-shade:#0000002e;
+  --soft-hover:#ffffff0d;
+  --soft-surface-tint:#ffffff05;
+  --soft-surface-highlight:#ffffff0f;
+  --soft-outer-highlight:#ffffff1a;
+  --soft-emphasis-top:#ffffff14;
+  --soft-emphasis-highlight:#ffffff38;
+  --soft-thumb:#f2f2f2;
+  --shadow-small:0 2px 2px -1px #0000004d,0 4px 4px -2px #00000033;
+  --shadow-field:inset 0 1px 2px #00000026,0 1px 0 #ffffff05;
+  --shadow-card:inset 0 1px 0 var(--soft-surface-highlight),0 2px 4px -2px #00000040;
+  --shadow-popover:0 0 0 1px var(--soft-outer-highlight),0 1px 2px #00000066,0 10px 24px -8px #00000080,0 28px 48px -20px #00000066;
 }
 ::selection { background:var(--selection);color:var(--foreground) }
 #appearance-background{position:fixed;inset:0;pointer-events:none;background-size:cover;background-position:center;z-index:0}

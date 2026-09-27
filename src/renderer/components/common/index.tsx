@@ -1,9 +1,12 @@
 /*
- * [INPUT]: React、图标、语义外观 token 与共享领域类型。
- * [OUTPUT]: 公共控件、格式化函数与未保存状态守卫。
+ * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
+ * [OUTPUT]: 组合统一 UI 的字段标签/说明、复选框与按钮，以及格式化和未保存守卫。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field as UiField, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { createContext, cloneElement, isValidElement, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
@@ -27,19 +30,25 @@ export function Avatar({ name, color = colors[0], small = false }: { name: strin
   return <span className={`avatar${small ? ' small' : ''}`} style={{ background: `${color}18`, '--avatar-color': color } as CSSProperties} aria-hidden="true">{name.slice(0, 1)}</span>
 }
 export function Banner({ children, kind = 'error', onClose }: { children: ReactNode; kind?: 'error' | 'notice'; onClose?: () => void }) {
-  return <div className={`banner ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><span>{children}</span>{onClose && <button className="icon-button" onClick={onClose} aria-label="关闭提示"><X size={15} /></button>}</div>
+  return <div className={`banner ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><span>{children}</span>{onClose && <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="关闭提示"><X size={15} /></Button>}</div>
 }
 export function Field({ label, hint, children, full = false }: { label: string; hint?: string; children: ReactNode; full?: boolean }) {
-  const hintId=useId()
-  const control=isValidElement<{ 'aria-label'?:string; 'aria-describedby'?:string }>(children)&&typeof children.type==='string'&&['input','select','textarea'].includes(children.type)?cloneElement(children,{'aria-label':children.props['aria-label']??label,'aria-describedby':hint?hintId:children.props['aria-describedby']}):children
-  return <label className={`field${full ? ' full' : ''}`}><span className="field-label">{label}</span>{control}{hint && <span id={hintId} className="field-hint">{hint}</span>}</label>
+  const id = useId(), hintId = `${id}-hint`
+  const element = isValidElement<{ id?: string; 'aria-label'?: string; 'aria-describedby'?: string }>(children) ? children : null
+  const controlId = element?.props.id ?? id
+  const control = element ? cloneElement(element, {
+    id: controlId,
+    'aria-label': element.props['aria-label'] ?? label,
+    'aria-describedby': [element.props['aria-describedby'], hint ? hintId : undefined].filter(Boolean).join(' ') || undefined,
+  }) : children
+  return <UiField className={full ? 'full' : undefined}><FieldLabel htmlFor={controlId}>{label}</FieldLabel>{control}{hint && <FieldDescription id={hintId}>{hint}</FieldDescription>}</UiField>
 }
 export function EditorFrame({ title, description, children, footer }: { title: string; description?: string; children: ReactNode; footer?: ReactNode }) {
   return <section className="editor-frame"><div className="editor-intro"><h3>{title}</h3>{description && <p>{description}</p>}</div><div className="editor-body">{children}</div>{footer && <footer className="editor-footer">{footer}</footer>}</section>
 }
 export function ResourcePicker({ resources, selected, onChange, empty }: { resources: Resource[]; selected: string[]; onChange: (ids: string[]) => void; empty: string }) {
   if (!resources.length) return <p className="empty-note">{empty}</p>
-  return <div className="resource-picker">{resources.map(resource => <label className="resource-option" key={resource.id}><input type="checkbox" checked={selected.includes(resource.id)} onChange={event => onChange(event.target.checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>)}</div>
+  return <div className="resource-picker">{resources.map(resource => <label className="resource-option" key={resource.id}><Checkbox checked={selected.includes(resource.id)} onCheckedChange={checked => onChange(checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>)}</div>
 }
 export function useMutation() {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')

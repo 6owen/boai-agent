@@ -1,9 +1,11 @@
 /*
- * [INPUT]: 运行领域类型、活动投影与公共组件。
+ * [INPUT]: 运行领域类型、活动投影与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 当前及历史轮次的运行详情。
  * [POS]: src/renderer/pages/conversations/-components/activity-detail.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { FileText, FolderOpen, Terminal } from '@/components/icons/index'
 import type { AgentDelivery, AgentRun, ConversationDetail, Snapshot } from '@shared/domain'
 import { sizeText } from '@/components/common/index'
@@ -15,7 +17,7 @@ export function ActivityDetail({ detail, snapshot, busy, onRetry, onOpenPath }: 
   return <div className="detail-section activity-detail">
     {current ? <RoundDetail key={current.id} round={current} detail={detail} snapshot={snapshot} busy={busy} onRetry={onRetry} /> : <p className="field-hint">还没有执行记录。发送消息后，这里会显示对应轮次。</p>}
     {history.length > 0 && <details className="round-history"><summary>历史轮次 · {history.length}</summary><p className="field-hint">以下记录属于之前的消息，不代表本轮结果。历史错误会保留。</p>{history.map(round => <details className="history-round" key={round.id}><summary><time dateTime={round.createdAt}>{roundTime(round.createdAt)}</time><span>{round.trigger?.content.slice(0, 70) || '未关联触发消息'}</span><small>{round.turn ? turnLabels[round.turn.status].replace('本轮', '该轮') : `${round.runs.length} 条运行记录`}</small></summary><RoundDetail round={round} detail={detail} snapshot={snapshot} busy={busy} onRetry={onRetry} historical /></details>)}</details>}
-    <h4>会话全部产物 · {detail.artifacts.length}</h4>{detail.artifacts.map(artifact => <button className="artifact-item" key={artifact.path} onClick={() => onOpenPath(artifact.path)}><FileText size={18} /><span><strong>{artifact.name}</strong><small>{sizeText(artifact.size)}</small></span><FolderOpen size={15} /></button>)}{!detail.artifacts.length && <p className="field-hint">生成并发布的文件将在这里显示。</p>}
+    <h4>会话全部产物 · {detail.artifacts.length}</h4>{detail.artifacts.map(artifact => <Button variant="ghost" size="content" className="artifact-item" key={artifact.path} onClick={() => onOpenPath(artifact.path)}><FileText size={18} /><span><strong>{artifact.name}</strong><small>{sizeText(artifact.size)}</small></span><FolderOpen size={15} /></Button>)}{!detail.artifacts.length && <p className="field-hint">生成并发布的文件将在这里显示。</p>}
   </div>
 }
 
@@ -59,7 +61,7 @@ function RoundDetail({ round, detail, snapshot, busy, onRetry, historical = fals
 function RunCard({ run, onRetry, busy, historical, newerAttempt, canRetry }: { run: AgentRun; onRetry: (id: string) => void; busy: boolean; historical: boolean; newerAttempt: boolean; canRetry: boolean }) {
   const phase = run.phase === 'decision' ? '参与判断' : run.phase === 'memory' ? '记忆整理' : run.phase === 'coordination' ? '历史协调任务' : run.responseKind === 'chat' ? '交流回复' : '任务执行'
   const failed = ['failed', 'interrupted'].includes(run.status)
-  return <article className="run-card" data-run-id={run.id}>
+  return <Card className="run-card gap-0 p-4" data-run-id={run.id}><CardContent className="p-0">
     <div className="run-topline"><span className={`status-dot ${run.status}`} /><strong>{run.agentName}</strong><span>{runLabels[run.status]}</span></div>
     <div className="run-context"><span>{phase}</span><time dateTime={run.createdAt}>{roundTime(run.createdAt)}</time></div>
     {failed && newerAttempt && <p className="historical-note">较早的尝试；此员工之后已有新的{phase}记录。</p>}
@@ -67,6 +69,6 @@ function RunCard({ run, onRetry, busy, historical, newerAttempt, canRetry }: { r
     {failed && run.phase === 'memory' && <p className="historical-note">记忆整理{run.status === 'interrupted' ? '中断' : '未完成'}，不会重新执行原任务。</p>}
     {run.error && <><p className="error-copy">{run.phase === 'memory' ? '记忆整理遇到问题，请查看错误详情。' : failureSummary(run.error)}</p><details className="error-details"><summary>错误详情</summary><pre>{run.error}</pre></details></>}
     {[...run.toolEvents].sort(byCreatedAt).map(tool => <details className="tool-row" key={tool.id}><summary><Terminal size={12} /><span>{tool.name}</span><small>{tool.status === 'running' ? '运行中' : tool.status === 'failed' ? '失败' : '完成'}</small></summary><pre>{tool.detail}</pre></details>)}
-    {failed && canRetry && run.phase !== 'memory' && <button className="button subtle small" disabled={busy} onClick={() => onRetry(run.id)}>重试本轮{phase}</button>}
-  </article>
+    {failed && canRetry && run.phase !== 'memory' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRetry(run.id)}>重试本轮{phase}</Button>}
+  </CardContent></Card>
 }

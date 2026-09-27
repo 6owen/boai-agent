@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏、52px 导航、圆角内容框、响应式分栏和紧凑公共控件（13px 控件 / 15px 消息）。
- * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css。
+ * [OUTPUT]: 44px 顶栏、52px 导航、圆角内容框、响应式分栏和页面内容布局；控件样式已迁入 ui（13px 控件 / 15px 消息）。
+ * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 * {
@@ -98,7 +98,7 @@ fieldset {
   -webkit-app-region:no-drag
 }
 .toolbar-right { margin-left:auto }
-.global-toolbar .icon-button { width:28px;height:28px;color:var(--rail-foreground) }
+.global-toolbar [data-slot=button] { width:28px;height:28px;color:var(--rail-foreground) }
 .app-body {
   flex:1;
   display:flex;
@@ -208,49 +208,11 @@ fieldset {
   font-weight:600;
   margin:0
 }
-.search-input {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  border:1px solid var(--border);
-  border-radius:var(--radius-control);
-  background:var(--card);
-  padding:9px 10px;
-  color:var(--muted-foreground);
-  min-width:0
-}
-.search-input:focus-within {
-  border-color:var(--ring)
-}
-.search-input input {
-  border:0;
-  outline:0;
-  background:transparent;
-  width:100%;
-  font-size:13px;
-  color:var(--foreground)
-}
-.search-input input:focus-visible {
-  outline:none
-}
 /* Conversations are the default list; contacts open from the header. */
 .list-heading-actions {
   display:flex;
   align-items:center;
   gap:2px
-}
-.employee-picker {
-  position:absolute;
-  top:calc(100% + 8px);
-  right:0;
-  z-index:30;
-  width:290px;
-  max-width:calc(100vw - 110px);
-  padding:12px;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-card);
-  box-shadow:var(--shadow-popover)
 }
 .employee-picker-heading {
   display:flex;
@@ -712,61 +674,6 @@ fieldset {
   width:100%;
   align-self:center
 }
-.composer {
-  background:var(--surface-composer);
-  border:1px solid transparent;
-  border-radius:var(--radius-composer);
-  padding:16px 16px 12px;
-  box-shadow:var(--shadow-composer)
-}
-.composer:focus-within {
-  border-color:var(--border)
-}
-.composer-input {
-  display:block;
-  width:100%;
-  border:0;
-  background:transparent;
-  resize:none;
-  font-size:15px;
-  line-height:1.75;
-  color:var(--foreground);
-  min-height:54px;
-  height:58px;
-  padding:2px 5px
-}
-.composer-input:focus-visible {
-  outline:none
-}
-.composer-footer {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-top:8px;
-  gap:6px
-}
-.send-button {
-  background:var(--primary);
-  color:var(--primary-foreground);
-  border:0;
-  border-radius:var(--radius-pill);
-  height:36px;
-  width:36px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  flex-shrink:0;
-  padding:0
-}
-.send-button.external { width:auto;min-width:36px;padding:0 16px;font-size:13px }
-.send-button:hover:not(:disabled) {
-  background:var(--primary);
-  opacity:.85
-}
-.send-button:disabled {
-  background:var(--primary);
-  opacity:.25
-}
 .composer-hint {
   display:flex;
   justify-content:space-between;
@@ -1045,22 +952,9 @@ fieldset {
   line-height:1.7;
   margin:0
 }
-.field input:not([type=checkbox]):not([type=range]),.field textarea,.field select,select {
-  width:100%;
-  border:1px solid var(--border);
-  background:var(--card);
-  color:var(--foreground);
-  padding:10px 12px;
-  font-size:13px;
-  border-radius:var(--radius-control);
-  line-height:1.5
-}
 .field textarea {
   min-height:75px;
   line-height:1.8
-}
-.field select,select {
-  height:var(--control-height)
 }
 .color-options {
   display:flex;
@@ -1102,7 +996,7 @@ fieldset {
 .resource-option:hover {
   background:var(--muted)
 }
-.resource-option>span:not(.avatar),.resource-option-meta {
+.resource-option>span:not(.avatar):not([data-slot=checkbox]),.resource-option-meta {
   display:flex;
   flex-direction:column;
   gap:4px;
@@ -1129,7 +1023,7 @@ fieldset {
   border-top:1px solid var(--border);
   padding:11px 0
 }
-.toggle-row>span {
+.toggle-row>span:not([data-slot=checkbox]) {
   display:flex;
   flex-direction:column;
   gap:5px
@@ -1288,30 +1182,6 @@ fieldset {
   padding-top:20px;
   margin-top:28px
 }
-.leave-confirm {
-  position:absolute;
-  right:14px;
-  bottom:14px;
-  max-width:min(480px,calc(100% - 28px));
-  z-index:15;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-card);
-  box-shadow:var(--shadow-popover);
-  padding:18px
-}
-.leave-confirm strong {
-  font-size:13px;
-  color:var(--warning)
-}
-.leave-confirm p {
-  font-size:13px;
-  color:var(--warning);
-  margin:8px 0 16px
-}
-.leave-confirm .button-row {
-  justify-content:flex-end
-}
 .delivery-row {
   display:flex;
   align-items:center;
@@ -1462,7 +1332,7 @@ fieldset {
   overflow:auto;
   color:var(--warning)
 }
-.approval-card>.button-row {
+.approval-card .button-row {
   justify-content:flex-end;
   margin-top:15px
 }
@@ -1825,38 +1695,6 @@ fieldset {
 .menu-anchor {
   position:relative
 }
-.popover-menu {
-  position:absolute;
-  top:calc(100% + 5px);
-  right:0;
-  z-index:30;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:11px;
-  padding:7px;
-  min-width:175px;
-  box-shadow:0 10px 36px var(--shadow)
-}
-.popover-menu button {
-  display:flex;
-  width:100%;
-  padding:11px 12px;
-  border:0;
-  background:transparent;
-  text-align:left;
-  font-size:13px;
-  white-space:nowrap
-}
-.popover-menu button:hover,.popover-menu button:focus-visible {
-  background:var(--accent)
-}
-.popover-menu>strong {
-  display:block;
-  padding:10px 12px 7px;
-  color:var(--muted-foreground);
-  font-size:12px;
-  font-weight:500
-}
 .rail-menu {
   position:fixed;
   left:48px;
@@ -1865,45 +1703,7 @@ fieldset {
   right:auto;
   min-width:235px
 }
-.button {
-  border:1px solid transparent;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  font-size:13px;
-  font-weight:500;
-  padding:9px 16px;
-  min-height:var(--control-height);
-  white-space:nowrap;
-  border-radius:var(--radius-pill);
-  line-height:1.5
-}
-.button.primary {
-  background:var(--primary);
-  border-color:transparent;
-  color:var(--primary-foreground)
-}
-.button.primary:hover:not(:disabled) {
-  background:var(--primary);
-  opacity:.85
-}
-.button.subtle {
-  background:var(--card);
-  border-color:var(--border);
-  color:var(--foreground);
-  box-shadow:var(--shadow-small)
-}
-.button.subtle:hover:not(:disabled) {
-  background:var(--muted)
-}
-.button.small {
-  padding:6px 12px;
-  min-height:32px;
-  font-size:12px;
-  border-radius:var(--radius-pill)
-}
-.button.danger,.danger {
+.danger {
   color:var(--destructive)
 }
 .button-row {
@@ -1911,39 +1711,6 @@ fieldset {
   gap:8px;
   align-items:center;
   flex-wrap:wrap
-}
-.icon-button {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border:0;
-  background:transparent;
-  color:var(--muted-foreground);
-  width:34px;
-  height:34px;
-  border-radius:var(--radius-control);
-  padding:0;
-  flex-shrink:0
-}
-.icon-button:hover,.icon-button.active {
-  background:var(--accent);
-  color:var(--foreground)
-}
-.text-button {
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  background:transparent;
-  border:0;
-  padding:4px 0;
-  font-size:12px;
-  color:var(--muted-foreground)
-}
-.text-button:hover {
-  text-decoration:underline
-}
-.text-button.danger {
-  color:var(--destructive)
 }
 .banner {
   display:flex;
@@ -1968,7 +1735,7 @@ fieldset {
   color:var(--success);
   border-color:var(--border)
 }
-.banner .icon-button {
+.banner [data-slot=button] {
   color:inherit
 }
 .inline-loading {
@@ -2241,10 +2008,6 @@ fieldset {
   .help-page {
     padding:30px
   }
-  .leave-confirm {
-    right:13px;
-    bottom:13px
-  }
   .resource-picker {
     max-height:230px
   }
@@ -2305,7 +2068,7 @@ fieldset {
   .page-heading .button-row {
     gap:6px
   }
-  .page-heading .button {
+  .page-heading [data-slot=button] {
     font-size:12px;
     padding-left:10px;
     padding-right:10px
@@ -2317,7 +2080,7 @@ fieldset {
     padding-left:18px;
     padding-right:18px
   }
-  .composer-footer>.button-row {
+  .chat-composer-footer>.button-row {
     gap:5px
   }
 }

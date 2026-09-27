@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron 应用、共享领域类型与本地协议服务。
- * [OUTPUT]: 桌面导航、任务空状态入口、会话草稿和员工操作的端到端验证。
+ * [OUTPUT]: 桌面导航、任务空状态入口、会话草稿、未保存对话框和员工操作的端到端验证。
  * [POS]: tests/e2e/desktop.spec.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -138,7 +138,7 @@ test('v0.2 desktop: autonomous group, scoped files and memory, cancellation, UI 
     await expect(separator).toHaveAttribute('aria-valuenow', String(previousWidth + 10))
     await panel.getByRole('textbox', { name: '群聊名称', exact: true }).fill('未保存的群名')
     await page.getByRole('button', { name: '资料库', exact: true }).click()
-    await expect(page.getByRole('alert')).toContainText('有未保存的修改')
+    await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeVisible()
     await page.getByRole('button', { name: '继续编辑', exact: true }).click()
     await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
     await page.getByRole('button', { name: '关闭详情', exact: true }).click()

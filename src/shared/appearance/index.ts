@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Base46 色板、显示模式与外观偏好。
- * [OUTPUT]: 主题、字体、缩放与分模式自定义色合同，以及合并/渲染语义 token。
+ * [OUTPUT]: 外观偏好合同与语义 token；Soft 主操作跟随强调色并选择可读前景。
  * [POS]: shared/appearance，主进程与 Renderer 共用的外观真源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -71,11 +71,11 @@ export function themeTokens(theme: Theme): Record<string,string> {
   return {
     background: bg, foreground: fg,
     card: surface, 'card-foreground': fg, popover: surface, 'popover-foreground': fg,
-    primary: fg, 'primary-foreground': surface,
+    primary: accent, 'primary-foreground': contrast('#ffffff', accent) >= contrast('#111111', accent) ? '#ffffff' : '#111111',
     secondary: hover, 'secondary-foreground': fg,
     muted: hover, 'muted-foreground': muted,
     accent: hover, 'accent-foreground': fg, border, input: border, ring: accent,
-    destructive: dark ? '#ffb4ac' : '#a52826',
+    destructive: dark ? '#ffb4ac' : '#a52826', 'destructive-foreground': dark ? '#111111' : '#ffffff',
     success: dark ? '#b0dba2' : '#326a2b', warning: dark ? '#efce8b' : '#805817',
     'status-background': blend(accent, surface, 0.08),
     'surface-app': bg, 'surface-list': dark ? bg : blend(fg, surface, 0.016), 'surface-content': surface, 'surface-detail': surface,

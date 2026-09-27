@@ -116,6 +116,8 @@ v0.2.2 最终交付已通过 102 项引擎、服务和文件测试，以及 3 �
 
 ## 基础 UI 组件
 
-`src/renderer/components/ui` 已安装完整的 shadcn Base UI / base-nova 基础组件。组件结构与样式在各自源码中定制，全局颜色/字体/圆角复用现有主题变量。完整入口见 [基础组件接入记录](ai-docs/spec/2.已实现功能与代码现状/18-shadcn基础组件.md)。
+`src/renderer/components/ui` 已安装完整的 shadcn Base UI / base-nova 基础组件。组件结构与变体在各自源码中定制，`ui/skin.css` 统一 6owen Soft 风格，共用全局颜色、字号、圆角、高光与阴影；现有页面控件和聊天输入框已接入。完整入口见 [基础组件接入记录](ai-docs/spec/2.已实现功能与代码现状/18-shadcn基础组件.md)。
 
-`pnpm lint:ui` 检查本地图标导入约束；`pnpm exec playwright test tests/e2e/ui.spec.ts` 验证实际弹层、控件与主题。现有业务控件后续逐个迁入该组件层。
+`pnpm lint:ui` 检查本地图标导入约束；`pnpm exec playwright test tests/e2e/ui.spec.ts` 验证实际弹层、控件与主题。会话、任务、资料库、设置与员工详情已直接使用该组件层；页面交互回归见 `tests/e2e/pages.spec.ts`。
+
+Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功能与代码现状/19-全局SoftUI.md)。

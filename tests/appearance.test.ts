@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppearanceStore、共享外观合同和临时文件系统。
- * [OUTPUT]: 外观兼容、校验、分模式自定义色、缩放持久化与备份回归验证。
+ * [OUTPUT]: 外观兼容、自定义色、缩放/备份以及正文与 Soft 操作按钮文字对比度回归。
  * [POS]: tests/appearance.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +17,7 @@ it('serializes revisions, keeps system sequence separate and restores preference
 it('imports managed images and validates content, opacity, and opaque asset paths',async()=>{const {root,store}=await setup();const file=join(root,'source.png');await writeFile(file,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=','base64'));const imported=await store.import(file);await rm(file);expect((await store.asset(imported.preferences.background.assetId!)).type).toBe('image/png');await expect(store.asset('../settings.json')).rejects.toThrow();await expect(store.update({background:{imageOpacity:2}},1)).rejects.toThrow();await writeFile(file,'not an image');await expect(store.import(file)).rejects.toThrow('PNG');expect(store.snapshot().revision).toBe(1);await symlink(join(root,'settings.json'),join(root,'assets','11111111-1111-1111-1111-111111111111.png'));await expect(store.asset('11111111-1111-1111-1111-111111111111.png')).rejects.toThrow();const destination=join(root,'backup');await store.backup(destination);expect(JSON.parse(await readFile(join(destination,'appearance','settings.json'),'utf8')).preferences.background.assetId).toBe(imported.preferences.background.assetId)})
 it('preserves future config read-only',async()=>{const {root}=await setup();const bytes=JSON.stringify({preferences:{schemaVersion:8}});await writeFile(join(root,'settings.json'),bytes);const store=new AppearanceStore(root,()=>false,()=>{},()=>({width:0,height:0}));await store.init();await expect(store.reset()).rejects.toThrow('只读');expect(await readFile(join(root,'settings.json'),'utf8')).toBe(bytes)})
 function luminance(hex:string){const rgb=hex.slice(1).match(/../g)!.map(h=>parseInt(h,16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
-it('keeps foreground and secondary text readable on each built-in surface',()=>{for(const theme of themes){const t=themeTokens(theme);for(const color of [t.foreground,t['muted-foreground']])for(const surface of [t.background,t.card]){const a=luminance(color),b=luminance(surface);expect((Math.max(a,b)+.05)/(Math.min(a,b)+.05),theme.id).toBeGreaterThanOrEqual(4.5)}}})
+it('keeps body and action text readable on every built-in theme',()=>{for(const theme of themes){const t=themeTokens(theme);for(const [color,surface] of [[t.foreground,t.background],[t.foreground,t.card],[t['muted-foreground'],t.background],[t['muted-foreground'],t.card],[t['primary-foreground'],t.primary],[t['destructive-foreground'],t.destructive]]){const a=luminance(color),b=luminance(surface);expect((Math.max(a,b)+.05)/(Math.min(a,b)+.05),theme.id).toBeGreaterThanOrEqual(4.5)}}})
 
 it('keeps mode-specific colors, font and scale across restart and resets them together', async () => {
   const {root,store} = await setup()

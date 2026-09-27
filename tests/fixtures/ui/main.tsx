@@ -1,12 +1,14 @@
 /*
  * [INPUT]: 全部基础组件、实际全局样式与受控外观初始化。
- * [OUTPUT]: Dialog/Popover/Menu/Select/Toast 等跨 Portal 的实际组合验收页。
+ * [OUTPUT]: Soft 按钮/聊天输入框和跨 Portal 弹层的实际组合验收页。
  * [POS]: Vite 测试页面，独立于生产入口与业务导航。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { initializeAppearance } from '@/stores/appearance'
+import { ChatComposer, ChatComposerInput, ChatComposerFooter } from '@/components/ui/chat-composer'
+import { ArrowUp, FolderOpen } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,9 +32,14 @@ const items = [{ label: '浅色', value: 'light' }, { label: '深色', value: 'd
 initializeAppearance()
 createRoot(document.getElementById('root')!).render(<React.StrictMode><TooltipProvider><Toaster>
   <main className="app-shell overflow-auto! p-8" data-module-count={Object.keys(modules).length}>
-    <Card className="w-full max-w-2xl">
-      <CardHeader><CardTitle>基础组件验收</CardTitle><CardDescription>使用生产全局样式与真实主题。</CardDescription></CardHeader>
+    <Card className="w-full max-w-4xl shrink-0">
+      <CardHeader><CardTitle>基础组件验收</CardTitle><CardDescription>Soft 表面 · 生产全局样式与真实主题。</CardDescription></CardHeader>
       <CardContent className="flex flex-col gap-5">
+        <div className="flex flex-wrap gap-3">
+          <Button>主要操作</Button><Button variant="ink">深色按钮</Button><Button variant="secondary">次要操作</Button><Button variant="outline">描边按钮</Button><Button variant="ghost">轻量操作</Button><Button variant="destructive">删除</Button><Button disabled>不可操作</Button>
+        </div>
+        <div className="button-row"><Button size="sm">紧凑操作</Button><Button variant="surface" size="content" className="p-4">内容卡片操作</Button></div>
+        <ChatComposer><ChatComposerInput aria-label="验收消息" placeholder="说说你想完成什么…" /><ChatComposerFooter><Button variant="secondary" size="icon" round aria-label="工作目录"><FolderOpen /></Button><Button size="icon" round aria-label="发送验收消息"><ArrowUp /></Button></ChatComposerFooter></ChatComposer>
         <div className="flex flex-wrap gap-3">
           <Dialog><DialogTrigger render={<Button />}>打开对话框</DialogTrigger><DialogContent><DialogHeader><DialogTitle>对话框标题</DialogTitle><DialogDescription>焦点应在弹层中，关闭后返回触发按钮。</DialogDescription></DialogHeader>
             <FieldGroup><Field><FieldLabel htmlFor="dialog-name">名称</FieldLabel><Input id="dialog-name" /></Field></FieldGroup>

@@ -1,0 +1,124 @@
+/*
+ * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
+ * [OUTPUT]: 6owen Soft 按钮、输入框、卡片、浮层、选择控件与聊天输入框的共用皮肤。
+ * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+
+/* Buttons retain the same skin when used as a trigger or via buttonVariants. */
+.soft-button {
+  border-radius:var(--radius-control);
+  corner-shape:squircle;
+  border:0;
+  outline:none;
+  font-size:13px;
+  font-weight:500;
+  transition:background-color .2s,box-shadow .2s,transform .2s,color .2s;
+}
+.soft-button:not(:disabled):not([aria-disabled=true]) { cursor:pointer }
+.soft-button:disabled, .soft-button[aria-disabled=true] { cursor:not-allowed;opacity:.5 }
+.soft-button-primary {
+  background-color:var(--primary);
+  color:var(--primary-foreground);
+  background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);
+  box-shadow:var(--shadow-emphasis);
+}
+.soft-button-ink { background-color:var(--foreground);color:var(--card);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
+.soft-button-secondary, .appearance-color {
+  --soft-hover-layer:transparent;
+  background-color:var(--card);
+  color:var(--foreground);
+  border-color:transparent;
+  background-image:linear-gradient(var(--soft-hover-layer),var(--soft-hover-layer)),linear-gradient(to bottom,transparent,var(--soft-shade));
+  box-shadow:var(--shadow-control);
+}
+:is(.soft-button-secondary,.appearance-color):hover:not(:disabled):not([aria-disabled=true]) { --soft-hover-layer:var(--soft-hover);background-color:var(--card) }
+:is(.soft-button-primary,.soft-button-ink,.soft-button-destructive):hover:not(:disabled):not([aria-disabled=true]) { background-image:linear-gradient(to bottom,var(--soft-emphasis-highlight),transparent);opacity:1 }
+:is(.soft-button-primary,.soft-button-ink,.soft-button-secondary,.soft-button-destructive):active:not(:disabled):not([aria-disabled=true]) { transform:translateY(1px) scale(.98) }
+.soft-button-outline { border:1px solid var(--border);background:transparent;color:var(--foreground);box-shadow:none }
+.soft-button-outline:hover:not(:disabled):not([aria-disabled=true]) { border-color:var(--ring);color:var(--link) }
+.soft-button-ghost { background:transparent;color:var(--foreground);box-shadow:none }
+.soft-button-ghost:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--accent) }
+.soft-button-ghost:is(.selected,.active,[aria-pressed=true],[aria-current=page]) { background:var(--selection) }
+.soft-button-destructive { background-color:var(--destructive);color:var(--destructive-foreground);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
+.soft-button-link { background:transparent;color:var(--link);box-shadow:none;text-underline-offset:4px }
+.soft-button-link:hover:not(:disabled) { text-decoration:underline }
+.soft-button-round, .soft-button.rounded-full { border-radius:var(--radius-pill);corner-shape:round }
+.soft-button:focus-visible { outline:2px solid var(--ring);outline-offset:3px }
+.soft-button[aria-invalid=true] { outline:2px solid var(--destructive);outline-offset:3px }
+
+/* Inputs share a quiet recessed surface; composite input children remain transparent. */
+:is([data-slot=input],[data-slot=textarea],[data-slot=input-group],[data-slot=select-trigger],[data-slot=native-select],[data-slot=combobox-chips],[data-slot=input-otp-slot]) {
+  background-color:var(--card);
+  box-shadow:var(--shadow-field);
+  corner-shape:squircle;
+}
+:is([data-slot=select-trigger],[data-slot=native-select]) {
+  background-color:var(--card);
+  background-image:linear-gradient(to bottom,transparent,var(--soft-shade));
+  box-shadow:var(--shadow-control);
+  border-color:transparent;
+  corner-shape:squircle;
+}
+.appearance-color { border-radius:var(--radius-control) }
+:is(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--primary) }
+:is([data-slot=checkbox],[data-slot=radio-group-item],[data-slot=switch]) { box-shadow:inset 0 1px 2px var(--soft-edge-top);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent) }
+[data-slot=switch-thumb] { background-color:var(--soft-thumb);box-shadow:var(--shadow-small) }
+[data-slot=slider-thumb] { box-shadow:var(--shadow-control) }
+
+/* All raised surfaces use the same light source, including body-level portals. */
+.soft-surface {
+  background-color:var(--card);
+  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  corner-shape:squircle;
+  box-shadow:var(--shadow-card);
+}
+.soft-elevated { box-shadow:var(--shadow-popover) }
+:is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=popover-content],[data-slot=hover-card-content],[data-slot=dropdown-menu-content],[data-slot=dropdown-menu-sub-content],[data-slot=context-menu-content],[data-slot=context-menu-sub-content],[data-slot=menubar-content],[data-slot=menubar-sub-content],[data-slot=select-content],[data-slot=combobox-content],[data-slot=toast],[data-slot=drawer-popup],[data-slot=sheet-content],[data-slot=card]) { corner-shape:squircle }
+:is([data-slot=toggle],[data-slot=tabs-list],[data-slot=tabs-trigger],[data-slot=menubar],[data-slot=sidebar-menu-button],.rail-item,.conversation-item,.page-subnav button,.schedule-item) { corner-shape:squircle }
+:is([data-slot=tabs-trigger][data-active],[data-slot=toggle][aria-pressed=true],.mention-chip.selected) { box-shadow:var(--shadow-control) }
+.mention-chip.selected { background-color:var(--selection) }
+
+/* Presentational composer: host keeps draft, IME, stop, mention and send behavior. */
+.chat-composer {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:12px;
+  width:100%;
+  height:auto;
+  min-width:0;
+  padding:16px 16px 12px;
+  border:0;
+  border-radius:var(--radius-composer);
+  corner-shape:squircle;
+  background-color:var(--surface-composer);
+  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
+  box-shadow:var(--shadow-composer);
+}
+.chat-composer:focus-within { outline:2px solid var(--ring);outline-offset:3px }
+.chat-composer .chat-composer-input {
+  display:block;
+  width:100%;
+  flex:none;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:var(--foreground);
+  resize:none;
+  outline:none;
+}
+.chat-composer-input::placeholder { color:var(--muted-foreground);opacity:1 }
+.chat-composer .chat-composer-footer { display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;height:auto;cursor:default }
+.chat-composer-footer>.button-row { gap:8px }
+@supports not (corner-shape:squircle) {
+  .soft-button { border-radius:10px }
+  .soft-button-round { border-radius:var(--radius-pill) }
+  .chat-composer { border-radius:28px }
+}
+@media(prefers-reduced-motion:reduce) {
+  .soft-button,.chat-composer { transition:none }
+}
