@@ -1,3 +1,9 @@
+<!--
+[INPUT]: Memory 与 Working Memory相关规格与当前模块实现。
+[OUTPUT]: Memory 与 Working Memory的说明和源码入口。
+[POS]: ai-docs/spec/5.Mastra能力扩展/01-Memory与WorkingMemory.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # Memory 与 Working Memory
 
 日期：2026-09-27。状态：**建议基线，未实施新记忆能力**。核对 `@mastra/core 1.71.0`、`@mastra/memory 1.32.1`、`@mastra/libsql 1.23.3`。当前已交付能力以 [v0.2.2 记录](../2.已实现功能与代码现状/14-v0.2.2历史群聊与本轮边界.md) 为准。
@@ -18,11 +24,11 @@ USER.md / MEMORY.md / 日期文件生成视图
 
 当前已实现的是**产品级记忆**：
 
-- [MemoryRepository](../../../src/runtime/memory.ts) 管理 `profile` 与 `conversation` 范围、员工所有权、来源消息/资源、版本、epoch、删除标记和串行写入。
+- [MemoryRepository](../../../src/runtime/modules/memory/memory-repository.ts) 管理 `profile` 与 `conversation` 范围、员工所有权、来源消息/资源、版本、epoch、删除标记和串行写入。
 - [AppService](../../../src/runtime/service.ts) 根据当前成员资格、绑定资源、来源可见性和失效快照筛选记忆，校验模型候选后提交。
-- [AgentHomes](../../../src/runtime/agent-homes.ts) 将获准记忆装入 bootstrap，并生成有范围的 Markdown 视图。生成文件不是第二份可独立写入的记忆权威。
-- [MastraEngine](../../../src/runtime/mastra-engine.ts) 显式投影消息上下文，分别标注旧轮与当前轮；记忆维护只提取当前轮增量，保留旧事实用于去重。长度/格式错误最多进行一次计入预算的纠正，不保存截断结果。
-- [ProductStore](../../../src/runtime/store.ts) 直接通过 `@libsql/client` 保存产品记录；没有实例化 Mastra 的 `LibSQLStore` 或 `LibSQLVector`。
+- [AgentHomes](../../../src/runtime/modules/workspaces/workspace-service.ts) 将获准记忆装入 bootstrap，并生成有范围的 Markdown 视图。生成文件不是第二份可独立写入的记忆权威。
+- [MastraEngine](../../../src/runtime/adapters/mastra/engine.ts) 显式投影消息上下文，分别标注旧轮与当前轮；记忆维护只提取当前轮增量，保留旧事实用于去重。长度/格式错误最多进行一次计入预算的纠正，不保存截断结果。
+- [ProductStore](../../../src/runtime/adapters/storage/product-store.ts) 直接通过 `@libsql/client` 保存产品记录；没有实例化 Mastra 的 `LibSQLStore` 或 `LibSQLVector`。
 
 当前普通 Agent 没有配置 `memory`，因此没有 Mastra 自动 message history、Working Memory、Semantic Recall 或 Observational Memory。包已安装只是依赖可用。
 

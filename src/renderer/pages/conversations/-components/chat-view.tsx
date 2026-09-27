@@ -1,9 +1,15 @@
+/*
+ * [INPUT]: 会话领域类型、草稿、活动投影与消息组件。
+ * [OUTPUT]: 聊天消息、输入和任务交互界面。
+ * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { ExternalFiles } from './external-files'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, AtSign, ChevronRight, FolderOpen, LoaderCircle, MoreHorizontal, Reply, ShieldCheck, Square, X } from '@/components/icons/index'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { Approval, ConversationDetail, DigitalAgent, Snapshot } from '@shared/contracts'
+import type { Approval, ConversationDetail, DigitalAgent, Snapshot } from '@shared/domain'
 import { Avatar, timeText } from '@/components/common/index'
 import { activityRounds } from '@/pages/conversations/activity'
 

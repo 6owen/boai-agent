@@ -1,6 +1,12 @@
+/*
+ * [INPUT]: React、图标与共享领域类型。
+ * [OUTPUT]: 公共控件、格式化函数与未保存状态守卫。
+ * [POS]: src/renderer/components/common/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { createContext, cloneElement, isValidElement, useId, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { LoaderCircle, X } from '@/components/icons/index'
-import type { Connection, Resource } from '@shared/contracts'
+import type { Connection, Resource } from '@shared/domain'
 
 export const colors = ['#6675a4', '#438b80', '#ad8054', '#638ac5', '#a76c90', '#777b8d']
 export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+':\s*(?:Error:)?\s*/, '').replace(/^Error:\s*/, '')

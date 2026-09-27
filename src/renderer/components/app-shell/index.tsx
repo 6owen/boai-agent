@@ -1,14 +1,26 @@
+/*
+ * [INPUT]: 领域类型、IPC 事件、独立页面组件与桌面请求入口。
+ * [OUTPUT]: 桌面布局、导航、详情及会话状态管理。
+ * [POS]: src/renderer/components/app-shell/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { flushAppearance } from '@/stores/appearance'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { DesktopToolbar } from './desktop-toolbar'
 import { DetailPanel } from '../detail-panel'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
 import { ArrowLeft, ArrowRight, BookOpen, CalendarClock, CircleHelp, MessageCircle, Plus, Settings } from '@/components/icons/index'
-import type { AppEvent, ConversationDetail, DigitalAgent, Message, Snapshot } from '@shared/contracts'
-import { ActivityDetail, ChatView, ConversationList, type ChatDraft } from '@/pages/conversations'
+import type { AppEvent } from '@shared/ipc'
+import type { ConversationDetail, DigitalAgent, Message, Snapshot } from '@shared/domain'
+import { ActivityDetail } from '@/pages/conversations/-components/activity-detail'
+import { ChatView } from '@/pages/conversations/-components/chat-view'
+import { ConversationList } from '@/pages/conversations/-components/conversation-list'
+import type { ChatDraft } from '@/pages/conversations/presentation'
 import { AgentEditor, GroupEditor, templates } from '@/components/employee/editors'
 import { EmployeeDetail } from '@/components/employee/index'
-import { HelpPage, LibraryPage, ResourceDetail, ScheduleDetail, SchedulePage } from '@/pages'
+import { HelpPage } from '@/pages/help'
+import { LibraryPage, ResourceDetail } from '@/pages/library'
+import { ScheduleDetail, SchedulePage } from '@/pages/schedules'
 import { SettingsPage } from '@/pages/settings'
 import { Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 

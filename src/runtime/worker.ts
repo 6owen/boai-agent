@@ -1,7 +1,13 @@
+/*
+ * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
+ * [OUTPUT]: 本地运行进程的服务装配和消息处理。
+ * [POS]: src/runtime/worker.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { randomUUID } from 'node:crypto'
 import { AppService } from './service'
-import { MastraEngine } from './mastra-engine'
-import type { RpcRequest } from '../shared/contracts'
+import { MastraEngine } from './adapters/mastra/engine'
+import type { RpcRequest } from '../shared/ipc'
 import type { SecretStore } from './contracts'
 
 const port = process.parentPort

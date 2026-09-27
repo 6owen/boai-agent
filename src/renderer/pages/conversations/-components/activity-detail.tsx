@@ -1,5 +1,11 @@
+/*
+ * [INPUT]: 运行领域类型、活动投影与公共组件。
+ * [OUTPUT]: 当前及历史轮次的运行详情。
+ * [POS]: src/renderer/pages/conversations/-components/activity-detail.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { FileText, FolderOpen, Terminal } from '@/components/icons/index'
-import type { AgentDelivery, AgentRun, ConversationDetail, Snapshot } from '@shared/contracts'
+import type { AgentDelivery, AgentRun, ConversationDetail, Snapshot } from '@shared/domain'
 import { sizeText } from '@/components/common/index'
 import { activityRounds, byCreatedAt, roundTime, type ActivityRound } from '@/pages/conversations/activity'
 

@@ -1,3 +1,9 @@
+<!--
+[INPUT]: Browser 浏览器能力相关规格与当前模块实现。
+[OUTPUT]: Browser 浏览器能力的说明和源码入口。
+[POS]: ai-docs/spec/5.Mastra能力扩展/04-Browser浏览器能力.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # Browser 浏览器能力
 
 日期：2026-09-27  
@@ -17,7 +23,7 @@ BR1 先交付网页读取、当前任务中的受控交互、人工登录与文�
 | 官方 AgentBrowser | 独立包，以 Playwright 和 accessibility refs 操作页面，可本地启动 | 首期选择；还要准备匹配版本的 Chromium 并处理打包 |
 | 现有开发依赖 | Playwright 用于测试 | 不等于生产安装中已包含可用浏览器、登录存储或许可管理 |
 
-依据：[当前引擎](../../../src/runtime/mastra-engine.ts)、[依赖清单](../../../package.json)、[已装 Browser 类型](../../../node_modules/@mastra/core/dist/browser/browser.d.ts)、[AgentBrowser 官方集成](https://mastra.ai/integrations/browsers/agent-browser)。本文没有安装 provider 或下载浏览器。
+依据：[当前引擎](../../../src/runtime/adapters/mastra/engine.ts)、[依赖清单](../../../package.json)、[已装 Browser 类型](../../../node_modules/@mastra/core/dist/browser/browser.d.ts)、[AgentBrowser 官方集成](https://mastra.ai/integrations/browsers/agent-browser)。本文没有安装 provider 或下载浏览器。
 
 ### SDK、CLI 与远程浏览器要分开
 
@@ -123,4 +129,4 @@ BR1 不依赖替换群聊调度算法。共享 [B1 Agent 工厂](../4.数字员�
 
 - 官网：[Browser](https://mastra.ai/docs/browser)、[AgentBrowser](https://mastra.ai/integrations/browsers/agent-browser)、[Filesystem](https://mastra.ai/docs/sandbox/filesystem)、[Skills](https://mastra.ai/docs/skills)。
 - 安装版：[Browser embedded docs](../../../node_modules/@mastra/core/dist/docs/references/docs-browser.md)、[MastraBrowser 参考](../../../node_modules/@mastra/core/dist/docs/references/reference-browser-mastra-browser.md)、[Browser 类型](../../../node_modules/@mastra/core/dist/browser/browser.d.ts)。
-- 当前应用：[引擎](../../../src/runtime/mastra-engine.ts)、[运行和审批](../../../src/runtime/service.ts)、[共享契约](../../../src/shared/contracts.ts)。官网演示表达框架能力，这些源码才表示本项目已实现的行为。
+- 当前应用：[引擎](../../../src/runtime/adapters/mastra/engine.ts)、[运行和审批](../../../src/runtime/service.ts)、[共享契约](../../../src/shared/domain/index.ts)。官网演示表达框架能力，这些源码才表示本项目已实现的行为。

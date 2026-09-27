@@ -1,10 +1,16 @@
+/*
+ * [INPUT]: 自动化与外部执行模块、领域类型和测试运行引擎。
+ * [OUTPUT]: 外部 Agent 与自动化功能的回归验证。
+ * [POS]: tests/extensions.test.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { it, expect, afterEach } from 'vitest'
 import { mkdtemp, rm, cp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { AgentEngine } from '../src/runtime/contracts'
-import type { Snapshot, Connection, Conversation, DigitalAgent, ConversationDetail, LaunchProfile, AutomationsView, AutomationDefinition, AutomationOccurrence } from '../src/shared/contracts'
+import type { Snapshot, Connection, Conversation, DigitalAgent, ConversationDetail, LaunchProfile, AutomationsView, AutomationDefinition, AutomationOccurrence } from '../src/shared/domain'
 import { AppService } from '../src/runtime/service'
 import { NativeSchedules, AUTOMATION_WORKFLOW } from '../src/runtime/modules/automations/native-schedules'
 import { AutomationService, calendarSlot, automationCron } from '../src/runtime/modules/automations/automation-service'

@@ -1,10 +1,18 @@
+/*
+ * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
+ * [OUTPUT]: 模型调用、工具和消息投影的回归验证。
+ * [POS]: tests/mastra-engine.test.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { createServer, type ServerResponse } from 'node:http'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { MastraEngine, projectMessages } from '../src/runtime/mastra-engine'
-import type { Connection, DigitalAgent, Artifact, EngineContext, Message, ModelUsage, ToolEvent } from '../src/shared/contracts'
+import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
+import { projectMessages } from '../src/runtime/adapters/mastra/message-projection'
+import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
+import type { EngineContext } from '../src/runtime/contracts'
 
 type RequestBody = { model: string; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
 const cleanup: (() => Promise<void>)[] = []

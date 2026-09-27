@@ -1,5 +1,12 @@
+/*
+ * [INPUT]: 快照领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 数据目录和备份操作界面。
+ * [POS]: src/renderer/pages/settings/data.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { FolderOpen, HardDrive } from '@/components/icons'
-import type { DesktopApi, Snapshot } from '@shared/contracts'
+import type { DesktopApi } from '@shared/ipc'
+import type { Snapshot } from '@shared/domain'
 import type { useMutation } from '@/components/common'
 
 export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: DesktopApi; snapshot: Snapshot; busy: boolean; run: ReturnType<typeof useMutation>['run']; onNotice(message: string): void }) {

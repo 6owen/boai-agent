@@ -1,4 +1,10 @@
-import type { AgentRun, ConversationDetail, DiscussionTurn, Message } from '@shared/contracts'
+/*
+ * [INPUT]: 会话详情、消息和运行领域类型。
+ * [OUTPUT]: 按轮次整理的活动展示投影。
+ * [POS]: src/renderer/pages/conversations/activity.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import type { AgentRun, ConversationDetail, DiscussionTurn, Message } from '@shared/domain'
 
 export interface ActivityRound {
   id: string

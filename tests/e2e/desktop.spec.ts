@@ -1,10 +1,16 @@
+/*
+ * [INPUT]: Electron 应用、共享领域类型与本地协议服务。
+ * [OUTPUT]: 桌面导航、会话和员工操作的端到端验证。
+ * [POS]: tests/e2e/desktop.spec.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { test, expect, _electron as electron } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 import { createServer } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
-import type { ConversationDetail, Snapshot } from '../../src/shared/contracts'
+import type { ConversationDetail, Snapshot } from '../../src/shared/domain'
 
 test('v0.2 desktop: autonomous group, scoped files and memory, cancellation, UI and restart', async () => {
   const requests: any[] = []

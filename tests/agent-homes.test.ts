@@ -1,19 +1,25 @@
+/*
+ * [INPUT]: WorkspaceService、产品存储、记忆模块与临时数据。
+ * [OUTPUT]: 系统文件、工作区、记忆和迁移边界的回归验证。
+ * [POS]: tests/agent-homes.test.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, readFile, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AgentHomes } from '../src/runtime/agent-homes'
-import { ProductStore } from '../src/runtime/store'
-import { MemoryRepository } from '../src/runtime/memory'
+import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
+import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { MemoryRepository } from '../src/runtime/modules/memory/memory-repository'
 import { prepareV2DataRoot } from '../src/main/migration'
-import type { DigitalAgent, MemoryQuery, MemoryView, Conversation } from '../src/shared/contracts'
+import type { DigitalAgent, MemoryQuery, MemoryView, Conversation } from '../src/shared/domain'
 const roots: string[] = []
 const stores: ProductStore[] = []
 afterEach(async () => { for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function setup() {
   const root = await mkdtemp(join(tmpdir(), 'boai-homes-')); roots.push(root)
   const agent: DigitalAgent = { id: 'researcher', name: '研究员', role: '研究', instructions: '原始工作指令，必须保留。', color: '#112233', connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], active: true, allowCommands: false, configVersion: 1 }
-  const homes = new AgentHomes(root); await homes.initialize(agent)
+  const homes = new WorkspaceService(root); await homes.initialize(agent)
   return { root, agent, homes }
 }
 const empty: MemoryView = { entries: [], epoch: 0, namespace: 'test' }

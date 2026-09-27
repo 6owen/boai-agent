@@ -1,9 +1,15 @@
+/*
+ * [INPUT]: Electron 应用、产品存储与旧版领域数据。
+ * [OUTPUT]: 旧数据升级和恢复的端到端验证。
+ * [POS]: tests/e2e/upgrade.spec.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { ProductStore } from '../../src/runtime/store'
-import type { DigitalAgent, Conversation, Message, AgentRun } from '../../src/shared/contracts'
+import { ProductStore } from '../../src/runtime/adapters/storage/product-store'
+import type { DigitalAgent, Conversation, Message, AgentRun } from '../../src/shared/domain'
 
 test('the actual desktop upgrades v0.1 history and files without replaying unfinished work', async () => {
   const root = await mkdtemp(join(tmpdir(), 'boai-upgrade-'))

@@ -1,3 +1,9 @@
+<!--
+[INPUT]: Sandbox、文件系统与 Skills相关规格与当前模块实现。
+[OUTPUT]: Sandbox、文件系统与 Skills的说明和源码入口。
+[POS]: ai-docs/spec/5.Mastra能力扩展/03-Sandbox文件系统与Skills.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # Sandbox、文件系统与 Skills
 
 日期：2026-09-27  
@@ -30,7 +36,7 @@
 | 已装 `@mastra/core 1.71.0` | 包含 LocalFilesystem、Workspace、LocalSandbox、原生隔离配置及 skills API | 可以直接做 S1；不能把 LocalSandbox 默认配置当隔离产品交付 |
 | 官网其他后端 | Docker、Apple Container、本地/远程浏览器及远程沙箱有独立集成 | 当前未安装对应 provider；后续接入必须锁定版本、再读其类型并实测 |
 
-代码依据：[任务工具和命令执行](../../../src/runtime/mastra-engine.ts)、[员工目录](../../../src/runtime/agent-homes.ts)、[资源导入](../../../src/runtime/resources.ts)、[授权与生命周期](../../../src/runtime/service.ts)。当前 `@mastra/` 依赖只有 core、memory、libsql；开发测试使用 Playwright 也不代表已经提供生产浏览器或容器环境。
+代码依据：[任务工具和命令执行](../../../src/runtime/adapters/mastra/engine.ts)、[员工目录](../../../src/runtime/modules/workspaces/workspace-service.ts)、[资源导入](../../../src/runtime/modules/resources/local-resources.ts)、[授权与生命周期](../../../src/runtime/service.ts)。当前 `@mastra/` 依赖只有 core、memory、libsql；开发测试使用 Playwright 也不代表已经提供生产浏览器或容器环境。
 
 ### LocalSandbox 的真实边界
 

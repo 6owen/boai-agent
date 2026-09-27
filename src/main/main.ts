@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
+ * [OUTPUT]: 桌面窗口、IPC 路由与运行进程生命周期。
+ * [POS]: src/main/main.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { decodeImage } from './decode-image'
 import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification } from 'electron'
 import type { UtilityProcess } from 'electron'
@@ -7,10 +13,11 @@ import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { resolveTheme } from '../shared/appearance'
-import type { Methods } from '../shared/contracts'
+import type { Methods } from '../shared/ipc'
 import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
-import type { Method, RpcResponse, Snapshot } from '../shared/contracts'
+import type { Method, RpcResponse } from '../shared/ipc'
+import type { Snapshot } from '../shared/domain'
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')

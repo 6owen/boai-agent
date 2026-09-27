@@ -1,4 +1,10 @@
-import type { AgentDelivery, TurnStatus } from '@shared/contracts'
+/*
+ * [INPUT]: 成员投递与轮次领域类型。
+ * [OUTPUT]: 会话状态文案、草稿类型与展示辅助函数。
+ * [POS]: src/renderer/pages/conversations/presentation.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import type { AgentDelivery, TurnStatus } from '@shared/domain'
 
 export const runLabels = { queued: '排队中', running: '正在处理', waiting_approval: '等待授权', completed: '已完成', failed: '失败', cancelled: '已取消', interrupted: '已中断' }
 export const deliveryLabels: Record<AgentDelivery['status'], string> = { pending: '待处理', evaluating: '正在判断', ready: '等待发言', waiting: '等待前序结果', passed: '本次不发言', responding: '正在回复', completed: '已处理', failed: '处理失败', cancelled: '已取消', interrupted: '已中断', skipped: '未参与' }

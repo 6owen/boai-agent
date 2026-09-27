@@ -1,7 +1,13 @@
+/*
+ * [INPUT]: 共享领域类型、产品存储与群事件。
+ * [OUTPUT]: 群聊轮次、成员判断与发言调度。
+ * [POS]: src/runtime/group-scheduler.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import type { AgentDelivery, Conversation, ConversationEvent, Contribution, DecisionRecord, DigitalAgent, DiscussionTurn, Message, ParticipationDecision } from '../shared/contracts'
-import { ProductStore, type StoredRecord } from './store'
+import type { AgentDelivery, Conversation, ConversationEvent, Contribution, DecisionRecord, DigitalAgent, DiscussionTurn, Message, ParticipationDecision } from '../shared/domain'
+import { ProductStore, type StoredRecord } from './adapters/storage/product-store'
 
 const now = () => new Date().toISOString()
 const row = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })

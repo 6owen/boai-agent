@@ -1,3 +1,9 @@
+<!--
+[INPUT]: 数字员工配置与 Agent 工厂相关规格与当前模块实现。
+[OUTPUT]: 数字员工配置与 Agent 工厂的说明和源码入口。
+[POS]: ai-docs/spec/4.数字员工与协作重构/01-数字员工配置与Agent工厂.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # 数字员工配置与 Agent 工厂
 
 日期：2026-09-27  
@@ -12,11 +18,11 @@
 
 | 概念 | 当前事实 | 依据 |
 | --- | --- | --- |
-| 员工持久定义 | `DigitalAgent` 保存 ID、角色、连接/模型、skill/knowledge 绑定、命令开关、启用状态及配置版本 | [contracts.ts](../../../src/shared/contracts.ts) |
+| 员工持久定义 | `DigitalAgent` 保存 ID、角色、连接/模型、skill/knowledge 绑定、命令开关、启用状态及配置版本 | [contracts.ts](../../../src/shared/domain/index.ts) |
 | 注册状态 | `AppService.agents` 在启动时从 SQLite 加载，空库创建 3 个定义；配置保存后更新该 Map | [service.ts](../../../src/runtime/service.ts) |
-| 系统文件 | `AGENTS.md`、`SOUL.md` 为源文件；定义中的 instructions 同步为工作规则投影 | [agent-homes.ts](../../../src/runtime/agent-homes.ts) |
+| 系统文件 | `AGENTS.md`、`SOUL.md` 为源文件；定义中的 instructions 同步为工作规则投影 | [agent-homes.ts](../../../src/runtime/modules/workspaces/workspace-service.ts) |
 | 运行快照 | 每阶段装配员工、连接、资源、记忆来源及 bootstrap 版本；模型取得的是副本 | [service.ts](../../../src/runtime/service.ts) |
-| Mastra 实例 | run/decide/extractMemory 各自 `new Agent`；task 阶段另创建临时 Workspace，结束销毁 SDK Workspace 对象 | [mastra-engine.ts](../../../src/runtime/mastra-engine.ts) |
+| Mastra 实例 | run/decide/extractMemory 各自 `new Agent`；task 阶段另创建临时 Workspace，结束销毁 SDK Workspace 对象 | [mastra-engine.ts](../../../src/runtime/adapters/mastra/engine.ts) |
 | 引擎接口 | `AgentEngine` 隔离产品层与 Mastra；一个 adapter 实例处理多个员工/会话 | [worker.ts](../../../src/runtime/worker.ts) |
 
 重构前没有独立 Agent 工厂，员工用例集中在 AppService。现已提取 `modules/employees/employee-service.ts` 与 `adapters/mastra/agent-factory.ts`；仍不缓存带会话状态的实例，不创建永久 Mastra 注册表。下文保留职责及验收依据。

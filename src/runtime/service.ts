@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 领域类型、IPC 合同、内部执行合同与业务模块。
+ * [OUTPUT]: 应用用例、运行生命周期与授权管理。
+ * [POS]: src/runtime/service.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { RequestError } from '@agentclientprotocol/sdk'
 import { publishArtifact, restrictedPath } from './modules/workspaces/file-access'
 import { createHash } from 'node:crypto'
@@ -12,7 +18,8 @@ import { randomUUID } from 'node:crypto'
 import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
-import type { AgentInput, AgentRun, AppEvent, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Method, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/contracts'
+import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
+import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
 import { ProductStore, type StoredRecord } from './adapters/storage/product-store'

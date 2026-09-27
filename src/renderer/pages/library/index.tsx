@@ -1,6 +1,13 @@
+/*
+ * [INPUT]: 资源领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 资料库页面与资源详情。
+ * [POS]: src/renderer/pages/library/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { useState } from 'react'
 import { FileText, FolderOpen, Plus, Search, ShieldCheck } from '@/components/icons/index'
-import type { DesktopApi, DigitalAgent, Resource, Snapshot } from '@shared/contracts'
+import type { DesktopApi } from '@shared/ipc'
+import type { DigitalAgent, Resource, Snapshot } from '@shared/domain'
 import { Avatar, Banner, useMutation } from '@/components/common/index'
 
 export function LibraryPage({ api, snapshot, refresh, onResource, onAgent }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; onResource: (resource: Resource) => void; onAgent: (agent: DigitalAgent) => void }) {

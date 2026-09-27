@@ -1,3 +1,9 @@
+<!--
+[INPUT]: 数字员工与协作重构相关规格与当前模块实现。
+[OUTPUT]: 数字员工与协作重构的说明和源码入口。
+[POS]: ai-docs/spec/4.数字员工与协作重构/README.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # 数字员工与协作重构
 
 日期：2026-09-27  
@@ -30,7 +36,7 @@ B 表示保持行为的后端重构，E 表示新执行后端，不能混为一�
 | `shared/contracts.ts` | 产品类型、IPC 合同、引擎内部合同混合 | 拆分所有权，旧文件过渡重导出，保持现有 import 可用 |
 | `renderer` | UI、请求、快照与增量事件合并、轮次展示 | 由前端任务处理；不得绕过 IPC 导入 runtime |
 
-依据：[Main](../../../src/main/main.ts)、[Worker](../../../src/runtime/worker.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)、[MastraEngine](../../../src/runtime/mastra-engine.ts)。
+依据：[Main](../../../src/main/main.ts)、[Worker](../../../src/runtime/worker.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)、[MastraEngine](../../../src/runtime/adapters/mastra/engine.ts)。
 
 ## 3. 建议目标目录
 

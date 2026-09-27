@@ -1,5 +1,12 @@
+/*
+ * [INPUT]: 自动化领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 定时任务列表、配置和执行详情。
+ * [POS]: src/renderer/pages/schedules/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { useEffect, useState, useContext } from 'react'
-import type { AutomationDefinition, AutomationInput, AutomationOccurrence, AutomationsView, DesktopApi, Snapshot } from '@shared/contracts'
+import type { AutomationDefinition, AutomationInput, AutomationOccurrence, AutomationsView, Snapshot } from '@shared/domain'
+import type { DesktopApi } from '@shared/ipc'
 import { Banner, Field, GuardContext, useDirty, useMutation } from '@/components/common'
 import { CalendarClock } from '@/components/icons'
 const statuses:Record<AutomationOccurrence['status'],string>={admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',completed:'已完成',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}

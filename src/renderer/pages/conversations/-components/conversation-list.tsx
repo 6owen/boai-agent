@@ -1,6 +1,12 @@
+/*
+ * [INPUT]: 员工与快照领域类型、草稿与公共组件。
+ * [OUTPUT]: 会话列表和员工导航。
+ * [POS]: src/renderer/pages/conversations/-components/conversation-list.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, MoreHorizontal, Plus, Search, Users, X } from '@/components/icons/index'
-import type { DigitalAgent, Snapshot } from '@shared/contracts'
+import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { Avatar, timeText } from '@/components/common/index'
 
 import { type ChatDraft } from '../presentation'

@@ -1,6 +1,13 @@
+/*
+ * [INPUT]: 员工领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 员工资料、系统文件、工作区和记忆详情。
+ * [POS]: src/renderer/components/employee/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { useContext, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, FileText, FolderOpen, Plus, RefreshCw, Trash2 } from '@/components/icons/index'
-import type { AgentFileContent, AgentHome, DesktopApi, DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Snapshot } from '@shared/contracts'
+import type { AgentFileContent, AgentHome, DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Snapshot } from '@shared/domain'
+import type { DesktopApi } from '@shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
 import { Avatar, Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 

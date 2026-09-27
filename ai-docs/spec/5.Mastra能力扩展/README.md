@@ -1,3 +1,9 @@
+<!--
+[INPUT]: Mastra 能力扩展相关规格与当前模块实现。
+[OUTPUT]: Mastra 能力扩展的说明和源码入口。
+[POS]: ai-docs/spec/5.Mastra能力扩展/README.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # Mastra 能力扩展
 
 日期：2026-09-27。状态：**S1 已实施，其余能力待实施**；[首批交付记录](../2.已实现功能与代码现状/15-B1-B2-S1-F1首批重构实现.md)。当前优先员工 Sandbox / Skills、执行后端、浏览器与自动化。本文不触发依赖升级，不替换现有记忆库或群聊调度器。
@@ -33,7 +39,7 @@
 | 定时任务页面 | 已有入口、列表和详情设计 | 已接入 Mastra schedules、后台运行或系统唤醒 |
 | 外部连接与浏览器 | 当前无 ACP / A2A / MCP / Browser 集成 | core 存在相关类型就等于员工已经能使用 |
 
-源码入口：[ProductStore](../../../src/runtime/store.ts)、[MemoryRepository](../../../src/runtime/memory.ts)、[AgentHomes](../../../src/runtime/agent-homes.ts)、[MastraEngine](../../../src/runtime/mastra-engine.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)。
+源码入口：[ProductStore](../../../src/runtime/adapters/storage/product-store.ts)、[MemoryRepository](../../../src/runtime/modules/memory/memory-repository.ts)、[AgentHomes](../../../src/runtime/modules/workspaces/workspace-service.ts)、[MastraEngine](../../../src/runtime/adapters/mastra/engine.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)。
 
 **安装 `@mastra/memory` 不等于已经启用它。Working Memory 是模型可用的持久上下文，不是 workspace 文件目录。** 当前引擎没有给 Agent 配置 `memory: new Memory(...)`，也没有使用 `createWorkflow()`、`addDynamicWorkflow()` 或 `new Mastra(...)` 组织工作流。
 

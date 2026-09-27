@@ -1,9 +1,16 @@
+/*
+ * [INPUT]: 设置子页、领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 设置分类布局及模型连接管理。
+ * [POS]: src/renderer/pages/settings/index.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { ExternalSettings } from './external'
 import { AppearanceSettings } from './appearance'
 import { DataSettings } from './data'
 import { useContext, useState } from 'react'
 import { LoaderCircle, Plus, HardDrive, Sparkles } from '@/components/icons/index'
-import type { Connection, DesktopApi, Snapshot } from '@shared/contracts'
+import type { Connection, Snapshot } from '@shared/domain'
+import type { DesktopApi } from '@shared/ipc'
 import { Banner, connectionReady, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionEditor } from './connections'
 export function SettingsPage({ api, snapshot, refresh, initialTab='connections' }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; initialTab?: 'connections'|'data'|'appearance'|'external' }) {

@@ -1,10 +1,17 @@
+/*
+ * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
+ * [OUTPUT]: 应用持久化、授权和运行生命周期的回归验证。
+ * [POS]: tests/service.test.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { afterEach, describe, expect, it } from 'vitest'
 import { cp, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentEngine, AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, EngineContext, Message, Resource, SecretStore, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../src/shared/contracts'
+import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
+import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../src/shared/domain'
 import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/store'
+import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 
 const roots: string[] = []
 const services: AppService[] = []

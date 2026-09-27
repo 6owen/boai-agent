@@ -1,6 +1,13 @@
+/*
+ * [INPUT]: 模型连接领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 模型连接配置表单。
+ * [POS]: src/renderer/pages/settings/connections.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { useContext, useState } from 'react'
 import { LoaderCircle } from '@/components/icons/index'
-import type { Connection, ConnectionInput, DesktopApi, Provider } from '@shared/contracts'
+import type { Connection, ConnectionInput, Provider } from '@shared/domain'
+import type { DesktopApi } from '@shared/ipc'
 import { Banner, Field, GuardContext, useDirty, useMutation } from '@/components/common/index'
 export function ConnectionEditor({ connection, api, onSaved, onCancel }: { connection?: Connection; api: DesktopApi; onSaved: () => Promise<void>; onCancel: () => void }) {
   const [form, setForm] = useState<ConnectionInput>({ id: connection?.id, name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: '' })

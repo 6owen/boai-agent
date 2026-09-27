@@ -1,9 +1,15 @@
+/*
+ * [INPUT]: Electron 应用、共享领域类型与历史会话数据。
+ * [OUTPUT]: 历史群聊和活动轮次的端到端验证。
+ * [POS]: tests/e2e/history.spec.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { test, expect, _electron as electron } from '@playwright/test'
 import { createServer } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import type { ConversationDetail, Snapshot } from '../../src/shared/contracts'
+import type { ConversationDetail, Snapshot } from '../../src/shared/domain'
 
 test('existing group keeps past replies and failures separate from a new greeting and its activity', async () => {
   const decisions: { employee: string; data: any }[] = []

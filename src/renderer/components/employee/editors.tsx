@@ -1,7 +1,14 @@
-import type { LaunchProfile } from '@shared/contracts'
+/*
+ * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件。
+ * [OUTPUT]: 员工和群配置编辑器及员工模板。
+ * [POS]: src/renderer/components/employee/editors.tsx。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import type { LaunchProfile } from '@shared/domain'
 import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
-import type { AgentInput, Conversation, DesktopApi, DigitalAgent, Snapshot } from '@shared/contracts'
+import type { AgentInput, Conversation, DigitalAgent, Snapshot } from '@shared/domain'
+import type { DesktopApi } from '@shared/ipc'
 import { Avatar, Banner, colors, EditorFrame, Field, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common/index'
 export const templates = [
   { name: '资料研究员', role: '查找资料，厘清事实', instructions: '你是一位细致的资料研究员。区分事实与推测，提供可追踪的来源。', icon: Search, color: colors[0] },

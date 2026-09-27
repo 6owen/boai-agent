@@ -1,5 +1,11 @@
+/*
+ * [INPUT]: Electron IPC 与 shared/ipc 合同。
+ * [OUTPUT]: 受控的 window.boai 请求和订阅接口。
+ * [POS]: src/main/preload.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AppEvent, DesktopApi } from '../shared/contracts'
+import type { AppEvent, DesktopApi } from '../shared/ipc'
 
 const api: DesktopApi = {
   initialAppearance: ipcRenderer.sendSync('boai:appearance-initial'),
