@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 统一语义 token 与设置、自动化页面结构。
- * [OUTPUT]: 紧凑外观设置行、模式缩略图和任务分栏；控件皮肤共用 ui/skin.css。
+ * [INPUT]: 统一语义 token 与通讯录、设置、自动化页面结构。
+ * [OUTPUT]: 通讯录资料与编辑布局、紧凑外观设置行、模式缩略图和任务分栏；控件皮肤共用 ui/skin.css。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -129,4 +129,42 @@
   .settings-nav-group>p { display:none }
   .page-subnav button { min-height:30px;margin:0;font-size:12px }
   .settings-content.appearance-content { padding:28px 20px }
+}
+
+/* Contacts keep the user-controlled list width at every window size. */
+.contacts-page { display:flex;flex:1;min-height:0;min-width:0 }
+.contacts-list { display:flex;flex-direction:column;flex-shrink:0;width:var(--list-width,312px);min-height:0;padding:0 10px;background:var(--list) }
+.contacts-sections { flex:1;min-height:0;overflow-y:auto;padding:10px 0 }
+.contacts-sections>[data-slot=collapsible]+[data-slot=collapsible] { margin-top:8px }
+.contacts-section-heading { display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:6px 8px;font-size:12px;text-align:left }
+.contacts-section-heading[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
+.contacts-count { margin-left:auto;color:var(--muted-foreground);font-size:11px;font-variant-numeric:tabular-nums }
+.contacts-list-empty { padding:4px 8px 12px 32px;font-size:12px;color:var(--muted-foreground);margin:0 }
+.contacts-detail { flex:1;min-width:0;min-height:0;overflow:auto;container-type:inline-size }
+.contact-document { width:100%;max-width:640px;margin:0 auto;padding:48px 36px }
+.contact-profile-heading { display:flex;align-items:center;gap:18px;margin-bottom:28px }
+.contact-profile-heading>.avatar,.contact-profile-heading>.group-avatar { width:64px;height:64px;font-size:26px;border-radius:var(--radius-control) }
+.contact-profile-identity { min-width:0;flex:1 }
+.contact-profile-identity h1 { font-size:20px;line-height:1.4;font-weight:600;margin:0;overflow-wrap:anywhere }
+.contact-profile-identity p { font-size:13px;line-height:1.6;color:var(--muted-foreground);margin:4px 0 8px;overflow-wrap:anywhere }
+.contact-facts { margin:22px 0;display:grid;gap:16px }
+.contact-facts>div { display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;font-size:13px;line-height:1.7 }
+.contact-facts dt { color:var(--muted-foreground) }
+.contact-facts dd { margin:0;overflow-wrap:anywhere }
+.contact-prompt { white-space:pre-wrap;max-height:240px;overflow-y:auto }
+.contact-actions { display:flex;justify-content:center;gap:12px;padding-top:28px;flex-wrap:wrap }
+.contact-group-info { padding-top:22px }
+.contact-group-info h2 { font-size:13px;font-weight:500;margin:0 0 16px }
+.contact-members { display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:12px }
+.contact-member { display:flex;align-items:center;flex-direction:column;gap:8px;padding:8px 4px;min-width:0 }
+.contact-member>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px }
+.contact-edit-heading { display:flex;justify-content:space-between;gap:12px;margin-bottom:12px }
+.contact-editor .editor-intro,.contact-editor .editor-body,.contact-editor .employee-identity,.contact-editor .detail-tabs,.contact-editor .detail-section { padding-left:0;padding-right:0 }
+.contact-editor .editor-frame { min-height:0 }
+.contact-editor .editor-footer { padding-left:0;padding-right:0;background:var(--surface-content) }
+.contact-editor .resource-option { min-width:0 }
+@container (max-width:420px) {
+  .contact-document { padding:28px 20px }
+  .contact-profile-heading { gap:12px }
+  .contact-facts>div { grid-template-columns:64px minmax(0,1fr);gap:8px }
 }

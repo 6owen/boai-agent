@@ -1,6 +1,6 @@
 /*
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
- * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影、shadcn 语义别名与背景图层。
+ * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影、32px 紧凑 composer 圆角、shadcn 语义别名与背景图层。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,7 +50,7 @@
   --chart-4:var(--destructive);
   --chart-5:var(--muted-foreground);
   --radius-card:20px;
-  --radius-composer:48px;
+  --radius-composer:32px;
   --radius-pill:999px;
   --control-height:32px;
   --content-width:768px;

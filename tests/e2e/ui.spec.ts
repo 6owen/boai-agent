@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron、Vite 测试入口、实际主题与全部 UI 源码。
- * [OUTPUT]: 新组件与旧样式共存、浮层焦点/层叠、可见键盘焦点、主题、图标与交互的集成回归。
+ * [OUTPUT]: 新组件与旧样式共存、浮层焦点/层叠、无 ring/outline 的键盘焦点、主题、图标与交互的集成回归。
  * [POS]: 基础组件验收；测试入口不进入生产构建。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -43,8 +43,8 @@ test('shadcn foundation compiles all modules and preserves styled accessible ove
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
     await expect(trigger).toBeFocused()
-    await expect(trigger).toHaveCSS('outline-style', 'solid')
-    await expect(trigger).toHaveCSS('outline-width', '2px')
+    await expect(trigger).toHaveCSS('outline-style', 'none')
+    await expect(trigger).toHaveCSS('outline-width', '0px')
     await page.getByRole('combobox', { name: '显示模式' }).click()
     await page.getByRole('option', { name: '深色', exact: true }).click()
     await expect(page.getByRole('combobox', { name: '显示模式' })).toContainText('深色')

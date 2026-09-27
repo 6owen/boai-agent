@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: Soft 按钮、圆形操作、内容自适应按钮与兼容 shadcn 的尺寸/语义变体。
+ * [OUTPUT]: Soft 按钮、圆形操作、保留宿主字号的内容按钮与 12/14/16px 图标尺寸。
  * [POS]: components/ui 的 button 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "soft-button group/button shrink-0 select-none aria-invalid:outline-destructive [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+  "soft-button group/button shrink-0 select-none aria-invalid:outline-destructive [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[16px]",
   {
     variants: {
       variant: {
@@ -23,14 +23,14 @@ const buttonVariants = cva(
         link: "soft-button-link",
       },
       size: {
-        content: "",
+        content: "soft-button-content",
         default: "h-[32px] gap-2 px-4",
-        xs: "h-[24px] gap-1 px-2 text-xs [&_:is(svg,.app-icon):not([class*='size-'])]:size-3",
-        sm: "h-[28px] gap-1.5 px-3 text-xs [&_:is(svg,.app-icon):not([class*='size-'])]:size-3.5",
+        xs: "h-[24px] gap-1 px-2 text-xs [&_:is(svg,.app-icon):not([class*='size-'])]:size-[12px]",
+        sm: "h-[28px] gap-1.5 px-3 text-xs [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
         lg: "h-[36px] gap-2 px-5",
         icon: "size-[32px] p-0",
-        "icon-xs": "size-[24px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-3",
-        "icon-sm": "size-[28px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-3.5",
+        "icon-xs": "size-[24px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[12px]",
+        "icon-sm": "size-[28px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
         "icon-lg": "size-[36px] p-0",
       },
       round: { true: "soft-button-round", false: "" },

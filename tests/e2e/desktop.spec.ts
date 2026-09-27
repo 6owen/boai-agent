@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron 应用、共享领域类型与本地协议服务。
- * [OUTPUT]: 桌面导航、任务空状态入口、会话草稿、未保存对话框和员工操作的端到端验证。
+ * [OUTPUT]: 桌面导航、离线 Carbon 图标、任务空状态入口、会话草稿、未保存对话框和员工操作的端到端验证。
  * [POS]: tests/e2e/desktop.spec.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -115,8 +115,8 @@ test('v0.2 desktop: autonomous group, scoped files and memory, cancellation, UI 
       const style = getComputedStyle(node), rect = node.getBoundingClientRect()
       return { className: node.className, mask: style.maskImage, width: rect.width, height: rect.height }
     }))
-    expect(icons.some(icon => icon.className.includes('i-carbon-'))).toBe(true)
-    expect(icons.some(icon => icon.className.includes('i-solar-'))).toBe(true)
+    expect(icons.length).toBeGreaterThan(0)
+    expect(icons.every(icon => icon.className.includes('i-carbon-'))).toBe(true)
     expect(icons.every(icon => icon.mask.includes('data:image/svg+xml') && icon.width > 0 && icon.height > 0)).toBe(true)
     await page.getByRole('button', { name: /^方案讨论群/ }).click()
     await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
@@ -142,7 +142,7 @@ test('v0.2 desktop: autonomous group, scoped files and memory, cancellation, UI 
     await page.getByRole('button', { name: '继续编辑', exact: true }).click()
     await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
     await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-    await page.getByRole('button', { name: '放弃并继续', exact: true }).click()
+    await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
     expect((await detail(page, group.id)).conversation.title).toBe('方案讨论群')
     await page.getByRole('button', { name: '查看 研究员', exact: true }).click()
     await panel.getByRole('button', { name: '系统文件', exact: true }).click()

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 离线 Solar / Carbon 图标集合与图标尺寸。
- * [OUTPUT]: 默认18px的业务图标及由基础组件控制尺寸的 shadcn 图标适配。
+ * [INPUT]: 离线 Carbon 图标集合与图标尺寸。
+ * [OUTPUT]: 默认16px、允许父控件管理尺寸的 Carbon 图标、通讯录、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -13,17 +13,18 @@ const classes = {
   ArrowRight: 'i-carbon-arrow-right',
   ArrowUp: 'i-carbon-arrow-up',
   AtSign: 'i-carbon-at',
-  BookOpen: 'i-solar-book-2-outline',
-  CalendarClock: 'i-solar-calendar-date-outline',
-  Clock: 'i-solar-clock-circle-bold',
+  BookOpen: 'i-carbon-book',
+  CalendarClock: 'i-carbon-calendar',
+  Clock: 'i-carbon-time',
   Home: 'i-carbon-home',
-  Library: 'i-solar-notebook-minimalistic-outline',
-  Sliders: 'i-solar-tuning-2-linear',
+  Contact: 'i-carbon-user-profile',
+  Library: 'i-carbon-notebook',
+  Sliders: 'i-carbon-settings-adjust',
   Check: 'i-carbon-checkmark',
   ChevronDown: 'i-carbon-chevron-down',
   ChevronUp: 'i-carbon-chevron-up',
   Minus: 'i-carbon-subtract',
-  CircleCheck: 'i-solar-check-circle-outline',
+  CircleCheck: 'i-carbon-checkmark-outline',
   Info: 'i-carbon-information',
   TriangleAlert: 'i-carbon-warning-alt',
   OctagonX: 'i-carbon-error',
@@ -31,20 +32,22 @@ const classes = {
   ChevronRight: 'i-carbon-chevron-right',
   CircleHelp: 'i-carbon-help',
   FileText: 'i-carbon-document',
-  FolderOpen: 'i-solar-folder-open-outline',
+  FolderOpen: 'i-carbon-folder-open',
   HardDrive: 'i-carbon-data-volume',
-  LoaderCircle: 'i-solar-refresh-circle-outline',
-  MessageCircle: 'i-solar-chat-round-dots-outline',
+  LoaderCircle: 'i-carbon-renew',
+  MessageCircle: 'i-carbon-chat',
   MoreHorizontal: 'i-carbon-overflow-menu-horizontal',
-  PanelLeft: 'i-solar-panel-left-linear',
-  PanelRight: 'i-solar-panel-right-linear',
+  PanelLeft: 'i-carbon-side-panel-open',
+  PanelRight: 'i-carbon-side-panel-close',
   Plus: 'i-carbon-add',
+  Pencil: 'i-carbon-edit',
+  Upload: 'i-carbon-upload',
   RefreshCw: 'i-carbon-renew',
   Reply: 'i-carbon-reply',
   Search: 'i-carbon-search',
-  Settings: 'i-solar-settings-outline',
-  ShieldCheck: 'i-solar-shield-check-outline',
-  Sparkles: 'i-solar-magic-stick-2-linear',
+  Settings: 'i-carbon-settings',
+  ShieldCheck: 'i-carbon-security',
+  Sparkles: 'i-carbon-magic-wand',
   Square: 'i-carbon-stop-outline',
   Terminal: 'i-carbon-terminal',
   Trash2: 'i-carbon-trash-can',
@@ -54,8 +57,8 @@ const classes = {
 
 type IconName = keyof typeof classes
 interface IconProps { size?: number; className?: string; style?: CSSProperties }
-export function Icon({ name, size = 18, className = '', style }: IconProps & { name: IconName }) {
-  return <i aria-hidden="true" className={`app-icon ${classes[name]} ${className}`} style={{ width: size, height: size, ...style }} />
+export function Icon({ name, size, className = '', style }: IconProps & { name: IconName }) {
+  return <i aria-hidden="true" className={`app-icon ${classes[name]} ${className}`} style={size === undefined ? style : { width: size, height: size, ...style }} />
 }
 function component(name: IconName) {
   return function LocalIcon(props: IconProps) { return <Icon name={name} {...props} /> }
@@ -69,6 +72,7 @@ export const BookOpen = component('BookOpen')
 export const CalendarClock = component('CalendarClock')
 export const Clock = component('Clock')
 export const Home = component('Home')
+export const Contact = component('Contact')
 export const Library = component('Library')
 export const Sliders = component('Sliders')
 export const Check = component('Check')
@@ -84,6 +88,8 @@ export const MoreHorizontal = component('MoreHorizontal')
 export const PanelLeft = component('PanelLeft')
 export const PanelRight = component('PanelRight')
 export const Plus = component('Plus')
+export const Pencil = component('Pencil')
+export const Upload = component('Upload')
 export const RefreshCw = component('RefreshCw')
 export const Reply = component('Reply')
 export const Search = component('Search')

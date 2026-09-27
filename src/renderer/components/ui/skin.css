@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 按钮、输入框、卡片、浮层、选择控件与聊天输入框的共用皮肤。
+ * [OUTPUT]: 6owen Soft 共用皮肤；内容按钮保留宿主字号，紧凑 composer、紧凑创建弹窗、会话同款成员行和头像选择样式，标题栏开关无选中底色。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,10 +11,9 @@
   corner-shape:squircle;
   border:0;
   outline:none;
-  font-size:13px;
-  font-weight:500;
   transition:background-color .2s,box-shadow .2s,transform .2s,color .2s;
 }
+.soft-button:not(.soft-button-content) { font-size:13px;font-weight:500 }
 .soft-button:not(:disabled):not([aria-disabled=true]) { cursor:pointer }
 .soft-button:disabled, .soft-button[aria-disabled=true] { cursor:not-allowed;opacity:.5 }
 .soft-button-primary {
@@ -44,8 +43,6 @@
 .soft-button-link { background:transparent;color:var(--link);box-shadow:none;text-underline-offset:4px }
 .soft-button-link:hover:not(:disabled) { text-decoration:underline }
 .soft-button-round, .soft-button.rounded-full { border-radius:var(--radius-pill);corner-shape:round }
-.soft-button:focus-visible { outline:2px solid var(--ring);outline-offset:3px }
-.soft-button[aria-invalid=true] { outline:2px solid var(--destructive);outline-offset:3px }
 
 /* Inputs share a quiet recessed surface; composite input children remain transparent. */
 :is([data-slot=input],[data-slot=textarea],[data-slot=input-group],[data-slot=select-trigger],[data-slot=native-select],[data-slot=combobox-chips],[data-slot=input-otp-slot]) {
@@ -86,11 +83,11 @@
   display:flex;
   flex-direction:column;
   align-items:stretch;
-  gap:12px;
+  gap:8px;
   width:100%;
   height:auto;
   min-width:0;
-  padding:16px 16px 12px;
+  padding:12px;
   border:0;
   border-radius:var(--radius-composer);
   corner-shape:squircle;
@@ -98,7 +95,6 @@
   background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
   box-shadow:var(--shadow-composer);
 }
-.chat-composer:focus-within { outline:2px solid var(--ring);outline-offset:3px }
 .chat-composer .chat-composer-input {
   display:block;
   width:100%;
@@ -112,13 +108,44 @@
   outline:none;
 }
 .chat-composer-input::placeholder { color:var(--muted-foreground);opacity:1 }
-.chat-composer .chat-composer-footer { display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;height:auto;cursor:default }
-.chat-composer-footer>.button-row { gap:8px }
+.chat-composer .chat-composer-footer { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;height:auto;cursor:default }
+.chat-composer-footer>.button-row { gap:6px }
+.chat-composer-actions { display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0 }
+.chat-composer-actions[data-align=end] { margin-left:auto;justify-content:flex-end }
+.chat-composer-select>span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
+.chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:13px;line-height:1.4;overflow-wrap:anywhere }
+.chat-composer-option>small { font-size:11px;line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
 @supports not (corner-shape:squircle) {
   .soft-button { border-radius:10px }
   .soft-button-round { border-radius:var(--radius-pill) }
-  .chat-composer { border-radius:28px }
+  .chat-composer { border-radius:20px }
 }
 @media(prefers-reduced-motion:reduce) {
   .soft-button,.chat-composer { transition:none }
 }
+
+/* Titlebar state is communicated by its icon, never by a pressed background. */
+.global-toolbar .soft-button-ghost[aria-pressed] { background:transparent }
+.global-toolbar .soft-button-ghost[aria-pressed]:hover { background:var(--accent) }
+
+/* Group selection shares the conversation list's row metrics and surface. */
+.conversation-item,.creation-member { display:flex;align-items:center;gap:8px;min-width:0;width:100%;min-height:52px;padding:8px;margin-bottom:3px;border-radius:var(--radius-control);corner-shape:squircle;text-align:left }
+.creation-member .avatar { width:30px;height:30px;border-radius:9px }
+label.creation-member { cursor:pointer }
+label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
+.conversation-item:hover,label.creation-member:hover { background:var(--accent) }
+.avatar { overflow:hidden }
+.avatar img { display:block;width:100%;height:100%;object-fit:cover }
+.creation-avatar { display:flex;justify-content:center;padding:4px 0 8px }
+.avatar-picker-trigger { position:relative;padding:0;border-radius:50%;corner-shape:round }
+.avatar-picker-trigger>.avatar { width:64px;height:64px;border-radius:50% }
+.avatar-edit-badge { position:absolute;right:-2px;bottom:-2px;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--card);color:var(--foreground);box-shadow:var(--shadow-control) }
+.avatar-edit-badge .app-icon { width:12px;height:12px }
+.avatar-presets { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px }
+.avatar-preset { display:flex;justify-content:center;align-items:center;padding:6px;min-width:0;border-radius:var(--radius-control) }
+.avatar-preset>.avatar { width:42px;height:42px;border-radius:12px }
+.employee-avatar-field { display:flex;align-items:center;gap:16px }
+.creation-selection-heading { display:flex;align-items:center;min-height:32px;color:var(--muted-foreground);font-size:12px }
+.creation-selection-empty { display:flex;height:100%;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted-foreground);font-size:12px }
+.creation-selection-empty .app-icon { width:28px;height:28px }

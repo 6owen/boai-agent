@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 Electron、统一 UI 页面控件与隔离的本地数据目录。
- * [OUTPUT]: 菜单焦点、必填校验、未保存保护、复选框和表单提交的迁移回归。
+ * [OUTPUT]: 菜单焦点、创建弹窗必填校验、未保存保护、右侧复选框和表单提交回归。
  * [POS]: 业务页面接入 Soft UI 的跨组件交互验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,28 +21,31 @@ test('page controls preserve validation, saved navigation, checkbox values and p
     await expect(page.getByRole('menuitem', { name: '新建员工' })).toBeVisible()
     await page.keyboard.press('Escape'); await expect(create).toBeFocused()
     await create.click(); await page.getByRole('menuitem', { name: '新建员工' }).click()
-    const employeeName = page.getByRole('textbox', { name: '员工名称', exact: true })
-    await page.getByRole('textbox', { name: '职责简介', exact: true }).fill('检查表单提交与页面切换')
-    await page.getByRole('button', { name: '资料库', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '新建数字员工' })
+    const employeeName = dialog.getByRole('textbox', { name: '名称', exact: true })
+    await dialog.getByRole('textbox', { name: '角色', exact: true }).fill('检查表单提交与页面切换')
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
     const leave = page.getByRole('alertdialog', { name: '有未保存的修改' })
     await expect(leave).toBeVisible()
-    await leave.getByRole('button', { name: '保存并继续' }).click()
+    await leave.getByRole('button', { name: '保存并退出' }).click()
     await expect(leave).toBeHidden()
     await expect(employeeName).toBeVisible()
     await expect(employeeName).toHaveValue('')
     await expect(employeeName).toBeFocused()
     await employeeName.fill('组件联调员工')
+    await page.keyboard.press('Escape')
+    await leave.getByRole('button', { name: '继续编辑' }).click()
+    await expect(employeeName).toHaveValue('组件联调员工')
+    await dialog.getByRole('button', { name: '创建员工', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await page.getByRole('button', { name: '员工设置', exact: true }).click()
     const enabled = page.getByRole('checkbox', { name: /启用员工/ })
     await expect(enabled).toBeChecked(); await enabled.uncheck(); await expect(enabled).not.toBeChecked()
     await page.getByRole('button', { name: '资料库', exact: true }).click()
     await leave.getByRole('button', { name: '继续编辑' }).click()
-    await expect(employeeName).toHaveValue('组件联调员工')
     await expect(enabled).not.toBeChecked()
-    await page.getByRole('button', { name: '数字员工', exact: true }).click()
-    await page.keyboard.press('Escape')
-    await expect(leave).toBeHidden(); await expect(employeeName).toBeVisible()
     await page.getByRole('button', { name: '资料库', exact: true }).click()
-    await leave.getByRole('button', { name: '保存并继续' }).click()
+    await leave.getByRole('button', { name: '保存并退出' }).click()
     await expect(page.getByRole('heading', { name: '资料库', exact: true })).toBeVisible()
     await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(a => a.name === '组件联调员工')?.active).toBe(false)
 

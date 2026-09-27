@@ -1,3 +1,10 @@
+/*
+ * [INPUT]: 产品实体、自动化、执行后端及员工头像合同。
+ * [OUTPUT]: 跨进程共享领域类型；可选头像兼容没有头像的旧员工数据。
+ * [POS]: shared/domain 的产品领域合同。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import type { AgentAvatar } from './avatars'
 import type { AutomationOrigin } from './automations'
 export * from './automations'
 import type { ExecutionBackend } from './backends'
@@ -20,6 +27,7 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  avatar?: AgentAvatar
   executionBackend?: ExecutionBackend
   id: string
   name: string

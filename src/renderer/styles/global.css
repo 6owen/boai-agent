@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Tailwind、视觉 token、桌面布局、排版和页面样式。
- * [OUTPUT]: 唯一全局样式入口；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类。
+ * [OUTPUT]: 唯一全局样式入口；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类，统一禁用 ring/outline，保留表面阴影。
  * [POS]: 由 renderer/main.tsx 加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,3 +11,15 @@
 @import './typeset.css' layer(legacy);
 @import './pages.css' layer(components);
 @import '../components/ui/skin.css' layer(components);
+
+/* Disable focus rings globally, including Base UI portals; keep the Soft surface shadows. */
+*, *::before, *::after {
+  outline:none !important;
+  --tw-ring-shadow:0 0 transparent !important;
+  --tw-ring-offset-shadow:0 0 transparent !important;
+  --tw-inset-ring-shadow:0 0 transparent !important;
+}
+
+:is([data-slot=input], [data-slot=textarea], [data-slot=input-group], [data-slot=combobox-input]):is(:focus, :focus-within):not([aria-invalid=true]):not(:has([aria-invalid=true])) {
+  border-color:var(--input);
+}
