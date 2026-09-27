@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 项目能力、运行环境、构建和维护约定。
-[OUTPUT]: 使用与开发入口、通讯录与可自定义员工头像，以及源码/组件文档导航。
+[OUTPUT]: 使用与开发入口、通讯录与可自定义员工头像，以及源码、组件和 Cumora/Paperclip 协作参考文档导航。
 [POS]: 仓库说明入口，规约真源为 AGENTS.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -111,7 +111,7 @@ v0.2.2 最终交付已通过 102 项引擎、服务和文件测试，以及 3 �
 
 后续外观设计（F2/F3 尚未实现）：[外观设置与主题系统](ai-docs/spec/3.前端重构与功能/14-外观设置与主题系统.md) 定义浅色/深色/跟随设备、Base46 及背景图；[前端目录架构与迁移计划](ai-docs/spec/3.前端重构与功能/15-前端目录架构与迁移计划.md) 定义参考 landing-page 的组件、状态和样式分层，其中 F1 已实施。
 
-后续开发已分为五组文档：[规格目录](ai-docs/spec/README.md) · [现有功能与代码现状](ai-docs/spec/2.已实现功能与代码现状/README.md) · [重构总计划](ai-docs/spec/00-重构总计划.md)。前端重构、员工与协作模块重构、Mastra 新能力分别维护方案；B1/B2/S1/F1 已交付，其他阶段仍为规划。
+后续开发已分为六组文档：[规格目录](ai-docs/spec/README.md) · [现有功能与代码现状](ai-docs/spec/2.已实现功能与代码现状/README.md) · [重构总计划](ai-docs/spec/00-重构总计划.md)。前端重构、员工与协作模块重构、Mastra 新能力分别维护方案；B1/B2/S1/F1 已交付，其他阶段仍为规划。[Cumora 协作重构参考](ai-docs/spec/6.Cumora协作重构/README.md) 已结合 Paperclip 任务机制，记录自主群聊、执行认领、并行发布与任务接续的待实施方案，独立于 B3 保持行为的结构重构。
 
 最新计划优先完善 [员工 Sandbox / 文件系统 / Skills](ai-docs/spec/5.Mastra能力扩展/03-Sandbox文件系统与Skills.md)，再按需接入 [ACP / 本地 SDK 等执行后端](ai-docs/spec/4.数字员工与协作重构/04-员工执行后端与能力契约.md)、浏览器和连接。[自动化](ai-docs/spec/5.Mastra能力扩展/06-自动化与定时执行.md) 采用 Mastra 原生持久 schedules 的本地接入方案，不复用 Pi 调度器；这些能力尚未启用。
 

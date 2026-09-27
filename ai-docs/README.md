@@ -1,3 +1,9 @@
+<!--
+[INPUT]: 项目规格分组、实际交付记录与 Cumora/Paperclip 协作参考。
+[OUTPUT]: 六组 AI 文档的导航、状态口径与维护入口。
+[POS]: ai-docs/README.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # BoAI Agent AI 文档
 
 BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代码版本 v0.2.2；源码、现有数据行为与后续计划分开记录。启动说明见 [项目 README](../README.md)。
@@ -6,7 +12,8 @@ BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代
 
 - [当前功能全景](./spec/2.已实现功能与代码现状/01-已实现功能全景.md) 和 [代码/运行目录](./spec/2.已实现功能与代码现状/02-代码与运行目录.md)。
 - [重构总计划](./spec/00-重构总计划.md)：优先员工装配、工作区与 Sandbox / Skills；前端 F1 可并行。
-- [完整规格索引](./spec/README.md)：按主题进入五组文档。
+- [完整规格索引](./spec/README.md)：按主题进入六组文档。
+- [Cumora 协作重构](./spec/6.Cumora协作重构/README.md)：结合 Paperclip 的工作/run 分离、认领先于并行、定向唤醒与根任务预算方案，G0–G4 尚待实施。
 
 | 分组 | 阅读入口 | 用途 |
 | --- | --- | --- |
@@ -15,6 +22,7 @@ BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代
 | 3 | [前端重构与功能](./spec/3.前端重构与功能/README.md) | 用户已写的外观/主题、前端迁移方案与实施分期 |
 | 4 | [数字员工与协作重构](./spec/4.数字员工与协作重构/README.md) | 员工配置、Agent 工厂、工作区、协作与执行后端 |
 | 5 | [Mastra 能力扩展](./spec/5.Mastra能力扩展/README.md) | Sandbox、Skills、Browser、ACP / A2A / MCP、自动化、Memory 和 Workflow |
+| 6 | [Cumora 协作重构](./spec/6.Cumora协作重构/README.md) | Cumora/Paperclip 外部机制、当前差距、目标协议与验收；独立于 B3 结构重构 |
 
 ## 交付沿革
 
