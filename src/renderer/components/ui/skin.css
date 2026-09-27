@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤；内容按钮保留宿主字号，紧凑 composer、紧凑创建弹窗、会话同款成员行和头像选择样式，标题栏开关无选中底色。
+ * [OUTPUT]: 6owen Soft 共用皮肤；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；可拖动窗口的内容宽度顶栏标签、居中短分割线和无选中底色的面板开关。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -128,6 +128,13 @@
 /* Titlebar state is communicated by its icon, never by a pressed background. */
 .global-toolbar .soft-button-ghost[aria-pressed] { background:transparent }
 .global-toolbar .soft-button-ghost[aria-pressed]:hover { background:var(--accent) }
+.toolbar-detail { position:relative }
+.toolbar-detail::before { content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:var(--border);transform:translateY(-50%);pointer-events:none }
+.detail-tab { display:flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;max-width:min(260px,100%);height:32px;padding:0 4px 0 10px;border:1px solid var(--frame-border);border-radius:10px;background:var(--surface-detail);color:var(--foreground);-webkit-app-region:drag }
+.detail-tab>.app-icon { width:14px;height:14px }
+.detail-tab-title { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550 }
+.global-toolbar .detail-tab [data-slot=button] { width:24px;height:24px;flex-shrink:0 }
+.detail-tab .dirty-label { flex-shrink:0 }
 
 /* Group selection shares the conversation list's row metrics and surface. */
 .conversation-item,.creation-member { display:flex;align-items:center;gap:8px;min-width:0;width:100%;min-height:52px;padding:8px;margin-bottom:3px;border-radius:var(--radius-control);corner-shape:squircle;text-align:left }

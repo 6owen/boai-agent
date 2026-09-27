@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏、52px 导航、圆角内容框与紧凑会话布局（52px 列表行、14px 消息）；控件皮肤归 ui，模型配置入口归 composer 菜单，输入框底部无额外提示栏，会话栏只由开关控制，窄窗口详情浮在右侧。
+ * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、按钮排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -76,6 +76,8 @@ fieldset {
   min-width:0
 }
 .app-shell {
+  --detail-size:var(--detail-width,360px);
+  --detail-divider-width:1px;
   height:100dvh;
   min-height:400px;
   display:flex;
@@ -95,10 +97,12 @@ fieldset {
 .toolbar-left,.toolbar-right {
   display:flex;
   align-items:center;
-  gap:6px;
-  -webkit-app-region:no-drag
+  gap:6px
 }
-.toolbar-right { margin-left:auto }
+.toolbar-right { margin-left:auto;-webkit-app-region:drag }
+.toolbar-left { flex-shrink:0;-webkit-app-region:no-drag }
+.global-toolbar:has(.toolbar-detail) { padding-right:4px;border-right:1px solid transparent }
+.toolbar-detail { width:calc(var(--detail-size) + var(--detail-divider-width));flex:0 1 calc(var(--detail-size) + var(--detail-divider-width));min-width:0;height:100%;padding:0 8px }
 .global-toolbar [data-slot=button] { width:28px;height:28px;color:var(--rail-foreground) }
 .app-body {
   flex:1;
@@ -767,7 +771,7 @@ fieldset {
   z-index:3
 }
 .detail-panel {
-  width:var(--detail-width,360px);
+  width:var(--detail-size);
   flex-shrink:0;
   min-width:0;
   display:flex;
@@ -776,17 +780,10 @@ fieldset {
   min-height:0
 }
 .detail-header {
-  height:60px;
   display:flex;
   align-items:center;
-  gap:8px;
-  padding:0 20px;
-  border-bottom:1px solid var(--legacy-border);
-  flex-shrink:0
-}
-.detail-header>strong {
-  font-size:13px;
-  font-weight:550;
+  gap:6px;
+  min-width:0;
   flex:1
 }
 .dirty-label {
@@ -797,9 +794,6 @@ fieldset {
   overflow-y:auto;
   min-height:0;
   flex:1
-}
-.narrow-back {
-  display:none!important
 }
 .detail-section {
   padding:22px 19px
@@ -1838,10 +1832,11 @@ fieldset {
   }
 }
 @media(max-width:1099px) {
+  .app-shell { --detail-divider-width:0px }
   .detail-panel {
     position:absolute;
     inset:0 0 0 auto;
-    width:var(--detail-width,360px);
+    width:var(--detail-size);
     max-width:100%;
     border-left:1px solid var(--border);
     z-index:10
@@ -1888,15 +1883,12 @@ fieldset {
   }
 }
 @media(max-width:899px) {
-  .content-frame.list-open:has(.conversation-layout) .detail-panel {
-    width:calc(100% - var(--list-width,312px) - 1px);
-    min-width:min(300px,100%)
+  .app-shell.list-open[data-page=conversations] {
+    /* Match the chat area after the rail, list, frame edges and list divider. */
+    --detail-size:max(300px,calc(100vw - var(--rail-width) - var(--list-width) - 7px))
   }
   .detail-resizer {
     display:none
-  }
-  .narrow-back {
-    display:inline-flex!important
   }
   .detail-content {
     max-width:100%

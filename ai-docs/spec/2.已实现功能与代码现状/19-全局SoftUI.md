@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 本地 6owen-ui Soft Button / Chat Composer、shadcn 基础组件与现有桌面页面。
-[OUTPUT]: 全局 Soft 风格的变量、组件职责、页面迁移、紧凑会话密度、composer 菜单、紧凑创建弹窗、员工 SVG/上传头像、手动侧栏、通讯录与原生窗口铺满验证记录。
+[OUTPUT]: 全局 Soft 风格的变量、组件职责、页面迁移、紧凑会话密度、composer 菜单、紧凑创建弹窗、员工 SVG/上传头像、手动侧栏、顶栏详情标签、通讯录与原生窗口铺满验证记录。
 [POS]: 当前全局控件风格的维护入口。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -72,6 +72,14 @@
 - `creation-dialogs.tsx` 负责创建，AppShell 管理新会话路由；Dialog 标题统一为 16px / 24px 行高，plain footer 与选人列表样式统一在 `components/ui` 定义。群选人行与会话行共用 52px 最小高度、8px padding/gap、30px 头像、12/11px 名称/预览与 hover 背景。
 - 未保存提醒的操作明确为「继续编辑」「放弃并退出」「保存并退出」；仍沿用真实保存校验和导航守卫。
 
+## 右侧详情的顶栏标签
+
+- 右侧员工、群聊、资源、任务详情的标题移入全局 44px header，使用按内容宽度显示、最长 260px 的圆角标签展示对象名称、Carbon 图标、未保存标记和关闭按钮。嵌套详情保留返回按钮；右侧内容从主内容框顶部开始，不再占用原来的 60px 标题行。
+- `DetailPanelHeader` 与 `DetailPanel` 分别负责标签和内容，Shell 持有原有导航栈和未保存守卫。标签关闭、面板开关、Escape 和嵌套返回沿用真实保存/放弃流程；打开聚焦标题、退出返回入口焦点。
+- 右侧 header 的空白及标题标签属于窗口拖拽区域；关闭、返回和面板开关按钮保留 `no-drag`，保证点击操作正常。
+- 标题栏和面板共用宽度变量，顶栏额外计入 1px 拖拽线，使上下分割线准确对齐；header 分割线使用 16px 高的居中短线，上下留白，不贯穿整个标题栏；窄窗口隐藏拖拽线时同步移除该宽度。跟随拖拽、左栏开关以及 760–1280px 原生窗口和 90%/125%/150% 缩放；长名称截断，内容独立滚动。窄窗口中员工分类按钮允许收缩，避免横向撑开配置区。
+- `tests/e2e/detail-panel.spec.ts` 验证坐标对齐、原生尺寸变化、鼠标/键盘调整宽度、标题固定/截断、保存关闭、嵌套返回与焦点恢复。浅色和深色窄窗口截图为 `detail-header-light.png`、`detail-header-dark-narrow.png`。
+
 ## 通讯录
 
 - 左侧导航新增 Carbon「通讯录」图标，列表按「群聊」「联系人」分组，支持搜索名称/职责、折叠、计数与当前项高亮。列表宽度沿用手动拖拽值，窗口变窄不会自动隐藏或收缩，顶部开关控制显示。
@@ -98,6 +106,8 @@ Electron 调整窗口时必须用 `BrowserWindow.setContentSize` 验证；CDP �
 本次外观回归与类型检查通过。解除固定视口后的截图为 `ai-docs/images/soft-ui/window-resize.png`；内容框右侧和底部保留正常的 4px 边距。
 
 ## 验证
+
+- 顶栏详情标签通过构建、类型检查、UI lint，以及 detail-panel / contacts / creation / desktop / appearance 共 5 项桌面流程。上下分割线坐标在窗口断点与 90%/125%/150% 原生缩放下误差不超过 0.1 CSS px，短标签保留右侧空白，窄栏无横向溢出。
 
 - 员工头像与紧凑弹窗通过构建、类型检查、UI lint、头像/员工服务/工作区共 58 项测试，以及 avatars / contacts / creation / pages / composer / desktop / ui 共 7 项 Electron 流程。真实文件选择验证坏图保留与焦点恢复、PNG 保存和重启保留；另在 760px 原生深色窗口确认头像浮层边界和无水平溢出，见 `avatar-picker-dark-narrow.png`。
 
