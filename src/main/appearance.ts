@@ -1,9 +1,24 @@
+/*
+ * [INPUT]: 外观偏好、图片文件与系统明暗状态。
+ * [OUTPUT]: 经校验、可迁移的主题、字体、缩放及分模式颜色持久化。
+ * [POS]: Electron 宿主外观存储，包含版本冲突与备份边界。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { appearanceDefaults, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
-const patchSchema = z.object({ mode: z.enum(['light','dark','system']).optional(), themeIds: z.object({ light: z.string().max(100).optional(), dark: z.string().max(100).optional() }).strict().optional(), background: z.object({ imageOpacity: z.number().min(0).max(1) }).strict().optional() }).strict()
+import { appearanceDefaults, applyAppearancePatch, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
+const color = z.string().regex(/^#[0-9a-f]{6}$/i).nullable().optional()
+const colors = z.object({ accent: color, background: color, foreground: color }).strict()
+const patchSchema = z.object({
+ mode: z.enum(['light','dark','system']).optional(),
+ themeIds: z.object({ light: z.string().max(100).optional(), dark: z.string().max(100).optional() }).strict().optional(),
+ background: z.object({ imageOpacity: z.number().min(0).max(1) }).strict().optional(),
+ fontFamily: z.enum(['system','geist']).optional(),
+ zoomFactor: z.number().min(0.75).max(1.5).optional(),
+ customColors: z.object({ light: colors.optional(), dark: colors.optional() }).strict().optional(),
+}).strict()
 const validAsset = /^[0-9a-f-]{36}\.(png|jpg|webp)$/
 export function imageFormat(bytes: Buffer): 'png' | 'jpg' | 'webp' { if(bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'png'; if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'jpg'; if(bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP')return 'webp'; throw new Error('请选择 PNG、JPEG 或 WebP 图片。') }
 /** Inspect dimensions before invoking the native decoder, to reject decompression bombs. */
@@ -29,8 +44,9 @@ export class AppearanceStore {
    const saved=JSON.parse(await readFile(join(this.root,'settings.json'),'utf8'))
    if(saved.preferences?.schemaVersion>1) { this.readOnly=true; this.diagnostic='此外观配置来自更新版本，已保留原文件；当前使用默认外观。'; return }
    const p=saved.preferences
-   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity} })
-   this.preferences={...this.preferences,...normalized,themeIds:{...this.preferences.themeIds,...normalized.themeIds},background:{assetId:typeof p.background.assetId==='string'&&validAsset.test(p.background.assetId)?p.background.assetId:null,imageOpacity:normalized.background!.imageOpacity}}
+   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity}, ...p.fontFamily!==undefined?{fontFamily:p.fontFamily}:{}, ...p.zoomFactor!==undefined?{zoomFactor:p.zoomFactor}:{}, ...p.customColors!==undefined?{customColors:p.customColors}:{} })
+   this.preferences=applyAppearancePatch(this.preferences,normalized)
+   this.preferences.background.assetId=typeof p.background.assetId==='string'&&validAsset.test(p.background.assetId)?p.background.assetId:null
    this.revision=Number.isSafeInteger(saved.revision)&&saved.revision>=0?saved.revision:0
    for(const mode of ['light','dark'] as const) if(this.preferences.themeIds[mode]!==resolveTheme(mode,this.preferences.themeIds[mode]).id){this.preferences.themeIds[mode]=`boai-${mode}`;this.diagnostic='未知主题已回退为 BoAI 默认主题。'}
    if(this.preferences.background.assetId) try { await this.asset(this.preferences.background.assetId) } catch { this.preferences.background.assetId=null;this.diagnostic='背景文件不可用，已使用纯色背景。' }
@@ -46,7 +62,7 @@ export class AppearanceStore {
   await writeFile(tmp,JSON.stringify({revision,preferences},null,2),{mode:0o600});await rename(tmp,join(this.root,'settings.json'))
   this.preferences=preferences;this.revision=revision;this.sequence++;this.diagnostic=undefined;const result=this.snapshot();this.changed(result);return this.snapshot()
  }
- update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch),p=structuredClone(this.preferences);if(value.mode)p.mode=value.mode;for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode])p.themeIds[mode]=resolveTheme(mode,value.themeIds[mode]).id;if(value.background)p.background.imageOpacity=value.background.imageOpacity;return this.commit(p,revision) }) }
+ update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch),p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode])p.themeIds[mode]=resolveTheme(mode,value.themeIds[mode]).id;return this.commit(p,revision) }) }
  import(path:string) { return this.serialize(async()=>{ if((await stat(path)).size>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const bytes=await readFile(path);if(bytes.length>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const format=imageFormat(bytes);imageDimensions(bytes,format);const size=await this.decode(bytes);if(!size.width||!size.height||size.width>8192||size.height>8192||size.width*size.height>32000000)throw new Error('图片尺寸无效或超过 8192 边长 / 3200 万像素。');const assetId=`${randomUUID()}.${format}`;await writeFile(join(this.root,'assets',assetId),bytes,{mode:0o600});return this.commit({...this.preferences,background:{...this.preferences.background,assetId}},this.revision) }) }
  remove() { return this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId:null}},this.revision)) }
  reset() { return this.serialize(()=>this.commit(structuredClone(appearanceDefaults),this.revision)) }

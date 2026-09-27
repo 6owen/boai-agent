@@ -1,3 +1,9 @@
+<!--
+[INPUT]: 项目能力、运行环境、构建和维护约定。
+[OUTPUT]: 使用与开发入口，以及源码/组件文档导航。
+[POS]: 仓库说明入口，规约真源为 AGENTS.md。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
 # BoAI Agent
 
 基于 Electron + React + Mastra 的本地数字员工桌面应用。每名员工拥有自己的系统文件、工作区、模型、Skills 和有作用域的持久记忆，可单聊，也能在群内自主决定是否参与。
@@ -107,3 +113,9 @@ v0.2.2 最终交付已通过 102 项引擎、服务和文件测试，以及 3 �
 后续开发已分为五组文档：[规格目录](ai-docs/spec/README.md) · [现有功能与代码现状](ai-docs/spec/2.已实现功能与代码现状/README.md) · [重构总计划](ai-docs/spec/00-重构总计划.md)。前端重构、员工与协作模块重构、Mastra 新能力分别维护方案；B1/B2/S1/F1 已交付，其他阶段仍为规划。
 
 最新计划优先完善 [员工 Sandbox / 文件系统 / Skills](ai-docs/spec/5.Mastra能力扩展/03-Sandbox文件系统与Skills.md)，再按需接入 [ACP / 本地 SDK 等执行后端](ai-docs/spec/4.数字员工与协作重构/04-员工执行后端与能力契约.md)、浏览器和连接。[自动化](ai-docs/spec/5.Mastra能力扩展/06-自动化与定时执行.md) 采用 Mastra 原生持久 schedules 的本地接入方案，不复用 Pi 调度器；这些能力尚未启用。
+
+## 基础 UI 组件
+
+`src/renderer/components/ui` 已安装完整的 shadcn Base UI / base-nova 基础组件。组件结构与样式在各自源码中定制，全局颜色/字体/圆角复用现有主题变量。完整入口见 [基础组件接入记录](ai-docs/spec/2.已实现功能与代码现状/18-shadcn基础组件.md)。
+
+`pnpm lint:ui` 检查本地图标导入约束；`pnpm exec playwright test tests/e2e/ui.spec.ts` 验证实际弹层、控件与主题。现有业务控件后续逐个迁入该组件层。

@@ -1,0 +1,108 @@
+{
+  "viewport": {
+    "width": 1259,
+    "height": 688,
+    "dpr": 2
+  },
+  "elements": {
+    ".global-toolbar": {
+      "x": 0,
+      "y": 0,
+      "width": 1259,
+      "height": 44,
+      "radius": "0px",
+      "background": "rgb(246, 246, 246)",
+      "fontSize": "14px"
+    },
+    ".navigation-rail": {
+      "x": 0,
+      "y": 44,
+      "width": 52,
+      "height": 644,
+      "radius": "0px",
+      "background": "rgb(246, 246, 246)",
+      "fontSize": "14px"
+    },
+    ".content-frame": {
+      "x": 52,
+      "y": 44,
+      "width": 1203,
+      "height": 640,
+      "radius": "12px",
+      "background": "rgb(255, 255, 255)",
+      "fontSize": "14px"
+    },
+    ".schedule-list": {
+      "x": 53,
+      "y": 45,
+      "width": 311,
+      "height": 638,
+      "radius": "0px",
+      "background": "rgb(251, 251, 251)",
+      "fontSize": "14px"
+    },
+    ".schedule-heading h2": {
+      "x": 69,
+      "y": 58,
+      "width": 72,
+      "height": 24,
+      "radius": "0px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "18px"
+    },
+    ".schedule-create": {
+      "x": 69,
+      "y": 95,
+      "width": 278,
+      "height": 32,
+      "radius": "10px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "14px"
+    },
+    ".schedule-section-heading": {
+      "x": 69,
+      "y": 135,
+      "width": 278,
+      "height": 28,
+      "radius": "0px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "14px"
+    },
+    ".schedule-clock": {
+      "x": 782,
+      "y": 286,
+      "width": 54,
+      "height": 54,
+      "radius": "0px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "14px"
+    },
+    ".schedule-welcome h1": {
+      "x": 777,
+      "y": 356,
+      "width": 64,
+      "height": 24,
+      "radius": "0px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "16px"
+    },
+    ".schedule-welcome p": {
+      "x": 652.28125,
+      "y": 386,
+      "width": 313.4296875,
+      "height": 22,
+      "radius": "0px",
+      "background": "rgba(0, 0, 0, 0)",
+      "fontSize": "14px"
+    },
+    ".schedule-welcome .button": {
+      "x": 766,
+      "y": 446,
+      "width": 86,
+      "height": 36,
+      "radius": "999px",
+      "background": "rgb(0, 0, 0)",
+      "fontSize": "14px"
+    }
+  }
+}

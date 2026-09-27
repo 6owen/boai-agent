@@ -1,18 +1,18 @@
 /*
  * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
- * [OUTPUT]: 桌面窗口、IPC 路由与运行进程生命周期。
+ * [OUTPUT]: 桌面窗口、持久化界面缩放、IPC 路由与运行进程生命周期。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { decodeImage } from './decode-image'
-import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu } from 'electron'
 import type { UtilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
-import { resolveTheme } from '../shared/appearance'
+import { resolveTheme, zoomFactors } from '../shared/appearance'
 import type { Methods } from '../shared/ipc'
 import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
@@ -34,7 +34,11 @@ const hasUnsavedChanges = () => dirtySources.size > 0
 let confirmingClose = false
 let appearanceFlushed:(()=>void)|undefined
 const vault = new CredentialVault(join(dataPath, 'credentials.enc.json'))
-const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativeTheme.shouldUseDarkColors, value => { nativeTheme.themeSource = value.preferences.mode; sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() }) }, decodeImage)
+const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativeTheme.shouldUseDarkColors, value => {
+  nativeTheme.themeSource = value.preferences.mode
+  if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
+  sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
+}, decodeImage)
 const selectedPaths = new Set<string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 const methods = new Set<Method>(['listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'deleteConnection', 'testConnection', 'createConversation', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
@@ -179,13 +183,40 @@ function registerIpc() {
   })
 }
 
+let zoomQueue = Promise.resolve()
+function changeZoom(direction: -1 | 0 | 1) {
+  zoomQueue = zoomQueue.then(async () => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { preferences, revision } = appearance.snapshot(), current = preferences.zoomFactor
+      const zoomFactor = direction === 0 ? 1 : direction > 0 ? zoomFactors.find(value => value > current) ?? 1.5 : [...zoomFactors].reverse().find(value => value < current) ?? 0.75
+      try { await appearance.update({ zoomFactor }, revision); return }
+      catch (error) { if (attempt || !String(error).includes('APPEARANCE_CONFLICT')) throw error }
+    }
+  }).catch(error => dialog.showErrorBox('界面缩放保存失败', error instanceof Error ? error.message : String(error)))
+}
+
+function installMenu() {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+    { role: 'fileMenu' }, { role: 'editMenu' },
+    { label: '视图', submenu: [
+      ...(!app.isPackaged ? [{ role: 'reload' as const }, { role: 'toggleDevTools' as const }, { type: 'separator' as const }] : []),
+      { label: '实际大小', accelerator: 'CmdOrCtrl+0', click: () => changeZoom(0) },
+      { label: '放大', accelerator: 'CmdOrCtrl+Plus', click: () => changeZoom(1) },
+      { label: '缩小', accelerator: 'CmdOrCtrl+-', click: () => changeZoom(-1) },
+      { type: 'separator' }, { role: 'togglefullscreen' },
+    ] },
+    { role: 'windowMenu' },
+  ]))
+}
+
 async function createWindow() {
   dirtySources.clear()
   window = new BrowserWindow({
     width: 1340, height: 900, minWidth: 760, minHeight: 640, title: 'BoAI Agent',
     backgroundColor: resolveTheme(appearance.snapshot().resolvedMode, appearance.snapshot().resolvedThemeId).background, titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 18 },
     show: false,
-    webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, zoomFactor: appearance.snapshot().preferences.zoomFactor },
   })
   window.once('ready-to-show', () => window?.show())
   window.on('close', event => {
@@ -196,6 +227,8 @@ async function createWindow() {
     return { action: 'deny' }
   })
   window.webContents.on('will-navigate', (event) => event.preventDefault())
+  window.webContents.on('did-finish-load', () => window?.webContents.setZoomFactor(appearance.snapshot().preferences.zoomFactor))
+  window.webContents.on('zoom-changed', (_event, direction) => changeZoom(direction === 'in' ? 1 : -1))
   window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
   if (!app.isPackaged && process.env.BOAI_RENDERER_URL) {
     const url = new URL(process.env.BOAI_RENDERER_URL)
@@ -225,6 +258,7 @@ else {
     nativeTheme.on('updated',()=>appearance.systemChanged())
     protocol.handle('boai-asset',async request=>{try{const url=new URL(request.url);if(url.hostname!=='appearance'||url.search||url.hash)throw new Error('无效路径');const asset=await appearance.asset(decodeURIComponent(url.pathname.slice(1)));return new Response(new Uint8Array(asset.bytes),{headers:{'Content-Type':asset.type,'Cache-Control':'no-store'}})}catch{return new Response('Not found',{status:404})}})
     registerIpc()
+    installMenu()
     await createWindow()
     void startRuntime().catch((error) => sendEvent({ type: 'runtime-error', error: error.message }))
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow() })

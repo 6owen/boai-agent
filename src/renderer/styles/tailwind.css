@@ -1,17 +1,33 @@
+/*
+ * [INPUT]: Tailwind v4、shadcn 动画/状态工具类、Iconify 与现有语义变量。
+ * [OUTPUT]: UI 组件的主题映射与隔离旧控件的 Preflight 兼容基线。
+ * [POS]: global.css 唯一 Tailwind 入口；components.json 指向此文件。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@custom-variant dark (&:where(.dark, .dark *));
 @config '../../../tailwind.config.ts';
 
 /* Preserve the existing desktop typography and native form baseline under Preflight.
    The unlayered application styles and Tailwind utilities still take precedence. */
 @layer base {
+  [data-slot] { @apply border-border outline-ring/50; }
   html { line-height: normal; }
-  h1, h2, h3, h4, h5, h6 { font-size: revert; font-weight: revert; }
-  h1, h2, h3, h4, h5, h6, p, pre, blockquote, ul, ol, dl, figure, fieldset { margin: revert; }
-  ul, ol { list-style: revert; padding: revert; }
-  .app-shell :where(button, input, select, textarea) { padding: revert; border: revert; background: revert; }
+  :where(h1, h2, h3, h4, h5, h6):not([data-slot]) { font-size: revert; font-weight: revert; }
+  :where(h1, h2, h3, h4, h5, h6, p, pre, blockquote, ul, ol, dl, figure, fieldset):not([data-slot]) { margin: revert; }
+  :where(ul, ol):not([data-slot]) { list-style: revert; padding: revert; }
+  .app-shell :where(button, input, select, textarea):not([data-slot]) { padding: revert; border: revert; background: revert; }
   small { font-size: revert; }
 }
 
 @theme inline {
+ --font-sans:var(--font-ui-family);
+ --radius-sm:calc(var(--radius) * .6);--radius-md:calc(var(--radius) * .8);--radius-lg:var(--radius);--radius-xl:calc(var(--radius) * 1.4);--radius-2xl:calc(var(--radius) * 1.8);--radius-3xl:calc(var(--radius) * 2.2);--radius-4xl:calc(var(--radius) * 2.6);
+ --color-chart-1:var(--chart-1);--color-chart-2:var(--chart-2);--color-chart-3:var(--chart-3);--color-chart-4:var(--chart-4);--color-chart-5:var(--chart-5);
+ --color-sidebar:var(--sidebar);--color-sidebar-foreground:var(--sidebar-foreground);--color-sidebar-primary:var(--sidebar-primary);--color-sidebar-primary-foreground:var(--sidebar-primary-foreground);--color-sidebar-accent:var(--sidebar-accent);--color-sidebar-accent-foreground:var(--sidebar-accent-foreground);--color-sidebar-border:var(--sidebar-border);--color-sidebar-ring:var(--sidebar-ring);
+ --color-status-background:var(--status-background);
+
  --color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--color-destructive:var(--destructive);
 }

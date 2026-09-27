@@ -1,0 +1,91 @@
+{
+  "viewport": {
+    "width": 1259,
+    "height": 688,
+    "dpr": 2
+  },
+  "elements": {
+    ":root": {
+      "x": 0,
+      "y": 0,
+      "width": 1259,
+      "height": 688,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "0px"
+    },
+    ".navigation-rail .app-icon": {
+      "x": 17,
+      "y": 61,
+      "width": 18,
+      "height": 18,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "0px"
+    },
+    ".page-subnav button": {
+      "x": 61,
+      "y": 165,
+      "width": 294,
+      "height": 30,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "10px"
+    },
+    ".page-subnav .app-icon": {
+      "x": 73,
+      "y": 107,
+      "width": 16,
+      "height": 16,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "0px"
+    },
+    ".appearance-settings h2": {
+      "x": 444,
+      "y": 117,
+      "width": 54.8046875,
+      "height": 40,
+      "font": "28px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "0px"
+    },
+    ".appearance-mode-row": {
+      "x": 444,
+      "y": 235,
+      "width": 730,
+      "height": 78,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "16px"
+    },
+    ".appearance-options": {
+      "x": 444,
+      "y": 329,
+      "width": 730,
+      "height": 266,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "16px"
+    },
+    ".appearance-row select": {
+      "x": 997.5,
+      "y": 338,
+      "width": 159.5,
+      "height": 28,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "999px"
+    },
+    ".appearance-footer": {
+      "x": 444,
+      "y": 635,
+      "width": 730,
+      "height": 19.5,
+      "font": "13px",
+      "family": "Geist, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "radius": "0px"
+    }
+  },
+  "zoom": 1
+}

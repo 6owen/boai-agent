@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Markdown 内容和共享文字、代码背景 token。
+ * [OUTPUT]: 聊天正文、标题、列表、代码块和表格排版。
+ * [POS]: global.css 加载的 Markdown 阅读层。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 .markdown>:first-child {
   margin-top:0
 }
@@ -8,8 +14,9 @@
   margin-bottom:12px
 }
 .markdown h1,.markdown h2,.markdown h3 {
-  font-size:16px;
-  margin:18px 0 9px;
+  font-size:18px;
+  line-height:1.5;
+  margin:24px 0 12px;
   font-weight:600
 }
 .markdown ul,.markdown ol {
@@ -20,8 +27,8 @@
   margin-bottom:5px
 }
 .markdown code {
-  font-size:12px;
-  background:var(--muted);
+  font-size:13px;
+  background:var(--code-background);
   padding:2px 5px;
   border-radius:4px;
   font-family:"SFMono-Regular",Consolas,monospace
@@ -29,10 +36,10 @@
 .markdown pre {
   max-width:100%;
   overflow:auto;
-  background:var(--muted);
+  background:var(--code-background);
   padding:13px 15px;
   border:1px solid var(--border);
-  border-radius:8px;
+  border-radius:var(--radius-card);
   line-height:1.65
 }
 .markdown pre code {
@@ -44,7 +51,7 @@
   display:block;
   overflow:auto;
   border-collapse:collapse;
-  font-size:12px;
+  font-size:13px;
   margin:12px 0
 }
 .markdown th,.markdown td {
@@ -54,7 +61,7 @@
   min-width:65px
 }
 .markdown th {
-  background:var(--muted)
+  background:var(--code-background)
 }
 .markdown blockquote {
   border-left:3px solid var(--border);

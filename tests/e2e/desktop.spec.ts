@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron 应用、共享领域类型与本地协议服务。
- * [OUTPUT]: 桌面导航、会话和员工操作的端到端验证。
+ * [OUTPUT]: 桌面导航、任务空状态入口、会话草稿和员工操作的端到端验证。
  * [POS]: tests/e2e/desktop.spec.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -122,7 +122,10 @@ test('v0.2 desktop: autonomous group, scoped files and memory, cancellation, UI 
     await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
     await page.getByRole('textbox', { name: '消息内容' }).fill('保留在这里的草稿')
     await page.getByRole('button', { name: '定时任务', exact: true }).click()
-    await expect(page.locator('body')).toContainText('还没有定时任务')
+    await expect(page.getByRole('heading', { name: '安排任务', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '新建任务', exact: true }).click()
+    await expect(page.getByLabel('任务名称', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '取消', exact: true }).click()
     await page.getByRole('button', { name: '会话', exact: true }).click()
     await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveValue('保留在这里的草稿')
     await page.getByRole('button', { name: '群聊设置', exact: true }).click()

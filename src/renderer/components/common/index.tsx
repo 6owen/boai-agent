@@ -1,10 +1,10 @@
 /*
- * [INPUT]: React、图标与共享领域类型。
+ * [INPUT]: React、图标、语义外观 token 与共享领域类型。
  * [OUTPUT]: 公共控件、格式化函数与未保存状态守卫。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createContext, cloneElement, isValidElement, useId, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, cloneElement, isValidElement, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
 
@@ -24,7 +24,7 @@ export function useDirty(value: unknown) {
   return () => { initial.current = serialized; guard.setDirty(false) }
 }
 export function Avatar({ name, color = colors[0], small = false }: { name: string; color?: string; small?: boolean }) {
-  return <span className={`avatar${small ? ' small' : ''}`} style={{ background: `${color}18`, color }} aria-hidden="true">{name.slice(0, 1)}</span>
+  return <span className={`avatar${small ? ' small' : ''}`} style={{ background: `${color}18`, '--avatar-color': color } as CSSProperties} aria-hidden="true">{name.slice(0, 1)}</span>
 }
 export function Banner({ children, kind = 'error', onClose }: { children: ReactNode; kind?: 'error' | 'notice'; onClose?: () => void }) {
   return <div className={`banner ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><span>{children}</span>{onClose && <button className="icon-button" onClick={onClose} aria-label="关闭提示"><X size={15} /></button>}</div>

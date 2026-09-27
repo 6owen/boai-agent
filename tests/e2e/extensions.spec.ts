@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 真实 Electron 桌面构建及本地协议测试服务。
+ * [OUTPUT]: 主题、背景高级选项、外部 Agent 与定时任务的端到端回归。
+ * [POS]: 扩展能力跨进程桌面测试。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, rm, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -14,6 +20,7 @@ test('themes, managed background, external ACP files, automation and restart in 
   await page!.getByRole('button',{name:'设置',exact:true}).click();await page!.getByRole('menuitem',{name:'外观',exact:true}).click();await page!.getByRole('button',{name:'外观',exact:true}).click()
   await page!.getByRole('button',{name:'深色',exact:true}).click();await expect(page!.locator('html')).toHaveAttribute('data-theme','dark');await expect(page!.getByRole('status').filter({hasText:'已保存'})).toBeVisible()
   await page!.getByLabel('深色配色',{exact:true}).selectOption('nord');await expect(page!.locator('html')).toHaveAttribute('data-theme-id','nord')
+  await page!.getByText('高级',{exact:true}).click()
   const imagePath=join(root,'background.png');await writeFile(imagePath,Buffer.from(await page!.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;const ctx=canvas.getContext('2d')!,gradient=ctx.createLinearGradient(0,0,640,480);gradient.addColorStop(0,'#3b526c');gradient.addColorStop(1,'#746b61');ctx.fillStyle=gradient;ctx.fillRect(0,0,640,480);return canvas.toDataURL('image/png').split(',')[1]}),'base64'))
   await desktop!.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]})},imagePath)
   await expect(page!.getByRole('button',{name:'选择图片'})).toBeEnabled();await page!.getByRole('button',{name:'选择图片'}).click();await expect(page!.getByRole('button',{name:'移除图片'})).toBeVisible();await rm(imagePath)

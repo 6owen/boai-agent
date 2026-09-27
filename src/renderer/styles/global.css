@@ -1,5 +1,12 @@
+/*
+ * [INPUT]: Tailwind、视觉 token、桌面布局、排版和页面样式。
+ * [OUTPUT]: 唯一全局样式入口及明确的级联顺序。
+ * [POS]: 由 renderer/main.tsx 加载。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 @layer theme, base, legacy, components, utilities;
 @import './tailwind.css';
 @import './colors.css';
 @import './legacy.css' layer(legacy);
 @import './typeset.css' layer(legacy);
+@import './pages.css' layer(components);

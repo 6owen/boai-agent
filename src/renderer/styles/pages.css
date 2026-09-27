@@ -1,0 +1,145 @@
+/*
+ * [INPUT]: 统一语义 token 与设置、自动化页面结构。
+ * [OUTPUT]: 紧凑外观设置行、模式缩略图、设置搜索和任务分栏/空态样式。
+ * [POS]: 页面表现层；从 global.css 的 components 层加载。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+.settings-page .page-subnav { width:calc(var(--list-width,312px) - 1px);padding:14px 8px;border-color:var(--frame-border);overflow-y:auto }
+.page-subnav h2 { font-size:18px;line-height:24px;margin:0 8px 14px }
+.settings-search { display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:var(--radius-pill);background:var(--selection);color:var(--muted-foreground) }
+.settings-search input { border:0;outline:none;width:100%;min-width:0;background:transparent;color:var(--foreground);font:inherit;padding:0;box-shadow:none }
+.settings-search:focus-within { outline:2px solid var(--ring);outline-offset:2px }
+.settings-nav-group>p { margin:6px 8px;color:var(--sidebar-label);font-size:13px;line-height:20px }
+.settings-nav-group+.settings-nav-group { margin-top:24px }
+.page-subnav button { color:var(--foreground);font-size:13px;min-height:30px;padding:5px 8px;gap:8px;margin:0 0 1px }
+.settings-search-empty { margin:12px 8px;color:var(--muted-foreground) }
+.settings-content.appearance-content { max-width:none;padding:72px 80px 24px }
+.appearance-settings { width:100%;max-width:840px;margin:0 auto }
+.appearance-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:44px }
+.appearance-heading h2 { font-size:28px;font-weight:600;line-height:40px;letter-spacing:-.6px;margin:0 }
+.appearance-settings fieldset { border:0;padding:0;margin:0;min-width:0 }
+.appearance-section-title { font-size:14px;line-height:22px;font-weight:600;padding:0;margin-bottom:12px }
+.save-status { display:inline-flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;color:var(--muted-foreground) }
+.save-status[data-state="error"] { color:var(--destructive) }
+.appearance-group { border:1px solid var(--border);border-radius:var(--radius-card);padding:0 16px }
+.appearance-mode-row { display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:78px;margin-bottom:16px;font-size:13px;font-weight:500 }
+.appearance-modes { display:flex;gap:16px;padding:8px 0 }
+.theme-card { display:flex;align-items:center;justify-content:center;width:80px;height:58px;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--muted);padding:4px;cursor:pointer }
+.theme-card img { display:block;width:100%;height:100%;object-fit:cover;object-position:left;border-radius:6px }
+.theme-card:hover { box-shadow:0 0 0 1px var(--muted-foreground) }
+.theme-card[aria-pressed="true"] { border-color:var(--ring);box-shadow:0 0 0 1px var(--ring) }
+.appearance-row { display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:44px;padding:7px 0;font-size:13px }
+.appearance-row+.appearance-row { border-top:1px solid var(--border) }
+.appearance-row>label,.appearance-row>span { font-weight:500;flex-shrink:0 }
+.appearance-row-controls { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
+.appearance-row select { width:auto;height:28px;min-width:0;max-width:180px;padding:2px 26px 2px 10px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-pill);color:var(--foreground);background-color:var(--card) }
+.appearance-color { position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:28px;min-width:96px;padding:0 9px;border:1px solid var(--border);border-radius:var(--radius-pill);font-size:12px;font-weight:400!important;white-space:nowrap;cursor:pointer }
+.color-swatch { width:14px;height:14px;border:1px solid var(--border);border-radius:50%;flex-shrink:0 }
+.appearance-color input { position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;opacity:0;cursor:pointer }
+.appearance-color:focus-within { outline:2px solid var(--ring);outline-offset:2px }
+.appearance-footer { position:relative;margin-top:40px }
+.appearance-advanced summary { display:flex;align-items:center;gap:6px;width:max-content;color:var(--muted-foreground);font-size:13px;cursor:pointer;list-style:none }
+.appearance-advanced summary::-webkit-details-marker { display:none }
+.appearance-advanced[open] summary .app-icon { transform:rotate(90deg) }
+.appearance-reset { position:absolute;top:0;right:0;padding:0;border:0;background:transparent;color:var(--muted-foreground);font-size:13px;cursor:pointer }
+.appearance-reset:hover { color:var(--foreground) }
+.appearance-section { margin-top:24px;padding:20px 0;border-top:1px solid var(--border) }
+.appearance-section-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px }
+.appearance-section h3 { font-size:13px;font-weight:600;margin:0 0 6px }
+.appearance-section>.field { margin:22px 0 8px }
+.appearance-settings input[type="range"] { accent-color:var(--ring);width:100%;height:20px;cursor:pointer }
+.schedule-page { display:flex;min-height:0;flex:1;overflow:hidden }
+.schedule-list { width:calc(var(--list-width,312px) - 1px);flex-shrink:0;overflow-y:auto;background:var(--surface-list);border-right:1px solid var(--frame-border);padding:0 16px }
+.schedule-heading { display:flex;align-items:center;justify-content:space-between;height:50px;gap:12px }
+.schedule-heading h2 { font-size:18px;font-weight:600;line-height:24px;margin:0 }
+.schedule-heading .icon-button { width:24px;height:28px;color:var(--rail-foreground) }
+.schedule-search { margin:4px 0 12px;padding:6px 8px }
+.schedule-search .icon-button { width:20px;height:20px }
+.schedule-create { display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0;margin:0 0 8px;border:0;background:transparent;font-size:14px;font-weight:500;text-align:left }
+.schedule-create:hover { background:var(--accent) }
+.schedule-section-heading { display:flex;align-items:center;justify-content:space-between;height:28px;margin-bottom:8px;color:var(--sidebar-label);font-size:14px;font-weight:500 }
+.schedule-list-actions { display:flex;align-items:center;gap:4px }
+.schedule-list-actions .icon-button { width:26px;height:26px;color:var(--rail-foreground) }
+.schedule-filter { position:relative }
+.schedule-filter summary { list-style:none;cursor:pointer }
+.schedule-filter summary::-webkit-details-marker { display:none }
+.schedule-filter .popover-menu { top:30px;right:0;min-width:150px }
+.schedule-filter fieldset { border:0;padding:4px;margin:0 }
+.schedule-filter label { display:flex;align-items:center;gap:10px;padding:9px;font-size:13px;border-radius:6px;cursor:pointer }
+.schedule-filter label:hover { background:var(--accent) }
+.schedule-filter input { accent-color:var(--foreground) }
+.schedule-items { display:grid;gap:4px }
+.schedule-item { display:grid;gap:6px;text-align:left;width:100%;padding:12px 10px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--foreground);cursor:pointer }
+.schedule-item strong { font-size:14px;font-weight:500;overflow-wrap:anywhere }
+.schedule-item small { font-size:12px;color:var(--muted-foreground) }
+.schedule-item:hover { background:var(--accent) }
+.schedule-item.selected { background:var(--selection) }
+.schedule-no-results { padding:8px 0;font-size:12px;color:var(--muted-foreground) }
+.schedule-history-link { display:flex;align-items:center;gap:6px;padding:4px 0;margin-top:0;min-height:28px;border:0;background:transparent;color:var(--sidebar-label);font-size:14px;font-weight:500 }
+.schedule-history-link:hover,.schedule-history-link.selected { color:var(--foreground) }
+.schedule-content { flex:1;min-width:0;padding:0 }
+.schedule-content>.banner { margin:16px 24px }
+.schedule-content.is-welcome { display:flex;flex-direction:column }
+.schedule-welcome { display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px 0;min-height:340px }
+.schedule-clock { width:54px;height:54px;object-fit:contain;flex-shrink:0;margin-bottom:16px }
+.schedule-welcome h1 { margin:0;font-size:16px;line-height:24px;font-weight:600 }
+.schedule-welcome p { margin:6px 0 38px;font-size:14px;line-height:22px;color:var(--muted-foreground) }
+.schedule-welcome .button { min-height:36px;padding:6px 14px;line-height:22px;font-size:14px;font-weight:500;box-shadow:none }
+.schedule-document { max-width:840px;margin:0 auto;padding:36px 32px }
+.schedule-document>h3 { margin:28px 0 16px;font-size:16px;font-weight:600 }
+.automation-prompt { white-space:pre-wrap;line-height:1.8 }
+.automation-actions { flex-wrap:wrap;margin:20px 0 }
+.automation-history { display:grid;gap:12px }
+.schedule-page.sidebar-hidden .schedule-list { display:none }
+@media(max-width:1099px) {
+  .schedule-list { width:260px }
+}
+@media(max-width:760px) {
+  .schedule-list { width:220px;padding:0 12px }
+  .schedule-welcome { padding:24px 20px 0 }
+  .schedule-welcome p { max-width:100%;text-wrap:balance }
+  .schedule-document { padding:24px 20px }
+  .schedule-document .form-grid { grid-template-columns:1fr }
+}
+@media(max-width:540px) {
+  .schedule-page { flex-direction:column;overflow:auto }
+  .schedule-list { width:100%;max-height:220px;flex-shrink:0;border-right:0;border-bottom:1px solid var(--frame-border) }
+  .schedule-content { flex:1 0 auto;overflow:visible }
+  .schedule-welcome { min-height:320px;padding:32px 16px }
+}
+@media(max-width:760px) {
+  .app-shell { min-height:0 }
+  .page-subnav { flex-wrap:wrap;min-width:0 }
+  .page-subnav h2 { flex-basis:100%;margin-bottom:4px }
+  .settings-content { width:100%;padding:24px 20px;overflow-x:hidden }
+  .page-heading { flex-wrap:wrap;gap:12px }
+  .navigation-rail { overflow-y:auto;gap:12px }
+  .rail-top,.rail-bottom { flex-shrink:0 }
+}
+@media(max-width:480px) {
+  .appearance-modes { gap:8px }
+  .theme-card { width:58px;height:44px;padding:3px }
+  .appearance-mode-row { gap:8px;padding:0 12px;min-height:64px }
+  .appearance-group { padding:0 12px }
+  .appearance-row { gap:8px }
+  .appearance-row-controls { gap:4px }
+  .appearance-row select { max-width:170px;padding-left:8px;padding-right:20px }
+  .appearance-color { min-width:90px;padding:0 7px }
+  .appearance-heading { margin-bottom:28px }
+  .appearance-footer { margin-top:28px }
+  .settings-content .button-row { flex-wrap:wrap }
+  .appearance-section-heading { align-items:flex-start }
+}
+
+@media(max-width:1100px) {
+  .settings-content.appearance-content { padding:48px 40px }
+}
+@media(max-width:760px) {
+  .settings-page .page-subnav { display:flex;flex-wrap:wrap;gap:6px;overflow:visible }
+  .page-subnav h2 { flex-basis:auto;margin:0 12px 0 0 }
+  .settings-search { flex:1;min-width:120px;height:30px }
+  .settings-nav-group,.settings-nav-group+.settings-nav-group { display:contents }
+  .settings-nav-group>p { display:none }
+  .page-subnav button { min-height:30px;margin:0;font-size:12px }
+  .settings-content.appearance-content { padding:28px 20px }
+}
