@@ -1,0 +1,2 @@
+/* F1 compatibility entry; main.tsx uses styles/global.css only. */
+@import './styles/tailwind.css';

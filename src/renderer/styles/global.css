@@ -1,0 +1,5 @@
+@layer theme, base, legacy, components, utilities;
+@import './tailwind.css';
+@import './colors.css';
+@import './legacy.css' layer(legacy);
+@import './typeset.css' layer(legacy);

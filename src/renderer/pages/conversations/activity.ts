@@ -1,0 +1,44 @@
+import type { AgentRun, ConversationDetail, DiscussionTurn, Message } from '@shared/contracts'
+
+export interface ActivityRound {
+  id: string
+  createdAt: string
+  trigger?: Message
+  turn?: DiscussionTurn
+  runs: AgentRun[]
+}
+
+export function byCreatedAt<T extends { createdAt: string; id: string }>(a: T, b: T) {
+  return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
+}
+
+/** Explicit chronology also works when persisted rows arrive in a different order. */
+export function activityRounds(detail: ConversationDetail): ActivityRound[] {
+  const messages = new Map(detail.messages.map(message => [message.id, message]))
+  const rounds = new Map<string, ActivityRound>()
+  for (const turn of detail.turns ?? []) {
+    rounds.set(`turn:${turn.id}`, { id: `turn:${turn.id}`, createdAt: turn.createdAt, trigger: messages.get(turn.triggerMessageId), turn, runs: [] })
+  }
+  for (const run of [...detail.runs].sort(byCreatedAt)) {
+    // Older direct conversations have no DiscussionTurn; their triggering user message is still a reliable boundary.
+    const key = run.turnId ? `turn:${run.turnId}` : `message:${run.triggerMessageId}`
+    let round = rounds.get(key)
+    if (!round) {
+      const trigger = messages.get(run.triggerMessageId)
+      round = { id: key, createdAt: trigger?.createdAt ?? run.createdAt, trigger, runs: [] }
+      rounds.set(key, round)
+    }
+    round.runs.push(run)
+  }
+  const latestUserMessage = detail.messages.filter(message => message.senderType === 'user').sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.sequence - b.sequence || a.id.localeCompare(b.id)).at(-1)
+  if (latestUserMessage && ![...rounds.values()].some(round => round.trigger?.id === latestUserMessage.id)) {
+    const key = `message:${latestUserMessage.id}`
+    rounds.set(key, { id: key, createdAt: latestUserMessage.createdAt, trigger: latestUserMessage, runs: [] })
+  }
+  return [...rounds.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (b.trigger?.sequence ?? 0) - (a.trigger?.sequence ?? 0) || a.id.localeCompare(b.id))
+}
+
+export function roundTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '时间未知' : date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
