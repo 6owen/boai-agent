@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
+ * [OUTPUT]: 6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -134,6 +134,8 @@
 .chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
 .chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:13px;line-height:1.4;overflow-wrap:anywhere }
 .chat-composer-option>small { font-size:11px;line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
+.chat-composer-select[data-permission=full],.chat-composer-menu [data-permission=full] { --accent-foreground:var(--warning);color:var(--warning) }
+.chat-composer-menu [data-permission=full] .chat-composer-option>small { color:var(--warning) }
 @supports not (corner-shape:squircle) {
   .soft-button { border-radius:10px }
   .soft-button-round { border-radius:var(--radius-pill) }

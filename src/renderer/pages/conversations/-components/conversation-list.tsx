@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件。
- * [OUTPUT]: 单加号入口、成员拼图头像、可拖拽排序、置顶/会话两组独立折叠及右键清空/删除的紧凑会话列表。
+ * [OUTPUT]: 单加号入口、成员拼图头像、可拖拽排序、置顶/会话两组独立折叠及右键清空/删除的紧凑会话列表；无底部工作空间状态栏。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -96,6 +96,5 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
         <AlertDialogFooter><Button variant="secondary" disabled={mutation.busy} onClick={() => setConfirmation(null)}>取消</Button><Button variant="destructive" disabled={busy || mutation.busy} onClick={() => { if (confirmation) void mutation.run(async () => { await onClear(confirmation.conversation.id, confirmation.hide); setConfirmation(null) }) }}>{mutation.busy ? '正在清理…' : confirmation?.hide ? '删除会话及记录' : '确认清空'}</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    <div className="list-footer"><span className="local-dot" />本地工作空间<span>{snapshot.agents.length} 位员工</span></div>
   </div>
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
- * [OUTPUT]: Carbon 导航、分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 会话清理缓存及右侧窗口排序。
+ * [OUTPUT]: Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 会话清理缓存及右侧窗口排序。
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -233,7 +233,7 @@ export function AppShell() {
   }
   const panelTitle = panel ? describePanel(panel).title : '详情'
   const effectiveList = listShown
-  const detailMax = Math.max(300, Math.min(560, windowWidth - 56 - (effectiveList && route.page === 'conversations' ? listWidth : 0) - 444))
+  const detailMax = route.page === 'conversations' ? 560 : Math.max(300, Math.min(560, windowWidth - 56 - 444))
   const actualDetailWidth = Math.min(detailWidth, detailMax)
   const startResize = (kind: 'list' | 'detail', event: PointerEvent<HTMLDivElement>) => {
     event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId)

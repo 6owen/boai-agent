@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
+ * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、纯名称标题及无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -362,24 +362,6 @@ fieldset {
   padding:24px 10px;
   line-height:1.8
 }
-.list-footer {
-  border-top:0;
-  padding:12px 6px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:11px;
-  color:var(--muted-foreground)
-}
-.list-footer>span:last-child {
-  margin-left:auto
-}
-.local-dot {
-  width:5px;
-  height:5px;
-  background:var(--success);
-  border-radius:50%
-}
 .conversation-stage {
   flex:1;
   display:flex;
@@ -482,16 +464,8 @@ fieldset {
   flex-shrink:0
 }
 .chat-title {
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  text-align:left;
-  background:transparent;
-  border:0;
-  padding:0;
-  min-width:0
-}
-.chat-title strong {
+  margin:0;
+  min-width:0;
   font-size:14px;
   font-weight:500;
   white-space:nowrap;
@@ -499,16 +473,9 @@ fieldset {
   text-overflow:ellipsis;
   max-width:100%
 }
-.chat-title small {
-  font-size:11px;
-  color:var(--muted-foreground);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width:100%
-}
 .chat-header-actions {
   display:flex;
+  flex-shrink:0;
   gap:4px;
   align-items:center
 }
@@ -1715,9 +1682,6 @@ fieldset {
     padding-left:20px;
     padding-right:20px
   }
-  .member-avatars {
-    display:none
-  }
   .toolbar-brand {
     display:none
   }
@@ -1738,8 +1702,8 @@ fieldset {
   }
 }
 @media(max-width:1099px) {
-  .app-shell { --detail-divider-width:0px }
-  .detail-panel {
+  .app-shell:not([data-page=conversations]) { --detail-divider-width:0px }
+  .app-shell:not([data-page=conversations]) .detail-panel {
     position:absolute;
     inset:0 0 0 auto;
     width:var(--detail-size);
@@ -1747,7 +1711,7 @@ fieldset {
     border-left:1px solid var(--border);
     z-index:10
   }
-  .detail-resizer { display:none }
+  .app-shell:not([data-page=conversations]) .detail-resizer { display:none }
   .detail-open .chat-header {
     padding-left:18px;
     padding-right:13px
@@ -1784,16 +1748,9 @@ fieldset {
     align-items:flex-start;
     flex-wrap:wrap
   }
-  .chat-title small {
-    max-width:260px
-  }
 }
 @media(max-width:899px) {
-  .app-shell.list-open[data-page=conversations] {
-    /* Match the chat area after the rail, list, frame edges and list divider. */
-    --detail-size:max(300px,calc(100vw - var(--rail-width) - var(--list-width) - 7px))
-  }
-  .detail-resizer {
+  .app-shell:not([data-page=conversations]) .detail-resizer {
     display:none
   }
   .detail-content {
@@ -1822,9 +1779,6 @@ fieldset {
   .chat-header {
     padding-left:23px;
     padding-right:18px
-  }
-  .chat-title small {
-    max-width:390px
   }
   .messages {
     padding-left:25px;
@@ -1879,12 +1833,6 @@ fieldset {
   }
   .detail-panel .form-grid {
     grid-template-columns:1fr
-  }
-  .chat-title strong {
-    font-size:14px
-  }
-  .chat-title small {
-    font-size:11px
   }
   .chat-header-actions {
     gap:3px
