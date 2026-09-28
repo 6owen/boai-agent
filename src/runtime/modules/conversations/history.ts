@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料。
+ * [OUTPUT]: Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -76,7 +76,7 @@ export class ConversationHistory {
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of ['traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       await collect('snapshots', item => item.conversation?.id === id || runIds.has(item.id))

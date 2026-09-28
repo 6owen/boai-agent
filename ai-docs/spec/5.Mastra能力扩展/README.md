@@ -1,12 +1,12 @@
 <!--
-[INPUT]: Mastra 能力扩展相关规格与当前模块实现。
-[OUTPUT]: Mastra 能力扩展的说明和源码入口。
+[INPUT]: Mastra 能力扩展规格、已接入的自动化模块与 Craft/安装版调研。
+[OUTPUT]: 能力规划导航、自动化现状和后续产品/运行时设计入口。
 [POS]: ai-docs/spec/5.Mastra能力扩展/README.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 # Mastra 能力扩展
 
-日期：2026-09-27。状态：**S1 已实施，其余能力待实施**；[首批交付记录](../2.已实现功能与代码现状/15-B1-B2-S1-F1首批重构实现.md)。当前优先员工 Sandbox / Skills、执行后端、浏览器与自动化。本文不触发依赖升级，不替换现有记忆库或群聊调度器。
+更新：2026-09-28。S1 已实施，见[首批交付记录](../2.已实现功能与代码现状/15-B1-B2-S1-F1首批重构实现.md)；外部 Agent 与原生自动化已有基础交付，见[后续实现记录](../2.已实现功能与代码现状/16-主题外部Agent与自动化实现.md)。本次新增自动化演进设计与调研，尚未实施其增量。其他能力逐项判断，不以安装依赖代表接入。本文不触发依赖升级，不替换现有记忆库或群聊调度器。
 
 核对版本为本项目安装的 `@mastra/core 1.71.0`、`@mastra/memory 1.32.1`、`@mastra/libsql 1.23.3`。优先依据安装包 embedded docs、类型和实现；官方线上文档可能先于或晚于这些版本。当前交付事实见 [v0.2.2 实现记录](../2.已实现功能与代码现状/14-v0.2.2历史群聊与本轮边界.md)。
 
@@ -16,7 +16,7 @@
 2. [员工执行后端与能力契约](../4.数字员工与协作重构/04-员工执行后端与能力契约.md)：BYOK、ACP、本地 SDK Agent 和 A2A 员工分别如何接入，E1–E3 的兼容与能力边界。
 3. [Browser 浏览器能力](./04-Browser浏览器能力.md)：本地浏览器、独立会话和登录状态、下载、权限及打包。
 4. [ACP 与 A2A 及 MCP 连接](./05-ACP与A2A及MCP连接.md)：连接的方向、身份和工具职责，不能用一个连接字段混装三种协议。
-5. [自动化与定时执行](./06-自动化与定时执行.md)：Mastra 原生 schedules 的本地接入、任务投递、审批、重启与补偿，不复用 Pi 自动化。
+5. 自动化先读 [产品与运行时设计](./07-自动化产品与运行时设计.md)，再读 [Craft 与 Mastra 调研](./08-Craft与Mastra自动化调研.md)：基于现有 schedules，补齐触发/工作/交付归属、新任务聊天与通知监控；[06](./06-自动化与定时执行.md) 保留历史规划。
 6. [Memory 与 Working Memory](./01-Memory与WorkingMemory.md)：已有产品记忆与框架记忆的职责、作用域、数据权威、渐进接入和退出条件。
 7. [动态工作流与执行编排](./02-动态工作流与执行编排.md)：成员自决、代码工作流、JSON 动态工作流、模型计划之间的区别及实施顺序。
 
@@ -28,22 +28,22 @@
 
 | 能力 | 当前实现 | 不应据此宣称已实现的能力 |
 | --- | --- | --- |
-| Mastra Agent 执行 | 每次按员工配置构造普通 Agent；使用显式模型、bootstrap、获准 tools/workspace | 已启用 Mastra Memory 或工作流 |
+| Mastra Agent 执行 | 每次按员工配置构造普通 Agent；使用显式模型、bootstrap、获准 tools/workspace | 已启用 Mastra Memory 或完整业务工作流 |
 | 产品对话历史 | ProductStore 保存消息；引擎按员工身份、当前轮/旧轮和有界窗口投影 | Mastra 自动 message history 回放 |
 | 产品长期记忆 | MemoryRepository 保存来源、版本、epoch、删除标记；模型提出当前轮增量候选，服务验证后写入 | Mastra Working Memory、Semantic Recall、Observational Memory |
 | 员工系统文件 | 宿主装配 AGENTS.md / SOUL.md；记忆 Markdown 是生成视图 | 普通 Agent 自动发现或写入所有系统文件 |
 | 群聊协作 | GroupScheduler 分发事件、维护发言授权、依赖、预算、取消；每位员工自主决定参与 | Mastra workflow 图、可持久动态计划或流程恢复 |
-| 本地持久化 | 使用 `@libsql/client` 的 ProductStore，本地 SQLite | 已实例化 `@mastra/libsql` 的 LibSQLStore / LibSQLVector |
+| 本地持久化 | ProductStore 保存产品数据；自动化另用 LibSQLStore 保存框架调度数据 | 已启用 LibSQLVector 或把产品数据权威移交框架 |
 | 本地执行 | task 才获得当前员工×会话工具与工作区；命令经审批 | 操作系统级安全沙箱 |
 | 文件与技能 | S1 授权环境计划、内容 hash、受限 SkillSource 与技能状态；task 仅加载绑定技能 | 已接入 LocalSandbox、默认自动挂载所有资源或自动安装技能依赖 |
-| 定时任务页面 | 已有入口、列表和详情设计 | 已接入 Mastra schedules、后台运行或系统唤醒 |
-| 外部连接与浏览器 | 当前无 ACP / A2A / MCP / Browser 集成 | core 存在相关类型就等于员工已经能使用 |
+| 定时任务 | 已有原生 schedules、CRUD、手动运行、执行记录、单聊/群聊投递、备份恢复暂停 | 每次新聊天、重要更新判断、退出/睡眠执行、完整业务交付聚合 |
+| 外部连接与浏览器 | 已有受限本地 ACP 显式任务入口；其他连接/浏览器按专题判断 | ACP 已支持自主群聊/定时自动化，或 core 类型存在就等于员工可用 |
 
 源码入口：[ProductStore](../../../src/runtime/adapters/storage/product-store.ts)、[MemoryRepository](../../../src/runtime/modules/memory/memory-repository.ts)、[AgentHomes](../../../src/runtime/modules/workspaces/workspace-service.ts)、[MastraEngine](../../../src/runtime/adapters/mastra/engine.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)。
 
-**安装 `@mastra/memory` 不等于已经启用它。Working Memory 是模型可用的持久上下文，不是 workspace 文件目录。** 当前引擎没有给 Agent 配置 `memory: new Memory(...)`，也没有使用 `createWorkflow()`、`addDynamicWorkflow()` 或 `new Mastra(...)` 组织工作流。
+**安装 `@mastra/memory` 不等于已经启用它。Working Memory 是模型可用的持久上下文，不是 workspace 文件目录。** 当前员工引擎没有给 Agent 配置 `memory: new Memory(...)`；自动化适配器已使用 `new Mastra(...)` 和 `createWorkflow()` 建立薄投递包装，这不等于员工业务流程已改为动态工作流。
 
-## 3. 框架已提供但项目尚未接入
+## 3. 框架能力与接入边界
 
 | 框架能力 | 已核验的作用 | 接入前必须解决 |
 | --- | --- | --- |
@@ -52,7 +52,7 @@
 | ACP / SDK Agents | 调用外部本地 Agent；其自身可能拥有工具与运行循环 | 阶段能力、会话隔离、认证和真实取消；不能默认继承 Mastra tools / Skills |
 | A2A | 与远程 Agent 交互或由服务暴露 Agent | 出站与入站分开；远端状态、用量与取消能力须明确验证 |
 | MCP | 连接工具/资源服务，或另行暴露服务端 | 员工绑定、工具清单、每次操作审批与连接生命周期 |
-| Schedules | 安装版原生持久调度，目标可为 agent / workflow | Electron 显式 worker 生命周期、storage、产品授权入口、补偿与幂等；进程退出不执行 |
+| Schedules | 已接入 workflow 目标的原生持久调度和 Electron 生命周期 | 下一步为事务受理、跨工作交付、新聊天、通知与监控；进程退出不执行 |
 | Message history | 自动保存和加载 thread 内消息；支持条数或 token 预算 | 谁拥有消息权威；避免与产品历史重复回填；内部判断不能进入公开历史 |
 | Working Memory | 小型、持续相关的 Markdown/结构化状态；可通过工具更新 | 与产品事实库重叠；读写入口、scope 和 chat 无工具约束 |
 | Semantic Recall | 对历史消息做 embedding 和向量检索 | 另配 embedder/vector；按授权范围检索；删除同步；模型与索引版本 |

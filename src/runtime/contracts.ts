@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
- * [OUTPUT]: 统一连接容量/成员判断时限、工作上下文、已声明等待、结果/副作用回调、无工具重新汇报与私有凭据接口。
+ * [OUTPUT]: 增加原生 Trace 保存与观测错误回调；统一连接容量/成员判断时限、工作上下文、已声明等待、结果/副作用回调、无工具重新汇报与私有凭据接口。
  * [POS]: runtime 内部合同，不向 renderer 暴露凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
+import type { TraceSpan } from '../shared/domain/traces'
 import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait } from '../shared/domain'
 
 // The host and adapter share one phase budget, including the bounded JSON repair.
@@ -51,6 +52,8 @@ export interface EngineContext {
   onAdditionalModelCall?(): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
+  onTrace?(span: TraceSpan): Promise<void>
+  onTraceError?(error: string): Promise<void>
   onDelta(text: string): Promise<void>
   onTool(event: ToolEvent): Promise<void>
   approveCommand(command: string, cwd: string): Promise<boolean>

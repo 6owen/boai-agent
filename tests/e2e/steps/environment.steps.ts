@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 技能执行产物与环境快照的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 会话菜单入口、技能产物、工作预算/业务结果、运行展示与环境快照的桌面断言。
+ * [OUTPUT]: 任务面板按工作结果展示，运行成功通过原记录验证；会话菜单入口、技能产物、工作预算/业务结果、运行展示与环境快照的桌面断言。
  * [POS]: tests/e2e/steps/environment.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -190,7 +190,8 @@ Then('活动区区分运行结束与业务交付', async ({ scenario }) => {
   expect(detail.messages.map((message) => message.sequence)).toEqual([1, 2])
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
-  const card = page.locator(`[data-run-id="${task.id}"]`)
-  await expect(card).toContainText('本次运行结束')
+  const card = page.locator(`[data-work-id="${detail.workItems![0].id}"]`)
+  expect(detail.runs.find(run => run.id === task.id)?.status).toBe('completed')
+  await expect(card).toContainText('需要处理')
   await expect(card).toContainText('本次工作结果：已有进展')
 })

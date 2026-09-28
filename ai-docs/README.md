@@ -1,6 +1,6 @@
 <!--
-[INPUT]: 项目规格分组、实际交付记录与 Cumora/Paperclip 协作参考。
-[OUTPUT]: 六组 AI 文档的导航、状态口径与维护入口。
+[INPUT]: 项目规格分组、实际交付记录、Cumora/Paperclip 协作参考与 Skills 管理/商店迁移。
+[OUTPUT]: 七组 AI 文档的导航、状态口径与维护入口。
 [POS]: ai-docs/README.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -12,8 +12,9 @@ BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代
 
 - [当前功能全景](./spec/2.已实现功能与代码现状/01-已实现功能全景.md) 和 [代码/运行目录](./spec/2.已实现功能与代码现状/02-代码与运行目录.md)。
 - [重构总计划](./spec/00-重构总计划.md)：优先员工装配、工作区与 Sandbox / Skills；前端 F1 可并行。
-- [完整规格索引](./spec/README.md)：按主题进入六组文档。
+- [完整规格索引](./spec/README.md)：按主题进入七组文档。
 - [Cumora 协作重构](./spec/6.Cumora协作重构/README.md)：结合 Paperclip 的工作/run 分离、认领先于并行、定向唤醒与根任务预算方案，G0–G4 尚待实施。
+- [Skills 管理与商店迁移](./spec/7.Skills管理与商店迁移/README.md)：从旧 boai-app 迁入技能管理和三家商店的源码映射、产品流程、技术合同和 K1–K5 验收；仅文档，待后续实现。
 
 | 分组 | 阅读入口 | 用途 |
 | --- | --- | --- |
@@ -23,6 +24,7 @@ BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代
 | 4 | [数字员工与协作重构](./spec/4.数字员工与协作重构/README.md) | 员工配置、Agent 工厂、工作区、协作与执行后端 |
 | 5 | [Mastra 能力扩展](./spec/5.Mastra能力扩展/README.md) | Sandbox、Skills、Browser、ACP / A2A / MCP、自动化、Memory 和 Workflow |
 | 6 | [Cumora 协作重构](./spec/6.Cumora协作重构/README.md) | Cumora/Paperclip 外部机制、当前差距、目标协议与验收；独立于 B3 结构重构 |
+| 7 | [Skills 管理与商店迁移](./spec/7.Skills管理与商店迁移/README.md) | 旧项目技能管理/商店的迁移取舍、受管资源接入与旧库兼容方案 |
 
 ## 交付沿革
 

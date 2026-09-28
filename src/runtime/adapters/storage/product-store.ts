@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: 提交后确认的读写、备份、删除后空间回收与读检查写/删除一体化事务。
+ * [OUTPUT]: 支持按会话范围读取记录；提交后确认的读写、备份、删除后空间回收与读检查写/删除一体化事务。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -28,9 +28,9 @@ export class ProductStore {
     await this.client.execute('PRAGMA journal_mode=WAL')
     await this.client.execute('CREATE TABLE IF NOT EXISTS records (collection TEXT NOT NULL, id TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (collection, id))')
   }
-  async load<T>(collection: string): Promise<T[]> {
+  async load<T>(collection: string, scope?: { conversationId: string }): Promise<T[]> {
     await this.tail
-    const result = await this.client.execute({ sql: 'SELECT value FROM records WHERE collection = ? ORDER BY rowid', args: [collection] })
+    const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
     return result.rows.map(row => JSON.parse(String(row.value)) as T)
   }
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {

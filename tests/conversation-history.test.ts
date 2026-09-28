@@ -1,6 +1,6 @@
 /*
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
- * [OUTPUT]: 关联记录删除、共享数据保留、重启续清与符号链接边界验证。
+ * [OUTPUT]: 增加 Trace 随会话删除且保留其他会话记录；关联记录删除、共享数据保留、重启续清与符号链接边界验证。
  * [POS]: tests/conversation-history.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -25,7 +25,7 @@ afterEach(async () => { for (const { root, store } of fixtures.splice(0)) { awai
 
 it('removes linked content while preserving other conversations, contacts, shared resources and native trigger identities', async () => {
   const { root, store, conversation, history } = await setup()
-  const owned = ['messages', 'runs', 'turns', 'events', 'deliveries', 'approvals', 'artifacts', 'jobs', 'workWakes']
+  const owned = ['traceSpans', 'messages', 'runs', 'turns', 'events', 'deliveries', 'approvals', 'artifacts', 'jobs', 'workWakes']
   await store.write([
     ...owned.flatMap(collection => [row(collection, 'target', { conversationId: 'c' }), row(collection, 'other', { conversationId: 'elsewhere' })]),
     ...['decisions', 'contributions', 'grants'].map(collection => row(collection, 'target', { turnId: 'target' })),

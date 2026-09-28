@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品实体、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
- * [OUTPUT]: 员工独立思考强度及保留本地配置来源、OpenAI 接口协议的模型连接、并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
+ * [OUTPUT]: 运行观测错误独立于业务终态；员工独立思考强度及保留本地配置来源、OpenAI 接口协议的模型连接、并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
  * [POS]: shared/domain 的产品领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -113,6 +113,7 @@ export interface ToolEvent {
   createdAt: string
 }
 export interface AgentRun {
+  traceError?: string
   taskQueueMs?: number
   draft?: WorkDraft
   workId?: string

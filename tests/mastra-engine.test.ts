@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 日常阶段轻量思考参数与完成前正文流式验收；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -13,6 +13,7 @@ import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
 import { thinkingProviderOptions } from '../src/runtime/adapters/mastra/model-config'
 import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
+import type { TraceSpan } from '../src/shared/domain/traces'
 import type { EngineContext } from '../src/runtime/contracts'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
 
@@ -171,6 +172,40 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       expect(completed).toBe(false)
     } finally { finish?.(); await execution }
     expect(run.deltas.join('')).toBe('今天是星期一。')
+  })
+
+  it('exports actual model and tool spans before returning, without exposing credentials or replaying tools', async () => {
+    const server = await endpoint([{ name: 'report_work', args: { disposition: 'delivered', summary: '计划完成', evidence: [{ kind: 'answer', reference: '先收集样本。' }] } }, '先收集样本。'])
+    const spans = new Map<string, TraceSpan>(), errors: string[] = []
+    const run = await context(server.url, { messages: [message('Do the task; fixture-secret must not appear in traces.')], onTrace: async span => { spans.set(span.id, span) }, onTraceError: async error => { errors.push(error) }, onWorkOutcome: async () => {} })
+    await new MastraEngine().run(run.ctx)
+    expect(errors).toEqual([])
+    const values = [...spans.values()]
+    expect(values.some(span => span.spanType === 'agent_run' && span.endedAt)).toBe(true)
+    expect(values.some(span => span.spanType === 'tool_call' && span.name.includes('report_work') && span.endedAt)).toBe(true)
+    expect(values.filter(span => span.name === '模型请求')).toHaveLength(2)
+    expect(values.some(span => span.name === '模型请求' && JSON.stringify(span.input).includes('report_work'))).toBe(true)
+    expect(values.filter(span => span.parentSpanId).every(span => spans.has(`${span.traceId}:${span.parentSpanId}`))).toBe(true)
+    expect(JSON.stringify(values)).not.toContain('fixture-secret')
+    expect(server.requests).toHaveLength(2)
+    expect(run.deltas.join('')).toBe('先收集样本。')
+  })
+
+  it('flushes decision and memory traces and does not turn a trace storage failure into a business retry', async () => {
+    const server = await endpoint(['{"action":"reply","responseKind":"chat"}', '{"candidates":[]}', '你好'])
+    const spans: TraceSpan[] = []
+    const run = await context(server.url, { responseKind: 'chat', onTrace: async span => { spans.push(span) } })
+    const engine = new MastraEngine()
+    await engine.decide(run.ctx)
+    expect(spans.some(span => span.spanType === 'agent_run' && span.endedAt)).toBe(true)
+    spans.length = 0
+    await engine.extractMemory(run.ctx)
+    expect(spans.some(span => span.spanType === 'agent_run' && span.endedAt)).toBe(true)
+    const errors: string[] = []
+    await engine.run({ ...run.ctx, onTrace: async () => { throw new Error('storage unavailable') }, onTraceError: async error => { errors.push(error) } })
+    expect(run.deltas.join('')).toBe('你好')
+    expect(errors).toContain('storage unavailable')
+    expect(server.requests).toHaveLength(3)
   })
 
   it('reduces empty decision metadata without dropping message text, attribution, references or turn boundaries', () => {
@@ -655,7 +690,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     let resolveApproval: (approved: boolean) => void = () => {}
     let approvalReached: () => void = () => {}
     const reached = new Promise<void>(resolve => { approvalReached = resolve })
-    const { ctx, controller } = await context(mock.url, { approveCommand: () => { approvalReached(); return new Promise(resolve => { resolveApproval = resolve }) } })
+    const spans: TraceSpan[] = []
+    const { ctx, controller } = await context(mock.url, { onTrace: async span => { spans.push(span) }, approveCommand: () => { approvalReached(); return new Promise(resolve => { resolveApproval = resolve }) } })
     ctx.agent.allowCommands = true
     const run = new MastraEngine().run(ctx)
     await reached
@@ -663,6 +699,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     resolveApproval(true)
     await expect(run).rejects.toThrow('取消')
     await expect(readFile(path.join(ctx.workspace!.root, 'runs/run-1/late.txt'))).rejects.toThrow()
+    expect(spans.some(span => span.spanType === 'agent_run' && span.endedAt)).toBe(true)
+    expect(mock.requests).toHaveLength(1)
   })
 
   it('bounds host command execution time', async () => {

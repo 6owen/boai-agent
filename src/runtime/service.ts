@@ -1,9 +1,10 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { StoredTraceSpan } from '../shared/domain/traces'
 import { conversationListUpdates, type ConversationListChange } from '../shared/domain/conversation-list'
 import { ConversationHistory } from './modules/conversations/history'
 import { RequestError } from '@agentclientprotocol/sdk'
@@ -242,6 +243,20 @@ export class AppService {
         case 'updateConversationList': return this.updateConversationList(conversationListSchema.parse(input))
         case 'clearConversationHistory': { const value = z.object({ id, hide: z.boolean() }).strict().parse(input); return this.clearConversationHistory(value.id, value.hide) }
         case 'getConversation': return this.detail(lookupSchema.parse(input).id)
+        case 'getConversationTrace': {
+          const query = z.object({ conversationId: id, messageId: id, turnId: id.optional() }).strict().parse(input)
+          this.getConversation(query.conversationId)
+          const message = this.messages.get(query.messageId)
+          if (!message || message.conversationId !== query.conversationId) fail('消息不属于此会话')
+          const anchor = message!
+          const turnId = query.turnId ?? anchor.turnId
+          if (turnId) {
+            const turn = this.scheduler.turns.get(turnId)
+            if (!turn || turn.conversationId !== query.conversationId || (anchor.turnId !== turnId && turn.triggerMessageId !== anchor.id)) fail('轮次不属于此消息')
+          }
+          const runIds = new Set([...this.runs.values()].filter(run => run.conversationId === query.conversationId && (turnId ? run.turnId === turnId : run.triggerMessageId === (this.runs.get(anchor.runId ?? '')?.triggerMessageId ?? anchor.id))).map(run => run.id))
+          return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
+        }
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
         case 'cancelRun': { const { conversationId, workId } = z.object({ conversationId: id, workId: id.optional() }).strict().parse(input); this.getConversation(conversationId); return workId ? this.cancelWork(conversationId, workId) : this.cancelConversation(conversationId) }
         case 'approve': { const value = z.object({ id, approved: z.boolean() }).strict().parse(input); return this.resolveApproval(value.id, value.approved) }
@@ -561,6 +576,17 @@ export class AppService {
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
     return { agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: [...this.scheduler.contributions.values()].filter(item => item.turnId === turn.id).map(clone), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      onTrace: async span => {
+        if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
+        const value: StoredTraceSpan = { ...span, conversationId: run.conversationId, runId: run.id, agentId: run.agentId, turnId: run.turnId }
+        await this.store.write([record('traceSpans', value)])
+        this.changed(run.conversationId)
+      },
+      onTraceError: async error => {
+        run.traceError = this.redact(error, apiKey)
+        await this.store.write([record('runs', run)])
+        this.changed(run.conversationId)
+      },
       onAdditionalModelCall: async () => {
         signal.throwIfAborted()
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')

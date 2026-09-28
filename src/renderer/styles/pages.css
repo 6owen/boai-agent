@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 统一语义 token、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
+ * [OUTPUT]: 增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -273,3 +273,31 @@
   .contact-profile-heading { gap:12px }
   .contact-facts>div { grid-template-columns:64px minmax(0,1fr);gap:8px }
 }
+
+/* Execution traces share the application surfaces and semantic colors. */
+.trace-filters { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px }
+.trace-filters [data-slot=native-select-wrapper] { flex:1;min-width:100px;max-width:100% }
+.trace-trigger { margin:0 0 18px;color:var(--muted-foreground);white-space:pre-wrap;overflow-wrap:anywhere }
+.trace-summary { display:flex;justify-content:space-between;color:var(--muted-foreground);font-size:11px;margin-bottom:10px }
+.trace-tree { min-width:0 }
+.trace-row { display:flex;align-items:center;min-height:42px;border-radius:var(--radius-md) }
+.trace-row[data-selected=true] { background:var(--accent) }
+.trace-toggle { flex:0 0 24px;width:24px;height:28px }
+.trace-toggle:disabled { opacity:1 }
+.trace-node { display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:6px 4px;text-align:left;justify-content:flex-start }
+.trace-node-name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px }
+.trace-node-name>small { display:block;color:var(--muted-foreground);font-size:10px;font-weight:400 }
+.trace-bar-track { position:relative;flex:0 1 90px;min-width:32px;height:5px;background:var(--muted);border-radius:3px;overflow:hidden }
+.trace-bar { position:absolute;top:0;height:100%;min-width:2px;border-radius:3px;background:var(--primary) }
+.trace-bar.is-error { background:var(--destructive) }
+.trace-duration { flex:0 0 66px;text-align:right;font-size:10px;font-variant-numeric:tabular-nums;color:var(--muted-foreground) }
+.trace-span-popover { padding:16px;overflow:auto }
+.trace-span-detail { min-width:0 }
+.trace-span-heading { display:flex;align-items:center;justify-content:space-between;gap:10px }
+.trace-span-heading strong { overflow-wrap:anywhere }
+.trace-payload { padding-top:12px;margin-top:12px }
+.trace-payload summary,.trace-run-summary>summary { cursor:pointer;color:var(--muted-foreground);font-size:12px }
+.trace-payload pre { max-height:360px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;line-height:1.6;margin:10px 0 }
+.trace-run-summary { margin-top:24px;padding-top:16px }
+.trace-run-summary>.activity-round { margin-top:18px }
+.message-meta .trace-action { width:24px;height:24px;color:var(--muted-foreground) }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、悬浮名称/操作菜单与 Scroll Fade 消息顶部重叠区、无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
+ * [OUTPUT]: 移除会话状态条布局；44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、悬浮名称/操作菜单与 Scroll Fade 消息顶部重叠区、无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -681,29 +681,6 @@ fieldset {
   overflow:hidden;
   white-space:nowrap;
   text-overflow:ellipsis
-}
-.turn-status {
-  display:flex;
-  align-items:center;
-  gap:7px;
-  border:0;
-  background:transparent;
-  color:var(--muted-foreground);
-  font-size:12px;
-  padding:4px 2px 11px;
-  max-width:100%;
-  text-align:left
-}
-.turn-status>small {
-  font-size:11px;
-  min-width:0;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  color:var(--muted-foreground)
-}
-.turn-status>span {
-  white-space:nowrap
 }
 .new-messages {
   position:absolute;
@@ -1865,9 +1842,6 @@ fieldset {
     font-size:12px;
     padding-left:10px;
     padding-right:10px
-  }
-  .turn-status>small {
-    display:none
   }
   .composer-wrap {
     padding-left:18px;

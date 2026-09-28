@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 员工思考强度校验/隔离/重启与旧表单保留；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
 import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../src/shared/domain'
+import type { StoredTraceSpan } from '../src/shared/domain/traces'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 
@@ -94,6 +95,35 @@ describe('local product service', () => {
     expect((await snapshot(reopened)).agents.find(item => item.id === agent.id)?.thinkingLevel).toBe('off')
     const current = (await snapshot(reopened)).agents.find(item => item.id === agent.id)!
     expect((await updateAgent(reopened, current, { thinkingLevel: 'auto' })).thinkingLevel).toBe('auto')
+  })
+
+  it('keeps trace queries scoped to the anchored turn, including explicit retries, restart and conversation cleanup', async () => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    const direct = await conversation(service), group = await conversation(service, true)
+    const emitSpan = async (context: EngineContext) => context.onTrace?.({ id: context.runId, traceId: context.runId, spanId: context.runId, name: 'recorded-call', spanType: 'agent_run', startedAt: new Date().toISOString(), endedAt: new Date().toISOString(), input: context.triggerMessageId })
+    engine.handler = async context => { await emitSpan(context); throw new Error('first attempt failed') }
+    const first = await send(service, direct, '需要结果', 'trace-first'); await idle(service, direct, 1)
+    const failed = (await detail(service, direct)).runs.find(run => run.phase === 'execution')!
+    engine.handler = async context => { await emitSpan(context); await context.onDelta('已完成回复') }
+    await service.handle('retryRun', { id: failed.id, requestId: 'trace-retry' }); await idle(service, direct, 2)
+    const retried = await detail(service, direct), reply = retried.messages.find(message => message.senderType === 'agent' && message.status === 'completed')!
+    const query = (messageId: string, turnId?: string) => service.handle('getConversationTrace', { conversationId: direct.id, messageId, turnId }) as Promise<StoredTraceSpan[]>
+    expect((await query(first.id)).map(span => span.runId)).toEqual([failed.id])
+    const retrySpans = await query(first.id, reply.turnId)
+    expect(retrySpans).toHaveLength(1)
+    expect(retrySpans[0]).toMatchObject({ runId: reply.runId, agentId: 'researcher', conversationId: direct.id, turnId: reply.turnId })
+    expect(await query(reply.id)).toEqual(retrySpans)
+    const other = await send(service, group, '其他会话', 'trace-other'); await idle(service, group, 2)
+    await expect(query(other.id)).rejects.toThrow('消息不属于此会话')
+    await expect(query(first.id, other.turnId)).rejects.toThrow('轮次不属于此消息')
+    await service.close()
+    const restarted = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(restarted); await restarted.init()
+    expect(await restarted.handle('getConversationTrace', { conversationId: direct.id, messageId: reply.id })).toEqual(retrySpans)
+    const calls = engine.contexts.length
+    await restarted.handle('clearConversationHistory', { id: direct.id, hide: false })
+    await expect(restarted.handle('getConversationTrace', { conversationId: direct.id, messageId: reply.id })).rejects.toThrow('消息不属于此会话')
+    expect(await restarted.handle('getConversationTrace', { conversationId: group.id, messageId: other.id })).toHaveLength(2)
+    expect(engine.contexts).toHaveLength(calls)
   })
 
   it('streams five independent member replies concurrently without restarting their first decisions', async () => {

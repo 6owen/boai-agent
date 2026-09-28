@@ -1,6 +1,6 @@
 # language: zh-CN
 # [INPUT]: 历史失败与当前群聊轮次隔离与隔离的 Electron 环境。
-# [OUTPUT]: 可执行的行为验收。
+# [OUTPUT]: Trace 图标/员工筛选/节点输入输出、历史重启与单聊上下文隔离验收。
 # [POS]: tests/e2e/features/history.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 @electron @history
@@ -11,3 +11,4 @@
     当 旧轮产生回复与失败后再次向全群问候
     那么 活动面板区分本轮回复与历史失败
     那么 重启后活动分组与消息数量保持不变
+    那么 单聊回复图标打开自己的执行过程且切换会话不漂移

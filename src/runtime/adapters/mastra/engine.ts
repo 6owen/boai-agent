@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
- * [OUTPUT]: 员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
+ * [OUTPUT]: 员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -189,7 +189,7 @@ export class MastraEngine implements AgentEngine {
     const messageIds = new Set(messages.map(message => message.id))
     const turn = partitionTurn(messages, context.triggerMessageId, context.turnId)
     const source = turn.root!
-    const { agent } = await createStageAgent('decision', { ...context, signal })
+    const { agent, dispose } = await createStageAgent('decision', { ...context, signal })
     const data = {
       task: 'Choose your participation action; do not write the public reply.',
       currentEmployeeId: context.agent.id,
@@ -246,7 +246,7 @@ export class MastraEngine implements AgentEngine {
         }
       }
       throw new Error('成员判断未完成')
-    } catch (error) { throw new Error(redact(`成员判断失败：${signal.aborted ? (signal.reason?.name === 'TimeoutError' ? '判断超时' : '判断已取消') : errorText(error)}`, context.apiKey), { cause: error }) }
+    } catch (error) { throw new Error(redact(`成员判断失败：${signal.aborted ? (signal.reason?.name === 'TimeoutError' ? '判断超时' : '判断已取消') : errorText(error)}`, context.apiKey), { cause: error }) } finally { await dispose() }
   }
 
   async extractMemory(context: EngineContext): Promise<MemoryCandidate[]> {
@@ -262,7 +262,7 @@ export class MastraEngine implements AgentEngine {
     const resourceIds = new Set(resources.map(resource => resource.id))
     const retained = (context.memory?.entries ?? []).filter(entry => !entry.deletedAt && entry.ownerAgentId === context.agent.id && (entry.scope === 'profile' || entry.conversationId === context.conversation.id))
     const bootstrap = bootstrapInstructions(context)
-    const { agent } = await createStageAgent('memory', { ...context, signal })
+    const { agent, dispose } = await createStageAgent('memory', { ...context, signal })
     const data = {
       currentTurn: { id: turn.id ?? null, rootMessageId: turn.root?.id },
       currentTurnMessages: messages.map(message => messageData(message, turn.root?.id)),
@@ -312,7 +312,7 @@ export class MastraEngine implements AgentEngine {
         return candidates.filter(candidate => { const content = candidate.content.trim(); if (existing.has(content)) return false; existing.add(content); return true }).map(candidate => ({ content: candidate.content.trim(), sourceMessageIds: [...new Set(candidate.sourceMessageIds)], sourceResourceIds: [...new Set(candidate.sourceResourceIds ?? [])] }))
       }
       throw new Error('记忆整理未完成')
-    } catch (error) { throw new Error(redact(`记忆整理失败：${errorText(error)}`, context.apiKey), { cause: error }) }
+    } catch (error) { throw new Error(redact(`记忆整理失败：${errorText(error)}`, context.apiKey), { cause: error }) } finally { await dispose() }
   }
 
   async test(connection: Connection, apiKey: string): Promise<string> {

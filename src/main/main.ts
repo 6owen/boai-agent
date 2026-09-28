@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
- * [OUTPUT]: 本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ * [OUTPUT]: 放行只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -44,7 +44,7 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
 const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
