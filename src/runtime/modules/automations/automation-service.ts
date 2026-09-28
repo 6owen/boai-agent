@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 产品存储与共享领域类型。
+ * [OUTPUT]: 自动化调度、触发幂等身份和会话清理后的历史引用更新。
+ * [POS]: runtime/modules/automations/automation-service.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { Cron } from 'croner'
@@ -16,6 +22,8 @@ interface Hooks { validate(conversationId:string):string; busy(conversationId:st
 export class AutomationService {
  private definitions=new Map<string,AutomationDefinition>();private occurrences=new Map<string,AutomationOccurrence>();private native?:NativeSchedules;private tail:Promise<unknown>=Promise.resolve();private timers=new Map<string,ReturnType<typeof setTimeout>>();private closing=false;private error?:string;private observing=false;private observeAgain=false
  constructor(private store:ProductStore,private dataPath:string,private hooks:Hooks){}
+ hasActiveConversation(id: string) { return [...this.occurrences.values()].some(item => item.conversationId === id && active.has(item.status)) }
+ replaceHistory(occurrences: AutomationOccurrence[]) { for (const item of occurrences) this.occurrences.set(item.id, item) }
  private serialize<T>(fn:()=>Promise<T>){const next=this.tail.then(fn);this.tail=next.catch(()=>{});return next}
  async init(){this.definitions=new Map((await this.store.load<AutomationDefinition>('automations')).map(d=>[d.id,d]));this.occurrences=new Map((await this.store.load<AutomationOccurrence>('automationOccurrences')).map(o=>[o.id,o]));const meta=(await this.store.load<{id:string;root:string;restorePending?:boolean}>('automationRuntime'))[0];const restored=!!meta&&(meta.root!==this.dataPath||meta.restorePending);for(const o of this.occurrences.values())if(active.has(o.status)){o.status='interrupted';o.reason='应用重启；原任务不会自动重放';o.finishedAt=new Date().toISOString();await this.store.write([record('automationOccurrences',o)])}if(restored)for(const d of this.definitions.values()){d.enabled=false;d.revision++;d.sync='pending';await this.store.write([record('automations',d)])}await this.store.write([record('automationRuntime',{id:'installation',root:this.dataPath,restorePending:false})]);if(this.definitions.size)try{await this.ensureNative()}catch(e){this.error=String(e)}}
  private async ensureNative(){if(this.native)return;const native=new NativeSchedules(join(this.dataPath,'automation-mastra.sqlite'),(id,revision,runId,time)=>this.admit(id,revision,'schedule',runId,time).then(()=>{}));await native.init();this.native=native

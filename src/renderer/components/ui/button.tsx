@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: Soft 按钮、圆形操作、保留宿主字号的内容按钮与 12/14/16px 图标尺寸。
+ * [OUTPUT]: Soft 按钮、含 16px 角标的圆形操作、保留宿主字号的内容按钮与 10/12/14/16px 图标尺寸。
  * [POS]: components/ui 的 button 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -29,6 +29,7 @@ const buttonVariants = cva(
         sm: "h-[28px] gap-1.5 px-3 text-xs [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
         lg: "h-[36px] gap-2 px-5",
         icon: "size-[32px] p-0",
+        "icon-2xs": "size-[16px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[10px]",
         "icon-xs": "size-[24px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[12px]",
         "icon-sm": "size-[28px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
         "icon-lg": "size-[36px] p-0",
@@ -36,7 +37,7 @@ const buttonVariants = cva(
       round: { true: "soft-button-round", false: "" },
     },
     compoundVariants: [{
-      size: ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg"],
+      size: ["default", "xs", "sm", "lg", "icon", "icon-2xs", "icon-xs", "icon-sm", "icon-lg"],
       className: "inline-flex items-center justify-center whitespace-nowrap",
     }],
     defaultVariants: {

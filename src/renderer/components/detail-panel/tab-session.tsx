@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 标签身份、活跃状态、编辑内容与关闭/脏状态回调。
- * [OUTPUT]: 保留隐藏标签状态、独立未保存守卫和限定表单提交范围的标签会话。
+ * [OUTPUT]: 保留隐藏标签状态、独立未保存守卫和限定表单提交范围、供固定页脚布局使用的标签会话。
  * [POS]: detail-panel 中每个已打开标签的生命周期边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -22,7 +22,7 @@ export function DetailTabSession({ tabKey, active, onClose, onDirty, ref, childr
   useEffect(() => () => onDirty(tabKey, false), [onDirty, tabKey])
   return <GuardContext.Provider value={guard}>
     <TabsContent value={tabKey} keepMounted className="detail-content" hidden={!active} ref={root}>
-      <div key={generation}>{children}</div>
+      <div className="detail-session" key={generation}>{children}</div>
     </TabsContent>
     {confirmation}
   </GuardContext.Provider>

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 带持久头像的员工资料、共享 Soft Tabs 与未保存保护、系统文件、工作区和记忆详情。
+ * [OUTPUT]: 带持久头像的员工资料、共享 Soft Tabs 与未保存保护、系统文件、工作区和记忆详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,6 +30,12 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, 
     try { const result = await api.request('getAgentHome', { agentId: agent.id, conversationId: contextId }); if (token === loadToken.current) { setHome(result); setError('') } } catch (e) { if (token === loadToken.current) setError(errorText(e)) }
   }
   useEffect(() => { setHome(null); void loadHome(); return () => { loadToken.current++ } }, [agent.id, contextId])
+  useEffect(() => api.subscribe(event => {
+    if (event.type !== 'conversation:cleared' || event.conversationId !== contextId) return
+    // Close only generated file views; employee source drafts remain editable.
+    if (fileName && !['AGENTS.md', 'SOUL.md'].includes(fileName)) setFileName(null)
+    void loadHome()
+  }), [api, contextId, fileName])
   const selectTab = (next: EmployeeTab) => {
     if (next === tab) return
     // Switching panels unmounts the old form; keep this tab owner mounted on discard.
@@ -86,11 +92,15 @@ function GeneratedMemoryImport({ api, agent, file, conversationId, onBack, onImp
 
 function MemoryPane({ api, agent, snapshot, initialConversationId }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; initialConversationId?: string }) {
   const [scopeKey, setScopeKey] = useState(initialConversationId ?? 'profile'), [view, setView] = useState<MemoryView | null>(null), [loading, setLoading] = useState(true)
+  const [historyRevision, setHistoryRevision] = useState(0)
   const [editing, setEditing] = useState<MemoryEntry | 'new' | null>(null), [confirmation, setConfirmation] = useState<string | null>(null)
   const { busy, error, run, setError } = useMutation()
   const guard = useContext(GuardContext)
   const query: MemoryQuery = { agentId: agent.id, scope: scopeKey === 'profile' ? 'profile' : 'conversation', ...(scopeKey === 'profile' ? {} : { conversationId: scopeKey }) }
-  useEffect(() => { let valid = true; setView(null); setLoading(true); setError(''); void api.request('getMemory', query).then(result => { if (valid) setView(result) }).catch(e => { if (valid) setError(errorText(e)) }).finally(() => { if (valid) setLoading(false) }); return () => { valid = false } }, [api, agent.id, scopeKey])
+  useEffect(() => { let valid = true; setView(null); setLoading(true); setError(''); void api.request('getMemory', query).then(result => { if (valid) setView(result) }).catch(e => { if (valid) setError(errorText(e)) }).finally(() => { if (valid) setLoading(false) }); return () => { valid = false } }, [api, agent.id, scopeKey, historyRevision])
+  useEffect(() => api.subscribe(event => {
+    if (event.type === 'conversation:cleared' && event.conversationId === scopeKey) { setEditing(null); setConfirmation(null); setHistoryRevision(value => value + 1) }
+  }), [api, scopeKey])
   const conversations = snapshot.conversations.filter(c => c.agentIds.includes(agent.id))
   return <div className="detail-section"><Field label="记忆范围" hint={scopeKey === 'profile' ? '基础资料可用于该员工获准的会话。私人事实应放在相应会话记忆中。' : '此范围只对应当前员工在该会话中的记忆，不自动带到其他会话。'}><NativeSelect value={scopeKey} onChange={event => { const value = event.target.value; guard.navigate(() => { setScopeKey(value); setEditing(null); setConfirmation(null) }) }}><NativeSelectOption value="profile">员工基础资料</NativeSelectOption>{conversations.map(c => <NativeSelectOption value={c.id} key={c.id}>{c.kind === 'group' ? '群聊' : '单聊'} · {c.title}</NativeSelectOption>)}</NativeSelect></Field>{error && <Banner>{error}</Banner>}{loading && <Loading />}{view && <>{editing ? <MemoryEditor key={typeof editing === 'string' ? `new-${scopeKey}` : editing.id} api={api} query={query} view={view} entry={editing === 'new' ? undefined : editing} onSaved={result => { setView(result); setEditing(null) }} onCancel={() => guard.navigate(() => setEditing(null))} /> : <><div className="subsection-heading"><h3>有效记忆 · {view.entries.length}</h3><Button variant="secondary" size="sm" onClick={() => setEditing('new')}><Plus size={14} />添加</Button></div>{view.entries.map(entry => <Card className="memory-card gap-0 p-4" key={entry.id}><CardContent className="p-0"><p>{entry.content}</p><small>{entry.origin === 'model' ? '员工整理' : entry.origin === 'import' ? '导入' : '用户设置'} · v{entry.version} · {new Date(entry.updatedAt).toLocaleDateString('zh-CN')}</small>{(entry.sourceMessageIds.length > 0 || entry.sourceResourceIds.length > 0) && <details><summary>查看来源</summary>{entry.sourceMessageIds.map(id => <p className="resource-path" key={id}>消息：{id}</p>)}{entry.sourceResourceIds.map(id => <p className="resource-path" key={id}>资料：{snapshot.resources.find(r => r.id === id)?.name ?? id}</p>)}</details>}<div className="button-row"><Button variant="ghost" size="sm" onClick={() => setEditing(entry)}>编辑</Button><Button variant="destructive" size="sm" onClick={() => setConfirmation(entry.id)}>删除</Button></div></CardContent></Card>)}{!view.entries.length && <div className="empty-note">这个范围还没有记忆。这里不会生成示例条目。</div>}<p className="field-hint">删除记忆不删除原聊天记录。删除和保存会校验记忆版本，防止迟到结果覆盖新操作。</p><Button variant="destructive" size="sm" disabled={!view.entries.length || busy} onClick={() => setConfirmation('all')}><Trash2 size={14} />清除当前范围</Button>{confirmation && <div className="inline-confirm"><p>{confirmation === 'all' ? '清除当前范围的全部记忆？' : '删除这条记忆？'}聊天记录会保留。</p><div className="button-row"><Button variant="secondary" size="sm" onClick={() => setConfirmation(null)}>取消</Button><Button variant="destructive" size="sm" disabled={busy} onClick={() => { void run(async () => { const result = confirmation === 'all' ? await api.request('clearMemory', { ...query, expectedEpoch: view.epoch }) : await api.request('deleteMemory', { ...query, id: confirmation, expectedEpoch: view.epoch }); setView(result); setConfirmation(null) }) }}>确认删除</Button></div></div>}</>}</>}</div>
 }

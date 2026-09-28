@@ -126,13 +126,13 @@ async function saveGroupTitle(previous: Awaited<ReturnType<typeof resizeDetails>
 
 async function returnFromEmployee(previous: Awaited<ReturnType<typeof saveGroupTitle>>) {
   let { app, page, errors, trigger, header, panel, aligned } = previous
-  await panel.locator('.group-member-grid').getByRole('button', { name: '研究员', exact: true }).click()
+  await panel.locator('.group-member-grid').getByRole('button', { name: '查看 研究员', exact: true }).click()
   await expect(header.getByRole('tab', { name: '研究员', exact: true })).toBeFocused()
   await panel.getByRole('textbox', { name: '职责简介', exact: true }).fill('未保存职责')
   await header.getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
   await expect(header.getByRole('tab', { selected: true })).toHaveText('设计协作群')
-  await panel.locator('.group-member-grid').getByRole('button', { name: '研究员', exact: true }).click()
+  await panel.locator('.group-member-grid').getByRole('button', { name: '查看 研究员', exact: true }).click()
   await expect(panel.getByRole('textbox', { name: '职责简介', exact: true })).not.toHaveValue('未保存职责')
   return { app, page, errors, trigger, header, panel, aligned }
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: 提交后确认的读写、备份与读检查写一体化事务。
+ * [OUTPUT]: 提交后确认的读写、备份、删除后空间回收与读检查写/删除一体化事务。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +14,7 @@ export interface RecordTransaction {
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string): Promise<T[]>
   put(record: StoredRecord): Promise<void>
+  remove(collection: string, id: string): Promise<void>
 }
 
 /** One local SQLite writer; every mutation is committed before it is acknowledged. */
@@ -60,6 +61,9 @@ export class ProductStore {
           put: async record => {
             await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, JSON.stringify(record.value)] })
           },
+          remove: async (collection, id) => {
+            await transaction.execute({ sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [collection, id] })
+          },
         })
         await transaction.commit()
         return result
@@ -72,6 +76,12 @@ export class ProductStore {
   backup(destination: string): Promise<void> {
     return this.enqueue(async () => {
       await this.client.execute({ sql: 'VACUUM INTO ?', args: [destination] })
+    })
+  }
+  compact(): Promise<void> {
+    return this.enqueue(async () => {
+      await this.client.execute('VACUUM')
+      await this.client.execute('PRAGMA wal_checkpoint(TRUNCATE)')
     })
   }
   async close() { await this.tail; this.client.close() }

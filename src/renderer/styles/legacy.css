@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。
+ * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -851,6 +851,14 @@ fieldset {
   flex-direction:column;
   min-height:100%
 }
+/* Only the right workspace pins editor actions; contacts use document flow. */
+.detail-content:has(.editor-frame) { display:flex;flex-direction:column;overflow:hidden }
+.detail-content .employee-detail { flex:1;min-height:0 }
+.detail-content .employee-detail:has(.editor-frame)>[data-slot=tabs-content]:has(.editor-frame) { display:flex;min-height:0;flex:1 }
+.detail-session:has(.editor-frame) { display:flex;flex:1;min-height:0;flex-direction:column;overflow:hidden }
+.detail-content .editor-frame { flex:1;min-height:0;overflow:hidden }
+.detail-content .editor-scroll { flex:1;min-height:0;overflow-y:auto }
+.detail-content .employee-identity,.detail-content .employee-tabs-bar { flex-shrink:0 }
 .editor-intro {
   padding:21px 20px 0
 }
@@ -870,8 +878,9 @@ fieldset {
   flex:1
 }
 .editor-footer {
-  position:sticky;
-  bottom:0;
+  flex:0 0 58px;
+  height:58px;
+  align-items:center;
   background:var(--card);
   border-top:1px solid var(--legacy-border);
   display:flex;
@@ -990,40 +999,6 @@ fieldset {
   font-size:12px;
   color:var(--muted-foreground);
   line-height:1.7
-}
-.group-member-grid {
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:12px 7px;
-  padding:20px 18px;
-  border-bottom:1px solid var(--border)
-}
-.group-member-grid button {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:7px;
-  min-width:0;
-  background:transparent;
-  border:0;
-  padding:3px
-}
-.group-member-grid button>span {
-  width:41px;
-  height:41px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:12px;
-  font-size:17px
-}
-.group-member-grid small {
-  font-size:11px;
-  max-width:100%;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  color:var(--muted-foreground)
 }
 .file-row {
   display:flex;
@@ -1870,10 +1845,6 @@ fieldset {
     padding-left:26px;
     padding-right:26px
   }
-  .group-member-grid {
-    grid-template-columns:repeat(6,1fr);
-    max-width:620px
-  }
   .conversation-list-panel {
     padding:0 12px
   }
@@ -1943,9 +1914,6 @@ fieldset {
   }
   .detail-panel .form-grid {
     grid-template-columns:1fr
-  }
-  .group-member-grid {
-    grid-template-columns:repeat(4,1fr)
   }
   .chat-title strong {
     font-size:14px

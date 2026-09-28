@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
- * [OUTPUT]: 统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫。
+ * [OUTPUT]: 统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -46,8 +46,8 @@ export function Field({ label, hint, children, full = false }: { label: string; 
   }) : children
   return <UiField className={full ? 'full' : undefined}><FieldLabel htmlFor={controlId}>{label}</FieldLabel>{control}{hint && <FieldDescription id={hintId}>{hint}</FieldDescription>}</UiField>
 }
-export function EditorFrame({ title, description, children, footer }: { title: string; description?: string; children: ReactNode; footer?: ReactNode }) {
-  return <section className="editor-frame"><div className="editor-intro"><h3>{title}</h3>{description && <p>{description}</p>}</div><div className="editor-body">{children}</div>{footer && <footer className="editor-footer">{footer}</footer>}</section>
+export function EditorFrame({ title, description, children, footer, leading }: { leading?: ReactNode; title?: string; description?: string; children: ReactNode; footer?: ReactNode }) {
+  return <section className="editor-frame"><div className="editor-scroll">{leading}{(title || description) && <div className="editor-intro">{title && <h3>{title}</h3>}{description && <p>{description}</p>}</div>}<div className="editor-body">{children}</div></div>{footer && <footer className="editor-footer">{footer}</footer>}</section>
 }
 export function ResourcePicker({ resources, selected, onChange, empty }: { resources: Resource[]; selected: string[]; onChange: (ids: string[]) => void; empty: string }) {
   if (!resources.length) return <p className="empty-note">{empty}</p>

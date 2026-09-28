@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 详情标签的纯状态转换。
- * [OUTPUT]: 标签去重、会话范围、关闭邻项和收起保留的不变量。
+ * [OUTPUT]: 标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
  * [POS]: 多标签状态的模块回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -39,4 +39,16 @@ describe('detail workspace tabs', () => {
     expect(hidden.activeKey).toBe(opened.activeKey)
     expect(reduce(hidden, { type: 'visibility', shown: true })).toEqual(opened)
   })
+})
+
+it('reorders stable tab sessions without changing active selection and closes by the new order', () => {
+  let state = emptyDetailTabs
+  for (const id of ['a', 'b', 'c']) state = reduce(state, { type: 'open', target: { type: 'activity', id } })
+  const original = state.tabs
+  state = reduce(state, { type: 'move', key: 'activity:c', targetKey: 'activity:a', placement: 'before' })
+  expect(state.tabs.map(tab => tab.key)).toEqual(['activity:c', 'activity:a', 'activity:b'])
+  expect(state.tabs[0]).toBe(original[2])
+  expect(state.activeKey).toBe('activity:c')
+  expect(reduce(state, { type: 'move', key: 'activity:a', targetKey: 'unknown', placement: 'after' })).toBe(state)
+  expect(reduce(state, { type: 'close', key: 'activity:c' }).activeKey).toBe('activity:a')
 })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量与合法相同回复回归。
+ * [OUTPUT]: 认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量、合法相同回复及永久会话清理/执行器退出边界回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -1349,5 +1349,59 @@ describe('local product service', () => {
     const published = (await detail(restored, restoredConversation)).artifacts.find(artifact => artifact.name === 'published.md')!
     expect(published.path.startsWith(restorePath)).toBe(true); expect(published.sourcePath?.startsWith(restorePath)).toBe(true)
     expect(published.ownerAgentId).toBe('researcher')
+  })
+})
+
+describe('conversation history cleanup', () => {
+  it('permanently clears conversation data, files and caches; restores the same empty conversation after restart', async () => {
+    const { service, root, engine, secrets } = await fixture()
+    await configure(service)
+    const target = await conversation(service), other = await conversation(service, true)
+    await send(service, target, '仅在这段聊天出现的内容', 'erase-request')
+    await idle(service, target, 1)
+    const before = await detail(service, target)
+    const query = { agentId: 'researcher', conversationId: target.id, scope: 'conversation' as const }
+    const memory = await service.handle('getMemory', query) as MemoryView
+    await service.handle('saveMemory', { ...query, expectedEpoch: memory.epoch, content: '需要一并清理的记忆', sourceMessageIds: [before.messages[0].id], origin: 'user' })
+    const session = join(root, 'data', 'agents', 'researcher', 'workspace', 'sessions', target.id)
+    await mkdir(session, { recursive: true })
+    await writeFile(join(session, 'private.txt'), 'private')
+    await writeFile(join(target.workspacePath, 'media.png'), 'media')
+    await writeFile(join(other.workspacePath, 'keep.txt'), 'keep')
+    await service.handle('clearConversationHistory', { id: target.id, hide: true })
+    const cleared = await detail(service, target)
+    for (const collection of ['messages', 'runs', 'turns', 'events', 'deliveries', 'decisions', 'contributions', 'workItems', 'workBudgets', 'workWakes', 'artifacts'] as const) expect(cleared[collection]).toEqual([])
+    expect(cleared.conversation.list?.hidden).toBe(true)
+    expect((await service.handle('getMemory', query) as MemoryView).entries).toEqual([])
+    await expect(readFile(join(session, 'private.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(join(target.workspacePath, 'media.png'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(other.workspacePath, 'keep.txt'), 'utf8')).toBe('keep')
+    await service.close(); services.splice(services.indexOf(service), 1)
+    const restarted = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(restarted)
+    await restarted.init()
+    const restored = await restarted.handle('createConversation', { kind: 'direct', title: '研究', agentIds: ['researcher'] }) as Conversation
+    expect(restored.id).toBe(target.id)
+    expect((await detail(restarted, target)).messages).toEqual([])
+    await restarted.handle('updateConversationList', { id: target.id, action: 'show' })
+    await send(restarted, target, '新的聊天', 'erase-request')
+    await idle(restarted, target, 1)
+    const fresh = await detail(restarted, target)
+    expect(fresh.messages[0].sequence).toBe(1)
+    expect(fresh.messages.every(message => !before.messages.some(old => old.id === message.id))).toBe(true)
+  })
+  it('refuses cleanup while a cancelled adapter is still exiting', async () => {
+    const { service, engine } = await fixture()
+    await configure(service)
+    const target = await conversation(service)
+    let release!: () => void
+    engine.handler = () => new Promise<void>(resolve => { release = resolve })
+    await send(service, target, '尚未结束的任务', 'running-cleanup')
+    await until(() => Boolean(release))
+    await expect(service.handle('clearConversationHistory', { id: target.id, hide: false })).rejects.toThrow('先停止')
+    await service.handle('cancelRun', { conversationId: target.id })
+    await expect(service.handle('clearConversationHistory', { id: target.id, hide: false })).rejects.toThrow('先停止')
+    release()
+    await until(async () => { try { await service.handle('clearConversationHistory', { id: target.id, hide: false }); return true } catch { return false } })
+    expect((await detail(service, target)).messages).toEqual([])
   })
 })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享领域类型、产品存储与群事件。
- * [OUTPUT]: 群聊轮次、事件合并、成员判断、有限并行任务、有限并行的定向子工作接续、用户输入优先与提交后确认。
+ * [OUTPUT]: 群聊轮次、事件合并、成员判断、有限并行任务、有限并行的定向子工作接续、用户输入优先与提交后确认和清理后的内存投影回收。
  * [POS]: src/runtime/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -73,6 +73,18 @@ export class GroupScheduler {
     for (const grant of this.grants.values()) if (grant.status === 'active') { grant.status = 'expired'; updates.push(row('grants', grant)) }
     for (const contribution of this.contributions.values()) if (['proposed', 'accepted', 'running'].includes(contribution.status)) { contribution.status = 'cancelled'; contribution.error = '应用退出，工作项中断'; updates.push(row('contributions', contribution)) }
     await this.store.write(updates)
+  }
+  forgetHistory(removals: { collection: string; id: string }[]) {
+    for (const item of removals) {
+      switch (item.collection) {
+        case 'turns': this.turns.delete(item.id); break
+        case 'events': this.events.delete(item.id); break
+        case 'deliveries': this.deliveries.delete(item.id); break
+        case 'decisions': this.decisions.delete(item.id); break
+        case 'contributions': this.contributions.delete(item.id); break
+        case 'grants': this.grants.delete(item.id); break
+      }
+    }
   }
   prepare(conversation: Conversation, message: Message) {
     const turn: TurnRecord = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: message.id, epoch: 1, status: 'queued', generation: 0, createdAt: now(), modelCalls: 0, publicMessages: 0 }

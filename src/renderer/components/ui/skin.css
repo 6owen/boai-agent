@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤、紧凑标签页与线形变体、群成员拼图头像与拖拽插入线；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；保留拖动空白的可滚动多窗口标签、居中短分割线和无选中底色的面板开关。
+ * [OUTPUT]: 6owen Soft 共用皮肤、紧凑标签页与线形变体、群成员拼图头像与拖拽插入线；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；保留拖动空白的多窗口标签、明确悬停底色、居中短分割线和无选中底色的开关。会话分组无底色且悬停/聚焦显示箭头，成员网格使用小型移除角标。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -39,7 +39,7 @@
 .soft-button-ghost { background:transparent;color:var(--foreground);box-shadow:none }
 .soft-button-ghost:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--accent) }
 .soft-button-ghost:is(.selected,.active,[aria-pressed=true],[aria-current=page]) { background:var(--selection) }
-.soft-button-destructive { background-color:var(--destructive);color:var(--destructive-foreground);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
+.soft-button-destructive { background-color:var(--destructive);color:var(--primary-foreground);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
 .soft-button-link { background:transparent;color:var(--link);box-shadow:none;text-underline-offset:4px }
 .soft-button-link:hover:not(:disabled) { text-decoration:underline }
 .soft-button-round, .soft-button.rounded-full { border-radius:var(--radius-pill);corner-shape:round }
@@ -144,9 +144,9 @@
 .toolbar-detail::before { content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:var(--border);transform:translateY(-50%);pointer-events:none }
 .soft-tabs-list[data-variant=window] { max-width:100%;border-radius:0;background:transparent;scrollbar-width:none;-webkit-app-region:no-drag }
 .soft-tabs-list[data-variant=window]::-webkit-scrollbar { display:none }
-.detail-tab { display:flex;align-items:center;flex:0 0 auto;min-width:90px;max-width:180px;height:32px;padding-right:3px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted-foreground);-webkit-app-region:no-drag }
+.detail-tab { position:relative;display:flex;align-items:center;flex:0 0 auto;min-width:90px;max-width:180px;height:32px;padding-right:3px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted-foreground);-webkit-app-region:no-drag }
 .detail-tab[data-selected=true] { border-color:var(--frame-border);background:var(--surface-detail);color:var(--foreground) }
-.detail-tab:hover { background:var(--accent) }
+.detail-tab:hover,.detail-tab:has(:focus-visible) { background:var(--selection);color:var(--foreground) }
 .soft-tabs-list[data-variant=window] .soft-tabs-trigger { flex:1;min-width:0;justify-content:flex-start;border-radius:9px;background:none;box-shadow:none;color:inherit }
 .soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
 .detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550 }
@@ -182,10 +182,33 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
 .conversation-row { position:relative }
 .conversation-item.dragging { opacity:.35 }
-.conversation-item .conversation-pin { width:11px;height:11px;color:var(--muted-foreground) }
+.conversation-section-heading { display:flex;align-items:center;gap:5px;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
+.conversation-list .conversation-section-heading[aria-expanded]:not(:disabled) { background:transparent }
+.conversation-section-heading>.app-icon { opacity:0 }
+.conversation-section-heading:is(:hover,:focus-visible)>.app-icon { opacity:1 }
+.conversation-section-heading[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
+.detail-tab.dragging { opacity:.4 }
+.detail-tab[data-drop]::after { content:"";position:absolute;top:4px;bottom:4px;width:2px;background:var(--primary);pointer-events:none }
+.detail-tab[data-drop=before]::after { left:-3px }
+.detail-tab[data-drop=after]::after { right:-3px }
 .conversation-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
 .conversation-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
 .conversation-row[data-drop=before]::before { top:3px }
 .conversation-row[data-drop=before]::after { top:0 }
 .conversation-row[data-drop=after]::before { bottom:3px }
 .conversation-row[data-drop=after]::after { bottom:0 }
+
+/* Compact member cards keep the add action last and removal at the avatar corner. */
+.group-members { padding:18px 16px 14px;border-bottom:1px solid var(--border) }
+.group-member-grid { display:grid;grid-template-columns:repeat(auto-fill,60px);gap:10px 8px }
+.group-member { position:relative;min-width:0 }
+.group-member-profile { display:flex;flex-direction:column;align-items:center;gap:6px;width:60px;padding:5px 3px;min-width:0 }
+.group-member-profile>.avatar,.group-member-add-icon { width:40px;height:40px;border-radius:11px }
+.group-member-profile>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted-foreground) }
+.group-member-add-icon { display:flex;align-items:center;justify-content:center;border:1px dashed var(--border);color:var(--muted-foreground) }
+.group-member-add-icon>.app-icon { width:22px;height:22px }
+.group-member-remove[data-slot=button] { position:absolute;top:0;right:4px;padding:0;border-radius:50%;opacity:0;background:var(--destructive);color:var(--primary-foreground);box-shadow:none }
+.group-member:hover .group-member-remove,.group-member:focus-within .group-member-remove { opacity:1 }
+.group-member-remove:disabled { visibility:hidden }
+.group-add-list { max-height:300px;overflow:auto }
+.contact-editor .group-members { padding-left:0;padding-right:0 }

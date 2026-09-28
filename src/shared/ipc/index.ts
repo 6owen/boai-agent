@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
- * [OUTPUT]: 类型化 DesktopApi 与会话列表排序/置顶/隐藏请求；支持会话停止或单个工作树停止。
+ * [OUTPUT]: 类型化 DesktopApi 与会话列表排序/置顶/隐藏请求；支持清理会话记录/专属文件及会话停止或单个工作树停止。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,6 +15,7 @@ export type AppEvent =
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
   | { type: 'automation:notice'; occurrence: AutomationOccurrence }
   | { type: 'focus-conversation'; conversationId: string }
+  | { type: 'conversation:cleared'; conversationId: string }
   | { type: 'changed'; conversationId?: string }
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
@@ -44,6 +45,7 @@ export interface Methods {
   testConnection: { input: { id: string }; output: { text: string } }
   createConversation: { input: ConversationInput; output: Conversation }
   updateConversationList: { input: ConversationListChange; output: void }
+  clearConversationHistory: { input: { id: string; hide: boolean }; output: void }
   getConversation: { input: { id: string }; output: ConversationDetail }
   sendMessage: { input: { conversationId: string; content: string; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   cancelRun: { input: { conversationId: string; workId?: string }; output: void }

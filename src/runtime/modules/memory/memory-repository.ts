@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 产品存储与共享领域类型。
+ * [OUTPUT]: 版本化记忆读写、失效保护及物理清理后的内存投影回收。
+ * [POS]: runtime/modules/memory/memory-repository.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { randomUUID } from 'node:crypto'
 import type { MemoryCandidate, MemoryEntry, MemoryInput, MemoryQuery, MemoryView } from '../../../shared/domain'
 import type { ProductStore } from '../../adapters/storage/product-store'
@@ -23,6 +29,10 @@ export class MemoryRepository {
   async init() {
     this.entries = new Map((await this.store.load<MemoryEntry>('memory')).map(entry => [entry.id, entry]))
     this.epochs = new Map((await this.store.load<{ id: string; epoch: number }>('memoryEpochs')).map(row => [row.id, row.epoch]))
+  }
+  forgetHistory(ids: string[], epochs: { id: string; epoch: number }[]) {
+    for (const id of ids) this.entries.delete(id)
+    for (const entry of epochs) this.epochs.set(entry.id, entry.epoch)
   }
   private serial<T>(operation: () => Promise<T>): Promise<T> {
     const promise = this.tail.then(operation); this.tail = promise.catch(() => undefined); return promise

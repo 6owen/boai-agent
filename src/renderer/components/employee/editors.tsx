@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 包含头像选择/上传的员工和群配置编辑器及员工模板；群聊支持 1–12 位成员，独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: 包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,7 +14,8 @@ import { useContext, useEffect, useId, useRef, useState, type FormEvent } from '
 import { FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
-import { Avatar, Banner, colors, EditorFrame, Field, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common/index'
+import { Banner, colors, EditorFrame, Field, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common/index'
+import { GroupMembers } from './group-members'
 import { AvatarPicker } from './avatar-picker'
 export const templates = [
   { name: '资料研究员', role: '查找资料，厘清事实', instructions: '你是一位细致的资料研究员。区分事实与推测，提供可追踪的来源。', icon: Search, color: colors[0] },
@@ -57,7 +58,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved }
   </EditorFrame>
 }
 
-export function GroupEditor({ api, snapshot, conversation, onClose, onSaved }: { api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void> }) {
+export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onOpenAgent }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void> }) {
   const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')
@@ -67,13 +68,12 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved }: {
   const guard = useContext(GuardContext)
   useDirty({ title, ids, knowledge })
   const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge }); await onSaved(result); guard.saved(onClose) }) }
-  return <EditorFrame title={conversation ? '群聊设置' : '组建一个工作群'} description="让不同能力的同事，在一个会话里共同完成任务。" footer={<><Button variant="secondary" onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
+  return <EditorFrame leading={<GroupMembers agents={snapshot.agents} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<><Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
     <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
-      <div className="field full"><span className="field-label">群成员 <span className="field-hint">选择 1–12 位员工</span></span><div className="resource-picker">{snapshot.agents.map(agent => <label className="resource-option" key={agent.id}><Checkbox checked={ids.includes(agent.id)} disabled={agent.executionBackend?.kind==='acp-local'||(!agent.active && !ids.includes(agent.id))} onCheckedChange={checked => setIds(checked ? [...ids, agent.id] : ids.filter(id => id !== agent.id))} /><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} small /><span className="resource-option-meta"><strong>{agent.name}{agent.executionBackend?.kind==='acp-local'&&' · 仅单聊任务'}{!agent.active && ' · 已停用'}</strong><span>{agent.role}</span></span></label>)}</div>{snapshot.agents.length < 1 && <p className="empty-note">请先创建一位数字员工。</p>}</div>
+
       <div className="field full"><span className="field-label">群内共享知识</span><p className="field-hint">只有明确共享的资料才可用于这个群的任务。员工私聊不会自动加入群上下文。</p><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={knowledge} onChange={setKnowledge} empty="还没有可共享的知识资料。" /></div>
     </form>
   </EditorFrame>
 }
-

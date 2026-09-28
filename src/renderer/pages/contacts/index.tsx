@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
- * [OUTPUT]: 带共用添加入口、员工及群拼图头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。
+ * [OUTPUT]: 带共用添加入口、员工及群拼图头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。 群头像网格编辑与成员跳转。
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -87,7 +87,7 @@ function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, 
   return <div className="contact-document">
     {editing ? <>
       <div className="contact-edit-heading"><Button variant="ghost" size="sm" onClick={() => guard.navigate(() => setEditing(false))}><ArrowLeft />返回资料</Button><Button size="sm" disabled={busy} onClick={() => onMessage(selected)}><MessageCircle />发消息</Button></div>
-      <div className="contact-editor">{agent ? <EmployeeDetail api={api} snapshot={snapshot} agent={agent} refresh={refresh} onClose={() => setEditing(false)} /> : <GroupEditor api={api} snapshot={snapshot} conversation={group!} onSaved={refresh} onClose={() => setEditing(false)} />}</div>
+      <div className="contact-editor">{agent ? <EmployeeDetail api={api} snapshot={snapshot} agent={agent} refresh={refresh} onClose={() => setEditing(false)} /> : <GroupEditor api={api} snapshot={snapshot} conversation={group!} onOpenAgent={id => onSelect({ kind: 'agent', id })} onSaved={refresh} onClose={() => setEditing(false)} />}</div>
     </> : <>
       <header className="contact-profile-heading">
         {agent ? <Avatar name={name} seed={agent.id} avatar={agent.avatar} color={agent.color} /> : <GroupAvatar members={members} />}
