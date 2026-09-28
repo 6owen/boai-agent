@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 主题外部执行与自动化持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 主题外部执行与自动化持久化的真实桌面业务步骤与断言。
+ * [OUTPUT]: 主题外部执行与自动化持久化的真实桌面业务步骤与断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
  * [POS]: tests/e2e/steps/extensions.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -83,10 +83,11 @@ async function customizeThemeAndBackground(previous: Awaited<ReturnType<typeof p
   await page!.getByRole('button', { name: '外观', exact: true }).click()
   await page!.getByRole('button', { name: '深色', exact: true }).click()
   await expect(page!.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page!.getByRole('status').filter({ hasText: '已保存' })).toBeVisible()
+  await expect.poll(() => page!.evaluate(() => window.boai.request('getAppearance', undefined))).toMatchObject({ preferences: { mode: 'dark' } })
+  await expect(page!.getByRole('status').filter({ hasText: '已保存' })).toHaveCount(0)
   await page!.getByLabel('深色配色', { exact: true }).selectOption('nord')
   await expect(page!.locator('html')).toHaveAttribute('data-theme-id', 'nord')
-  await page!.getByText('高级', { exact: true }).click()
+  await expect(page!.getByRole('heading', { name: '高级设置', exact: true })).toBeVisible()
   const imagePath = join(root, 'background.png')
   await writeFile(
     imagePath,
@@ -150,11 +151,16 @@ async function customizeThemeAndBackground(previous: Awaited<ReturnType<typeof p
     appearance.preferences.background.assetId,
   )
   expect(loaded).toBe(true)
-  await page!.getByLabel('图片不透明度', { exact: true }).fill('0')
+  const opacity = page!.getByRole('slider', { name: '图片不透明度', exact: true })
+  await opacity.press('Home')
   await expect(page!.locator('#appearance-background')).toHaveCSS('opacity', '0')
-  await page!.getByLabel('图片不透明度', { exact: true }).fill('100')
+  await opacity.press('End')
   await expect(page!.locator('#appearance-background')).toHaveCSS('opacity', '1')
-  await page!.getByLabel('图片不透明度', { exact: true }).fill('20')
+  await opacity.press('Home')
+  await opacity.press('PageUp')
+  await opacity.press('PageUp')
+  await expect(page!.locator('#appearance-background')).toHaveCSS('opacity', '0.2')
+  await expect.poll(() => page!.evaluate(() => window.boai.request('getAppearance', undefined))).toMatchObject({ preferences: { background: { imageOpacity: 0.2 } } })
   await page!.getByRole('button', { name: '跟随系统', exact: true }).click()
   await expect.poll(() => page!.evaluate(() => window.boai.request('getAppearance', undefined))).toMatchObject({ preferences: { mode: 'system' } })
   await desktop!.evaluate(({ nativeTheme }) => {

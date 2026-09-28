@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自动化领域类型、DesktopApi、侧栏显示状态与共享控件、统一 UI 基础组件。
- * [OUTPUT]: 任务侧栏、居中空状态、配置表单和执行历史。
+ * [OUTPUT]: 任务侧栏、居中空状态、配置表单和执行历史；搜索框图标尺寸遵循 InputGroup。
  * [POS]: schedules 页面；业务操作沿用现有 IPC 与未保存保护。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -56,7 +56,7 @@ export function SchedulePage({ api, snapshot, sidebarShown, onConversation, onIn
   return <div className={`schedule-page${sidebarShown ? '' : ' sidebar-hidden'}`}>
     <aside className="schedule-list" aria-label="任务列表">
       <div className="schedule-heading"><h2>定时任务</h2><Button variant="ghost" size="icon-sm" aria-label="搜索任务" title="搜索任务" aria-expanded={searchShown} onClick={() => { setSearchShown(!searchShown); setQuery('') }}><Search size={18} /></Button></div>
-      {searchShown && <InputGroup className="schedule-search"><InputGroupAddon><Search size={15} /></InputGroupAddon><InputGroupInput autoFocus aria-label="搜索任务名称" placeholder="搜索任务" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); setSearchShown(false) } }} /><InputGroupAddon align="inline-end"><Button variant="ghost" size="icon-sm" aria-label="关闭任务搜索" onClick={() => { setQuery(''); setSearchShown(false) }}><X size={14} /></Button></InputGroupAddon></InputGroup>}
+      {searchShown && <InputGroup className="schedule-search"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput autoFocus aria-label="搜索任务名称" placeholder="搜索任务" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); setSearchShown(false) } }} /><InputGroupAddon align="inline-end"><Button variant="ghost" size="icon-sm" aria-label="关闭任务搜索" onClick={() => { setQuery(''); setSearchShown(false) }}><X size={14} /></Button></InputGroupAddon></InputGroup>}
       <Button variant="ghost" size="content" className="schedule-create" aria-label="新建" onClick={openNew}><Plus size={20} /><span>新建任务</span></Button>
       <div className="schedule-section-heading"><span>{filter === 'paused' ? '已暂停' : '即将执行'}</span><div className="schedule-list-actions">
         <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="筛选任务" title="筛选任务" />}><Sliders size={17} /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-36"><DropdownMenuGroup><DropdownMenuLabel>显示任务</DropdownMenuLabel><DropdownMenuRadioGroup value={filter} onValueChange={value => setFilter(value as typeof filter)}>{([{ value: 'all', label: '全部任务' }, { value: 'enabled', label: '已启用' }, { value: 'paused', label: '已暂停' }] as const).map(option => <DropdownMenuRadioItem closeOnClick key={option.value} value={option.value}>{option.label}</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuGroup></DropdownMenuContent></DropdownMenu>

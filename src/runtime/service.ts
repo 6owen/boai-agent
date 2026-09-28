@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 会话历史及专属文件清理、列表偏好的批量持久化、工作认领/接续/停止、实际调用容量、草稿/证据/等待声明的有界修复与原子发布。
+ * [OUTPUT]: 编辑时按连接读取密钥、草稿连接的只读模型目录/连接测试与显式空密钥语义、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,6 +15,7 @@ import { AutomationService, automationSchema } from './modules/automations/autom
 import type { AutomationOrigin, AutomationOccurrence } from '../shared/domain/automations'
 import { LaunchProfiles, profileSchema } from './modules/backends/profiles'
 import { runAcp } from './adapters/acp/client'
+import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
 import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
@@ -39,6 +40,7 @@ const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
 const text = (max: number) => z.string().trim().min(1).max(max)
 const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
+const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true }).extend({ baseUrl: text(2000) })
 const conversationSchema = z.object({ id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
 const conversationListSchema = z.discriminatedUnion('action', [
   z.object({ id, action: z.literal('pin'), pinned: z.boolean() }).strict(),
@@ -189,10 +191,27 @@ export class AppService {
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
     if(method==='runAutomation'){const value=z.object({id,requestId:id}).strict().parse(input);return this.automations.run(value.id,value.requestId)}
     if(method==='testLaunchProfile') { const profile=this.profiles.get(lookupSchema.parse(input).id),controller=new AbortController();this.externalTests.add(controller);try{const result=await runAcp({profile,cwd:join(this.dataPath,'external-probes',profile.id),signal:controller.signal,approve:async()=>false,onTool:async()=>{}});return await this.serialize(()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');return this.profiles.verified(profile.id,profile.revision,result.verified)})}finally{this.externalTests.delete(controller)} }
-    if (method === 'testConnection') {
-      const connectionId = lookupSchema.parse(input).id
-      const connection = await this.serialize(async () => clone(this.getConnection(connectionId)))
-      const key = await this.apiKey(connection)
+    if (method === 'listConnectionModels') {
+      const draft = modelCatalogSchema.parse(input)
+      modelCatalogUrl(draft.baseUrl)
+      const key = await this.serialize(() => this.draftApiKey({ ...draft, provider: 'openai-compatible' }))
+      return listCompatibleModels(draft.baseUrl, key)
+    }
+    if (method === 'testConnection' || method === 'testConnectionDraft') {
+      const { connection, key } = await this.serialize(async () => {
+        if (method === 'testConnection') {
+          const connection = clone(this.getConnection(lookupSchema.parse(input).id))
+          return { connection, key: await this.apiKey(connection) }
+        }
+        const draft = connectionSchema.parse(input)
+        const baseUrl = draft.baseUrl.trim()
+        if (baseUrl) modelCatalogUrl(baseUrl)
+        else if (draft.provider === 'openai-compatible') fail('兼容模型需要填写 API 地址')
+        const key = await this.draftApiKey({ ...draft, baseUrl })
+        if (!key && draft.provider !== 'openai-compatible') fail('请填写 API Key 后测试连接')
+        const connection: Connection = { id: draft.id ?? randomUUID(), name: draft.name, provider: draft.provider, baseUrl, defaultModel: draft.defaultModel, hasApiKey: !!key }
+        return { connection, key }
+      })
       try { return { text: this.redact(await this.options.engine.test(connection, key), key) } }
       catch (error) { throw new Error(this.redact(this.errorMessage(error), key)) }
     }
@@ -206,6 +225,7 @@ export class AppService {
         case 'snapshot': z.undefined().parse(input); return this.snapshot()
         case 'saveAgent': {const value=agentSchema.parse(input);if(value.executionBackend?.kind==='acp-local'){this.profiles.get(value.executionBackend.profileId);if(value.id&&[...this.conversations.values()].some(c=>c.kind==='group'&&c.agentIds.includes(value.id!)))fail('请先将员工移出群聊，再切换为外部任务后端')}return this.employees.save(value)}
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
+        case 'getConnectionApiKey': return await this.options.secrets.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
         case 'deleteConnection': return this.deleteConnection(lookupSchema.parse(input).id)
         case 'createConversation': return this.saveConversation(conversationSchema.parse(input))
         case 'updateConversationList': return this.updateConversationList(conversationListSchema.parse(input))
@@ -336,6 +356,15 @@ export class AppService {
     const key = await this.options.secrets.get(connection.id)
     if (!key && connection.provider !== 'openai-compatible') fail('该模型连接尚未设置 API Key')
     return key ?? ''
+  }
+  private async draftApiKey(draft: Pick<z.infer<typeof connectionSchema>, 'id' | 'provider' | 'baseUrl' | 'apiKey'>): Promise<string> {
+    const previous = draft.id ? this.getConnection(draft.id) : undefined
+    if (draft.apiKey !== undefined) return draft.apiKey.trim()
+    if (!previous?.hasApiKey) return ''
+    const endpoint = draft.baseUrl.trim(), savedEndpoint = previous.baseUrl.trim()
+    const sameEndpoint = endpoint === savedEndpoint || (endpoint && savedEndpoint && modelCatalogUrl(endpoint) === modelCatalogUrl(savedEndpoint))
+    if (previous.provider !== draft.provider || !sameEndpoint) fail('接口地址或服务已变更，请重新输入 API Key')
+    return await this.options.secrets.get(previous.id) ?? ''
   }
 
   private async updateConversationList(change: ConversationListChange) {

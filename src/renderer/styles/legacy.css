@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚。
+ * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -429,15 +429,8 @@ fieldset {
   text-align:left;
   align-items:flex-start;
   gap:12px;
-  background:var(--card);
-  border:1px solid var(--border);
   padding:20px 16px;
   color:var(--muted-foreground);
-  border-radius:var(--radius-card)
-}
-.starter-cards button:hover {
-  background:var(--muted);
-  border-color:var(--border)
 }
 .starter-cards strong {
   font-size:13px;
@@ -1004,16 +997,11 @@ fieldset {
   display:flex;
   align-items:flex-start;
   gap:10px;
-  border:1px solid var(--border);
-  background:var(--card);
   width:100%;
   padding:13px 11px;
   text-align:left;
   margin:10px 0;
   color:var(--muted-foreground)
-}
-.file-row:hover {
-  background:var(--card)
 }
 .file-row>span {
   display:flex;
@@ -1057,10 +1045,7 @@ fieldset {
 }
 .memory-card {
   padding:16px;
-  border:1px solid var(--border);
-  border-radius:var(--radius-control);
   margin-bottom:10px;
-  background:var(--card)
 }
 .memory-card>p {
   font-size:13px;
@@ -1128,8 +1113,6 @@ fieldset {
   width:100%
 }
 .run-card {
-  border:1px solid var(--border);
-  border-radius:var(--radius-control);
   padding:16px;
   margin-bottom:10px
 }
@@ -1175,7 +1158,6 @@ fieldset {
 .tool-row {
   font-size:11px;
   color:var(--muted-foreground);
-  border-top:1px solid var(--border);
   padding:8px 0 3px
 }
 .tool-row summary {
@@ -1204,8 +1186,6 @@ fieldset {
   align-items:center;
   gap:9px;
   width:100%;
-  border:1px solid var(--border);
-  background:var(--card);
   padding:12px;
   text-align:left;
   margin:8px 0;
@@ -1232,9 +1212,6 @@ fieldset {
   color:var(--muted-foreground)
 }
 .approval-card {
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-card);
   padding:20px;
   margin:14px auto 22px;
   max-width:860px
@@ -1350,11 +1327,8 @@ fieldset {
   margin-top:23px
 }
 .connection-card {
-  border:1px solid var(--border);
-  border-radius:var(--radius-card);
   padding:20px;
   margin:0;
-  background:var(--card)
 }
 .connection-card-top {
   display:flex;
@@ -1431,15 +1405,8 @@ fieldset {
   gap:14px;
   align-items:flex-start;
   text-align:left;
-  border:1px solid var(--border);
-  background:var(--card);
-  border-radius:11px;
   padding:18px;
   min-width:0
-}
-.library-card:hover {
-  background:var(--card);
-  border-color:var(--border)
 }
 .resource-type-icon {
   display:flex;
@@ -1476,8 +1443,6 @@ fieldset {
   display:flex;
   align-items:center;
   gap:9px;
-  border:1px solid var(--border);
-  background:var(--card);
   padding:12px;
   width:100%;
   margin-top:16px;

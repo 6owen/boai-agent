@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
- * [OUTPUT]: 类型化 DesktopApi 与会话列表排序/置顶/隐藏请求；支持清理会话记录/专属文件及会话停止或单个工作树停止。
+ * [OUTPUT]: 类型化 DesktopApi、编辑时按连接读取密钥、无需保存的草稿模型目录/测试请求、不要求保存配置的版本重启提示与会话列表/历史清理和停止请求；快照不包含凭据。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,8 @@ import type { LaunchProfile, LaunchProfileInput } from '../domain/backends'
 import type { ConversationListChange } from '../domain/conversation-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
 import type { AgentInput, AgentHome, AgentFileContent, Connection, ConnectionInput, DigitalAgent, Conversation, ConversationInput, ConversationDetail, Resource, Message, Snapshot, MemoryQuery, MemoryView, MemoryInput } from '../domain'
+
+export const unsupportedRequestMessage = '当前运行版本尚未加载此功能，请重启应用后重试。'
 
 export type AppEvent =
   | { type: 'appearance:flush' }
@@ -41,8 +43,11 @@ export interface Methods {
   snapshot: { input: undefined; output: Snapshot }
   saveAgent: { input: AgentInput; output: DigitalAgent }
   saveConnection: { input: ConnectionInput; output: Connection }
+  getConnectionApiKey: { input: { id: string }; output: string }
   deleteConnection: { input: { id: string }; output: void }
   testConnection: { input: { id: string }; output: { text: string } }
+  testConnectionDraft: { input: ConnectionInput; output: { text: string } }
+  listConnectionModels: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey'>; output: string[] }
   createConversation: { input: ConversationInput; output: Conversation }
   updateConversationList: { input: ConversationListChange; output: void }
   clearConversationHistory: { input: { id: string; hide: boolean }; output: void }

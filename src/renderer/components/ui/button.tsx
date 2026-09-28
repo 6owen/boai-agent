@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: Soft 按钮、含 16px 角标的圆形操作、保留宿主字号的内容按钮与 10/12/14/16px 图标尺寸。
+ * [OUTPUT]: Soft 按钮、共用 soft-card 皮肤的 surface 卡片按钮、含 16px 角标的圆形操作、保留宿主字号的内容按钮与 10/12/14/16px 图标尺寸。
  * [POS]: components/ui 的 button 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,7 +15,7 @@ const buttonVariants = cva(
       variant: {
         default: "soft-button-primary",
         secondary: "soft-button-secondary",
-        surface: "soft-button-secondary soft-surface",
+        surface: "soft-button-secondary soft-card",
         outline: "soft-button-outline",
         ghost: "soft-button-ghost",
         destructive: "soft-button-destructive",

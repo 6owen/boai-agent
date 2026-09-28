@@ -29,6 +29,7 @@
     "@ai-sdk/anthropic": "2.0.105",
     "@base-ui/react": "1.8.0",
     "@libsql/client": "0.18.0",
+    "@lobehub/icons-static-svg": "1.95.1",
     "@mastra/core": "1.71.0",
     "@mastra/libsql": "1.23.3",
     "@mastra/memory": "1.32.1",

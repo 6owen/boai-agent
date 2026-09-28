@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 带持久头像的员工资料、共享 Soft Tabs 与未保存保护、系统文件、工作区和记忆详情；会话清空后更新只读投影。
+ * [OUTPUT]: 带持久头像的员工资料、共享 Soft Tabs 与未保存保护、共用 surface 卡片按钮的系统文件、工作区和记忆详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,7 +50,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, 
     </TabsList></div>
     {error && <Banner>{error}</Banner>}
     <TabsContent value="profile"><AgentEditor api={api} snapshot={snapshot} agent={agent} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
-    <TabsContent value="files">{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="ghost" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '当前为员工基础范围。私聊和群记忆需要选择对应会话查看。'}</div></>}</div>}</TabsContent>
+    <TabsContent value="files">{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '当前为员工基础范围。私聊和群记忆需要选择对应会话查看。'}</div></>}</div>}</TabsContent>
     <TabsContent value="workspace"><WorkspaceView api={api} agent={agent} home={home} onRefresh={async () => { await refresh(); await loadHome() }} /></TabsContent>
     <TabsContent value="memory"><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></TabsContent>
   </Tabs>

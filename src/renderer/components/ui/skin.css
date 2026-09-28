@@ -1,19 +1,19 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤、紧凑标签页与线形变体、群成员拼图头像与拖拽插入线；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；保留拖动空白的多窗口标签、明确悬停底色、居中短分割线和无选中底色的开关。会话分组无底色且悬停/聚焦显示箭头，成员网格使用小型移除角标。
+ * [OUTPUT]: 6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 
 /* Buttons retain the same skin when used as a trigger or via buttonVariants. */
-.soft-button {
+.soft-button, .appearance-color {
   border-radius:var(--radius-control);
   corner-shape:squircle;
   border:0;
   outline:none;
   transition:background-color .2s,box-shadow .2s,transform .2s,color .2s;
 }
-.soft-button:not(.soft-button-content) { font-size:13px;font-weight:500 }
+.soft-button:not(.soft-button-content), .appearance-color { font-size:13px;font-weight:500 }
 .soft-button:not(:disabled):not([aria-disabled=true]) { cursor:pointer }
 .soft-button:disabled, .soft-button[aria-disabled=true] { cursor:not-allowed;opacity:.5 }
 .soft-button-primary {
@@ -57,14 +57,13 @@
   border-color:transparent;
   corner-shape:squircle;
 }
-.appearance-color { border-radius:var(--radius-control) }
 :is(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--primary) }
 :is([data-slot=checkbox],[data-slot=radio-group-item],[data-slot=switch]) { box-shadow:inset 0 1px 2px var(--soft-edge-top);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent) }
 [data-slot=switch-thumb] { background-color:var(--soft-thumb);box-shadow:var(--shadow-small) }
 [data-slot=slider-thumb] { box-shadow:var(--shadow-control) }
 
 /* All raised surfaces use the same light source, including body-level portals. */
-.soft-surface {
+.soft-surface, .soft-card {
   background-color:var(--card);
   background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
   border:1px solid var(--border);
@@ -72,6 +71,13 @@
   corner-shape:squircle;
   box-shadow:var(--shadow-card);
 }
+/* Card, surface buttons and semantic containers (for example forms) share one skin. */
+.soft-card { border-color:transparent;box-shadow:var(--shadow-control) }
+.soft-card.soft-button-secondary { background-image:linear-gradient(var(--soft-hover-layer),var(--soft-hover-layer)),linear-gradient(to bottom,var(--soft-surface-tint),transparent) }
+/* Use soft-divide-y on row groups, soft-divider-top on a footer or detail row. */
+.soft-divider-top, .soft-divide-y>:not([hidden])~:not([hidden]) { border-top:1px solid transparent;box-shadow:var(--shadow-divider) }
+.soft-separator { background:transparent;box-shadow:var(--shadow-divider) }
+.soft-separator[data-orientation=vertical] { box-shadow:var(--shadow-divider-vertical) }
 .soft-elevated { box-shadow:var(--shadow-popover) }
 :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=popover-content],[data-slot=hover-card-content],[data-slot=dropdown-menu-content],[data-slot=dropdown-menu-sub-content],[data-slot=context-menu-content],[data-slot=context-menu-sub-content],[data-slot=menubar-content],[data-slot=menubar-sub-content],[data-slot=select-content],[data-slot=combobox-content],[data-slot=toast],[data-slot=drawer-popup],[data-slot=sheet-content],[data-slot=card]) { corner-shape:squircle }
 :is([data-slot=toggle],[data-slot=tabs-list],[data-slot=tabs-trigger],[data-slot=menubar],[data-slot=sidebar-menu-button],.rail-item,.conversation-item,.page-subnav button,.schedule-item) { corner-shape:squircle }

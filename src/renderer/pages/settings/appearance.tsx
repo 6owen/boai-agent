@@ -1,16 +1,17 @@
 /*
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
- * [OUTPUT]: 紧凑分组的模式、主题、颜色、字体、缩放和背景图片设置。
+ * [OUTPUT]: 共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
+import { Slider } from '@/components/ui/slider'
 import { themes, resolveTheme, customizeTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
-import { Banner, Field } from '@/components/common'
-import { Check, ChevronRight } from '@/components/icons'
+import { Banner } from '@/components/common'
 import lightPreview from '@/assets/mode-light.webp'
 import darkPreview from '@/assets/mode-dark.webp'
 import systemPreview from '@/assets/mode-system.webp'
@@ -34,17 +35,13 @@ export function AppearanceSettings() {
   const p = preview.preferences, mode = preview.resolvedMode
   const theme = customizeTheme(resolveTheme(mode, p.themeIds[mode]), p.customColors[mode])
   const setColor = (key: keyof ThemeOverrides, value: string | null) => previewAppearance({ customColors: { [mode]: { [key]: value } } })
-  return <section className="appearance-settings">
-    <div className="appearance-heading">
+  return <section className="appearance-settings settings-document">
+    <header className="settings-document-heading">
       <h2>外观</h2>
-      <span className="save-status" data-state={status} role="status">
-        {status === 'saved' && <Check size={12} />}
-        {status === 'saving' ? '保存中…' : status === 'error' ? '未保存' : '已保存'}
-      </span>
-    </div>
+    </header>
     {(error || preview.diagnostic) && <Banner>{error || preview.diagnostic}{error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}</Banner>}
     <fieldset disabled={preview.readOnly}>
-      <legend className="appearance-section-title">视觉风格</legend>
+      <legend className="settings-section-title">视觉风格</legend>
       <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-mode-row mb-0">
         <span>模式</span>
         <div className="appearance-modes">
@@ -54,7 +51,7 @@ export function AppearanceSettings() {
           </Button>)}
         </div>
       </CardContent></Card>
-      <Card className="gap-0 p-0"><CardContent className="appearance-options">
+      <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
         {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
           <NativeSelect id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={p.themeIds[value]} onChange={event => previewAppearance({ themeIds: { [value]: event.target.value }, customColors: { [value]: { accent: null, background: null, foreground: null } } })}>
@@ -79,23 +76,25 @@ export function AppearanceSettings() {
           <NativeSelect id="appearance-zoom" value={p.zoomFactor} onChange={event => previewAppearance({ zoomFactor: Number(event.target.value) })}>{zoomFactors.map(value => <NativeSelectOption key={value} value={value}>{Math.round(value * 100)}%{value === 1 ? '（默认）' : ''}</NativeSelectOption>)}</NativeSelect>
         </div>
       </CardContent></Card>
-      <div className="appearance-footer">
-        <details className="appearance-advanced">
-          <summary>高级<ChevronRight size={13} /></summary>
-          <div className="appearance-section">
-            <div className="appearance-section-heading"><div><h3>背景图片</h3><p className="field-hint">PNG、JPEG、WebP，最大 10 MiB。</p></div>
-              <div className="button-row">
-                <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('importAppearanceBackground')}>{p.background.assetId ? '更换图片' : '选择图片'}</Button>
-                {p.background.assetId && <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('removeAppearanceBackground')}>移除图片</Button>}
-              </div>
+      <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">
+        <h3 id="appearance-advanced-heading" className="settings-section-title">高级设置</h3>
+        <Card className="gap-0 p-0"><CardContent><FieldGroup className="soft-divide-y gap-0">
+          <Field orientation="responsive" className="py-4">
+            <FieldContent><FieldTitle>背景图片</FieldTitle><FieldDescription>PNG、JPEG、WebP，最大 10 MiB。</FieldDescription></FieldContent>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('importAppearanceBackground')}>{p.background.assetId ? '更换图片' : '选择图片'}</Button>
+              {p.background.assetId && <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('removeAppearanceBackground')}>移除图片</Button>}
             </div>
-            <Field label={`图片不透明度 · ${Math.round(p.background.imageOpacity * 100)}%`}>
-              <input aria-label="图片不透明度" type="range" min="0" max="100" value={Math.round(p.background.imageOpacity * 100)} onChange={event => previewAppearance({ background: { imageOpacity: Number(event.target.value) / 100 } })} onPointerUp={() => void flushAppearance()} onKeyUp={() => void flushAppearance()} />
-            </Field>
-            <p className="field-hint">当前编辑{mode === 'light' ? '浅色' : '深色'}颜色；明暗模式分别保存。Nord 与 Catppuccin 配色来自 Base46（MIT），Geist 字体采用 OFL 许可。</p>
-          </div>
-        </details>
-        <Button variant="ghost" size="content" className="appearance-reset" aria-label="恢复默认外观" disabled={status === 'saving'} onClick={() => void appearanceAction('resetAppearance')}>重置为默认设置</Button>
+          </Field>
+          <Field className="py-4" data-disabled={preview.readOnly || undefined}>
+            <div className="flex items-center justify-between gap-4"><FieldLabel id="appearance-opacity-label">图片不透明度</FieldLabel><span className="text-sm text-muted-foreground">{Math.round(p.background.imageOpacity * 100)}%</span></div>
+            <Slider aria-labelledby="appearance-opacity-label" min={0} max={100} step={1} value={[Math.round(p.background.imageOpacity * 100)]} disabled={preview.readOnly} onValueChange={value => previewAppearance({ background: { imageOpacity: (Array.isArray(value) ? value[0] : value) / 100 } })} onValueCommitted={() => void flushAppearance()} />
+          </Field>
+        </FieldGroup></CardContent></Card>
+        <p className="field-hint mt-3">当前编辑{mode === 'light' ? '浅色' : '深色'}颜色；明暗模式分别保存。Nord 与 Catppuccin 配色来自 Base46（MIT），Geist 字体采用 OFL 许可。</p>
+      </section>
+      <div className="appearance-footer">
+        <Button variant="ghost" size="sm" aria-label="恢复默认外观" disabled={status === 'saving'} onClick={() => void appearanceAction('resetAppearance')}>重置为默认设置</Button>
       </div>
     </fieldset>
   </section>

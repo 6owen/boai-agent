@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
- * [OUTPUT]: 桌面窗口、持久化界面缩放、会话列表与历史清理等 IPC 路由与运行进程生命周期。
+ * [OUTPUT]: 桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -13,7 +13,7 @@ import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { resolveTheme, zoomFactors } from '../shared/appearance'
-import type { Methods } from '../shared/ipc'
+import { unsupportedRequestMessage, type Methods } from '../shared/ipc'
 import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
 import type { Method, RpcResponse } from '../shared/ipc'
@@ -41,7 +41,7 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
 }, decodeImage)
 const selectedPaths = new Set<string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-const methods = new Set<Method>(['listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'deleteConnection', 'testConnection', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
@@ -138,7 +138,8 @@ function registerIpc() {
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
   ipcMain.handle('boai:request', async (event, payload: { method: Method; input: unknown }) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
-    if (!payload || !methods.has(payload.method) || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
+    if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
+    if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (method === 'getAppearance') return appearance.snapshot()
     if (method === 'updateAppearance') { const value=input as Methods['updateAppearance']['input']; if(!Number.isSafeInteger(value?.expectedRevision))throw new Error('无效外观版本'); return appearance.update(value.patch,value.expectedRevision) }

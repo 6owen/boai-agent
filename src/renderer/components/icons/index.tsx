@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 离线 Carbon 图标集合与图标尺寸。
- * [OUTPUT]: 默认16px、允许父控件管理尺寸的 Carbon 图标、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
+ * [OUTPUT]: 默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -31,9 +31,14 @@ const classes = {
   ChevronLeft: 'i-carbon-chevron-left',
   ChevronRight: 'i-carbon-chevron-right',
   CircleHelp: 'i-carbon-help',
+  Cpu: 'i-carbon-chip',
+  Eye: 'i-carbon-view',
+  EyeOff: 'i-carbon-view-off',
   FileText: 'i-carbon-document',
   FolderOpen: 'i-carbon-folder-open',
   HardDrive: 'i-carbon-data-volume',
+  Key: 'i-carbon-password',
+  List: 'i-carbon-list',
   LoaderCircle: 'i-carbon-renew',
   MessageCircle: 'i-carbon-chat',
   MoreHorizontal: 'i-carbon-overflow-menu-horizontal',
@@ -80,9 +85,14 @@ export const Check = component('Check')
 export const ChevronLeft = component('ChevronLeft')
 export const ChevronRight = component('ChevronRight')
 export const CircleHelp = component('CircleHelp')
+export const Cpu = component('Cpu')
+export const Eye = component('Eye')
+export const EyeOff = component('EyeOff')
 export const FileText = component('FileText')
 export const FolderOpen = component('FolderOpen')
 export const HardDrive = component('HardDrive')
+export const Key = component('Key')
+export const List = component('List')
 export const LoaderCircle = component('LoaderCircle')
 export const MessageCircle = component('MessageCircle')
 export const MoreHorizontal = component('MoreHorizontal')
