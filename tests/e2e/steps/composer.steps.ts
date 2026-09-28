@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 输入框配置持久化与员工隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 群聊隐藏配置控件、从员工私聊验证锁定与隔离、输入框配置持久化与员工隔离的真实桌面业务步骤与断言。
+ * [OUTPUT]: 群聊隐藏配置控件、从员工私聊验证锁定与隔离、思考强度二级菜单的键盘/窄窗/重启持久化与能力边界、输入框配置持久化与员工隔离的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/composer.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -149,4 +149,56 @@ Then('运行中的员工配置锁定且群成员修改相互隔离', async ({ sc
 
 Then('窄窗口菜单完整可见并恢复键盘焦点', async ({ scenario }) => {
   await verifyNarrowMenus(scenario.verifyMemberIsolation!)
+})
+
+When('通过模型二级菜单调整当前员工思考强度', async ({ runtime, scenario }) => {
+  const { page, employee, input } = scenario.prepareComposer!
+  // Only edit this fixture connection; never send a request to a live provider.
+  await page.evaluate(() => window.boai.request('saveConnection', { name: '思考选项测试', provider: 'openai-compatible', baseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-v4-pro', apiKey: 'fixture-not-a-real-key' }))
+  const model = page.getByRole('button', { name: '选择模型', exact: true })
+  await model.click()
+  await page.getByRole('menuitemradio', { name: /deepseek-v4-pro/ }).click()
+  await expect(model).toHaveText('deepseek-v4-pro')
+  await model.click()
+  const submenu = page.getByRole('menuitem', { name: /思考强度/ })
+  await submenu.focus()
+  await page.keyboard.press('ArrowRight')
+  const thinking = page.getByRole('menu', { name: /^思考强度/ })
+  await expect(thinking).toBeVisible()
+  await expect(thinking.getByRole('menuitemradio', { name: /^自动/ })).toBeChecked()
+  await thinking.getByRole('menuitemradio', { name: /^关闭/ }).click()
+  await expect.poll(async () => (await employee('researcher')).thinkingLevel).toBe('off')
+  expect((await employee('writer')).thinkingLevel).toBeUndefined()
+  await expect(input).toHaveValue('这是一份未发送的草稿')
+  await expect(model).toBeFocused()
+
+  await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))
+  await model.click()
+  await submenu.hover()
+  await expect(thinking).toBeVisible()
+  expect(await thinking.evaluate(element => { const r = element.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight })).toBe(true)
+  await page.screenshot({ animations: 'disabled', path: 'test-results/composer-thinking.png' })
+  await thinking.getByRole('menuitemradio', { name: /^最高/ }).click()
+  await expect.poll(async () => (await employee('researcher')).thinkingLevel).toBe('max')
+})
+
+Then('重启保留思考强度且未适配模型不显示选项', async ({ runtime }) => {
+  await runtime.restart()
+  const page = runtime.page
+  await page.locator('.conversation-item').filter({ hasText: '研究员' }).click()
+  const model = page.getByRole('button', { name: '选择模型', exact: true })
+  await model.click()
+  const submenu = page.getByRole('menuitem', { name: /思考强度/ })
+  await expect(submenu).toContainText('最高')
+  await submenu.hover()
+  const thinking = page.getByRole('menu', { name: /^思考强度/ })
+  await expect(thinking.getByRole('menuitemradio', { name: /^最高/ })).toBeChecked()
+  await thinking.getByRole('menuitemradio', { name: /^自动/ }).click()
+  await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')?.thinkingLevel).toBe('auto')
+  await model.click()
+  await page.getByRole('menuitemradio', { name: /research-v1/ }).click()
+  await model.click()
+  await expect(submenu).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  expect(runtime.errors).toEqual([])
 })

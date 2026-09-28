@@ -1,17 +1,25 @@
 /*
  * [INPUT]: React 本地状态、当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
- * [OUTPUT]: 紧凑权限/模型菜单、仅前端勾选的完全访问选项和发送/停止；单聊模型菜单只保留选择与连接管理，群聊隐藏模型和权限控件。
+ * [OUTPUT]: 紧凑权限/模型菜单、已适配模型的思考强度二级菜单、仅前端勾选的完全访问选项和发送/停止；配置保存到员工且运行时锁定，群聊隐藏模型和权限控件。
  * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理，完全访问预览不写入权限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
+import { supportsThinkingControl, type ThinkingLevel } from '@shared/domain/model-preferences'
 import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FolderOpen, LoaderCircle, Plus, ShieldCheck, Square, Terminal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ChatComposerActions, ChatComposerFooter, ChatComposerOption, ChatComposerSelect } from '@/components/ui/chat-composer'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
-export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'connectionId' | 'modelId' | 'allowCommands'>>
+export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'connectionId' | 'modelId' | 'allowCommands' | 'thinkingLevel'>>
+const thinkingOptions: { value: ThinkingLevel; label: string; description: string }[] = [
+  { value: 'auto', label: '自动', description: '日常轻量思考，任务使用服务默认。' },
+  { value: 'off', label: '关闭', description: '直接回答，优先响应速度。' },
+  { value: 'low', label: '低', description: '减少思考，适合日常交流。' },
+  { value: 'high', label: '高', description: '深入思考，适合复杂问题。' },
+  { value: 'max', label: '最高', description: '更充分地思考，等待可能更久。' },
+]
 interface Props {
   members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
@@ -34,6 +42,10 @@ export function ComposerToolbar(props: Props) {
     return models.map(model => ({ ...model, connectionId: connection.id, connectionName: connection.name, value: JSON.stringify([connection.id, model.modelId]), ready: connection.provider === 'openai-compatible' ? Boolean(connection.baseUrl) : connection.hasApiKey }))
   })
   const selectedModel = (agent: DigitalAgent) => JSON.stringify([agent.connectionId, agent.modelId === snapshot.connections.find(c => c.id === agent.connectionId)?.defaultModel ? '' : agent.modelId])
+  const supportsThinking = (agent: DigitalAgent) => {
+    const connection = snapshot.connections.find(item => item.id === agent.connectionId)
+    return connection && supportsThinkingControl(connection, agent.modelId)
+  }
   return <ChatComposerFooter>
     <ChatComposerActions>
       <DropdownMenu>
@@ -79,6 +91,23 @@ export function ComposerToolbar(props: Props) {
               }}>
                 {choices.map(choice => <DropdownMenuRadioItem closeOnClick className="gap-3 py-2" key={choice.value} value={choice.value} disabled={!choice.ready || locked(agent)}><ChatComposerOption label={choice.label} description={`${choice.connectionName}${choice.ready ? '' : ' · 连接尚未配置完成'}`} /></DropdownMenuRadioItem>)}
               </DropdownMenuRadioGroup>
+              {supportsThinking(agent) && <>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="py-2" disabled={locked(agent)}><span>思考强度</span><span className="ml-auto text-muted-foreground">{thinkingOptions.find(option => option.value === (agent.thinkingLevel ?? 'auto'))?.label}</span></DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="chat-composer-menu w-[240px] max-w-[calc(100vw-32px)] p-2" aria-label="思考强度">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>保存到当前员工</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup value={agent.thinkingLevel ?? 'auto'} onValueChange={value => {
+                        const option = thinkingOptions.find(item => item.value === value)
+                        if (option && !locked(agent)) onChangeAgent(agent, { thinkingLevel: option.value })
+                      }}>
+                        {thinkingOptions.map(option => <DropdownMenuRadioItem closeOnClick className="gap-3 py-2" key={option.value} value={option.value} disabled={locked(agent)}><ChatComposerOption label={option.label} description={option.description} /></DropdownMenuRadioItem>)}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </>}
             </>}
           </DropdownMenuGroup>)}
           <DropdownMenuSeparator />

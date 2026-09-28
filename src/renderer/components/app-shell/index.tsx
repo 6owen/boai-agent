@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 领域类型、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
+ * [INPUT]: 领域类型、员工思考强度配置、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
  * [OUTPUT]: Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -214,7 +214,7 @@ export function AppShell() {
       await api.request('saveAgent', {
         id: agent.id, expectedConfigVersion: agent.configVersion, executionBackend: agent.executionBackend,
         avatar: agent.avatar, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color,
-        connectionId: agent.connectionId, modelId: agent.modelId, skillIds: agent.skillIds,
+        connectionId: agent.connectionId, modelId: agent.modelId, thinkingLevel: agent.thinkingLevel, skillIds: agent.skillIds,
         knowledgeIds: agent.knowledgeIds, allowCommands: agent.allowCommands, active: agent.active, ...patch,
       })
       await refreshSnapshot()

@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 产品实体、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
- * [OUTPUT]: 并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
+ * [OUTPUT]: 员工独立思考强度与可选模型接口协议；并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
  * [POS]: shared/domain 的产品领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { AgentAvatar } from './avatars'
+import type { ThinkingLevel } from './model-preferences'
 import type { AutomationOrigin } from './automations'
 export * from './automations'
 import type { ExecutionBackend } from './backends'
@@ -13,6 +14,7 @@ export * from './work'
 import type { WorkIntent, WorkItem, WorkBudget, WorkDisposition, WorkDraft, WorkWake } from './work'
 export type Provider = 'openai' | 'anthropic' | 'openai-compatible'
 export interface Connection {
+  api?: 'chat' | 'responses'
   id: string
   name: string
   provider: Provider
@@ -29,6 +31,7 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  thinkingLevel?: ThinkingLevel
   avatar?: AgentAvatar
   executionBackend?: ExecutionBackend
   id: string

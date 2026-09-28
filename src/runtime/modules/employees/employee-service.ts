@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: 版本校验的员工保存、头像持久化和系统文件同步；拒绝外链或超限头像。
+ * [OUTPUT]: 版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,7 @@ import type { AgentInput, DigitalAgent, Connection, Resource, MemoryEntry } from
 import { ProductStore, type StoredRecord } from '../../adapters/storage/product-store'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/avatars'
+import { thinkingLevels } from '../../../shared/domain/model-preferences'
 
 export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.literal('acp-local'),profileId:z.string().min(1).max(200)}).strict()])
 const id = z.string().trim().min(1).max(200)
@@ -19,7 +20,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ avatar: avatarSchema.optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })

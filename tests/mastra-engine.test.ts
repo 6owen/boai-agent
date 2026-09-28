@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 日常阶段轻量思考参数与完成前正文流式验收；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,16 +8,17 @@ import { createServer, type ServerResponse } from 'node:http'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
+import { thinkingProviderOptions } from '../src/runtime/adapters/mastra/model-config'
 import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
 import type { EngineContext } from '../src/runtime/contracts'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
 
-type RequestBody = { model: string; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
+type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
 const cleanup: (() => Promise<void>)[] = []
-afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
+afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close() })
 
 function send(response: ServerResponse, content: string | { name: string; args: unknown; preface?: string; reasoning?: string }, index: number, usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }, finishReason = 'stop') {
   response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
@@ -85,7 +86,93 @@ async function context(url: string, overrides: Partial<EngineContext> = {}) {
 function allMessageText(request: RequestBody) { return request.messages.map(message => JSON.stringify(message.content)).join('\n') }
 function toolResultText(request: RequestBody) { return request.messages.filter(message => message.role === 'tool').map(message => JSON.stringify(message.content)).join('\n') }
 
+// Exercise the official-endpoint policy through the real SDK without contacting a provider.
+function redirectDeepSeekTo(url: string) {
+  const fetch = globalThis.fetch
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const target = new URL(input instanceof Request ? input.url : input.toString())
+    if (target.hostname !== 'api.deepseek.com') throw new Error('Unexpected external model request')
+    return fetch(new URL(target.pathname + target.search, url), init)
+  })
+}
+
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it.each(['off', 'low', 'high', 'max'] as const)('sends the employee thinking level %s through the real SDK for chat and tasks', async thinkingLevel => {
+    const server = await endpoint(['聊天回答', '任务回答'])
+    redirectDeepSeekTo(server.url)
+    const run = await context('https://api.deepseek.com/v1', { agent: employee({ modelId: 'deepseek-v4-pro', thinkingLevel }), responseKind: 'chat' })
+    const engine = new MastraEngine()
+    await engine.run(run.ctx)
+    await engine.run({ ...run.ctx, responseKind: 'task' })
+    for (const request of server.requests) {
+      expect(request.thinking).toEqual({ type: thinkingLevel === 'off' ? 'disabled' : 'enabled' })
+      expect(request.reasoning_effort).toBe(thinkingLevel === 'off' ? undefined : thinkingLevel)
+    }
+    expect(server.requests).toHaveLength(2)
+  })
+
+  it('keeps automatic task and report reasoning at the provider default', async () => {
+    const server = await endpoint(['任务回答', '{"action":"publish","text":"已完成汇报"}'])
+    redirectDeepSeekTo(server.url)
+    const run = await context('https://api.deepseek.com', { agent: employee({ modelId: 'deepseek-v4-pro', thinkingLevel: 'auto' }) })
+    const engine = new MastraEngine()
+    await engine.run(run.ctx)
+    await engine.report(run.ctx, { text: '草稿', observedThroughSequence: 1, revisions: 0, status: 'private' })
+    expect(server.requests).toHaveLength(2)
+    for (const request of server.requests) { expect(request.thinking).toBeUndefined(); expect(request.reasoning_effort).toBeUndefined() }
+  })
+
+  it('only adds thinking parameters for verified endpoint, protocol and effective model combinations', () => {
+    const official = { ...connection('https://api.deepseek.com/v1'), defaultModel: 'deepseek-v4-pro' }
+    expect(thinkingProviderOptions(official, '', undefined, 'chat')).toMatchObject({ openai: { reasoningEffort: 'low' } })
+    expect(thinkingProviderOptions(official, 'deepseek-flash', 'high', 'memory')).toMatchObject({ openai: { reasoningEffort: 'high' } })
+    expect(thinkingProviderOptions(official, 'deepseek-pro', 'off', 'decision')).toEqual({ openai: { thinking: { type: 'disabled' } } })
+    for (const settings of [
+      { ...official, baseUrl: 'https://api.deepseek.com.evil.test/v1' },
+      { ...official, baseUrl: 'http://localhost:1234/v1' },
+      { ...official, api: 'responses' as const },
+      { ...official, provider: 'anthropic' as const },
+      { ...official, defaultModel: 'deepseek-reasoner' },
+      { ...official, defaultModel: 'unverified-model' },
+    ]) expect(thinkingProviderOptions(settings, '', 'max', 'chat')).toBeUndefined()
+    expect(thinkingProviderOptions(official, 'employee-override', 'high', 'chat')).toBeUndefined()
+  })
+
+  it('uses light thinking for DeepSeek decision, chat and memory instead of its expensive provider default', async () => {
+    const server = await endpoint(['{"action":"reply","responseKind":"chat"}', '今天是星期一。', '{"candidates":[]}'])
+    redirectDeepSeekTo(server.url)
+    const run = await context('https://api.deepseek.com', { agent: employee({ modelId: 'deepseek-v4-pro' }), responseKind: 'chat' })
+    const engine = new MastraEngine()
+    await engine.decide(run.ctx)
+    await engine.run(run.ctx)
+    await engine.extractMemory(run.ctx)
+    expect(server.requests).toHaveLength(3)
+    for (const request of server.requests) {
+      expect(request.thinking).toEqual({ type: 'enabled' })
+      expect(request.reasoning_effort).toBe('low')
+    }
+    expect(run.deltas.join('')).toBe('今天是星期一。')
+  })
+
+  it('delivers chat text while the provider stream is still open, without publishing reasoning', async () => {
+    let finish: (() => void) | undefined
+    const server = await endpoint((_body, response) => {
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const chunk = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: 'early-text', object: 'chat.completion.chunk', created: 1, model: 'test-model', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
+      chunk({ role: 'assistant', reasoning_content: 'PRIVATE_REASONING' })
+      chunk({ content: '今天' })
+      finish = () => { chunk({ content: '是星期一。' }); chunk({}, 'stop'); response.end('data: [DONE]\n\n') }
+    })
+    const run = await context(server.url, { responseKind: 'chat' })
+    let completed = false
+    const execution = new MastraEngine().run(run.ctx).then(() => { completed = true })
+    try {
+      await vi.waitFor(() => expect(run.deltas.join('')).toBe('今天'))
+      expect(completed).toBe(false)
+    } finally { finish?.(); await execution }
+    expect(run.deltas.join('')).toBe('今天是星期一。')
+  })
+
   it('reduces empty decision metadata without dropping message text, attribution, references or turn boundaries', () => {
     const messages = [
       message('原始请求：不要丢掉任何正文。', 1, { turnId: 'current', mentionIds: ['agent-a'] }),

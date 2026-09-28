@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 员工思考强度校验/隔离/重启与旧表单保留；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -78,6 +78,24 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it('persists thinking per employee across old-form saves and restart, and rejects unsupported levels', async () => {
+    const { service, root, secrets, engine } = await fixture()
+    await configure(service)
+    let agent = (await snapshot(service)).agents.find(item => item.id === 'researcher')!
+    agent = await updateAgent(service, agent, { thinkingLevel: 'off' })
+    const { configVersion, workspaceRef, memoryNamespace, policyVersion, thinkingLevel, ...oldForm } = agent
+    await service.handle('saveAgent', { ...oldForm, name: 'Researcher renamed', expectedConfigVersion: configVersion })
+    expect((await snapshot(service)).agents.find(item => item.id === agent.id)?.thinkingLevel).toBe('off')
+    expect((await snapshot(service)).agents.find(item => item.id === 'writer')?.thinkingLevel).toBeUndefined()
+    await expect(service.handle('saveAgent', { ...oldForm, thinkingLevel: 'ultra' })).rejects.toThrow()
+    await service.close()
+    const reopened = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} })
+    services.push(reopened); await reopened.init()
+    expect((await snapshot(reopened)).agents.find(item => item.id === agent.id)?.thinkingLevel).toBe('off')
+    const current = (await snapshot(reopened)).agents.find(item => item.id === agent.id)!
+    expect((await updateAgent(reopened, current, { thinkingLevel: 'auto' })).thinkingLevel).toBe('auto')
+  })
+
   it('streams five independent member replies concurrently without restarting their first decisions', async () => {
     const { service, engine } = await fixture(); const connection = await configure(service)
     const memberIds = ['researcher', 'writer', 'reviewer']
