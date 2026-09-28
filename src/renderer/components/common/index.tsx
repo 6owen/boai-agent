@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
- * [OUTPUT]: 统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和未保存守卫。
+ * [OUTPUT]: 统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -18,7 +18,7 @@ export const errorText = (e: unknown) => (e instanceof Error ? e.message : Strin
 export const connectionReady = (connection: Connection) => Boolean(connection.defaultModel.trim() && (connection.provider === 'openai-compatible' ? connection.baseUrl.trim() : connection.hasApiKey))
 export const timeText = (date: string) => new Date(date).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 export const sizeText = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
-export interface Guard { dirty: boolean; setDirty(value: boolean): void; navigate(action: () => void): void; saved(fallback?: () => void): void }
+export interface Guard { dirty: boolean; setDirty(value: boolean): void; navigate(action: () => void, options?: { resetOnDiscard?: boolean }): void; saved(fallback?: () => void): void }
 export const GuardContext = createContext<Guard>({ dirty: false, setDirty() {}, navigate(fn) { fn() }, saved(fn) { fn?.() } })
 export function useDirty(value: unknown) {
   const guard = useContext(GuardContext)

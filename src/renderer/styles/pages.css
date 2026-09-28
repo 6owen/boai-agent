@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 统一语义 token 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 通讯录资料与编辑布局、紧凑外观设置行、模式缩略图和任务分栏；控件皮肤共用 ui/skin.css。
+ * [OUTPUT]: 通讯录资料与编辑布局、紧凑外观设置行、模式缩略图和任务分栏；控件皮肤共用 ui/skin.css，通讯录员工分类使用共享 Tabs。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -159,7 +159,7 @@
 .contact-member { display:flex;align-items:center;flex-direction:column;gap:8px;padding:8px 4px;min-width:0 }
 .contact-member>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px }
 .contact-edit-heading { display:flex;justify-content:space-between;gap:12px;margin-bottom:12px }
-.contact-editor .editor-intro,.contact-editor .editor-body,.contact-editor .employee-identity,.contact-editor .detail-tabs,.contact-editor .detail-section { padding-left:0;padding-right:0 }
+.contact-editor .editor-intro,.contact-editor .editor-body,.contact-editor .employee-identity,.contact-editor .employee-tabs-bar,.contact-editor .detail-section { padding-left:0;padding-right:0 }
 .contact-editor .editor-frame { min-height:0 }
 .contact-editor .editor-footer { padding-left:0;padding-right:0;background:var(--surface-content) }
 .contact-editor .resource-option { min-width:0 }

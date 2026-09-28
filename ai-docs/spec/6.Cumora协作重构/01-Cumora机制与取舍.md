@@ -1,12 +1,12 @@
 <!--
 [INPUT]: Cumora 固定提交的协作实现，以及 Paperclip 对本地实施顺序的修订。
-[OUTPUT]: Cumora 可借鉴机制、采用边界与修订后的阶段映射。
+[OUTPUT]: Cumora 固定版本机制、采用边界与实际实施导航。
 [POS]: ai-docs/spec/6.Cumora协作重构/01-Cumora机制与取舍.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 # Cumora 机制与取舍
 
-日期：2026-09-27。状态：**外部机制研究；BoAI 适配建议待实施。** 参考版本见[本组入口](./README.md)。
+日期：2026-09-27。状态：**固定版本外部机制研究；BoAI 当前实现与验证状态见本组实施记录。** 参考版本见[本组入口](./README.md)。
 
 ## 1. 将协作问题分开
 

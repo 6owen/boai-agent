@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自动化与外部执行模块、领域类型和测试运行引擎。
- * [OUTPUT]: 外部 Agent 与自动化功能的回归验证。
+ * [OUTPUT]: 外部 Agent、自动化与显式独立工作报告的回归验证。
  * [POS]: tests/extensions.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,7 +16,7 @@ import { NativeSchedules, AUTOMATION_WORKFLOW } from '../src/runtime/modules/aut
 import { AutomationService, calendarSlot, automationCron } from '../src/runtime/modules/automations/automation-service'
 const roots:string[]=[],services:AppService[]=[],natives:NativeSchedules[]=[]
 afterEach(async()=>{for(const s of services.splice(0))await s.close();for(const n of natives.splice(0))await n.close();await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
-const engine:AgentEngine={test:async()=>'',run:async c=>{await c.onDelta('automation result')},decide:async c=>({action:c.messages.some(m=>m.senderId===c.agent.id&&m.status==='completed')?'pass':'reply',responseKind:'task',observedThroughSequence:Math.max(...c.messages.map(m=>m.sequence))})}
+const engine:AgentEngine={test:async()=>'',report:async(_context,draft)=>({action:'publish',text:draft.text}),run:async c=>{await c.onDelta('automation result')},decide:async c=>({action:c.messages.some(m=>m.senderId===c.agent.id&&m.status==='completed')?'pass':'reply',responseKind:'task',work:{key:'fixture-'+c.agent.id,scope:'独立报告该员工的工作',deliverable:'该员工的报告'},observedThroughSequence:Math.max(...c.messages.map(m=>m.sequence))})}
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-extensions-'));roots.push(root);const make=async(path=join(root,'data'))=>{const s=new AppService({dataPath:path,engine,secrets:{get:async()=>undefined,set:async()=>{},delete:async()=>{}},emit:()=>{}});services.push(s);await s.init();return s};const service=await make();return {root,service,make}}
 async function until(fn:()=>Promise<boolean>,ms=8000){const start=Date.now();while(!await fn()){if(Date.now()-start>ms)throw new Error('Timed out');await new Promise(r=>setTimeout(r,30))}}
 async function employee(service:AppService,external?:LaunchProfile){const snapshot=await service.handle('snapshot',undefined) as Snapshot;const agent=snapshot.agents[0];const {configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=agent;let connectionId='';if(!external)connectionId=(await service.handle('saveConnection',{name:'test',provider:'openai-compatible',baseUrl:'http://127.0.0.1:1',defaultModel:'test'}) as Connection).id;await service.handle('saveAgent',{...input,connectionId,executionBackend:external?{kind:'acp-local',profileId:external.id}:{kind:'mastra-model'}});return await service.handle('createConversation',{kind:'direct',title:'test',agentIds:[agent.id]}) as Conversation}

@@ -1,3 +1,7 @@
+# [INPUT]: 本地依赖、构建与测试产物。
+# [OUTPUT]: 不进入版本控制的构建、BDD 生成文件和独立 HTML 报告范围。
+# [POS]: 仓库忽略规则。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 node_modules/
 dist/
 release/
@@ -6,6 +10,8 @@ release/
 !.env.example
 test-results/
 playwright-report/
+cucumber-report/
+.features-gen/
 .local/
 *.log
 .DS_Store

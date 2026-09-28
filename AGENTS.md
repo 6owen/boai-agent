@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 仓库全局约束、无 Node 版本门禁的 pnpm runtime、初始化 CLI、统一位于 `.agents` 的项目 skills、三应用、Web/Admin Base UI 与 Web Iconify UI、客户端 API/Server Route/后端实现分层、含 Web emailAndPassword/loopback local credential sign-in 的 Capability Profile、共享 Auth/Admin role-permission-ban/Consent/Analytics/Newsletter/Observability/Jobs/Webhooks、Admin audit、Data Operations、Projects/Content/Search/User Assets/Developer API/Product AI、Manifest/Environment/DB、部署/CI、Canvasight 与文档协议。
-[OUTPUT]: AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
+[OUTPUT]: 持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
 [POS]: 位于仓库根目录，作为 Codex / Claude / 其他代理的权威操作手册。
 
 [PROTOCOL]:
@@ -114,6 +114,24 @@
 - 坏味道发现即处理：职责混杂、边界模糊、变化扩散、知识泄露、依赖纠缠、接口臃肿、巨石模块、过度拆分、浅层抽象。
 - 以高内聚、低耦合、局部理解、独立演进为判断标准；该拆则拆、该合则合，不机械套用结构。
 - 自检结论只在有实际发现时输出，不为形式而输出。
+
+# Desktop Testing Rules
+
+- `tests/*.test.ts` 使用 Vitest 验证模块、持久化和模型协议；Electron 流程统一使用 `playwright-bdd`。
+- 桌面场景位于 `tests/e2e/features/`，步骤位于 `tests/e2e/steps/`，共享生命周期位于 `tests/e2e/support/`；不新增平行的 `.spec.ts` 桌面入口。
+- `pnpm test:electron` 先构建、再执行 `bddgen` 和 Playwright；`.features-gen/` 是忽略的生成文件，禁止手工维护。
+- 场景数据必须隔离；重启沿用该场景目录；升级场景先准备旧数据再启动；G4 交付前保持重启中断、不自动重放工具。
+- 修改场景不得减少原有业务断言；中文步骤描述业务意图，协议服务与进程清理留在 TypeScript 支撑层。
+
+# Desktop Collaboration Boundaries
+
+- 普通 chat 不创建工作项；task 使用原始用户请求和显式共享 key 建立稳定工作身份，不按员工 ID 或文本相似度推断重复任务。
+- 认领、预算预留、持有者比较和结果提交必须经过 `WorkRepository` 的 SQLite 事务；不得用先 `load` 再 `write` 替代条件原子更新。
+- 运行成功与业务已交付分开保存。已交付必须引用可检查结果；未知模型用量保持未知，工具后续模型步骤也计入原工作预算。
+- 任务正文在发布前是私有草稿；新消息、证据不一致或等待声明冲突触发的补判只能更新汇报，最多两次，不重新执行工具或取消已声明等待。发布检查、停止、权限变更与消息提交共用宿主临界区。
+- 独立任务当前最多并行两项；相同员工会话文件互斥，允许宿主命令的任务与全部任务互斥。运行取消后，在执行适配器实际退出前不得释放资源占用。
+- 父子拆分与结果依赖分离；等待保存目标版本和周期，状态与定向通知同事务提交。仅负责人接续，失败依赖阻塞，子工作/重试/重新汇报共享原始预算；停止树不取消无父子归属的共享依赖。
+- 旧 run 不释放新 run 的执行权；已执行或结果不明的工具操作不得通过自动重试重放。重启中断工作，G4 验收前不自动恢复。
 
 # Frontend Rules
 

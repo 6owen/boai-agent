@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 模型调用、工具和消息投影的回归验证。
+ * [OUTPUT]: 模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,9 +10,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { projectMessages } from '../src/runtime/adapters/mastra/message-projection'
+import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
 import type { EngineContext } from '../src/runtime/contracts'
+import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
 
 type RequestBody = { model: string; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
 const cleanup: (() => Promise<void>)[] = []
@@ -85,6 +86,84 @@ function allMessageText(request: RequestBody) { return request.messages.map(mess
 function toolResultText(request: RequestBody) { return request.messages.filter(message => message.role === 'tool').map(message => JSON.stringify(message.content)).join('\n') }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('reduces empty decision metadata without dropping message text, attribution, references or turn boundaries', () => {
+    const messages = [
+      message('原始请求：不要丢掉任何正文。', 1, { turnId: 'current', mentionIds: ['agent-a'] }),
+      message('来自同伴的结果', 2, { turnId: 'current', senderId: 'agent-b', senderType: 'agent', replyToMessageId: 'message-1' }),
+      message('旧记录', 3),
+    ]
+    const before = messages.map(item => messageData(item, 'message-1'))
+    const after = messages.map(item => decisionMessageData(item, 'message-1'))
+    expect(Buffer.byteLength(JSON.stringify(after))).toBeLessThan(Buffer.byteLength(JSON.stringify(before)))
+    for (let i = 0; i < messages.length; i++) {
+      expect({ ...after[i], turnId: after[i].turnId ?? null, mentionIds: after[i].mentionIds ?? [], isRootRequest: after[i].isRootRequest ?? false }).toEqual(before[i])
+    }
+    expect(after[0]).toMatchObject({ isRootRequest: true, turnId: 'current', mentionIds: ['agent-a'] })
+    expect(after[1].replyToMessageId).toBe('message-1')
+  })
+
+  it('re-reports completed work through a private tool-free protocol', async () => {
+    const server = await endpoint(['{"action":"publish","text":"文件已写好，按新要求补充汇报。"}'])
+    const run = await context(server.url)
+    const result = await new MastraEngine().report(run.ctx, { text: '原草稿', observedThroughSequence: 1, revisions: 0, status: 'private' })
+    expect(result).toEqual({ action: 'publish', text: '文件已写好，按新要求补充汇报。' })
+    expect(server.requests).toHaveLength(1)
+    expect(server.requests[0].tools ?? []).toEqual([])
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([]); expect(run.approvals).toEqual([])
+    expect(allMessageText(server.requests[0])).toContain('private-work-report-v1')
+  })
+
+  it('records a declared work outcome through the real SDK without exposing control text', async () => {
+    const server = await endpoint([{ name: 'report_work', args: { disposition: 'delivered', summary: '提供计划', evidence: [{ kind: 'answer', reference: '先收集样本，再计算均值。' }] } }, '先收集样本，再计算均值。'])
+    const outcomes: unknown[] = []
+    const run = await context(server.url, { onWorkOutcome: async outcome => { outcomes.push(outcome) } })
+    await new MastraEngine().run(run.ctx)
+    expect(outcomes).toEqual([{ disposition: 'delivered', summary: '提供计划', evidence: [{ kind: 'answer', reference: '先收集样本，再计算均值。' }] }])
+    expect(run.deltas.join('')).toBe('先收集样本，再计算均值。')
+    expect(run.deltas.join('')).not.toContain('disposition')
+    expect(run.additionalCalls).toHaveLength(1)
+  })
+
+  it('identifies eligible delegation owners without exposing other members private configuration', async () => {
+    const server = await endpoint(['需要将明确的子工作分配给当前同事。'])
+    const target = employee({ id: '42ad516d-880e-4c3e-9abe-49896339870f', name: '内容伙伴', role: '整理稿件', instructions: 'MEMBER_PRIVATE_RULE' })
+    const inactive = employee({ id: 'inactive-member', active: false })
+    const removed = employee({ id: 'removed-member' })
+    const external = employee({ id: 'external-member', executionBackend: { kind: 'acp-local', profileId: 'external-profile' } })
+    const { ctx } = await context(server.url, { members: [target, inactive, removed, external], delegateWork: async () => { throw new Error('This test only inspects the authorized model input') } })
+    ctx.conversation.agentIds.push(target.id, inactive.id, external.id)
+    await new MastraEngine().run(ctx)
+    const input = allMessageText(server.requests[0])
+    expect(input).toContain(target.id); expect(input).toContain(target.name); expect(input).toContain(target.role)
+    expect(input).not.toContain('MEMBER_PRIVATE_RULE')
+    expect(input).not.toContain(inactive.id); expect(input).not.toContain(removed.id); expect(input).not.toContain(external.id)
+    expect(server.requests[0].tools?.map(tool => tool.function.name)).toContain('delegate_work')
+  })
+
+  it('does not execute a file write when durable effect registration fails', async () => {
+    const server = await endpoint([{ name: 'write_file', args: { path: 'self:/work/result.txt', content: 'must not appear' } }, '写入未执行。'])
+    const run = await context(server.url, { beforeEffect: async () => { throw new Error('执行权已经失效') } })
+    await new MastraEngine().run(run.ctx)
+    await expect(readFile(path.join(run.ctx.workspace!.workPath, 'result.txt'), 'utf8')).rejects.toThrow()
+    expect(run.tools.some(tool => tool.name === 'write_file' && tool.status === 'failed')).toBe(true)
+  })
+
+  it('preserves a real HTTP 429 through the SDK so the host retries a private decision with budget', async () => {
+    const mock = await endpoint((_body, response, index) => {
+      if (index === 0) {
+        response.writeHead(429, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ error: { message: 'retry private decision', type: 'rate_limit_error' } }))
+      } else send(response, '{"action":"pass"}', index)
+    })
+    const { ctx, additionalCalls, deltas, tools } = await context(mock.url)
+    const capacity = new ModelCapacity(1, [1]), engine = new MastraEngine()
+    const decision = await capacity.run(ctx.connection.id, ctx.signal, () => engine.decide(ctx), { retryRateLimit: true, reserveRetry: ctx.onAdditionalModelCall })
+    expect(decision.action).toBe('pass')
+    expect(mock.requests).toHaveLength(2)
+    expect(additionalCalls).toHaveLength(1)
+    expect(deltas).toEqual([]); expect(tools).toEqual([])
+  })
+
   it('sends configured model/key and yields real streaming deltas with correct conversation projection', async () => {
     const mock = await endpoint(['Hello world'])
     const { ctx, deltas } = await context(mock.url)
@@ -545,12 +624,34 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       const payload = JSON.parse(request.messages[1].content as string)
       expect(payload.jsonSchema.required).toEqual(['action'])
       expect(payload.jsonSchema.properties).not.toHaveProperty('observedThroughSequence')
+      expect(payload.jsonSchema.properties).not.toHaveProperty('proposedContribution')
+      expect(payload.jsonSchema.properties).not.toHaveProperty('dependsOnContributions')
       expect(payload.data.participation).toMatchObject({ isFirstDecision: true, hasRespondedInTurn: false, triggerEventType: 'user_message' })
       expect(payload.data.currentTurnMessages).toHaveLength(3)
     }
     expect(JSON.parse(mock.requests[1].messages[1].content as string).repair.invalidOutput).toContain('您好')
     expect(deltas).toEqual([])
     expect(tools).toEqual([])
+  })
+
+  it.each(['{"action":"reply","responseKind":"task"}', ''])('repairs a length-truncated private decision without accepting partial output: %s', async partial => {
+    const mock = await endpoint((_body, response, index) => send(response, index === 0 ? partial : '{"action":"pass"}', index, { prompt_tokens: 40, completion_tokens: index === 0 ? 1200 : 8, total_tokens: index === 0 ? 1240 : 48 }, index === 0 ? 'length' : 'stop'))
+    const usages: ModelUsage[] = []
+    const { ctx, additionalCalls, deltas, tools } = await context(mock.url, { onUsage: async usage => { usages.push(usage) } })
+    expect(await new MastraEngine().decide(ctx)).toMatchObject({ action: 'pass' })
+    expect(mock.requests).toHaveLength(2); expect(additionalCalls).toHaveLength(1)
+    expect(usages.at(-1)).toEqual({ inputTokens: 80, outputTokens: 1208, totalTokens: 1288 })
+    expect(JSON.parse(mock.requests[1].messages[1].content as string).repair.validationError).toContain('模型输出超过限制')
+    expect(deltas).toEqual([]); expect(tools).toEqual([])
+  })
+
+  it.each([false, true])('bounds decision truncation repair and honors exhausted budget=%s', async exhausted => {
+    const mock = await endpoint((_body, response, index) => send(response, '{"action":"pass"}', index, undefined, 'length'))
+    const { ctx, additionalCalls } = await context(mock.url)
+    if (exhausted) ctx.onAdditionalModelCall = async () => { throw new Error('判断预算已用尽') }
+    await expect(new MastraEngine().decide(ctx)).rejects.toThrow(exhausted ? '预算已用尽' : '连续两次')
+    expect(mock.requests).toHaveLength(exhausted ? 1 : 2)
+    expect(additionalCalls).toHaveLength(exhausted ? 0 : 1)
   })
 
   it('separates earlier greetings and self-introductions from the new user turn without forcing a reply', async () => {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、按钮排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧。
+ * [OUTPUT]: 44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；侧栏由开关控制，窄窗口详情浮在右侧；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -780,6 +780,7 @@ fieldset {
   min-height:0
 }
 .detail-header {
+  overflow:hidden;
   display:flex;
   align-items:center;
   gap:6px;
@@ -841,26 +842,9 @@ fieldset {
   color:var(--muted-foreground);
   line-height:1.5
 }
-.detail-tabs {
-  display:flex;
-  padding:0 12px;
-  gap:3px;
-  border-bottom:1px solid var(--legacy-border)
-}
-.detail-tabs button {
-  flex:1;
-  border:0;
-  background:transparent;
-  border-radius:0;
-  color:var(--muted-foreground);
-  font-size:12px;
-  padding:11px 3px;
-  white-space:nowrap;
-  border-bottom:2px solid transparent
-}
-.detail-tabs button.active {
-  color:var(--foreground);
-  border-bottom-color:var(--foreground)
+.employee-tabs-bar {
+  padding:0 18px 12px;
+  border-bottom:1px solid var(--border)
 }
 .editor-frame {
   display:flex;
@@ -1461,24 +1445,6 @@ fieldset {
   min-width:120px;
   font-size:13px
 }
-.tab-row {
-  display:flex;
-  gap:9px;
-  border-bottom:1px solid var(--border)
-}
-.tab-row button {
-  border:0;
-  border-bottom:2px solid transparent;
-  background:transparent;
-  border-radius:0;
-  font-size:13px;
-  color:var(--muted-foreground);
-  padding:12px 10px
-}
-.tab-row button.active {
-  border-bottom-color:var(--foreground);
-  color:var(--foreground)
-}
 .library-grid {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
@@ -1900,15 +1866,7 @@ fieldset {
     padding-left:26px;
     padding-right:26px
   }
-  .detail-tabs {
-    justify-content:flex-start;
-    padding-left:23px;
-    padding-right:23px
-  }
-  .detail-tabs button {
-    flex:0 1 120px
-  }
-  .employee-identity {
+  .employee-identity,.employee-tabs-bar {
     padding-left:26px;
     padding-right:26px
   }

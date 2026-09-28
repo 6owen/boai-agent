@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；可拖动窗口的内容宽度顶栏标签、居中短分割线和无选中底色的面板开关。
+ * [OUTPUT]: 6owen Soft 共用皮肤、紧凑标签页与线形变体、群成员拼图头像与拖拽插入线；内容按钮保留宿主字号，紧凑 composer、创建弹窗、同款成员行与头像；保留拖动空白的可滚动多窗口标签、居中短分割线和无选中底色的面板开关。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -75,8 +75,20 @@
 .soft-elevated { box-shadow:var(--shadow-popover) }
 :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=popover-content],[data-slot=hover-card-content],[data-slot=dropdown-menu-content],[data-slot=dropdown-menu-sub-content],[data-slot=context-menu-content],[data-slot=context-menu-sub-content],[data-slot=menubar-content],[data-slot=menubar-sub-content],[data-slot=select-content],[data-slot=combobox-content],[data-slot=toast],[data-slot=drawer-popup],[data-slot=sheet-content],[data-slot=card]) { corner-shape:squircle }
 :is([data-slot=toggle],[data-slot=tabs-list],[data-slot=tabs-trigger],[data-slot=menubar],[data-slot=sidebar-menu-button],.rail-item,.conversation-item,.page-subnav button,.schedule-item) { corner-shape:squircle }
-:is([data-slot=tabs-trigger][data-active],[data-slot=toggle][aria-pressed=true],.mention-chip.selected) { box-shadow:var(--shadow-control) }
+:is([data-slot=toggle][aria-pressed=true],.mention-chip.selected) { box-shadow:var(--shadow-control) }
 .mention-chip.selected { background-color:var(--selection) }
+
+/* Tabs share one compact Soft surface in both embedded pages and side panels. */
+.soft-tabs-list { border-radius:var(--radius-control);background:var(--muted) }
+.soft-tabs-trigger { border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--muted-foreground);cursor:pointer;transition:background-color .15s,color .15s,box-shadow .15s }
+.soft-tabs-trigger:is(:hover,:focus-visible) { background:var(--accent);color:var(--foreground) }
+.soft-tabs-trigger[data-active] { background-color:var(--card);background-image:linear-gradient(to bottom,transparent,var(--soft-shade));color:var(--foreground);box-shadow:var(--shadow-control) }
+.soft-tabs-list[data-variant=line] { border-radius:0;background:transparent }
+.soft-tabs-list[data-variant=line] .soft-tabs-trigger { border-radius:0;background:none;box-shadow:none }
+.soft-tabs-list[data-variant=line] .soft-tabs-trigger[data-active]::after { content:"";position:absolute;background:var(--foreground);border-radius:1px }
+.soft-tabs-list[data-variant=line][data-orientation=horizontal] .soft-tabs-trigger[data-active]::after { inset-inline:10px;bottom:0;height:2px }
+.soft-tabs-list[data-variant=line][data-orientation=vertical] .soft-tabs-trigger[data-active]::after { inset-block:4px;right:0;width:2px }
+@media(prefers-reduced-motion:reduce) { .soft-tabs-trigger { transition:none } }
 
 /* Presentational composer: host keeps draft, IME, stop, mention and send behavior. */
 .chat-composer {
@@ -130,11 +142,17 @@
 .global-toolbar .soft-button-ghost[aria-pressed]:hover { background:var(--accent) }
 .toolbar-detail { position:relative }
 .toolbar-detail::before { content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:var(--border);transform:translateY(-50%);pointer-events:none }
-.detail-tab { display:flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;max-width:min(260px,100%);height:32px;padding:0 4px 0 10px;border:1px solid var(--frame-border);border-radius:10px;background:var(--surface-detail);color:var(--foreground);-webkit-app-region:drag }
-.detail-tab>.app-icon { width:14px;height:14px }
-.detail-tab-title { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550 }
+.soft-tabs-list[data-variant=window] { max-width:100%;border-radius:0;background:transparent;scrollbar-width:none;-webkit-app-region:no-drag }
+.soft-tabs-list[data-variant=window]::-webkit-scrollbar { display:none }
+.detail-tab { display:flex;align-items:center;flex:0 0 auto;min-width:90px;max-width:180px;height:32px;padding-right:3px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted-foreground);-webkit-app-region:no-drag }
+.detail-tab[data-selected=true] { border-color:var(--frame-border);background:var(--surface-detail);color:var(--foreground) }
+.detail-tab:hover { background:var(--accent) }
+.soft-tabs-list[data-variant=window] .soft-tabs-trigger { flex:1;min-width:0;justify-content:flex-start;border-radius:9px;background:none;box-shadow:none;color:inherit }
+.soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
+.detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550 }
 .global-toolbar .detail-tab [data-slot=button] { width:24px;height:24px;flex-shrink:0 }
-.detail-tab .dirty-label { flex-shrink:0 }
+.detail-tab .dirty-label { flex-shrink:0;font-size:18px;line-height:1 }
+.detail-panel[hidden],.detail-content[hidden] { display:none }
 
 /* Group selection shares the conversation list's row metrics and surface. */
 .conversation-item,.creation-member { display:flex;align-items:center;gap:8px;min-width:0;width:100%;min-height:52px;padding:8px;margin-bottom:3px;border-radius:var(--radius-control);corner-shape:squircle;text-align:left }
@@ -156,3 +174,18 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .creation-selection-heading { display:flex;align-items:center;min-height:32px;color:var(--muted-foreground);font-size:12px }
 .creation-selection-empty { display:flex;height:100%;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted-foreground);font-size:12px }
 .creation-selection-empty .app-icon { width:28px;height:28px }
+
+/* Member mosaics use the same images as individual contacts at every size. */
+.group-avatar { --avatar-grid-gap:1px;display:flex;flex-direction:column;gap:var(--avatar-grid-gap);padding:2px;overflow:hidden }
+.group-avatar-row { display:flex;justify-content:center;gap:var(--avatar-grid-gap);width:100%;height:calc((100% - (var(--avatar-grid-size) - 1) * var(--avatar-grid-gap)) / var(--avatar-grid-size));flex-shrink:0 }
+.group-avatar-tile { display:block;height:100%;aspect-ratio:1;min-width:0 }
+.group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
+.conversation-row { position:relative }
+.conversation-item.dragging { opacity:.35 }
+.conversation-item .conversation-pin { width:11px;height:11px;color:var(--muted-foreground) }
+.conversation-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
+.conversation-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
+.conversation-row[data-drop=before]::before { top:3px }
+.conversation-row[data-drop=before]::after { top:0 }
+.conversation-row[data-drop=after]::before { bottom:3px }
+.conversation-row[data-drop=after]::after { bottom:0 }

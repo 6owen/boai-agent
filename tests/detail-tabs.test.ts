@@ -1,0 +1,42 @@
+/*
+ * [INPUT]: 详情标签的纯状态转换。
+ * [OUTPUT]: 标签去重、会话范围、关闭邻项和收起保留的不变量。
+ * [POS]: 多标签状态的模块回归。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import { describe, expect, it } from 'vitest'
+import { detailTabsReducer as reduce, emptyDetailTabs, type DetailTarget } from '../src/renderer/components/detail-panel/tabs-state'
+
+describe('detail workspace tabs', () => {
+  const employee: DetailTarget = { type: 'agent', id: 'researcher', conversationId: 'group-a' }
+  const activity: DetailTarget = { type: 'activity', id: 'group-a' }
+  it('reuses an existing tab without reordering or replacing its session', () => {
+    const first = reduce(emptyDetailTabs, { type: 'open', target: activity })
+    const both = reduce(first, { type: 'open', target: employee })
+    const reopened = reduce(both, { type: 'open', target: activity })
+    expect(reopened.tabs).toBe(both.tabs)
+    expect(reopened.activeKey).toBe(first.activeKey)
+    expect(reopened.tabs).toHaveLength(2)
+    const anotherScope = reduce(reopened, { type: 'open', target: { ...employee, conversationId: 'group-b' } })
+    expect(anotherScope.tabs).toHaveLength(3)
+    expect(anotherScope.tabs[1]?.target).toEqual(employee)
+  })
+  it('closing a background tab preserves the active tab; closing the active tab selects its neighbor', () => {
+    let state = reduce(emptyDetailTabs, { type: 'open', target: activity })
+    state = reduce(state, { type: 'open', target: employee })
+    state = reduce(state, { type: 'open', target: { type: 'schedule' } })
+    const background = reduce(state, { type: 'close', key: state.tabs[0]!.key })
+    expect(background.activeKey).toBe(state.activeKey)
+    const active = reduce(background, { type: 'close', key: background.activeKey! })
+    expect(active.activeKey).toBe(background.tabs[0]?.key)
+    expect(reduce(active, { type: 'close', key: active.activeKey! })).toEqual(emptyDetailTabs)
+    expect(reduce(state, { type: 'close', key: 'unknown' })).toBe(state)
+  })
+  it('hiding and restoring retains every open tab and its selection', () => {
+    const opened = reduce(emptyDetailTabs, { type: 'open', target: employee })
+    const hidden = reduce(opened, { type: 'visibility', shown: false })
+    expect(hidden.tabs).toBe(opened.tabs)
+    expect(hidden.activeKey).toBe(opened.activeKey)
+    expect(reduce(hidden, { type: 'visibility', shown: true })).toEqual(opened)
+  })
+})

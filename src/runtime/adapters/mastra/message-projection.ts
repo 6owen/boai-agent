@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
+ * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示。
+ * [POS]: Mastra 消息装配；不通过压缩正文丢弃用户输入。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import type { Message } from '../../../shared/domain'
 import type { EngineContext } from '../../contracts'
 
@@ -33,6 +39,11 @@ export function partitionTurn(messages: Message[], triggerMessageId?: string, tu
 }
 export function messageData(message: Message, rootId?: string) {
   return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
+}
+/** Omit only empty/default metadata; retain content, attribution, ordering and timestamps. */
+export function decisionMessageData(message: Message, rootId?: string) {
+  const { turnId, mentionIds, isRootRequest, ...data } = messageData(message, rootId)
+  return { ...data, ...(turnId ? { turnId } : {}), ...(mentionIds.length ? { mentionIds } : {}), ...(isRootRequest ? { isRootRequest: true } : {}) }
 }
 
 /** The app transcript is canonical: no Mastra Memory is enabled or replayed a second time. */

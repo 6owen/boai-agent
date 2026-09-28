@@ -1,12 +1,12 @@
 <!--
 [INPUT]: Paperclip 固定提交的任务、运行、唤醒和预算实现，以及现有 Cumora 协作方案。
-[OUTPUT]: Paperclip 机制取舍、BoAI 协作设计修订和阶段调整依据。
+[OUTPUT]: Paperclip 固定版本机制取舍、阶段调整依据和实施状态导航。
 [POS]: ai-docs/spec/6.Cumora协作重构/05-Paperclip机制与方案修订.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 # Paperclip 机制与方案修订
 
-日期：2026-09-27。状态：**已完成源码参考与文档修订，所有 G 阶段仍待实施。**
+日期：2026-09-27。状态：**固定版本源码参考与方案修订；G1–G3 当前实现、真实模型验收及质量/成本限制见本组实施记录。**
 
 参考项目：[paperclipai/paperclip](https://github.com/paperclipai/paperclip)。本次固定提交为 [`0f14d261233c545aa6a8a38ec253c498a5130fff`](https://github.com/paperclipai/paperclip/tree/0f14d261233c545aa6a8a38ec253c498a5130fff)，不以之后的 master 变化反推本次结论。
 
@@ -98,4 +98,4 @@ Paperclip 的 [budgets service](https://github.com/paperclipai/paperclip/blob/0f
 - 不照搬 Paperclip 的自动恢复强度；BoAI 当前中断不重放语义保持到 G4 明确验证后。
 - SDK session 只是可选执行上下文缓存，任务和授权真源仍是产品状态；参考 [execution-continuation](https://github.com/paperclipai/paperclip/blob/0f14d261233c545aa6a8a38ec253c498a5130fff/server/src/services/execution-continuation.ts) 的续跑前重新核对所有权，不能把旧 session 当授权凭据。
 
-本次未部署 Paperclip、未执行其测试或 BoAI 应用回归。已核对上述独立源码及文档；大型 `heartbeat.ts` 的本地下载超时，未据此声称完整审计主调度器。方案属于适配判断，实际行为仍需按[验收计划](./04-实施阶段与验收.md)验证。
+参考研究时未部署 Paperclip、未执行其测试或 BoAI 应用回归；后续 BoAI 验证见实施记录。已核对上述独立源码及文档；大型 `heartbeat.ts` 的本地下载超时，未据此声称完整审计主调度器。方案属于适配判断，实际行为仍需按[验收计划](./04-实施阶段与验收.md)验证。

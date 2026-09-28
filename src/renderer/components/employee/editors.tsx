@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 包含头像选择/上传的员工和群配置编辑器及员工模板；群聊支持 1–12 位成员。
+ * [OUTPUT]: 包含头像选择/上传的员工和群配置编辑器及员工模板；群聊支持 1–12 位成员，独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { LaunchProfile } from '@shared/domain'
-import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
@@ -22,6 +22,7 @@ export const templates = [
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
 export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void> }) {
+  const formId = useId()
   const [uploading, setUploading] = useState(false)
   const [profiles,setProfiles]=useState<LaunchProfile[]>([])
   useEffect(()=>{void api.request('listLaunchProfiles',undefined).then(setProfiles).catch(()=>{})},[api])
@@ -37,8 +38,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved }
   useDirty(form)
   const connection = snapshot.connections.find(item => item.id === form.connectionId)
   const submit = (event: FormEvent) => { event.preventDefault(); if (uploading) return; void run(async () => { await api.request('saveAgent', { ...form, expectedConfigVersion: initialVersion.current, name: form.name.trim(), role: form.role.trim() }); await onSaved(); guard.saved(onClose) }) }
-  return <EditorFrame title={agent ? '编辑数字员工' : '认识一位新同事'} description="定义他的职责、能力和工作方式。" footer={<><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form="agent-form" disabled={busy || uploading || !form.name.trim()}>{busy && <LoaderCircle size={15} className="spinner" />}{agent ? '保存修改' : '创建员工'}</Button></>}>
-    <form data-edit-form id="agent-form" onSubmit={submit} className="form-grid">
+  return <EditorFrame title={agent ? '编辑数字员工' : '认识一位新同事'} description="定义他的职责、能力和工作方式。" footer={<><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || uploading || !form.name.trim()}>{busy && <LoaderCircle size={15} className="spinner" />}{agent ? '保存修改' : '创建员工'}</Button></>}>
+    <form data-edit-form id={formId} onSubmit={submit} className="form-grid">
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="员工名称"><Input required maxLength={80} value={form.name} onChange={e => set('name', e.target.value)} placeholder="例如：资料研究员" /></Field>
       <Field label="职责简介"><Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="一句话描述擅长的工作" /></Field>
@@ -57,6 +58,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved }
 }
 
 export function GroupEditor({ api, snapshot, conversation, onClose, onSaved }: { api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void> }) {
+  const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')
   const [ids, setIds] = useState(conversation?.agentIds ?? [])
@@ -65,8 +67,8 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved }: {
   const guard = useContext(GuardContext)
   useDirty({ title, ids, knowledge })
   const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge }); await onSaved(result); guard.saved(onClose) }) }
-  return <EditorFrame title={conversation ? '群聊设置' : '组建一个工作群'} description="让不同能力的同事，在一个会话里共同完成任务。" footer={<><Button variant="secondary" onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form="group-form" disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
-    <form data-edit-form id="group-form" className="form-grid" onSubmit={submit}>
+  return <EditorFrame title={conversation ? '群聊设置' : '组建一个工作群'} description="让不同能力的同事，在一个会话里共同完成任务。" footer={<><Button variant="secondary" onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
+    <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
       <div className="field full"><span className="field-label">群成员 <span className="field-hint">选择 1–12 位员工</span></span><div className="resource-picker">{snapshot.agents.map(agent => <label className="resource-option" key={agent.id}><Checkbox checked={ids.includes(agent.id)} disabled={agent.executionBackend?.kind==='acp-local'||(!agent.active && !ids.includes(agent.id))} onCheckedChange={checked => setIds(checked ? [...ids, agent.id] : ids.filter(id => id !== agent.id))} /><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} small /><span className="resource-option-meta"><strong>{agent.name}{agent.executionBackend?.kind==='acp-local'&&' · 仅单聊任务'}{!agent.active && ' · 已停用'}</strong><span>{agent.role}</span></span></label>)}</div>{snapshot.agents.length < 1 && <p className="empty-note">请先创建一位数字员工。</p>}</div>

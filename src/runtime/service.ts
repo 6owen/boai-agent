@@ -1,9 +1,10 @@
 /*
- * [INPUT]: 领域类型、IPC 合同、内部执行合同与业务模块。
- * [OUTPUT]: 应用用例、运行生命周期与授权管理。
+ * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
+ * [OUTPUT]: 会话列表偏好的批量持久化、工作认领/接续/停止、实际调用容量、草稿/证据/等待声明的有界修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { conversationListUpdates, type ConversationListChange } from '../shared/domain/conversation-list'
 import { RequestError } from '@agentclientprotocol/sdk'
 import { publishArtifact, restrictedPath } from './modules/workspaces/file-access'
 import { createHash } from 'node:crypto'
@@ -23,16 +24,26 @@ import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
 import { ProductStore, type StoredRecord } from './adapters/storage/product-store'
-import { GroupScheduler } from './group-scheduler'
+import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
 import { MemoryRepository } from './modules/memory/memory-repository'
+import { ModelCapacity } from './modules/collaboration/model-capacity'
+import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
+import { TaskAdmission } from './modules/collaboration/task-admission'
+import { workOutcomeSchema, workDelegationSchema, workWaitSchema, workEvidenceError } from './modules/collaboration/work-protocol'
+import type { WorkOutcome, ModelUsage } from '../shared/domain'
 
 const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
 const text = (max: number) => z.string().trim().min(1).max(max)
 const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
 const conversationSchema = z.object({ id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
+const conversationListSchema = z.discriminatedUnion('action', [
+  z.object({ id, action: z.literal('pin'), pinned: z.boolean() }).strict(),
+  z.object({ id, action: z.enum(['hide', 'show']) }).strict(),
+  z.object({ id, action: z.literal('move'), targetId: id, placement: z.enum(['before', 'after']) }).strict(),
+])
 const sendSchema = z.object({ conversationId: id, content: text(100000), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict()
 const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation']), conversationId: id.optional() }).strict()
@@ -66,6 +77,10 @@ export class AppService {
   private readonly homes: WorkspaceService
   private readonly memory: MemoryRepository
   private readonly scheduler: GroupScheduler
+  private readonly modelCapacity = new ModelCapacity()
+  private readonly taskAdmission = new TaskAdmission()
+  private readonly works: WorkRepository
+  private workTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private mutations: Promise<unknown> = Promise.resolve()
   private closing = false
   private backingUp = false
@@ -75,6 +90,7 @@ export class AppService {
   constructor(private readonly options: { dataPath: string; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.works = new WorkRepository(this.store)
     this.profiles=new LaunchProfiles(this.store)
     this.homes = new WorkspaceService(this.dataPath)
     this.memory = new MemoryRepository(this.store)
@@ -84,10 +100,11 @@ export class AppService {
       invalidateMemory: (id, matches) => this.invalidateEmployeeMemory(id, matches), changed: () => this.changed(),
     })
     this.scheduler = new GroupScheduler(this.store, {
+      critical: operation => this.serialize(operation),
       conversation: id => this.getConversation(id), agent: id => this.getAgent(id), message: id => this.messages.get(id),
       decide: (turn, event, delivery, signal) => this.executeDecision(turn, event, delivery, signal),
       speak: (turn, event, decision, signal, publish) => this.executeResponse(turn, event, decision, signal, publish),
-      settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
+      settled: (turn, participants, signal) => turn.wakeId ? Promise.resolve() : this.updateMemories(turn, participants, signal), idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
@@ -137,7 +154,7 @@ export class AppService {
     this.approvals.clear()
     updates.push(...await this.employees.initialize())
     await this.store.write(updates, removed)
-    await this.memory.init(); await this.scheduler.init()
+    await this.memory.init(); await this.works.init(); await this.scheduler.init()
     await Promise.all(['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces'].map(folder => mkdir(join(this.dataPath, folder), { recursive: true })))
     this.initialized = true
     await this.automations.init()
@@ -185,9 +202,10 @@ export class AppService {
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
         case 'deleteConnection': return this.deleteConnection(lookupSchema.parse(input).id)
         case 'createConversation': return this.saveConversation(conversationSchema.parse(input))
+        case 'updateConversationList': return this.updateConversationList(conversationListSchema.parse(input))
         case 'getConversation': return this.detail(lookupSchema.parse(input).id)
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
-        case 'cancelRun': { const { conversationId } = z.object({ conversationId: id }).strict().parse(input); this.getConversation(conversationId); return this.cancelConversation(conversationId) }
+        case 'cancelRun': { const { conversationId, workId } = z.object({ conversationId: id, workId: id.optional() }).strict().parse(input); this.getConversation(conversationId); return workId ? this.cancelWork(conversationId, workId) : this.cancelConversation(conversationId) }
         case 'approve': { const value = z.object({ id, approved: z.boolean() }).strict().parse(input); return this.resolveApproval(value.id, value.approved) }
         case 'importResource': {
           const value = z.object({ kind: z.enum(['skill', 'knowledge']), path: text(8000), ownerAgentId: id.optional() }).strict().parse(input)
@@ -222,7 +240,7 @@ export class AppService {
   private async detail(id: string): Promise<ConversationDetail> {
     const conversation = this.getConversation(id)
     const listed = await listArtifacts(conversation.workspacePath)
-    return clone({ conversation, messages: this.conversationMessages(id), runs: [...this.runs.values()].filter(run => run.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), artifacts: listed.map(artifact => ({ ...artifact, ...[...this.artifacts.values()].find(saved => saved.conversationId === id && saved.path === artifact.path) })), ...this.scheduler.detail(id) })
+    return clone({ conversation, messages: this.conversationMessages(id), runs: [...this.runs.values()].filter(run => run.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), artifacts: listed.map(artifact => ({ ...artifact, ...[...this.artifacts.values()].find(saved => saved.conversationId === id && saved.path === artifact.path) })), ...this.scheduler.detail(id), ...await this.works.view(id) })
   }
   private conversationMessages(id: string) { return [...this.messages.values()].filter(message => message.conversationId === id).sort((a, b) => a.sequence - b.sequence) }
 
@@ -313,6 +331,14 @@ export class AppService {
     return key ?? ''
   }
 
+  private async updateConversationList(change: ConversationListChange) {
+    const times = Object.fromEntries([...this.conversations.keys()].map(id => [id, this.conversationMessages(id).at(-1)?.createdAt ?? '']))
+    const updates = conversationListUpdates([...this.conversations.values()], change, times)
+    await this.store.write(updates.map(item => record('conversations', item)))
+    for (const item of updates) this.conversations.set(item.id, item)
+    if (updates.length) this.changed(change.id)
+  }
+
   private async saveConversation(input: z.infer<typeof conversationSchema>) {
     if (input.kind === 'direct' && input.agentIds.length !== 1) fail('单聊只能选择一名员工')
     for (const id of input.agentIds) {const a=this.getAgent(id);if(input.kind==='group'&&a.executionBackend?.kind==='acp-local')fail('外部任务员工暂不支持自主群聊，请使用单聊任务入口')}
@@ -333,7 +359,10 @@ export class AppService {
       const removed = previous.agentIds.filter(id => !conversation.agentIds.includes(id))
       const revoked = previous.sharedKnowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id))
       await this.cancelWhere(run => run.conversationId === conversation.id && (removed.includes(run.agentId) || !!this.snapshots.get(run.id)?.resources.some(resource => revoked.includes(resource.id)) || (run.phase === 'coordination' && (removed.length > 0 || revoked.length > 0))), '群成员或共享资料权限已变更')
-      if (removed.length || revoked.length) await this.scheduler.cancel(conversation.id, '群成员或共享资料权限已变更')
+      if (removed.length || revoked.length) {
+        for (const work of (await this.works.view(conversation.id)).workItems) if (removed.includes(work.ownerAgentId) || revoked.length) await this.works.cancelTree(work.id, '群成员或共享资料权限已变更')
+        await this.scheduler.cancel(conversation.id, '群成员或共享资料权限已变更')
+      }
       for (const member of removed) await this.memory.invalidateConversation(member, conversation.id)
       if (revoked.length) for (const member of conversation.agentIds) await this.memory.invalidateConversation(member, conversation.id)
       if (removed.length) for (const member of conversation.agentIds) await this.invalidateEmployeeMemory(member, entry => entry.sourceMessageIds.some(id => removed.includes(this.messages.get(id)?.senderId ?? '')), conversation.id)
@@ -458,6 +487,7 @@ export class AppService {
         signal.throwIfAborted()
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
         await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
+        if (run.workId) await this.works.reserveCall(run.id)
         signal.throwIfAborted()
       },
       onUsage: async usage => {
@@ -465,6 +495,7 @@ export class AppService {
         const clean = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage)
         const delta = clean.outputTokens === undefined ? undefined : clean.outputTokens - (run.usage?.outputTokens ?? 0)
         run.usage = { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
+        if (run.workId) await this.works.usage(run.id, clean)
         if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta)
       },
     }
@@ -477,9 +508,11 @@ export class AppService {
     let key = ''
     try {
       const context = await this.engineContext(run, turn, effective, delivery.observedThroughSequence); key = context.apiKey
-      context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence }
+      const visible = new Set(context.messages.map(message => message.id))
+      context.workItems = (await this.works.view(turn.conversationId)).workItems.filter(work => visible.has(work.sourceMessageId) && work.resultMessageIds.every(id => visible.has(id)))
+      context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence, sourceEventIds: delivery.eventIds ?? [event.id] }
       if (!this.options.engine.decide) fail('模型引擎尚未支持成员独立参与判断')
-      const decision = await withAbort(this.options.engine.decide!(context), effective)
+      const decision = await this.invokeModel(run, context, ctx => this.options.engine.decide!(ctx), 15_000)
       effective.throwIfAborted()
       await this.finishRun(run, 'completed'); return decision
     } catch (error) {
@@ -487,19 +520,102 @@ export class AppService {
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally { this.runControllers.delete(run.id) }
   }
-  private async executeResponse(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: (message: Message, records: StoredRecord[]) => Promise<void>) {
+  private async executeResponse(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: PublishReply): Promise<void | 'deferred'> {
     const conversation = this.getConversation(turn.conversationId), run = this.newRun(conversation, decision.agentId, turn.triggerMessageId, turn.id)
     run.responseKind = decision.responseKind === 'task' && decision.action === 'reply' ? 'task' : 'chat'
     run.status = 'running'; this.runs.set(run.id, run)
     const controller = new AbortController(), effective = AbortSignal.any([controller.signal, signal]); this.runControllers.set(run.id, controller)
     const abort = () => controller.abort(signal.reason); signal.addEventListener('abort', abort, { once: true })
     let key = ''
+    let outcome: WorkOutcome = { disposition: 'no_progress', summary: '运行结束，但员工未提交可检查的业务结果声明' }
+    let outcomeReported = false
+    let workDeadline: ReturnType<typeof setTimeout> | undefined
+    let releaseTask: (() => void) | undefined
     try {
+      await this.store.write([record('runs', run)])
+      if (run.responseKind === 'task') {
+        const queuedAt = Date.now()
+        try { releaseTask = await this.taskAdmission.acquire(this.getAgent(run.agentId).allowCommands, effective, `${conversation.id}:${run.agentId}`) }
+        finally { run.taskQueueMs = Date.now() - queuedAt }
+      }
+      if (turn.wakeId) await this.serialize(async () => {
+        effective.throwIfAborted()
+        const messages = this.conversationMessages(conversation.id).filter(message => message.status === 'completed')
+        const latestUser = [...messages].reverse().find(message => message.senderType === 'user')!
+        turn.triggerMessageId = latestUser.id; run.triggerMessageId = latestUser.id
+        decision = { ...decision, observedThroughSequence: messages.at(-1)!.sequence, replyToMessageId: latestUser.id }
+        await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
+      })
       const context = await this.engineContext(run, turn, effective, decision.observedThroughSequence); key = context.apiKey
-      const message = this.nextMessage(conversation.id, { id: run.messageId, senderType: 'agent', senderId: run.agentId, senderName: run.agentName, content: '', status: 'streaming', runId: run.id })
+      if (run.responseKind === 'task') {
+        try {
+          context.work = await this.serialize(async () => {
+            effective.throwIfAborted()
+            if (!this.scheduler.canStartWork(turn.id)) throw new WorkUnavailableError('已有用户新消息，本轮不再开始新工作')
+            let intent = decision.work ?? { key: 'main', scope: this.messages.get(turn.triggerMessageId)!.content, deliverable: decision.purpose ?? '完成用户原始请求中的交付目标' }
+            if (turn.workId) {
+              const retryWork = (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) ?? fail('重试的原工作不存在')
+              intent = { key: retryWork.key, scope: retryWork.scope, deliverable: retryWork.deliverable, workId: retryWork.id, expectedVersion: retryWork.version }
+            }
+            if (intent.workId) {
+              const visible = new Set(context.messages.map(message => message.id))
+              const existing = (await this.works.view(conversation.id)).workItems.find(work => work.id === intent.workId)
+              if (!existing || !visible.has(existing.sourceMessageId) || !existing.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该工作')
+            }
+            return this.works.claim({ conversationId: conversation.id, sourceMessageId: turn.triggerMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId })
+          })
+        } catch (error) {
+          if (!(error instanceof WorkUnavailableError)) throw error
+          await this.finishRun(run, 'cancelled', error.message)
+          return 'deferred'
+        }
+        run.workId = context.work.id; run.workVersion = context.work.version
+        const budget = (await this.works.view(conversation.id)).workBudgets.find(budget => budget.id === context.work!.budgetId)!
+        workDeadline = setTimeout(() => { void this.serialize(async () => { controller.abort(new Error('达到原始工作的时间上限')) }) }, Math.max(0, Date.parse(budget.deadlineAt) - Date.now()))
+        workDeadline.unref()
+        context.workItems = (await this.works.view(conversation.id)).workItems.filter(work => {
+          const visible = new Set(context.messages.map(message => message.id))
+          return visible.has(work.sourceMessageId) && work.resultMessageIds.every(id => visible.has(id))
+        })
+        context.completedWorkTools = [...this.runs.values()].filter(previous => {
+          const snapshot = this.snapshots.get(previous.id)
+          const authorized = new Set(context.resources.map(resource => resource.id))
+          return previous.id !== run.id && previous.workId === run.workId && previous.agentId === run.agentId && snapshot && !snapshot.invalidated && snapshot.resources.every(resource => authorized.has(resource.id))
+        }).map(previous => ({ runId: previous.id, tools: previous.toolEvents.filter(tool => tool.status === 'completed' && ['write_file', 'publish_artifact', 'execute_command'].includes(tool.name)) }))
+        const validateDependencies = async (dependencies: { workId: string }[]) => {
+          const visible = new Set(this.contextMessages(this.getConversation(conversation.id), turn.triggerMessageId).map(message => message.id))
+          const items = (await this.works.view(conversation.id)).workItems
+          for (const dependency of dependencies) {
+            const work = items.find(item => item.id === dependency.workId)
+            if (!work || !visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该依赖')
+          }
+        }
+        context.beforeEffect = async () => { effective.throwIfAborted(); await this.works.markEffect(run.id) }
+        context.afterEffect = async () => { effective.throwIfAborted(); await this.works.confirmEffect(run.id) }
+        context.delegateWork = input => this.serialize(async () => {
+          effective.throwIfAborted()
+          const proposal = workDelegationSchema.parse(input), owner = this.getAgent(proposal.ownerAgentId)
+          if (!owner.active || !this.getConversation(conversation.id).agentIds.includes(owner.id) || owner.executionBackend?.kind === 'acp-local') fail('委派对象不是当前有效的内置成员')
+          await validateDependencies(proposal.dependencies ?? [])
+          const child = await this.works.delegate(run.id, proposal)
+          this.changed(conversation.id); return child
+        })
+        context.waitForWork = input => this.serialize(async () => {
+          effective.throwIfAborted(); const wait = workWaitSchema.parse(input)
+          await validateDependencies(wait.dependencies); await this.works.waitFor(run.id, wait)
+          context.pendingWorkWait = wait
+          outcome = { disposition: 'waiting', summary: wait.nextStep }; outcomeReported = true
+          this.changed(conversation.id)
+        })
+        context.onWorkOutcome = async value => { effective.throwIfAborted(); outcome = workOutcomeSchema.parse(value); outcomeReported = true }
+      }
+      const initialMessage = { id: run.messageId, senderType: 'agent' as const, senderId: run.agentId, senderName: run.agentName, content: '', status: 'streaming' as const, runId: run.id }
+      const message: Message = run.responseKind === 'task' ? { ...initialMessage, conversationId: conversation.id, sequence: 0, createdAt: now() } : this.nextMessage(conversation.id, initialMessage)
       message.turnId = turn.id; message.replyToMessageId = decision.replyToMessageId ?? event.messageId; message.mentionIds = decision.recipientAgentIds ?? []
-      this.messages.set(message.id, message)
-      await this.store.write([record('runs', run), record('messages', message)]); this.emit({ type: 'message', message }); this.changed(conversation.id)
+      if (run.responseKind === 'chat') this.messages.set(message.id, message)
+      await this.store.write([record('runs', run), ...(run.responseKind === 'chat' ? [record('messages', message)] : [])])
+      if (run.responseKind === 'chat') this.emit({ type: 'message', message })
+      this.changed(conversation.id)
       const alive = () => !effective.aborted && !this.closing && !terminal.has(run.status)
       context.responseKind = run.responseKind; context.decision = decision
       if (run.responseKind === 'chat') context.resources = []
@@ -509,7 +625,15 @@ export class AppService {
         run.environment = context.environment.summary
         await this.store.write([record('runs', run)])
       }
-      context.onDelta = async delta => { if (!alive()) return; message.content += delta; await this.store.write([record('messages', message)]); if (alive()) this.emit({ type: 'message', message }) }
+      context.onDelta = async delta => {
+        if (!alive()) return
+        message.content += delta
+        if (run.responseKind === 'chat') { await this.store.write([record('messages', message)]); if (alive()) this.emit({ type: 'message', message }) }
+        else {
+          run.draft = { text: message.content, observedThroughSequence: decision.observedThroughSequence, revisions: 0, status: 'private' }
+          await this.store.write([record('runs', run)])
+        }
+      }
       context.onTool = async event => {
         if (!alive()) return
         const index = run.toolEvents.findIndex(tool => tool.id === event.id), safe = { ...event, detail: this.redact(event.detail, key) }
@@ -517,23 +641,93 @@ export class AppService {
         await this.store.write([record('runs', run)]); if (alive()) this.changed(conversation.id)
       }
       context.approveCommand = (command, cwd) => this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !this.messages.get(turn.triggerMessageId)?.origin)
-      context.onArtifact = async artifact => {
+      context.onArtifact = artifact => this.serialize(async () => {
         if (!alive()) throw new Error('任务已停止，不能发布产物')
         if (!isWithin(conversation.workspacePath, artifact.path)) fail('发布产物不在本群共享目录内')
         const saved = { ...artifact, id: artifact.id ?? randomUUID(), conversationId: conversation.id, ownerAgentId: run.agentId, runId: run.id, publishedAt: now() }
-        this.artifacts.set(saved.id, saved); await this.store.write([record('artifacts', saved)]); this.changed(conversation.id)
-      }
-      await withAbort(this.options.engine.run(context), effective)
+        await this.store.write([record('artifacts', saved)]); this.artifacts.set(saved.id, saved); this.changed(conversation.id)
+      })
+      await this.invokeModel(run, context, async ctx => {
+        if (run.responseKind === 'task' && !this.scheduler.canStartWork(turn.id)) throw new WorkUnavailableError('已有用户新消息，尚未启动的旧任务已暂缓')
+        this.scheduler.executionStarted(turn.id, run.agentId)
+        // Keep the resource lease until the adapter itself settles, even if the host has cancelled.
+        const release = releaseTask; releaseTask = undefined
+        try { await this.options.engine.run(ctx) } finally { release?.() }
+      })
       effective.throwIfAborted()
       if (!alive()) throw new Error('任务已停止')
       if (!message.content.trim()) throw new Error('模型没有返回可发布的正文')
-      run.status = 'completed'; run.finishedAt = now(); message.status = 'completed'; conversation.lastMessageAt = message.createdAt
-      await publish(message, [record('runs', run), record('messages', message), record('conversations', conversation), ...[...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => record('artifacts', artifact))])
+      const produced = [...this.artifacts.values()].filter(artifact => artifact.runId === run.id)
+      if (!outcomeReported && produced.length) outcome = { disposition: 'progress', summary: '已登记产物，尚未声明原始目标已经交付', evidence: produced.map(artifact => ({ kind: 'artifact', reference: artifact.id })) }
+      const commit = async () => {
+        effective.throwIfAborted()
+        const current = this.getConversation(conversation.id), snapshot = this.snapshots.get(run.id)!
+        if (!alive() || !current.agentIds.includes(run.agentId) || snapshot.invalidated || this.getAgent(run.agentId).configVersion !== snapshot.agent.configVersion || (current.configVersion ?? 0) !== (snapshot.conversation.configVersion ?? 0)) fail('当前运行已失去发布权限')
+        const completedMessage = run.responseKind === 'task'
+          ? { ...message, ...this.nextMessage(conversation.id, { id: message.id, runId: run.id, senderType: 'agent', senderId: run.agentId, senderName: run.agentName, content: run.draft!.text, status: 'completed' }) }
+          : { ...message, status: 'completed' as const }
+        const completedRun = { ...run, status: 'completed' as const, finishedAt: now(), ...(run.workId ? { disposition: outcome.disposition } : {}), ...(run.draft ? { draft: { ...run.draft, status: 'published' as const } } : {}) }
+        const artifacts = [...this.artifacts.values()].filter(artifact => artifact.runId === run.id)
+        const records = [record('runs', completedRun), record('messages', completedMessage), ...artifacts.map(artifact => record('artifacts', artifact))]
+        await publish(completedMessage, records, run.workId ? async records => {
+          await this.works.settle(run.id, outcome, { messageId: message.id, content: completedMessage.content, artifactIds: artifacts.map(artifact => artifact.id) }, records)
+        } : undefined)
+        Object.assign(run, completedRun); Object.assign(message, completedMessage); this.messages.set(message.id, message)
+      }
+      if (run.responseKind === 'task') {
+        run.draft = { text: message.content, observedThroughSequence: decision.observedThroughSequence, revisions: 0, status: 'private' }
+        await this.store.write([record('runs', run)])
+        const withhold = (reason: string) => this.serialize(async () => {
+          effective.throwIfAborted()
+          const saved = { ...run, status: 'completed' as const, finishedAt: now(), disposition: 'blocked' as const, draft: { ...run.draft!, status: 'withheld' as const, reason } }
+          await this.works.withhold(run.id, reason, [record('runs', saved)])
+          Object.assign(run, saved); this.changed(conversation.id)
+        })
+        for (;;) {
+          const stale = await this.serialize(async () => {
+            effective.throwIfAborted()
+            const current = this.conversationMessages(conversation.id).filter(message => message.status === 'completed')
+            const latest = current.at(-1)?.sequence ?? 0
+            const evidenceError = workEvidenceError(outcome, { content: run.draft!.text, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) }, !!context.pendingWorkWait)
+            if (latest <= run.draft!.observedThroughSequence && !evidenceError) { await commit(); return undefined }
+            if (evidenceError) { run.draft!.reason = evidenceError; await this.store.write([record('runs', run)]) }
+            const latestUser = [...current].reverse().find(message => message.senderType === 'user')!
+            return { sequence: latest, triggerMessageId: latestUser.id, turnId: latestUser.turnId, messages: this.contextMessages(this.getConversation(conversation.id), latestUser.id, latest), evidenceError }
+          })
+          if (!stale) break
+          if (run.draft.revisions >= 2 || !this.options.engine.report) {
+            await withhold(stale.evidenceError ? `${stale.evidenceError}；${run.draft.revisions >= 2 ? '达到本次重新汇报上限' : '当前引擎不支持只更新汇报'}，已保存结果且未重放操作` : run.draft.revisions >= 2 ? '新消息持续到达，达到本次重新汇报上限；已执行操作保留，未重放' : '任务结果基于旧输入，当前引擎不支持只更新汇报；已保存草稿待核对')
+            return 'deferred'
+          }
+          await this.works.reserveReport(run.id)
+          await context.onAdditionalModelCall!()
+          const baseline = { ...run.usage }
+          const reportContext: EngineContext = { ...context, ...stale, resources: [], responseKind: 'chat',
+            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, delegateWork: undefined, waitForWork: undefined,
+            work: { ...context.work!, outcome, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) },
+            onDelta: async () => {}, onTool: async () => { throw new Error('重新汇报不允许执行工具') }, approveCommand: async () => false,
+            onUsage: async usage => {
+              const cumulative = { ...baseline }
+              for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (baseline[field] ?? 0) + usage[field]!
+              await context.onUsage?.(cumulative)
+            },
+          }
+          const report = await this.invokeModel(run, reportContext, ctx => this.options.engine.report!(ctx, run.draft!), 30_000)
+          effective.throwIfAborted(); run.draft.revisions++
+          if (report.action === 'discard') { await withhold('员工根据新信息决定暂不公开旧任务结果；已执行操作不会重放'); return 'deferred' }
+          if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')
+          run.draft.text = report.text; run.draft.observedThroughSequence = stale.sequence
+          if (report.outcome) outcome = workOutcomeSchema.parse(report.outcome)
+          if (!workEvidenceError(outcome, { content: report.text, artifactIds: reportContext.work!.artifactIds }, !!context.pendingWorkWait)) delete run.draft.reason
+          await this.store.write([record('runs', run)])
+        }
+      } else await this.serialize(commit)
       this.emit({ type: 'message', message }); this.changed(conversation.id)
     } catch (error) {
-      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key))
+      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
+      if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
       throw new Error(this.redact(this.errorMessage(error), key))
-    } finally { signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); await this.clearApprovals(run.id) }
+    } finally { releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); await this.clearApprovals(run.id) }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
     if (!this.options.engine.extractMemory || this.closing) return
@@ -543,12 +737,12 @@ export class AppService {
       if (!await this.scheduler.reserveMaintenance(turn.id)) return
       const run = this.newRun(this.getConversation(turn.conversationId), agentId, turn.triggerMessageId, turn.id, 'memory')
       run.status = 'running'; this.runs.set(run.id, run)
-      const controller = new AbortController(), effective = AbortSignal.any([signal, controller.signal, AbortSignal.timeout(30_000)]); this.runControllers.set(run.id, controller)
+      const controller = new AbortController(), effective = AbortSignal.any([signal, controller.signal]); this.runControllers.set(run.id, controller)
       let key = ''
       try {
         const context = await this.engineContext(run, turn, effective); key = context.apiKey
         const query: MemoryQuery = { agentId, conversationId: turn.conversationId, scope: 'conversation' }
-        const candidates = await withAbort(this.options.engine.extractMemory(context), effective)
+        const candidates = await this.invokeModel(run, context, ctx => this.options.engine.extractMemory!(ctx), 30_000)
         await this.serialize(async () => {
           effective.throwIfAborted()
           const current = this.getConversation(turn.conversationId), currentAgent = this.getAgent(agentId)
@@ -563,8 +757,41 @@ export class AppService {
     }
   }
 
+  private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {
+    const readOnly = run.phase === 'decision' || run.phase === 'memory'
+    const previousTiming = run.timing
+    const earlierAttempts: ModelUsage = {}
+    let attemptUsage: ModelUsage = {}, started = false
+    const deadline = new AbortController(), signal = AbortSignal.any([context.signal, deadline.signal])
+    return withAbort(this.modelCapacity.run(context.connection.id, signal, async () => {
+      if (started) for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (attemptUsage[field] !== undefined) earlierAttempts[field] = (earlierAttempts[field] ?? 0) + attemptUsage[field]!
+      started = true; attemptUsage = {}
+      // Queueing is governed by turn cancellation; the phase deadline starts after admission.
+      const timer = timeoutMs ? setTimeout(() => deadline.abort(new DOMException('模型阶段超时', 'TimeoutError')), timeoutMs) : undefined
+      timer?.unref()
+      signal.throwIfAborted()
+      // The caller can cancel immediately, but the permit belongs to the actual adapter lifetime.
+      try { return await operation({ ...context, signal, onUsage: context.onUsage ? async usage => {
+        attemptUsage = usage
+        const cumulative = { ...earlierAttempts }
+        for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (earlierAttempts[field] ?? 0) + usage[field]!
+        await context.onUsage!(cumulative)
+      } : undefined }) } finally { if (timer) clearTimeout(timer) }
+    }, {
+      retryRateLimit: readOnly,
+      reserveRetry: context.onAdditionalModelCall,
+      timing: async timing => {
+        if (this.closing || terminal.has(run.status)) return
+        run.timing = { queueMs: (previousTiming?.queueMs ?? 0) + timing.queueMs, executionMs: (previousTiming?.executionMs ?? 0) + timing.executionMs, backoffMs: (previousTiming?.backoffMs ?? 0) + timing.backoffMs, rateLimitRetries: (previousTiming?.rateLimitRetries ?? 0) + timing.rateLimitRetries }
+        await this.store.write([record('runs', run)])
+      },
+    }), signal)
+  }
+
   private async finishRun(run: AgentRun, status: 'completed' | 'failed' | 'cancelled' | 'interrupted', error?: string) {
+    if (run.workId && status !== 'completed') await this.works.release(run.id, status)
     run.status = status; run.finishedAt = now(); if (error) run.error = error
+    if (run.draft && status !== 'completed') { run.draft.status = 'withheld'; run.draft.reason = error ?? '运行已停止，草稿未发布' }
     const message = this.messages.get(run.messageId)
     if (message) message.status = status
     await this.store.write([record('runs', run), ...(message ? [record('messages', message)] : [])])
@@ -619,10 +846,61 @@ export class AppService {
   }
   private async cancelEmployee(agentId: string, reason: string, conversationId?: string) {
     await this.cancelWhere(run => run.agentId === agentId && (!conversationId || run.conversationId === conversationId), reason)
+    for (const conversation of this.conversations.values()) if (!conversationId || conversation.id === conversationId) {
+      for (const work of (await this.works.view(conversation.id)).workItems.filter(work => work.ownerAgentId === agentId)) await this.works.cancelTree(work.id, reason)
+    }
     // A completed decision may still hold a speaking candidate after its Run ended.
     for (const conversation of this.conversations.values()) if (conversation.agentIds.includes(agentId) && (!conversationId || conversation.id === conversationId)) await this.scheduler.cancel(conversation.id, reason, this.closing)
   }
+  private scheduleWork(conversationId: string) {
+    if (this.closing || !this.initialized) return
+    void this.serialize(async () => {
+      if (this.closing || this.backingUp) return
+      const timer = this.workTimers.get(conversationId)
+      if (timer) clearTimeout(timer)
+      this.workTimers.delete(conversationId)
+      await this.works.expire(conversationId)
+      const view = await this.works.view(conversationId)
+      for (const wake of view.workWakes) if (wake.status === 'scheduled' && wake.turnId) {
+        const turn = this.scheduler.turns.get(wake.turnId)
+        if (turn?.status === 'completed') await this.works.deferWake(wake.id, turn.id)
+        else if (turn && ['cancelled', 'interrupted', 'failed', 'budget_exhausted'].includes(turn.status)) await this.works.cancelTree(wake.workId, turn.reason ?? '接续未执行，等待明确的新请求')
+      }
+      const current = await this.works.view(conversationId), conversation = this.getConversation(conversationId)
+      for (const wake of current.workWakes.filter(wake => wake.status === 'pending' && wake.kind !== 'blocked')) {
+        const work = current.workItems.find(work => work.id === wake.workId)!
+        const owner = this.employees.find(work.ownerAgentId)
+        const latest = this.conversationMessages(conversationId).filter(message => message.status === 'completed')
+        const trigger = [...latest].reverse().find(message => message.senderType === 'user')
+        const visible = trigger && new Set(this.contextMessages(conversation, trigger.id).map(message => message.id))
+        if (!owner?.active || !conversation.agentIds.includes(owner.id) || !trigger || !visible?.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) {
+          await this.works.cancelTree(work.id, '接续的负责人或原始上下文权限已失效'); continue
+        }
+        const prepared = this.scheduler.prepareWork(conversation, trigger, work, wake.id, latest.at(-1)!.sequence)
+        if (await this.works.scheduleWake(wake.id, prepared.turn.id, prepared.records)) this.scheduler.accept(prepared)
+      }
+      const final = await this.works.view(conversationId)
+      const budgetIds = new Set(final.workItems.filter(work => ['ready', 'waiting'].includes(work.status)).map(work => work.budgetId))
+      const deadlines = final.workBudgets.filter(budget => budgetIds.has(budget.id)).map(budget => Date.parse(budget.deadlineAt))
+      if (deadlines.length) {
+        const deadline = setTimeout(() => this.scheduleWork(conversationId), Math.max(1, Math.min(...deadlines) - Date.now()))
+        deadline.unref(); this.workTimers.set(conversationId, deadline)
+      }
+      this.changed(conversationId)
+    }).catch(error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
+  }
+  private async cancelWork(conversationId: string, workId: string) {
+    const work = (await this.works.view(conversationId)).workItems.find(work => work.id === workId) ?? fail('工作不属于当前会话')
+    const ids = new Set(await this.works.cancelTree(work.id, '用户停止此工作及其子工作'))
+    for (const run of this.runs.values()) if (run.workId && ids.has(run.workId) && !terminal.has(run.status)) {
+      this.runControllers.get(run.id)?.abort(new Error('用户停止此工作'))
+      await this.finishRun(run, 'cancelled', '用户停止此工作'); await this.clearApprovals(run.id)
+    }
+    await this.scheduler.cancelWorks(ids)
+    this.changed(conversationId)
+  }
   private async cancelConversation(conversationId: string) {
+    if (!this.closing) for (const work of (await this.works.view(conversationId)).workItems.filter(work => !work.parentWorkId)) await this.works.cancelTree(work.id, '用户停止本轮讨论')
     await this.scheduler.cancel(conversationId, '用户停止本轮讨论', this.closing)
     await this.cancelWhere(run => run.conversationId === conversationId)
     this.changed(conversationId)
@@ -653,8 +931,11 @@ export class AppService {
     if (!conversation.agentIds.includes(original.agentId) || !this.getAgent(original.agentId).active) fail('原员工已不在会话中')
     const originalMessage = this.messages.get(original.triggerMessageId) ?? fail('原用户消息不存在')
     const prepared = this.scheduler.prepare({ ...conversation, agentIds: [original.agentId] }, { ...originalMessage, mentionIds: [original.agentId] })
+    if (original.workId) prepared.turn.workId = original.workId
     const request: RequestRecord = { id: requestId, fingerprint }
-    await this.store.write([...prepared.records, record('requests', request)])
+    const records = [...prepared.records, record('requests', request)]
+    if (original.workId) await this.works.authorizeRetry(original.workId, original.agentId, records)
+    else await this.store.write(records)
     this.requests.set(request.id, request); this.changed(conversation.id); this.scheduler.accept(prepared)
   }
   private redact(value: string, key?: string) { return key ? value.split(key).join('[已隐藏凭据]') : value }
@@ -679,13 +960,15 @@ export class AppService {
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
       await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 appearance 时，请先移走目标目录旧 appearance，避免混入旧外观。API Key 与外部登录态未包含在备份中，需重新配置。\n')
     } finally {
-      try { await this.automations.afterBackup() } finally { this.backingUp = false }
+      try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
     }
   }
   async close() {
     if (this.closing) return
     this.closing = true
+    for (const timer of this.workTimers.values()) clearTimeout(timer)
+    this.workTimers.clear()
     await this.mutations
     await this.automations.close()
     for(const controller of this.externalTests)controller.abort()

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 离线 Carbon 图标集合与图标尺寸。
- * [OUTPUT]: 默认16px、允许父控件管理尺寸的 Carbon 图标、通讯录、头像编辑/上传图标及 shadcn DOM/ref 适配。
+ * [OUTPUT]: 默认16px、允许父控件管理尺寸的 Carbon 图标、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -40,6 +40,7 @@ const classes = {
   PanelLeft: 'i-carbon-side-panel-open',
   PanelRight: 'i-carbon-side-panel-close',
   Plus: 'i-carbon-add',
+  Pin: 'i-carbon-pin',
   Pencil: 'i-carbon-edit',
   Upload: 'i-carbon-upload',
   RefreshCw: 'i-carbon-renew',
@@ -87,6 +88,7 @@ export const MessageCircle = component('MessageCircle')
 export const MoreHorizontal = component('MoreHorizontal')
 export const PanelLeft = component('PanelLeft')
 export const PanelRight = component('PanelRight')
+export const Pin = component('Pin')
 export const Plus = component('Plus')
 export const Pencil = component('Pencil')
 export const Upload = component('Upload')

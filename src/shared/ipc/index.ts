@@ -1,5 +1,12 @@
+/*
+ * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
+ * [OUTPUT]: 类型化 DesktopApi 与会话列表排序/置顶/隐藏请求；支持会话停止或单个工作树停止。
+ * [POS]: shared/ipc 的唯一方法与事件合同。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import type { AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
 import type { LaunchProfile, LaunchProfileInput } from '../domain/backends'
+import type { ConversationListChange } from '../domain/conversation-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
 import type { AgentInput, AgentHome, AgentFileContent, Connection, ConnectionInput, DigitalAgent, Conversation, ConversationInput, ConversationDetail, Resource, Message, Snapshot, MemoryQuery, MemoryView, MemoryInput } from '../domain'
 
@@ -36,9 +43,10 @@ export interface Methods {
   deleteConnection: { input: { id: string }; output: void }
   testConnection: { input: { id: string }; output: { text: string } }
   createConversation: { input: ConversationInput; output: Conversation }
+  updateConversationList: { input: ConversationListChange; output: void }
   getConversation: { input: { id: string }; output: ConversationDetail }
   sendMessage: { input: { conversationId: string; content: string; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
-  cancelRun: { input: { conversationId: string }; output: void }
+  cancelRun: { input: { conversationId: string; workId?: string }; output: void }
   approve: { input: { id: string; approved: boolean }; output: void }
   importResource: { input: { kind: Resource['kind']; path: string; ownerAgentId?: string }; output: Resource }
   removeResource: { input: { id: string }; output: void }

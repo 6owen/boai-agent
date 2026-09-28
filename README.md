@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 项目能力、运行环境、构建和维护约定。
-[OUTPUT]: 使用与开发入口、通讯录与可自定义员工头像，以及源码、组件和 Cumora/Paperclip 协作参考文档导航。
+[OUTPUT]: 使用与开发入口、Electron BDD 验证命令、父子工作与定向接续验收/限制及协作规格导航。
 [POS]: 仓库说明入口，规约真源为 AGENTS.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -90,6 +90,20 @@ pnpm package
 
 引擎测试使用真实 Mastra SDK 和本地模型协议服务，覆盖 OpenAI 兼容与 Anthropic 请求、流式输出、技能、知识、产物、命令审批和取消；服务测试使用实际 SQLite。桌面测试启动真实 Electron，验证跨进程调用、群聊、隔离、取消和重启。测试服务只用于自动化测试，应用没有模拟回复模式。
 
+桌面验收使用 `playwright-bdd`：`tests/e2e/features` 保存中文业务场景，`steps` 保存类型化操作与断言，`support` 管理独立数据、Electron 重启和资源清理。原有 13 组桌面流程全部由 BDD 执行，另新增委派/定向接续和停止工作树两个场景；`tests/*.test.ts` 继续由 Vitest 执行。生成的 `.features-gen` 不提交、不手工编辑。Playwright 报告位于 `playwright-report/index.html`，按业务步骤展示的 Cucumber 报告位于 `cucumber-report/index.html`；二者分目录，避免报告器清理目录时互相覆盖。真实供应商评估单独使用 `pnpm eval:collaboration`，不在默认测试中调用付费模型；场景、预算和门槛见[评估协议](ai-docs/spec/6.Cumora协作重构/06-真实模型评估协议.md)。
+
+协作重构已实现并完成本轮验收：连接共享模型容量，同轮事件合并保留来源；任务已有版本化工作记录、事务认领和跨运行预算。业务结果通过独立声明和证据记录，运行成功不自动等于工作完成。已开放两项独立任务并行；任务结果先保存为草稿，过期时仅重新汇报，命令任务和相同员工会话文件保持互斥。新增父子工作、显式结果版本依赖和负责人定向接续；子工作共享原始预算，依赖失败阻塞，支持单独停止工作树。重启中断且不重放；真实模型固定样本为 44/45，达到预登记门槛，仍存在内容质量限制且整体 token 开销增加；详见[实施记录](ai-docs/spec/2.已实现功能与代码现状/20-Electron-BDD与协作重构.md)。
+
+```sh
+pnpm test:electron                     # 构建、生成 BDD 并执行全部桌面场景
+pnpm test:electron --grep @creation     # 按功能标签筛选；其他标签见 feature 文件
+pnpm test:electron --grep @smoke        # 创建流程冒烟验收
+pnpm test:electron:list                # 仅生成与列出场景
+pnpm test:electron:report              # 打开最近的 Playwright HTML 报告
+```
+
+每个场景使用临时 `BOAI_DATA_DIR`；场景内重启沿用数据，结束后清理。失败报告包含窗口截图和各次启动的 trace；Cucumber 报告位于 `playwright-report/cucumber.html`。设置 `BOAI_TEST_PACKAGED_PATH` 可验证指定打包应用，开发专用的 `@ui` 组件页会跳过。打包验收不会重建指定安装包，应先用 `pnpm package` 生成当前版本。
+
 首批 B1/B2/S1/F1 已实施，详情见 [实现记录](ai-docs/spec/2.已实现功能与代码现状/15-B1-B2-S1-F1首批重构实现.md)。员工工作区会显示技能说明与执行状态；执行依赖未验证时不会显示为就绪。
 
 ## 代码结构
@@ -99,7 +113,7 @@ src/main/        Electron 窗口、受控 IPC、凭据、运行进程生命周�
 src/renderer/    React 中文桌面界面
 src/runtime/     Mastra 引擎、产品服务、SQLite、资源管理
 src/shared/      跨进程数据与事件契约
-tests/           引擎与服务测试、Electron 集成测试
+tests/           Vitest 引擎与服务回归、Electron BDD 场景
 ai-docs/spec/    产品规格与实际实现记录
 ```
 
@@ -111,7 +125,7 @@ v0.2.2 最终交付已通过 102 项引擎、服务和文件测试，以及 3 �
 
 后续外观设计（F2/F3 尚未实现）：[外观设置与主题系统](ai-docs/spec/3.前端重构与功能/14-外观设置与主题系统.md) 定义浅色/深色/跟随设备、Base46 及背景图；[前端目录架构与迁移计划](ai-docs/spec/3.前端重构与功能/15-前端目录架构与迁移计划.md) 定义参考 landing-page 的组件、状态和样式分层，其中 F1 已实施。
 
-后续开发已分为六组文档：[规格目录](ai-docs/spec/README.md) · [现有功能与代码现状](ai-docs/spec/2.已实现功能与代码现状/README.md) · [重构总计划](ai-docs/spec/00-重构总计划.md)。前端重构、员工与协作模块重构、Mastra 新能力分别维护方案；B1/B2/S1/F1 已交付，其他阶段仍为规划。[Cumora 协作重构参考](ai-docs/spec/6.Cumora协作重构/README.md) 已结合 Paperclip 任务机制，记录自主群聊、执行认领、并行发布与任务接续的待实施方案，独立于 B3 保持行为的结构重构。
+后续开发已分为六组文档：[规格目录](ai-docs/spec/README.md) · [现有功能与代码现状](ai-docs/spec/2.已实现功能与代码现状/README.md) · [重构总计划](ai-docs/spec/00-重构总计划.md)。前端重构、员工与协作模块重构、Mastra 新能力分别维护方案；B1/B2/S1/F1 已交付，其他阶段仍为规划。[Cumora 协作重构参考](ai-docs/spec/6.Cumora协作重构/README.md) 已结合 Paperclip 任务机制，记录自主群聊、执行认领、并行发布与任务接续的目标和实施进展，独立于 B3 保持行为的结构重构。
 
 最新计划优先完善 [员工 Sandbox / 文件系统 / Skills](ai-docs/spec/5.Mastra能力扩展/03-Sandbox文件系统与Skills.md)，再按需接入 [ACP / 本地 SDK 等执行后端](ai-docs/spec/4.数字员工与协作重构/04-员工执行后端与能力契约.md)、浏览器和连接。[自动化](ai-docs/spec/5.Mastra能力扩展/06-自动化与定时执行.md) 采用 Mastra 原生持久 schedules 的本地接入方案，不复用 Pi 调度器；这些能力尚未启用。
 
@@ -119,6 +133,6 @@ v0.2.2 最终交付已通过 102 项引擎、服务和文件测试，以及 3 �
 
 `src/renderer/components/ui` 已安装完整的 shadcn Base UI / base-nova 基础组件。组件结构与变体在各自源码中定制，`ui/skin.css` 统一 6owen Soft 风格，共用全局颜色、字号、圆角、高光与阴影；现有页面控件和聊天输入框已接入。完整入口见 [基础组件接入记录](ai-docs/spec/2.已实现功能与代码现状/18-shadcn基础组件.md)。
 
-`pnpm lint:ui` 检查本地图标导入约束；`pnpm exec playwright test tests/e2e/ui.spec.ts` 验证实际弹层、控件与主题。会话、通讯录、任务、资料库、设置与员工详情已直接使用该组件层；页面交互回归见 `tests/e2e/pages.spec.ts`。
+`pnpm lint:ui` 检查本地图标导入约束；`pnpm test:electron --grep @ui` 验证实际弹层、控件与主题。会话、通讯录、任务、资料库、设置与员工详情已直接使用该组件层；页面交互回归见 `tests/e2e/features/pages.feature`。
 
 Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功能与代码现状/19-全局SoftUI.md)。

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
- * [OUTPUT]: 带统一员工头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。
+ * [OUTPUT]: 带共用添加入口、员工及群拼图头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,10 +8,12 @@ import { useContext, useState, type ReactNode } from 'react'
 import { cn } from 'cn'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
+import { AddContactMenu } from '@/components/common/add-contact-menu'
+import { GroupAvatar } from '@/components/common/group-avatar'
 import { Avatar, GuardContext } from '@/components/common'
 import { EmployeeDetail } from '@/components/employee'
 import { GroupEditor } from '@/components/employee/editors'
-import { ArrowLeft, ChevronRight, Contact, MessageCircle, Search, Settings, Users } from '@/components/icons'
+import { ArrowLeft, ChevronRight, Contact, MessageCircle, Search, Settings } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -25,6 +27,7 @@ interface ContactsPageProps {
   snapshot: Snapshot
   selected: ContactSelection | null
   onSelect: (selection: ContactSelection) => void
+  onCreate: (kind: 'agent' | 'group') => void
   onMessage: (selection: ContactSelection) => void
   refresh: () => Promise<void>
   sidebarShown: boolean
@@ -33,7 +36,7 @@ interface ContactsPageProps {
   busy: boolean
 }
 
-export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, refresh, sidebarShown, divider, generation, busy }: ContactsPageProps) {
+export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, refresh, sidebarShown, divider, generation, busy }: ContactsPageProps) {
   const [query, setQuery] = useState('')
   const [groupsOpen, setGroupsOpen] = useState(true), [contactsOpen, setContactsOpen] = useState(true)
   const guard = useContext(GuardContext)
@@ -51,12 +54,12 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, ref
   >{avatar}<span className="conversation-copy"><span className="conversation-title">{name}</span><span className="conversation-preview">{description}</span></span></Button>
   return <div className="contacts-page">
     {sidebarShown && <><aside className="contacts-list" aria-label="通讯录列表">
-      <div className="list-heading"><h2>通讯录</h2></div>
+      <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions"><AddContactMenu onCreate={onCreate} /></div></div>
       <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={event => { setQuery(event.target.value); if (event.target.value.trim()) { setGroupsOpen(true); setContactsOpen(true) } }} /></InputGroup>
       <div className="contacts-sections">
         <Collapsible open={groupsOpen} onOpenChange={setGroupsOpen}>
           <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contacts-section-heading" />}><ChevronRight /><span>群聊</span><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
-          <CollapsibleContent><div role="group" aria-label="群聊">{groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <span className="group-avatar"><Users /></span>))}{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
+          <CollapsibleContent><div role="group" aria-label="群聊">{groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <GroupAvatar members={group.agentIds.map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))} />))}{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
         </Collapsible>
         <Collapsible open={contactsOpen} onOpenChange={setContactsOpen}>
           <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contacts-section-heading" />}><ChevronRight /><span>联系人</span><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
@@ -87,7 +90,7 @@ function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, 
       <div className="contact-editor">{agent ? <EmployeeDetail api={api} snapshot={snapshot} agent={agent} refresh={refresh} onClose={() => setEditing(false)} /> : <GroupEditor api={api} snapshot={snapshot} conversation={group!} onSaved={refresh} onClose={() => setEditing(false)} />}</div>
     </> : <>
       <header className="contact-profile-heading">
-        {agent ? <Avatar name={name} seed={agent.id} avatar={agent.avatar} color={agent.color} /> : <span className="group-avatar"><Users size={24} /></span>}
+        {agent ? <Avatar name={name} seed={agent.id} avatar={agent.avatar} color={agent.color} /> : <GroupAvatar members={members} />}
         <div className="contact-profile-identity"><h1>{name}</h1><p>{agent ? agent.role || '数字员工' : `${group!.agentIds.length} 位数字员工`}</p><Badge variant="secondary">{agent ? agent.active ? '已启用' : '已停用' : '群聊'}</Badge></div>
       </header>
       <Separator />

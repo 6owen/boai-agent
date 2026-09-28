@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 本地 6owen-ui Soft Button / Chat Composer、shadcn 基础组件与现有桌面页面。
-[OUTPUT]: 全局 Soft 风格的变量、组件职责、页面迁移、紧凑会话密度、composer 菜单、紧凑创建弹窗、员工 SVG/上传头像、手动侧栏、顶栏详情标签、通讯录与原生窗口铺满验证记录。
+[OUTPUT]: 全局 Soft 风格的变量、组件职责、页面迁移、紧凑会话密度、composer 菜单、紧凑创建弹窗、员工 SVG/上传头像、手动侧栏、顶栏多窗口标签、共享 Tabs、会话列表管理/群拼图头像、通讯录与原生窗口铺满验证记录。
 [POS]: 当前全局控件风格的维护入口。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -36,7 +36,7 @@
 - Card / Dialog / AlertDialog / Popover / HoverCard / DropdownMenu / ContextMenu / Menubar / Sheet / Drawer / Toast 使用统一表面与浮层阴影；Portal 从根节点继承主题。
 - Checkbox / Radio / Switch / Slider 复用强调色与高光；其他基础组件继续使用同一份字号、圆角、配色及阴影映射，导航和列表保持轻量层级。
 - 设置、员工、任务与资料库的输入、下拉框和复选框直接使用基础组件；common/Field 组合 FieldLabel/FieldDescription，保留控件 ID、标签与提示关联。原生颜色选择和图片不透明度滑杆保留浏览器交互。
-- 外观设置、连接、工作区、记忆、运行记录和命令审批复用 Card；员工选择使用 Popover，新建、设置、帮助和任务筛选使用 DropdownMenu。
+- 外观设置、连接、工作区、记忆、运行记录和命令审批复用 Card；员工浏览归通讯录，新建、设置、帮助和任务筛选使用 DropdownMenu；会话右键使用 ContextMenu。
 - 未保存切换使用 AlertDialog；必填未通过时返回表单，保存成功后继续原导航；继续编辑、放弃和 Escape 保留原有意图。
 - 会话输入框、工作目录、提及、停止和发送操作已使用共用 UI 组件。引用、草稿、中文输入法、Enter / Shift+Enter、取消和外部任务行为保持原有业务处理。
 
@@ -72,13 +72,24 @@
 - `creation-dialogs.tsx` 负责创建，AppShell 管理新会话路由；Dialog 标题统一为 16px / 24px 行高，plain footer 与选人列表样式统一在 `components/ui` 定义。群选人行与会话行共用 52px 最小高度、8px padding/gap、30px 头像、12/11px 名称/预览与 hover 背景。
 - 未保存提醒的操作明确为「继续编辑」「放弃并退出」「保存并退出」；仍沿用真实保存校验和导航守卫。
 
-## 右侧详情的顶栏标签
+## 右侧详情的顶栏多窗口标签
 
-- 右侧员工、群聊、资源、任务详情的标题移入全局 44px header，使用按内容宽度显示、最长 260px 的圆角标签展示对象名称、Carbon 图标、未保存标记和关闭按钮。嵌套详情保留返回按钮；右侧内容从主内容框顶部开始，不再占用原来的 60px 标题行。
-- `DetailPanelHeader` 与 `DetailPanel` 分别负责标签和内容，Shell 持有原有导航栈和未保存守卫。标签关闭、面板开关、Escape 和嵌套返回沿用真实保存/放弃流程；打开聚焦标题、退出返回入口焦点。
-- 右侧 header 的空白及标题标签属于窗口拖拽区域；关闭、返回和面板开关按钮保留 `no-drag`，保证点击操作正常。
-- 标题栏和面板共用宽度变量，顶栏额外计入 1px 拖拽线，使上下分割线准确对齐；header 分割线使用 16px 高的居中短线，上下留白，不贯穿整个标题栏；窄窗口隐藏拖拽线时同步移除该宽度。跟随拖拽、左栏开关以及 760–1280px 原生窗口和 90%/125%/150% 缩放；长名称截断，内容独立滚动。窄窗口中员工分类按钮允许收缩，避免横向撑开配置区。
-- `tests/e2e/detail-panel.spec.ts` 验证坐标对齐、原生尺寸变化、鼠标/键盘调整宽度、标题固定/截断、保存关闭、嵌套返回与焦点恢复。浅色和深色窄窗口截图为 `detail-header-light.png`、`detail-header-dark-narrow.png`。
+- 右侧员工、群聊、资源、任务与产物、任务详情都可同时打开为独立窗口标签。标签保序、按目标身份去重，点击已有目标直接激活；每个标签有关闭按钮，关闭选中项后选择相邻项，关闭后台干净标签不改变当前项。标签目前只保留在当前应用会话，不跨应用重启恢复。
+- 顶栏复用全局 `Tabs` 的 `window` 变体；32px 高、按内容宽度排列、最长 180px，显示 Carbon 图标、对象名称、未保存圆点和关闭按钮。标签多时横向滚动，选中项随激活/窗口调整自动完整露出；方向键和 Enter 可切换。顶栏空白保持窗口拖拽，交互标签使用 `no-drag`。
+- `tabs-state.ts` 负责去重、选择、关闭和显隐；`DetailTabSession` 常驻已打开内容，各自保存表单、分类和滚动位置。切换主页面/会话或收起右侧面板均保留标签；Escape 只关闭当前标签，全部关闭后焦点回到入口。
+- `useEditorGuard` 是主页面和各标签共用的未保存保护；只有关闭/离开该编辑器时确认，切换窗口标签不要求丢弃草稿。确认保存只查找所属区域表单，员工/群编辑器使用独立 form ID，避免多实例误提交；主进程汇总所有标签与主页面脏状态，窗口退出保护不会漏掉后台草稿。
+- 员工标签记录打开时的会话范围，不随主会话切换漂移；同一员工在不同范围可分别打开。任务与产物绑定固定会话 ID，活跃时独立读取并订阅刷新，停止/重试指向所属会话；多个同类标签以会话名称区分。
+- 标题栏和面板共用宽度变量，顶栏额外计入 1px 拖拽线，使上下分割线准确对齐；header 分割线使用 16px 居中短线。760–1280px 原生窗口及 90%/125%/150% 缩放保持对齐，标题不会跟随内容滚走。
+- `tests/detail-tabs.test.ts` 覆盖状态不变量；`tests/e2e/features/detail-tabs.feature` 覆盖同时打开/去重、双草稿、独立保存关闭、收起恢复、跨会话和深色窄窗口；`detail-panel.feature` 继续约束分割线坐标、滚动、关闭保护及焦点。最新预览为 `detail-tabs-light.png`、`detail-tabs-dark.png`。
+
+## 会话列表管理与群头像
+
+- 会话及通讯录标题右侧均只有一个加号，共用「新建员工」「新建群聊」菜单。原员工选择弹窗由通讯录替代。
+- 会话行支持原生拖拽，使用主题强调色的插入线和圆点指示位置；也可按 Alt + 上下方向键移动。搜索结果的排序按目标会话调整，不丢失未匹配项。置顶和普通会话各自排序，置顶始终在前。
+- 右键菜单使用现有 Soft ContextMenu，提供置顶/取消置顶和删除会话。删除仅隐藏列表项，不清理消息、群组、员工、工作区或执行中任务；从通讯录发消息可恢复同一会话。删除当前会话时切换到其他可见项，并清理导航历史中的旧选中项；离开未保存的编辑仍经过守卫。
+- `Conversation.list` 为兼容旧记录的可选展示偏好，宿主通过 `updateConversationList` 校验并在已有串行服务内批量写入 SQLite；不改变群配置版本或更新时间。未手动排序的旧列表沿用近期消息排序；调整后保留手动顺序，新的会话位于普通列表前方。重启保留排序、置顶和隐藏状态。
+- `GroupAvatar` 共用真实员工头像及加载失败回退，按群成员顺序取前九人。布局依次为 1、2、1+2、2+2、1+2+2、3+3、1+3+3、2+3+3、3+3+3；同步用于会话行、通讯录群列表及群资料头部。
+- 模块测试约束排序稳定性和隐藏语义；`conversation-list.feature` 验证鼠标拖动、右键菜单、重启及历史保留、两个添加入口和各人数拼图。
 
 ## 通讯录
 
@@ -105,6 +116,13 @@ Electron 调整窗口时必须用 `BrowserWindow.setContentSize` 验证；CDP �
 
 本次外观回归与类型检查通过。解除固定视口后的截图为 `ai-docs/images/soft-ui/window-resize.png`；内容框右侧和底部保留正常的 4px 边距。
 
+## 统一标签页
+
+- `components/ui/tabs.tsx` 提供唯一的 Tabs / TabsList / TabsTrigger / TabsContent；默认标签条高 32px、文字 13px、按内容宽度排列。`skin.css` 复用 `--muted`、`--card`、`--radius-control` 和 `--shadow-control`，统一 Soft 底槽和选中表面；保留线形与垂直变体，不添加 ring/outline。
+- 会话右侧员工详情和通讯录员工配置共用 EmployeeDetail 的四个标签；资料库的“公共资源 / 员工已绑定”也使用同款组件。移除原 `.detail-tabs` / `.tab-row` 普通按钮样式，页面仅处理外围留白。设置页侧边导航仍保留页面导航语义。
+- 标签支持方向键聚焦、Enter/Space 激活，仅挂载当前面板。编辑中切换保留继续编辑/放弃/保存保护；局部切换放弃时卸载旧表单而不重建整个详情，避免目标标签或通讯录编辑页面丢失。
+- `tests/e2e/features/employee-tabs.feature` 验证员工配置与文件草稿保护、保存后切换、键盘行为、资料库筛选保留、跨页面皮肤一致以及 760px 深色窗口；预览见 `employee-tabs-light.png` 和 `employee-tabs-dark.png`。
+
 ## 验证
 
 - 顶栏详情标签通过构建、类型检查、UI lint，以及 detail-panel / contacts / creation / desktop / appearance 共 5 项桌面流程。上下分割线坐标在窗口断点与 90%/125%/150% 原生缩放下误差不超过 0.1 CSS px，短标签保留右侧空白，窄栏无横向溢出。
@@ -128,3 +146,9 @@ Electron 调整窗口时必须用 `BrowserWindow.setContentSize` 验证；CDP �
 - 页面迁移回归另验证：缺少必填信息时保持编辑、复选框切换一次只更新一次、取消后保留值、保存并继续完成导航、Enter 提交连接表单、菜单 Escape 归还焦点、任务筛选自动收起。
 - 真实 Electron 浅色、深色、浮层与窄窗口预览保存在 `ai-docs/images/soft-ui/`。预览使用独立临时数据，未修改用户的会话或外观偏好。
 - 构建仍提示主包大于 500 kB，为已有体积提醒；未增加运行时依赖。
+
+- 会话列表管理通过构建、类型检查、UI lint、200 项 Vitest 回归；最终规则调整后重跑 3 项排序模块测试。6 个相关 Electron BDD 场景通过，覆盖通讯录、拖拽/置顶/隐藏与恢复、头像及双添加入口、创建流程、详情面板和页面焦点。最终截图见 `conversation-list-drag.png`、`conversation-list-menu.png`、`conversation-list-dark.png`、`group-avatar-mosaics.png`。
+
+- 共享 Tabs 通过构建、类型检查、UI lint 和 5 个相关 Electron BDD 场景（employee-tabs / contacts / detail-panel / desktop / environment）；资料库接入后重跑 employee-tabs 场景通过。
+
+- 多窗口标签通过构建、类型检查、UI lint、3 项标签状态模块测试与 6 个相关 Electron BDD 场景（detail-tabs / detail-panel / employee-tabs / desktop / contacts / creation）。
