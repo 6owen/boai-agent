@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主/渲染进程源码与离线素材许可。
- * [OUTPUT]: dist 桌面构建及随包分发的 Base46、Geist 和 Lobe Icons 许可。
+ * [OUTPUT]: dist 桌面构建及随包分发的 Base46、Geist、Lobe Icons 与本地配置扫描源码许可。
  * [POS]: 项目构建入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,4 +21,6 @@ if (process.argv[1]?.endsWith('build.mjs')) {
   await copyFile('src/shared/appearance/BASE46-LICENSE.txt', 'dist/renderer/BASE46-LICENSE.txt')
   await copyFile('src/renderer/assets/Geist-OFL.txt', 'dist/renderer/Geist-OFL.txt')
   await copyFile('src/renderer/assets/LobeIcons-LICENSE.txt', 'dist/renderer/LobeIcons-LICENSE.txt')
+  await copyFile('src/main/local-configs/LICENSE.txt', 'dist/main/local-configs-LICENSE.txt')
+  await copyFile('src/main/local-configs/NOTICE.txt', 'dist/main/local-configs-NOTICE.txt')
 }

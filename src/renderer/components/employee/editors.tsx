@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: 引导从模型连接接入本地 Agent；包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -46,7 +46,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved }
       <Field label="职责简介"><Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="一句话描述擅长的工作" /></Field>
       {!agent && <Field label="初始工作规则" full hint="创建后保存在员工 AGENTS.md，可在系统文件中修改。"><Textarea rows={5} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……" /></Field>}
       <Field label="执行后端" full><NativeSelect value={form.executionBackend?.kind??'mastra-model'} onChange={e=>setForm(current=>({...current,executionBackend:e.target.value==='mastra-model'?{kind:'mastra-model'}:{kind:'acp-local',profileId:profiles[0]?.id??''},...(e.target.value==='acp-local'?{connectionId:'',modelId:'',skillIds:[],knowledgeIds:[],allowCommands:false}:{})}))}><NativeSelectOption value="mastra-model">模型 API · 聊天与协作</NativeSelectOption><NativeSelectOption value="acp-local">外部 ACP · 仅显式任务</NativeSelectOption></NativeSelect></Field>
-      {form.executionBackend?.kind==='acp-local'?<Field label="外部启动项" full hint="先在设置 → 外部 Agent 中添加并测试。BoAI 的模型、Skills、知识和记忆不会自动传给外部程序。"><NativeSelect required value={form.executionBackend.profileId} onChange={e=>set('executionBackend',{kind:'acp-local',profileId:e.target.value})}><NativeSelectOption value="">请选择</NativeSelectOption>{profiles.map(p=><NativeSelectOption key={p.id} value={p.id}>{p.name}{p.verified?'':' · 未测试'}</NativeSelectOption>)}</NativeSelect></Field>:<>
+      {form.executionBackend?.kind==='acp-local'?<Field label="外部启动项" full hint="先在设置 → 模型连接 → 本地 Agent 中接入并测试。BoAI 的模型、Skills、知识和记忆不会自动传给外部程序。"><NativeSelect required value={form.executionBackend.profileId} onChange={e=>set('executionBackend',{kind:'acp-local',profileId:e.target.value})}><NativeSelectOption value="">请选择</NativeSelectOption>{profiles.map(p=><NativeSelectOption key={p.id} value={p.id}>{p.name}{p.verified?'':' · 未测试'}</NativeSelectOption>)}</NativeSelect></Field>:<>
       <Field label="模型连接"><NativeSelect value={form.connectionId} onChange={e => set('connectionId', e.target.value)}><NativeSelectOption value="">暂未配置</NativeSelectOption>{snapshot.connections.map(item => <NativeSelectOption value={item.id} key={item.id}>{item.name}</NativeSelectOption>)}</NativeSelect></Field>
       <Field label="模型 ID" hint={connection ? `留空使用连接默认模型：${connection.defaultModel}` : '创建模型连接后即可开始对话。'}><Input value={form.modelId} onChange={e => set('modelId', e.target.value)} placeholder="使用连接默认模型" /></Field>
       </>}<div className="field full"><span className="field-label">员工头像</span><div className="employee-avatar-field"><AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={busy} onChange={avatar => set('avatar', avatar)} onBusyChange={setUploading} /><span className="field-hint">选择内置头像，或上传本地图片。</span></div></div>

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
- * [OUTPUT]: 类型化 DesktopApi、编辑时按连接读取密钥、无需保存的草稿模型目录/测试请求、不要求保存配置的版本重启提示与会话列表/历史清理和停止请求；快照不包含凭据。
+ * [OUTPUT]: 宿主本地配置扫描与 API/ACP 显式导入、类型化 DesktopApi、编辑时按连接读取密钥、无需保存的草稿模型目录/测试请求、不要求保存配置的版本重启提示与会话列表/历史清理和停止请求；快照不包含凭据。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import type { AutomationInput, AutomationDefinition, AutomationOccurrence, Autom
 import type { LaunchProfile, LaunchProfileInput } from '../domain/backends'
 import type { ConversationListChange } from '../domain/conversation-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
+import type { LocalConfigScanResult } from '../domain/local-configs'
 import type { AgentInput, AgentHome, AgentFileContent, Connection, ConnectionInput, DigitalAgent, Conversation, ConversationInput, ConversationDetail, Resource, Message, Snapshot, MemoryQuery, MemoryView, MemoryInput } from '../domain'
 
 export const unsupportedRequestMessage = '当前运行版本尚未加载此功能，请重启应用后重试。'
@@ -42,6 +43,9 @@ export interface Methods {
   resetAppearance: { input: undefined; output: AppearanceSnapshot }
   snapshot: { input: undefined; output: Snapshot }
   saveAgent: { input: AgentInput; output: DigitalAgent }
+  scanLocalConnections: { input: { chooseDirectory?: boolean }; output: LocalConfigScanResult | null }
+  importLocalConnection: { input: { configId: string; model?: string }; output: Connection }
+  importLocalAgent: { input: { configId: string; hostAccessAcknowledged: true }; output: LaunchProfile }
   saveConnection: { input: ConnectionInput; output: Connection }
   getConnectionApiKey: { input: { id: string }; output: string }
   deleteConnection: { input: { id: string }; output: void }

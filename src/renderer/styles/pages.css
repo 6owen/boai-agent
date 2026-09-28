@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 统一语义 token、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
+ * [OUTPUT]: 本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,6 +50,9 @@
 .connection-feedback[data-status=success] { color:var(--success) }
 .connection-feedback[data-status=error] { color:var(--destructive) }
 .connection-add { margin-top:16px }
+.local-connections-dialog { max-height:calc(100dvh - 48px);overflow-y:auto }
+.local-connections-results { display:grid;gap:12px;min-width:0 }
+.local-connection-card { min-width:0 }
 .connection-footnote,.connection-wizard-note { display:flex;align-items:center;justify-content:flex-start;gap:7px;color:var(--muted-foreground);font-size:12px;line-height:20px;margin:24px 0 0 }
 .connection-test-hint { margin:5px 0 0 21px;color:var(--muted-foreground);font-size:12px;line-height:20px }
 .connections-empty { display:flex;align-items:center;flex-direction:column;padding:38px 24px;text-align:center }

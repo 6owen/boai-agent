@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -40,7 +40,7 @@ import type { WorkOutcome, ModelUsage } from '../shared/domain'
 const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
 const text = (max: number) => z.string().trim().min(1).max(max)
-const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
+const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
 const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true }).extend({ baseUrl: text(2000) })
 const conversationSchema = z.object({ id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
 const conversationListSchema = z.discriminatedUnion('action', [
@@ -191,7 +191,17 @@ export class AppService {
     if(method==='pauseAutomation'||method==='deleteAutomation')return this.automations.pause(lookupSchema.parse(input).id,method==='deleteAutomation')
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
     if(method==='runAutomation'){const value=z.object({id,requestId:id}).strict().parse(input);return this.automations.run(value.id,value.requestId)}
-    if(method==='testLaunchProfile') { const profile=this.profiles.get(lookupSchema.parse(input).id),controller=new AbortController();this.externalTests.add(controller);try{const result=await runAcp({profile,cwd:join(this.dataPath,'external-probes',profile.id),signal:controller.signal,approve:async()=>false,onTool:async()=>{}});return await this.serialize(()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');return this.profiles.verified(profile.id,profile.revision,result.verified)})}finally{this.externalTests.delete(controller)} }
+    if(method==='testLaunchProfile') {
+      const profile=this.profiles.get(lookupSchema.parse(input).id),controller=new AbortController();this.externalTests.add(controller)
+      try {
+        const result=await runAcp({profile,cwd:join(this.dataPath,'external-probes',profile.id),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
+        return await this.serialize(()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');return this.profiles.verified(profile.id,profile.revision,result.verified)})
+      } catch(error) {
+        if(!this.closing&&!this.backingUp)await this.serialize(()=>this.profiles.failedVerification(profile.id,profile.revision))
+        if(error instanceof RequestError&&error.code===RequestError.authRequired().code)throw new Error('外部程序需要登录，请在程序自身完成认证后重新测试。')
+        throw error
+      } finally { this.externalTests.delete(controller) }
+    }
     if (method === 'listConnectionModels') {
       const draft = modelCatalogSchema.parse(input)
       modelCatalogUrl(draft.baseUrl)
@@ -210,7 +220,7 @@ export class AppService {
         else if (draft.provider === 'openai-compatible') fail('兼容模型需要填写 API 地址')
         const key = await this.draftApiKey({ ...draft, baseUrl })
         if (!key && draft.provider !== 'openai-compatible') fail('请填写 API Key 后测试连接')
-        const connection: Connection = { id: draft.id ?? randomUUID(), name: draft.name, provider: draft.provider, baseUrl, defaultModel: draft.defaultModel, hasApiKey: !!key }
+        const connection: Connection = { id: draft.id ?? randomUUID(), name: draft.name, provider: draft.provider, ...(draft.api ? { api: draft.api } : {}), baseUrl, defaultModel: draft.defaultModel, hasApiKey: !!key }
         return { connection, key }
       })
       try { return { text: this.redact(await this.options.engine.test(connection, key), key) } }
@@ -221,7 +231,7 @@ export class AppService {
         case 'listExternalFiles': {const value=z.object({runId:id}).strict().parse(input);return this.externalFiles(value.runId)}
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
         case 'listLaunchProfiles': z.undefined().parse(input); return this.profiles.list()
-        case 'saveLaunchProfile': { const p=await this.profiles.save(profileSchema.parse(input));for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
+        case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
         case 'snapshot': z.undefined().parse(input); return this.snapshot()
         case 'saveAgent': {const value=agentSchema.parse(input);if(value.executionBackend?.kind==='acp-local'){this.profiles.get(value.executionBackend.profileId);if(value.id&&[...this.conversations.values()].some(c=>c.kind==='group'&&c.agentIds.includes(value.id!)))fail('请先将员工移出群聊，再切换为外部任务后端')}return this.employees.save(value)}
@@ -332,10 +342,12 @@ export class AppService {
   }
 
   private async saveConnection(input: z.infer<typeof connectionSchema>) {
+    const imported = !input.id && input.localConfigId ? [...this.connections.values()].find(item => item.localConfigId === input.localConfigId) : undefined
+    if (imported) return clone(imported)
     const previous = input.id ? this.getConnection(input.id) : undefined
     if (input.baseUrl) { let url: URL; try { url = new URL(input.baseUrl) } catch { return fail('模型地址不是有效 URL') }; if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) fail('模型地址必须为不含凭据的 HTTP 或 HTTPS URL') }
     if (input.provider === 'openai-compatible' && !input.baseUrl) fail('兼容模型需要填写 API 地址')
-    const connection: Connection = { id: previous?.id ?? randomUUID(), name: input.name, provider: input.provider, baseUrl: input.baseUrl, defaultModel: input.defaultModel, hasApiKey: false }
+    const connection: Connection = { id: previous?.id ?? randomUUID(), name: input.name, provider: input.provider, baseUrl: input.baseUrl, defaultModel: input.defaultModel, hasApiKey: false, ...((input.api ?? previous?.api) ? { api: input.api ?? previous?.api } : {}), ...((input.localConfigId ?? previous?.localConfigId) ? { localConfigId: input.localConfigId ?? previous?.localConfigId } : {}) }
     if (input.apiKey !== undefined) {
       if (input.apiKey.trim()) await this.options.secrets.set(connection.id, input.apiKey.trim())
       else await this.options.secrets.delete(connection.id)

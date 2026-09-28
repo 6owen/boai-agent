@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 仓库全局约束、无 Node 版本门禁的 pnpm runtime、初始化 CLI、统一位于 `.agents` 的项目 skills、三应用、Web/Admin Base UI 与 Web Iconify UI、客户端 API/Server Route/后端实现分层、含 Web emailAndPassword/loopback local credential sign-in 的 Capability Profile、共享 Auth/Admin role-permission-ban/Consent/Analytics/Newsletter/Observability/Jobs/Webhooks、Admin audit、Data Operations、Projects/Content/Search/User Assets/Developer API/Product AI、Manifest/Environment/DB、部署/CI、Canvasight 与文档协议。
-[OUTPUT]: 持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
+[OUTPUT]: Codex 登录的本地 ACP 连接与执行边界；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
 [POS]: 位于仓库根目录，作为 Codex / Claude / 其他代理的权威操作手册。
 
 [PROTOCOL]:
@@ -134,6 +134,12 @@
 - 同连接模型调用当前最多六项，独立工作区任务当前最多并行六项；相同员工会话文件互斥，允许宿主命令的任务与全部任务互斥。运行取消后，在执行适配器实际退出前不得释放资源占用。
 - 父子拆分与结果依赖分离；等待保存目标版本和周期，状态与定向通知同事务提交。仅负责人接续，失败依赖阻塞，子工作/重试/重新汇报共享原始预算；停止树不取消无父子归属的共享依赖。
 - 旧 run 不释放新 run 的执行权；已执行或结果不明的工具操作不得通过自动重试重放。重启中断工作，G4 验收前不自动恢复。
+
+# Local Agent Connections
+
+- 模型连接页统一管理 API 连接与本地 ACP 启动项。扫描和保存不执行或安装外部程序；测试必须成功创建 ACP 会话后才记录验证。
+- Codex OAuth 归 Codex 自身管理；BoAI 只保存账号来源标识、程序身份与明确的 `CODEX_HOME`，不复制登录 token。Node 类型 ACP 使用应用运行时，继续过滤继承环境中的模型密钥。
+- ACP 保持单聊显式任务、外部自有工具与新会话边界，不自动成为 Mastra 模型、群协作或 A2A 后端。
 
 # Frontend Rules
 

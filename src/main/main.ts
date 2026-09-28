@@ -1,9 +1,11 @@
 /*
  * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
- * [OUTPUT]: 桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ * [OUTPUT]: 本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { z } from 'zod'
+import { LocalConfigDiscovery } from './local-configs/discovery'
 import { decodeImage } from './decode-image'
 import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu } from 'electron'
 import type { UtilityProcess } from 'electron'
@@ -39,9 +41,10 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
   if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
 }, decodeImage)
+const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-const methods = new Set<Method>(['listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
@@ -141,6 +144,21 @@ function registerIpc() {
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
+    if (method === 'scanLocalConnections') {
+      const options = z.object({ chooseDirectory: z.boolean().optional() }).strict().parse(input)
+      if (!options.chooseDirectory) return localConfigs.scan()
+      const selection = await dialog.showOpenDialog(window, { title: '选择本地 Agent 配置目录', properties: ['openDirectory', 'showHiddenFiles'] })
+      if (selection.canceled || !selection.filePaths[0]) return null
+      return localConfigs.scan({ directory: await realpath(selection.filePaths[0]) })
+    }
+    if (method === 'importLocalConnection') {
+      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), model: z.string().trim().min(1).max(300).optional() }).strict().parse(input)
+      return requestRuntime('saveConnection', localConfigs.connection(selected.configId, selected.model))
+    }
+    if (method === 'importLocalAgent') {
+      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), hostAccessAcknowledged: z.literal(true) }).strict().parse(input)
+      return requestRuntime('saveLaunchProfile', localConfigs.launchProfile(selected.configId))
+    }
     if (method === 'getAppearance') return appearance.snapshot()
     if (method === 'updateAppearance') { const value=input as Methods['updateAppearance']['input']; if(!Number.isSafeInteger(value?.expectedRevision))throw new Error('无效外观版本'); return appearance.update(value.patch,value.expectedRevision) }
     if (method === 'removeAppearanceBackground') return appearance.remove()

@@ -1,0 +1,9 @@
+Adapted from boai-app local configuration discovery.
+
+Craft Agents
+Copyright 2026 Craft Docs Ltd.
+
+This product includes software developed by Craft Docs Ltd.
+https://craft.do
+
+Modified for BoAI Agent: host-only discovery/import, bounded file reads, model connection integration, and Codex login discovery for local ACP launch profiles.

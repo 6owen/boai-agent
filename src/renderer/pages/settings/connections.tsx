@@ -1,12 +1,15 @@
 /*
  * [INPUT]: 模型连接领域类型、DesktopApi、模型目录选择控件、步骤 SVG 插画、Lobe Icons 本地品牌 SVG、未保存守卫、统一 UI/离线图标及 soft-card/共享分割线皮肤。
- * [OUTPUT]: 与外观共用文档布局、无页面副标题/数量提示、测试状态紧跟标题同行显示的连接列表；带服务品牌标志的无副标题两步配置弹窗、步骤箭头及等宽纯图标测试加载；编辑时回填真实密钥并支持显隐与清空、兼容接口固定服务分组、模型选择/手动编辑、测试左侧同行反馈与旧宿主重启提示，保存位于最右侧；放弃草稿仅关闭弹窗并保留当前设置页。
+ * [OUTPUT]: 本地 Agent 扫描导入/管理及会话测试入口与保留 OpenAI 接口协议的编辑、与外观共用文档布局、无页面副标题/数量提示、测试状态紧跟标题同行显示的连接列表；带服务品牌标志的无副标题两步配置弹窗、步骤箭头及等宽纯图标测试加载；编辑时回填真实密钥并支持显隐与清空、兼容接口固定服务分组、模型选择/手动编辑、测试左侧同行反馈与旧宿主重启提示，保存位于最右侧；放弃草稿仅关闭弹窗并保留当前设置页。
  * [POS]: src/renderer/pages/settings/connections.tsx；模型连接设置的界面与交互。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
 import anthropicIcon from '@lobehub/icons-static-svg/icons/anthropic.svg'
+import { LocalConnections } from './local-connections'
+import { ExternalSettings } from './external'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -35,6 +38,7 @@ function ProviderIcon({ provider }: { provider: Provider }) {
 type ConnectionFeedback = { status: 'testing' | 'success' | 'error'; message: string }
 
 export function ConnectionSettings({ connections, api, refresh }: { connections: Connection[]; api: DesktopApi; refresh: () => Promise<void> }) {
+  const [externalRevision, setExternalRevision] = useState(0)
   const [editing, setEditing] = useState<{ connection: Connection; apiKey: string } | 'new' | null>(null)
   const [feedback, setFeedback] = useState<Record<string, ConnectionFeedback | undefined>>({})
   const { busy, error, run } = useMutation()
@@ -84,9 +88,10 @@ export function ConnectionSettings({ connections, api, refresh }: { connections:
         </div>
       }) : <div className="connections-empty"><span className="connection-empty-icon"><Sparkles size={26} /></span><h3>连接你的第一个模型</h3><p>选择模型服务，填写连接信息，即可开始与员工协作。</p></div>}
     </Card>
-    <Button ref={addButton} className="connection-add" variant="secondary" disabled={busy} onClick={() => setEditing('new')}><Plus />添加连接</Button>
+    <div className="connection-add flex flex-wrap gap-2"><Button ref={addButton} variant="secondary" disabled={busy} onClick={() => setEditing('new')}><Plus />添加连接</Button><LocalConnections connections={connections} api={api} refresh={refresh} onAgentImported={() => setExternalRevision(value => value + 1)} /></div>
     <p className="connection-footnote"><ShieldCheck size={14} />密钥保存在本机，不会显示在聊天消息中。</p>
     <p className="connection-test-hint">可在连接菜单中测试可用性，测试会发送一条简短模型请求。</p>
+    <ExternalSettings api={api} embedded refreshVersion={externalRevision} />
     {editing && <ConnectionEditor key={editing === 'new' ? 'new' : editing.connection.id} connection={editing === 'new' ? undefined : editing.connection} initialApiKey={editing === 'new' ? '' : editing.apiKey} api={api} onSaved={async () => {
       if (editing !== 'new') setFeedback(current => ({ ...current, [editing.connection.id]: undefined }))
       await refresh()
@@ -95,7 +100,7 @@ export function ConnectionSettings({ connections, api, refresh }: { connections:
 }
 
 function ConnectionEditor({ connection, initialApiKey, api, onSaved, onCancel, finalFocus }: { connection?: Connection; initialApiKey: string; api: DesktopApi; onSaved: () => Promise<void>; onCancel: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
-  const [form, setForm] = useState<ConnectionInput>({ id: connection?.id, name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey })
+  const [form, setForm] = useState<ConnectionInput>({ id: connection?.id, name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey, api: connection?.api })
   const [choosing, setChoosing] = useState(!connection)
   const [showKey, setShowKey] = useState(false)
   const [customEndpointOpen, setCustomEndpointOpen] = useState(Boolean(connection?.baseUrl))
@@ -178,6 +183,10 @@ function ConnectionEditor({ connection, initialApiKey, api, onSaved, onCancel, f
             </div>
           </UiField>
           {compatible ? <ConnectionModelPicker api={api} draft={form} onChange={value => set('defaultModel', value)} /> : <Field label="默认模型 ID" hint="填写服务提供商支持的模型 ID。"><Input required value={form.defaultModel} onChange={event => set('defaultModel', event.target.value)} placeholder="输入模型 ID" /></Field>}
+          {form.provider !== 'anthropic' && <UiField orientation={compatible ? 'horizontal' : 'vertical'} className={compatible ? 'connection-setting-row grid' : undefined}>
+            <FieldLabel htmlFor={`${fieldId}-api`}>接口协议</FieldLabel>
+            <NativeSelect id={`${fieldId}-api`} value={form.api ?? 'chat'} onChange={event => set('api', event.target.value as 'chat' | 'responses')}><NativeSelectOption value="chat">Chat Completions</NativeSelectOption><NativeSelectOption value="responses">Responses</NativeSelectOption></NativeSelect>
+          </UiField>}
           {!compatible && <details className="connection-advanced" open={customEndpointOpen} onToggle={event => setCustomEndpointOpen(event.currentTarget.open)}><summary><ChevronRight size={14} />自定义接口地址<span>可选</span></summary>{baseUrlField}</details>}
         </fieldset>
         <footer className="connection-editor-footer soft-divider-top">
