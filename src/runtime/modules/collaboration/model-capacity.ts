@@ -1,20 +1,20 @@
 /*
  * [INPUT]: 模型连接 ID、取消信号和一次只读判断/记忆或执行阶段。
- * [OUTPUT]: 跨会话共享的 FIFO 容量、有界限流退避及分离的等待/执行耗时。
+ * [OUTPUT]: 默认六项跨会话共享的 FIFO 容量、有界限流退避及分离的等待/执行耗时。
  * [POS]: 协作模型准入；不决定员工参与，不重放 task 副作用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 export interface ModelTiming { queueMs: number; executionMs: number; backoffMs: number; rateLimitRetries: number }
+import { DEFAULT_MODEL_CAPACITY } from '../../contracts'
 type Waiting = { signal: AbortSignal; start(): void; cancel(): void }
 type Lane = { active: number; waiting: Waiting[] }
 
-// Keep the existing three-decision envelope, now shared by a connection across conversations.
-const DEFAULT_CAPACITY = 3
+// Provider capacity is shared across members, phases and conversations.
 const RATE_LIMIT_DELAYS = [500, 1500] as const
 
 export class ModelCapacity {
   private readonly lanes = new Map<string, Lane>()
-  constructor(private readonly capacity = DEFAULT_CAPACITY, private readonly retryDelays: readonly number[] = RATE_LIMIT_DELAYS) {
+  constructor(private readonly capacity = DEFAULT_MODEL_CAPACITY, private readonly retryDelays: readonly number[] = RATE_LIMIT_DELAYS) {
     if (!Number.isInteger(capacity) || capacity < 1) throw new Error('模型连接容量必须是正整数')
     if (retryDelays.some(delay => !Number.isFinite(delay) || delay < 0)) throw new Error('退避时间必须为非负有限值')
   }

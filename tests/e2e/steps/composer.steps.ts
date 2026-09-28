@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 输入框配置持久化与员工隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 输入框配置持久化与员工隔离的真实桌面业务步骤与断言。
+ * [OUTPUT]: 群聊隐藏配置控件、从员工私聊验证锁定与隔离、输入框配置持久化与员工隔离的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/composer.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -42,7 +42,8 @@ async function prepareComposer(runtime: Desktop) {
     const b = await window.boai.request('saveConnection', { name: '写作连接', provider: 'openai-compatible', baseUrl, defaultModel: 'writing-v1' })
     const direct = await window.boai.request('createConversation', { kind: 'direct', title: '研究员', agentIds: ['researcher'] })
     const group = await window.boai.request('createConversation', { kind: 'group', title: '工具栏协作', agentIds: ['researcher', 'writer'] })
-    return { a, b, direct, group }
+    const writer = await window.boai.request('createConversation', { kind: 'direct', title: '写手', agentIds: ['writer'] })
+    return { a, b, direct, group, writer }
   }, `http://127.0.0.1:${address.port}/v1`)
   const employee = (id: string) =>
     page.evaluate(async (id) => (await window.boai.request('snapshot', undefined)).agents.find((a) => a.id === id)!, id)
@@ -94,18 +95,25 @@ async function verifyMemberIsolation(previous: Awaited<ReturnType<typeof saveCom
         (await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.find((c) => c.id === data.direct.id)?.activity,
     )
     .toBe('running')
-  await page.locator('.conversation-item').filter({ hasText: '工具栏协作' }).click()
   await model.click()
-  const researcherModels = page.getByRole('group', { name: /研究员的模型/ })
-  await expect(researcherModels.getByRole('menuitemradio').first()).toBeDisabled()
-  const writerModels = page.getByRole('group', { name: /写手的模型/ })
-  await writerModels.getByRole('menuitemradio', { name: /research-v1/ }).click()
+  await expect(page.getByRole('menuitemradio', { name: /research-v1/ })).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await page.locator('.conversation-item').filter({ hasText: '工具栏协作' }).click()
+  await expect(model).toHaveCount(0)
+  await expect(permission).toHaveCount(0)
+  await page.locator('.conversation-item').filter({ hasText: '写手' }).click()
+  await model.click()
+  await expect(page.getByRole('menuitemradio', { name: /research-v1/ })).toBeEnabled()
+  await page.getByRole('menuitemradio', { name: /research-v1/ }).click()
   await expect.poll(async () => (await employee('writer')).connectionId).toBe(data.a.id)
   expect((await employee('researcher')).connectionId).toBe(data.b.id)
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.find(c => c.id === data.direct.id)?.activity).toBe('running')
+  await page.locator('.conversation-item').filter({ hasText: '工具栏协作' }).click()
   await page.evaluate((id) => window.boai.request('cancelRun', { conversationId: id }), data.direct.id)
   await more.click()
   await page.getByRole('menuitem', { name: '提及成员' }).click()
   await expect(page.locator('.mention-bar')).toBeVisible()
+  await page.locator('.conversation-item').filter({ hasText: '写手' }).click()
   return { app, page, errors, permission }
 }
 

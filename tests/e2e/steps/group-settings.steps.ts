@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 群设置中文场景、Electron fixture 与本地产品 API。
- * [OUTPUT]: 无重复介绍的成员网格、16px 移除按钮、取消/确认、保存持久化与两种页脚布局验证。
+ * [OUTPUT]: 会话菜单入口、无重复介绍的成员网格、16px 移除按钮、取消/确认、保存持久化与两种页脚布局验证。
  * [POS]: tests/e2e/steps/group-settings.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -18,7 +18,8 @@ Given('打开包含两位员工的群聊设置', async ({ runtime }) => {
     await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: state.revision })
   })
   await runtime.page.locator('.conversation-item').filter({ hasText: '成员布局验收' }).click()
-  await runtime.page.getByRole('button', { name: '群聊设置', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '配置', exact: true }).click()
 })
 When('在末尾添加员工并确认移除原成员', async ({ runtime }) => {
   const page = runtime.page, panel = page.locator('.detail-panel')
@@ -56,7 +57,8 @@ Then('保存后的群成员和头像一致', async ({ runtime }) => {
   await expect(runtime.page.locator('.conversation-item.selected .group-avatar img')).toHaveCount(2)
   await runtime.restart()
   await runtime.page.locator('.conversation-item').filter({ hasText: '成员布局验收' }).click()
-  await runtime.page.getByRole('button', { name: '群聊设置', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await expect(runtime.page.locator('.group-member-grid .group-member')).toHaveCount(2)
 })
 Then('右侧页脚在滚动和窗口缩放时固定在底部', async ({ runtime }) => {

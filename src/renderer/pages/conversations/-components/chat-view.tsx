@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 会话领域类型、草稿、活动投影、共用 Soft 输入框与按钮、统一 UI 基础组件。
- * [OUTPUT]: 统一员工头像；仅展示名称的无按钮背景会话标题；聊天消息和任务交互；紧凑两行 composer 接入加号、权限和模型菜单，底部无提示栏；保留发送/停止/提及行为。
+ * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、shadcn Scroll Fade 与统一 UI 基础组件。
+ * [OUTPUT]: 悬浮名称/操作菜单与顶部渐隐消息；紧凑两行 composer 仅在单聊显示权限和模型菜单；保留发送/停止/提及、滚动跟随及位置恢复。
  * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,16 +10,18 @@ import { Button } from '@/components/ui/button'
 import { ChatComposer, ChatComposerInput } from '@/components/ui/chat-composer'
 import { ExternalFiles } from './external-files'
 import { ComposerToolbar, type ComposerAgentPatch } from './composer-toolbar'
+import { ConversationHeader } from './conversation-header'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowDown, ChevronRight, FolderOpen, LoaderCircle, MoreHorizontal, Reply, ShieldCheck, X } from '@/components/icons/index'
+import { ArrowDown, ChevronRight, LoaderCircle, Reply, ShieldCheck, X } from '@/components/icons/index'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Approval, ConversationDetail, DigitalAgent, Snapshot } from '@shared/domain'
+import type { ConversationListChange } from '@shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
 import { activityRounds } from '@/pages/conversations/activity'
 
 import { deliveryLabels, turnLabels, liveTurn, latestMemberDeliveries, type ChatDraft } from '../presentation'
-export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onStop, onDetails, onEmployee, onActivity, onSettings, onChangeAgent, configurationLocked, onApprove, onOpenPath, scrollPosition, onScrollPosition }: { detail: ConversationDetail; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (stopPrevious?: boolean) => void; onStop: () => void; onDetails: () => void; onEmployee: (agent: DigitalAgent) => void; onActivity: () => void; onSettings: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => void; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; scrollPosition?: number; onScrollPosition: (position: number) => void }) {
+export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onStop, onDetails, onChangeConversationList, onClear, onActivity, onSettings, onChangeAgent, configurationLocked, onApprove, onOpenPath, scrollPosition, onScrollPosition }: { detail: ConversationDetail; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (stopPrevious?: boolean) => void; onStop: () => void; onDetails: () => void; onChangeConversationList: (change: ConversationListChange) => void; onClear: (id: string, hide: boolean) => Promise<void>; onActivity: () => void; onSettings: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => void; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; scrollPosition?: number; onScrollPosition: (position: number) => void }) {
   const conversation = detail.conversation
   const members = snapshot.agents.filter(agent => conversation.agentIds.includes(agent.id))
   const [mentionsVisible, setMentionsVisible] = useState(false), [newMessages, setNewMessages] = useState(false)
@@ -45,8 +47,9 @@ export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onSt
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
-  return <div className="chat-panel"><header className="chat-header"><h2 className="chat-title">{conversation.title}</h2><div className="chat-header-actions"><div className="member-avatars">{members.slice(0,4).map(agent => <Button variant="ghost" size="content" aria-label={`查看 ${agent.name}`} key={agent.id} onClick={() => onEmployee(agent)}><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} small /></Button>)}</div><Button variant="ghost" size="icon-sm" aria-label="任务与产物" onClick={onActivity}><FolderOpen /></Button><Button variant="ghost" size="icon-sm" aria-label={conversation.kind === 'group' ? '群聊设置' : '员工设置'} onClick={onDetails}><MoreHorizontal /></Button></div></header>
-    <div className="messages" ref={scrollRef} onScroll={() => { const el = scrollRef.current; if (!el || el.clientHeight === 0) return; following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; if (following.current) setNewMessages(false); onScrollPosition(el.scrollTop) }}>
+  return <div className="chat-panel">
+    <ConversationHeader conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onActivity={onActivity} onChange={onChangeConversationList} onClear={onClear} />
+    <div className="messages scroll-fade-t scroll-fade-6" ref={scrollRef} onScroll={() => { const el = scrollRef.current; if (!el || el.clientHeight === 0) return; following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; if (following.current) setNewMessages(false); onScrollPosition(el.scrollTop) }}>
       {!detail.messages.length && <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>}
       {detail.messages.map(message => { const agent = snapshot.agents.find(a => a.id === message.senderId); const quoted = detail.messages.find(m => m.id === message.replyToMessageId); return <article className={`message-row ${message.senderType}`} key={message.id} id={`message-${message.id}`}><div className="message-avatar">{message.senderType === 'user' ? <span className="avatar user-avatar">{message.origin?'定':'我'}</span> : <Avatar name={message.senderName || '系统'} seed={message.senderId} avatar={agent?.avatar} color={agent?.color} />}</div><div className="message-main"><div className="message-meta"><strong>{message.origin?message.senderName:message.senderType === 'user' ? '你' : message.senderName}</strong><time>{timeText(message.createdAt)}</time><Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} onClick={() => setDraft({ ...draft, replyId: message.id })}><Reply size={14} /></Button></div>{quoted && <div className="quoted-message">{quoted.senderName}：{quoted.content.slice(0,120)}</div>}<div className="message-bubble markdown">{message.content ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ children, href }) => <span title={href} className="markdown-link">{children}</span>, img: ({ alt }) => <span className="muted">[图片：{alt || '外部图片未加载'}]</span> }}>{message.content}</ReactMarkdown> : message.status === 'streaming' ? <span className="typing-indicator"><i /><i /><i /></span> : <span className="muted">暂无公开内容</span>}</div>{message.status==='completed'&&message.runId&&detail.runs.find(r=>r.id===message.runId)?.backend&&<ExternalFiles runId={message.runId}/>} {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在任务记录中重试' : '回复失败，请查看任务记录'}</small>}</div></article> })}
       {approvals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}

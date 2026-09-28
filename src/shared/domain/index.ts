@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品实体、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
- * [OUTPUT]: 跨进程共享领域类型及兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
+ * [OUTPUT]: 并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
  * [POS]: shared/domain 的产品领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -168,7 +168,7 @@ export interface ConversationDetail {
 
 export type TurnStatus = 'queued' | 'evaluating' | 'responding' | 'executing' | 'waiting_user' | 'completed' | 'cancelled' | 'failed' | 'interrupted' | 'budget_exhausted'
 export interface DiscussionTurn { id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number }
-export interface AgentDelivery { id: string; turnId: string; conversationId: string; agentId: string; eventId: string; eventIds?: string[]; supersededByDeliveryId?: string; status: 'pending' | 'evaluating' | 'ready' | 'waiting' | 'passed' | 'responding' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'skipped'; observedThroughSequence: number; error?: string; updatedAt: string }
+export interface AgentDelivery { observedEventId?: string; id: string; turnId: string; conversationId: string; agentId: string; eventId: string; eventIds?: string[]; supersededByDeliveryId?: string; status: 'pending' | 'evaluating' | 'ready' | 'waiting' | 'passed' | 'responding' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'skipped'; observedThroughSequence: number; error?: string; updatedAt: string }
 export interface ParticipationDecision {
   work?: WorkIntent
   action: 'reply' | 'pass' | 'wait' | 'ask' | 'request_handoff'

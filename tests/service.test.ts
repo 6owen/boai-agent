@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量、合法相同回复及永久会话清理/执行器退出边界回归。
+ * [OUTPUT]: 独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -78,6 +78,113 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it('streams five independent member replies concurrently without restarting their first decisions', async () => {
+    const { service, engine } = await fixture(); const connection = await configure(service)
+    const memberIds = ['researcher', 'writer', 'reviewer']
+    for (let index = 3; index < 5; index++) memberIds.push((await service.handle('saveAgent', { name: `成员 ${index}`, role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent).id)
+    const group = await service.handle('createConversation', { kind: 'group', title: '成员同时交流', agentIds: memberIds }) as Conversation
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => ({ action: context.participation!.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence })
+    engine.handler = async context => { await context.onDelta(`${context.agent.name}：`); await held; await context.onDelta('你好') }
+    try {
+      await send(service, group, '大家好', 'concurrent-chat', [])
+      await until(() => engine.contexts.length === 5)
+      const intermediate = await detail(service, group)
+      expect(intermediate.messages.filter(message => message.status === 'streaming')).toHaveLength(5)
+      expect(new Set(engine.contexts.map(context => context.agent.id))).toEqual(new Set(memberIds))
+      release(); await idle(service, group, 5)
+      const result = await detail(service, group)
+      expect(result.turns![0].status).toBe('completed'); expect(result.workItems).toEqual([])
+      expect(result.messages.filter(message => message.senderType === 'agent').every(message => message.content === `${message.senderName}：你好`)).toBe(true)
+      expect(engine.decisions.filter(context => context.participation!.isFirstDecision)).toHaveLength(5)
+      expect(engine.decisions.length).toBeLessThanOrEqual(10)
+    } finally { release() }
+  })
+
+  it('executes five private workspaces concurrently without cross-writing or withholding independent results', async () => {
+    const { service, engine } = await fixture(); const connection = await configure(service)
+    const memberIds = ['researcher', 'writer', 'reviewer']
+    for (let index = 3; index < 5; index++) memberIds.push((await service.handle('saveAgent', { name: `成员 ${index}`, role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent).id)
+    const group = await service.handle('createConversation', { kind: 'group', title: '独立工作区并发', agentIds: memberIds }) as Conversation
+    let release!: () => void; const held = new Promise<void>(resolve => { release = resolve }), paths = new Map<string, string>()
+    engine.handler = async context => {
+      const path = join(context.workspace!.workPath, 'result.txt')
+      await writeFile(path, context.agent.id); paths.set(context.agent.id, path)
+      await held; await context.onDelta(`${context.agent.name}独立结果`)
+    }
+    try {
+      await send(service, group, '各自在自己的工作区保存 result.txt 并汇报，不需要互相等待', 'parallel-workspaces', [])
+      await until(() => paths.size === 5)
+      expect(new Set(paths.values()).size).toBe(5)
+      for (const [id, path] of paths) expect(await readFile(path, 'utf8')).toBe(id)
+      release(); await idle(service, group, 5)
+      expect((await detail(service, group)).messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toHaveLength(5)
+    } finally { release() }
+  })
+
+  it('keeps a slow original chat decision valid after a peer reply and generates from current context', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    let release!: () => void; const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      if (context.agent.id === 'researcher' && context.participation!.isFirstDecision) await held
+      return { action: context.participation!.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    try {
+      await send(service, group, '大家好', 'slow-original-chat', [])
+      await until(async () => (await detail(service, group)).messages.some(message => message.senderId === 'writer' && message.status === 'completed'))
+      release(); await idle(service, group, 2)
+      expect(engine.decisions.filter(context => context.agent.id === 'researcher')).toHaveLength(1)
+      expect(engine.contexts.find(context => context.agent.id === 'researcher')!.messages.some(message => message.senderId === 'writer')).toBe(true)
+    } finally { release() }
+  })
+
+  it('rechecks a task report when an earlier streaming message completes after a later message', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await service.handle('createConversation', { kind: 'group', title: '并行完成顺序', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
+    let releaseWriter!: () => void, releaseTask!: () => void, releaseReport!: () => void
+    const writerHeld = new Promise<void>(resolve => { releaseWriter = resolve }), taskHeld = new Promise<void>(resolve => { releaseTask = resolve }), reportHeld = new Promise<void>(resolve => { releaseReport = resolve })
+    const decide = engine.decisionHandler
+    engine.decisionHandler = async context => ({ ...await decide(context), ...(context.agent.id === 'researcher' ? {} : { responseKind: 'chat', work: undefined }) })
+    let reports = 0, effects = 0
+    engine.handler = async context => {
+      if (context.agent.id === 'researcher') { effects++; await taskHeld }
+      if (context.agent.id === 'writer') await writerHeld
+      await context.onDelta(`${context.agent.name}结果`)
+    }
+    engine.report = async context => {
+      reports++
+      if (reports === 1) await reportHeld
+      else expect(context.messages.some(message => message.senderId === 'writer' && message.status === 'completed')).toBe(true)
+      return { action: 'publish', text: '汇总结果' }
+    }
+    try {
+      await send(service, group, '各自提交结果后汇总', 'completion-order', [])
+      await until(async () => (await detail(service, group)).messages.some(message => message.senderId === 'reviewer' && message.status === 'completed'))
+      const intermediate = await detail(service, group)
+      expect(intermediate.messages.find(message => message.senderId === 'writer')!.sequence).toBeLessThan(intermediate.messages.find(message => message.senderId === 'reviewer')!.sequence)
+      releaseTask(); await until(() => reports === 1)
+      releaseWriter(); await until(async () => (await detail(service, group)).messages.some(message => message.senderId === 'writer' && message.status === 'completed'))
+      releaseReport(); await idle(service, group, 3)
+      expect(reports).toBe(2); expect(effects).toBe(1)
+    } finally { releaseWriter(); releaseTask(); releaseReport() }
+  })
+
+  it('maintains distinct member memories concurrently after their replies', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    let release!: () => void; const held = new Promise<void>(resolve => { release = resolve }), entered: string[] = []
+    engine.decisionHandler = async context => ({ action: context.participation!.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence })
+    engine.extractMemory = async context => { entered.push(context.agent.id); await held; return [] }
+    try {
+      await send(service, group, '大家好', 'parallel-memory', [])
+      await until(() => entered.length === 2)
+      expect(new Set(entered)).toEqual(new Set(group.agentIds))
+      release(); await idle(service, group, 2)
+    } finally { release() }
+  })
+
   it.each(['unchanged', 'execution', 'report'])('delegates once and resumes only its owner after repairing a waiting disposition changed in %s', async changedIn => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
@@ -264,7 +371,7 @@ describe('local product service', () => {
     expect(result.workItems).toHaveLength(1); expect(result.workItems![0].status).toBe('delivered'); expect(result.workWakes).toEqual([])
   })
 
-  it('lets an independent short task publish before a long task, then refreshes the long report once', async () => {
+  it('lets independent short and long tasks publish without invalidating each other or replaying execution', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
     let release!: () => void, reports = 0
@@ -284,7 +391,7 @@ describe('local product service', () => {
     const result = await detail(service, group)
     expect(result.messages.map(message => message.sequence)).toEqual([1, 2, 3])
     expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.senderId)).toEqual(['writer', 'researcher'])
-    expect(reports).toBe(1); expect(engine.contexts).toHaveLength(2)
+    expect(reports).toBe(0); expect(engine.contexts).toHaveLength(2)
   })
 
   it('keeps potentially conflicting host-command tasks serial even with different work IDs', async () => {
@@ -500,15 +607,24 @@ describe('local product service', () => {
   })
 
   it('coalesces peer events without losing source references or the first decision opportunity', async () => {
-    const { service, engine } = await fixture(); await configure(service)
-    const group = await service.handle('createConversation', { kind: 'group', title: '合并输入', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
-    engine.decisionHandler = async context => ({
-      action: context.participation?.hasRespondedInTurn ? 'pass' : context.agent.id === 'researcher' || (context.agent.id === 'writer' && !context.participation?.isFirstDecision) ? 'reply' : 'pass',
-      responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence,
-    })
-    await send(service, group, '分别贡献自己的信息', 'coalesced-inputs', []); await idle(service, group, 2)
+    const { service, engine } = await fixture(); const connection = await configure(service)
+    const fourth = await service.handle('saveAgent', { name: '第四位', role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent
+    const group = await service.handle('createConversation', { kind: 'group', title: '合并输入', agentIds: ['researcher', 'writer', 'reviewer', fourth.id] }) as Conversation
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      if (context.agent.id === 'reviewer' && !context.participation!.isFirstDecision) await held
+      const reply = context.agent.id !== 'reviewer' && !context.participation!.hasRespondedInTurn
+      return { action: reply ? 'reply' : 'pass', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    try {
+      await send(service, group, '分别贡献自己的信息', 'coalesced-inputs', [])
+      // Hold one member while two peer publications accumulate for it.
+      await until(async () => (await detail(service, group)).messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length === 3)
+      release(); await idle(service, group, 3)
+    } finally { release() }
     const result = await detail(service, group)
-    expect(engine.decisions.filter(context => context.participation?.isFirstDecision)).toHaveLength(3)
+    expect(engine.decisions.filter(context => context.participation?.isFirstDecision)).toHaveLength(4)
     const merged = result.deliveries!.filter(delivery => (delivery.eventIds?.length ?? 0) > 1)
     expect(merged.length).toBeGreaterThan(0)
     for (const delivery of merged) {
@@ -524,8 +640,10 @@ describe('local product service', () => {
   })
 
   it('retains connection capacity until cancelled adapters actually settle', async () => {
-    const { service, engine } = await fixture(); await configure(service)
-    const first = await service.handle('createConversation', { kind: 'group', title: '取消但模型尚未退出', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
+    const { service, engine } = await fixture(); const connection = await configure(service)
+    const memberIds = ['researcher', 'writer', 'reviewer']
+    for (let index = 3; index < 6; index++) memberIds.push((await service.handle('saveAgent', { name: `成员 ${index}`, role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent).id)
+    const first = await service.handle('createConversation', { kind: 'group', title: '取消但模型尚未退出', agentIds: memberIds }) as Conversation
     const releases: (() => void)[] = []
     let physical = 0, peak = 0
     engine.decisionHandler = async context => {
@@ -536,21 +654,21 @@ describe('local product service', () => {
       } finally { physical-- }
     }
     try {
-      await send(service, first, '先判断', 'physical-first', []); await until(() => releases.length === 3)
+      await send(service, first, '先判断', 'physical-first', []); await until(() => releases.length === 6)
       await service.handle('cancelRun', { conversationId: first.id })
       const second = await conversation(service, true)
       await send(service, second, '另一个会话的判断', 'physical-second', [])
       await until(async () => (await detail(service, second)).runs.filter(run => run.phase === 'decision').length === 2)
       await new Promise(resolve => setTimeout(resolve, 30))
-      expect(engine.decisions).toHaveLength(3)
+      expect(engine.decisions).toHaveLength(6)
       releases.forEach(release => release()); await idle(service, second, 0)
-      expect(engine.decisions).toHaveLength(5); expect(peak).toBe(3)
+      expect(engine.decisions).toHaveLength(8); expect(peak).toBe(6)
     } finally { releases.forEach(release => release()) }
   })
 
   it('bounds one model connection across independent groups and exposes separate queue timing', async () => {
     const { service, engine } = await fixture(); await configure(service)
-    const groups = await Promise.all(Array.from({ length: 3 }, (_, index) => service.handle('createConversation', { kind: 'group', title: `共享连接 ${index}`, agentIds: ['researcher', 'writer'] }) as Promise<Conversation>))
+    const groups = await Promise.all(Array.from({ length: 4 }, (_, index) => service.handle('createConversation', { kind: 'group', title: `共享连接 ${index}`, agentIds: ['researcher', 'writer'] }) as Promise<Conversation>))
     let release!: () => void; const held = new Promise<void>(resolve => { release = resolve }); let active = 0, highest = 0
     engine.decisionHandler = async context => {
       active++; highest = Math.max(highest, active)
@@ -558,10 +676,10 @@ describe('local product service', () => {
       return { action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence }
     }
     await Promise.all(groups.map((group, index) => send(service, group, '各自判断', `capacity-${index}`, [])))
-    await until(() => engine.decisions.length === 3)
-    expect(highest).toBe(3); release()
+    await until(() => engine.decisions.length === 6)
+    expect(highest).toBe(6); release()
     await Promise.all(groups.map(group => idle(service, group, 0)))
-    expect(engine.decisions).toHaveLength(6); expect(highest).toBe(3)
+    expect(engine.decisions).toHaveLength(8); expect(highest).toBe(6)
     for (const group of groups) for (const run of (await detail(service, group)).runs) expect(run.timing).toMatchObject({ queueMs: expect.any(Number), executionMs: expect.any(Number), rateLimitRetries: 0 })
   })
 
@@ -842,21 +960,21 @@ describe('local product service', () => {
     expect((await snapshot(reopened)).conversations[0].activity).toBe('idle')
   })
 
-  it('finishes the current speaker then processes a new user turn before optional group continuations', async () => {
+  it('finishes the current parallel replies then processes a new user turn before optional group continuations', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
     const decide = engine.decisionHandler
     engine.decisionHandler = async context => ({ ...await decide(context), responseKind: 'chat', work: undefined })
     let release!: () => void; const held = new Promise<void>(resolve => { release = resolve })
-    engine.handler = async context => { if (engine.contexts.length === 1) await held; await context.onDelta('回答当前用户') }
+    engine.handler = async context => { if (engine.contexts.length <= 2) await held; await context.onDelta('回答当前用户') }
     const first = await send(service, group, '第一轮全员讨论', 'priority-first', [])
-    await until(() => engine.contexts.length === 1)
+    await until(() => engine.contexts.length === 2)
     const second = await send(service, group, '请写手先处理这个', 'priority-second', ['writer'])
     const before = await detail(service, group)
     expect(before.messages.some(message => message.id === second.id)).toBe(true)
-    release(); await idle(service, group, 2)
-    expect(engine.contexts.filter(context => context.triggerMessageId === first.id)).toHaveLength(1)
-    expect(engine.contexts[1]).toMatchObject({ triggerMessageId: second.id, agent: { id: 'writer' } })
+    release(); await idle(service, group, 3)
+    expect(engine.contexts.filter(context => context.triggerMessageId === first.id)).toHaveLength(2)
+    expect(engine.contexts[2]).toMatchObject({ triggerMessageId: second.id, agent: { id: 'writer' } })
   })
 
   it('allows the first ready member to speak without waiting for a slow decision', async () => {
@@ -891,17 +1009,117 @@ describe('local product service', () => {
     expect(engine.contexts.map(context => context.agent.id)).toEqual(['researcher', 'writer'])
   })
 
-  it('bounds participation decisions to three concurrent models without dropping other members', async () => {
+  it('evaluates independent follow-up decisions concurrently after a greeting reply', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await service.handle('createConversation', { kind: 'group', title: '大家好', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      if (!context.participation!.isFirstDecision && context.agent.id === 'researcher') await held
+      const reply = !context.participation!.hasRespondedInTurn && (context.agent.id === 'writer' || (context.agent.id === 'reviewer' && !context.participation!.isFirstDecision))
+      return { action: reply ? 'reply' : 'pass', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    engine.handler = async context => { await context.onDelta(`${context.agent.name}：你好`) }
+    try {
+      await send(service, group, '大家好', 'parallel-greeting-follow-up', [])
+      await until(() => engine.decisions.some(context => context.agent.id === 'researcher' && !context.participation!.isFirstDecision))
+      await until(() => engine.contexts.some(context => context.agent.id === 'reviewer'))
+      const intermediate = await detail(service, group)
+      expect(intermediate.runs.some(run => run.agentId === 'researcher' && run.phase === 'decision' && run.status === 'running')).toBe(true)
+      expect(intermediate.messages.some(message => message.senderId === 'reviewer' && message.status === 'completed')).toBe(true)
+      release(); await idle(service, group, 2)
+      expect((await detail(service, group)).runs.every(run => run.status === 'completed')).toBe(true)
+    } finally { release() }
+  })
+
+  it('coalesces follow-ups for a member who already replied while peers prepare their first reply', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await service.handle('createConversation', { kind: 'group', title: '问候输入合并', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      if (context.agent.id === 'researcher') await held
+      const reply = !context.participation!.hasRespondedInTurn
+      return { action: reply ? 'reply' : 'pass', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    try {
+      await send(service, group, '大家好', 'coalesced-greeting-follow-ups', [])
+      await until(async () => (await detail(service, group)).messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length === 2)
+      // The slow first response must not cause repeated background passes by fast peers.
+      await new Promise(resolve => setTimeout(resolve, 50))
+      expect(engine.decisions.filter(context => context.participation!.hasRespondedInTurn)).toHaveLength(0)
+      release(); await idle(service, group, 3)
+      const result = await detail(service, group)
+      expect(result.turns![0].status).toBe('completed')
+      expect(result.workItems).toEqual([])
+      const followUps = engine.decisions.filter(context => context.participation!.hasRespondedInTurn)
+      expect(followUps).toHaveLength(2)
+      for (const context of followUps) expect(context.messages.filter(message => message.senderType === 'agent')).toHaveLength(3)
+    } finally { release() }
+  })
+
+  it.each(['reply', 'request_handoff'] as const)('keeps an explicit %s recipient eligible while another first response is pending', async action => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await service.handle('createConversation', { kind: 'group', title: '定向接续不等待旁观成员', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      if (context.agent.id === 'researcher') await held
+      const own = context.messages.filter(message => message.senderId === context.agent.id).length
+      const base = { responseKind: 'chat' as const, observedThroughSequence: context.participation!.observedThroughSequence }
+      if (context.agent.id === 'reviewer' && !context.participation!.isFirstDecision && own === 0) return { ...base, action, recipientAgentIds: ['writer'] }
+      return { ...base, action: context.agent.id === 'writer' && own < 2 ? 'reply' : 'pass' }
+    }
+    try {
+      await send(service, group, '写手先介绍，审核员再请写手补充', `directed-follow-up-${action}`, [])
+      await until(() => engine.contexts.filter(context => context.agent.id === 'writer').length === 2)
+      expect((await detail(service, group)).runs.some(run => run.agentId === 'researcher' && run.phase === 'decision' && run.status === 'running')).toBe(true)
+      release(); await idle(service, group, 3)
+      expect((await detail(service, group)).turns![0].status).toBe('completed')
+    } finally { release() }
+  })
+
+  it.each(['reply', 'timeout'] as const)('gives a slow greeting decision the shared 30-second deadline: %s', async outcome => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service)
+    let enter!: (context: EngineContext) => void, release!: () => void
+    const entered = new Promise<EngineContext>(resolve => { enter = resolve })
+    const held = new Promise<void>(resolve => { release = resolve })
+    engine.decisionHandler = async context => {
+      enter(context)
+      await held
+      context.signal.throwIfAborted()
+      return { action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await send(service, direct, '大家好', `slow-greeting-${outcome}`)
+      const context = await entered
+      await vi.advanceTimersByTimeAsync(20_000)
+      expect(context.signal.aborted).toBe(false)
+      if (outcome === 'timeout') {
+        await vi.advanceTimersByTimeAsync(10_000)
+        expect(context.signal.aborted).toBe(true)
+      }
+    } finally { release(); vi.useRealTimers() }
+    await idle(service, direct, outcome === 'reply' ? 1 : 0)
+    const result = await detail(service, direct)
+    expect(result.runs.find(run => run.phase === 'decision')?.status).toBe(outcome === 'reply' ? 'completed' : 'failed')
+    if (outcome === 'timeout') expect(result.runs.find(run => run.phase === 'decision')?.error).toContain('超时')
+  })
+
+  it('bounds participation decisions to six concurrent models without dropping other members', async () => {
     const { service, engine } = await fixture(); const connection = await configure(service)
-    const fourth = await service.handle('saveAgent', { name: '第四位', role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent
-    const group = await service.handle('createConversation', { kind: 'group', title: '四人群', agentIds: ['researcher', 'writer', 'reviewer', fourth.id] }) as Conversation
+    const memberIds = ['researcher', 'writer', 'reviewer']
+    for (let index = 3; index < 7; index++) memberIds.push((await service.handle('saveAgent', { name: `成员 ${index}`, role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent).id)
+    const group = await service.handle('createConversation', { kind: 'group', title: '七人群', agentIds: memberIds }) as Conversation
     let release!: () => void, concurrent = 0, highest = 0
     const held = new Promise<void>(resolve => { release = resolve })
     engine.decisionHandler = async context => { concurrent++; highest = Math.max(highest, concurrent); await held; concurrent--; return { action: 'pass', observedThroughSequence: context.messages.at(-1)!.sequence } }
     await send(service, group, '无需工作', 'bounded', [])
-    await until(() => engine.decisions.length === 3)
-    expect(engine.decisions).toHaveLength(3); release(); await idle(service, group, 0)
-    expect(highest).toBe(3); expect(engine.decisions).toHaveLength(4)
+    await until(() => engine.decisions.length === 6)
+    expect(engine.decisions).toHaveLength(6); release(); await idle(service, group, 0)
+    expect(highest).toBe(6); expect(engine.decisions).toHaveLength(7)
   })
 
   it.each([6, 12])('gives %i members a first contribution without treating three messages as a depth limit', async size => {

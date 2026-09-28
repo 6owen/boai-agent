@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 创建员工与群聊并保持手动列表状态的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 创建员工与群聊并保持手动列表状态的真实桌面业务步骤与断言。
+ * [OUTPUT]: 会话菜单入口、创建员工与群聊并保持手动列表状态的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/creation.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -89,7 +89,8 @@ async function createAndEditGroup(previous: Awaited<ReturnType<typeof cancelGrou
   expect(created.agentIds).toEqual(['researcher', 'writer'])
   const row = page.locator('.conversation-item').filter({ hasText: created.title })
   await expect(row).toBeVisible()
-  await page.getByRole('button', { name: '群聊设置', exact: true }).click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   const details = page.getByRole('complementary', { name: '群聊详情', exact: true })
   await expect(details).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)

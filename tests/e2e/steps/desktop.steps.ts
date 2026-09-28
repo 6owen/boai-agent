@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 自主群聊隔离取消与重启的真实桌面业务步骤与断言，员工分类按全局 Tabs 语义访问，切换页面保留右侧窗口草稿。
+ * [OUTPUT]: 自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -255,7 +255,8 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await page.getByRole('button', { name: '取消', exact: true }).click()
   await page.getByRole('button', { name: '会话', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveValue('保留在这里的草稿')
-  await page.getByRole('button', { name: '群聊设置', exact: true }).click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   const panel = page.getByRole('complementary', { name: /群聊详情|数字员工/ })
   await expect(panel).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -281,6 +282,8 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
 
 async function editEmployeeResources(previous: Awaited<ReturnType<typeof exerciseNavigation>>) {
   let { runtime, requests, desktop, launch, snapshot, detail, current, page, direct, group, panel } = previous
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await page.getByRole('button', { name: '查看 研究员', exact: true }).click()
   await panel.getByRole('tab', { name: '系统文件', exact: true }).click()
   await panel.getByRole('button', { name: /SOUL.md/ }).click()

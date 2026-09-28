@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 历史失败与当前群聊轮次隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 历史失败与当前群聊轮次隔离的真实桌面业务步骤与断言。
+ * [OUTPUT]: 从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
  * [POS]: tests/e2e/steps/history.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -142,7 +142,8 @@ async function inspectRoundActivity(previous: Awaited<ReturnType<typeof startFre
       .getByRole('navigation', { name: '会话列表', exact: true })
       .getByRole('button', { name: /^已有历史的群/ })
       .click()
-    await runtime.page.getByRole('button', { name: '任务与产物', exact: true }).click()
+    await runtime.page.getByRole('button', { name: '会话操作', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
     const current = runtime.page.getByRole('region', { name: '本轮详情', exact: true })
     await expect(current).toHaveAttribute('data-turn-id', greeting.turnId!)
     await expect(current).toContainText('你们好啊')

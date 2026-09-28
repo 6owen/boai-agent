@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 编辑时按连接读取密钥、草稿连接的只读模型目录/连接测试与显式空密钥语义、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -24,6 +24,7 @@ import { z } from 'zod'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
 import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
+import { PARTICIPATION_TIMEOUT_MS } from './contracts'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
 import { ProductStore, type StoredRecord } from './adapters/storage/product-store'
 import { GroupScheduler, type PublishReply } from './group-scheduler'
@@ -577,7 +578,7 @@ export class AppService {
       context.workItems = (await this.works.view(turn.conversationId)).workItems.filter(work => visible.has(work.sourceMessageId) && work.resultMessageIds.every(id => visible.has(id)))
       context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence, sourceEventIds: delivery.eventIds ?? [event.id] }
       if (!this.options.engine.decide) fail('模型引擎尚未支持成员独立参与判断')
-      const decision = await this.invokeModel(run, context, ctx => this.options.engine.decide!(ctx), 15_000)
+      const decision = await this.invokeModel(run, context, ctx => this.options.engine.decide!(ctx), PARTICIPATION_TIMEOUT_MS)
       effective.throwIfAborted()
       await this.finishRun(run, 'completed'); return decision
     } catch (error) {
@@ -611,7 +612,7 @@ export class AppService {
         decision = { ...decision, observedThroughSequence: messages.at(-1)!.sequence, replyToMessageId: latestUser.id }
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
       })
-      const context = await this.engineContext(run, turn, effective, decision.observedThroughSequence); key = context.apiKey
+      const context = await this.engineContext(run, turn, effective, run.responseKind === 'chat' ? undefined : decision.observedThroughSequence); key = context.apiKey
       if (run.responseKind === 'task') {
         try {
           context.work = await this.serialize(async () => {
@@ -740,6 +741,7 @@ export class AppService {
         Object.assign(run, completedRun); Object.assign(message, completedMessage); this.messages.set(message.id, message)
       }
       if (run.responseKind === 'task') {
+        let observedMessageIds = new Set(context.messages.map(message => message.id))
         run.draft = { text: message.content, observedThroughSequence: decision.observedThroughSequence, revisions: 0, status: 'private' }
         await this.store.write([record('runs', run)])
         const withhold = (reason: string) => this.serialize(async () => {
@@ -751,12 +753,23 @@ export class AppService {
         for (;;) {
           const stale = await this.serialize(async () => {
             effective.throwIfAborted()
-            const current = this.conversationMessages(conversation.id).filter(message => message.status === 'completed')
+            const latestUser = [...this.conversationMessages(conversation.id)].reverse().find(message => message.senderType === 'user' && message.status === 'completed')!
+            const current = this.contextMessages(this.getConversation(conversation.id), latestUser.id)
             const latest = current.at(-1)?.sequence ?? 0
+            const { workItems } = await this.works.view(conversation.id)
+            const own = workItems.find(work => work.id === run.workId)!
+            const dependencies = new Set([...own.dependsOnWorkIds, ...own.requiredResults.map(result => result.workId), ...(context.pendingWorkWait?.dependencies.map(result => result.workId) ?? [])])
+            const changed = current.some(message => {
+              if (observedMessageIds.has(message.id)) return false
+              const otherId = message.runId && this.runs.get(message.runId)?.workId
+              const other = workItems.find(work => work.id === otherId)
+              // A separate root with no declared dependency cannot invalidate this
+              // private workspace's result. User input, chat and related work still can.
+              return !other || other.rootWorkId === own.rootWorkId || dependencies.has(other.id)
+            })
             const evidenceError = workEvidenceError(outcome, { content: run.draft!.text, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) }, !!context.pendingWorkWait)
-            if (latest <= run.draft!.observedThroughSequence && !evidenceError) { await commit(); return undefined }
+            if (!changed && !evidenceError) { await commit(); return undefined }
             if (evidenceError) { run.draft!.reason = evidenceError; await this.store.write([record('runs', run)]) }
-            const latestUser = [...current].reverse().find(message => message.senderType === 'user')!
             return { sequence: latest, triggerMessageId: latestUser.id, turnId: latestUser.turnId, messages: this.contextMessages(this.getConversation(conversation.id), latestUser.id, latest), evidenceError }
           })
           if (!stale) break
@@ -782,6 +795,7 @@ export class AppService {
           if (report.action === 'discard') { await withhold('员工根据新信息决定暂不公开旧任务结果；已执行操作不会重放'); return 'deferred' }
           if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')
           run.draft.text = report.text; run.draft.observedThroughSequence = stale.sequence
+          observedMessageIds = new Set(stale.messages.map(message => message.id))
           if (report.outcome) outcome = workOutcomeSchema.parse(report.outcome)
           if (!workEvidenceError(outcome, { content: report.text, artifactIds: reportContext.work!.artifactIds }, !!context.pendingWorkWait)) delete run.draft.reason
           await this.store.write([record('runs', run)])
@@ -796,9 +810,9 @@ export class AppService {
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
     if (!this.options.engine.extractMemory || this.closing) return
-    for (const agentId of participants) {
+    await Promise.all(participants.map(async agentId => {
       if (this.closing || signal.aborted) return
-      if (!this.getConversation(turn.conversationId).agentIds.includes(agentId)) continue
+      if (!this.getConversation(turn.conversationId).agentIds.includes(agentId)) return
       if (!await this.scheduler.reserveMaintenance(turn.id)) return
       const run = this.newRun(this.getConversation(turn.conversationId), agentId, turn.triggerMessageId, turn.id, 'memory')
       run.status = 'running'; this.runs.set(run.id, run)
@@ -819,7 +833,7 @@ export class AppService {
         await this.finishRun(run, 'completed')
       } catch (error) { if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key)) }
       finally { this.runControllers.delete(run.id) }
-    }
+    }))
   }
 
   private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {

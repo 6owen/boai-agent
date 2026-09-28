@@ -1,0 +1,85 @@
+{
+  "datasetVersion": "boai-team-2026-09-28-v1",
+  "cases": [
+    {
+      "id": "holdout-invoice-tax",
+      "cluster": "invoice-tax",
+      "sha256": "4945e2e857891953affa42710d1d67337473da9407508ae40160c360c852d112"
+    },
+    {
+      "id": "holdout-inventory-reconcile",
+      "cluster": "inventory-reconcile",
+      "sha256": "a81fa923e763c873c3a0e8bb2f9ec5cfa2a12a465ef7de095eee2c1ec1df38b7"
+    },
+    {
+      "id": "holdout-refund-window",
+      "cluster": "refund-window",
+      "sha256": "47cdfdc31289e04adb652464fc399970d6dbefd4d3964b9e600083eef3d897ea"
+    },
+    {
+      "id": "holdout-weighted-score",
+      "cluster": "weighted-score",
+      "sha256": "991528cd666baa65259b782f2fce1cebed1d0f56c4ecdaa7ca5b90b110bdb263"
+    },
+    {
+      "id": "holdout-delivery-sla",
+      "cluster": "delivery-sla",
+      "sha256": "d64406dc4afe8e36b1d59b9743e2319f79bba5fc43d37214f8ac3d9f733f95ef"
+    },
+    {
+      "id": "holdout-support-dedupe",
+      "cluster": "support-dedupe",
+      "sha256": "6deeabafbf722ece23ba90fabcaffe66b06deb841e901905e543c67548e27cde"
+    },
+    {
+      "id": "holdout-capacity-schedule",
+      "cluster": "capacity-schedule",
+      "sha256": "787fc4fdacbbb2b377a0e8810bd784795e0ff8a2f2580cc08a8e9c3a290e857b"
+    },
+    {
+      "id": "holdout-cash-settlement",
+      "cluster": "cash-settlement",
+      "sha256": "947a64f1cf5e2961560fbd41f20ad038ab73b1b9116ea7215eddb8907823c0cb"
+    },
+    {
+      "id": "holdout-survey-denominator",
+      "cluster": "survey-denominator",
+      "sha256": "b0965ec18efd3cccf990c01e3f5273a9d2c10a5223a625157be4fdc10842edf3"
+    },
+    {
+      "id": "holdout-return-shipping",
+      "cluster": "return-shipping",
+      "sha256": "04f2879c5da84d793236c9130f4703884aceb279e07a69e3728907d5727f461c"
+    },
+    {
+      "id": "holdout-stock-alert",
+      "cluster": "stock-alert",
+      "sha256": "80bdb1e38b7136a1079ab589fe845ac7c74b133bf84dc2e0651c02c0096e9035"
+    },
+    {
+      "id": "holdout-project-critical-path",
+      "cluster": "project-critical-path",
+      "sha256": "3e09a522e7ef88f3f92467a6cd5bb79b38894f7132573dcbee629bb2bdd6c040"
+    },
+    {
+      "id": "holdout-donation-restricted",
+      "cluster": "donation-restricted",
+      "sha256": "b9f5d36b0c400275ff6c3c63142a5cd589e48f5ecdd9b1cbea3e329666d5f9a9"
+    },
+    {
+      "id": "holdout-energy-unit",
+      "cluster": "energy-unit",
+      "sha256": "b1a77921ea4b4e2049ffe0c10911f5e4816f0762bbed7f238842f0a3a0f22c8f"
+    },
+    {
+      "id": "holdout-revision-precedence",
+      "cluster": "revision-precedence",
+      "sha256": "5aaf7840ebd3ba311cb698cdaeaa61f8a18cebbd54339e35de7173890ae30aca"
+    },
+    {
+      "id": "holdout-missing-rate",
+      "cluster": "missing-rate",
+      "sha256": "701c98a3a78081c038bd788b2c79d7dc7528944f273a946a466d6ce798dd918d"
+    }
+  ]
+}

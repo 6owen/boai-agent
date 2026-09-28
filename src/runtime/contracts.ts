@@ -1,11 +1,15 @@
 /*
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
- * [OUTPUT]: 工作上下文、已声明等待、结果/副作用回调、无工具重新汇报与私有凭据接口。
+ * [OUTPUT]: 统一连接容量/成员判断时限、工作上下文、已声明等待、结果/副作用回调、无工具重新汇报与私有凭据接口。
  * [POS]: runtime 内部合同，不向 renderer 暴露凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
 import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait } from '../shared/domain'
+
+// The host and adapter share one phase budget, including the bounded JSON repair.
+export const PARTICIPATION_TIMEOUT_MS = 30_000
+export const DEFAULT_MODEL_CAPACITY = 6
 
 // Only the host and runtime know secrets. These values never enter a renderer snapshot.
 export interface SecretStore {

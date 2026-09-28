@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 页面表单校验与焦点恢复的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与步骤 SVG/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
+ * [OUTPUT]: 会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与步骤 SVG/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
  * [POS]: tests/e2e/steps/pages.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -73,16 +73,18 @@ async function createWithValidation(previous: Awaited<ReturnType<typeof launchPa
 
 async function saveDisabledEmployee(previous: Awaited<ReturnType<typeof createWithValidation>>) {
   let { page, errors, dialog, leave } = previous
-  await page.getByRole('button', { name: '员工设置', exact: true }).click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   const enabled = page.getByRole('checkbox', { name: /启用员工/ })
   await expect(enabled).toBeChecked()
   await enabled.uncheck()
   await expect(enabled).not.toBeChecked()
-  await page.getByRole('button', { name: '资料库', exact: true }).click()
+  await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
   await leave.getByRole('button', { name: '继续编辑' }).click()
   await expect(enabled).not.toBeChecked()
-  await page.getByRole('button', { name: '资料库', exact: true }).click()
+  await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
   await leave.getByRole('button', { name: '保存并退出' }).click()
+  await page.getByRole('button', { name: '资料库', exact: true }).click()
   await expect(page.getByRole('heading', { name: '资料库', exact: true })).toBeVisible()
   await expect
     .poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find((a) => a.name === '组件联调员工')?.active)

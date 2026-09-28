@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 原生鼠标排序、置顶/普通组折叠与搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
+ * [OUTPUT]: 忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -207,8 +207,7 @@ Then('新会话显示成员头像且窄窗口深色菜单仍然可用', async ({
   await selected.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: '置顶', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: '删除会话', exact: true })).toBeVisible()
-  await page.evaluate(() => Promise.allSettled(document.getAnimations().map(animation => animation.finished)))
-  await page.screenshot({ path: 'test-results/conversation-list-dark.png' })
+  await page.screenshot({ path: 'test-results/conversation-list-dark.png', animations: 'disabled' })
   await page.keyboard.press('Escape')
   await expect(list(runtime).getByRole('button', { name, exact: true })).toBeFocused()
   expect(runtime.errors).toEqual([])

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件。
- * [OUTPUT]: 单加号入口、成员拼图头像、可拖拽排序、置顶/会话两组独立折叠及右键清空/删除的紧凑会话列表；无底部工作空间状态栏。
+ * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
+ * [OUTPUT]: 单加号入口、成员拼图头像、可拖拽排序、置顶/会话两组独立折叠及右键清空/删除的紧凑会话列表；清理确认与标题菜单共用，无底部工作空间状态栏。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,14 +10,14 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog'
 import { ChevronRight, Pin, Search, Trash2 } from '@/components/icons'
 import type { Conversation, DigitalAgent, Snapshot } from '@shared/domain'
 import { sortedConversations, type ConversationListChange } from '@shared/domain/conversation-list'
-import { Avatar, Banner, timeText, useMutation } from '@/components/common'
+import { Avatar, timeText } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { type ChatDraft } from '../presentation'
+import { ConversationHistoryDialog } from './conversation-history-dialog'
 
 type DropTarget = { id: string; placement: 'before' | 'after' }
 interface Props {
@@ -30,8 +30,7 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
   const [pinnedOpen, setPinnedOpen] = useState(true)
   const [regularOpen, setRegularOpen] = useState(true)
   const [confirmation, setConfirmation] = useState<{ conversation: Conversation; hide: boolean } | null>(null)
-  const mutation = useMutation()
-  const confirm = (conversation: Conversation, hide: boolean) => { mutation.setError(''); setConfirmation({ conversation, hide }) }
+  const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
   const [dragged, setDragged] = useState<string | null>(null), [target, setTarget] = useState<DropTarget | null>(null)
   const conversations = sortedConversations(snapshot.conversations, messageTimes).filter(c => c.title.toLowerCase().includes(query.toLowerCase()))
   const finishDrag = () => { setDragged(null); setTarget(null) }
@@ -69,8 +68,8 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
             <ContextMenuContent className="w-40"><ContextMenuGroup>
               <ContextMenuItem disabled={busy} onClick={() => onChange({ id: conversation.id, action: 'pin', pinned: !conversation.list?.pinned })}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</ContextMenuItem>
             </ContextMenuGroup><ContextMenuSeparator /><ContextMenuGroup>
-              <ContextMenuItem disabled={busy || mutation.busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</ContextMenuItem>
-              <ContextMenuItem variant="destructive" disabled={busy || mutation.busy} onClick={() => confirm(conversation, true)}><Trash2 />删除会话</ContextMenuItem>
+              <ContextMenuItem disabled={busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</ContextMenuItem>
+              <ContextMenuItem variant="destructive" disabled={busy} onClick={() => confirm(conversation, true)}><Trash2 />删除会话</ContextMenuItem>
             </ContextMenuGroup></ContextMenuContent>
           </ContextMenu>
         </div>
@@ -90,11 +89,6 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
       </Collapsible>
       {!conversations.length && <div className="list-empty">{query ? '没有匹配的会话' : '从通讯录发消息，或点击加号创建新的会话。'}</div>}
     </div>
-    <AlertDialog open={Boolean(confirmation)} onOpenChange={open => { if (!open && !mutation.busy) setConfirmation(null) }}>
-      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirmation?.hide ? '删除会话' : '清空聊天记录'}？</AlertDialogTitle><AlertDialogDescription>将永久删除“{confirmation?.conversation.title}”的聊天记录、任务记录、会话记忆及专属文件，无法恢复。{confirmation?.hide ? '同时移出会话列表，员工和群配置保留在通讯录。' : '会话和成员配置会保留。'}</AlertDialogDescription></AlertDialogHeader>
-        {mutation.error && <Banner>{mutation.error}</Banner>}
-        <AlertDialogFooter><Button variant="secondary" disabled={mutation.busy} onClick={() => setConfirmation(null)}>取消</Button><Button variant="destructive" disabled={busy || mutation.busy} onClick={() => { if (confirmation) void mutation.run(async () => { await onClear(confirmation.conversation.id, confirmation.hide); setConfirmation(null) }) }}>{mutation.busy ? '正在清理…' : confirmation?.hide ? '删除会话及记录' : '确认清空'}</Button></AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConversationHistoryDialog target={confirmation} busy={busy} onClose={() => setConfirmation(null)} onClear={onClear} />
   </div>
 }

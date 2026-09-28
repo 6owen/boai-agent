@@ -1,0 +1,38 @@
+# [INPUT]: 仓库变更、锁定依赖、离线协议服务。
+# [OUTPUT]: 类型/UI规则/协议/评分器/冻结集/桌面BDD验证与失败报告，不调用真实供应商。
+# [POS]: .github/workflows/tests.yml。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+name: Offline tests
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: node
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint:ui
+      - run: pnpm test
+      - run: pnpm eval:dataset
+      - run: pnpm test:electron
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-failure-evidence
+          path: |
+            playwright-report/
+            test-results/
+            cucumber-report/
+          if-no-files-found: ignore

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工共享标签页中文场景、Electron fixture 与产品 API。
- * [OUTPUT]: 分类面板语义、草稿保护、键盘切换、资料库筛选及跨页面/主题/窄窗的视觉验收。
+ * [OUTPUT]: 会话菜单入口、分类面板语义、草稿保护、键盘切换、资料库筛选及跨页面/主题/窄窗的视觉验收。
  * [POS]: tests/e2e/steps/employee-tabs.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -92,7 +92,8 @@ Then('会话侧栏使用相同标签样式且深色窄窗口完整显示', async
   await expect(list).toHaveCSS('height', '32px')
   expect((await list.boundingBox())!.width).toBeLessThan(300)
   await page.getByRole('button', { name: '发消息', exact: true }).click()
-  await page.getByRole('button', { name: '员工设置', exact: true }).click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   expect(await tabStyle(profile)).toEqual(contactStyle)
   await page.mouse.move(400, 300)
   await page.screenshot({ path: 'test-results/employee-tabs-light.png', animations: 'disabled' })

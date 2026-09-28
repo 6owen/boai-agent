@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
- * [OUTPUT]: 独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
+ * [OUTPUT]: 使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import { Agent } from '@mastra/core/agent'
 import { z } from 'zod'
 import type { Connection, MemoryCandidate, ModelUsage, ParticipationDecision, ToolEvent, WorkDraft, WorkReport } from '../../../shared/domain'
 import type { AgentEngine, EngineContext } from '../../contracts'
+import { PARTICIPATION_TIMEOUT_MS } from '../../contracts'
 import { modelConfig } from './model-config'
 import { createStageAgent, bootstrapInstructions, type StageInstance } from './agent-factory'
 import { projectMessages, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
@@ -176,7 +177,7 @@ export class MastraEngine implements AgentEngine {
   }
 
   async decide(context: EngineContext): Promise<ParticipationDecision> {
-    const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.connectionTimeoutMs ?? 30_000)])
+    const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.connectionTimeoutMs ?? PARTICIPATION_TIMEOUT_MS)])
     const messages = visibleMessages(context)
     if (!messages.length) throw new Error('没有可用于成员判断的消息')
     // Versioning belongs to the host's delivery snapshot, not to model-generated JSON.

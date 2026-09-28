@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 窗口顶栏详情标签与内容对齐的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 窗口顶栏多标签、内容对齐及独立关闭回到相邻标签的真实桌面断言。
+ * [OUTPUT]: 会话菜单配置入口、窗口顶栏多标签、内容对齐及独立关闭回到相邻标签的真实桌面断言。
  * [POS]: tests/e2e/steps/detail-panel.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -41,8 +41,9 @@ async function openGroupDetails(runtime: Desktop) {
     await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: appearance.revision })
   }, title)
   await page.locator('.conversation-item').filter({ hasText: title }).click()
-  const trigger = page.getByRole('button', { name: '群聊设置', exact: true })
+  const trigger = page.getByRole('button', { name: '会话操作', exact: true })
   await trigger.click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   const header = page.locator('.global-toolbar .detail-header'),
     panel = page.locator('.detail-panel')
   await expect(header.getByRole('tab', { name: title, exact: true })).toBeFocused()
@@ -115,6 +116,7 @@ async function saveGroupTitle(previous: Awaited<ReturnType<typeof resizeDetails>
   await expect(panel).toBeHidden()
   await expect(trigger).toBeFocused()
   await trigger.click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await expect(header.getByRole('tab', { selected: true })).toHaveText('设计协作群')
   const tabWidth = (await header.locator('.detail-tab').boundingBox())!.width
   expect(tabWidth).toBeLessThan(180)
