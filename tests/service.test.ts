@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -79,6 +79,38 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it('persists message reactions idempotently without new turns, model calls or changing the last message', async () => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    engine.decisionHandler = async context => ({ action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence })
+    const group = await conversation(service, true), other = await conversation(service)
+    const first = await send(service, group, '第一条消息', 'reaction-first', [])
+    await idle(service, group, 0)
+    await send(service, group, '最后一条消息', 'reaction-last', [])
+    await idle(service, group, 0)
+    const before = await detail(service, group), calls = engine.decisions.length
+    const input = { conversationId: group.id, messageId: first.id, emoji: '👍', active: true }
+    await Promise.all([service.handle('setMessageReaction', input), service.handle('setMessageReaction', input)])
+    const after = await detail(service, group)
+    expect(after.messages[0].reactions).toEqual([{ emoji: '👍', senderId: 'user', senderName: '我' }])
+    expect(after.messages.at(-1)).toEqual(before.messages.at(-1))
+    expect(after.turns).toEqual(before.turns); expect(after.runs).toEqual(before.runs)
+    expect(engine.decisions).toHaveLength(calls)
+    await expect(service.handle('setMessageReaction', { ...input, conversationId: other.id })).rejects.toThrow('消息不属于此会话')
+    await expect(service.handle('setMessageReaction', { ...input, emoji: 'invalid' })).rejects.toThrow('不支持的表情')
+    const write = vi.spyOn(ProductStore.prototype, 'write').mockRejectedValueOnce(new Error('reaction storage failed'))
+    await expect(service.handle('setMessageReaction', { ...input, emoji: '❤️' })).rejects.toThrow('reaction storage failed')
+    write.mockRestore()
+    expect((await detail(service, group)).messages[0].reactions).toEqual(after.messages[0].reactions)
+    await service.close()
+    const restarted = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(restarted); await restarted.init()
+    expect((await detail(restarted, group)).messages[0].reactions).toEqual(after.messages[0].reactions)
+    await restarted.handle('setMessageReaction', { ...input, active: false })
+    await restarted.handle('setMessageReaction', { ...input, active: false })
+    expect((await detail(restarted, group)).messages[0].reactions).toEqual([])
+    await restarted.handle('clearConversationHistory', { id: group.id, hide: false })
+    await expect(restarted.handle('setMessageReaction', input)).rejects.toThrow('消息不属于此会话')
+    expect(engine.decisions).toHaveLength(calls)
+  })
   it('persists thinking per employee across old-form saves and restart, and rejects unsupported levels', async () => {
     const { service, root, secrets, engine } = await fixture()
     await configure(service)

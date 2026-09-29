@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 主题外部执行与自动化持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 330 条新记录后的真实旧等待/筛选/补充解除与最新结果置顶；追加额度确认/取消、累计用量回执与确认消息定位/重启；真实主进程/worker 通知回执、静音、窗口重载与精确消息/无消息记录定位；现有详情标签的多草稿/冲突/窄窗保存、独立聊天/星期多选/纯预览、历史分页/结果消息定位验收；实际补充入口/原始预算及明确轮次关联的重启验收；主题外部执行与自动化持久化、运行结束/交付待核对分别展示、跨轮次来源持久化断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
+ * [OUTPUT]: 普通与自动化聊天共同可见，无来源下拉且保留来源标记；330 条新记录后的真实旧等待/筛选/补充解除与最新结果置顶；追加额度确认/取消、累计用量回执与确认消息定位/重启；真实主进程/worker 通知回执、静音、窗口重载与精确消息/无消息记录定位；现有详情标签的多草稿/冲突/窄窗保存、独立聊天/星期多选/纯预览、历史分页/结果消息定位验收；实际补充入口/原始预算及明确轮次关联的重启验收；主题外部执行与自动化持久化、运行结束/交付待核对分别展示、跨轮次来源持久化断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
  * [POS]: tests/e2e/steps/extensions.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -468,10 +468,9 @@ When('在详情标签中保存独立计划并验证草稿和任务聊天', async
   await expect(target).toBeInViewport()
   expect(await page.locator('.messages').evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeGreaterThan(300)
   await page.getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByLabel('会话来源', { exact: true }).selectOption('automation')
-  await expect(page.locator('.conversation-item')).toHaveCount(2)
-  await page.getByLabel('会话来源', { exact: true }).selectOption('personal')
-  await expect(page.locator('.conversation-item').filter({ hasText: '并发新名称' })).toHaveCount(0)
+  await expect(page.getByLabel('会话来源', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.conversation-item').filter({ hasText: '定时任务 · ' })).toHaveCount(2)
+  await expect(page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: personal.title, exact: true })).toBeVisible()
   expect(await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '普通单聊复用', agentIds: ['researcher'] }))).toMatchObject({ id: personal.id })
   await runtime.restart()
   const restored = await runtime.page.evaluate(() => window.boai.request('listAutomations', undefined))

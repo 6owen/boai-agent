@@ -1,0 +1,87 @@
+/*
+ * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
+ * [OUTPUT]: 真实文件/已交付历史群聊、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
+ * [POS]: 群聊设计验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import { createServer } from 'node:http'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import type { Desktop } from './desktop'
+import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import type { Message, WorkItem, Artifact } from '../../../src/shared/domain'
+
+export async function prepareGroupChat(runtime: Desktop) {
+  const state = { calls: 0, errors: [] as string[] }
+  const server = createServer(async (request, response) => {
+    try {
+      let body = ''; for await (const chunk of request) body += chunk
+      const input = JSON.parse(body) as { messages: { role: string; content: string }[] }
+      const system = input.messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
+      let content = '', tool: { name: string; arguments: string } | undefined
+      state.calls++
+      if (system.includes('Private participation decision')) {
+        const data = JSON.parse(input.messages.at(-1)!.content).data
+        content = JSON.stringify(data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
+      } else if (system.includes('Private memory maintenance')) content = JSON.stringify({ candidates: [] })
+      else if (!input.messages.some(message => message.role === 'tool')) tool = { name: 'execute_command', arguments: JSON.stringify({ command: 'printf group-chat-approved > approval-marker.txt' }) }
+      else content = '排版检查已结束，请查看执行过程中的命令结果。'
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const emit = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: `group-${state.calls}`, object: 'chat.completion.chunk', created: 1, model: 'fixture', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
+      emit({ role: 'assistant' })
+      if (tool) { emit({ tool_calls: [{ index: 0, id: `tool-${state.calls}`, type: 'function', function: tool }] }); emit({}, 'tool_calls') }
+      else { emit({ content }); emit({}, 'stop') }
+      response.end('data: [DONE]\n\n')
+    } catch (error) { state.errors.push(String(error)); response.writeHead(500); response.end(JSON.stringify({ error: { message: String(error) } })) }
+  })
+  runtime.trackServer(server)
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  await runtime.start()
+  const setup = await runtime.page.evaluate(async port => {
+    const connection = await window.boai.request('saveConnection', { name: '群聊离线验收', provider: 'openai-compatible', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'fixture' })
+    const names: Record<string, [string, string]> = { researcher: ['研究员', '信息研究'], writer: ['写手', '内容创作'], reviewer: ['设计师', '视觉设计'] }
+    for (const agent of (await window.boai.request('snapshot', undefined)).agents.filter(agent => agent.id in names)) {
+      const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
+      await window.boai.request('saveAgent', { ...input, name: names[agent.id][0], role: names[agent.id][1], connectionId: connection.id, modelId: 'fixture', allowCommands: agent.id === 'reviewer', expectedConfigVersion: configVersion })
+    }
+    const appearance = await window.boai.request('getAppearance', undefined)
+    await window.boai.request('updateAppearance', { patch: { mode: 'light', zoomFactor: 1 }, expectedRevision: appearance.revision })
+    const group = await window.boai.request('createConversation', { kind: 'group', title: '产品讨论组', agentIds: ['researcher', 'writer', 'reviewer'] })
+    const direct = await window.boai.request('createConversation', { kind: 'direct', title: '与研究员对话', agentIds: ['researcher'] })
+    return { group, direct, dataPath: (await window.boai.request('snapshot', undefined)).dataPath }
+  }, (server.address() as { port: number }).port)
+  await runtime.close()
+  const { group } = setup
+  const baseTime = Date.now() - 10 * 60_000
+  const makeMessage = (id: string, senderId: string, content: string, index: number, replyToMessageId?: string): Message => ({ id, conversationId: group.id, senderType: senderId === 'user' ? 'user' : 'agent', senderId, senderName: ({ user: '你', researcher: '研究员', writer: '写手' })[senderId]!, content, status: 'completed', sequence: index, turnId: 'history-turn', runId: senderId === 'user' ? undefined : `history-${senderId}`, replyToMessageId, createdAt: new Date(baseTime + index * 30_000).toISOString() })
+  const messages = [
+    makeMessage('history-user', 'user', '帮我做一份 AI 协作产品的竞品分析，重点看群聊体验和任务协作。', 1),
+    makeMessage('history-research', 'researcher', '我整理了三类产品的使用方式，群聊体验有几个值得借鉴的点。\n\n### 01 · 对话先保持清楚\n统一头像、发言人和时间的位置，减少气泡和色块，让讨论本身成为视觉中心。\n\n### 02 · 任务进展有固定位置\n把目标、负责人和交付状态放到右侧，需要时打开。聊天里只保留结论和必要的确认。\n\n### 03 · 文件跟着结论走\n报告同时出现在对应回复和群文件中，方便顺着讨论找到结果。\n\n建议先完成消息流与任务详情，再验证长消息和窄窗口的阅读体验。', 2),
+    makeMessage('history-writer', 'writer', '我把研究结论整理成了报告初稿，按「对话体验 → 协作方式 → 建议」展开。', 3, 'history-research'),
+    makeMessage('history-note', 'writer', '重点建议已经放在第一节，可以先看这一部分。', 4),
+    makeMessage('history-continuation', 'writer', '后续可以再补充实际使用截图。', 5),
+  ]
+  const makeWork = (id: string, ownerAgentId: string, deliverable: string, message: Message, artifactId: string, parentWorkId?: string): WorkItem => ({ schemaVersion: 2, id, conversationId: group.id, sourceMessageId: 'history-user', key: id, scope: deliverable, deliverable, ownerAgentId, version: 2, status: 'delivered', budgetId: 'history-budget', rootWorkId: 'history-root', parentWorkId, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, outcome: { disposition: 'delivered', summary: '结果已发布到群聊。', evidence: [{ kind: 'answer', reference: message.content.slice(0, 14) }] }, resultMessageIds: [message.id], artifactIds: [artifactId], resultVersion: 1, requiresReview: false, createdAt: message.createdAt, updatedAt: message.createdAt })
+  const works = [makeWork('history-root', 'researcher', 'AI 协作产品竞品分析', messages[1], 'research-file'), makeWork('history-writing', 'writer', '整理竞品分析报告初稿', messages[2], 'report-file', 'history-root')]
+  const artifacts: (Artifact & { conversationId: string })[] = [
+    { id: 'research-file', name: '研究要点.md', ownerAgentId: 'researcher', runId: 'history-researcher', path: join(group.workspacePath, '研究要点.md'), size: 0, publishedAt: messages[1].createdAt, conversationId: group.id },
+    { id: 'report-file', name: '竞品分析报告.md', ownerAgentId: 'writer', runId: 'history-writer', path: join(group.workspacePath, '竞品分析报告.md'), size: 0, publishedAt: messages[2].createdAt, conversationId: group.id },
+  ]
+  for (const artifact of artifacts) { const body = `# ${artifact.name}\n\n群聊验收的离线报告。\n`; await writeFile(artifact.path, body); artifact.size = Buffer.byteLength(body) }
+  const store = new ProductStore(join(setup.dataPath, 'boai.sqlite')); await store.init()
+  try { await store.write([
+    ...messages.map(value => ({ collection: 'messages', id: value.id, value })),
+    { collection: 'messages', id: 'history-direct-user', value: { ...makeMessage('history-direct-user', 'user', '单聊仍然使用原有气泡', 1), conversationId: setup.direct.id } },
+    ...works.map(value => ({ collection: 'workItems', id: value.id, value })),
+    ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
+  ]) } finally { await store.close() }
+  await runtime.start()
+  await resizeGroupWindow(runtime, 1487, 1058)
+  await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
+  return { ...setup, state, artifacts }
+}
+
+export async function resizeGroupWindow(runtime: Desktop, width: number, height: number) {
+  // CSS viewport emulation makes reference-sized captures reproducible on smaller physical displays.
+  await runtime.page.setViewportSize({ width, height })
+}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 输入框配置持久化与员工隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 群聊隐藏配置控件、从员工私聊验证锁定与隔离、思考强度二级菜单的键盘/窄窗/重启持久化与能力边界、输入框配置持久化与员工隔离的真实桌面业务步骤与断言。
+ * [OUTPUT]: 重载后显式选择会话验证配置持久化；群聊 @ 候选及 composer 正文内标签、隐藏配置控件、员工配置锁定与隔离、思考强度二级菜单的键盘/窄窗/重启和能力边界断言。
  * [POS]: tests/e2e/steps/composer.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -79,6 +79,7 @@ async function saveComposerSettings(previous: Awaited<ReturnType<typeof prepareC
   await expect.poll(async () => (await employee('researcher')).connectionId).toBe(data.b.id)
   await expect(input).toHaveValue('这是一份未发送的草稿')
   await page.reload()
+  await page.locator('.conversation-item').filter({ hasText: '研究员' }).click()
   await expect(model).toHaveText('writing-v1')
   await expect(permission).toHaveText('请求批准')
   return { app, page, errors, data, employee, input, more, permission, model }
@@ -112,7 +113,10 @@ async function verifyMemberIsolation(previous: Awaited<ReturnType<typeof saveCom
   await page.evaluate((id) => window.boai.request('cancelRun', { conversationId: id }), data.direct.id)
   await more.click()
   await page.getByRole('menuitem', { name: '提及成员' }).click()
-  await expect(page.locator('.mention-bar')).toBeVisible()
+  await expect(page.getByRole('listbox', { name: '群聊成员' })).toBeVisible()
+  await page.getByRole('option', { name: '@写手', exact: true }).click()
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toBeVisible()
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@写手')
   await page.locator('.conversation-item').filter({ hasText: '写手' }).click()
   return { app, page, errors, permission }
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 成员投递、轮次与工作结果领域类型。
- * [OUTPUT]: 会话/工作结果文案、草稿类型与展示辅助函数。
+ * [OUTPUT]: 会话/工作结果文案、含正文内成员标签范围的草稿类型与展示辅助函数。
  * [POS]: src/renderer/pages/conversations/presentation.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,8 @@ export const workDispositionLabels: Record<WorkDisposition, string> = { delivere
 export const deliveryLabels: Record<AgentDelivery['status'], string> = { pending: '待处理', evaluating: '正在判断', ready: '等待发言', waiting: '等待前序结果', passed: '本次不发言', responding: '正在回复', completed: '已处理', failed: '处理失败', cancelled: '已取消', interrupted: '已中断', skipped: '未参与' }
 export const turnLabels: Record<TurnStatus, string> = { queued: '下一轮排队中', evaluating: '成员正在判断', responding: '成员正在回复', executing: '正在执行任务', waiting_user: '等待补充信息', completed: '本轮已完成', cancelled: '本轮已停止', failed: '本轮失败', interrupted: '本轮中断', budget_exhausted: '本轮已达到限额' }
 export const liveTurn = (status: TurnStatus) => ['queued', 'evaluating', 'responding', 'executing'].includes(status)
-export interface ChatDraft { text: string; mentionIds: string[]; replyId?: string }
+export interface DraftMention { id: string; label: string; start: number; end: number }
+export interface ChatDraft { text: string; mentionIds: string[]; mentions?: DraftMention[]; replyId?: string }
 
 export function latestMemberDeliveries(deliveries: AgentDelivery[]) {
   const latest = new Map<string, AgentDelivery>()

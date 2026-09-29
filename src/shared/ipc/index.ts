@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
- * [OUTPUT]: 扫描来源的 API 草稿测试合同，凭据不返回渲染端；通讯录分类/独立排序读取与版本化更新合同；本机 Agent 扫描预填与未保存配置测试合同；本机技能目录默认命中缓存，refresh 明确重新扫描； 本地安装目标与原生 File 拖入授权、本机技能发现/详情/明确预览导入/编辑定位合同；带预期状态版本的明确预算追加合同；单次执行/通知回执读取与主进程待消费导航；纯日程预览与完整历史分页查询；按 occurrence 提交补充信息的独立入口；商店、技能管理/便携库预览导出/收藏恢复/删除清理及持久操作合同；会话 Trace、本地连接导入、类型化 DesktopApi、连接编辑/测试和会话控制；快照不包含凭据。
+ * [OUTPUT]: 按会话/消息设置本地用户表情回应的幂等接口；扫描来源的 API 草稿测试合同，凭据不返回渲染端；通讯录分类/独立排序读取与版本化更新合同；本机 Agent 扫描预填与未保存配置测试合同；本机技能目录默认命中缓存，refresh 明确重新扫描； 本地安装目标与原生 File 拖入授权、本机技能发现/详情/明确预览导入/编辑定位合同；带预期状态版本的明确预算追加合同；单次执行/通知回执读取与主进程待消费导航；纯日程预览与完整历史分页查询；按 occurrence 提交补充信息的独立入口；商店、技能管理/便携库预览导出/收藏恢复/删除清理及持久操作合同；会话 Trace、本地连接导入、类型化 DesktopApi、连接编辑/测试和会话控制；快照不包含凭据。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -107,6 +107,7 @@ export interface Methods {
   getConversation: { input: { id: string }; output: ConversationDetail }
   getConversationTrace: { input: { conversationId: string; messageId: string; turnId?: string }; output: StoredTraceSpan[] }
   sendMessage: { input: { conversationId: string; content: string; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   cancelRun: { input: { conversationId: string; workId?: string }; output: void }
   approve: { input: { id: string; approved: boolean }; output: void }
   importResource: { input: { kind: Resource['kind']; path: string; ownerAgentId?: string }; output: Resource }

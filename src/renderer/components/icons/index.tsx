@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 离线 Carbon 图标集合与图标尺寸。
- * [OUTPUT]: 技能闪电、商店、目录与统计图标；新增执行过程 Carbon flow 图标；默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
+ * [OUTPUT]: 消息回应点赞与复制图标；技能闪电、商店、目录与统计图标；新增执行过程 Carbon flow 图标；默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,8 @@ import type { CSSProperties, ComponentProps } from 'react'
 
 // Keep full class names literal so Tailwind includes every mask in the offline bundle.
 const classes = {
+  ThumbsUp: 'i-carbon-thumbs-up',
+  Copy: 'i-carbon-copy',
   Zap: 'i-carbon-flash',
   Store: 'i-carbon-store',
   ChartBar: 'i-carbon-chart-column',
@@ -75,6 +77,8 @@ function component(name: IconName) {
   return function LocalIcon(props: IconProps) { return <Icon name={name} {...props} /> }
 }
 export const Zap = component('Zap')
+export const ThumbsUp = component('ThumbsUp')
+export const Copy = component('Copy')
 export const Store = component('Store')
 export const ChartBar = component('ChartBar')
 export const Package = component('Package')

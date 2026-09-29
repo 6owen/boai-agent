@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
- * [OUTPUT]: 左侧空列表复用不可选中/拖拽的动物伙伴 SVG，区分搜索与任务筛选的柔和提示；下拉字段统一使用 shadcn Select；复用全局 DragList，保留置顶/普通分组移动边界； 普通/定时任务聊天来源筛选与预览来源标注；单加号入口、成员拼图头像、可拖拽排序、置顶/会话两组独立折叠及右键清空/删除的紧凑会话列表；清理确认与标题菜单共用，无底部工作空间状态栏。
+ * [OUTPUT]: 恢复置顶/会话文字标签分组，不提供来源筛选；普通与定时任务聊天共同展示，保留来源预览标记；共享 DragList 排序/分组边界、折叠/搜索、成员头像、右键清理与伙伴空态，无底部状态栏。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyHeader, EmptyMedia, EmptyDescription } from '@/components/ui/empty'
 import conversationCompanions from '@/assets/conversation-companions.svg'
-import { SelectField } from '@/components/ui/select-field'
 import { ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronRight, Pin, Search, Trash2 } from '@/components/icons'
@@ -32,10 +31,9 @@ interface Props {
 export function ConversationList({ snapshot, selectedId, query, onQuery, previews, messageTimes, drafts, onSelect, onCreate, onChange, onClear, busy }: Props) {
   const [pinnedOpen, setPinnedOpen] = useState(true)
   const [regularOpen, setRegularOpen] = useState(true)
-  const [source, setSource] = useState('all')
   const [confirmation, setConfirmation] = useState<{ conversation: Conversation; hide: boolean } | null>(null)
   const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
-  const conversations = sortedConversations(snapshot.conversations, messageTimes).filter(c => c.title.toLowerCase().includes(query.toLowerCase()) && (source === 'all' || (source === 'automation' ? c.purpose === 'automation' : c.purpose !== 'automation')))
+  const conversations = sortedConversations(snapshot.conversations, messageTimes).filter(c => c.title.toLowerCase().includes(query.toLowerCase()))
   const renderConversation = (conversation: Conversation) => {
         const agent = snapshot.agents.find(a => a.id === conversation.agentIds[0])
         const messageTime = [messageTimes[conversation.id] ?? '', conversation.lastMessageAt ?? ''].sort().at(-1)!
@@ -64,7 +62,6 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
   return <div className="conversation-list-panel">
     <div className="list-heading"><h2>会话</h2><div className="list-heading-actions"><AddContactMenu onCreate={onCreate} /></div></div>
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => onQuery(event.target.value)} /></InputGroup>
-    {snapshot.conversations.some(c => c.purpose === 'automation') && <SelectField aria-label="会话来源" className="conversation-source" value={source} onValueChange={selectedValue => setSource(selectedValue)} options={[{ value: 'all', label: '全部会话' }, { value: 'personal', label: '日常会话' }, { value: 'automation', label: '自动化任务聊天' }]} />}
     <div className="conversation-list" role="navigation" aria-label="会话列表">
       <DragList ids={conversations.map(item => item.id)} disabled={busy} canMove={(id, targetId) => Boolean(conversations.find(item => item.id === id)?.list?.pinned) === Boolean(conversations.find(item => item.id === targetId)?.list?.pinned)} onMove={move => onChange({ ...move, action: 'move' })}>
       {pinned.length > 0 && <Collapsible open={Boolean(query.trim()) || pinnedOpen} onOpenChange={setPinnedOpen}>
@@ -78,7 +75,7 @@ export function ConversationList({ snapshot, selectedId, query, onQuery, preview
       </DragList>
       {!conversations.length && <Empty className="conversation-list-empty px-3 py-8">
         <EmptyHeader><EmptyMedia><img src={conversationCompanions} className="select-none" draggable={false} width={144} height={110} alt="等你开聊的小伙伴" /></EmptyMedia>
-          <EmptyDescription className="text-xs leading-relaxed">{query.trim() ? '没有找到，换个名字试试？' : source === 'automation' ? '任务开始后，会在这里和你见面。' : '找个小伙伴，聊聊新想法吧。'}</EmptyDescription>
+          <EmptyDescription className="text-xs leading-relaxed">{query.trim() ? '没有找到，换个名字试试？' : '找个小伙伴，聊聊新想法吧。'}</EmptyDescription>
         </EmptyHeader>
       </Empty>}
     </div>

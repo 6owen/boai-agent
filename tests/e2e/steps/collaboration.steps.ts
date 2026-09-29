@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文协作场景、真实 Electron/Mastra 与隔离的本地模型协议。
- * [OUTPUT]: 五人并行流式、群聊慢判断并发、真实委派/接续/预算、会话菜单中的工作进度、停止 UI 和重启断言。
+ * [OUTPUT]: 实际五人问候无重复引用、手动引用镜像与发送/重启保留、原有渐隐/输入样式截图、并行流式、群聊慢判断并发、真实委派/接续/预算、会话菜单中的工作进度、停止 UI 和重启断言。
  * [POS]: tests/e2e/steps/collaboration.steps.ts，不代表真实供应商语义评估。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -68,7 +68,7 @@ async function configureModel(runtime: Desktop, state: State) {
       else {
         if (state.parallel && !system.includes('Private participation decision') && !system.includes('Private memory maintenance')) {
           emit({ content: `${input.model}：` })
-          await new Promise<void>(resolve => { state.streams!.push(resolve) })
+          if (state.streams) await new Promise<void>(resolve => { state.streams!.push(resolve) })
           emit({ content: '大家好' })
         } else emit({ content })
         emit({}, 'stop')
@@ -106,8 +106,9 @@ Then('五名员工的回复同时处于流式生成中', async ({ runtime, colla
       return state.detail.messages.filter(message => message.status === 'streaming' && message.content.endsWith('：')).length
     }).toBe(5)
     for (const label of ['researcher：', 'writer：', 'reviewer：', 'member-3：', 'member-4：']) await expect(runtime.page.getByText(label, { exact: true })).toBeVisible()
+    await expect(runtime.page.locator('.message-row.agent .quoted-message')).toHaveCount(0)
     expect(state.errors).toEqual([])
-  } finally { state.streams?.forEach(release => release()) }
+  } finally { state.streams?.forEach(release => release()); state.streams = undefined }
 })
 Then('并行回复完成后各自内容完整且不创建工作', async ({ runtime, collaboration: state }) => {
   await expect.poll(async () => {
@@ -124,6 +125,62 @@ When('用户在群聊发送大家好', async ({ runtime }) => {
   await runtime.page.getByRole('button', { name: /定向接续验证/ }).click()
   const composer = runtime.page.getByRole('textbox', { name: '消息内容' })
   await composer.fill('大家好'); await composer.press('Enter')
+})
+Then('普通问候回复不重复引用且保留原有渐隐和输入样式', async ({ runtime, collaboration: state }) => {
+  const page = runtime.page
+  // Assert the real host context remains intact; only its redundant visual quote is omitted.
+  const greeting = state.detail!.messages.find(message => message.senderType === 'user')!
+  expect(state.detail!.messages.filter(message => message.senderType === 'agent').every(message => message.replyToMessageId === greeting.id)).toBe(true)
+  await expect.soft(page.locator('.message-row.agent .quoted-message')).toHaveCount(0, { timeout: 1500 })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const styles = await page.evaluate(() => {
+    const messages = getComputedStyle(document.querySelector('.messages')!)
+    const composer = getComputedStyle(document.querySelector('.chat-composer')!)
+    return { mask: messages.maskImage, radius: composer.borderRadius, originalRadius: composer.getPropertyValue('--radius-composer').trim(), shadow: composer.boxShadow }
+  })
+  expect.soft(styles.mask).not.toBe('none')
+  expect.soft(styles.radius).toBe(styles.originalRadius)
+  expect.soft(styles.shadow).not.toBe('none')
+  await page.screenshot({ path: 'test-results/group-chat-greeting.png', scale: 'css' })
+  await page.setViewportSize({ width: 1124, height: 600 })
+  const scroller = page.locator('.messages')
+  await expect.poll(() => scroller.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(100)
+  await scroller.evaluate(element => { element.scrollTop = 150 })
+  await expect.poll(() => scroller.evaluate(element => parseFloat(getComputedStyle(element).getPropertyValue('--scroll-fade-t')))).toBeGreaterThan(0)
+  const header = await page.locator('.chat-header').boundingBox(), messages = await scroller.boundingBox()
+  expect(header!.y + header!.height - messages!.y).toBe(16)
+  await page.screenshot({ path: 'test-results/group-chat-greeting-fade.png', scale: 'css' })
+})
+Then('手动引用发送和重启后仍保留且普通回复不重复引用', async ({ runtime, collaboration: state }) => {
+  const page = runtime.page, greeting = state.detail!.messages.find(message => message.senderType === 'user')!
+  await page.locator('.messages').evaluate(element => { element.scrollTop = 0 })
+  await page.locator(`#message-${greeting.id}`).hover()
+  await page.locator(`#message-${greeting.id}`).getByRole('button', { name: /引用/ }).click()
+  await page.getByRole('textbox', { name: '消息内容' }).fill('这是手动引用的问候')
+  await page.getByRole('textbox', { name: '消息内容' }).press('Enter')
+  await expect.poll(async () => {
+    state.detail = await page.evaluate(id => window.boai.request('getConversation', { id }), state.conversation!.id)
+    return state.detail.turns?.length === 2 && state.detail.turns.every(turn => turn.status === 'completed') && state.detail.runs.every(run => run.status === 'completed')
+  }).toBe(true)
+  const manual = state.detail!.messages.find(message => message.content === '这是手动引用的问候')!
+  expect(manual.replyToMessageId).toBe(greeting.id)
+  await expect(page.locator(`#message-${manual.id} .quoted-message`)).toContainText('大家好')
+  const quote = page.locator(`#message-${manual.id} .quoted-message`)
+  const author = await quote.locator('strong').boundingBox(), excerpt = await quote.locator('span').boundingBox()
+  expect(excerpt!.x + excerpt!.width).toBeLessThan(author!.x)
+  expect(await quote.evaluate(element => getComputedStyle(element).borderRightWidth)).toBe('2px')
+  await page.locator(`#message-${manual.id}`).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/group-chat-manual-quote.png', scale: 'css' })
+  await expect(page.locator('.message-row.agent .quoted-message')).toHaveCount(0)
+  const calls = state.calls
+  await runtime.restart()
+  await runtime.page.getByRole('button', { name: /定向接续验证/ }).click()
+  await expect(runtime.page.locator(`#message-${manual.id} .quoted-message`)).toContainText('大家好')
+  await expect(runtime.page.locator('.message-row.agent .quoted-message')).toHaveCount(0)
+  const restored = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.conversation!.id)
+  expect(restored.messages).toEqual(state.detail!.messages)
+  expect(state.calls).toBe(calls)
+  expect(state.errors).toEqual([])
 })
 Then('一名员工仍在判断时其他员工能继续判断并回复', async ({ runtime, collaboration: state }) => {
   try {

@@ -1,0 +1,85 @@
+/*
+ * [INPUT]: 公开消息、共享表情目录、真实引用/Trace 回调和桌面请求封装。
+ * [OUTPUT]: 共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好。
+ * [POS]: 群聊消息交互；不改变模型上下文、轮次或工作状态。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import type { Message } from '@shared/domain'
+import { reactionEmojis, type ReactionEmoji } from '@shared/domain/message-reactions'
+import { Check, Copy, Reply, ThumbsUp, Workflow } from '@/components/icons'
+import { Banner, useMutation } from '@/components/common'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { getDesktopClient } from '@/services/request/desktop-client'
+
+const REACTION_USAGE_KEY = 'boai.message-reaction-usage'
+const TOOLBAR_GAP = 8
+const LONG_MESSAGE_WIDTH = 480
+const LONG_MESSAGE_RATIO = 0.7
+function reactionUsage(): Record<string, number> {
+  try {
+    const value = JSON.parse(localStorage.getItem(REACTION_USAGE_KEY) ?? '{}')
+    return Object.fromEntries(reactionEmojis.map(([emoji]) => [emoji, Number.isSafeInteger(value?.[emoji]) && value[emoji] > 0 ? value[emoji] : 0]))
+  } catch { return {} }
+}
+function rememberReaction(emoji: ReactionEmoji) {
+  try { const usage = reactionUsage(); usage[emoji] = Math.min((usage[emoji] ?? 0) + 1, 1_000_000); localStorage.setItem(REACTION_USAGE_KEY, JSON.stringify(usage)) } catch { /* Optional local presentation preference. */ }
+}
+
+export function MessageCard({ message, children, onReply, onTrace }: { message: Message; children: ReactNode; onReply(): void; onTrace(): void }) {
+  const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
+  const reactionTrigger = useRef<HTMLButtonElement>(null)
+  const [placement, setPlacement] = useState<'beside' | 'corner'>('corner')
+  const [open, setOpen] = useState(false), [usage, setUsage] = useState<Record<string, number>>({}), [copied, setCopied] = useState(false)
+  const { busy, error, run } = useMutation()
+  useLayoutEffect(() => {
+    const measure = () => {
+      const available = space.current?.clientWidth ?? 0, width = content.current?.offsetWidth ?? 0, tools = toolbar.current?.offsetWidth ?? 0
+      if (available) setPlacement(width > Math.min(LONG_MESSAGE_WIDTH, available * LONG_MESSAGE_RATIO) || width + tools + TOOLBAR_GAP > available ? 'corner' : 'beside')
+    }
+    const observer = new ResizeObserver(measure)
+    for (const element of [space.current, content.current, toolbar.current]) if (element) observer.observe(element)
+    measure()
+    return () => observer.disconnect()
+  }, [])
+  const reactions = message.reactions ?? []
+  const groups = reactionEmojis.flatMap(([emoji, label]) => {
+    const people = reactions.filter(item => item.emoji === emoji)
+    return people.length ? [{ emoji, label, people, selected: people.some(person => person.senderId === 'user') }] : []
+  })
+  const frequent = [...reactionEmojis].filter(([emoji]) => usage[emoji] > 0).sort((a, b) => usage[b[0]] - usage[a[0]]).slice(0, 9)
+  const react = (emoji: ReactionEmoji) => void run(async () => {
+    const active = !reactions.some(item => item.emoji === emoji && item.senderId === 'user')
+    const focused = document.activeElement
+    await getDesktopClient()!.request('setMessageReaction', { conversationId: message.conversationId, messageId: message.id, emoji, active })
+    if (active) rememberReaction(emoji)
+    // A removed pill must not drop keyboard focus onto the page or scroll the chat.
+    if (!active && !open && focused === document.activeElement && focused?.classList.contains('message-reaction')) reactionTrigger.current?.focus({ preventScroll: true })
+    setOpen(false)
+  })
+  const copy = () => void run(async () => { await navigator.clipboard.writeText(message.content); setCopied(true) })
+  const pick = ([emoji, label]: typeof reactionEmojis[number]) => <Button key={emoji} variant="ghost" size="icon" className="reaction-choice" aria-label={`回应：${label}`} title={label} aria-pressed={reactions.some(item => item.emoji === emoji && item.senderId === 'user')} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span></Button>
+  return <div className="message-content-space" ref={space}>
+    <div className="message-content" ref={content} data-toolbar-placement={placement} data-tools-open={open || undefined}>
+      <div className="message-card soft-card">
+        {children}
+        {!!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, people, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${people.map(person => person.senderName).join('、')}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{people.map(person => person.senderName).join('、')}</span></Button>)}</div>}
+      </div>
+      <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${message.senderName} 的消息操作`}>
+        <Popover open={open} onOpenChange={value => { setOpen(value); if (value) setUsage(reactionUsage()) }}>
+          <PopoverTrigger render={<Button ref={reactionTrigger} variant="ghost" size="icon-sm" className="reaction-action" aria-label={`回应 ${message.senderName} 的消息`} title="表情回应" disabled={message.status === 'streaming'} />}><ThumbsUp /></PopoverTrigger>
+          <PopoverContent side="top" align={message.senderType === 'user' ? 'end' : 'start'} className="message-emoji-picker" aria-busy={busy} style={{ width: 360, maxWidth: 'calc(100vw - 24px)', padding: 0, gap: 0 }}>
+            <PopoverTitle>默认表情</PopoverTitle>
+            <div className="reaction-grid">{reactionEmojis.map(pick)}</div>
+            {!!frequent.length && <section className="reaction-frequent"><h4>最常使用</h4><div className="reaction-grid">{frequent.map(pick)}</div></section>}
+          </PopoverContent>
+        </Popover>
+        <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} title="引用回复" onClick={onReply}><Reply /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label={`复制 ${message.senderName} 的消息`} title={copied ? '已复制' : '复制消息'} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>
+        {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${message.senderName} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
+      </div>
+    </div>
+    {error && <Banner>{error}</Banner>}
+  </div>
+}

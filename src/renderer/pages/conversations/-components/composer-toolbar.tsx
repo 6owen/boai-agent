@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React 本地状态、当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
- * [OUTPUT]: 紧凑权限/模型菜单、已适配模型的思考强度二级菜单、仅前端勾选的完全访问选项和发送/停止；配置保存到员工且运行时锁定，群聊隐藏模型和权限控件。
+ * [OUTPUT]: @ 与 / 入口共用 Prompt Bar 菜单回调；单聊权限/模型/思考强度菜单与配置锁定，以及原有发送/停止语义。
  * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理，完全访问预览不写入权限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -23,6 +23,7 @@ const thinkingOptions: { value: ThinkingLevel; label: string; description: strin
 interface Props {
   members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
+  commandsVisible: boolean; onCommands(): void
   onOpenWorkspace(): void; onMentions(): void; onSettings(): void
   onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): void; onSend(stopPrevious?: boolean): void; onStop(): void
 }
@@ -57,6 +58,8 @@ export function ComposerToolbar(props: Props) {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      {group && <Button variant="ghost" size="icon-sm" round aria-label="提及群聊成员" aria-expanded={props.mentionsVisible} onClick={props.onMentions}><AtSign /></Button>}
+      <Button variant="ghost" size="icon-sm" round aria-label="快捷命令" aria-expanded={props.commandsVisible} onClick={props.onCommands}><span aria-hidden="true">/</span></Button>
       {!group && <DropdownMenu>
         <DropdownMenuTrigger render={<ChatComposerSelect kind="permission" data-permission={previewingFullAccess ? 'full' : undefined} aria-label="权限批准" />}><ShieldCheck /><span>{permissionLabel}</span></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="chat-composer-menu w-[280px] max-w-[calc(100vw-32px)] p-2" aria-label="权限批准">

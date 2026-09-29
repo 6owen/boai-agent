@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { readMonitorArtifact } from './modules/automations/monitor-source'
+import { reactionEmojis, type ReactionEmoji } from '../shared/domain/message-reactions'
 import { AutomationNotifications } from './modules/automations/automation-notifications'
 import type { AutomationNoticeReceipt } from '../shared/domain/automations'
 import type { StoredTraceSpan } from '../shared/domain/traces'
@@ -420,6 +421,21 @@ export class AppService {
           return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
         }
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
+        case 'setMessageReaction': {
+          const value = z.object({ conversationId: id, messageId: id, emoji: z.string().refine(emoji => reactionEmojis.some(item => item[0] === emoji), '不支持的表情'), active: z.boolean() }).strict().parse(input)
+          this.getConversation(value.conversationId)
+          const message = this.messages.get(value.messageId)
+          if (!message || message.conversationId !== value.conversationId) return fail('消息不属于此会话')
+          if (message.status === 'streaming') return fail('消息生成结束后可回应')
+          const reactions = (message.reactions ?? []).filter(item => item.senderId !== 'user' || item.emoji !== value.emoji)
+          if (value.active) reactions.push({ emoji: value.emoji as ReactionEmoji, senderId: 'user', senderName: '我' })
+          const updated = { ...message, reactions }
+          await this.store.write([record('messages', updated)])
+          this.messages.set(message.id, updated)
+          // A reaction is not a new conversation event or a new message preview.
+          this.changed(value.conversationId)
+          return clone(updated)
+        }
         case 'replyAutomation': return this.replyAutomation(z.object({ occurrenceId: id, content: text(100000), requestId: id, renewBudget: z.object({ expectedVersion: z.number().int().positive(), allowance: z.literal('standard-v1') }).strict().optional() }).strict().parse(input))
         case 'cancelRun': { const { conversationId, workId } = z.object({ conversationId: id, workId: id.optional() }).strict().parse(input); this.getConversation(conversationId); return workId ? this.cancelWork(conversationId, workId) : this.cancelConversation(conversationId) }
         case 'approve': { const value = z.object({ id, approved: z.boolean() }).strict().parse(input); return this.resolveApproval(value.id, value.approved) }

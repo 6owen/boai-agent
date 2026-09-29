@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 会话侧栏的小尺寸伙伴空态与通讯录嵌套分类标题；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用伙伴 SVG 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话伙伴 SVG 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、会话来源筛选、结果阅读和消息定位布局；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
+ * [OUTPUT]: 会话侧栏的小尺寸伙伴空态与通讯录嵌套分类标题；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用伙伴 SVG 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话伙伴 SVG 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话恢复文字分组，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -175,7 +175,6 @@
 .automation-weekdays label { display:flex;align-items:center;gap:5px }
 .automation-preview { font-size:12px;line-height:1.7;overflow-wrap:anywhere }
 .automation-preview ol { padding-left:20px;margin:6px 0 }
-.conversation-source { margin:8px 0 0 }
 @media(max-width:760px) {
   .schedule-document { padding:24px 20px }
   .schedule-document .form-grid { grid-template-columns:1fr }

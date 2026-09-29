@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、共享 ScrollFade/Markdown/Shiki 与统一 UI 基础组件。
- * [OUTPUT]: 按指定消息定位/焦点与失效提示，后续消息不覆盖定位；移除输入框上方状态条，回复旁图标打开对应员工/轮次的 Trace；悬浮名称/操作菜单与顶部渐隐消息；紧凑两行 composer 仅在单聊显示权限和模型菜单；保留发送/停止/提及、滚动跟随及位置恢复。
+ * [OUTPUT]: 标题成员资料接入同一资料快照与群配置入口；姓名/消息提及插入实际行内标签，无独立提及栏；头像资料与悬停时间、Prompt Bar @ /、镜像卡片与共享 Soft 输入/渐隐。
  * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 import { Button } from '@/components/ui/button'
 import { ScrollFade } from '@/components/ui/scroll-fade'
-import { ChatComposer, ChatComposerInput } from '@/components/ui/chat-composer'
+import { PromptBar, type PromptBarHandle } from './prompt-bar'
 import { ExternalFiles } from './external-files'
 import { ComposerToolbar, type ComposerAgentPatch } from './composer-toolbar'
 import { ConversationHeader } from './conversation-header'
@@ -20,16 +20,26 @@ import type { ConversationListChange } from '@shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
 
 import { liveTurn, type ChatDraft } from '../presentation'
+import { artifactsByMessage, approvalsByMessage, continuesMessage, groupMessages } from '../group-chat'
+import { ArtifactList } from './artifact-list'
+import { MessageCard } from './message-card'
+import { AgentInfoPopover } from './agent-info-popover'
+import { draftContent } from '../inline-mentions'
 export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onStop, onDetails, onChangeConversationList, onClear, onActivity, onTrace, onSettings, onChangeAgent, configurationLocked, onApprove, onOpenPath, focusMessage, scrollPosition, onScrollPosition }: { detail: ConversationDetail; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (stopPrevious?: boolean) => void; onStop: () => void; onDetails: () => void; onChangeConversationList: (change: ConversationListChange) => void; onClear: (id: string, hide: boolean) => Promise<void>; onActivity: () => void; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => void; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; focusMessage?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void }) {
   const conversation = detail.conversation
+  const group = conversation.kind === 'group'
+  const messages = group ? groupMessages(detail) : detail.messages
+  const files = artifactsByMessage(detail)
+  const approvalGroups = approvalsByMessage(detail, snapshot.approvals)
   const members = snapshot.agents.filter(agent => conversation.agentIds.includes(agent.id))
-  const [mentionsVisible, setMentionsVisible] = useState(false), [newMessages, setNewMessages] = useState(false)
+  const [newMessages, setNewMessages] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null), following = useRef(scrollPosition === undefined), initialized = useRef(false), focusedRequest = useRef<string | undefined>(undefined)
   const approvals = snapshot.approvals.filter(a => a.conversationId === conversation.id)
   const activeRuns = detail.runs.filter(run => ['queued','running','waiting_approval'].includes(run.status))
   const activeTurns = detail.turns?.filter(turn => liveTurn(turn.status)) ?? []
   const active = activeRuns.length > 0 || activeTurns.length > 0
-  const selectedMentions = draft.mentionIds.filter(id => members.some(a => a.id === id && a.active))
+  const composerRef = useRef<PromptBarHandle>(null)
+  const mention = (id: string) => composerRef.current?.mention(id)
   const reply = detail.messages.find(m => m.id === draft.replyId)
   const last = detail.messages.at(-1)
   const external=conversation.kind==='direct'&&members[0]?.executionBackend?.kind==='acp-local'
@@ -50,19 +60,50 @@ export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onSt
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
-  return <div className="chat-panel">
-    <ConversationHeader conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onActivity={onActivity} onTrace={() => onTrace()} onChange={onChangeConversationList} onClear={onClear} />
+  return <div className={`chat-panel${group ? ' group-chat' : ''}`}>
+    <ConversationHeader members={members} resources={snapshot.resources} conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onActivity={onActivity} onTrace={() => onTrace()} onChange={onChangeConversationList} onClear={onClear} />
     {focusMessage && !detail.messages.some(message => message.id === focusMessage.id) && <p role="status" className="field-hint">这条结果消息已被清理或不可用。当前显示保留的聊天记录。</p>}
     <ScrollFade className="messages" ref={scrollRef} onScroll={() => { const el = scrollRef.current; if (!el || el.clientHeight === 0) return; following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; if (following.current) setNewMessages(false); onScrollPosition(el.scrollTop) }}>
       {!detail.messages.length && <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>}
-      {detail.messages.map(message => { const agent = snapshot.agents.find(a => a.id === message.senderId); const quoted = detail.messages.find(m => m.id === message.replyToMessageId); return <article className={`message-row ${message.senderType}${focusMessage?.id === message.id ? ' message-target' : ''}`} tabIndex={-1} key={message.id} id={`message-${message.id}`}><div className="message-avatar">{message.senderType === 'user' ? <span className="avatar user-avatar">{message.origin?'定':'我'}</span> : <Avatar name={message.senderName || '系统'} seed={message.senderId} avatar={agent?.avatar} color={agent?.color} />}</div><div className="message-main"><div className="message-meta"><strong>{message.origin?message.senderName:message.senderType === 'user' ? '你' : message.senderName}</strong><time>{timeText(message.createdAt)}</time>{message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${message.senderName} 的执行过程`} title="查看执行过程" onClick={() => onTrace(message)}><Workflow size={14} /></Button>}<Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} onClick={() => setDraft({ ...draft, replyId: message.id })}><Reply size={14} /></Button></div>{quoted && <div className="quoted-message">{quoted.senderName}：{quoted.content.slice(0,120)}</div>}<div className="message-bubble markdown">{message.content ? <Markdown>{message.content}</Markdown> : message.status === 'streaming' ? <span className="typing-indicator"><i /><i /><i /></span> : <span className="muted">暂无公开内容</span>}</div>{message.status==='completed'&&message.runId&&detail.runs.find(r=>r.id===message.runId)?.backend&&<ExternalFiles runId={message.runId}/>} {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}</div></article> })}
-      {approvals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
+      {messages.map((message, index) => {
+        const agent = snapshot.agents.find(value => value.id === message.senderId)
+        const quoted = detail.messages.find(value => value.id === message.replyToMessageId)
+        const previous = messages[index - 1]
+        const attachedApprovals = group ? approvalGroups.byMessage.get(message.id) ?? [] : []
+        const continued = group && continuesMessage(previous, message, Boolean(attachedApprovals.length || previous && approvalGroups.byMessage.has(previous.id)))
+        const sender = message.origin ? message.senderName : message.senderType === 'user' ? '你' : message.senderName
+        const useCard = group && message.senderType !== 'system'
+        const canMention = group && message.senderType === 'agent' && agent?.active && members.some(member => member.id === agent.id)
+        const mentioned = members.filter(member => message.mentionIds?.includes(member.id))
+        const body = <>
+            {message.replyToMessageId && <div className="quoted-message">{quoted ? <><strong>{group ? '回复 ' : ''}{quoted.senderName}：</strong><span>{(group ? quoted.content.trim().split('\n')[0] : quoted.content).slice(0, 120)}</span></> : '原消息已不可用'}</div>}
+            <div className="message-bubble markdown">{group && !!mentioned.length && <span className="message-mentions">{mentioned.map(member => <button type="button" className="message-mention" key={member.id} onClick={() => mention(member.id)}>@{member.name}</button>)}</span>}{message.content ? <Markdown>{message.content}</Markdown> : message.status === 'streaming' ? <span className="typing-indicator"><i /><i /><i /></span> : <span className="muted">暂无公开内容</span>}</div>
+            {group && !!files.get(message.id)?.length && <ArtifactList artifacts={files.get(message.id)!} onOpenPath={onOpenPath} />}
+            {message.status === 'completed' && message.runId && detail.runs.find(run => run.id === message.runId)?.backend && <ExternalFiles runId={message.runId} />}
+            {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
+        </>
+        return <article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={`message-${message.id}`}>
+          <div className="message-avatar">{message.senderType === 'user' ? <span className="avatar user-avatar" aria-hidden="true">{message.origin ? '定' : '我'}</span> : group && message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : group && agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} avatar={agent?.avatar} color={agent?.color} />}</div>
+          <div className="message-main">
+            <div className="message-meta">
+              {canMention ? <Button variant="ghost" size="content" className="message-author" aria-label={`提及 ${sender}`} onClick={() => mention(agent!.id)}><span className="message-author-at" aria-hidden="true">@</span><strong>{sender}</strong></Button> : <strong>{sender}</strong>}
+              <time dateTime={message.createdAt}>{timeText(message.createdAt)}</time>
+              {!useCard && message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${message.senderName} 的执行过程`} title="查看执行过程" onClick={() => onTrace(message)}><Workflow size={14} /></Button>}
+              {!useCard && <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} onClick={() => setDraft({ ...draft, replyId: message.id })}><Reply size={14} /></Button>}
+            </div>
+            {useCard ? <MessageCard message={message} onReply={() => setDraft({ ...draft, replyId: message.id })} onTrace={() => onTrace(message)}>{body}</MessageCard> : body}
+            {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
+          </div>
+        </article>
+      })}
+      {(group ? approvalGroups.pending : approvals).map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
     </ScrollFade>{newMessages && <Button variant="outline" size="sm" className="new-messages" onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; following.current = true; setNewMessages(false) }}><ArrowDown size={14} />有新消息 · 返回最新</Button>}
     <div className="composer-wrap">
-      {(mentionsVisible || selectedMentions.length > 0) && conversation.kind === 'group' && <div className="mention-bar"><span>可选点名</span>{members.filter(a => a.active).map(a => <Button variant="secondary" size="content" key={a.id} className={`mention-chip${selectedMentions.includes(a.id) ? ' selected' : ''}`} aria-pressed={selectedMentions.includes(a.id)} onClick={() => setDraft({ ...draft, mentionIds: selectedMentions.includes(a.id) ? selectedMentions.filter(id => id !== a.id) : [...selectedMentions, a.id] })}>@{a.name}</Button>)}</div>}
-      {reply && <div className="reply-preview"><Reply size={14} /><span>回复 {reply.senderName}：{reply.content.slice(0,100)}</span><Button variant="ghost" size="icon-sm" aria-label="取消引用" onClick={() => setDraft({ ...draft, replyId: undefined })}><X size={14} /></Button></div>}
-      <ChatComposer><ChatComposerInput aria-label="消息内容" placeholder={external?"描述明确任务，然后点击执行外部任务…":"说说你想完成什么，也可以简单打个招呼…"} value={draft.text} onChange={e => setDraft({ ...draft, text: e.target.value })} onKeyDown={e => { if (!external && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); onSend() } }} /><ComposerToolbar members={members} snapshot={snapshot} group={conversation.kind === 'group'} external={external} busy={busy} active={active} canSend={Boolean(draft.text.trim())} configurationLocked={configurationLocked} mentionsVisible={mentionsVisible} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)} onMentions={() => setMentionsVisible(!mentionsVisible)} onSettings={onSettings} onChangeAgent={onChangeAgent} onSend={onSend} onStop={onStop} /></ChatComposer>
+      {reply && <div className="reply-preview">{!group && <Reply size={14} />}<Button variant="ghost" size="icon-sm" className={!group ? 'order-last' : undefined} aria-label="取消引用" onClick={() => setDraft({ ...draft, replyId: undefined })}><X size={14} /></Button><span>回复 {reply.senderName}：{reply.content.trim().replace(/\s+/g, ' ').slice(0, 160)}</span></div>}
+      <PromptBar ref={composerRef} draft={draft} setDraft={setDraft} members={members} group={group} external={external} placeholder={group ? `发消息给 ${conversation.title}，@ 提及 · / 命令` : external ? '描述明确任务，然后点击执行外部任务…' : '说说你想完成什么，/ 查看命令…'} onSend={onSend} onActivity={onActivity} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)}>
+        {(openMenu, menu) => <ComposerToolbar members={members} snapshot={snapshot} group={group} external={external} busy={busy} active={active} canSend={Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} commandsVisible={menu === 'slash'} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onChangeAgent={onChangeAgent} onSend={onSend} onStop={onStop} />}
+      </PromptBar>
     </div></div>
 }
 
-export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean) => void; busy: boolean }) { return <Card className="approval-card gap-0 p-4"><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} 申请运行命令</strong></div><pre>{approval.command}</pre><p className="field-hint">工作目录：{approval.cwd}</p><p className="field-hint">命令使用应用的主机权限，请核对实际操作范围。</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button></div></CardContent></Card> }
+export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean) => void; busy: boolean }) { return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} role="region" aria-label={`${approval.agentName} 的命令审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} 申请运行命令</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre><p className="field-hint">工作目录：{approval.cwd}</p><p className="field-hint">命令使用应用的主机权限，请核对实际操作范围。</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button></div></CardContent></Card> }
