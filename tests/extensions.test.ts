@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自动化与外部执行模块、领域类型和测试运行引擎。
- * [OUTPUT]: 外部 Agent、自动化与显式独立工作报告的回归验证。
+ * [OUTPUT]: 外部 Agent、自动化事务投递与显式独立工作报告的回归验证。
  * [POS]: tests/extensions.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -29,7 +29,7 @@ it('calendar keys deduplicate the repeated DST hour and daily/weekly cron is bou
 
 it('records missed, stale, overlapping, and revoked occurrences without dispatching twice',async()=>{
  const root=await mkdtemp(join(tmpdir(),'boai-admission-'));roots.push(root);const store=new ProductStore(join(root,'boai.sqlite'));await store.init();let fingerprint='v1',dispatches=0
- const automation=new AutomationService(store,root,{validate:()=>fingerprint,busy:()=>false,dispatch:async(d,o,origin)=>{dispatches++;return {id:o.id,turnId:'turn-'+o.id,conversationId:d.conversationId,senderType:'user',senderId:'automation',senderName:d.name,content:d.prompt,status:'completed',sequence:dispatches,createdAt:new Date().toISOString(),origin}},inspect:()=>undefined,cancel:async()=>{},changed:()=>{},notify:()=>{}})
+ const automation=new AutomationService(store,root,{critical:operation=>operation(),validate:()=>fingerprint,busy:()=>false,dispatch:async(d,o,origin,commit)=>{dispatches++;const message:import('../src/shared/domain').Message = {id:o.id,turnId:'turn-'+o.id,conversationId:o.conversationId,senderType:'user',senderId:'automation',senderName:d.name,content:d.prompt,status:'completed',sequence:dispatches,createdAt:new Date().toISOString(),origin};await commit(message,[]);return message},inspect:()=>undefined,cancel:async()=>{},changed:()=>{},notify:()=>{}})
  try{await automation.init();const time=new Date().toISOString().slice(11,16);const d=await automation.save({name:'guarded',prompt:'report',conversationId:'direct',frequency:'daily',weekday:1,time,timezone:'UTC',enabled:true,notify:false});
  const missed=await automation.admit(d.id,d.revision,'schedule','missed',Date.now()-21*60_000);expect(missed.status).toBe('skipped');expect(missed.reason).toContain('补跑窗口');
  const first=await automation.run(d.id,'manual-once');expect(first.status).toBe('running');const overlap=await automation.admit(d.id,d.revision,'schedule','overlap',Date.now());expect(overlap.reason).toContain('并发');expect(dispatches).toBe(1);

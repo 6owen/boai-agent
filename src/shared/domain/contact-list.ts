@@ -1,0 +1,27 @@
+/*
+ * [INPUT]: 通讯录员工/群聊身份与用户分类、排序操作。
+ * [OUTPUT]: 独立于会话的版本化通讯录偏好合同，以及未排序条目的稳定名称排序。
+ * [POS]: shared/domain 的通讯录展示合同，不改变员工配置或聊天状态。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+export interface ContactListPreferences {
+  revision: number
+  categories: { id: string; name: string }[]
+  categoryByAgentId: Record<string, string>
+  agentOrder: string[]
+  groupOrder: string[]
+}
+
+export type ContactListAction =
+  | { kind: 'create-category'; name: string }
+  | { kind: 'rename-category'; categoryId: string; name: string }
+  | { kind: 'delete-category'; categoryId: string }
+  | { kind: 'assign-category'; agentId: string; categoryId?: string }
+  | { kind: 'move'; itemKind: 'agent' | 'group'; id: string; targetId: string; placement: 'before' | 'after' }
+
+export const emptyContactList = (): ContactListPreferences => ({ revision: 0, categories: [], categoryByAgentId: {}, agentOrder: [], groupOrder: [] })
+
+export function sortedContacts<T extends { id: string }>(items: T[], order: string[], name: (item: T) => string): T[] {
+  const positions = new Map(order.map((id, index) => [id, index]))
+  return [...items].sort((a, b) => (positions.get(a.id) ?? order.length) - (positions.get(b.id) ?? order.length) || name(a).localeCompare(name(b), 'zh-CN') || a.id.localeCompare(b.id))
+}

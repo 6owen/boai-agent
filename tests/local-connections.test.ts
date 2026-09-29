@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地配置导入用例、实际 AppService/SQLite、Mastra 和隔离的本地协议端点。
- * [OUTPUT]: 显式扫描/源变更校验、密钥隔离、重复导入与重启持久化、Responses 请求和旧 Chat 默认值回归。
+ * [OUTPUT]: 二级详情测试读取当前源密钥且不保存连接；显式扫描/源变更校验、密钥隔离、重复导入与重启持久化、Responses 请求和旧 Chat 默认值回归。
  * [POS]: tests/local-connections.test.ts；不读取真实用户配置或访问付费模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,6 +30,26 @@ async function fixture() {
 }
 
 describe('local model connection import', () => {
+  it('tests a scanned configuration with current host credentials without importing or persisting it', async () => {
+    const f = await fixture(), keys = new Map<string, string>()
+    await f.write({ env: { ANTHROPIC_API_KEY: 'original-key' } })
+    const id = f.scan().logins[0].configId
+    await f.write({ env: { ANTHROPIC_API_KEY: 'current-key' } })
+    const calls: { model: string; key: string }[] = []
+    const service = new AppService({
+      dataPath: join(f.root, 'data'),
+      engine: { run: async () => {}, test: async (connection, key) => { calls.push({ model: connection.defaultModel, key }); return 'OK' } },
+      secrets: { get: async id => keys.get(id), set: async (id, key) => { keys.set(id, key) }, delete: async id => { keys.delete(id) } }, emit: () => {},
+    })
+    cleanup.push(() => service.close()); await service.init()
+    expect(await service.handle('testConnectionDraft', f.discovery.connection(id, 'test-model'))).toEqual({ text: 'OK' })
+    expect(calls).toEqual([{ model: 'test-model', key: 'current-key' }])
+    expect(keys.size).toBe(0)
+    const snapshot = await service.handle('snapshot', undefined) as Snapshot
+    expect(snapshot.connections).toEqual([])
+    expect(JSON.stringify(snapshot)).not.toContain('current-key')
+  })
+
   it('requires a selected scan result, re-reads keys, rejects stale sources and supplies missing models', async () => {
     const f = await fixture()
     await f.write({ env: { ANTHROPIC_API_KEY: 'original-key' } })

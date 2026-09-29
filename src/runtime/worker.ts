@@ -1,12 +1,13 @@
 /*
  * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
- * [OUTPUT]: 本地运行进程的服务装配和消息处理。
+ * [OUTPUT]: 仅主进程可访问的通知领取/回执通道；本地运行进程装配、消息处理及仅宿主可指定位置的备份/技能库导出。
  * [POS]: src/runtime/worker.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
 import { AppService } from './service'
 import { MastraEngine } from './adapters/mastra/engine'
+import type { AutomationNoticeReceipt } from '../shared/domain/automations'
 import type { RpcRequest } from '../shared/ipc'
 import type { SecretStore } from './contracts'
 
@@ -47,9 +48,15 @@ port.on('message', async ({ data }) => {
   if (data?.type !== 'request' || shuttingDown) return
   const request = data.request as RpcRequest
   try {
-    const result = request.method as string === '__backup'
+    const result = request.method as string === '__takeAutomationNotice'
+      ? await service.takeAutomationNotice()
+      : request.method as string === '__settleAutomationNotice'
+        ? await service.settleAutomationNotice(request.input as AutomationNoticeReceipt)
+        : request.method as string === '__backup'
       ? await service.backup((request.input as { destination: string }).destination)
-      : await service.handle(request.method, request.input)
+      : request.method as string === '__exportSkillLibrary'
+        ? await service.exportSkillLibrary((request.input as { input: unknown }).input, (request.input as { destination: string }).destination)
+        : await service.handle(request.method, request.input)
     port.postMessage({ type: 'response', response: { id: request.id, result } })
   } catch (error) {
     port.postMessage({ type: 'response', response: { id: request.id, error: error instanceof Error ? error.message : '操作失败' } })

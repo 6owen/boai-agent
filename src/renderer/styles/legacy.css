@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Shell、公共控件和业务页面结构，以及统一视觉 token。
- * [OUTPUT]: 移除会话状态条布局；44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、悬浮名称/操作菜单与 Scroll Fade 消息顶部重叠区、无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
+ * [INPUT]: Shell、公共控件和业务页面结构、共享 ScrollFade 滚动容器，以及统一视觉 token。
+ * [OUTPUT]: 设置页保持横向可调分栏，不再由窄窗规则固定侧栏或切为上下布局；资料库筛选使用 shadcn Select 触发器布局；页面空态迁至共用 IllustratedEmpty；移除会话状态条布局；44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、悬浮名称/操作菜单与 Scroll Fade 消息顶部重叠区、无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/资料库标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
  * [POS]: legacy 层保留现有交互布局；页面专属表现归 pages.css，控件皮肤归 components/ui/skin.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -369,34 +369,6 @@ fieldset {
   min-height:0;
   flex-direction:column
 }
-.conversation-welcome {
-  flex:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  padding:48px 28px;
-  overflow-y:auto;
-  color:var(--muted-foreground);
-  text-align:center
-}
-.conversation-welcome>.app-icon {
-  margin-bottom:22px;
-  color:var(--foreground)
-}
-.conversation-welcome h1 {
-  font-size:28px;
-  color:var(--foreground);
-  font-weight:500;
-  margin-bottom:12px;
-  letter-spacing:-.025em
-}
-.conversation-welcome p {
-  font-size:13px;
-  color:var(--muted-foreground);
-  line-height:1.8;
-  margin-bottom:26px
-}
 .starter-cards {
   width:100%;
   max-width:600px;
@@ -487,8 +459,6 @@ fieldset {
 }
 .messages {
   flex:1;
-  min-height:0;
-  overflow-y:auto;
   /* Overlap the floating header by 16px; the first message keeps its 20px gap. */
   margin-top:36px;
   padding:36px 24px 12px;
@@ -1209,6 +1179,8 @@ fieldset {
 .settings-page {
   display:flex;
   min-height:0;
+  min-width:0;
+  overflow:hidden;
   flex:1
 }
 .page-subnav {
@@ -1247,6 +1219,7 @@ fieldset {
 }
 .settings-content {
   padding:40px 44px;
+  flex:1;
   min-width:0;
   max-width:848px;
   width:100%
@@ -1325,7 +1298,7 @@ fieldset {
   background:var(--card);
   border-color:var(--border)
 }
-.library-filters>select {
+.library-filters>[data-slot=select-trigger] {
   width:auto;
   max-width:220px;
   min-width:120px;
@@ -1694,9 +1667,6 @@ fieldset {
     padding-left:16px;
     padding-right:16px
   }
-  .detail-open .conversation-welcome h1 {
-    font-size:20px
-  }
   .detail-open .starter-cards {
     grid-template-columns:1fr;
     margin-top:28px
@@ -1708,11 +1678,6 @@ fieldset {
   }
   .detail-open .starter-cards .app-icon {
     grid-row:1/3
-  }
-  .settings-page .page-subnav {
-    width:165px;
-    padding-left:10px;
-    padding-right:10px
   }
   .page-heading {
     align-items:flex-start;
@@ -1756,9 +1721,6 @@ fieldset {
   }
   .starter-cards {
     max-width:620px
-  }
-  .conversation-welcome h1 {
-    font-size:24px
   }
   .settings-content .form-grid {
     grid-template-columns:1fr
@@ -1806,28 +1768,6 @@ fieldset {
   }
   .chat-header-actions {
     gap:3px
-  }
-  .settings-page {
-    flex-direction:column
-  }
-  .page-subnav {
-    width:100%!important;
-    display:flex;
-    align-items:center;
-    gap:4px;
-    padding:12px 16px!important;
-    border-right:0;
-    border-bottom:1px solid var(--border)
-  }
-  .page-subnav h2 {
-    font-size:16px;
-    margin:0 12px 0 0
-  }
-  .page-subnav button {
-    width:auto;
-    margin:0;
-    font-size:12px;
-    padding:10px
   }
   .library-page {
     padding:24px

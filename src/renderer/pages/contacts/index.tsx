@@ -1,27 +1,24 @@
 /*
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
- * [OUTPUT]: 带共用添加入口、员工及群拼图头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。 群头像网格编辑与成员跳转。
+ * [OUTPUT]: 左侧分类/排序/右键菜单委托 ContactList，资料和编辑导航共用未保存守卫；未选中时展示无标题且不可选中/拖拽的动物伙伴 SVG；复用会话置顶分组的无底色标题与悬停箭头；带共用添加入口、员工及群拼图头像的分组搜索通讯录、资料和配置详情、受未保存保护的编辑及发消息入口。 群头像网格编辑与成员跳转。
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useState, type ReactNode } from 'react'
-import { cn } from 'cn'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
-import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { Avatar, GuardContext } from '@/components/common'
 import { EmployeeDetail } from '@/components/employee'
 import { GroupEditor } from '@/components/employee/editors'
-import { ArrowLeft, ChevronRight, Contact, MessageCircle, Search, Settings } from '@/components/icons'
+import { ArrowLeft, MessageCircle, Settings } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { Separator } from '@/components/ui/separator'
+import { ContactList, type ContactSelection } from './contact-list'
 
-export type ContactSelection = { kind: 'agent' | 'group'; id: string }
+export type { ContactSelection } from './contact-list'
 interface ContactsPageProps {
   api: DesktopApi
   snapshot: Snapshot
@@ -37,48 +34,28 @@ interface ContactsPageProps {
 }
 
 export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, refresh, sidebarShown, divider, generation, busy }: ContactsPageProps) {
-  const [query, setQuery] = useState('')
-  const [groupsOpen, setGroupsOpen] = useState(true), [contactsOpen, setContactsOpen] = useState(true)
+  const selectionKey = `${generation}-${selected?.kind}-${selected?.id}`
+  const [detail, setDetail] = useState({ key: selectionKey, editing: false })
+  if (detail.key !== selectionKey) setDetail({ key: selectionKey, editing: false })
   const guard = useContext(GuardContext)
-  const search = query.trim().toLocaleLowerCase()
-  const groups = snapshot.conversations.filter(item => item.kind === 'group' && item.title.toLocaleLowerCase().includes(search))
-    .sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
-  const contacts = snapshot.agents.filter(agent => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search))
-    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-  const select = (next: ContactSelection) => {
-    if (next.kind !== selected?.kind || next.id !== selected.id) guard.navigate(() => onSelect(next))
+  const select = (next: ContactSelection, editing = false) => {
+    if (next.kind !== selected?.kind || next.id !== selected.id || editing !== detail.editing) guard.navigate(() => {
+      setDetail({ key: `${generation}-${next.kind}-${next.id}`, editing }); onSelect(next)
+    })
   }
-  const row = (item: ContactSelection, name: string, description: string, avatar: ReactNode) => <Button
-    variant="ghost" size="content" key={item.id} className={cn('conversation-item', { selected: selected?.kind === item.kind && selected.id === item.id })}
-    aria-label={name} aria-current={selected?.kind === item.kind && selected.id === item.id ? 'true' : undefined} onClick={() => select(item)}
-  >{avatar}<span className="conversation-copy"><span className="conversation-title">{name}</span><span className="conversation-preview">{description}</span></span></Button>
   return <div className="contacts-page">
-    {sidebarShown && <><aside className="contacts-list" aria-label="通讯录列表">
-      <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions"><AddContactMenu onCreate={onCreate} /></div></div>
-      <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={event => { setQuery(event.target.value); if (event.target.value.trim()) { setGroupsOpen(true); setContactsOpen(true) } }} /></InputGroup>
-      <div className="contacts-sections">
-        <Collapsible open={groupsOpen} onOpenChange={setGroupsOpen}>
-          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contacts-section-heading" />}><ChevronRight /><span>群聊</span><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
-          <CollapsibleContent><div role="group" aria-label="群聊">{groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <GroupAvatar members={group.agentIds.map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))} />))}{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
-        </Collapsible>
-        <Collapsible open={contactsOpen} onOpenChange={setContactsOpen}>
-          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contacts-section-heading" />}><ChevronRight /><span>联系人</span><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
-          <CollapsibleContent><div role="group" aria-label="联系人">{contacts.map(agent => row({ kind: 'agent', id: agent.id }, agent.name, agent.active ? agent.role || '数字员工' : '已停用', <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />))}{!contacts.length && <p className="contacts-list-empty">{search ? '没有匹配的联系人' : '暂无联系人'}</p>}</div></CollapsibleContent>
-        </Collapsible>
-      </div>
-    </aside>{divider}</>}
+    {sidebarShown && <><ContactList api={api} snapshot={snapshot} selected={selected} onSelect={select} onMessage={onMessage} onCreate={onCreate} busy={busy} />{divider}</>}
     <section className="contacts-detail" aria-label="通讯录详情">
-      <ContactDetail key={`${generation}-${selected?.kind}-${selected?.id}`} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} />
+      <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
     </section>
   </div>
 }
 
-function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, busy }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onSelect' | 'onMessage' | 'busy'>) {
-  const [editing, setEditing] = useState(false)
+function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, busy, editing, onEditingChange: setEditing }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onSelect' | 'onMessage' | 'busy'> & { editing: boolean; onEditingChange(editing: boolean): void }) {
   const guard = useContext(GuardContext)
   const agent = selected?.kind === 'agent' ? snapshot.agents.find(item => item.id === selected.id) : undefined
   const group = selected?.kind === 'group' ? snapshot.conversations.find(item => item.id === selected.id && item.kind === 'group') : undefined
-  if (!selected || (!agent && !group)) return <Empty className="h-full"><EmptyHeader><EmptyMedia variant="icon"><Contact /></EmptyMedia><EmptyTitle>通讯录</EmptyTitle><EmptyDescription>选择联系人或群聊，查看资料与配置。</EmptyDescription></EmptyHeader></Empty>
+  if (!selected || (!agent && !group)) return <IllustratedEmpty kind="contacts" />
   const name = agent?.name ?? group!.title
   const resources = (ids: string[]) => ids.map(id => snapshot.resources.find(resource => resource.id === id)?.name ?? '资料已移除').join('、') || '未绑定'
   const members = group?.agentIds.map(id => snapshot.agents.find(item => item.id === id)).filter((item): item is DigitalAgent => Boolean(item)) ?? []

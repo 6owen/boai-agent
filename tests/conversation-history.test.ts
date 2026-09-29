@@ -1,6 +1,6 @@
 /*
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
- * [OUTPUT]: 增加 Trace 随会话删除且保留其他会话记录；关联记录删除、共享数据保留、重启续清与符号链接边界验证。
+ * [OUTPUT]: 待提交和提交中通知的清理/状态与引用不复活；无 Work 的自动化预算及调用回执清理验证；Trace 随会话删除；自动化跨工作证据清除/等待终结/去重保留、关联记录删除、共享数据保留、重启续清与符号链接边界验证。
  * [POS]: tests/conversation-history.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -36,6 +36,8 @@ it('removes linked content while preserving other conversations, contacts, share
     row('memory', 'profile', { ownerAgentId: 'a', scope: 'profile', sourceMessageIds: [] }),
     row('memoryEpochs', 'employee:a:conversation:c', { epoch: 9 }),
     row('automationOccurrences', 'occurrence', { conversationId: 'c', status: 'completed', nativeRunId: 'native-id', messageId: 'target', turnId: 'target', reason: 'private text', runIds: ['target'], resultMessageIds: ['target'] }),
+    row('automationDispatches', 'occurrence', { schemaVersion: 1, requestId: 'automatic-request', status: 'started', definition: { prompt: 'private text' }, messageId: 'target', turnId: 'target', origin: { name: 'private source' } }),
+    row('automationTriggerAliases', 'native-alias', { occurrenceId: 'occurrence' }),
   ])
   const session = join(root, 'agents/a/workspace/sessions/c'), external = join(root, 'external-workspaces/a/c'), runtime = join(root, 'external-runtime/target')
   for (const path of [session, external, runtime]) { await mkdir(path, { recursive: true }); await writeFile(join(path, 'media.png'), 'remove') }
@@ -48,6 +50,8 @@ it('removes linked content while preserving other conversations, contacts, share
   expect(result.memoryEpochs).toContainEqual({ id: 'employee:a:conversation:c', epoch: 10 })
   expect(result.conversation).toMatchObject({ id: 'c', agentIds: ['a'], sharedKnowledgeIds: ['shared'], list: { hidden: true } })
   expect(await store.load('automationOccurrences')).toEqual([{ id: 'occurrence', conversationId: 'c', status: 'completed', nativeRunId: 'native-id', reason: '聊天记录已清空', runIds: [], resultMessageIds: [] }])
+  expect(await store.load('automationDispatches')).toEqual([{ schemaVersion: 1, id: 'occurrence', requestId: 'automatic-request', status: 'cleared' }])
+  expect(await store.load('automationTriggerAliases')).toEqual([{ id: 'native-alias', occurrenceId: 'occurrence' }])
   expect(await store.load('agents')).toHaveLength(1); expect(await store.load('resources')).toHaveLength(1)
   expect(await readFile(join(root, 'knowledge/shared.txt'), 'utf8')).toBe('keep')
   for (const path of [session, external, runtime]) await expect(readFile(join(path, 'media.png'))).rejects.toMatchObject({ code: 'ENOENT' })
@@ -65,6 +69,25 @@ it('resumes a durable cleanup after restart and finishes only once', async () =>
   expect(await store.load('memoryEpochs')).toEqual(epoch)
   expect(await store.load('conversationCleanup')).toEqual([])
   await expect(readFile(join(conversation.workspacePath, 'file.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+it('clears private cross-work evidence and ends a waiting occurrence without deleting its trigger identity', async () => {
+  const { store, conversation, history } = await setup()
+  await store.write([
+    row('automationOccurrences', 'waiting', { schemaVersion: 1, stateVersion: 4, conversationId: 'c', status: 'waiting_work', deliveryStatus: 'partial', turnId: 'turn', turnIds: ['turn', 'continued'], workIds: ['parent', 'child'], rootWorkIds: ['parent'], resultEvidence: [{ reference: 'private result' }], runIds: ['run'], resultMessageIds: ['message'], nativeRunId: 'native' }),
+    row('automationTriggerAliases', 'alias', { occurrenceId: 'waiting' }),
+    row('automationNotices', 'pending-notice', { occurrenceId: 'waiting', conversationId: 'c', messageId: 'message', status: 'pending' }),
+    row('automationNotices', 'in-flight-notice', { occurrenceId: 'waiting', conversationId: 'c', messageId: 'message', status: 'submitting', attemptId: 'attempt' }),
+    row('workBudgets', 'before-any-work', { conversationId: 'c', accounting: 'model-calls-v1' }),
+    row('budgetModelCalls', 'decision', { conversationId: 'c', budgetId: 'before-any-work', runId: 'run' }),
+  ])
+  await history.clear(conversation, false)
+  const records = await store.load('automationOccurrences')
+  expect(records).toEqual([{ id: 'waiting', schemaVersion: 1, stateVersion: 5, conversationId: 'c', status: 'interrupted', deliveryStatus: 'unknown', runIds: [], resultMessageIds: [], nativeRunId: 'native', finishedAt: expect.any(String), reason: '聊天记录已清空' }])
+  expect(await store.load('automationTriggerAliases')).toEqual([{ id: 'alias', occurrenceId: 'waiting' }])
+  expect(await store.load('automationNotices')).toEqual([{ id: 'pending-notice', occurrenceId: 'waiting', status: 'suppressed', error: '聊天记录已清理', finishedAt: expect.any(String) }, { id: 'in-flight-notice', occurrenceId: 'waiting', status: 'unknown', attemptId: 'attempt', error: '聊天记录已清理', finishedAt: expect.any(String) }])
+  expect(await store.load('budgetModelCalls')).toEqual([])
+  expect(await store.load('workBudgets')).toEqual([])
 })
 
 it('rejects a symlinked parent before any destructive work and ignores stored external file paths', async () => {

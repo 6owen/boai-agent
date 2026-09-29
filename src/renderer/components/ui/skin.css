@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
+ * [OUTPUT]: 全局 DragList 落点/拖动态及会话与通讯录共用无底色折叠标题和悬停箭头；6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -188,23 +188,24 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .group-avatar-row { display:flex;justify-content:center;gap:var(--avatar-grid-gap);width:100%;height:calc((100% - (var(--avatar-grid-size) - 1) * var(--avatar-grid-gap)) / var(--avatar-grid-size));flex-shrink:0 }
 .group-avatar-tile { display:block;height:100%;aspect-ratio:1;min-width:0 }
 .group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
-.conversation-row { position:relative }
-.conversation-item.dragging { opacity:.35 }
+.drag-list-row { position:relative }
+.drag-list-dragging { opacity:.35 }
 .conversation-section-heading { display:flex;align-items:center;gap:5px;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
-.conversation-list .conversation-section-heading[aria-expanded]:not(:disabled) { background:transparent }
+.conversation-section-heading[aria-expanded]:not(:disabled):not([aria-disabled=true]) { background:transparent }
 .conversation-section-heading>.app-icon { opacity:0 }
 .conversation-section-heading:is(:hover,:focus-visible)>.app-icon { opacity:1 }
 .conversation-section-heading[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
+.drag-list-group-target[data-drop=inside] { border-radius:var(--radius-control);box-shadow:inset 0 0 0 1px var(--primary);background:var(--selection) }
 .detail-tab.dragging { opacity:.4 }
 .detail-tab[data-drop]::after { content:"";position:absolute;top:4px;bottom:4px;width:2px;background:var(--primary);pointer-events:none }
 .detail-tab[data-drop=before]::after { left:-3px }
 .detail-tab[data-drop=after]::after { right:-3px }
-.conversation-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
-.conversation-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
-.conversation-row[data-drop=before]::before { top:3px }
-.conversation-row[data-drop=before]::after { top:0 }
-.conversation-row[data-drop=after]::before { bottom:3px }
-.conversation-row[data-drop=after]::after { bottom:0 }
+.drag-list-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
+.drag-list-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
+.drag-list-row[data-drop=before]::before { top:3px }
+.drag-list-row[data-drop=before]::after { top:0 }
+.drag-list-row[data-drop=after]::before { bottom:3px }
+.drag-list-row[data-drop=after]::after { bottom:0 }
 
 /* Compact member cards keep the add action last and removal at the avatar corner. */
 .group-members { padding:18px 16px 14px;border-bottom:1px solid var(--border) }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 页面表单校验与焦点恢复的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与步骤 SVG/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
+ * [INPUT]: 页面表单校验、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
+ * [OUTPUT]: 默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与步骤 SVG/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
  * [POS]: tests/e2e/steps/pages.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -274,6 +274,63 @@ Then('仅关闭连接弹窗并保留当前设置页面', async ({ runtime }) => 
   expect(runtime.errors).toEqual([])
 })
 
+When('浏览默认连接配置并在返回时处理真实修改', async ({ runtime }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: '添加连接', exact: true }).click()
+  const dialog = page.getByRole('dialog'), leave = page.getByRole('alertdialog', { name: '有未保存的修改' })
+  for (const name of [/^OpenAI 使用/, /^Anthropic/, /^OpenAI 兼容接口/]) {
+    await dialog.getByRole('button', { name }).click()
+    await dialog.getByRole('button', { name: '显示 API Key', exact: true }).click()
+    await dialog.getByRole('button', { name: '更换服务' }).click()
+    await expect(dialog.getByRole('heading', { name: '选择模型服务' })).toBeVisible()
+    await expect(leave).toBeHidden()
+  }
+  await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
+  const name = dialog.getByLabel('连接名称', { exact: true })
+  await name.fill('临时连接')
+  await dialog.getByRole('button', { name: '更换服务' }).click()
+  await expect(leave).toBeVisible()
+  await leave.getByRole('button', { name: '继续编辑' }).click()
+  await expect(dialog.getByRole('heading', { name: '连接 OpenAI 兼容接口', exact: true })).toBeVisible()
+  await expect(name).toHaveValue('临时连接')
+  await name.fill('OpenAI 兼容接口')
+  await dialog.getByRole('button', { name: '更换服务' }).click()
+  await expect(dialog.getByRole('heading', { name: '选择模型服务' })).toBeVisible()
+  await expect(leave).toBeHidden()
+
+  await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
+  await name.fill('应该放弃的草稿')
+  await dialog.getByLabel('API Key', { exact: true }).fill('discard-this-key')
+  await dialog.getByRole('button', { name: '更换服务' }).click()
+  await expect(leave).toBeVisible()
+  await leave.getByRole('button', { name: '放弃并退出' }).click()
+  await expect(dialog.getByRole('heading', { name: '选择模型服务' })).toBeVisible()
+  await dialog.getByRole('button', { name: /^导入本机配置/ }).click()
+  await expect(dialog.getByRole('heading', { name: '导入本机模型配置' })).toBeVisible()
+  await expect(leave).toBeHidden()
+  await dialog.getByRole('button', { name: '返回', exact: true }).click()
+  await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
+  await expect(name).toHaveValue('OpenAI 兼容接口')
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('')
+  await dialog.getByRole('button', { name: '更换服务' }).click()
+  await dialog.getByRole('button', { name: /^Anthropic/ }).click()
+  await expect(name).toHaveValue('Anthropic')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(leave).toBeHidden()
+})
+
+Then('关闭未修改的连接向导不提示也不保存', async ({ runtime }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: '添加连接', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: /^OpenAI 使用/ }).click()
+  await dialog.getByRole('button', { name: '关闭模型连接配置' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeHidden()
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).connections).toHaveLength(0)
+})
+
 When('通过服务卡片配置兼容模型并保留未保存草稿', async ({ runtime, scenario }) => {
   const page = runtime.page
   await page.getByRole('button', { name: '添加连接', exact: true }).click()
@@ -301,19 +358,22 @@ When('通过服务卡片配置兼容模型并保留未保存草稿', async ({ ru
   await expect(dialog.getByRole('status')).toHaveText('已获取 2 个模型')
   await dialog.getByLabel('默认模型', { exact: true }).selectOption('local-model')
   await dialog.getByRole('button', { name: '更换服务' }).click()
-  await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
+  const leave = page.getByRole('alertdialog', { name: '有未保存的修改' })
+  await expect(leave).toBeVisible()
+  await leave.getByRole('button', { name: '继续编辑' }).click()
   await expect(dialog.getByLabel('连接名称', { exact: true })).toHaveValue('本地模型服务')
   await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('fixture-connection-key')
   await page.screenshot({ animations: 'disabled', path: 'test-results/connections-form-light.png' })
   await page.keyboard.press('Escape')
-  const leave = page.getByRole('alertdialog', { name: '有未保存的修改' })
   await expect(leave).toBeVisible()
   await leave.getByRole('button', { name: '继续编辑' }).click()
   await expect(dialog.getByLabel('默认模型', { exact: true })).toHaveValue('local-model')
-  // Closing from service selection must still offer a working save-and-leave path.
+  // Saving before going back must finish the save and leave the chooser clean.
   await dialog.getByRole('button', { name: '更换服务' }).click()
-  await dialog.getByRole('button', { name: '关闭模型连接配置' }).click()
+  await expect(leave).toBeVisible()
   await leave.getByRole('button', { name: '保存并退出' }).click()
+  await expect(dialog.getByRole('heading', { name: '选择模型服务' })).toBeVisible()
+  await dialog.getByRole('button', { name: '关闭模型连接配置' }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByRole('button', { name: '添加连接', exact: true })).toBeFocused()
   await expect(page.locator('.connection-row')).toContainText('本地模型服务')
@@ -442,8 +502,6 @@ Then('模型连接在深浅色和窄窗口中保持可操作', async ({ runtime,
     await page.screenshot({ animations: 'disabled', path: `test-results/connections-select-${mode}.png` })
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: /^Anthropic/ }).click()
-    await expect(dialog.getByLabel('接口地址 Base URL', { exact: true })).toBeHidden()
-    await dialog.locator('summary').click()
     await expect(dialog.getByLabel('接口地址 Base URL', { exact: true })).toBeVisible()
     await dialog.getByLabel('默认模型 ID', { exact: true }).fill('claude-model')
     await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))
@@ -454,6 +512,7 @@ Then('模型连接在深浅色和窄窗口中保持可操作', async ({ runtime,
     await page.screenshot({ animations: 'disabled', path: `test-results/connections-form-${mode}-narrow.png` })
     await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1340, 900))
     await dialog.getByRole('button', { name: '更换服务' }).click()
+    await page.getByRole('alertdialog', { name: '有未保存的修改' }).getByRole('button', { name: '放弃并退出' }).click()
     await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
     await expect(dialog.getByRole('combobox', { name: '服务商', exact: true })).toHaveCount(0)
     await dialog.getByLabel('接口地址 Base URL', { exact: true }).fill(scenario.connections!.baseUrl)
@@ -467,11 +526,13 @@ Then('模型连接在深浅色和窄窗口中保持可操作', async ({ runtime,
     expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
     await page.screenshot({ animations: 'disabled', path: `test-results/connections-compact-${mode}-narrow.png` })
     await dialog.getByRole('button', { name: '更换服务' }).click()
+    await page.getByRole('alertdialog', { name: '有未保存的修改' }).getByRole('button', { name: '放弃并退出' }).click()
     await dialog.getByRole('button', { name: /^OpenAI 使用/ }).click()
     await expect(dialog.getByRole('heading', { name: '连接 OpenAI', exact: true })).toBeVisible()
-    await expect(dialog.getByLabel('默认模型 ID', { exact: true })).toHaveValue('local-model')
+    await expect(dialog.getByLabel('默认模型 ID', { exact: true })).toHaveValue('')
     await page.keyboard.press('Escape')
-    await page.getByRole('alertdialog').getByRole('button', { name: '放弃并退出' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeHidden()
     await expect(page.locator('.connection-row')).toHaveCount(3)
     await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1340, 900))
   }

@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
- * [OUTPUT]: 共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
+ * [OUTPUT]: 下拉字段统一使用 shadcn Select；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { SelectField } from '@/components/ui/select-field'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
 import { Slider } from '@/components/ui/slider'
 import { themes, resolveTheme, customizeTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
@@ -54,26 +54,22 @@ export function AppearanceSettings() {
       <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
         {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
-          <NativeSelect id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={p.themeIds[value]} onChange={event => previewAppearance({ themeIds: { [value]: event.target.value }, customColors: { [value]: { accent: null, background: null, foreground: null } } })}>
-            {themes.filter(t => t.mode === value).map(t => <NativeSelectOption key={t.id} value={t.id}>{t.name}</NativeSelectOption>)}
-          </NativeSelect>
+          <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={p.themeIds[value]} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
         </div>)}
         <div className="appearance-row">
           <span>强调色</span>
           <div className="appearance-row-controls">
-            <NativeSelect aria-label="强调色来源" value={p.customColors[mode].accent ? 'custom' : 'theme'} onChange={event => setColor('accent', event.target.value === 'theme' ? null : theme.accent)}>
-              <NativeSelectOption value="theme">主题</NativeSelectOption><NativeSelectOption value="custom">自定义</NativeSelectOption>
-            </NativeSelect>
+            <SelectField aria-label="强调色来源" value={p.customColors[mode].accent ? 'custom' : 'theme'} onValueChange={selectedValue => setColor('accent', selectedValue === 'theme' ? null : theme.accent)} options={[{ value: 'theme', label: '主题' }, { value: 'custom', label: '自定义' }]} />
             <ColorControl label="强调色" value={theme.accent} onChange={value => setColor('accent', value)} />
           </div>
         </div>
         <div className="appearance-row"><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></div>
         <div className="appearance-row"><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></div>
         <div className="appearance-row"><label htmlFor="appearance-font">字体</label>
-          <NativeSelect id="appearance-font" value={p.fontFamily} onChange={event => previewAppearance({ fontFamily: event.target.value as InterfaceFont })}><NativeSelectOption value="geist">Geist</NativeSelectOption><NativeSelectOption value="system">系统默认</NativeSelectOption></NativeSelect>
+          <SelectField id="appearance-font" value={p.fontFamily} onValueChange={selectedValue => previewAppearance({ fontFamily: selectedValue as InterfaceFont })} options={[{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }]} />
         </div>
         <div className="appearance-row"><label htmlFor="appearance-zoom" title="同步调整文字、图标与布局大小">界面缩放</label>
-          <NativeSelect id="appearance-zoom" value={p.zoomFactor} onChange={event => previewAppearance({ zoomFactor: Number(event.target.value) })}>{zoomFactors.map(value => <NativeSelectOption key={value} value={value}>{Math.round(value * 100)}%{value === 1 ? '（默认）' : ''}</NativeSelectOption>)}</NativeSelect>
+          <SelectField id="appearance-zoom" value={p.zoomFactor} onValueChange={selectedValue => previewAppearance({ zoomFactor: Number(selectedValue) })} options={zoomFactors.map(value => ({ value: value, label: `${Math.round(value * 100)}%${value === 1 ? '（默认）' : ''}` }))} />
         </div>
       </CardContent></Card>
       <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">

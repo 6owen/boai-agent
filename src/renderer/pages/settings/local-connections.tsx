@@ -1,104 +1,99 @@
 /*
- * [INPUT]: 无密钥本地扫描合同、已有模型连接与统一 Dialog/Card/表单控件。
- * [OUTPUT]: 扫描/选择目录、API 导入、Codex 现有登录的 ACP 接入和防止重复导入的反馈。
- * [POS]: 模型连接页的本地 Agent 配置导入入口；扫描不保存或测试模型。
+ * [INPUT]: 无密钥 ACP 登录扫描合同、已有启动项、草稿预填接口、Agent 插画/品牌图标、共用弹窗布局和配置编辑器。
+ * [OUTPUT]: 仅 ACP 的 520px 首级/620px 二级扫描向导，自动预填/高级来源详情、手动目录加载、测试/保存与未保存保护。
+ * [POS]: 本机 Agent 独立扫描入口；模型 API 导入内容归 local-model-import，不保存或执行扫描结果。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useRef, useState } from 'react'
-import type { Connection, LaunchProfile } from '@shared/domain'
-import type { LocalConfigIssue, LocalConfigScanResult } from '@shared/domain/local-configs'
+import { useContext, useEffect, useState, type RefObject } from 'react'
+import type { LaunchProfile } from '@shared/domain'
+import type { DetectedOAuthConfig, LocalConfigScanResult } from '@shared/domain/local-configs'
 import type { DesktopApi } from '@shared/ipc'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Check, FolderOpen, LoaderCircle, Search } from '@/components/icons/index'
-import { Banner, Field, useMutation } from '@/components/common/index'
+import { Check, ChevronRight, FolderOpen, LoaderCircle, Plus, RefreshCw } from '@/components/icons/index'
+import { Banner, GuardContext, useMutation } from '@/components/common/index'
+import { AgentBrandIcon, LocalAgentIllustration } from './local-agent-visuals'
+import { LocalAgentEditor, type LocalAgentDraft } from './local-agent-editor'
+import { ConnectionDialogLayout, ConnectionSettingRow } from './connection-layout'
 
-const issues: Record<LocalConfigIssue, string> = {
-  'missing-api-key': '未找到 API Key，请先完善源配置。',
-  'missing-model': '请补填默认模型 ID。',
-  'invalid-base-url': '接口地址无效，请先修正源配置。',
-  'unsupported-config': '包含暂不支持的协议或认证配置，请手动添加连接。',
-  'invalid-config': '无法解析配置文件，请先修正源配置。',
-}
+type Selection = { draft: LocalAgentDraft; manual?: boolean; source?: DetectedOAuthConfig }
+const candidates = (scan: LocalConfigScanResult | null) => scan?.logins.filter(item => item.authType === 'oauth') ?? []
+const profileDraft = ({ revision, executableHash: _, verified: _verified, hostAccessAcknowledged: _ack, ...fields }: LaunchProfile): LocalAgentDraft => ({ ...fields, expectedRevision: revision })
 
-export function LocalConnections({ connections, api, refresh, onAgentImported }: { connections: Connection[]; api: DesktopApi; refresh: () => Promise<void>; onAgentImported: () => void }) {
-  const [open, setOpen] = useState(false)
+export function LocalConnections({ profiles, api, initialProfile, onSaved, onClose, finalFocus }: {
+  profiles: LaunchProfile[]; api: DesktopApi; initialProfile?: LaunchProfile
+  onSaved: () => Promise<void>; onClose: () => void; finalFocus: RefObject<HTMLButtonElement | null>
+}) {
+  const [selection, setSelection] = useState<Selection | null>(() => initialProfile ? { draft: profileDraft(initialProfile) } : null)
+  const [editorBusy, setEditorBusy] = useState(false)
   const [result, setResult] = useState<LocalConfigScanResult | null>(null)
-  const [models, setModels] = useState<Record<string, string>>({})
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([])
-  const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({})
-  const [notice, setNotice] = useState('')
-  const [operation, setOperation] = useState<string | null>(null)
-  const { busy, error, run } = useMutation()
-  const trigger = useRef<HTMLButtonElement>(null)
-  const scan = (chooseDirectory = false) => void run(async () => {
-    setOperation('scan'); setNotice('')
+  const [directoryResult, setDirectoryResult] = useState<LocalConfigScanResult | null>(null)
+  const [operation, setOperation] = useState<'scan' | 'directory' | 'select' | null>(null)
+  const { busy, error, run, setError } = useMutation(), guard = useContext(GuardContext)
+  const working = busy || editorBusy
+  const close = () => { if (!working) guard.navigate(onClose, { resetOnDiscard: false }) }
+  const scan = () => void run(async () => {
+    setOperation('scan')
+    try { const found = await api.request('scanLocalConnections', {}); if (found) setResult(found) }
+    finally { setOperation(null) }
+  })
+  const back = () => { setSelection(null); setDirectoryResult(null); setError(''); if (!result) scan() }
+  const select = (item: DetectedOAuthConfig) => guard.navigate(() => void run(async () => {
+    setOperation('select')
     try {
-      const found = await api.request('scanLocalConnections', { chooseDirectory })
-      if (found) { setResult(found); setModels({}); setAcknowledged({}) }
-      setProfiles(await api.request('listLaunchProfiles', undefined))
+      const existing = profiles.find(profile => profile.localConfigId === item.configId)
+      const draft = existing ? profileDraft(existing) : item.acp ? await api.request('prepareLocalAgent', { configId: item.configId }) : {
+        name: 'Codex', executable: '', args: [], useExistingLogin: true,
+        codexHome: item.sourcePath.replace(/[\\/][^\\/]+$/, ''),
+      }
+      setSelection({ draft, source: item })
+      setDirectoryResult(null)
+    } finally { setOperation(null) }
+  }), { resetOnDiscard: false })
+  const loadDirectory = () => void run(async () => {
+    setOperation('directory')
+    try {
+      const found = await api.request('scanLocalConnections', { chooseDirectory: true })
+      if (found) { setDirectoryResult(found); setResult(found) }
     } finally { setOperation(null) }
   })
-  return <>
-    <Button ref={trigger} variant="outline" onClick={() => { setOpen(true); scan() }}><Search />扫描本地 Agent</Button>
-    <Dialog open={open} onOpenChange={value => { if (!busy) setOpen(value) }}>
-      <DialogContent className="local-connections-dialog" style={{ width: 620, maxWidth: 'calc(100vw - 32px)' }} finalFocus={trigger}>
-        <DialogTitle>导入本地 Agent 配置</DialogTitle>
-        <DialogDescription>导入 Codex、Claude Code 的模型配置，或使用 Codex 已有登录接入本地 Agent。扫描只读取本地文件。</DialogDescription>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" disabled={busy} onClick={() => scan()}>{operation === 'scan' ? <LoaderCircle className="spinner" /> : <Search />}重新扫描默认目录</Button>
-          <Button variant="outline" disabled={busy} onClick={() => scan(true)}><FolderOpen />选择其他目录</Button>
-        </div>
-        {error && <Banner>{error}</Banner>}
-        {notice && <p className="connection-feedback" role="status">{notice}</p>}
-        {operation === 'scan' && <p role="status">正在扫描本地配置…</p>}
-        {result && <div className="local-connections-results" aria-busy={operation === 'scan'}>
-          <p className="connection-model-message">{result.directory ? `扫描目录：${result.directory}` : '已扫描 Codex 和 Claude Code 的默认配置目录。'}</p>
-          {(result.truncated || result.skippedFiles > 0) && <p className="connection-model-message" role="status">部分文件无法读取或超出扫描范围，可选择更具体的配置目录重试。</p>}
-          {!result.logins.length && <p className="connections-empty">未找到可识别的模型配置。可以选择其他目录，或手动添加连接。</p>}
-          {result.logins.map(item => {
-            const config = item.authType === 'api_key' ? item : null
-            const imported = config ? connections.find(connection => connection.localConfigId === item.configId) : profiles.find(profile => profile.localConfigId === item.configId)
-            const source = item.sourceId === 'codex-api-key' || item.sourceId === 'codex-cli' ? 'Codex' : item.sourceId === 'claude-code-api-key' ? 'Claude Code' : config?.providerName ?? 'OpenAI'
-            const model = config?.model ?? models[item.configId] ?? ''
-            const usable = config && (config.usable || config.issue === 'missing-model')
-            return <Card key={item.configId} className="local-connection-card gap-3 p-4" aria-label={`${source} 配置`}>
-              <div className="flex items-center justify-between gap-3"><strong>{source}</strong>{imported && <span className="flex items-center gap-1 text-muted-foreground"><Check size={14} />已导入</span>}</div>
-              {config && <div><p className="connection-row-description">{config.providerName} · {config.api === 'anthropic-messages' ? 'Anthropic' : config.api === 'openai-responses' ? 'Responses' : 'Chat Completions'}{config.model ? ` · ${config.model}` : ''}</p><p className="connection-endpoint" title={config.baseUrl}>{config.baseUrl}</p></div>}
-              <p className="connection-model-message">{item.sourcePath}</p>
-              {item.authType === 'oauth' ? <>
-                <p className="connection-model-message">检测到 Codex 登录。通过 ACP 使用这个账号执行任务，登录由 Codex 管理。</p>
-                {item.acp ? <p className="connection-model-message">已找到 ACP 程序：{item.acp.executable}</p> : <p className="connection-model-message">未找到 codex-acp。安装 @agentclientprotocol/codex-acp 后重新扫描，或手动添加启动项。</p>}
-                {item.acp && !imported && <label className="toggle-row"><span><strong>允许此 Codex 程序在主机上运行</strong><small>使用现有登录与用户配置，可访问本机文件和网络；BoAI 仅能审批程序通过协议发来的请求。</small></span><Checkbox disabled={busy} checked={!!acknowledged[item.configId]} onCheckedChange={checked => setAcknowledged(current => ({ ...current, [item.configId]: checked }))} /></label>}
-                <Button className="self-end" disabled={busy || !!imported || !item.acp || !acknowledged[item.configId]} onClick={() => void run(async () => {
-                  setOperation(item.configId); setNotice('')
-                  try {
-                    await api.request('importLocalAgent', { configId: item.configId, hostAccessAcknowledged: true })
-                    setProfiles(await api.request('listLaunchProfiles', undefined))
-                    onAgentImported()
-                    setNotice('已接入 Codex。点击完成后，在本地 Agent 中测试启动与登录，再为员工选择此启动项。')
-                  } finally { setOperation(null) }
-                })}>{operation === item.configId && <LoaderCircle className="spinner" />}{imported ? '已导入' : '接入 Codex'}</Button>
-              </> : config && <>
-                {config.issue && config.issue !== 'missing-model' && <p className="connection-model-message">{issues[config.issue]}</p>}
-                {usable && !config.model && !imported && <Field label={`${source} 默认模型 ID`}><Input value={model} maxLength={300} placeholder="填写服务支持的模型 ID" disabled={busy} onChange={event => setModels(current => ({ ...current, [item.configId]: event.target.value }))} /></Field>}
-                <Button className="self-end" disabled={busy || !!imported || !usable || !model.trim()} onClick={() => void run(async () => {
-                  setOperation(item.configId); setNotice('')
-                  try {
-                    const saved = await api.request('importLocalConnection', { configId: item.configId, ...(!config.model ? { model: model.trim() } : {}) })
-                    await refresh()
-                    setNotice(`已导入「${saved.name}」，可在连接菜单中测试。`)
-                  } finally { setOperation(null) }
-                })}>{operation === item.configId && <LoaderCircle className="spinner" />}{imported ? '已导入' : '导入连接'}</Button>
-              </>}
-            </Card>
-          })}
-        </div>}
-        <div className="flex justify-end"><Button variant="secondary" disabled={busy} onClick={() => setOpen(false)}>完成</Button></div>
-      </DialogContent>
-    </Dialog>
-  </>
+  useEffect(() => { if (!initialProfile) scan() }, [])
+  const options = (items: DetectedOAuthConfig[]) => items.map(item => {
+    const imported = profiles.some(profile => profile.localConfigId === item.configId)
+    return <Button key={item.configId} type="button" variant="surface" size="content" className="connection-provider-option" aria-label="Codex 配置" disabled={working} onClick={() => select(item)}>
+      <AgentBrandIcon name="Codex" /><span><strong>Codex</strong><small>使用本机登录接入 Agent</small></span>
+      {imported && <span className="local-agent-imported"><Check size={13} />已导入</span>}<ChevronRight size={16} />
+    </Button>
+  })
+  const directoryLoader = <div>
+    <div className="py-3"><Button type="button" variant="ghost" size="sm" disabled={working} onClick={loadDirectory}>{operation === 'directory' ? <LoaderCircle className="spinner" /> : <FolderOpen />}选择目录加载</Button></div>
+    {directoryResult && <>
+      {candidates(directoryResult).length ? <div className="connection-provider-options mb-3" aria-label="目录中的配置">{options(candidates(directoryResult))}</div> : <p className="connection-model-message mb-3" role="status">这个目录没有找到 Agent 登录配置，可以换个目录或继续手动填写。</p>}
+      {(directoryResult.truncated || directoryResult.skippedFiles > 0) && <p className="connection-model-message mt-2">部分文件未能读取，可选择更具体的目录。</p>}
+    </>}
+  </div>
+  const sourceDetails = selection?.source ? <>
+    <ConnectionSettingRow label="配置文件" icon={<FolderOpen />}><Input aria-label="配置文件" readOnly value={selection.source.sourcePath ?? ''} title={selection.source.sourcePath} /></ConnectionSettingRow>
+  </> : undefined
+  return <Dialog open onOpenChange={open => { if (!open) close() }}>
+    <ConnectionDialogLayout choosing={!selection} label={initialProfile ? '编辑 Agent 配置' : '添加本机 Agent'}
+      title={selection ? selection.manual ? '手动添加 Agent' : '配置本机 Agent' : '选择本机 Agent'}
+      illustration={<LocalAgentIllustration configuring={!!selection} />} description="读取本机 Agent 登录配置，启动信息会自动填写；扫描不会运行或安装程序。" working={working} onClose={close} closeLabel="关闭 Agent 配置" finalFocus={finalFocus} initialFocus={false}
+      steps={{ label: '添加 Agent 进度', first: '扫描与选择', second: '配置 Agent' }}>
+      {selection ? <LocalAgentEditor key={selection.draft.id ?? selection.source?.configId ?? 'manual'} api={api} initial={selection.draft} manual={selection.manual} onBack={back} onWorking={setEditorBusy} pending={busy} leading={<>{error && <Banner>{error}</Banner>}{selection.manual && directoryLoader}</>} details={sourceDetails} onSaved={async () => { await onSaved(); guard.saved(onClose) }} /> : <>
+          {error && <Banner>{error}</Banner>}
+          {operation === 'scan' && !result && <p className="connection-model-message flex items-center gap-2" role="status"><LoaderCircle className="spinner" />正在扫描本地配置…</p>}
+          {result && <>
+            {(result.truncated || result.skippedFiles > 0) && <p className="connection-model-message" role="status">部分文件未能读取，可在手动添加中选择具体目录。</p>}
+            {!candidates(result).length && <p className="connections-empty">还没找到本机 Agent，可以从下方手动添加。</p>}
+          </>}
+          <div className="connection-provider-options" aria-busy={operation === 'scan'}>
+            {options(candidates(result))}
+            <Button variant="surface" size="content" className="connection-provider-option" disabled={working} onClick={() => { setError(''); setSelection({ manual: true, draft: { name: '', executable: '', args: [], useExistingLogin: true } }) }}><span className="connection-provider-icon"><Plus /></span><span><strong>手动添加</strong><small>填写启动命令，或从目录加载</small></span><ChevronRight /></Button>
+          </div>
+        <div className="connection-wizard-note"><RefreshCw size={14} /><span>没有找到你的 Agent？</span><Button variant="link" size="content" className="local-agent-rescan" disabled={working} onClick={scan}>{operation === 'scan' ? '正在扫描…' : '重新扫描'}</Button></div>
+      </>}
+    </ConnectionDialogLayout>
+  </Dialog>
 }

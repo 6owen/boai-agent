@@ -1,9 +1,11 @@
 /*
- * [INPUT]: Electron、共享领域类型与 IPC 合同、宿主服务。
- * [OUTPUT]: 放行只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ * [INPUT]: Electron、共享领域/IPC 合同、宿主服务与技能库保存请求。
+ * [OUTPUT]: 扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { AutomationNotificationConsumer } from './automation-notifications'
+import type { AutomationNotice } from '../shared/domain/automations'
 import { z } from 'zod'
 import { LocalConfigDiscovery } from './local-configs/discovery'
 import { decodeImage } from './decode-image'
@@ -28,6 +30,7 @@ const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
 let window: BrowserWindow | null = null
 let runtime: UtilityProcess | null = null
+let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['output'] = null
 let ready: Promise<void> | null = null
 let quitting = false
 let stopped: (() => void) | null = null
@@ -44,11 +47,36 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
 const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'saveAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
+for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
+for (const method of ['checkAllSkillUpdates', 'getSkillUpdateBatch', 'cancelSkillUpdateBatch'] as const) methods.add(method)
+for (const method of ['planSkillLibraryExport', 'discardSkillLibraryExport', 'cancelSkillLibraryPreview', 'exportSkillLibrary'] as const) methods.add(method)
+for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) methods.add(method)
+for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
+methods.add('testLocalConnection')
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
 }
+
+const automationNotifications = new AutomationNotificationConsumer({
+  take: () => quitting ? Promise.resolve(null) : requestRuntime('__takeAutomationNotice') as Promise<AutomationNotice | null>,
+  settle: async receipt => { if (quitting || !runtime) throw new Error('运行服务已退出，通知提交状态未知'); await requestRuntime('__settleAutomationNotice', receipt) },
+  error: error => sendEvent({ type: 'runtime-error', error: `通知回执保存失败：${String(error)}` }),
+  submit: (record, failed) => {
+    if (!Notification.isSupported()) throw new Error('此设备不支持系统通知，结果仍保存在应用内')
+    const notice = new Notification({ title: 'BoAI 定时任务', body: record.kind === 'attention' ? '本次运行需要处理，点击查看记录。' : '本次运行已有结果，点击查看记录。' })
+    notice.on('failed', (_event, error) => failed(error))
+    notice.on('click', () => { pendingAutomationNavigation = { automationId: record.automationId, occurrenceId: record.occurrenceId, conversationId: record.conversationId, messageId: record.messageId }; void (async () => {
+      if (!window || window.isDestroyed()) await createWindow()
+      window?.show(); window?.focus()
+      sendEvent({ type: 'automation:navigate' })
+    })().catch(error => sendEvent({ type: 'runtime-error', error: String(error) })) })
+    notice.show()
+  },
+})
+function flushAutomationNotifications() { void automationNotifications.flush().catch(error => sendEvent({ type: 'runtime-error', error: `通知提交状态未能保存：${String(error)}` })) }
 
 function startRuntime() {
   if (ready) return ready
@@ -61,7 +89,7 @@ function startRuntime() {
     runtime = child
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)
     child.on('message', async (message) => {
-      if (message?.type === 'ready') { clearTimeout(timer); resolveReady(); return }
+      if (message?.type === 'ready') { clearTimeout(timer); resolveReady(); flushAutomationNotifications(); return }
       if (message?.type === 'stopped') { stopped?.(); return }
       if (message?.type === 'response') {
         const response = message.response as RpcResponse
@@ -71,7 +99,7 @@ function startRuntime() {
         pending.delete(response.id)
         if (response.error) request.reject(new Error(response.error))
         else request.resolve(response.result)
-      } else if (message?.type === 'event') {sendEvent(message.event);if(message.event?.type==='automation:notice'&&Notification.isSupported()){const occurrence=message.event.occurrence;const notice=new Notification({title:'BoAI 定时任务',body:occurrence.status==='completed'?'任务已完成，点击查看结果。':'任务状态已更新，点击查看记录。'});notice.on('click',()=>{void(async()=>{if(!window||window.isDestroyed())await createWindow();window?.show();window?.focus();sendEvent({type:'focus-conversation',conversationId:occurrence.conversationId})})()});notice.show()}}
+      } else if (message?.type === 'event') { if (message.event?.type === 'automation:notice') flushAutomationNotifications(); else sendEvent(message.event) }
 
       else if (message?.type === 'secret') {
         try {
@@ -139,11 +167,21 @@ async function openResource(input: unknown) {
 
 function registerIpc() {
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
+  ipcMain.handle('boai:skill-file', async (event, input: unknown) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
+    const value = z.object({ path: z.string().min(1).max(8000), kind: z.enum(['folder', 'zip']) }).strict().parse(input)
+    if (!isAbsolute(value.path)) throw new Error('无法读取拖入文件的本地路径')
+    const selected = await realpath(value.path), info = await stat(selected)
+    if (value.kind === 'folder' ? !info.isDirectory() : !info.isFile() || extname(selected).toLowerCase() !== '.zip') throw new Error(value.kind === 'folder' ? '请拖入技能文件夹' : '请拖入 ZIP 文件')
+    selectedPaths.add(selected)
+    return selected
+  })
   ipcMain.handle('boai:request', async (event, payload: { method: Method; input: unknown }) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
+    if (method === 'getPendingAutomationNavigation') { z.undefined().parse(input); const target = pendingAutomationNavigation; pendingAutomationNavigation = null; return target }
     if (method === 'scanLocalConnections') {
       const options = z.object({ chooseDirectory: z.boolean().optional() }).strict().parse(input)
       if (!options.chooseDirectory) return localConfigs.scan()
@@ -151,9 +189,18 @@ function registerIpc() {
       if (selection.canceled || !selection.filePaths[0]) return null
       return localConfigs.scan({ directory: await realpath(selection.filePaths[0]) })
     }
-    if (method === 'importLocalConnection') {
+    if (method === 'importLocalConnection' || method === 'testLocalConnection') {
       const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), model: z.string().trim().min(1).max(300).optional() }).strict().parse(input)
-      return requestRuntime('saveConnection', localConfigs.connection(selected.configId, selected.model))
+      return requestRuntime(method === 'testLocalConnection' ? 'testConnectionDraft' : 'saveConnection', localConfigs.connection(selected.configId, selected.model))
+    }
+    if (method === 'saveLaunchProfile' || method === 'testLaunchProfileDraft') {
+      const source = z.object({ id: z.string().optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional() }).passthrough().parse(input)
+      if (!source.id && source.localConfigId) localConfigs.launchProfile(source.localConfigId)
+    }
+    if (method === 'prepareLocalAgent') {
+      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/) }).strict().parse(input)
+      const { hostAccessAcknowledged: _, ...draft } = localConfigs.launchProfile(selected.configId)
+      return draft
     }
     if (method === 'importLocalAgent') {
       const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), hostAccessAcknowledged: z.literal(true) }).strict().parse(input)
@@ -168,6 +215,20 @@ function registerIpc() {
       if (typeof (input as { dirty?: unknown })?.dirty !== 'boolean') throw new Error('无效编辑状态')
       const source=(input as {source?:string}).source??'business'; if(!['business','appearance'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
       return
+    }
+    if (method === 'openLocalSkill') {
+      const value = z.object({ id: z.string().min(1).max(200), action: z.enum(['edit', 'reveal']) }).strict().parse(input)
+      const detail = await requestRuntime('getLocalSkillDetail', { id: value.id }) as Methods['getLocalSkillDetail']['output']
+      const file = detail.filePath
+      if (value.action === 'reveal') shell.showItemInFolder(file)
+      else { const error = await shell.openPath(file); if (error) throw new Error(error) }
+      return
+    }
+    if (method === 'chooseSkillSource') {
+      const { kind } = z.object({ kind: z.enum(['folder', 'zip']) }).strict().parse(input)
+      const result = await dialog.showOpenDialog(window, { title: kind === 'folder' ? '选择技能目录' : '选择技能 ZIP', properties: [kind === 'folder' ? 'openDirectory' : 'openFile'], ...(kind === 'zip' ? { filters: [{ name: '技能压缩包', extensions: ['zip'] }] } : {}) })
+      if (result.canceled || !result.filePaths[0]) return null
+      const selected = await realpath(result.filePaths[0]); selectedPaths.add(selected); return selected
     }
     if (method === 'choosePath') {
       const kind = (input as { kind?: string })?.kind
@@ -186,7 +247,19 @@ function registerIpc() {
       const candidate = (input as { path?: unknown })?.path
       if (typeof candidate !== 'string' || !selectedPaths.has(await realpath(candidate))) throw new Error('请先通过文件选择器选择资源。')
     }
+    if (method === 'scanSkillSource') {
+      const candidate = input as Methods['scanSkillSource']['input'] | undefined
+      if (!candidate?.kind || candidate.kind === 'folder' || candidate.kind === 'zip') {
+        if (typeof candidate?.source !== 'string' || !selectedPaths.has(await realpath(candidate.source))) throw new Error('请先通过文件选择器选择技能目录或 ZIP。')
+      }
+    }
     if (method === 'openPath') return openResource(input)
+    if (method === 'exportSkillLibrary') {
+      const value = z.object({ planId: z.string().min(1).max(200), requestId: z.string().min(1).max(200) }).strict().parse(input)
+      const result = await dialog.showSaveDialog(window, { title: '保存技能库 ZIP', defaultPath: `boai-skills-${new Date().toISOString().slice(0, 10)}.zip`, filters: [{ name: '技能库', extensions: ['zip'] }] })
+      if (result.canceled || !result.filePath) return null
+      return requestRuntime('__exportSkillLibrary', { input: value, destination: result.filePath })
+    }
     if (method === 'exportBackup') {
       const result = await dialog.showOpenDialog(window, { title: '选择备份保存位置', properties: ['openDirectory', 'createDirectory'] })
       if (result.canceled || !result.filePaths[0]) return null

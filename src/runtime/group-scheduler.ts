@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享领域类型、产品存储与群事件。
- * [OUTPUT]: 群聊轮次、已回复成员输入合并、独立聊天并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与提交后确认和清理后的投影回收。
+ * [OUTPUT]: 自动化来源贯穿轮次并按指定轮次停止；群聊轮次、已回复成员输入合并、独立聊天并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与提交后确认和清理后的投影回收。
  * [POS]: src/runtime/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -59,6 +59,11 @@ export class GroupScheduler {
       ;(this[name] as Map<string, { id: string }>) = new Map(records.map(record => [record.id, record]))
     }
     const updates: StoredRecord[] = []
+    const works = new Map((await this.store.load<WorkItem>('workItems')).map(work => [work.id, work]))
+    for (const turn of this.turns.values()) if (!turn.origin) {
+      const origin = turn.workId ? works.get(turn.workId)?.origin : this.hooks.message(turn.triggerMessageId)?.origin
+      if (origin) { turn.origin = origin; updates.push(row('turns', turn)) }
+    }
     for (const turn of this.turns.values()) if (!ended.has(turn.status)) { turn.status = 'interrupted'; turn.reason = '应用退出时讨论尚未完成'; turn.finishedAt = now(); turn.epoch++; updates.push(row('turns', turn)) }
     for (const delivery of this.deliveries.values()) if (['pending', 'evaluating', 'ready', 'waiting', 'responding'].includes(delivery.status)) { delivery.status = 'interrupted'; updates.push(row('deliveries', delivery)) }
     // Older builds called a partially failed group successful once any reply arrived.
@@ -87,14 +92,14 @@ export class GroupScheduler {
     }
   }
   prepare(conversation: Conversation, message: Message) {
-    const turn: TurnRecord = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: message.id, epoch: 1, status: 'queued', generation: 0, createdAt: now(), modelCalls: 0, publicMessages: 0 }
+    const turn: TurnRecord = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: message.id, ...(message.origin ? { origin: message.origin } : {}), epoch: 1, status: 'queued', generation: 0, createdAt: now(), modelCalls: 0, publicMessages: 0 }
     message.turnId = turn.id
     const event: EventRecord = { id: randomUUID(), turnId: turn.id, conversationId: conversation.id, type: 'user_message', messageId: message.id, recipientAgentIds: message.mentionIds, generation: 0, sequence: message.sequence, createdAt: now() }
     const deliveries = conversation.agentIds.map(agentId => this.delivery(event, agentId))
     return { turn, event, deliveries, records: [row('turns', turn), row('events', event), ...deliveries.map(delivery => row('deliveries', delivery))] }
   }
   prepareWork(conversation: Conversation, message: Message, work: WorkItem, wakeId: string, sequence: number) {
-    const turn: TurnRecord = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: message.id, workId: work.id, wakeId, epoch: 1, status: 'queued', generation: 0, createdAt: now(), modelCalls: 0, publicMessages: 0 }
+    const turn: TurnRecord = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: message.id, workId: work.id, wakeId, ...(work.origin ? { origin: work.origin } : {}), epoch: 1, status: 'queued', generation: 0, createdAt: now(), modelCalls: 0, publicMessages: 0 }
     const event: EventRecord = { id: randomUUID(), turnId: turn.id, conversationId: conversation.id, type: 'work_ready', messageId: message.id, recipientAgentIds: [work.ownerAgentId], generation: 0, sequence, createdAt: now(), work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version } }
     const deliveries = [this.delivery(event, work.ownerAgentId)]
     return { turn, event, deliveries, records: [row('turns', turn), row('events', event), ...deliveries.map(delivery => row('deliveries', delivery))] }
@@ -431,6 +436,15 @@ export class GroupScheduler {
     for (const grant of this.grants.values()) if (grant.turnId === active.turn.id && grant.status === 'active') { grant.status = 'expired'; rows.push(row('grants', grant)) }
     for (const contribution of this.contributions.values()) if (contribution.turnId === active.turn.id && ['proposed', 'accepted', 'running'].includes(contribution.status)) { contribution.status = 'cancelled'; rows.push(row('contributions', contribution)) }
     await this.store.write(rows); this.hooks.changed(active.turn.conversationId)
+  }
+  async cancelTurns(turnIds: Set<string>, reason: string) {
+    for (const active of this.active.values()) if (turnIds.has(active.turn.id)) await this.stop(active, 'cancelled', reason)
+    for (const turn of this.turns.values()) if (turnIds.has(turn.id) && turn.status === 'queued') {
+      turn.status = 'cancelled'; turn.reason = reason; turn.finishedAt = now(); turn.epoch++
+      const deliveries = [...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id)
+      for (const delivery of deliveries) delivery.status = 'cancelled'
+      await this.store.write([row('turns', turn), ...deliveries.map(delivery => row('deliveries', delivery))])
+    }
   }
   async cancelWorks(workIds: Set<string>) {
     for (const active of this.active.values()) if (active.turn.workId && workIds.has(active.turn.workId)) await this.stop(active, 'cancelled', '用户停止此工作')

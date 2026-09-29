@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 仓库全局约束、无 Node 版本门禁的 pnpm runtime、初始化 CLI、统一位于 `.agents` 的项目 skills、三应用、Web/Admin Base UI 与 Web Iconify UI、客户端 API/Server Route/后端实现分层、含 Web emailAndPassword/loopback local credential sign-in 的 Capability Profile、共享 Auth/Admin role-permission-ban/Consent/Analytics/Newsletter/Observability/Jobs/Webhooks、Admin audit、Data Operations、Projects/Content/Search/User Assets/Developer API/Product AI、Manifest/Environment/DB、部署/CI、Canvasight 与文档协议。
-[OUTPUT]: Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
+[OUTPUT]: sidebar 主页面与右侧详情标签的作用域隔离；已发布 JSON 监控的确定性比较、原子检查点与清理/恢复边界；明确额度追加与累计用量/工作身份/安全续行边界；自动化通知意图与结果同事务、原子领取/提交回执及重启不盲目重发；自动化任务聊天独立绑定/普通聊天复用隔离、编辑标签/完整历史和精确结果定位；自动化明确补充关联与原始工作身份；自动化统一 occurrence 预算/唯一调用回执与容量再认领；自动化跨工作来源/证据与定向取消待退出；自动化事务受理/分离版本/投递意图及原生时钟权威；Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
 [POS]: 位于仓库根目录，作为 Codex / Claude / 其他代理的权威操作手册。
 
 [PROTOCOL]:
@@ -134,6 +134,14 @@
 - 同连接模型调用当前最多六项，独立工作区任务当前最多并行六项；相同员工会话文件互斥，允许宿主命令的任务与全部任务互斥。运行取消后，在执行适配器实际退出前不得释放资源占用。
 - 父子拆分与结果依赖分离；等待保存目标版本和周期，状态与定向通知同事务提交。仅负责人接续，失败依赖阻塞，子工作/重试/重新汇报共享原始预算；停止树不取消无父子归属的共享依赖。
 - 旧 run 不释放新 run 的执行权；已执行或结果不明的工具操作不得通过自动重试重放。重启中断工作，G4 验收前不自动恢复。
+- 自动化结构化监控仅读取明确授权聊天的已发布 JSON 来源；比较、累计阈值、冷却由代码决定，数据缺失/过期不能记作无变化。规则/来源证据、结果、成功检查点与通知意图同事务；失败不推进检查点，来源/规则/授权改变及备份恢复重建基线。停止后等待读取实际退出再释放容量，重启不自动重读；清空聊天同步清除私有比较值与检查点，保留触发去重身份。
+- 自动化通知意图与 occurrence 结果同事务，主进程原子领取后再提交系统通知；submitted 仅表示提交，不证明送达/已读。回执失联或提交中重启保留 unknown，不盲目重发；恢复备份不重发旧提醒。通知偏好、回执与业务交付/预算分离，点击使用明确消息或 occurrence 身份。
+- 新计划默认每次独立任务聊天，员工必须显式选择；旧计划保留指定聊天。聊天记录与 occurrence/预算/投递意图同事务绑定，准备失败可见，重复触发不新建聊天；普通单聊复用排除自动化聊天。编辑复用现有详情标签与草稿守卫；完整历史按稳定游标分页，结果跳转携带具体消息身份。
+- 自动化周期时钟仅用 Mastra 原生 schedules；产品定义/触发身份由 AutomationRepository 的 SQLite 事务管理。编辑、执行与日程版本分离，受理与待投递意图同事务，消息/轮次与消费意图同事务；提交后才调度。配置同步可有界重试，业务执行与已开始的数据库事务不得自动重放。
+
+- 自动化受理时原子创建每次触发的共享预算；初始判断、执行步骤、修复、记忆、子工作与重试按唯一请求身份预留/结算，未知用量不按零处理，不为普通聊天制造 Work。等待不重置绝对期限，恢复先事务认领计算槽；旧记录无可信请求账本时拒绝隐式续用。用户补充必须显式关联 occurrence，提问关联与消息同事务提交，仍用最初触发的工作身份；普通聊天不解除自动化等待。
+- 自动化追加预算必须由用户明确确认；额度前后值、累计已知/未知用量、原工作身份和确认消息同事务保留，并重新认领容量。只接续未完成且无待核对操作的工作，已交付工作与人工停止保持原边界；旧期限回调不得取消新额度，重启不自动续行。
+- 自动化来源由宿主写入 Work/Execution/Wake/Turn/Run，接续读取最新聊天时不改绑来源；独立结果依赖不取得归属或停止权。交付按本次拥有的工作及可检查证据汇总；停止先保存取消门禁，再定向取消，实际执行器退出后才终结。重启仅核对已提交结果，不调用模型或重放工具。
 
 - Mastra Trace 仅观测真实执行，绑定会话/轮次/员工/运行并随会话清理和备份；采集失败不重试业务工具，不把 Span 结束当作任务交付。会话输入框上方不展示状态条，回复旁图标进入 Trace；任务与产物只承载真实工作目标、交付状态与文件。
 
@@ -144,6 +152,11 @@
 - ACP 保持单聊显式任务、外部自有工具与新会话边界，不自动成为 Mastra 模型、群协作或 A2A 后端。
 
 # Frontend Rules
+
+## Sidebar 与详情标签
+
+- sidebar 是主页面导航；每个页面分别保存右侧详情 Tabs、选中项和显隐状态。跨页面不得展示或操作另一页的标签。
+- 切换主页面保留各页详情草稿和滚动，恢复该页自己的标签状态；隐藏页面的列表读取轮询按活跃状态暂停，不能因切换而重新发起检查或升级；已经受理的任务和完成回执不因此中断。
 
 ## 前端样式优先复用全局变量 (Prefer global.css)
 

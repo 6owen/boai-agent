@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 模型连接 ID、取消信号和一次只读判断/记忆或执行阶段。
- * [OUTPUT]: 默认六项跨会话共享的 FIFO 容量、有界限流退避及分离的等待/执行耗时。
+ * [OUTPUT]: 重试前允许宿主返回已预留的调用身份；默认六项跨会话共享的 FIFO 容量、有界限流退避及分离的等待/执行耗时。
  * [POS]: 协作模型准入；不决定员工参与，不重放 task 副作用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -60,7 +60,7 @@ export class ModelCapacity {
 
   async run<T>(connectionId: string, signal: AbortSignal, operation: () => Promise<T>, options: {
     retryRateLimit?: boolean
-    reserveRetry?(): Promise<void>
+    reserveRetry?(): Promise<unknown>
     timing?(timing: ModelTiming): Promise<void>
   } = {}): Promise<T> {
     const timing: ModelTiming = { queueMs: 0, executionMs: 0, backoffMs: 0, rateLimitRetries: 0 }

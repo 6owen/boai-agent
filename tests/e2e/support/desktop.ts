@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Playwright Electron、场景独立数据目录、可选打包入口与组件测试服务。
- * [OUTPUT]: 可重启的桌面生命周期、资源回收和逐次启动的失败证据。
+ * [OUTPUT]: 可选场景引导入口、可重启的真实桌面生命周期、资源回收和逐次启动的失败证据。
  * [POS]: Electron BDD 场景共享宿主；启动由 Given 控制，允许先准备旧数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,7 +14,7 @@ export class Desktop {
   readonly errors: string[] = []
   private application?: ElectronApplication
   private window?: Page
-  private options: { dataDir?: string; rendererURL?: string } = {}
+  private options: { dataDir?: string; rendererURL?: string; mainEntry?: string } = {}
   private readonly cleanup: (() => Promise<unknown>)[] = []
   private launchCount = 0
 
@@ -48,7 +48,7 @@ export class Desktop {
     })
   }
 
-  async start(options: { dataDir?: string; rendererURL?: string } = this.options) {
+  async start(options: { dataDir?: string; rendererURL?: string; mainEntry?: string } = this.options) {
     if (this.application) throw new Error('桌面已启动；使用 restart 保留数据后重启')
     this.options = options
     const env = { ...process.env, BOAI_DATA_DIR: options.dataDir ?? this.root, NODE_ENV: 'test' }
@@ -57,7 +57,7 @@ export class Desktop {
     if (options.rendererURL) (env as NodeJS.ProcessEnv).BOAI_RENDERER_URL = options.rendererURL
     const packaged = process.env.BOAI_TEST_PACKAGED_PATH
     this.application = await electron.launch({
-      ...(packaged ? { executablePath: packaged, args: [] } : { args: [resolve('.')] }),
+      ...(packaged ? { executablePath: packaged, args: [] } : { args: [options.mainEntry ?? resolve('.')] }),
       env,
     })
     this.launchCount++

@@ -1,9 +1,12 @@
 /*
- * [INPUT]: 领域类型、IPC 合同、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [INPUT]: 领域类型、IPC 合同、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
+ * [OUTPUT]: 通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { readMonitorArtifact } from './modules/automations/monitor-source'
+import { AutomationNotifications } from './modules/automations/automation-notifications'
+import type { AutomationNoticeReceipt } from '../shared/domain/automations'
 import type { StoredTraceSpan } from '../shared/domain/traces'
 import { conversationListUpdates, type ConversationListChange } from '../shared/domain/conversation-list'
 import { ConversationHistory } from './modules/conversations/history'
@@ -13,13 +16,14 @@ import { createHash } from 'node:crypto'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
 import { AutomationService, automationSchema } from './modules/automations/automation-service'
-import type { AutomationOrigin, AutomationOccurrence } from '../shared/domain/automations'
+import { aggregateAutomation, belongsToOccurrence } from './modules/automations/automation-results'
+import type { AutomationInput, AutomationDefinition, AutomationOrigin, AutomationOccurrence, AutomationBudgetRenewalInput } from '../shared/domain/automations'
 import { LaunchProfiles, profileSchema } from './modules/backends/profiles'
 import { runAcp } from './adapters/acp/client'
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
-import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
@@ -27,10 +31,22 @@ import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
 import { PARTICIPATION_TIMEOUT_MS } from './contracts'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
+import { LocalSkillUpdateTargets } from './modules/resources/local-skill-updates'
+import { LocalSkillCatalogService, type SkillDiscoveryOptions } from './modules/resources/local-skill-catalog'
+import { SkillMarketplace, marketplaceProviderSchema } from './modules/resources/skill-marketplace'
+import { SkillSources } from './adapters/skills/source'
+import type { DownloadTransport } from './adapters/skills/download'
+import { SkillManagement, scanSkillSchema, installSkillsSchema } from './modules/resources/skill-management'
+import { LocalSkillInstallTarget } from './modules/resources/local-skill-install'
+import { SkillUpdates, updateSkillSchema } from './modules/resources/skill-updates'
+import { ResourceCleanups } from './modules/resources/resource-cleanups'
+import { SkillLibraryExport, planSkillLibraryExportSchema, exportSkillLibrarySchema } from './modules/resources/skill-library-export'
+import { SkillCollectionRepository, collectionChangeSchema, detachSkillRecords } from './modules/resources/skill-collections'
 import { ProductStore, type StoredRecord } from './adapters/storage/product-store'
 import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
+import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { MemoryRepository } from './modules/memory/memory-repository'
 import { ModelCapacity } from './modules/collaboration/model-capacity'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
@@ -64,11 +80,20 @@ export class AppService {
   private readonly history: ConversationHistory
   private readonly clearingConversations = new Set<string>()
   private readonly store: ProductStore
+  private readonly notifications: AutomationNotifications
+  private readonly localSkills: LocalSkillCatalogService
+  private readonly marketplace: SkillMarketplace
+  private readonly skills: SkillManagement
+  private readonly skillUpdates: SkillUpdates
+  private readonly skillLibrary: SkillLibraryExport
+  private readonly resourceCleanups: ResourceCleanups
+  private readonly skillCollections: SkillCollectionRepository
   private readonly automations: AutomationService
   private readonly profiles: LaunchProfiles
   private externalTests=new Set<AbortController>()
   private externalTasks=new Set<Promise<void>>()
   private readonly employees: EmployeeService
+  private readonly contactList: ContactListRepository
   private connections = new Map<string, Connection>()
   private conversations = new Map<string, Conversation>()
   private resources = new Map<string, Resource>()
@@ -95,16 +120,57 @@ export class AppService {
   private initialized = false
   readonly dataPath: string
 
-  constructor(private readonly options: { dataPath: string; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { dataPath: string; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.contactList = new ContactListRepository(this.store)
+    this.notifications = new AutomationNotifications(this.store)
+    this.marketplace = new SkillMarketplace(options.skillMarketplaceFetch)
+    this.localSkills = new LocalSkillCatalogService(options.skillDiscovery)
+    this.skillCollections = new SkillCollectionRepository(this.store, id => this.localSkills.has(id))
+    this.resourceCleanups = new ResourceCleanups(this.store, this.dataPath, { invalidate: id => this.memory.invalidateResources([id]), failed: error => this.emit({ type: 'runtime-error', error }) })
+    this.skills = new SkillManagement(this.store, this.dataPath, {
+      resources: () => [...this.resources.values()], owner: id => { this.getAgent(id) },
+      critical: operation => this.serialize(() => {
+        if (this.closing || this.backingUp) fail('服务正在退出或备份，请稍后重试')
+        return operation()
+      }),
+      localChanged: () => this.localSkills.invalidate(), committed: resource => this.resources.set(resource.id, resource), changed: () => this.changed(),
+      failed: error => this.emit({ type: 'runtime-error', error }),
+    }, new SkillSources(this.dataPath, { transport: options.skillDownloads, marketplace: (request, signal) => this.marketplace.freshDetail(request, signal) }), new LocalSkillInstallTarget(options.skillDiscovery?.homeDir))
+    this.skillUpdates = new SkillUpdates(this.store, this.dataPath, this.skills, {
+      resource: id => { const resource = this.resources.get(id); if (!resource || resource.kind !== 'skill') return fail('技能不存在'); return clone(resource) },
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) return fail('服务正在退出或备份'); return action() }),
+      unused: id => this.assertSkillUnused(id), invalidateMemory: id => this.memory.invalidateResources([id]),
+      affectedEmployees: id => this.employees.values().filter(agent => agent.skillIds.includes(id)).map(({ id, name }) => ({ id, name })),
+      commit: async (tx, resource) => {
+        const agents = this.employees.values().filter(agent => agent.skillIds.includes(resource.id)).map(agent => ({ ...agent, configVersion: agent.configVersion + 1 }))
+        for (const agent of agents) await tx.put(record('agents', agent))
+        return async () => { this.resources.set(resource.id, resource); for (const agent of agents) this.employees.install(agent.id, agent); for (const agent of agents) await this.homes.commit(agent) }
+      },
+      changed: () => this.changed(), failed: error => this.emit({ type: 'runtime-error', error }),
+    }, new LocalSkillUpdateTargets(this.localSkills, options.skillDiscovery?.homeDir))
+    this.skillLibrary = new SkillLibraryExport(this.store, this.dataPath, {
+      resource: async id => {
+        this.skillUpdates.assertAvailable(id)
+        if (id.startsWith('local:')) {
+          const { skill } = await this.localSkills.detail(id)
+          return { id, name: skill.slug.split(':').at(-1)!, path: await this.localSkills.source(id) }
+        }
+        const resource = this.resources.get(id)
+        if (!resource || resource.kind !== 'skill') return fail('技能不存在')
+        return clone(resource)
+      },
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) return fail('服务正在退出或备份'); return action() }),
+      changed: () => this.changed(), failed: error => this.emit({ type: 'runtime-error', error }),
+    })
     this.history = new ConversationHistory(this.store, this.dataPath)
     this.works = new WorkRepository(this.store)
     this.profiles=new LaunchProfiles(this.store)
     this.homes = new WorkspaceService(this.dataPath)
     this.memory = new MemoryRepository(this.store)
     this.employees = new EmployeeService(this.store, this.homes, {
-      connection: id => this.getConnection(id), resource: id => this.resources.get(id),
+      connection: id => this.getConnection(id), resource: id => { this.skillUpdates.assertAvailable(id); return this.resources.get(id) },
       cancel: (id, reason) => this.cancelEmployee(id, reason),
       invalidateMemory: (id, matches) => this.invalidateEmployeeMemory(id, matches), changed: () => this.changed(),
     })
@@ -116,11 +182,37 @@ export class AppService {
       settled: (turn, participants, signal) => turn.wakeId ? Promise.resolve() : this.updateMemories(turn, participants, signal), idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
-      validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
-      dispatch:(definition,occurrence,origin)=>this.serialize(async()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份');if(this.automationFingerprint(definition.conversationId)!==definition.authorizedFingerprint)fail('自动化权限已变化');if(this.conversationBusy(definition.conversationId))fail('会话忙碌');return this.sendMessage({conversationId:definition.conversationId,content:definition.prompt,mentionIds:[],requestId:'automation-'+occurrence.id},origin)}),
-      inspect:occurrence=>this.inspectAutomation(occurrence),cancel:occurrence=>this.serialize(async()=>{const turn=occurrence.turnId?this.scheduler.turns.get(occurrence.turnId):undefined;if(turn&&(this.scheduler.hasActiveTurn(turn.id)||!['completed','failed','cancelled','interrupted','waiting_user','budget_exhausted'].includes(turn.status)))await this.cancelConversation(occurrence.conversationId)}),
-      changed:()=>this.emit({type:'changed'}),notify:occurrence=>this.emit({type:'automation:notice',occurrence}),
+      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
+      prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
+      readMonitor: async (definition, signal) => {
+        const source = definition.monitor?.source ?? fail('监控来源缺失')
+        const scope = await this.serialize(async () => {
+          if (this.closing || this.backingUp || this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
+          return { conversation: clone(this.getConversation(source.conversationId)), artifacts: (await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts')).filter(a => a.conversationId === source.conversationId) }
+        })
+        return readMonitorArtifact(this.dataPath, scope.conversation, scope.artifacts, source, signal)
+      },
+      dispatch: (definition, occurrence, origin, commit) => this.serialize(async () => {
+        if (this.closing || this.backingUp) fail('服务正在退出或备份')
+        if (definition.conversationPolicy === 'new-conversation') {
+          const conversation = (await this.store.load<Conversation>('conversations')).find(c => c.id === occurrence.conversationId)
+          if (!conversation || conversation.purpose !== 'automation' || conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id) fail('本次任务聊天未完成事务初始化')
+          this.conversations.set(conversation!.id, conversation!)
+        }
+        if (this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
+        if (this.conversationBusy(occurrence.conversationId)) fail('会话忙碌')
+        return this.sendMessage({ conversationId: occurrence.conversationId, content: definition.prompt, mentionIds: [], requestId: 'automation-' + occurrence.id }, origin, commit)
+      }),
+      inspect: occurrence => this.inspectAutomation(occurrence), cancel: occurrence => this.cancelAutomation(occurrence),
+      capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
+      changed:()=>this.emit({type:'changed'}),notify:()=>this.emit({type:'automation:notice'}),
     })
+  }
+
+  takeAutomationNotice() { return this.notifications.take() }
+  async settleAutomationNotice(input: AutomationNoticeReceipt) {
+    const value = z.object({ id: z.string().min(1).max(500), attemptId: z.string().uuid(), status: z.enum(['submitted', 'failed', 'unknown']), error: z.string().max(2000).optional() }).strict().parse(input)
+    if (await this.notifications.settle(value)) this.emit({ type: 'changed' })
   }
 
   async init() {
@@ -165,7 +257,14 @@ export class AppService {
     updates.push(...await this.employees.initialize())
     await this.store.write(updates, removed)
     await this.memory.init(); await this.works.init(); await this.scheduler.init()
+    const provenance: StoredRecord[] = []
+    for (const run of this.runs.values()) if (!run.origin) {
+      const origin = run.turnId ? this.scheduler.turns.get(run.turnId)?.origin : this.messages.get(run.triggerMessageId)?.origin
+      if (origin) { run.origin = origin; provenance.push(record('runs', run)) }
+    }
+    if (provenance.length) await this.store.write(provenance)
     await Promise.all(['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces'].map(folder => mkdir(join(this.dataPath, folder), { recursive: true })))
+    await this.resourceCleanups.init(); await this.skillUpdates.init(); await this.skillLibrary.init(); await this.skills.init()
     this.initialized = true
     await this.automations.init()
   }
@@ -187,11 +286,74 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    if (method === 'listLocalSkills') { const value = z.object({ refresh: z.boolean().optional() }).strict().optional().parse(input); return this.localSkills.list(value?.refresh) }
+    if (method === 'getLocalSkillDetail') { const value = lookupSchema.parse(input); this.skillUpdates.assertAvailable(value.id); return this.localSkills.detail(value.id) }
+    if (method === 'scanLocalSkill') {
+      const value = z.object({ id, ownerAgentId: id.optional(), requestId: id.optional() }).strict().parse(input)
+      return this.skills.scan({ source: await this.localSkills.source(value.id), kind: 'folder', ownerAgentId: value.ownerAgentId, requestId: value.requestId })
+    }
+    if (method === 'listSkillMarketplace') return this.marketplace.list(input)
+    if (method === 'getSkillMarketplaceDetail') return this.marketplace.detail(input)
+    if (method === 'refreshSkillMarketplace') return this.marketplace.invalidate(z.object({ provider: marketplaceProviderSchema }).strict().parse(input).provider)
+    if (method === 'getSkillDetail') { const value = z.object({ resourceId: id }).strict().parse(input); this.skillUpdates.assertAvailable(value.resourceId); return this.skills.detail(value.resourceId) }
+    if (method === 'readSkillFile') { const value = z.object({ resourceId: id, path: text(8000) }).strict().parse(input); this.skillUpdates.assertAvailable(value.resourceId); return this.skills.readFile(value.resourceId, value.path) }
+    if (method === 'checkSkillUpdate') return this.skillUpdates.check(lookupSchema.parse(input).id)
+    if (method === 'listSkillUpdateChecks') { z.undefined().parse(input); return this.skillUpdates.checks() }
+    if (method === 'checkAllSkillUpdates') { const value = z.object({ requestId: id, scope: z.literal('local').optional() }).strict().parse(input); return this.skillUpdates.checkAll(value.requestId, value.scope) }
+    if (method === 'getSkillUpdateBatch') { z.undefined().parse(input); return this.skillUpdates.latestBatch() }
+    if (method === 'cancelSkillUpdateBatch') { z.undefined().parse(input); return this.skillUpdates.cancelBatch() }
+    if (method === 'listResourceCleanups') { z.undefined().parse(input); return this.resourceCleanups.list() }
+    if (method === 'retryResourceCleanup') { const value = lookupSchema.parse(input); return this.serialize(async () => { try { await this.resourceCleanups.finish(value.id) } finally { this.changed() } }) }
+    if (method === 'updateSkill') return this.skillUpdates.update(updateSkillSchema.parse(input))
+    if (method === 'planSkillLibraryExport') return this.skillLibrary.plan(planSkillLibraryExportSchema.parse(input))
+    if (method === 'discardSkillLibraryExport') return this.skillLibrary.discard(lookupSchema.parse(input).id)
+    if (method === 'cancelSkillLibraryPreview') { z.undefined().parse(input); return this.skillLibrary.cancelPreparation() }
+    if (method === 'getContactList') { z.undefined().parse(input); return this.contactList.read() }
+    if (method === 'updateContactList') {
+      const value = contactListChangeSchema.parse(input)
+      return this.serialize(async () => { const result = await this.contactList.update(value.expectedRevision, value.action); this.changed(); return result })
+    }
+    if (method === 'getSkillCollections') { z.undefined().parse(input); return this.skillCollections.read() }
+    if (method === 'updateSkillCollections') {
+      const value = collectionChangeSchema.parse(input)
+      return this.serialize(async () => { const result = await this.skillCollections.update(value.expectedRevision, value.action); this.changed(); return result })
+    }
+    if (method === 'scanSkillSource') return this.skills.scan(scanSkillSchema.parse(input))
+    if (method === 'cancelSkillScan') return this.skills.cancelScan(lookupSchema.parse(input).id)
+    if (method === 'discardSkillScan') return this.skills.discardScan(lookupSchema.parse(input).id)
+    if (method === 'listSkillOperations') { z.undefined().parse(input); return (await this.skills.listOperations()).map(value => this.skillLibrary.operationStatus(this.skillUpdates.operationStatus(value))) }
+    if (method === 'listSkillInstallations') {
+      z.undefined().parse(input)
+      const installations = await this.skills.listInstallations()
+      if (!installations.some(value => value.resourceId.startsWith('local:'))) return installations
+      const localIds = new Set((await this.localSkills.list()).skills.map(skill => skill.id))
+      return installations.filter(value => !value.resourceId.startsWith('local:') || localIds.has(value.resourceId))
+    }
+    if (method === 'getSkillPreview') { const value = z.object({ scanId: id, candidateId: id }).strict().parse(input); return this.skills.preview(value.scanId, value.candidateId) }
+    if (method === 'readSkillPreviewFile') { const value = z.object({ scanId: id, candidateId: id, path: text(8000) }).strict().parse(input); return this.skills.readPreviewFile(value.scanId, value.candidateId, value.path) }
+    if (method === 'installSkills') return this.skills.install(installSkillsSchema.parse(input))
+    if (method === 'getSkillOperation') return this.skillLibrary.operationStatus(this.skillUpdates.operationStatus(await this.skills.getOperation(lookupSchema.parse(input).id)))
+    if (method === 'cancelSkillOperation') { const value = lookupSchema.parse(input); await this.skills.cancel(value.id); await this.skillUpdates.cancel(value.id); return this.skillLibrary.cancel(value.id) }
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
+    if(method==='listAutomationHistory')return this.automations.history(input)
+    if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
     if(method==='saveAutomation')return this.automations.save(automationSchema.parse(input))
+    if(method==='previewAutomation')return this.automations.preview(input)
     if(method==='pauseAutomation'||method==='deleteAutomation')return this.automations.pause(lookupSchema.parse(input).id,method==='deleteAutomation')
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
     if(method==='runAutomation'){const value=z.object({id,requestId:id}).strict().parse(input);return this.automations.run(value.id,value.requestId)}
+    if(method==='testLaunchProfileDraft') {
+      const controller=new AbortController(),directory=join(this.dataPath,'external-probes',`draft-${randomUUID()}`)
+      this.externalTests.add(controller)
+      try {
+        const profile=await this.serialize(async()=>{const prepared=await this.profiles.prepare(profileSchema.parse(input));this.profiles.forgetDraftVerification(prepared);return prepared})
+        const result=await runAcp({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
+        return await this.serialize(async()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');this.profiles.recordDraftVerification(profile,result.verified);return result.verified})
+      } catch(error) {
+        if(error instanceof RequestError&&error.code===RequestError.authRequired().code)throw new Error('外部程序需要登录，请在程序自身完成认证后重新测试。')
+        throw error
+      } finally { try { await rm(directory,{recursive:true,force:true}) } finally { this.externalTests.delete(controller) } }
+    }
     if(method==='testLaunchProfile') {
       const profile=this.profiles.get(lookupSchema.parse(input).id),controller=new AbortController();this.externalTests.add(controller)
       try {
@@ -258,6 +420,7 @@ export class AppService {
           return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
         }
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
+        case 'replyAutomation': return this.replyAutomation(z.object({ occurrenceId: id, content: text(100000), requestId: id, renewBudget: z.object({ expectedVersion: z.number().int().positive(), allowance: z.literal('standard-v1') }).strict().optional() }).strict().parse(input))
         case 'cancelRun': { const { conversationId, workId } = z.object({ conversationId: id, workId: id.optional() }).strict().parse(input); this.getConversation(conversationId); return workId ? this.cancelWork(conversationId, workId) : this.cancelConversation(conversationId) }
         case 'approve': { const value = z.object({ id, approved: z.boolean() }).strict().parse(input); return this.resolveApproval(value.id, value.approved) }
         case 'importResource': {
@@ -341,6 +504,7 @@ export class AppService {
       const prior = previous.entries.find(entry => entry.id === input.id)
       input.sourceMessageIds ??= prior?.sourceMessageIds ?? []
       input.sourceResourceIds = this.inheritedResources(input.sourceMessageIds, input.sourceResourceIds ?? prior?.sourceResourceIds ?? [])
+      for (const resourceId of input.sourceResourceIds) this.skillUpdates.assertAvailable(resourceId)
       const permitted = new Set(query.conversationId ? this.authorizedResources(this.getAgent(query.agentId), this.getConversation(query.conversationId)).map(resource => resource.id) : [...this.getAgent(query.agentId).skillIds, ...this.getAgent(query.agentId).knowledgeIds])
       if (input.sourceResourceIds.some(resourceId => !permitted.has(resourceId))) fail('记忆来源包含当前未授权资料')
       result = await this.memory.save(input)
@@ -440,7 +604,7 @@ export class AppService {
     if (previous && input.expectedConfigVersion !== undefined && (previous.configVersion ?? 1) !== input.expectedConfigVersion) fail('群设置已更新，请刷新后保存')
     if (previous && previous.kind !== input.kind) fail('不能修改会话类型')
     if (!previous && input.kind === 'direct') {
-      const existing = [...this.conversations.values()].find(conversation => conversation.kind === 'direct' && conversation.agentIds[0] === input.agentIds[0])
+      const existing = [...this.conversations.values()].find(conversation => conversation.kind === 'direct' && conversation.purpose !== 'automation' && conversation.agentIds[0] === input.agentIds[0])
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
@@ -468,27 +632,47 @@ export class AppService {
   }
   private newRun(conversation: Conversation, agentId: string, triggerMessageId: string, turnId?: string, phase: AgentRun['phase'] = 'execution'): AgentRun {
     const agent = this.getAgent(agentId)
-    return { id: randomUUID(), conversationId: conversation.id, phase, turnId, agentId, agentName: agent.name, triggerMessageId, messageId: phase === 'execution' ? randomUUID() : '', status: 'queued', createdAt: now(), toolEvents: [] }
+    const origin = turnId ? this.scheduler.turns.get(turnId)?.origin : this.messages.get(triggerMessageId)?.origin
+    return { ...(origin ? { origin } : {}), id: randomUUID(), conversationId: conversation.id, phase, turnId, agentId, agentName: agent.name, triggerMessageId, messageId: phase === 'execution' ? randomUUID() : '', status: 'queued', createdAt: now(), toolEvents: [] }
   }
-  private async sendMessage(input: z.infer<typeof sendSchema>, origin?: AutomationOrigin) {
-    const fingerprint = JSON.stringify({ kind: 'message', ...input, ...(origin?{origin}:{}) })
+  private async sendMessage(input: z.infer<typeof sendSchema>, origin?: AutomationOrigin, commit?: (message: Message, records: StoredRecord[]) => Promise<void>, humanReply = false, renewBudget?: AutomationBudgetRenewalInput) {
+    const fingerprint = JSON.stringify({ kind: 'message', ...input, ...(origin?{origin}:{}), ...(humanReply ? { humanReply } : {}), ...(renewBudget ? { renewBudget } : {}) })
     const existing = this.requests.get(input.requestId)
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
-    const conversation = this.getConversation(input.conversationId)
+    const conversation = commit ? clone(this.getConversation(input.conversationId)) : this.getConversation(input.conversationId)
     if(conversation.agentIds.some(id=>this.getAgent(id).executionBackend?.kind==='acp-local'))fail('此外部员工只支持显式任务，请点击执行外部任务。')
     for (const member of input.mentionIds) if (!conversation.agentIds.includes(member)) fail('@ 的员工不是当前会话的有效成员')
     if (input.replyToMessageId && this.messages.get(input.replyToMessageId)?.conversationId !== conversation.id) fail('引用消息不属于当前会话')
     if (input.stopPrevious) await this.cancelConversation(conversation.id)
     const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: '我', content: input.content, status: 'completed' })
-    if(origin){message.origin=origin;message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}
+    if(origin){message.origin=origin;if(!humanReply){message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}}
     message.mentionIds = input.mentionIds; message.replyToMessageId = input.replyToMessageId
     const prepared = this.scheduler.prepare(conversation, message)
     const request: RequestRecord = { id: input.requestId, fingerprint, messageId: message.id }
     conversation.lastMessageAt = message.createdAt
-    await this.store.write([record('messages', message), record('requests', request), record('conversations', conversation), ...prepared.records])
+    const records = [record('messages', message), record('requests', request), record('conversations', conversation), ...prepared.records]
+    if (commit) await commit(message, records)
+    else await this.store.write(records)
+    this.conversations.set(conversation.id, conversation)
     this.messages.set(message.id, message); this.requests.set(request.id, request)
     this.emit({ type: 'message', message }); this.changed(conversation.id); this.scheduler.accept(prepared)
     return clone(message)
+  }
+
+  private async replyAutomation(input: { occurrenceId: string; content: string; requestId: string; renewBudget?: AutomationBudgetRenewalInput }) {
+    const o = await this.automations.replyContext(input.occurrenceId)
+    const origin = this.messages.get(o.messageId!)?.origin
+    if (!origin || !belongsToOccurrence(origin, o)) fail('本次运行缺少可信原始来源')
+    const reply = await this.sendMessage({ conversationId: o.conversationId, content: input.content, requestId: input.requestId, mentionIds: [] }, origin, async (_message, records) => {
+      if (this.conversationBusy(o.conversationId) || [...this.activeAdapters].some(id => this.runs.get(id)?.conversationId === o.conversationId)) fail('会话仍有执行中的任务，请稍后补充')
+      if (input.renewBudget) {
+        if (this.automationFingerprint(o.conversationId) !== origin!.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
+        const next = await this.works.renewAutomation(origin!, o.conversationId, input.renewBudget, records)
+        this.automations.budgetRenewed(next)
+      } else await this.automations.reply(origin!, o.conversationId, o.stateVersion, records)
+    }, true, input.renewBudget)
+    if (input.renewBudget) this.scheduleWork(o.conversationId)
+    return reply
   }
 
   private externalWorkspace(run:AgentRun){const root=join(this.dataPath,'external-workspaces',run.agentId,run.conversationId);return {root,runPath:join(root,'runs',run.id),workPath:join(root,'work'),sharedPath:this.getConversation(run.conversationId).workspacePath}}
@@ -497,8 +681,55 @@ export class AppService {
   private async publishExternal(id:string,relativePath:string){const run=this.externalRun(id),agent=this.getAgent(run.agentId),workspace=this.externalWorkspace(run);await publishArtifact({agent,runId:run.id,signal:new AbortController().signal,onArtifact:async artifact=>{const saved={...artifact,id:artifact.id!,conversationId:run.conversationId};await this.store.write([record('artifacts',saved)]);this.artifacts.set(saved.id,saved)}},workspace,`self:/runs/${run.id}/${relativePath}`);this.changed(run.conversationId)}
 
   private conversationBusy(conversationId:string){return this.clearingConversations.has(conversationId)||[...this.scheduler.turns.values()].some(t=>t.conversationId===conversationId&&(this.scheduler.hasActiveTurn(t.id)||!['completed','failed','cancelled','interrupted','budget_exhausted','waiting_user'].includes(t.status)))||[...this.runs.values()].some(r=>r.conversationId===conversationId&&!terminal.has(r.status))}
-  private automationFingerprint(conversationId:string){const c=this.getConversation(conversationId);const agents=c.agentIds.map(id=>this.getAgent(id));for(const a of agents){if(!a.active||a.executionBackend?.kind==='acp-local')fail('自动化只支持启用的模型 API 员工');if(a.allowCommands)fail('自动化暂不支持命令执行；请先关闭员工的命令权限');const connection=this.getConnection(a.connectionId);if(!a.modelId&&!connection.defaultModel)fail('员工尚未配置模型')}return createHash('sha256').update(JSON.stringify({conversation:{id:c.id,version:c.configVersion,members:c.agentIds,shared:c.sharedKnowledgeIds},agents:agents.map(a=>({id:a.id,version:a.configVersion,connection:this.getConnection(a.connectionId)}))})).digest('hex')}
-  private inspectAutomation(o:AutomationOccurrence):Partial<AutomationOccurrence>|undefined {if(!o.turnId)return;const turn=this.scheduler.turns.get(o.turnId);if(!turn)return;const runs=[...this.runs.values()].filter(r=>r.turnId===turn.id),messages=[...this.messages.values()].filter(m=>m.turnId===turn.id&&m.senderType==='agent'&&m.status==='completed');const ended=['completed','failed','cancelled','interrupted','budget_exhausted','waiting_user'].includes(turn.status)&&!this.scheduler.hasActiveTurn(turn.id)&&runs.every(r=>terminal.has(r.status));const status:AutomationOccurrence['status']=ended?(turn.status==='budget_exhausted'?'failed':turn.status as AutomationOccurrence['status']):runs.some(r=>r.status==='waiting_approval')?'waiting_approval':'running';const usage:NonNullable<AutomationOccurrence['usage']>={};for(const key of ['inputTokens','outputTokens','totalTokens']as const){const values=runs.map(r=>r.usage?.[key]).filter((v):v is number=>v!==undefined);if(values.length)usage[key]=values.reduce((a,b)=>a+b,0)}return {status,runIds:runs.map(r=>r.id),resultMessageIds:messages.map(m=>m.id),modelCalls:turn.modelCalls,usage,...(ended?{finishedAt:turn.finishedAt??now(),reason:turn.reason}:{})}}
+  private automationFingerprint(target: string | AutomationInput) {
+    const c = typeof target === 'string' ? this.getConversation(target) : target.conversationPolicy !== 'new-conversation' ? this.getConversation(target.conversationId!) : undefined
+    const agentIds = c?.agentIds ?? (typeof target !== 'string' ? target.employeeIds! : [])
+    const agents = agentIds.map(id => this.getAgent(id))
+    for (const a of agents) {
+      if (!a.active || a.executionBackend?.kind === 'acp-local') fail('自动化只支持启用的模型 API 员工')
+      if (a.allowCommands) fail('自动化暂不支持命令执行；请先关闭员工的命令权限')
+      const connection = this.getConnection(a.connectionId)
+      if (!a.modelId && !connection.defaultModel) fail('员工尚未配置模型')
+    }
+    // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
+    const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [] } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
+    return createHash('sha256').update(JSON.stringify({ conversation: scope, agents: agents.map(a => ({ id: a.id, version: a.configVersion, connection: this.getConnection(a.connectionId) })) })).digest('hex')
+  }
+  private async prepareAutomationConversation(d: AutomationDefinition, o: AutomationOccurrence): Promise<StoredRecord[]> {
+    const input = conversationSchema.parse({ kind: 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
+    for (const id of input.agentIds) this.getAgent(id)
+    const conversation: Conversation = { ...input, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
+    await mkdir(conversation.workspacePath, { recursive: true })
+    return [record('conversations', conversation)]
+  }
+  private async inspectAutomation(o: AutomationOccurrence): Promise<Partial<AutomationOccurrence> | undefined> {
+    const { workItems, workWakes, workBudgets } = await this.works.view(o.conversationId)
+    const artifacts = [...this.artifacts.values()].filter(artifact => artifact.conversationId === o.conversationId)
+    const verifiedArtifactIds = new Set<string>(), root = this.conversations.get(o.conversationId)?.workspacePath
+    if (root) for (const artifact of artifacts) {
+      if (!belongsToOccurrence(this.runs.get(artifact.runId ?? '')?.origin, o)) continue
+      try { const path = await restrictedPath([root], artifact.path); if ((await lstat(path)).isFile()) verifiedArtifactIds.add(artifact.id) } catch { /* Missing or escaped files cannot prove delivery. */ }
+    }
+    return aggregateAutomation(o, {
+      turns: [...this.scheduler.turns.values()], runs: [...this.runs.values()], messages: [...this.messages.values()],
+      works: workItems, wakes: workWakes, artifacts, verifiedArtifactIds, budget: workBudgets.find(budget => budget.id === o.budgetId),
+      activeRunIds: new Set([...this.runControllers.keys(), ...this.activeAdapters]),
+      activeTurnIds: new Set([...this.scheduler.turns.keys()].filter(id => this.scheduler.hasActiveTurn(id))),
+    })
+  }
+  /** The occurrence cancellation fence is committed before this runs under the host critical section. */
+  private async cancelAutomation(o: AutomationOccurrence) {
+    const owned = (await this.works.view(o.conversationId)).workItems.filter(work => belongsToOccurrence(work.origin, o))
+    const ids = new Set(owned.map(work => work.id)), reason = o.reason ?? '用户停止本次执行'
+    for (const root of owned.filter(work => !work.parentWorkId || !ids.has(work.parentWorkId))) for (const id of await this.works.cancelTree(root.id, reason, o.cancellationCause ?? 'user')) ids.add(id)
+    const turnIds = new Set([...this.scheduler.turns.values()].filter(turn => turn.conversationId === o.conversationId && (belongsToOccurrence(turn.origin, o) || turn.id === o.turnId || !!turn.workId && ids.has(turn.workId))).map(turn => turn.id))
+    await this.scheduler.cancelTurns(turnIds, reason)
+    for (const run of this.runs.values()) if (run.conversationId === o.conversationId && (belongsToOccurrence(run.origin, o) || !!run.turnId && turnIds.has(run.turnId) || !!run.workId && ids.has(run.workId))) {
+      this.runControllers.get(run.id)?.abort(new Error(reason))
+      if (!terminal.has(run.status)) { await this.finishRun(run, 'cancelled', reason); await this.clearApprovals(run.id) }
+    }
+    this.changed(o.conversationId)
+  }
 
   private async sendExternalTask(input: {conversationId:string;content:string;requestId:string}) {
     const fingerprint=JSON.stringify({kind:'external-task',...input}),existing=this.requests.get(input.requestId)
@@ -528,6 +759,7 @@ export class AppService {
   }
 
   private authorizedResources(agent: DigitalAgent, conversation: Conversation): Resource[] {
+    for (const id of agent.skillIds) this.skillUpdates.assertAvailable(id)
     return authorizedResources(agent, conversation, this.resources.values())
   }
   private contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Message[] {
@@ -550,8 +782,8 @@ export class AppService {
     return this.serialize(async () => {
     signal.throwIfAborted()
     const conversation = this.getConversation(run.conversationId)
-    const origin=this.messages.get(turn.triggerMessageId)?.origin
-    if(origin&&this.automationFingerprint(conversation.id)!==origin.authorizedFingerprint)fail('自动化授权的员工或会话配置已变更')
+    const origin = run.origin ?? turn.origin
+    if (origin) await this.automations.assertExecutable(origin, conversation.id)
     const previousVersion = this.getAgent(run.agentId).configVersion
     const agent = await this.employees.reconcile(run.agentId)
     if (agent.configVersion !== previousVersion) {
@@ -569,13 +801,19 @@ export class AppService {
     const profile = await this.memory.get({ agentId: agent.id, scope: 'profile' })
     const allowedResources = new Set(this.authorizedResources(agent, conversation).map(resource => resource.id))
     const messages = this.contextMessages(conversation, turn.triggerMessageId, throughSequence), visibleMessageIds = new Set(messages.map(message => message.id))
+    let continuation: EngineContext['continuation']
+    if (origin && (turn.replyToTurnIds?.length || turn.resumesTurnIds?.length || turn.resumesRunIds?.length)) {
+      const o = await this.automations.replyContext(origin.occurrenceId)
+      if (!o.messageId || !visibleMessageIds.has(o.messageId) || turn.replyToTurnIds?.some(id => !messages.some(message => message.turnId === id && message.senderType === 'agent'))) fail('补充信息缺少当前获准的原始请求或提问上下文')
+      continuation = { originalRequestId: o.messageId!, replyToTurnIds: [...(turn.replyToTurnIds ?? [])], ...(turn.resumesTurnIds?.length ? { resumesTurnIds: [...turn.resumesTurnIds] } : {}), ...(turn.resumesRunIds?.length ? { resumesRunIds: [...turn.resumesRunIds] } : {}) }
+    }
     const combined = { ...memory, entries: [...profile.entries, ...memory.entries].filter(entry => entry.sourceResourceIds.every(id => allowedResources.has(id)) && entry.sourceMessageIds.every(id => { const runId = this.messages.get(id)?.runId; return (entry.scope === 'profile' || visibleMessageIds.has(id)) && (!runId || !this.snapshots.get(runId)?.invalidated) })) }
     const loaded = await this.homes.load(agent, conversation, combined, run.id)
     signal.throwIfAborted()
     const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, conversation, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.entries.map(entry => entry.id) })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    return { agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: [...this.scheduler.contributions.values()].filter(item => item.turnId === turn.id).map(clone), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+    return { agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: [...this.scheduler.contributions.values()].filter(item => item.turnId === turn.id).map(clone), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       onTrace: async span => {
         if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
         const value: StoredTraceSpan = { ...span, conversationId: run.conversationId, runId: run.id, agentId: run.agentId, turnId: run.turnId }
@@ -587,19 +825,25 @@ export class AppService {
         await this.store.write([record('runs', run)])
         this.changed(run.conversationId)
       },
-      onAdditionalModelCall: async () => {
+      onAdditionalModelCall: phase => this.serialize(async () => {
         signal.throwIfAborted()
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
         await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
+        if (run.origin) return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.workId) await this.works.reserveCall(run.id)
         signal.throwIfAborted()
-      },
+      }),
+      onModelCallUsage: run.origin ? async (callId, usage) => {
+        if (this.closing) return
+        const budget = await this.works.settleAutomationCall(run.id, callId, usage)
+        if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限')
+      } : undefined,
       onUsage: async usage => {
         if (signal.aborted || terminal.has(run.status) || this.closing) return
         const clean = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage)
         const delta = clean.outputTokens === undefined ? undefined : clean.outputTokens - (run.usage?.outputTokens ?? 0)
         run.usage = { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
-        if (run.workId) await this.works.usage(run.id, clean)
+        if (run.workId && !run.origin) await this.works.usage(run.id, clean)
         if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta)
       },
     }
@@ -656,7 +900,7 @@ export class AppService {
           context.work = await this.serialize(async () => {
             effective.throwIfAborted()
             if (!this.scheduler.canStartWork(turn.id)) throw new WorkUnavailableError('已有用户新消息，本轮不再开始新工作')
-            let intent = decision.work ?? { key: 'main', scope: this.messages.get(turn.triggerMessageId)!.content, deliverable: decision.purpose ?? '完成用户原始请求中的交付目标' }
+            let intent = decision.work ?? { key: 'main', scope: this.messages.get(context.continuation?.originalRequestId ?? turn.triggerMessageId)!.content, deliverable: decision.purpose ?? '完成用户原始请求中的交付目标' }
             if (turn.workId) {
               const retryWork = (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) ?? fail('重试的原工作不存在')
               intent = { key: retryWork.key, scope: retryWork.scope, deliverable: retryWork.deliverable, workId: retryWork.id, expectedVersion: retryWork.version }
@@ -666,7 +910,7 @@ export class AppService {
               const existing = (await this.works.view(conversation.id)).workItems.find(work => work.id === intent.workId)
               if (!existing || !visible.has(existing.sourceMessageId) || !existing.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该工作')
             }
-            return this.works.claim({ conversationId: conversation.id, sourceMessageId: turn.triggerMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId })
+            return this.works.claim({ conversationId: conversation.id, sourceMessageId: turn.triggerMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId, origin: turn.origin })
           })
         } catch (error) {
           if (!(error instanceof WorkUnavailableError)) throw error
@@ -744,9 +988,10 @@ export class AppService {
         if (index < 0) run.toolEvents.push(safe); else run.toolEvents[index] = safe
         await this.store.write([record('runs', run)]); if (alive()) this.changed(conversation.id)
       }
-      context.approveCommand = (command, cwd) => this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !this.messages.get(turn.triggerMessageId)?.origin)
+      context.approveCommand = (command, cwd) => this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !run.origin)
       context.onArtifact = artifact => this.serialize(async () => {
         if (!alive()) throw new Error('任务已停止，不能发布产物')
+        if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
         if (!isWithin(conversation.workspacePath, artifact.path)) fail('发布产物不在本群共享目录内')
         const saved = { ...artifact, id: artifact.id ?? randomUUID(), conversationId: conversation.id, ownerAgentId: run.agentId, runId: run.id, publishedAt: now() }
         await this.store.write([record('artifacts', saved)]); this.artifacts.set(saved.id, saved); this.changed(conversation.id)
@@ -765,6 +1010,7 @@ export class AppService {
       if (!outcomeReported && produced.length) outcome = { disposition: 'progress', summary: '已登记产物，尚未声明原始目标已经交付', evidence: produced.map(artifact => ({ kind: 'artifact', reference: artifact.id })) }
       const commit = async () => {
         effective.throwIfAborted()
+        if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
         const current = this.getConversation(conversation.id), snapshot = this.snapshots.get(run.id)!
         if (!alive() || !current.agentIds.includes(run.agentId) || snapshot.invalidated || this.getAgent(run.agentId).configVersion !== snapshot.agent.configVersion || (current.configVersion ?? 0) !== (snapshot.conversation.configVersion ?? 0)) fail('当前运行已失去发布权限')
         const completedMessage = run.responseKind === 'task'
@@ -816,9 +1062,9 @@ export class AppService {
             return 'deferred'
           }
           await this.works.reserveReport(run.id)
-          await context.onAdditionalModelCall!()
+          const reportCall = await context.onAdditionalModelCall!('report')
           const baseline = { ...run.usage }
-          const reportContext: EngineContext = { ...context, ...stale, resources: [], responseKind: 'chat',
+          const reportContext: EngineContext = { ...context, ...stale, modelCallId: typeof reportCall === 'string' ? reportCall : undefined, resources: [], responseKind: 'chat',
             workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, delegateWork: undefined, waitForWork: undefined,
             work: { ...context.work!, outcome, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) },
             onDelta: async () => {}, onTool: async () => { throw new Error('重新汇报不允许执行工具') }, approveCommand: async () => false,
@@ -862,6 +1108,7 @@ export class AppService {
         const candidates = await this.invokeModel(run, context, ctx => this.options.engine.extractMemory!(ctx), 30_000)
         await this.serialize(async () => {
           effective.throwIfAborted()
+          if (run.origin) await this.automations.assertExecutable(run.origin, turn.conversationId)
           const current = this.getConversation(turn.conversationId), currentAgent = this.getAgent(agentId)
           if (!current.agentIds.includes(agentId)) fail('员工已移出本会话')
           const withProvenance = candidates.map(candidate => ({ ...candidate, sourceResourceIds: this.inheritedResources(candidate.sourceMessageIds, candidate.sourceResourceIds ?? []) }))
@@ -879,25 +1126,36 @@ export class AppService {
     const previousTiming = run.timing
     const earlierAttempts: ModelUsage = {}
     let attemptUsage: ModelUsage = {}, started = false
+    let reservedCallId = context.modelCallId
     const deadline = new AbortController(), signal = AbortSignal.any([context.signal, deadline.signal])
     return withAbort(this.modelCapacity.run(context.connection.id, signal, async () => {
       if (started) for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (attemptUsage[field] !== undefined) earlierAttempts[field] = (earlierAttempts[field] ?? 0) + attemptUsage[field]!
       started = true; attemptUsage = {}
+      if (run.origin && !reservedCallId) reservedCallId = await this.serialize(async () => {
+        signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
+        await this.automations.assertExecutable(run.origin!, run.conversationId)
+        return this.works.reserveAutomationCall(run, randomUUID(), run.phase ?? 'execution')
+      })
+      const modelCallId = reservedCallId; reservedCallId = undefined
       // Queueing is governed by turn cancellation; the phase deadline starts after admission.
       const timer = timeoutMs ? setTimeout(() => deadline.abort(new DOMException('模型阶段超时', 'TimeoutError')), timeoutMs) : undefined
       timer?.unref()
       signal.throwIfAborted()
       // The caller can cancel immediately, but the permit belongs to the actual adapter lifetime.
       this.activeAdapters.add(run.id)
-      try { return await operation({ ...context, signal, onUsage: context.onUsage ? async usage => {
+      try { return await operation({ ...context, signal, modelCallId, onUsage: context.onUsage ? async usage => {
         attemptUsage = usage
         const cumulative = { ...earlierAttempts }
         for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (earlierAttempts[field] ?? 0) + usage[field]!
         await context.onUsage!(cumulative)
-      } : undefined }) } finally { this.activeAdapters.delete(run.id); if (timer) clearTimeout(timer) }
+      } : undefined }) } finally { this.activeAdapters.delete(run.id); if (timer) clearTimeout(timer); if (run.origin) this.changed(run.conversationId) }
     }, {
       retryRateLimit: readOnly,
-      reserveRetry: context.onAdditionalModelCall,
+      reserveRetry: async () => {
+        if (!context.onAdditionalModelCall) fail('宿主未提供重试预算')
+        const callId = await context.onAdditionalModelCall!()
+        reservedCallId = typeof callId === 'string' ? callId : undefined
+      },
       timing: async timing => {
         if (this.closing || terminal.has(run.status)) return
         run.timing = { queueMs: (previousTiming?.queueMs ?? 0) + timing.queueMs, executionMs: (previousTiming?.executionMs ?? 0) + timing.executionMs, backoffMs: (previousTiming?.backoffMs ?? 0) + timing.backoffMs, rateLimitRetries: (previousTiming?.rateLimitRetries ?? 0) + timing.rateLimitRetries }
@@ -1024,18 +1282,35 @@ export class AppService {
     this.changed(conversationId)
   }
 
+  private async assertSkillUnused(id: string) {
+    const bound = new Set(this.employees.values().filter(agent => agent.skillIds.includes(id)).map(agent => agent.id))
+    for (const run of this.runs.values()) if (this.runControllers.has(run.id) || this.activeAdapters.has(run.id) || !terminal.has(run.status)) {
+      const snapshot = this.snapshots.get(run.id)
+      if (bound.has(run.agentId) || snapshot?.resources.some(resource => resource.id === id) || snapshot?.agent.allowCommands) fail('此技能仍有运行或执行器正在使用，请结束相关任务后重试')
+    }
+    for (const conversation of this.conversations.values()) {
+      if (!conversation.agentIds.some(id => bound.has(id))) continue
+      if (this.conversationBusy(conversation.id)) fail('已绑定员工仍有活动轮次，请结束后重试')
+      const view = await this.works.view(conversation.id)
+      if (view.workItems.some(work => bound.has(work.ownerAgentId) && ['ready', 'running', 'waiting', 'blocked'].includes(work.status))) fail('已绑定员工仍有活动或等待中的工作，请结束后重试')
+    }
+  }
   private async removeResource(id: string) {
     const resource = this.resources.get(id) ?? fail('资源不存在')
+    this.skillUpdates.assertAvailable(id)
     for (const agent of this.employees.values()) if ([...agent.skillIds, ...agent.knowledgeIds].includes(id)) await this.cancelEmployee(agent.id, '绑定资源已撤销')
     await this.cancelWhere(run => run.phase === 'coordination' || this.snapshots.get(run.id)?.resources.some(resource => resource.id === id) === true || [...(this.employees.find(run.agentId)?.skillIds ?? []), ...(this.employees.find(run.agentId)?.knowledgeIds ?? [])].includes(id), '绑定资源已撤销')
+    if (resource.kind === 'skill') await this.assertSkillUnused(id)
     const updates: StoredRecord[] = []
     for (const agent of this.employees.values()) if (agent.skillIds.includes(id) || agent.knowledgeIds.includes(id)) { agent.skillIds = agent.skillIds.filter(value => value !== id); agent.knowledgeIds = agent.knowledgeIds.filter(value => value !== id); agent.configVersion++; updates.push(record('agents', agent)) }
     for (const conversation of this.conversations.values()) if (conversation.sharedKnowledgeIds.includes(id)) { conversation.sharedKnowledgeIds = conversation.sharedKnowledgeIds.filter(value => value !== id); updates.push(record('conversations', conversation)) }
-    await this.store.write(updates, [{ collection: 'resources', id }]); for (const update of updates) if (update.collection === 'agents') this.employees.install(update.id, update.value as DigitalAgent); this.resources.delete(id)
-    await this.memory.invalidateResources([id])
-    const root = resource.ownerAgentId ? resource.path : join(this.dataPath, resource.kind === 'skill' ? 'skills' : 'knowledge', id)
-    if (isWithin(this.dataPath, root)) await rm(root, { recursive: true, force: true })
-    this.changed()
+    await this.store.transaction(async tx => {
+      for (const update of updates) await tx.put(update)
+      await tx.remove('resources', id)
+      if (resource.kind === 'skill') await detachSkillRecords(tx, id)
+      await this.resourceCleanups.prepare(tx, resource)
+    }); for (const update of updates) if (update.collection === 'agents') this.employees.install(update.id, update.value as DigitalAgent); this.resources.delete(id)
+    try { await this.resourceCleanups.finish(id) } finally { this.changed() }
   }
   private async retry(id: string, requestId: string) {
     const fingerprint = JSON.stringify({ kind: 'retry', id })
@@ -1049,16 +1324,26 @@ export class AppService {
     if (!conversation.agentIds.includes(original.agentId) || !this.getAgent(original.agentId).active) fail('原员工已不在会话中')
     const originalMessage = this.messages.get(original.triggerMessageId) ?? fail('原用户消息不存在')
     const prepared = this.scheduler.prepare({ ...conversation, agentIds: [original.agentId] }, { ...originalMessage, mentionIds: [original.agentId] })
+    if (original.origin) {
+      if (this.automationFingerprint(conversation.id) !== original.origin.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
+    }
+    prepared.turn.origin = original.origin ? clone(original.origin) : undefined
+    if (original.origin && !original.workId) prepared.turn.resumesRunIds = [original.id]
     if (original.workId) prepared.turn.workId = original.workId
     const request: RequestRecord = { id: requestId, fingerprint }
     const records = [...prepared.records, record('requests', request)]
     if (original.workId) await this.works.authorizeRetry(original.workId, original.agentId, records)
+    else if (original.origin) await this.automations.resume(original.origin, conversation.id, records)
     else await this.store.write(records)
     this.requests.set(request.id, request); this.changed(conversation.id); this.scheduler.accept(prepared)
   }
   private redact(value: string, key?: string) { return key ? value.split(key).join('[已隐藏凭据]') : value }
   private errorMessage(error: unknown) { return error instanceof Error ? error.message : String(error) }
 
+  async exportSkillLibrary(input: unknown, destination: string) {
+    if (!this.initialized || this.closing || this.backingUp) fail('运行服务尚未就绪或正在退出/备份')
+    return this.skillLibrary.export(exportSkillLibrarySchema.parse(input), destination)
+  }
   async backup(destination: string): Promise<void> {
     if (!isAbsolute(destination)) fail('备份目录必须为绝对路径')
     if (isWithin(this.dataPath, destination) || isWithin(destination, this.dataPath)) fail('备份目录不能与应用数据目录相互包含')
@@ -1067,7 +1352,7 @@ export class AppService {
     try {
       await this.mutations
       await this.automations.beforeBackup()
-      if (this.scheduler.busy || this.runControllers.size || this.externalTests.size) fail('有任务正在执行或等待审批，请先停止任务后备份')
+      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy) fail('有任务或技能管理操作正在执行或等待修复，请先停止任务或完成修复后备份')
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
       await this.store.backup(join(destination, 'boai.sqlite'))
@@ -1087,6 +1372,8 @@ export class AppService {
     this.closing = true
     for (const timer of this.workTimers.values()) clearTimeout(timer)
     this.workTimers.clear()
+    await this.skillUpdates.close()
+    await Promise.all([this.skills.close(), this.marketplace.close(), this.skillLibrary.close()])
     await this.mutations
     await this.automations.close()
     for(const controller of this.externalTests)controller.abort()

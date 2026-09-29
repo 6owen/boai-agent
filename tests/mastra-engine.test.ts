@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -962,4 +962,28 @@ describe('projectMessages', () => {
     expect(projectMessages(messages, 'agent-a', 'conversation').map(message => message.content)).toEqual(['first', 'second'])
     expect(messages.map(message => message.sequence)).toEqual([2, 1])
   })
+})
+
+
+it('maps each real SDK request to its own usage receipt across tool steps, repair, memory and report', async () => {
+  const mock = await endpoint((_body, response, index) => {
+    const replies = [{ name: 'list_files', args: { path: 'self:/' } }, 'Task done.', 'Invalid decision', '{"action":"pass"}', '{"candidates":[]}', '{"action":"publish","text":"Updated report"}']
+    send(response, replies[index], index, index === 1 ? undefined : { prompt_tokens: 20, completion_tokens: 7, total_tokens: 27 })
+  })
+  const receipts: { id: string; usage: ModelUsage }[] = []
+  let phase = 'task'
+  const { ctx } = await context(mock.url, {
+    modelCallId: 'task-0', onAdditionalModelCall: async () => `${phase}-1`,
+    onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
+  })
+  const engine = new MastraEngine()
+  await engine.run(ctx)
+  phase = 'decision'; ctx.modelCallId = 'decision-0'; await engine.decide(ctx)
+  phase = 'memory'; ctx.modelCallId = 'memory-0'; await engine.extractMemory(ctx)
+  phase = 'report'; ctx.modelCallId = 'report-0'
+  await engine.report(ctx, { text: 'Old report', observedThroughSequence: 1, revisions: 0, status: 'private' })
+  expect(mock.requests).toHaveLength(6)
+  expect(receipts.map(receipt => receipt.id)).toEqual(['task-0', 'task-1', 'decision-0', 'decision-1', 'memory-0', 'report-0'])
+  expect(receipts[1].usage).toEqual({})
+  expect(receipts.filter(receipt => receipt.id !== 'task-1').every(receipt => JSON.stringify(receipt.usage) === JSON.stringify({ inputTokens: 20, outputTokens: 7, totalTokens: 27 }))).toBe(true)
 })

@@ -1,34 +1,51 @@
 /*
  * [INPUT]: 显式工作意图、运行身份、当前权限校验后的上下文与 SQLite 事务。
- * [OUTPUT]: 父子工作、原子认领/接续、共享预算、依赖通知与持有者比较。
+ * [OUTPUT]: 显式额度追加/工作接续/消息/容量同事务；原工作身份与已交付结果保留；共享预算、执行权、父子/依赖和停止门禁。
  * [POS]: collaboration 的持久工作控制；不选举发言人、不重放工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash } from 'node:crypto'
-import type { ModelUsage, WorkBudget, WorkExecution, WorkIntent, WorkItem, WorkOutcome, WorkDelegation, WorkWait, WorkWake } from '../../../shared/domain'
+import type { AgentRun, AutomationBudgetRenewalInput, BudgetModelCall, ModelUsage, WorkBudget, WorkExecution, WorkIntent, WorkItem, WorkOutcome, WorkDelegation, WorkWait, WorkWake, Message, AutomationOrigin } from '../../../shared/domain'
+import { renewAutomationWork } from './work-renewal'
+import { assertAutomationExecution, activateAutomationExecution, resumeAutomationExecution } from '../automations/automation-repository'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 
 import { queueWorkWake, refreshWaiters, validateDependencies } from './work-dependencies'
+import { checkWorkBudget, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
+export { WorkUnavailableError } from './work-budget'
+
 import { workDelegationSchema, workWaitSchema, workEvidenceError } from './work-protocol'
 
-const limits = { workItems: 0, retries: 0, reportRefreshes: 0, noProgress: 0, maxWorkItems: 8, maxRetries: 3, maxReportRefreshes: 4, maxNoProgress: 3 }
 const row = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const timestamp = () => new Date().toISOString()
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
-const callLimit = 24, runLimit = 8, outputLimit = 16000, durationLimit = 5 * 60_000
-export class WorkUnavailableError extends Error {}
 
 export class WorkRepository {
   constructor(private store: ProductStore) {}
+
+  renewAutomation(origin: AutomationOrigin, conversationId: string, input: AutomationBudgetRenewalInput, records: StoredRecord[]) {
+    return this.store.transaction(async tx => {
+      await renewAutomationWork(tx, origin, conversationId, input, records)
+      const next = await resumeAutomationExecution(tx, origin, conversationId)
+      for (const record of records) await tx.put(record)
+      return next
+    })
+  }
 
   async init() {
     await this.store.transaction(async tx => {
       const format = await tx.get<{ id: string; version: number }>('collaborationSchema', 'work')
       if (format && ![1, 2].includes(format.version)) throw new Error('工作数据版本高于当前应用支持范围')
       const executions = await tx.list<WorkExecution>('workExecutions')
+      const messages = new Map((await tx.list<Message>('messages')).map(message => [message.id, message]))
       for (const work of await tx.list<WorkItem>('workItems')) {
         if (![1, 2].includes(work.schemaVersion)) throw new Error('不能读取未知版本的工作记录')
         if (Number(work.schemaVersion) === 1) Object.assign(work, { rootWorkId: work.id, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, schemaVersion: 2 })
+        const origin = work.origin ?? messages.get(work.sourceMessageId)?.origin
+        if (origin) {
+          work.origin = origin
+          for (const execution of executions) if (execution.workId === work.id) { execution.origin = origin; await tx.put(row('workExecutions', execution)) }
+        }
         if (work.activeRunId || ['ready', 'waiting'].includes(work.status)) {
           const execution = executions.find(run => run.id === work.activeRunId)
           if (execution) { execution.status = 'released'; await tx.put(row('workExecutions', execution)) }
@@ -39,11 +56,14 @@ export class WorkRepository {
       }
       for (const budget of await tx.list<WorkBudget>('workBudgets')) {
         if (budget.schemaVersion !== 1) throw new Error('不能读取未知版本的工作预算')
-        const migrated = { ...limits, ...budget }
+        const migrated = { ...workLimits, ...budget }
         migrated.workItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id).length
         await tx.put(row('workBudgets', migrated))
       }
-      for (const wake of await tx.list<WorkWake>('workWakes')) if (['pending', 'scheduled'].includes(wake.status)) {
+      for (const wake of await tx.list<WorkWake>('workWakes')) {
+        const work = await tx.get<WorkItem>('workItems', wake.workId)
+        if (work?.origin && !wake.origin) { wake.origin = work.origin; await tx.put(row('workWakes', wake)) }
+        if (!['pending', 'scheduled'].includes(wake.status)) continue
         wake.status = 'interrupted'; wake.reason = '应用重启，接续需要明确恢复'; await tx.put(row('workWakes', wake))
       }
       // Historical Contribution records intentionally retain their original meaning.
@@ -54,21 +74,29 @@ export class WorkRepository {
   async view(conversationId: string) {
     const workItems = (await this.store.load<WorkItem>('workItems')).filter(work => work.conversationId === conversationId)
     const ids = new Set(workItems.map(work => work.budgetId))
-    const workBudgets = (await this.store.load<WorkBudget>('workBudgets')).filter(budget => ids.has(budget.id))
+    const workBudgets = (await this.store.load<WorkBudget>('workBudgets')).filter(budget => ids.has(budget.id) || budget.conversationId === conversationId)
     const workWakes = (await this.store.load<WorkWake>('workWakes')).filter(wake => wake.conversationId === conversationId)
     return { workItems, workBudgets, workWakes }
   }
 
-  claim(input: { conversationId: string; sourceMessageId: string; agentId: string; runId: string; intent: WorkIntent; wakeId?: string }) {
+  claim(input: { conversationId: string; sourceMessageId: string; agentId: string; runId: string; intent: WorkIntent; wakeId?: string; origin?: AutomationOrigin }) {
     return this.store.transaction(async tx => {
-      const id = input.intent.workId ?? `work-${identity(input.conversationId, input.sourceMessageId, input.intent.key)}`
+      const sourceOrigin = (await tx.get<Message>('messages', input.sourceMessageId))?.origin
+      const sourceOccurrence = sourceOrigin ? await assertAutomationExecution(tx, sourceOrigin, input.conversationId) : undefined
+      const sourceMessageId = sourceOccurrence?.messageId ?? input.sourceMessageId
+      const id = input.intent.workId ?? `work-${identity(input.conversationId, sourceMessageId, input.intent.key)}`
       let work = await tx.get<WorkItem>('workItems', id)
       if (input.intent.workId && !work) throw new WorkUnavailableError('工作不存在，不能认领未知 ID')
+      const incomingOrigin = input.intent.workId ? input.origin : input.origin ?? sourceOrigin
+      if (work && work.origin?.occurrenceId !== incomingOrigin?.occurrenceId) throw new WorkUnavailableError('不能把已有工作改绑到另一自动化或普通聊天')
+      const origin = work ? work.origin : sourceOrigin
+      if (input.origin && (!origin || origin.occurrenceId !== input.origin.occurrenceId || origin.automationId !== input.origin.automationId || origin.authorizedFingerprint !== input.origin.authorizedFingerprint)) throw new WorkUnavailableError('自动化工作缺少可信原始来源')
+      const automation = origin ? await assertAutomationExecution(tx, origin, input.conversationId) : undefined
       const isNew = !work
       if (!work) {
-        work = { schemaVersion: 2, id, conversationId: input.conversationId, sourceMessageId: input.sourceMessageId,
+        work = { schemaVersion: 2, id, conversationId: input.conversationId, sourceMessageId, ...(origin ? { origin } : {}),
           key: input.intent.key, scope: input.intent.scope, deliverable: input.intent.deliverable, ownerAgentId: input.agentId,
-          version: 1, status: 'ready', budgetId: `budget-${identity(input.conversationId, input.sourceMessageId)}`,
+          version: 1, status: 'ready', budgetId: automation?.budgetId ?? `budget-${identity(input.conversationId, input.sourceMessageId)}`,
           rootWorkId: id, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0,
           resultMessageIds: [], artifactIds: [], resultVersion: 0, requiresReview: false, createdAt: timestamp(), updatedAt: timestamp() }
       }
@@ -85,38 +113,55 @@ export class WorkRepository {
       if (work.requiresReview) throw new WorkUnavailableError('已有操作需要核对，不能自动重放')
       if (await tx.get<WorkExecution>('workExecutions', input.runId)) throw new WorkUnavailableError('该运行已释放执行权，不能再次执行')
       let budget = await tx.get<WorkBudget>('workBudgets', work.budgetId)
-      budget ??= { ...limits, id: work.budgetId, schemaVersion: 1, modelCalls: 0, runs: 0, maxModelCalls: callLimit, maxRuns: runLimit,
-        maxOutputTokens: outputLimit, deadlineAt: new Date(Date.now() + durationLimit).toISOString(), usage: {}, usageIncomplete: false }
-      this.checkBudget(budget)
+      budget ??= newWorkBudget(work.budgetId)
+      checkWorkBudget(budget)
       if (budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
       if (isNew) {
         if (budget.workItems >= budget.maxWorkItems) throw new WorkUnavailableError('达到原始工作的拆分上限')
         budget.workItems++
       }
       if (wake) { wake.status = 'consumed'; await tx.put(row('workWakes', wake)); delete work.wakeId }
-      budget.modelCalls++; budget.runs++; budget.usageIncomplete = true
+      if (!budget.accounting) { budget.modelCalls++; budget.usageIncomplete = true }
+      budget.runs++
       work.activeRunId = input.runId; work.status = 'running'; work.version++; work.updatedAt = timestamp()
-      const execution: WorkExecution = { id: input.runId, workId: work.id, budgetId: work.budgetId, agentId: input.agentId, claimVersion: work.version, modelCalls: 1, usage: {}, status: 'active' }
+      const execution: WorkExecution = { ...(work.origin ? { origin: work.origin } : {}), id: input.runId, workId: work.id, budgetId: work.budgetId, agentId: input.agentId, claimVersion: work.version, modelCalls: budget.accounting ? 0 : 1, usage: {}, status: 'active' }
       await tx.put(row('workItems', work)); await tx.put(row('workBudgets', budget)); await tx.put(row('workExecutions', execution))
       return work
     })
   }
 
-  private checkBudget(budget: WorkBudget) {
-    if (budget.noProgress >= budget.maxNoProgress) throw new WorkUnavailableError('达到原始工作的无进展接续上限')
-    if (budget.modelCalls >= budget.maxModelCalls || (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens || Date.now() >= Date.parse(budget.deadlineAt)) throw new WorkUnavailableError('达到原始工作的调用、用量或时间上限')
-  }
   private async holder(tx: RecordTransaction, runId: string) {
     const execution = await tx.get<WorkExecution>('workExecutions', runId)
     const work = execution && await tx.get<WorkItem>('workItems', execution.workId)
     if (!execution || !work || execution.status !== 'active' || work.activeRunId !== runId || work.ownerAgentId !== execution.agentId || work.version !== execution.claimVersion) throw new WorkUnavailableError('运行已不再持有当前工作的执行权')
+    if (work.origin) await assertAutomationExecution(tx, work.origin, work.conversationId)
     return { execution, work }
+  }
+  reserveAutomationCall(run: AgentRun, callId: string, phase: BudgetModelCall['phase']) {
+    return this.store.transaction(async tx => {
+      if (!run.origin || !run.turnId) throw new Error('自动化模型调用缺少来源或轮次')
+      const o = await activateAutomationExecution(tx, run.origin, run.conversationId)
+      const budget = o.budgetId && await tx.get<WorkBudget>('workBudgets', o.budgetId)
+      if (!budget) throw new Error('本次自动化没有可信的原始预算，请发起新一轮')
+      const execution = run.workId ? (await this.holder(tx, run.id)).execution : undefined
+      const existing = await tx.get<BudgetModelCall>('budgetModelCalls', callId)
+      await reserveBudgetCall(tx, budget, { id: callId, runId: run.id, turnId: run.turnId, conversationId: run.conversationId, origin: run.origin, phase })
+      if (execution && !existing) { execution.modelCalls++; await tx.put(row('workExecutions', execution)) }
+      return callId
+    })
+  }
+  settleAutomationCall(runId: string, callId: string, usage: ModelUsage) {
+    return this.store.transaction(async tx => {
+      await settleBudgetCall(tx, callId, runId, usage)
+      const call = await tx.get<BudgetModelCall>('budgetModelCalls', callId)
+      return call ? tx.get<WorkBudget>('workBudgets', call.budgetId) : undefined
+    })
   }
   reserveCall(runId: string) {
     return this.store.transaction(async tx => {
       const { execution } = await this.holder(tx, runId)
       const budget = (await tx.get<WorkBudget>('workBudgets', execution.budgetId))!
-      this.checkBudget(budget); budget.modelCalls++; execution.modelCalls++
+      checkWorkBudget(budget); budget.modelCalls++; execution.modelCalls++
       await tx.put(row('workExecutions', execution)); await tx.put(row('workBudgets', budget))
     })
   }
@@ -188,6 +233,7 @@ export class WorkRepository {
       const work = await tx.get<WorkItem>('workItems', execution.workId)
       if (!work || work.activeRunId !== runId || work.version !== execution.claimVersion) return
       delete work.activeRunId; work.status = status; work.version++; work.updatedAt = timestamp(); execution.status = 'released'
+      if (status === 'cancelled') { const budget = await tx.get<WorkBudget>('workBudgets', work.budgetId); work.cancellationCause = budget && workBudgetExhausted(budget) ? 'budget' : 'user' }
       await tx.put(row('workItems', work)); await tx.put(row('workExecutions', execution))
       await refreshWaiters(tx, work.conversationId, { runId, agentId: execution.agentId })
     })
@@ -203,7 +249,7 @@ export class WorkRepository {
     return this.store.transaction(async tx => {
       const { work } = await this.holder(tx, runId)
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
-      this.checkBudget(budget)
+      checkWorkBudget(budget)
       if (budget.reportRefreshes >= budget.maxReportRefreshes) throw new WorkUnavailableError('达到原始工作的重新汇报上限')
       budget.reportRefreshes++; await tx.put(row('workBudgets', budget))
     })
@@ -219,10 +265,10 @@ export class WorkRepository {
         return previous
       }
       const budget = (await tx.get<WorkBudget>('workBudgets', parent.budgetId))!
-      this.checkBudget(budget)
+      checkWorkBudget(budget)
       if (budget.workItems >= budget.maxWorkItems || budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的拆分或运行上限')
       const dependencies = proposal.dependencies ?? []
-      const work: WorkItem = { schemaVersion: 2, id, conversationId: parent.conversationId, sourceMessageId: parent.sourceMessageId,
+      const work: WorkItem = { schemaVersion: 2, id, conversationId: parent.conversationId, sourceMessageId: parent.sourceMessageId, ...(parent.origin ? { origin: parent.origin } : {}),
         key: proposal.key, scope: proposal.scope, deliverable: proposal.deliverable, ownerAgentId: proposal.ownerAgentId,
         rootWorkId: parent.rootWorkId, parentWorkId: parent.id, budgetId: parent.budgetId, version: 1,
         dependsOnWorkIds: dependencies.map(item => item.workId), requiredResults: dependencies, observedResults: [], waitRevision: dependencies.length ? 1 : 0,
@@ -253,9 +299,10 @@ export class WorkRepository {
       if (!wake || wake.kind === 'blocked' || wake.status !== 'pending') return false
       const work = await tx.get<WorkItem>('workItems', wake.workId)
       if (!work || work.wakeId !== wake.id || work.status !== 'ready' || work.requiresReview) return false
+      if (work.origin) { try { await activateAutomationExecution(tx, work.origin, work.conversationId) } catch (error) { if (!(error instanceof WorkUnavailableError)) throw error; return false } }
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
       try {
-        this.checkBudget(budget)
+        checkWorkBudget(budget)
         if (budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
       } catch (error) {
         work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: (error as Error).message }; work.version++
@@ -278,7 +325,7 @@ export class WorkRepository {
       wake.status = 'pending'; delete wake.turnId; await tx.put(row('workWakes', wake))
     })
   }
-  cancelTree(workId: string, reason: string) {
+  cancelTree(workId: string, reason: string, cause: 'user' | 'budget' = 'user') {
     return this.store.transaction(async tx => {
       const items = await tx.list<WorkItem>('workItems'), root = items.find(work => work.id === workId)
       if (!root) return []
@@ -289,7 +336,7 @@ export class WorkRepository {
           const execution = await tx.get<WorkExecution>('workExecutions', work.activeRunId)
           if (execution) { execution.status = 'released'; await tx.put(row('workExecutions', execution)) }
         }
-        work.status = 'cancelled'; work.version++; work.updatedAt = timestamp(); delete work.activeRunId
+        work.status = 'cancelled'; work.cancellationCause = cause; work.version++; work.updatedAt = timestamp(); delete work.activeRunId
         work.outcome = { disposition: 'blocked', summary: reason }; await tx.put(row('workItems', work))
       }
       for (const wake of await tx.list<WorkWake>('workWakes')) if (ids.has(wake.workId) && ['pending', 'scheduled'].includes(wake.status)) {
@@ -319,7 +366,7 @@ export class WorkRepository {
       if (!work || work.ownerAgentId !== agentId || work.activeRunId || !['failed', 'cancelled'].includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
       if (work.requiresReview) throw new WorkUnavailableError('已有工具操作需要核对，请确认现有结果后发起明确的新请求')
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
-      this.checkBudget(budget)
+      checkWorkBudget(budget)
       if (budget.retries >= budget.maxRetries) throw new WorkUnavailableError('达到原始工作的重试上限')
       for (const result of work.requiredResults) {
         const dependency = await tx.get<WorkItem>('workItems', result.workId)
@@ -329,6 +376,7 @@ export class WorkRepository {
         const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
         if (parent?.status === 'cancelled' || parent?.status === 'interrupted') throw new WorkUnavailableError('父工作已停止，不能单独重试子工作')
       }
+      if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId)
       delete work.wakeId
       budget.retries++; await tx.put(row('workBudgets', budget))
       work.status = 'ready'; work.version++; work.updatedAt = timestamp()

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
- * [OUTPUT]: 增加原生 Trace 保存与观测错误回调；统一连接容量/成员判断时限、工作上下文、已声明等待、结果/副作用回调、无工具重新汇报与私有凭据接口。
+ * [OUTPUT]: 明确预算接续与被接替判断的宿主上下文；明确补充对应的原始请求/提问上下文合同；唯一模型请求身份与逐调用用量回执；原生 Trace 保存/观测错误、统一容量/判断时限、工作上下文及结果/副作用和无工具汇报接口。
  * [POS]: runtime 内部合同，不向 renderer 暴露凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,9 +47,15 @@ export interface EngineContext {
   waitForWork?(input: WorkWait): Promise<void>
   triggerMessageId?: string
   turnId?: string
+  /** Host-committed answer to this occurrence's previous questions; IDs refer to authorized messages/turns. */
+  continuation?: { originalRequestId: string; replyToTurnIds: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[] }
   participation?: { isFirstDecision: boolean; hasRespondedInTurn: boolean; triggerEventType: ConversationEvent['type']; eventMessageId?: string; observedThroughSequence: number; sourceEventIds?: string[] }
   /** Reserve another model request beyond this phase's already reserved first request. */
-  onAdditionalModelCall?(): Promise<void>
+  onAdditionalModelCall?(phase?: 'report'): Promise<string | void>
+  /** Host reservation for this adapter invocation's first request. */
+  modelCallId?: string
+  /** Raw per-request usage, never the SDK's zero-filled or cumulative aggregate. */
+  onModelCallUsage?(callId: string, usage: ModelUsage): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
   onTrace?(span: TraceSpan): Promise<void>

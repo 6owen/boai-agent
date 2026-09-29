@@ -1,12 +1,14 @@
 /*
  * [INPUT]: 主题外部执行与自动化持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 主题外部执行与自动化持久化的真实桌面业务步骤与断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
+ * [OUTPUT]: 330 条新记录后的真实旧等待/筛选/补充解除与最新结果置顶；追加额度确认/取消、累计用量回执与确认消息定位/重启；真实主进程/worker 通知回执、静音、窗口重载与精确消息/无消息记录定位；现有详情标签的多草稿/冲突/窄窗保存、独立聊天/星期多选/纯预览、历史分页/结果消息定位验收；实际补充入口/原始预算及明确轮次关联的重启验收；主题外部执行与自动化持久化、运行结束/交付待核对分别展示、跨轮次来源持久化断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
  * [POS]: tests/e2e/steps/extensions.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
+import { captureAutomationNotifications, notificationCount, notificationEvent } from '../support/automation-notifications'
+import { seedAutomationHistory, seedExpiredAutomationBudget } from '../support/automation-history'
 import type { Desktop } from '../support/desktop'
 import { rm, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
@@ -41,7 +43,10 @@ async function prepareExtensions(runtime: Desktop) {
     if (system.includes('Private participation decision')) {
       const payload = JSON.parse(input.messages.at(-1).content),
         replied = payload.data.currentTurnMessages.some((m: any) => m.senderType === 'agent')
-      response = JSON.stringify({ action: replied ? 'pass' : 'reply', responseKind: 'chat', purpose: '完成例行报告' })
+      const root = payload.data.currentTurnMessages.find((m: any) => m.id === payload.data.originalUserRequestId)
+      if (root?.content === '等待用户补充的自动化') response = JSON.stringify({ action: replied ? 'pass' : 'ask', responseKind: 'chat', purpose: '等待明确补充' })
+      else if (root?.content === '收到补充 42' && !payload.data.continuation) throw new Error('Missing host clarification context')
+      else response = JSON.stringify({ action: replied ? 'pass' : 'reply', responseKind: 'chat', purpose: '完成例行报告' })
     } else if (system.includes('Private memory maintenance')) response = '{"candidates":[]}'
     if (!input.stream) {
       res.setHeader('Content-Type', 'application/json')
@@ -251,9 +256,8 @@ async function executeExternalTask(previous: Awaited<ReturnType<typeof customize
   return { runtime, root, desktop, page, errors, port, launch, fixture }
 }
 
-async function runAutomationAndBackup(previous: Awaited<ReturnType<typeof executeExternalTask>>) {
-  let { runtime, root, desktop, page, errors, port, launch, fixture } = previous
-  const conversation = await page!.evaluate(async (port) => {
+async function prepareAutomationConversation(page: Page, port: number) {
+  return page.evaluate(async (port) => {
     const connection = await window.boai.request('saveConnection', {
       name: '本地验收模型',
       provider: 'openai-compatible',
@@ -265,15 +269,26 @@ async function runAutomationAndBackup(previous: Awaited<ReturnType<typeof execut
     await window.boai.request('saveAgent', { ...input, connectionId: connection.id })
     return window.boai.request('createConversation', { kind: 'direct', title: '每日整理验收', agentIds: [a.id] })
   }, port)
+}
+
+async function runAutomationAndBackup(previous: Awaited<ReturnType<typeof executeExternalTask>>) {
+  let { runtime, root, desktop, page, errors, port, launch, fixture } = previous
+  const conversation = await prepareAutomationConversation(page!, port)
   await page!.getByRole('button', { name: '定时任务', exact: true }).click()
   await page!.getByRole('button', { name: '新建', exact: true }).click()
   await page!.getByLabel('任务名称', { exact: true }).fill('每日资料整理')
+  await page!.getByLabel('运行于', { exact: true }).selectOption('existing-conversation')
   await page!.getByLabel('目标会话', { exact: true }).selectOption(conversation.id)
   await page!.getByLabel('任务内容', { exact: true }).fill('整理今天的工作要点。')
+  await page!.getByRole('checkbox', { name: /启用计划/ }).uncheck()
   await page!.getByRole('button', { name: '保存任务', exact: true }).click()
   await expect(page!.getByRole('button', { name: '立即运行一次' })).toBeVisible()
   await page!.getByRole('button', { name: '立即运行一次' }).click()
-  await expect(page!.getByText('已完成', { exact: true })).toBeVisible()
+  await expect(page!.getByText('运行结束', { exact: true })).toBeVisible()
+  await expect(page!.getByText('交付待核对', { exact: true })).toBeVisible()
+  await expect(page!.getByText(/本次累计预算：.*24 次模型请求/)).toBeVisible()
+  const occurrenceBeforeRestart = (await page!.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences[0]
+  expect(occurrenceBeforeRestart.budget).toMatchObject({ maxModelCalls: 24, maxRuns: 8, runs: 0 })
   await page!.screenshot({ path: 'test-results/automation-results.png' })
   const backupDir = join(root, 'exports')
   await mkdir(backupDir)
@@ -282,11 +297,11 @@ async function runAutomationAndBackup(previous: Awaited<ReturnType<typeof execut
   }, backupDir)
   const backup = await page!.evaluate(() => window.boai.request('exportBackup', undefined))
   expect(JSON.parse(await readFile(join(backup!, 'backup.json'), 'utf8')).appearanceIncluded).toBe(true)
-  return { runtime, desktop, page, errors, launch }
+  return { runtime, desktop, page, errors, launch, occurrenceBeforeRestart }
 }
 
 async function verifyExtensionsRestart(previous: Awaited<ReturnType<typeof runAutomationAndBackup>>) {
-  let { runtime, desktop, page, errors, launch } = previous
+  let { runtime, desktop, page, errors, launch, occurrenceBeforeRestart } = previous
   await runtime.close()
   await launch()
   desktop = runtime.app
@@ -295,6 +310,14 @@ async function verifyExtensionsRestart(previous: Awaited<ReturnType<typeof runAu
   const view = await page!.evaluate(() => window.boai.request('listAutomations', undefined))
   expect(view.occurrences).toHaveLength(1)
   expect(view.occurrences[0].status).toBe('completed')
+  expect(view.occurrences[0].deliveryStatus).toBe('unknown')
+  expect(view.occurrences[0].usageIncomplete).toBe(true)
+  expect(view.occurrences[0].budgetId).toBe(occurrenceBeforeRestart.budgetId)
+  expect(view.occurrences[0].budget).toEqual(occurrenceBeforeRestart.budget)
+  expect(view.occurrences[0].modelCalls).toBe(occurrenceBeforeRestart.modelCalls)
+  expect(view.occurrences[0].turnIds).toEqual([view.occurrences[0].turnId])
+  const detail = await page!.evaluate((id) => window.boai.request('getConversation', { id }), view.occurrences[0].conversationId)
+  expect(detail.runs.every(run => run.origin?.occurrenceId === view.occurrences[0].id)).toBe(true)
   expect(errors).toEqual([])
 }
 
@@ -316,4 +339,315 @@ When('手动运行自动化并导出包含外观的备份', async ({ scenario })
 
 Then('重启恢复主题与已完成的自动化记录', async ({ scenario }) => {
   await verifyExtensionsRestart(scenario.runAutomationAndBackup!)
+})
+
+When('从等待记录补充信息并沿用本次预算', async ({ scenario }) => {
+  const { runtime, page, port } = scenario.prepareExtensions!
+  const conversation = await prepareAutomationConversation(page, port)
+  const plan = await page.evaluate(id => window.boai.request('saveAutomation', { name: '等待补充验收', prompt: '等待用户补充的自动化', conversationId: id, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }), conversation.id)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.getByRole('button', { name: /等待补充验收/ }).click()
+  await page.getByRole('button', { name: '立即运行一次' }).click()
+  await expect(page.getByText('等待补充', { exact: true })).toBeVisible()
+  const before = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences[0]
+  await page.getByRole('button', { name: '补充信息', exact: true }).click()
+  await page.getByLabel('本次运行的补充信息', { exact: true }).fill('收到补充 42')
+  await page.getByRole('button', { name: '提交补充', exact: true }).click()
+  await expect(page.getByText('运行结束', { exact: true })).toBeVisible()
+  await expect(page.getByText('交付待核对', { exact: true })).toBeVisible()
+  const after = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences[0]
+  expect(after.automationId).toBe(plan.id)
+  expect(after.budgetId).toBe(before.budgetId)
+  expect(after.budget?.deadlineAt).toBe(before.budget?.deadlineAt)
+  expect(after.modelCalls!).toBeGreaterThan(before.modelCalls!)
+  expect(after.waitingTurnIds).toEqual([])
+  const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)
+  const reply = detail.messages.find(message => message.content === '收到补充 42')!
+  expect(reply.senderId).toBe('user')
+  expect(reply.origin?.occurrenceId).toBe(before.id)
+  expect(detail.turns!.find(turn => turn.id === reply.turnId)?.replyToTurnIds).toEqual([before.turnId])
+  await runtime.restart()
+  const restored = (await runtime.page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences[0]
+  expect(restored).toMatchObject({ id: after.id, status: 'completed', budgetId: after.budgetId, modelCalls: after.modelCalls, waitingTurnIds: [] })
+  expect(runtime.errors).toEqual([])
+})
+
+When('在详情标签中保存独立计划并验证草稿和任务聊天', async ({ scenario }) => {
+  const { runtime, page, port } = scenario.prepareExtensions!
+  const personal = await prepareAutomationConversation(page, port)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.getByRole('button', { name: '定时执行说明', exact: true }).click()
+  const tabs = page.getByRole('tablist', { name: '详情标签' })
+  const editor = page.locator('.detail-content:visible')
+  await expect(tabs.getByRole('tab')).toHaveCount(1)
+  await page.getByRole('button', { name: '新建', exact: true }).click()
+  await expect(editor.getByLabel('任务名称', { exact: true })).toBeFocused()
+  await expect(editor.getByLabel('系统通知', { exact: true })).toHaveValue('important_only')
+  await editor.getByLabel('任务名称', { exact: true }).fill('面板日报')
+  await page.getByLabel('任务内容', { exact: true }).fill('整理本次的资料要点。')
+  await page.getByLabel('执行员工', { exact: true }).selectOption('researcher')
+  await expect(page.getByLabel('执行时间预览', { exact: true }).getByRole('listitem')).toHaveCount(5)
+  await page.getByLabel('时区', { exact: true }).fill('Invalid/Zone')
+  await expect(page.getByRole('alert')).toContainText('时区')
+  await expect(page.getByRole('button', { name: '创建并启用', exact: true })).toBeDisabled()
+  await page.getByLabel('时区', { exact: true }).fill('Asia/Singapore')
+  await page.getByLabel('重复规则', { exact: true }).selectOption('workdays')
+  await expect(page.getByLabel('执行时间预览', { exact: true }).getByRole('listitem')).toHaveCount(5)
+  await expect(page.getByRole('checkbox', { name: '星期三', exact: true })).toHaveCount(0)
+  await page.getByLabel('重复规则', { exact: true }).selectOption('weekly')
+  await page.getByRole('checkbox', { name: '星期三', exact: true }).check()
+  await page.getByRole('checkbox', { name: '星期五', exact: true }).check()
+  await page.getByRole('checkbox', { name: /启用计划/ }).uncheck()
+  await expect(page.getByLabel('执行时间预览', { exact: true }).getByRole('listitem')).toHaveCount(5)
+  await page.getByRole('button', { name: '新建任务', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveCount(2)
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('面板日报')
+  await page.locator('.detail-content:visible .editor-scroll').evaluate(element => { element.scrollTop = 160 })
+  await tabs.getByRole('tab', { name: '任务详情', exact: true }).click()
+  await page.getByRole('button', { name: '显示或隐藏详情', exact: true }).click()
+  await expect(page.locator('.detail-panel')).toBeHidden()
+  await page.getByRole('button', { name: '显示或隐藏详情', exact: true }).click()
+  await tabs.getByRole('tab', { name: '新建定时任务', exact: true }).click()
+  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop)).toBe(160)
+  await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('面板日报')
+  await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 800))
+  const create = page.getByRole('button', { name: '保存任务', exact: true })
+  await expect(create).toBeInViewport()
+  await page.screenshot({ path: 'test-results/automation-editor-narrow.png', animations: 'disabled' })
+  await create.click()
+  await expect(tabs.getByRole('tab')).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: '面板日报', exact: true })).toBeVisible()
+  await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1340, 900))
+  const original = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions.find(d => d.name === '面板日报')!
+  expect(original).toMatchObject({ conversationPolicy: 'new-conversation', employeeIds: ['researcher'], daysOfWeek: [1, 3, 5], cron: '0 9 * * 1,3,5', enabled: false, notificationPolicy: 'important_only' })
+  expect(original.conversationId).toBeUndefined()
+  await page.getByRole('button', { name: /^编辑/ }).click()
+  await editor.getByLabel('任务名称', { exact: true }).fill('A 的未保存草稿')
+  const second = await page.evaluate(conversationId => window.boai.request('saveAutomation', { name: '另一计划', prompt: '整理内容', conversationId, frequency: 'daily', time: '10:00', weekday: 1, timezone: 'Asia/Singapore', enabled: false, notify: false }), personal.id)
+  await page.locator('.schedule-item').filter({ hasText: '另一计划' }).click()
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('A 的未保存草稿')
+  await page.getByRole('button', { name: /^编辑/ }).click()
+  await expect(tabs.getByRole('tab')).toHaveCount(3)
+  await expect(editor.getByLabel('系统通知', { exact: true })).toHaveValue('muted')
+  await editor.getByLabel('任务名称', { exact: true }).fill('B 的已保存修改')
+  await tabs.getByRole('tab', { name: '面板日报', exact: true }).click()
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('A 的未保存草稿')
+  await page.evaluate(d => window.boai.request('saveAutomation', { id: d.id, expectedRevision: d.revision, name: '并发新名称', prompt: d.prompt, conversationPolicy: d.conversationPolicy, employeeIds: d.employeeIds, frequency: d.frequency, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: false, notify: false }), original)
+  await page.getByRole('button', { name: '保存修改', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('配置已变更')
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('A 的未保存草稿')
+  await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await tabs.getByRole('tab', { name: '另一计划', exact: true }).click()
+  await expect(editor.getByLabel('任务名称', { exact: true })).toHaveValue('B 的已保存修改')
+  await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveCount(1)
+  const saved = await page.evaluate(() => window.boai.request('listAutomations', undefined))
+  expect(saved.definitions.find(d => d.id === second.id)?.name).toBe('B 的已保存修改')
+  expect(saved.definitions.find(d => d.id === original.id)?.name).toBe('并发新名称')
+  await page.locator('.schedule-item').filter({ hasText: '并发新名称' }).click()
+  await page.getByRole('button', { name: '立即运行一次', exact: true }).click()
+  await expect(page.getByText('运行结束', { exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: '立即运行一次', exact: true }).click()
+  await expect(page.getByText('运行结束', { exact: true })).toHaveCount(2)
+  const occurrences = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences.filter(o => o.automationId === original.id)
+  expect(new Set(occurrences.map(o => o.conversationId)).size).toBe(2)
+  expect(occurrences.every(o => o.conversationId !== personal.id)).toBe(true)
+  const old = occurrences[1]
+  await page.evaluate(conversationId => window.boai.request('sendMessage', { conversationId, content: Array.from({ length: 40 }, (_, index) => `较晚的人工作业备注 ${index}\n\n`).join(''), mentionIds: [], requestId: 'later-human' }), old.conversationId)
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getConversation', { id }), old.conversationId)).turns?.every(turn => turn.status === 'completed')).toBe(true)
+  const card = page.locator(`[data-occurrence-id="${old.id}"]`)
+  await card.getByText('结果与证据', { exact: true }).click()
+  await expect(card.locator('.automation-result-text')).toHaveText('定时整理已完成。')
+  await card.getByRole('button', { name: '定位这条结果', exact: true }).click()
+  const target = page.locator(`[id="message-${old.resultMessageIds.at(-1)}"]`)
+  await expect(target).toBeFocused()
+  await expect(target).toBeInViewport()
+  expect(await page.locator('.messages').evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeGreaterThan(300)
+  await page.getByRole('button', { name: '会话', exact: true }).click()
+  await page.getByLabel('会话来源', { exact: true }).selectOption('automation')
+  await expect(page.locator('.conversation-item')).toHaveCount(2)
+  await page.getByLabel('会话来源', { exact: true }).selectOption('personal')
+  await expect(page.locator('.conversation-item').filter({ hasText: '并发新名称' })).toHaveCount(0)
+  expect(await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '普通单聊复用', agentIds: ['researcher'] }))).toMatchObject({ id: personal.id })
+  await runtime.restart()
+  const restored = await runtime.page.evaluate(() => window.boai.request('listAutomations', undefined))
+  expect(restored.occurrences.map(o => o.conversationId).sort()).toEqual(occurrences.map(o => o.conversationId).sort())
+  expect(runtime.errors).toEqual([])
+})
+
+When('按计划分页读取全部历史且不误报未知交付', async ({ scenario }) => {
+  const { page, port } = scenario.prepareExtensions!
+  const conversation = await prepareAutomationConversation(page, port)
+  const plans = await page.evaluate(async conversationId => {
+    const input = { prompt: '读取固定历史', conversationId, frequency: 'daily' as const, time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }
+    return [await window.boai.request('saveAutomation', { ...input, name: '完整历史' }), await window.boai.request('saveAutomation', { ...input, name: '独立筛选' })]
+  }, conversation.id)
+  const dataPath = (await page.evaluate(() => window.boai.request('snapshot', undefined))).dataPath
+  await seedAutomationHistory(dataPath, plans[0].id, 65)
+  await seedAutomationHistory(dataPath, plans[1].id, 2)
+  expect((await page.evaluate(() => window.boai.request('listAutomationHistory', { limit: 100 }))).occurrences).toHaveLength(67)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.locator('.schedule-item').filter({ hasText: '完整历史' }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(30)
+  await expect(page.getByText('交付待核对', { exact: true })).toHaveCount(30)
+  await page.getByRole('button', { name: '加载更早记录', exact: true }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(60)
+  await page.getByRole('button', { name: '加载更早记录', exact: true }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(65)
+  await expect(page.getByText('过往记录 0', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '加载更早记录', exact: true })).toHaveCount(0)
+  expect(new Set(await page.locator('[data-occurrence-id]').evaluateAll(elements => elements.map(element => element.getAttribute('data-occurrence-id')))).size).toBe(65)
+  await page.locator('.schedule-item').filter({ hasText: '独立筛选' }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '加载更早记录', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '执行记录', exact: true }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(30)
+})
+
+When('从完整历史找到待处理事项且优先阅读续行结果', async ({ scenario }) => {
+  const { runtime, page, port } = scenario.prepareExtensions!
+  const conversation = await prepareAutomationConversation(page, port)
+  const plan = await page.evaluate(async conversationId => {
+    const input = { conversationId, frequency: 'daily' as const, time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }
+    await window.boai.request('saveAutomation', { ...input, name: '无需处理的计划', prompt: '整理资料' })
+    return window.boai.request('saveAutomation', { ...input, name: '旧等待验收', prompt: '等待用户补充的自动化' })
+  }, conversation.id)
+  const original = await page.evaluate(id => window.boai.request('runAutomation', { id, requestId: 'old-attention' }), plan.id)
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), original.id)).status).toBe('waiting_user')
+  const dataPath = (await page.evaluate(() => window.boai.request('snapshot', undefined))).dataPath
+  await seedAutomationHistory(dataPath, plan.id, 330, new Date().toISOString())
+  const before = await page.evaluate(() => window.boai.request('listAutomations', undefined))
+  expect(before.occurrences).toHaveLength(300)
+  expect(before.occurrences.some(o => o.id === original.id)).toBe(false)
+  expect(before.attentionCount).toBe(1)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.getByRole('button', { name: '筛选任务', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: '需处理', exact: true }).click()
+  await expect(page.locator('.schedule-item')).toHaveCount(1)
+  await expect(page.locator('.schedule-item')).toContainText('旧等待验收')
+  await page.locator('.schedule-item').click()
+  const latest = page.getByRole('region', { name: '最新结果', exact: true })
+  const pending = page.getByRole('region', { name: '需处理运行', exact: true })
+  const summary = page.getByRole('region', { name: '计划摘要', exact: true })
+  await expect(latest).toContainText('过往记录 329')
+  await expect(pending.locator(`[data-occurrence-id="${original.id}"]`)).toHaveCount(1)
+  expect(await page.locator('.automation-reading > section').evaluateAll(elements => elements.map(e => e.getAttribute('aria-label')))).toEqual(['最新结果', '需处理运行', '计划摘要', '运行记录'])
+  await expect(summary.getByRole('button', { name: '立即运行一次', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '查看待处理事项', exact: true }).click()
+  await expect(page.locator('[data-occurrence-id]')).toHaveCount(1)
+  await expect(page.locator(`[data-occurrence-id="${original.id}"]`)).toBeVisible()
+  expect((await page.evaluate(() => window.boai.request('listAutomations', undefined))).attentionCount).toBe(1)
+  // Reading does not resolve a wait. Only the explicit, occurrence-scoped reply does.
+  await page.locator('.schedule-item').click()
+  await pending.getByRole('button', { name: '补充信息', exact: true }).click()
+  await pending.getByLabel('本次运行的补充信息', { exact: true }).fill('收到补充 42')
+  await pending.getByRole('button', { name: '提交补充', exact: true }).click()
+  await expect(latest.locator(`[data-occurrence-id="${original.id}"]`)).toHaveCount(1)
+  await expect(latest.getByText('运行结束', { exact: true })).toBeVisible()
+  await expect(latest.locator('.automation-result-text').last()).toHaveText('定时整理已完成。')
+  await expect(pending).toHaveCount(0)
+  await expect(page.locator('.schedule-item')).toHaveCount(0)
+  const ids = await page.locator('[data-occurrence-id]').evaluateAll(elements => elements.map(e => e.getAttribute('data-occurrence-id')))
+  expect(new Set(ids).size).toBe(ids.length)
+  const after = await page.evaluate(() => window.boai.request('listAutomations', undefined))
+  expect(after.attentionCount).toBe(0)
+  expect(after.definitions.find(d => d.id === plan.id)?.latestOccurrence).toMatchObject({ id: original.id, budgetId: original.budgetId, status: 'completed' })
+  expect(after.occurrences.some(o => o.id === original.id)).toBe(false)
+  await page.screenshot({ path: 'test-results/automation-latest-result.png', animations: 'disabled' })
+  await page.getByRole('button', { name: '查看待处理事项', exact: true }).click()
+  await expect(page.getByText('当前没有待处理记录。', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '筛选任务', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: '已暂停', exact: true }).click()
+  await expect(page.locator('.schedule-item')).toHaveCount(2)
+  await page.getByRole('button', { name: '筛选任务', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: '最近执行', exact: true }).click()
+  await expect(page.locator('.schedule-item').first()).toContainText('旧等待验收')
+  expect(runtime.errors).toEqual([])
+})
+
+When('提交系统提醒并验证回执静音与精确定位', async ({ scenario }) => {
+  const { runtime, page, port } = scenario.prepareExtensions!
+  const conversation = await prepareAutomationConversation(page, port)
+  await captureAutomationNotifications(runtime.app)
+  const input = { name: '提醒验收', prompt: '整理资料', conversationId: conversation.id, frequency: 'daily' as const, time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: true, notificationPolicy: 'all_results' as const }
+  const plan = await page.evaluate(input => window.boai.request('saveAutomation', input), input)
+  const first = await page.evaluate(id => window.boai.request('runAutomation', { id, requestId: 'notice-one' }), plan.id)
+  await expect.poll(() => notificationCount(runtime.app)).toBe(1)
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), first.id)).notices?.[0]?.status).toBe('submitted')
+  const result = await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), first.id)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.locator('.schedule-item').filter({ hasText: '提醒验收' }).click()
+  await expect(page.getByText('系统通知已提交（不代表送达或已读）', { exact: true })).toBeVisible()
+  await notificationEvent(runtime.app, 0, 'failed')
+  await expect(page.getByText(/系统通知提交失败 · 系统提交被测试端拒绝/)).toBeVisible()
+  await page.getByRole('button', { name: '通讯录', exact: true }).click()
+  await notificationEvent(runtime.app, 0, 'click')
+  await expect(page.locator(`[id="message-${result.resultMessageIds.at(-1)}"]`)).toBeFocused()
+  // A newly loaded renderer consumes the pending navigation, even if it missed the wake-up event.
+  await page.reload({ waitUntil: 'commit' })
+  await notificationEvent(runtime.app, 0, 'click')
+  await expect(page.locator(`[id="message-${result.resultMessageIds.at(-1)}"]`)).toBeFocused()
+  const muted = await page.evaluate(({ input, plan }) => window.boai.request('saveAutomation', { ...input, id: plan.id, expectedRevision: plan.revision, notificationPolicy: 'muted', notify: false }), { input, plan })
+  const second = await page.evaluate(id => window.boai.request('runAutomation', { id, requestId: 'notice-muted' }), plan.id)
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), second.id)).status).toBe('completed')
+  expect(await notificationCount(runtime.app)).toBe(1)
+  expect((await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), second.id)).notices).toEqual([])
+  await page.evaluate(({ input, muted }) => window.boai.request('saveAutomation', { ...input, id: muted.id, expectedRevision: muted.revision, notificationPolicy: 'important_only' }), { input, muted })
+  await page.evaluate(async () => {
+    const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = (await window.boai.request('snapshot', undefined)).agents.find(a => a.id === 'researcher')!
+    await window.boai.request('saveAgent', { ...agent, active: false })
+  })
+  const denied = await page.evaluate(id => window.boai.request('runAutomation', { id, requestId: 'notice-permissions' }), plan.id)
+  expect(denied.status).toBe('skipped')
+  expect(denied.attentionReason).toBe('authorization')
+  await expect.poll(() => notificationCount(runtime.app)).toBe(2)
+  await notificationEvent(runtime.app, 1, 'click')
+  await expect(page.locator(`[data-occurrence-id="${denied.id}"]`)).toBeFocused()
+  await expect(page.locator(`[data-occurrence-id="${denied.id}"]`)).toContainText(denied.reason!)
+  expect(runtime.errors).toEqual([])
+})
+
+When('确认追加到期额度后继续且保留累计用量与历史结果', async ({ scenario }) => {
+  const { runtime, page, port } = scenario.prepareExtensions!
+  const conversation = await prepareAutomationConversation(page, port)
+  const plan = await page.evaluate(id => window.boai.request('saveAutomation', { name: '预算续行验收', prompt: '等待用户补充的自动化', conversationId: id, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }), conversation.id)
+  const first = await page.evaluate(id => window.boai.request('runAutomation', { id, requestId: 'budget-renewal' }), plan.id)
+  await expect.poll(async () => (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences[0]?.status).toBe('waiting_user')
+  const dataPath = (await page.evaluate(() => window.boai.request('snapshot', undefined))).dataPath
+  await seedExpiredAutomationBudget(dataPath, first.id)
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.getByRole('button', { name: /预算续行验收/ }).click()
+  await expect(page.getByText('已停止', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '追加预算并继续', exact: true }).click()
+  await expect(page.getByText(/累计请求上限将为 48 次/)).toBeVisible()
+  await page.getByRole('button', { name: '取消', exact: true }).click()
+  const before = await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)
+  expect(before.workBudgets![0].renewals).toBeUndefined()
+  await page.getByRole('button', { name: '追加预算并继续', exact: true }).click()
+  await page.getByLabel('继续未完成工作的说明', { exact: true }).fill('收到补充 42')
+  await page.getByRole('button', { name: '确认追加额度并继续', exact: true }).click()
+  await expect(page.getByText('运行结束', { exact: true })).toBeVisible()
+  await expect(page.getByText('交付待核对', { exact: true })).toBeVisible()
+  const after = await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)
+  const budget = after.workBudgets![0]
+  expect(after.workBudgets).toHaveLength(1)
+  expect(budget.id).toBe(before.workBudgets![0].id)
+  expect(budget.maxModelCalls).toBe(48)
+  expect(budget.modelCalls).toBeGreaterThan(before.workBudgets![0].modelCalls)
+  expect(budget.renewals).toHaveLength(1)
+  expect(budget.renewals![0].used.modelCalls).toBe(before.workBudgets![0].modelCalls)
+  expect(after.messages.filter(m => m.content === '收到补充 42')).toHaveLength(1)
+  for (const message of before.messages) expect(after.messages.find(m => m.id === message.id)).toEqual(message)
+  await page.getByText('额度追加记录（1 次）', { exact: true }).click()
+  await expect(page.getByText(/模型请求上限 24 → 48/)).toBeVisible()
+  await page.getByRole('button', { name: '定位确认消息', exact: true }).click()
+  await expect(page.locator(`[id="message-${budget.renewals![0].messageId}"]`)).toBeFocused()
+  await runtime.restart()
+  const restored = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)
+  expect(restored.workBudgets![0]).toEqual(budget)
+  expect(runtime.errors).toEqual([])
 })

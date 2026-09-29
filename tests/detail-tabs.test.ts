@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 详情标签的纯状态转换。
- * [OUTPUT]: Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
+ * [OUTPUT]: 自动化新建草稿/按计划编辑去重、重命名与独立关闭；Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
  * [POS]: 多标签状态的模块回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -63,4 +63,16 @@ it('reanchors an existing trace tab on icon open while preserving other employee
   expect(reopened.activeKey).toBe(first.activeKey)
   expect(reopened.tabs[0].target).toMatchObject({ messageId: 'reply-2', requestId: 'open-2' })
   expect(reopened.tabs.slice(1)).toEqual(third.tabs.slice(1))
+})
+it('keeps a stable automation draft and separate edit sessions while updating only their label', () => {
+  let state = reduce(emptyDetailTabs, { type: 'open', target: { type: 'automation-editor' } })
+  state = reduce(state, { type: 'open', target: { type: 'automation-editor', id: 'a', name: 'A' } })
+  state = reduce(state, { type: 'open', target: { type: 'automation-editor', id: 'b', name: 'B' } })
+  const reopened = reduce(state, { type: 'open', target: { type: 'automation-editor' } })
+  expect(reopened.tabs).toHaveLength(3)
+  expect(reopened.activeKey).toBe('automation-editor:new')
+  const renamed = reduce(reopened, { type: 'open', target: { type: 'automation-editor', id: 'a', name: 'New A' } })
+  expect(renamed.tabs.map(tab => tab.key)).toEqual(reopened.tabs.map(tab => tab.key))
+  expect(renamed.tabs[1].target).toEqual({ type: 'automation-editor', id: 'a', name: 'New A' })
+  expect(reduce(renamed, { type: 'close', key: 'automation-editor:new' }).tabs.map(tab => tab.key)).toEqual(['automation-editor:a', 'automation-editor:b'])
 })

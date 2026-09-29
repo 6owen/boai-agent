@@ -1,15 +1,18 @@
 /*
  * [INPUT]: 跨进程产品实体、桌面请求与宿主事件。
- * [OUTPUT]: 增加按会话与锚定消息查询 Trace 的只读合同；宿主本地配置扫描与 API/ACP 显式导入、类型化 DesktopApi、编辑时按连接读取密钥、无需保存的草稿模型目录/测试请求、不要求保存配置的版本重启提示与会话列表/历史清理和停止请求；快照不包含凭据。
+ * [OUTPUT]: 扫描来源的 API 草稿测试合同，凭据不返回渲染端；通讯录分类/独立排序读取与版本化更新合同；本机 Agent 扫描预填与未保存配置测试合同；本机技能目录默认命中缓存，refresh 明确重新扫描； 本地安装目标与原生 File 拖入授权、本机技能发现/详情/明确预览导入/编辑定位合同；带预期状态版本的明确预算追加合同；单次执行/通知回执读取与主进程待消费导航；纯日程预览与完整历史分页查询；按 occurrence 提交补充信息的独立入口；商店、技能管理/便携库预览导出/收藏恢复/删除清理及持久操作合同；会话 Trace、本地连接导入、类型化 DesktopApi、连接编辑/测试和会话控制；快照不包含凭据。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
+import type { SkillMarketplaceListRequest, SkillMarketplaceDetailRequest, SkillMarketplaceListResult, SkillMarketplaceItem, SkillMarketplaceProvider, MarketplaceResult } from '../domain/skill-marketplace'
+import type { AutomationBudgetRenewalInput, AutomationHistoryPage, AutomationHistoryQuery, AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
 import type { LaunchProfile, LaunchProfileInput } from '../domain/backends'
 import type { ConversationListChange } from '../domain/conversation-list'
+import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
 import type { LocalConfigScanResult } from '../domain/local-configs'
 import type { StoredTraceSpan } from '../domain/traces'
+import type { LocalSkillCatalog, LocalSkillDetail, ScanSkillSourceInput, SkillInstallation, SkillPreview, SkillCollections, SkillCollectionAction, SkillDetail, SkillFileContent, SkillScan, SkillOperation, InstallSkillsInput, SkillUpdateCheck, UpdateSkillInput, ResourceCleanup, PlanSkillLibraryExportInput, ExportSkillLibraryInput, SkillLibraryExportPlan, SkillUpdateBatch } from '../domain/skills'
 import type { AgentInput, AgentHome, AgentFileContent, Connection, ConnectionInput, DigitalAgent, Conversation, ConversationInput, ConversationDetail, Resource, Message, Snapshot, MemoryQuery, MemoryView, MemoryInput } from '../domain'
 
 export const unsupportedRequestMessage = '当前运行版本尚未加载此功能，请重启应用后重试。'
@@ -17,25 +20,68 @@ export const unsupportedRequestMessage = '当前运行版本尚未加载此功�
 export type AppEvent =
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
-  | { type: 'automation:notice'; occurrence: AutomationOccurrence }
-  | { type: 'focus-conversation'; conversationId: string }
+  | { type: 'automation:notice' }
+  | { type: 'automation:navigate' }
+  | { type: 'focus-conversation'; conversationId: string; messageId?: string }
   | { type: 'conversation:cleared'; conversationId: string }
   | { type: 'changed'; conversationId?: string }
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  getContactList: { input: undefined; output: ContactListPreferences }
+  updateContactList: { input: { expectedRevision: number; action: ContactListAction }; output: ContactListPreferences }
+  listLocalSkills: { input: { refresh?: boolean } | undefined; output: LocalSkillCatalog }
+  getLocalSkillDetail: { input: { id: string }; output: LocalSkillDetail }
+  scanLocalSkill: { input: { id: string; ownerAgentId?: string; requestId?: string }; output: SkillScan }
+  openLocalSkill: { input: { id: string; action: 'edit' | 'reveal' }; output: void }
+  listSkillMarketplace: { input: SkillMarketplaceListRequest; output: MarketplaceResult<SkillMarketplaceListResult> }
+  getSkillMarketplaceDetail: { input: SkillMarketplaceDetailRequest; output: MarketplaceResult<SkillMarketplaceItem> }
+  refreshSkillMarketplace: { input: { provider: SkillMarketplaceProvider }; output: void }
+  getSkillDetail: { input: { resourceId: string }; output: SkillDetail }
+  readSkillFile: { input: { resourceId: string; path: string }; output: SkillFileContent }
+  getSkillCollections: { input: undefined; output: SkillCollections }
+  updateSkillCollections: { input: { expectedRevision: number; action: SkillCollectionAction }; output: SkillCollections }
+  scanSkillSource: { input: ScanSkillSourceInput; output: SkillScan }
+  chooseSkillSource: { input: { kind: 'folder' | 'zip' }; output: string | null }
+  cancelSkillScan: { input: { id: string }; output: void }
+  discardSkillScan: { input: { id: string }; output: void }
+  getSkillPreview: { input: { scanId: string; candidateId: string }; output: SkillPreview }
+  readSkillPreviewFile: { input: { scanId: string; candidateId: string; path: string }; output: SkillFileContent }
+  listSkillOperations: { input: undefined; output: SkillOperation[] }
+  listSkillInstallations: { input: undefined; output: SkillInstallation[] }
+  installSkills: { input: InstallSkillsInput; output: SkillOperation }
+  getSkillOperation: { input: { id: string }; output: SkillOperation }
+  cancelSkillOperation: { input: { id: string }; output: void }
+  checkSkillUpdate: { input: { id: string }; output: SkillUpdateCheck }
+  listSkillUpdateChecks: { input: undefined; output: SkillUpdateCheck[] }
+  checkAllSkillUpdates: { input: { requestId: string; scope?: 'local' }; output: SkillUpdateBatch }
+  getSkillUpdateBatch: { input: undefined; output: SkillUpdateBatch | null }
+  cancelSkillUpdateBatch: { input: undefined; output: void }
+  updateSkill: { input: UpdateSkillInput; output: SkillOperation }
+  planSkillLibraryExport: { input: PlanSkillLibraryExportInput; output: SkillLibraryExportPlan }
+  discardSkillLibraryExport: { input: { id: string }; output: void }
+  cancelSkillLibraryPreview: { input: undefined; output: void }
+  exportSkillLibrary: { input: ExportSkillLibraryInput; output: SkillOperation | null }
+  listResourceCleanups: { input: undefined; output: ResourceCleanup[] }
+  retryResourceCleanup: { input: { id: string }; output: void }
   listExternalFiles: { input: {runId:string}; output: {directory:string;files:{name:string;relativePath:string}[]} }
   publishExternalArtifact: { input: {runId:string;relativePath:string}; output: void }
   listAutomations: { input: undefined; output: AutomationsView }
+  getPendingAutomationNavigation: { input: undefined; output: { automationId: string; occurrenceId: string; conversationId?: string; messageId?: string } | null }
+  getAutomationOccurrence: { input: { id: string }; output: AutomationHistoryPage['occurrences'][number] }
+  listAutomationHistory: { input: AutomationHistoryQuery; output: AutomationHistoryPage }
   saveAutomation: { input: AutomationInput; output: AutomationDefinition }
   pauseAutomation: { input: {id:string}; output: void }
   deleteAutomation: { input: {id:string}; output: void }
   runAutomation: { input: {id:string;requestId:string}; output: AutomationOccurrence }
   stopAutomation: { input: {id:string}; output: void }
+  replyAutomation: { input: {occurrenceId:string;content:string;requestId:string;renewBudget?:AutomationBudgetRenewalInput}; output: Message }
+  previewAutomation: { input: Pick<AutomationInput, 'frequency' | 'time' | 'weekday' | 'daysOfWeek' | 'timezone'>; output: {nextTimes:string[]} }
   listLaunchProfiles: { input: undefined; output: LaunchProfile[] }
   saveLaunchProfile: { input: LaunchProfileInput; output: LaunchProfile }
   testLaunchProfile: { input: { id: string }; output: LaunchProfile }
+  testLaunchProfileDraft: { input: LaunchProfileInput; output: NonNullable<LaunchProfile['verified']> }
   sendExternalTask: { input: { conversationId: string; content: string; requestId: string }; output: Message }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
   updateAppearance: { input: { patch: AppearancePatch; expectedRevision: number }; output: AppearanceSnapshot }
@@ -46,7 +92,9 @@ export interface Methods {
   saveAgent: { input: AgentInput; output: DigitalAgent }
   scanLocalConnections: { input: { chooseDirectory?: boolean }; output: LocalConfigScanResult | null }
   importLocalConnection: { input: { configId: string; model?: string }; output: Connection }
+  testLocalConnection: { input: { configId: string; model?: string }; output: { text: string } }
   importLocalAgent: { input: { configId: string; hostAccessAcknowledged: true }; output: LaunchProfile }
+  prepareLocalAgent: { input: { configId: string }; output: Omit<LaunchProfileInput, 'hostAccessAcknowledged'> }
   saveConnection: { input: ConnectionInput; output: Connection }
   getConnectionApiKey: { input: { id: string }; output: string }
   deleteConnection: { input: { id: string }; output: void }
@@ -81,6 +129,7 @@ export interface Methods {
 export type Method = keyof Methods
 export interface DesktopApi {
   initialAppearance?: AppearanceSnapshot
+  selectSkillFile?(file: File, kind: 'folder' | 'zip'): Promise<string>
   request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>
   subscribe(listener: (event: AppEvent) => void): () => void
 }

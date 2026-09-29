@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定会话/消息/员工身份、桌面 Trace 查询和事件。
- * [OUTPUT]: 轮次与员工筛选、异步刷新、原生调用树和折叠运行诊断；切换会话不漂移。
+ * [OUTPUT]: 下拉字段统一使用 shadcn Select；轮次与员工筛选、异步刷新、原生调用树和折叠运行诊断；切换会话不漂移。
  * [POS]: 执行过程标签的数据边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import type { DesktopApi } from '@shared/ipc'
 import type { ConversationDetail, Snapshot } from '@shared/domain'
 import type { StoredTraceSpan } from '@shared/domain/traces'
 import { Banner, errorText, Loading } from '@/components/common'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { SelectField } from '@/components/ui/select-field'
 import { activityRounds, type ActivityRound } from '@/pages/conversations/activity'
 import { TraceDetail } from '@/pages/conversations/-components/trace-detail'
 import { RoundDetail } from '@/pages/conversations/-components/run-detail'
@@ -51,8 +51,8 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
   const filtered = { ...detail, deliveries: detail.deliveries?.filter(item => !employee || item.agentId === employee) }
   return <div className="detail-section trace-detail" data-turn-id={round.turn?.id}>
     <div className="trace-filters">
-      <NativeSelect aria-label="执行轮次" value={round.id} onChange={event => setRoundId(event.target.value)}>{rounds.map(item => <NativeSelectOption key={item.id} value={item.id}>{item.trigger?.content.slice(0, 60) || '历史执行'} · {new Date(item.createdAt).toLocaleTimeString('zh-CN')}</NativeSelectOption>)}</NativeSelect>
-      {detail.conversation.kind === 'group' && <NativeSelect aria-label="筛选员工" value={employee} onChange={event => setEmployee(event.target.value)}><NativeSelectOption value="">全部员工</NativeSelectOption>{[...members].map(([id, name]) => <NativeSelectOption key={id} value={id}>{name}</NativeSelectOption>)}</NativeSelect>}
+      <SelectField aria-label="执行轮次" value={round.id} onValueChange={selectedValue => setRoundId(selectedValue)} options={rounds.map(item => ({ value: item.id, label: `${item.trigger?.content.slice(0, 60) || '历史执行'} · ${new Date(item.createdAt).toLocaleTimeString('zh-CN')}` }))} />
+      {detail.conversation.kind === 'group' && <SelectField aria-label="筛选员工" value={employee} onValueChange={selectedValue => setEmployee(selectedValue)} options={[{ value: '', label: '全部员工' }, ...[...members].map(([id, name]) => ({ value: id, label: name }))]} />}
     </div>
     <p className="trace-trigger">{round.trigger?.content}</p>
     {runs.filter(run => run.traceError).map(run => <Banner key={run.id}>部分执行记录未能保存：{run.traceError}</Banner>)}

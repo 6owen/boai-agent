@@ -1,6 +1,6 @@
 /*
  * [INPUT]: DesktopApi、当前连接草稿、默认模型与变更回调。
- * [OUTPUT]: 默认模型分组，等宽图标加载的目录按钮与左侧同行反馈、铅笔/列表图标切换编辑与旧宿主重启提示；使用当前密钥含显式空值，按地址/凭据隔离并丢弃过期请求。
+ * [OUTPUT]: 下拉字段统一使用 shadcn Select；默认模型分组，等宽图标加载的目录按钮与左侧同行反馈、铅笔/列表图标切换编辑与旧宿主重启提示；使用当前密钥含显式空值，按地址/凭据隔离并丢弃过期请求。
  * [POS]: 模型连接弹窗的私有模型选择控件；模型列表仅保存在当前编辑会话。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
 import { Field, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { SelectField } from '@/components/ui/select-field'
 import { Cpu, List, Pencil, RefreshCw } from '@/components/icons'
 import { errorText } from '@/components/common'
 import type { ConnectionInput } from '@shared/domain'
@@ -59,10 +59,7 @@ export function ConnectionModelPicker({ api, draft, onChange }: { api: DesktopAp
     <Field orientation="horizontal" className="connection-setting-row connection-model-row grid">
       <FieldLabel htmlFor={id}><span className="connection-nested-line" aria-hidden="true" />模型 ID</FieldLabel>
       <div className="connection-setting-control">
-        {manual ? <Input id={id} aria-label="默认模型 ID" aria-describedby={`${id}-hint`} autoFocus required value={draft.defaultModel} onChange={event => onChange(event.target.value)} placeholder="输入模型 ID" /> : <NativeSelect className="w-full" id={id} aria-label="默认模型" aria-describedby={`${id}-hint`} required value={draft.defaultModel} onChange={event => onChange(event.target.value)}>
-          <NativeSelectOption value="" disabled>{options.length ? '请选择默认模型' : '获取列表后选择，或手动填写'}</NativeSelectOption>
-          {options.map(model => <NativeSelectOption key={model} value={model}>{model}</NativeSelectOption>)}
-        </NativeSelect>}
+        {manual ? <Input id={id} aria-label="默认模型 ID" aria-describedby={`${id}-hint`} autoFocus required value={draft.defaultModel} onChange={event => onChange(event.target.value)} placeholder="输入模型 ID" /> : <SelectField className="w-full" id={id} aria-label="默认模型" aria-describedby={`${id}-hint`} required value={draft.defaultModel} onValueChange={selectedValue => onChange(selectedValue)} options={[{ value: '', label: options.length ? '请选择默认模型' : '获取列表后选择，或手动填写', disabled: true }, ...options.map(model => ({ value: model, label: model }))]} />}
         <FieldDescription id={`${id}-hint`} className="sr-only">使用当前接口地址和密钥获取模型；点击铅笔可手动编辑模型 ID。</FieldDescription>
       </div>
     </Field>

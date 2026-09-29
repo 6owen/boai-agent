@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: popover 基础组件；表面共用 skin.css 的 Soft 高光、圆角与阴影。
+ * [OUTPUT]: popover 基础组件，支持独立 anchor 以复用菜单按钮定位；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: components/ui 的 popover 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -18,6 +18,7 @@ function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
 
 function PopoverContent({
   className,
+  anchor,
   align = "center",
   alignOffset = 0,
   side = "bottom",
@@ -26,11 +27,12 @@ function PopoverContent({
 }: PopoverPrimitive.Popup.Props &
   Pick<
     PopoverPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
+    "anchor" | "align" | "alignOffset" | "side" | "sideOffset"
   >) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
+        anchor={anchor}
         align={align}
         alignOffset={alignOffset}
         side={side}

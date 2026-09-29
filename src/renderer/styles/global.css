@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Tailwind、视觉 token、桌面布局、排版和页面样式。
- * [OUTPUT]: 唯一全局样式入口；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类，统一禁用 ring/outline，保留表面阴影。
+ * [INPUT]: Tailwind、视觉 token、桌面布局、Markdown/Shiki 排版和页面样式。
+ * [OUTPUT]: 技能图标浮层与列表详情样式入口；唯一全局样式入口，加载独立 Shiki 明暗高亮；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类，统一禁用 ring/outline，保留表面阴影。
  * [POS]: 由 renderer/main.tsx 加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,8 @@
 @import './legacy.css' layer(legacy);
 @import './typeset.css' layer(legacy);
 @import './pages.css' layer(components);
+@import './skills.css' layer(components);
+@import './shiki.css' layer(components);
 @import '../components/ui/skin.css' layer(components);
 
 /* Disable focus rings globally, including Base UI portals; keep the Soft surface shadows. */

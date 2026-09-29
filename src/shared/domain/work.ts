@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 用户请求、员工工作意图、执行权与可检查结果。
- * [OUTPUT]: 版本化父子工作、显式依赖/定向通知、根预算与私有汇报合同。
+ * [OUTPUT]: 显式追加额度的固定方案与前后限额/累计用量回执；版本化父子工作、依赖、共享预算/调用账本及私有汇报合同。
  * [POS]: 协作工作领域；独立于历史 Contribution 和单次 AgentRun。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { ModelUsage } from './index'
+import type { AutomationOrigin } from './automations'
 
 /** Explicit source key identifies shared work; purpose text and employee identity do not. */
 export interface WorkIntent {
@@ -42,6 +43,7 @@ export interface WorkDelegation {
   dependencies?: WorkDependency[]
 }
 export interface WorkWake {
+  origin?: AutomationOrigin
   id: string
   workId: string
   conversationId: string
@@ -57,6 +59,7 @@ export interface WorkWake {
   createdAt: string
 }
 export interface WorkItem {
+  origin?: AutomationOrigin
   schemaVersion: 2
   id: string
   conversationId: string
@@ -82,10 +85,16 @@ export interface WorkItem {
   artifactIds: string[]
   resultVersion: number
   requiresReview: boolean
+  cancellationCause?: 'user' | 'budget'
   createdAt: string
   updatedAt: string
 }
 export interface WorkBudget {
+  renewals?: BudgetRenewal[]
+  origin?: AutomationOrigin
+  conversationId?: string
+  accounting?: 'model-calls-v1'
+  unknownCalls?: number
   id: string
   schemaVersion: 1
   modelCalls: number
@@ -105,7 +114,39 @@ export interface WorkBudget {
   maxReportRefreshes: number
   maxNoProgress: number
 }
+/** User-confirmed addition; cumulative counters and earlier allowances are never reset. */
+export const WORK_BUDGET_ALLOWANCE = { durationMs: 5 * 60_000, modelCalls: 24, runs: 8, outputTokens: 16000, workItems: 8, retries: 3, reportRefreshes: 4, noProgress: 3 } as const
+export type WorkBudgetLimits = Pick<WorkBudget, 'maxModelCalls' | 'maxRuns' | 'maxOutputTokens' | 'maxWorkItems' | 'maxRetries' | 'maxReportRefreshes' | 'maxNoProgress' | 'deadlineAt'>
+export interface BudgetRenewal {
+  id: string
+  previousId?: string
+  requestId: string
+  messageId: string
+  turnId: string
+  createdAt: string
+  before: WorkBudgetLimits
+  after: WorkBudgetLimits
+  used: Pick<WorkBudget, 'modelCalls' | 'runs' | 'usage' | 'usageIncomplete' | 'unknownCalls' | 'workItems' | 'retries' | 'reportRefreshes' | 'noProgress'>
+  previousStatus: string
+  previousReason?: string
+  cancellationRequestedAt?: string
+  workVersions: { id: string; version: number; status: WorkItem['status'] }[]
+}
+export interface BudgetModelCall {
+  id: string
+  budgetId: string
+  conversationId: string
+  origin: AutomationOrigin
+  runId: string
+  turnId: string
+  phase: 'decision' | 'execution' | 'memory' | 'report' | 'coordination'
+  usage: ModelUsage
+  usageComplete: boolean
+  reservedAt: string
+  settledAt?: string
+}
 export interface WorkExecution {
+  origin?: AutomationOrigin
   id: string
   workId: string
   budgetId: string

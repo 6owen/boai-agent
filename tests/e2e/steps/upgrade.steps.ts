@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 旧版数据升级且不重放工作的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 旧版数据升级且不重放工作的真实桌面业务步骤与断言。
+ * [OUTPUT]: 一致性旧格式备份恢复后原技能绑定可用于新任务、知识内容保持且旧工作不重放；旧版数据升级且不重放工作的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/upgrade.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,10 +8,11 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { DigitalAgent, Conversation, Message, AgentRun } from '../../../src/shared/domain'
+import type { DigitalAgent, Conversation, Message, AgentRun, Resource } from '../../../src/shared/domain'
+import { startSkillDeliveryModel } from '../../fixtures/skills/delivery-model'
 
 type Scenario = {
   prepareLegacyData?: Awaited<ReturnType<typeof prepareLegacyData>>
@@ -34,8 +35,8 @@ async function prepareLegacyData(runtime: Desktop) {
     color: '#556677',
     connectionId: '',
     modelId: '',
-    skillIds: [],
-    knowledgeIds: [],
+    skillIds: ['legacy-skill'],
+    knowledgeIds: ['legacy-knowledge'],
     allowCommands: false,
     active: true,
     configVersion: 3,
@@ -76,6 +77,12 @@ async function prepareLegacyData(runtime: Desktop) {
   }
   await mkdir(conversation.workspacePath, { recursive: true })
   await writeFile(join(conversation.workspacePath, 'report.md'), '# 旧版产物')
+  const skill: Resource = { id: 'legacy-skill', kind: 'skill', name: 'legacy-reader', description: '旧版技能', path: join(root, 'skills/legacy-skill/legacy-reader'), createdAt: time }
+  const knowledge: Resource = { id: 'legacy-knowledge', kind: 'knowledge', name: 'facts.md', description: '旧版资料', path: join(root, 'knowledge/legacy-knowledge/facts.md'), createdAt: time }
+  await mkdir(join(skill.path, 'references'), { recursive: true }); await mkdir(join(root, 'knowledge/legacy-knowledge'), { recursive: true })
+  await writeFile(join(skill.path, 'SKILL.md'), '---\nname: legacy-reader\ndescription: 旧版技能\n---\n# 原有技能说明\n保留原绑定，不自动重放任务。')
+  await writeFile(join(skill.path, 'references/evidence.md'), 'SKILL_EVIDENCE_legacybackup')
+  await writeFile(knowledge.path, '# 原有知识\n知识资源不会被技能迁移改写。')
   const old = new ProductStore(join(root, 'boai.sqlite'))
   await old.init()
   await old.write([
@@ -83,6 +90,8 @@ async function prepareLegacyData(runtime: Desktop) {
     { collection: 'conversations', id: conversation.id, value: conversation },
     { collection: 'messages', id: message.id, value: message },
     { collection: 'runs', id: run.id, value: run },
+    { collection: 'resources', id: skill.id, value: skill },
+    { collection: 'resources', id: knowledge.id, value: knowledge },
     { collection: 'jobs', id: 'old-job', value: { id: 'old-job', conversationId: conversation.id, status: 'running', runIds: [run.id] } },
     {
       collection: 'messages',
@@ -106,10 +115,15 @@ async function prepareLegacyData(runtime: Desktop) {
 
 async function launchLegacyDesktop(previous: Awaited<ReturnType<typeof prepareLegacyData>>) {
   let { runtime, root, agent, conversation } = previous
-  const desktop = await runtime.start({ dataDir: root })
+  const restored = join(root, 'restored-old-backup')
+  await mkdir(restored)
+  const source = new ProductStore(join(root, 'boai.sqlite')); await source.init()
+  try { await source.backup(join(restored, 'boai.sqlite')) } finally { await source.close() }
+  for (const item of ['skills', 'knowledge', 'workspaces']) await cp(join(root, item), join(restored, item), { recursive: true })
+  const desktop = await runtime.start({ dataDir: restored })
 
   const page = await desktop.firstWindow()
-  return { root, agent, conversation, page }
+  return { root: restored, agent, conversation, page }
 }
 
 async function verifyMigration(previous: Awaited<ReturnType<typeof launchLegacyDesktop>>) {
@@ -129,6 +143,20 @@ async function verifyMigration(previous: Awaited<ReturnType<typeof launchLegacyD
   expect(source.content).toBe(agent.instructions)
   expect(await readFile(join(conversation.workspacePath, 'report.md'), 'utf8')).toBe('# 旧版产物')
   expect(await readFile(join(root, 'v2/workspaces/legacy-chat/report.md'), 'utf8')).toBe('# 旧版产物')
+  expect(snapshot.resources).toHaveLength(2)
+  expect(snapshot.agents[0].skillIds).toEqual(['legacy-skill'])
+  expect(snapshot.agents[0].knowledgeIds).toEqual(['legacy-knowledge'])
+  const skill = await page.evaluate(() => window.boai.request('getSkillDetail', { resourceId: 'legacy-skill' }))
+  expect(skill.content).toContain('原有技能说明')
+  expect(skill.installation).toBeUndefined()
+  expect(skill.resource.path).toBe(join(root, 'v2/skills/legacy-skill/legacy-reader'))
+  expect(await readFile(join(root, 'skills/legacy-skill/legacy-reader/SKILL.md'), 'utf8')).toBe(skill.content)
+  const knowledge = snapshot.resources.find(r => r.id === 'legacy-knowledge')!
+  expect(await readFile(knowledge.path, 'utf8')).toBe(await readFile(join(root, 'knowledge/legacy-knowledge/facts.md'), 'utf8'))
+  expect(await page.evaluate(() => window.boai.request('getSkillCollections', undefined))).toMatchObject({ favoriteResourceIds: [], groups: [] })
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
+  await page.getByRole('button', { name: /legacy-reader 旧版技能/ }).click()
+  await expect(page.getByRole('heading', { name: '原有技能说明' })).toBeVisible()
 }
 
 Given('旧版数据保留员工历史产物和未完成运行', async ({ runtime, scenario }) => {
@@ -141,4 +169,27 @@ When('真实桌面打开旧版数据目录', async ({ scenario }) => {
 
 Then('历史和产物完整迁移且未完成运行标记中断', async ({ scenario }) => {
   await verifyMigration(scenario.launchLegacyDesktop!)
+})
+
+Then('旧格式备份保留的技能绑定可用于新的明确任务', async ({ runtime, scenario }) => {
+  const { page, agent, conversation } = scenario.launchLegacyDesktop!
+  const model = await startSkillDeliveryModel('legacy-reader'); runtime.trackServer(model.server)
+  await page.evaluate(async ({ baseUrl, agentId, conversationId }) => {
+    const connection = await window.boai.request('saveConnection', { name: '旧备份技能验收', provider: 'openai-compatible', baseUrl, defaultModel: 'fixture' })
+    const current = (await window.boai.request('snapshot', undefined)).agents.find(a => a.id === agentId)!
+    const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = current
+    await window.boai.request('saveAgent', { ...input, connectionId: connection.id, expectedConfigVersion: configVersion })
+    await window.boai.request('sendMessage', { conversationId, content: '使用保留的技能读取依据并发布一份新报告', mentionIds: [], requestId: 'explicit-after-legacy-restore' })
+  }, { baseUrl: model.url, agentId: agent.id, conversationId: conversation.id })
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)).turns?.at(-1)?.status).toBe('completed')
+  const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)
+  const task = detail.runs.filter(r => r.phase === 'execution').at(-1)!
+  expect(task.environment).toMatchObject({ resourceVersions: expect.arrayContaining([expect.objectContaining({ id: 'legacy-skill' })]), commandMode: 'disabled' })
+  expect(task.toolEvents.filter(t => t.status === 'completed').map(t => t.name)).toEqual(['skill', 'skill_read', 'write_file', 'publish_artifact'])
+  const artifact = detail.artifacts.find(a => a.name === 'skill-report.md')!
+  expect(await readFile(artifact.path, 'utf8')).toBe('# 技能依据\nSKILL_EVIDENCE_legacybackup')
+  expect(detail.runs.find(r => r.id === 'legacy-run')?.status).toBe('interrupted')
+  expect(detail.messages.filter(m => m.senderType === 'user').map(m => m.content)).toEqual(['保留历史，不要自动执行', '使用保留的技能读取依据并发布一份新报告'])
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents[0].skillIds).toEqual(['legacy-skill'])
+  expect(runtime.errors).toEqual([])
 })

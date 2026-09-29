@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 同一 SQLite 事务内的工作图、显式结果版本与可信运行来源。
- * [OUTPUT]: 依赖校验、等待状态和幂等定向通知的原子变更。
+ * [OUTPUT]: 继承目标工作自动化来源的依赖校验、等待状态和幂等定向通知的原子变更。
  * [POS]: collaboration 工作依赖规则；父子关系不参与成功依赖判断。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -34,7 +34,7 @@ export async function queueWorkWake(tx: RecordTransaction, work: WorkItem, kind:
   if (previous) return previous
   const wake: WorkWake = { id, workId: work.id, conversationId: work.conversationId, ownerAgentId: work.ownerAgentId,
     waitRevision: work.waitRevision, requiredResults: results, kind, status: 'pending', sourceRunId: source.runId,
-    sourceAgentId: source.agentId, reason, createdAt: new Date().toISOString() }
+    sourceAgentId: source.agentId, ...(work.origin ? { origin: work.origin } : {}), reason, createdAt: new Date().toISOString() }
   work.wakeId = id
   await tx.put(row('workWakes', wake)); await tx.put(row('workItems', work))
   return wake

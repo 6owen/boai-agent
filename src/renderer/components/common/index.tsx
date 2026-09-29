@@ -1,13 +1,13 @@
 /*
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
- * [OUTPUT]: 统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
+ * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交；统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field as UiField, FieldLabel, FieldDescription } from '@/components/ui/field'
-import { createContext, cloneElement, isValidElement, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createContext, cloneElement, isValidElement, useCallback, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
 import type { AgentAvatar } from '@shared/domain/avatars'
@@ -56,11 +56,11 @@ export function ResourcePicker({ resources, selected, onChange, empty }: { resou
 export function useMutation() {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const inFlight = useRef(false)
-  const run = async (fn: () => Promise<void>) => {
+  const run = useCallback(async (fn: () => Promise<void>) => {
     if (inFlight.current) return
     inFlight.current = true; setBusy(true); setError('')
     try { await fn() } catch (e) { setError(errorText(e)) } finally { inFlight.current = false; setBusy(false) }
-  }
+  }, [])
   return { busy, error, run, setError }
 }
 export function Loading({ children = '正在读取…' }: { children?: ReactNode }) { return <div className="inline-loading" role="status"><LoaderCircle size={16} className="spinner" />{children}</div> }
