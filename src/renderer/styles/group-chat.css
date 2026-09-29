@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 全局语义 token、群聊消息/审批/输入与真实工作详情结构。
- * [OUTPUT]: 单行群名、无悬停底色/焦点外圈/层级变化的重叠头像与紧邻的剩余人数文字，人数仅悬停变色；保留悬浮渐隐；消息/工具条共用 Soft Card 边缘、时间悬停显示；composer 由 prompt-bar.css 管理；表情裁切/居中和镜像布局。
+ * [OUTPUT]: 单行群名、无悬停底色/焦点外圈/层级变化的重叠头像与紧邻的剩余人数文字；浮层焦点辅助节点不影响头像重叠和位置，人数仅悬停变色；保留悬浮渐隐；消息/工具条共用 Soft Card 边缘、时间悬停显示；composer 由 prompt-bar.css 管理；表情裁切/居中和镜像布局。
  * [POS]: 群聊、其任务详情与门户中的员工资料/表情浮层；global.css 在基础皮肤之后加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,7 +10,8 @@
 .group-chat .chat-heading { pointer-events:auto }
 .group-chat .chat-title { font-size:16px;font-weight:600 }
 .chat-members { display:flex;align-items:center;margin-right:8px }
-.chat-members .chat-member-avatar+.chat-member-avatar { margin-left:-6px }
+/* Popover inserts focus guards between triggers while open. */
+.chat-members .chat-member-avatar~.chat-member-avatar { margin-left:-6px }
 .chat-members .avatar { width:24px;height:24px;border:2px solid var(--surface-content) }
 .chat-members-more.soft-button { margin-left:2px;padding:0;color:var(--muted-foreground) }
 .chat-members-more.soft-button:is(:hover,:focus-visible) { color:var(--link);text-decoration:none }
