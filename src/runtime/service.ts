@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 员工统一召回、即时获知回执与增量记忆的原始预算/发布门禁；团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -57,6 +57,9 @@ import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
 import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { MemoryRepository } from './modules/memory/memory-repository'
+import { recallMemory } from './modules/memory/memory-recall'
+import { memoryUseScope } from './modules/memory/memory-policy'
+import type { MemoryContextRef, MemoryObservation } from '../shared/domain/memory'
 import { ModelCapacity } from './modules/collaboration/model-capacity'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
 import { TaskAdmission } from './modules/collaboration/task-admission'
@@ -68,7 +71,8 @@ const ids = z.array(id).max(100).refine(value => new Set(value).size === value.l
 const text = (max: number) => z.string().trim().min(1).max(max)
 const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
 const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true }).extend({ baseUrl: text(2000) })
-const conversationSchema = z.object({ teamSetup: teamSetupSchema.nullable().optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
+const memoryContextSchema = z.object({ kind: z.enum(['conversation', 'work']), id }).strict()
+const conversationSchema = z.object({ memoryScope: z.enum(['employee', 'conversation']).optional(), memoryContextRef: memoryContextSchema.nullable().optional(), teamSetup: teamSetupSchema.nullable().optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
 const conversationListSchema = z.discriminatedUnion('action', [
   z.object({ id, action: z.literal('pin'), pinned: z.boolean() }).strict(),
   z.object({ id, action: z.enum(['hide', 'show']) }).strict(),
@@ -76,9 +80,9 @@ const conversationListSchema = z.discriminatedUnion('action', [
 ])
 const sendSchema = z.object({ conversationId: id, content: text(100000), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict()
 const lookupSchema = z.object({ id }).strict()
-const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation']), conversationId: id.optional() }).strict()
+const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
 type RequestRecord = { id: string; fingerprint: string; messageId?: string }
-type RunSnapshot = { id: string; agent: DigitalAgent; connection: Connection; resources: Resource[]; conversation: Conversation; memoryEntryIds?: string[]; invalidated?: boolean }
+type RunSnapshot = { id: string; agent: DigitalAgent; connection: Connection; resources: Resource[]; conversation: Conversation; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const now = () => new Date().toISOString()
 const clone = <T>(value: T): T => structuredClone(value)
@@ -118,6 +122,8 @@ export class AppService {
   private pendingApprovals = new Map<string, (approved: boolean) => void>()
   private activeAdapters = new Set<string>()
   private runControllers = new Map<string, AbortController>()
+  private memoryActivatedAt = ''
+  private memoryTimer?: ReturnType<typeof setInterval>
   private runDirectories = new Map<string, string>()
   private artifacts = new Map<string, Artifact & { id: string; conversationId: string }>()
   private readonly homes: WorkspaceService
@@ -144,7 +150,7 @@ export class AppService {
     this.marketplace = new SkillMarketplace(options.skillMarketplaceFetch)
     this.localSkills = new LocalSkillCatalogService(options.skillDiscovery)
     this.skillCollections = new SkillCollectionRepository(this.store, id => this.localSkills.has(id))
-    this.resourceCleanups = new ResourceCleanups(this.store, this.dataPath, { invalidate: id => this.memory.invalidateResources([id]), failed: error => this.emit({ type: 'runtime-error', error }) })
+    this.resourceCleanups = new ResourceCleanups(this.store, this.dataPath, { invalidate: async id => { await this.memory.invalidateResources([id]); await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) }, failed: error => this.emit({ type: 'runtime-error', error }) })
     this.skills = new SkillManagement(this.store, this.dataPath, {
       resources: () => [...this.resources.values()], owner: id => { this.getAgent(id) },
       critical: operation => this.serialize(() => {
@@ -157,7 +163,7 @@ export class AppService {
     this.skillUpdates = new SkillUpdates(this.store, this.dataPath, this.skills, {
       resource: id => { const resource = this.resources.get(id); if (!resource || resource.kind !== 'skill') return fail('技能不存在'); return clone(resource) },
       critical: action => this.serialize(() => { if (this.closing || this.backingUp) return fail('服务正在退出或备份'); return action() }),
-      unused: id => this.assertSkillUnused(id), invalidateMemory: id => this.memory.invalidateResources([id]),
+      unused: id => this.assertSkillUnused(id), invalidateMemory: async id => { await this.memory.invalidateResources([id]); await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) },
       affectedEmployees: id => this.employees.values().filter(agent => agent.skillIds.includes(id)).map(({ id, name }) => ({ id, name })),
       commit: async (tx, resource) => {
         const agents = this.employees.values().filter(agent => agent.skillIds.includes(resource.id)).map(agent => ({ ...agent, configVersion: agent.configVersion + 1 }))
@@ -288,7 +294,10 @@ export class AppService {
     this.approvals.clear()
     updates.push(...await this.employees.initialize())
     await this.store.write(updates, removed)
-    await this.memory.init(); await this.works.init(); await this.scheduler.init()
+    this.memoryActivatedAt = await this.memory.init(); await this.works.init(); await this.scheduler.init()
+    for (const conversation of this.conversations.values()) if (conversation.memoryScope === 'conversation') for (const member of conversation.agentIds) await this.memory.restrictConversation(member, conversation.id)
+    await this.memory.maintain()
+    await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
     const provenance: StoredRecord[] = []
     for (const run of this.runs.values()) if (!run.origin) {
       const origin = run.turnId ? this.scheduler.turns.get(run.turnId)?.origin : this.messages.get(run.triggerMessageId)?.origin
@@ -299,6 +308,11 @@ export class AppService {
     await this.resourceCleanups.init(); await this.skillUpdates.init(); await this.skillLibrary.init(); await this.skills.init()
     this.initialized = true
     await this.automations.init()
+    this.memoryTimer = setInterval(() => {
+      if (this.closing || this.backingUp || this.runControllers.size || this.activeAdapters.size) return
+      void this.serialize(async () => { if (await this.memory.maintain()) await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) }).catch(() => this.emit({ type: 'runtime-error', error: '记忆整理未完成，将在空闲时重新核对；没有重新执行模型或工具。' }))
+    }, 60_000)
+    this.memoryTimer.unref()
   }
 
   private emit(event: AppEvent) { if (!this.closing) this.options.emit(clone(event)) }
@@ -535,11 +549,33 @@ export class AppService {
     return [...new Set([...resourceIds, ...messageIds.flatMap(id => { const runId = this.messages.get(id)?.runId; return runId ? this.snapshots.get(runId)?.resources.map(resource => resource.id) ?? [] : [] })])]
   }
   private async invalidateEmployeeMemory(agentId: string, matches: (entry: MemoryEntry) => boolean, conversationId?: string) {
-    const queries: MemoryQuery[] = conversationId ? [{ agentId, scope: 'conversation', conversationId }] : [{ agentId, scope: 'profile' }, ...[...this.conversations.values()].map(conversation => ({ agentId, scope: 'conversation' as const, conversationId: conversation.id }))]
-    for (const query of queries) {
-      let view = await this.memory.get(query)
-      for (const entry of view.entries.filter(matches)) view = await this.memory.delete(query, entry.id, view.epoch)
+    const query: MemoryQuery = { agentId, scope: 'employee' }
+    let view = await this.memory.get(query)
+    for (const entry of view.entries.filter(entry => matches(entry) && (!conversationId || (entry.sourceConversationIds ?? [entry.conversationId]).includes(conversationId)))) {
+      if (view.entries.some(item => item.id === entry.id)) view = await this.memory.delete(query, entry.id, view.epoch)
     }
+    await this.memoryChanged([agentId])
+  }
+  private async validateMemoryContext(ref: MemoryContextRef, agentIds: string[]) {
+    if (ref.kind === 'conversation') {
+      const conversation = this.getConversation(ref.id)
+      if (agentIds.some(id => !conversation.agentIds.includes(id))) fail('关联聊天不属于全部所选员工')
+    } else {
+      const work = (await this.store.load<import('../shared/domain').WorkItem>('workItems')).find(item => item.id === ref.id)
+      if (!work || agentIds.some(id => !this.getConversation(work.conversationId).agentIds.includes(id)) || ['delivered', 'cancelled', 'failed', 'interrupted'].includes(work.status)) fail('关联工作不存在、已结束或未授权')
+    }
+  }
+  private async memoryChanged(agentIds: string[], committedRunId?: string) {
+    await this.invalidateMemoryRuns(committedRunId)
+    for (const agentId of new Set(agentIds)) {
+      await this.store.write([{ collection: 'memoryCleanup', id: agentId, value: { id: agentId } }])
+      try {
+        const conflicts = await this.homes.invalidateMemoryViews(agentId)
+        if (conflicts.length) this.emit({ type: 'runtime-error', error: '记忆已停止使用；外部修改的生成视图已保留，请在员工工作区检查并手动清理：' + conflicts.join('、') })
+        else await this.store.write([], [{ collection: 'memoryCleanup', id: agentId }])
+      } catch { this.emit({ type: 'runtime-error', error: '记忆已停止使用，生成文件清理待重启后继续核对。' }) }
+    }
+    this.changed()
   }
   private async agentFiles(method: Method, input: unknown) {
     if (method === 'saveAgentFile') {
@@ -551,38 +587,43 @@ export class AppService {
     const query: MemoryQuery = { agentId: agent.id, scope: value.conversationId ? 'conversation' : 'profile', ...(value.conversationId ? { conversationId: value.conversationId } : {}) }
     this.validateMemoryQuery(query)
     if (method === 'readAgentFile') return this.homes.read(agent, (value as typeof value & { name: string }).name, value.conversationId)
-    await this.homes.regenerate(agent, await this.memory.get(query), value.conversationId, method === 'regenerateAgentViews')
+    const projection = value.conversationId ? await this.recallEmployeeMemory(agent, this.getConversation(value.conversationId), this.conversationMessages(value.conversationId).filter(message => message.senderType === 'user').at(-1)?.content ?? '') : await this.memory.get({ agentId: agent.id, scope: 'employee', status: 'active' })
+    await this.homes.regenerate(agent, projection, value.conversationId, method === 'regenerateAgentViews')
     return { ...await this.homes.inspect(agent, value.conversationId), environment: await this.homes.describeEnvironment(agent, this.resources.values()) }
   }
   private async memoryOperation(method: Method, input: unknown) {
-    const extra = method === 'saveMemory' ? { id: id.optional(), content: text(4000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), expectedEpoch: z.number().int().nonnegative(), origin: z.enum(['user', 'import']).optional() } : method === 'deleteMemory' ? { id, expectedEpoch: z.number().int().nonnegative() } : method === 'clearMemory' ? { expectedEpoch: z.number().int().nonnegative() } : {}
+    const version = { expectedEpoch: z.number().int().nonnegative(), requestId: id.optional() }
+    const extra = method === 'saveMemory' ? { ...version, id: id.optional(), content: text(4000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), origin: z.enum(['user', 'import']).optional(),
+      kind: z.enum(['long_term', 'experience', 'temporary']).optional(), evidence: z.enum(['fact', 'preference', 'decision', 'claim', 'inference']).optional(), useScope: z.enum(['employee', 'conversation', 'context']).optional(),
+      contextRef: memoryContextSchema.nullable().optional(), expiresAt: z.iso.datetime().nullable().optional(), pinned: z.boolean().optional(), lifecycle: z.enum(['active', 'archived', 'expired']).optional(), promote: z.boolean().optional() }
+      : method === 'deleteMemory' ? { ...version, id } : method === 'clearMemory' ? version : {}
     const value = memoryQuerySchema.extend(extra).strict().parse(input)
-    const query: MemoryQuery = { agentId: value.agentId, scope: value.scope, ...(value.conversationId ? { conversationId: value.conversationId } : {}) }
+    const query = memoryQuerySchema.parse(Object.fromEntries(Object.entries(value).filter(([key]) => key in memoryQuerySchema.shape)))
     this.validateMemoryQuery(query)
-    const previous = await this.memory.get(query)
-    if (method === 'getMemory') return previous
+    if (method === 'getMemory') return this.memory.get(query)
     const expectedEpoch = z.number().int().nonnegative().parse((value as Record<string, unknown>).expectedEpoch)
     let result: MemoryView
     if (method === 'saveMemory') {
       const input = value as Parameters<MemoryRepository['save']>[0]
-      for (const messageId of input.sourceMessageIds ?? []) if (!this.messages.has(messageId) || (query.scope === 'conversation' && this.messages.get(messageId)?.conversationId !== query.conversationId)) fail('记忆来源消息不属于当前范围')
-      for (const resourceId of input.sourceResourceIds ?? []) if (!this.resources.has(resourceId)) fail('记忆来源资料不存在')
-      const prior = previous.entries.find(entry => entry.id === input.id)
+      const prior = input.id ? (await this.memory.get({ agentId: query.agentId, scope: 'employee' })).entries.find(entry => entry.id === input.id) : undefined
+      for (const messageId of input.sourceMessageIds ?? []) {
+        const message = this.messages.get(messageId)
+        if (!message || !this.getConversation(message.conversationId).agentIds.includes(query.agentId) || query.scope === 'conversation' && message.conversationId !== query.conversationId) fail('记忆来源消息不属于当前获准范围')
+      }
+      if (input.contextRef) await this.validateMemoryContext(input.contextRef, [query.agentId])
       input.sourceMessageIds ??= prior?.sourceMessageIds ?? []
       input.sourceResourceIds = this.inheritedResources(input.sourceMessageIds, input.sourceResourceIds ?? prior?.sourceResourceIds ?? [])
-      for (const resourceId of input.sourceResourceIds) this.skillUpdates.assertAvailable(resourceId)
-      const permitted = new Set(query.conversationId ? this.authorizedResources(this.getAgent(query.agentId), this.getConversation(query.conversationId)).map(resource => resource.id) : [...this.getAgent(query.agentId).skillIds, ...this.getAgent(query.agentId).knowledgeIds])
-      if (input.sourceResourceIds.some(resourceId => !permitted.has(resourceId))) fail('记忆来源包含当前未授权资料')
+      input.sourceConversationIds = [...new Set([...(prior?.sourceConversationIds ?? (prior?.conversationId ? [prior.conversationId] : [])), ...input.sourceMessageIds.flatMap(id => { const message = this.messages.get(id); return message ? [message.conversationId] : [] }), ...(input.sourceConversationId ? [input.sourceConversationId] : []), ...(input.conversationId ? [input.conversationId] : [])])]
+      const sourceId = input.sourceConversationId ?? prior?.conversationId ?? input.conversationId ?? input.sourceConversationIds[0]
+      if (sourceId && !this.getConversation(sourceId).agentIds.includes(query.agentId)) fail('记忆来源聊天未授权')
+      if (sourceId && this.getConversation(sourceId).memoryScope === 'conversation' && (input.useScope ?? (prior && memoryUseScope(prior)) ?? 'employee') !== 'conversation') fail('来源聊天仅限本聊天使用')
+      if (input.sourceConversationIds.some(id => id !== sourceId && this.getConversation(id).memoryScope === 'conversation')) fail('不能合并另一聊天限定的来源')
+      const permitted = new Set(sourceId ? this.authorizedResources(this.getAgent(query.agentId), this.getConversation(sourceId)).map(resource => resource.id) : [...this.getAgent(query.agentId).skillIds, ...this.getAgent(query.agentId).knowledgeIds])
+      for (const resourceId of input.sourceResourceIds) { this.skillUpdates.assertAvailable(resourceId); if (!permitted.has(resourceId)) fail('记忆来源包含当前未授权资料') }
       result = await this.memory.save(input)
-    } else if (method === 'deleteMemory') result = await this.memory.delete(query, (value as typeof value & { id: string }).id, expectedEpoch)
-    else result = await this.memory.clear(query, expectedEpoch)
-    const retained = new Set(result.entries.map(entry => `${entry.id}:${entry.version}`))
-    const changedIds = new Set(previous.entries.filter(entry => !retained.has(`${entry.id}:${entry.version}`)).map(entry => entry.id))
-    const updates: StoredRecord[] = []
-    for (const snapshot of this.snapshots.values()) if (snapshot.memoryEntryIds?.some(id => changedIds.has(id))) { snapshot.invalidated = true; updates.push(record('snapshots', snapshot)) }
-    await this.store.write(updates)
-    await this.cancelEmployee(query.agentId, '记忆已更新，旧版本运行失效', query.conversationId)
-    await this.homes.regenerate(this.getAgent(query.agentId), result, query.conversationId)
+    } else if (method === 'deleteMemory') result = await this.memory.delete(query, (value as typeof value & { id: string }).id, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
+    else result = await this.memory.clear(query, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
+    await this.memoryChanged([query.agentId])
     this.changed(query.conversationId); return result
   }
 
@@ -641,6 +682,8 @@ export class AppService {
     const timer = this.workTimers.get(id)
     if (timer) clearTimeout(timer)
     this.workTimers.delete(id)
+    for (const agent of this.employees.values()) await this.memory.invalidateConversation(agent.id, id)
+    await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
     const result = await this.history.clear(conversation, hide)
     for (const item of result.removals) {
       switch (item.collection) {
@@ -675,8 +718,9 @@ export class AppService {
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
-    const { expectedConfigVersion: _, teamSetup, ...definition } = input
-    const conversation: Conversation = { ...previous, ...definition, ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
+    const { expectedConfigVersion: _, teamSetup, memoryContextRef, ...definition } = input
+    if (memoryContextRef) await this.validateMemoryContext(memoryContextRef, input.agentIds)
+    const conversation: Conversation = { ...previous, ...definition, ...(memoryContextRef !== undefined ? { memoryContextRef: memoryContextRef ?? undefined } : {}), ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
     await this.store.write([record('conversations', conversation)]); this.conversations.set(conversation.id, conversation)
     if (previous) {
@@ -687,10 +731,12 @@ export class AppService {
         for (const work of (await this.works.view(conversation.id)).workItems) if (removed.includes(work.ownerAgentId) || revoked.length) await this.works.cancelTree(work.id, '群成员或共享资料权限已变更')
         await this.scheduler.cancel(conversation.id, '群成员或共享资料权限已变更')
       }
+      if (previous.memoryScope !== 'conversation' && conversation.memoryScope === 'conversation') for (const member of previous.agentIds) await this.memory.restrictConversation(member, conversation.id)
       for (const member of removed) await this.memory.invalidateConversation(member, conversation.id)
       if (revoked.length) for (const member of conversation.agentIds) await this.memory.invalidateConversation(member, conversation.id)
       if (removed.length) for (const member of conversation.agentIds) await this.invalidateEmployeeMemory(member, entry => entry.sourceMessageIds.some(id => removed.includes(this.messages.get(id)?.senderId ?? '')), conversation.id)
     }
+    if (previous) await this.memoryChanged(previous.agentIds)
     this.changed(conversation.id); return clone(conversation)
   }
 
@@ -803,7 +849,7 @@ export class AppService {
   private async prepareAutomationConversation(d: AutomationDefinition, o: AutomationOccurrence): Promise<StoredRecord[]> {
     const input = conversationSchema.parse({ kind: 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
     for (const id of input.agentIds) this.getAgent(id)
-    const conversation: Conversation = { ...input, teamSetup: undefined, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
+    const conversation: Conversation = { ...input, memoryContextRef: undefined, teamSetup: undefined, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
     return [record('conversations', conversation)]
   }
@@ -883,6 +929,33 @@ export class AppService {
     })
     return clone([...new Map(messages.map(message => [message.id, message])).values()])
   }
+  private memoryContexts(conversation: Conversation, workId?: string): MemoryContextRef[] {
+    return [{ kind: 'conversation', id: conversation.id }, ...(conversation.memoryContextRef ? [conversation.memoryContextRef] : []), ...(workId ? [{ kind: 'work' as const, id: workId }] : [])]
+  }
+  private async recallEmployeeMemory(agent: DigitalAgent, conversation: Conversation, request: string, workId?: string): Promise<MemoryView> {
+    const view = await this.memory.get({ agentId: agent.id, scope: 'employee' })
+    const works = await this.store.load<import('../shared/domain').WorkItem>('workItems')
+    const contextRefs = this.memoryContexts(conversation, workId).filter(ref => ref.kind === 'conversation' ? !!this.conversations.get(ref.id)?.agentIds.includes(agent.id) : works.some(work => work.id === ref.id && !['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)))
+    const allowedResources = new Set(this.authorizedResources(agent, conversation).map(resource => resource.id))
+    return recallMemory({ view, observations: await this.memory.observations(agent.id), messages: this.messages, request,
+      access: { agentId: agent.id, conversationId: conversation.id, contextRefs,
+        conversationRestricted: id => this.conversations.get(id)?.memoryScope === 'conversation',
+        sourceAllowed: entry => entry.sourceResourceIds.every(id => allowedResources.has(id)) && (entry.sourceConversationIds ?? (entry.conversationId ? [entry.conversationId] : [])).every(id => this.conversations.get(id)?.agentIds.includes(agent.id)) && entry.sourceMessageIds.every(id => {
+          const message = this.messages.get(id), origin = message && this.conversations.get(message.conversationId)
+          return !!message && message.status === 'completed' && !!origin?.agentIds.includes(agent.id) && (!message.runId || !this.snapshots.get(message.runId)?.invalidated)
+        }),
+      },
+    })
+  }
+  private async invalidateMemoryRuns(committedRunId?: string) {
+    const updates: StoredRecord[] = []
+    const stale = new Set<string>()
+    for (const snapshot of this.snapshots.values()) if (snapshot.memoryRecall && !await this.memory.recallValid({ ...snapshot.memoryRecall, entries: [] })) {
+      snapshot.invalidated = true; updates.push(record('snapshots', snapshot)); if (snapshot.id !== committedRunId) stale.add(snapshot.id)
+    }
+    await this.store.write(updates)
+    await this.cancelWhere(run => stale.has(run.id) && !terminal.has(run.status), '记忆来源或使用范围已失效')
+  }
   private async engineContext(run: AgentRun, turn: DiscussionTurn, signal: AbortSignal, throughSequence = Infinity): Promise<EngineContext> {
     return this.serialize(async () => {
     signal.throwIfAborted()
@@ -902,23 +975,27 @@ export class AppService {
     if (!agent.active || !conversation.agentIds.includes(agent.id)) fail('员工已停用或移出会话')
     const connection = this.getConnection(agent.connectionId), apiKey = await this.apiKey(connection)
     signal.throwIfAborted()
-    const memory = await this.memory.get({ agentId: agent.id, scope: 'conversation', conversationId: conversation.id })
-    const profile = await this.memory.get({ agentId: agent.id, scope: 'profile' })
-    const allowedResources = new Set(this.authorizedResources(agent, conversation).map(resource => resource.id))
-    const messages = this.contextMessages(conversation, turn.triggerMessageId, throughSequence), visibleMessageIds = new Set(messages.map(message => message.id))
+    const forgotten = await this.memory.forgottenMessageIds(agent.id)
+    const messages = this.contextMessages(conversation, turn.triggerMessageId, throughSequence).filter(message => !forgotten.has(message.id)), visibleMessageIds = new Set(messages.map(message => message.id))
     let continuation: EngineContext['continuation']
     if (origin && (turn.replyToTurnIds?.length || turn.resumesTurnIds?.length || turn.resumesRunIds?.length)) {
       const o = await this.automations.replyContext(origin.occurrenceId)
       if (!o.messageId || !visibleMessageIds.has(o.messageId) || turn.replyToTurnIds?.some(id => !messages.some(message => message.turnId === id && message.senderType === 'agent'))) fail('补充信息缺少当前获准的原始请求或提问上下文')
       continuation = { originalRequestId: o.messageId!, replyToTurnIds: [...(turn.replyToTurnIds ?? [])], ...(turn.resumesTurnIds?.length ? { resumesTurnIds: [...turn.resumesTurnIds] } : {}), ...(turn.resumesRunIds?.length ? { resumesRunIds: [...turn.resumesRunIds] } : {}) }
     }
-    const combined = { ...memory, entries: [...profile.entries, ...memory.entries].filter(entry => entry.sourceResourceIds.every(id => allowedResources.has(id)) && entry.sourceMessageIds.every(id => { const runId = this.messages.get(id)?.runId; return (entry.scope === 'profile' || visibleMessageIds.has(id)) && (!runId || !this.snapshots.get(runId)?.invalidated) })) }
+    const combined = await this.recallEmployeeMemory(agent, conversation, this.messages.get(turn.triggerMessageId)?.content ?? '', run.workId)
+    if (run.phase === 'memory') {
+      // Acknowledged raw messages bridge chats, but are not already persisted facts.
+      // Supplying them as deduplication context would suppress the very delta being extracted.
+      combined.entries = combined.entries.filter(entry => !entry.id.startsWith('observation:'))
+      combined.recall!.observationIds = []
+    }
     const loaded = await this.homes.load(agent, conversation, combined, run.id)
     signal.throwIfAborted()
-    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, conversation, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.entries.map(entry => entry.id) })
+    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, conversation, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    return { agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: [...this.scheduler.contributions.values()].filter(item => item.turnId === turn.id).map(clone), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+    return { agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: [...this.scheduler.contributions.values()].filter(item => item.turnId === turn.id).map(clone), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       onTrace: async span => {
         if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
         const value: StoredTraceSpan = { ...span, conversationId: run.conversationId, runId: run.id, agentId: run.agentId, turnId: run.turnId }
@@ -932,6 +1009,7 @@ export class AppService {
       },
       onAdditionalModelCall: phase => this.serialize(async () => {
         signal.throwIfAborted()
+        if (!await this.memory.recallValid(combined)) fail('记忆已失效，请重新发起')
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
         await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
         if (run.origin) return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
@@ -1047,7 +1125,7 @@ export class AppService {
             if (!work || !visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该依赖')
           }
         }
-        context.beforeEffect = async () => { effective.throwIfAborted(); await this.works.markEffect(run.id) }
+        context.beforeEffect = async () => { effective.throwIfAborted(); if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本工具执行'); await this.works.markEffect(run.id) }
         context.afterEffect = async () => { effective.throwIfAborted(); await this.works.confirmEffect(run.id) }
         context.delegateWork = input => this.serialize(async () => {
           effective.throwIfAborted()
@@ -1104,6 +1182,7 @@ export class AppService {
       }
       context.onArtifact = artifact => this.serialize(async () => {
         if (!alive()) throw new Error('任务已停止，不能发布产物')
+        if (!await this.memory.recallValid(context.memory!)) fail('记忆已失效，不能发布旧版本产物')
         if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
         if (!isWithin(conversation.workspacePath, artifact.path)) fail('发布产物不在本群共享目录内')
         const saved = { ...artifact, id: artifact.id ?? randomUUID(), conversationId: conversation.id, ownerAgentId: run.agentId, runId: run.id, publishedAt: now() }
@@ -1125,13 +1204,15 @@ export class AppService {
         effective.throwIfAborted()
         if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
         const current = this.getConversation(conversation.id), snapshot = this.snapshots.get(run.id)!
+        if (!await this.memory.recallValid(context.memory!)) fail('记忆来源或有效期已变更，旧回复不能发布')
         if (!alive() || !current.agentIds.includes(run.agentId) || snapshot.invalidated || this.getAgent(run.agentId).configVersion !== snapshot.agent.configVersion || (current.configVersion ?? 0) !== (snapshot.conversation.configVersion ?? 0)) fail('当前运行已失去发布权限')
         const completedMessage = run.responseKind === 'task'
           ? { ...message, ...this.nextMessage(conversation.id, { id: message.id, runId: run.id, senderType: 'agent', senderId: run.agentId, senderName: run.agentName, content: run.draft!.text, status: 'completed' }) }
           : { ...message, status: 'completed' as const }
         const completedRun = { ...run, status: 'completed' as const, finishedAt: now(), ...(run.workId ? { disposition: outcome.disposition } : {}), ...(run.draft ? { draft: { ...run.draft, status: 'published' as const } } : {}) }
         const artifacts = [...this.artifacts.values()].filter(artifact => artifact.runId === run.id)
-        const records = [record('runs', completedRun), record('messages', completedMessage), ...artifacts.map(artifact => record('artifacts', artifact))]
+        const observation: MemoryObservation = { id: run.id, ownerAgentId: run.agentId, conversationId: current.id, sourceMessageIds: [...new Set([...context.messages.filter(item => item.createdAt >= this.memoryActivatedAt).map(item => item.id), completedMessage.id, ...(context.memory?.entries.flatMap(entry => entry.sourceMessageIds) ?? [])])], sourceConversationIds: [...new Set([current.id, ...(context.memory?.entries.flatMap(entry => entry.sourceConversationIds ?? (entry.conversationId ? [entry.conversationId] : [])) ?? [])])], sourceResourceIds: snapshot.resources.map(item => item.id), sourceMemoryIds: context.memory?.recall?.versions.map(entry => entry.id) ?? [], contextRef: current.memoryContextRef, disclosure: current.kind === 'direct' ? 'private' : 'public', useScope: current.memoryScope ?? 'employee', createdAt: now() }
+        const records = [record('runs', completedRun), record('messages', completedMessage), this.memory.observation(observation), ...artifacts.map(artifact => record('artifacts', artifact))]
         await publish(completedMessage, records, run.workId ? async records => {
           await this.works.settle(run.id, outcome, { messageId: message.id, content: completedMessage.content, artifactIds: artifacts.map(artifact => artifact.id) }, records)
         } : undefined)
@@ -1217,18 +1298,31 @@ export class AppService {
       let key = ''
       try {
         const context = await this.engineContext(run, turn, effective); key = context.apiKey
-        const query: MemoryQuery = { agentId, conversationId: turn.conversationId, scope: 'conversation' }
+        const query: MemoryQuery = { agentId, scope: 'employee' }
         const candidates = await this.invokeModel(run, context, ctx => this.options.engine.extractMemory!(ctx), 30_000)
         await this.serialize(async () => {
           effective.throwIfAborted()
           if (run.origin) await this.automations.assertExecutable(run.origin, turn.conversationId)
           const current = this.getConversation(turn.conversationId), currentAgent = this.getAgent(agentId)
           if (!current.agentIds.includes(agentId)) fail('员工已移出本会话')
+          const currentMessages = context.messages.filter(message => message.turnId === turn.id || message.id === turn.triggerMessageId)
+          const contexts = this.memoryContexts(current, run.workId)
+          for (const candidate of candidates) if (candidate.contextRef && !contexts.some(ref => ref.kind === candidate.contextRef!.kind && ref.id === candidate.contextRef!.id)) fail('记忆候选关联了未授权事项')
+          for (const candidate of candidates) for (const target of candidate.supersedes ?? []) if (!context.memory?.recall?.versions.some(entry => entry.id === target.id && entry.version === target.version)) fail('纠正目标不属于本次获准召回版本')
+          const observations = await this.memory.observations(agentId)
           const withProvenance = candidates.map(candidate => ({ ...candidate, sourceResourceIds: this.inheritedResources(candidate.sourceMessageIds, candidate.sourceResourceIds ?? []) }))
-          const result = await this.memory.extract(query, withProvenance, context.memory!.epoch, this.contextMessages(current, turn.triggerMessageId).map(message => message.id), this.authorizedResources(currentAgent, current).map(resource => resource.id))
-          await this.homes.regenerate(currentAgent, result, turn.conversationId)
+          await this.memory.extract(query, withProvenance, context.memory!.epoch, currentMessages.map(message => message.id), this.authorizedResources(currentAgent, current).map(resource => resource.id), {
+            conversationId: current.id, useScope: current.memoryScope ?? 'employee', disclosure: current.kind === 'direct' ? 'private' : 'public', requestId: `${turn.id}:${agentId}`, expectedInvalidationEpoch: context.memory!.invalidationEpoch ?? 0,
+            authorizedContexts: contexts, userMessageIds: currentMessages.filter(message => message.senderType === 'user' && message.senderId === 'user').map(message => message.id),
+            messageSourceIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, observations.find(item => item.id === message.runId)?.sourceMessageIds ?? []])),
+            messageConversationIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, observations.find(item => item.id === message.runId)?.sourceConversationIds ?? []])),
+            messageMemoryIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, this.snapshots.get(message.runId!)?.memoryEntryIds ?? []])),
+            attribution: [...new Set(currentMessages.filter(message => candidates.some(candidate => candidate.sourceMessageIds.includes(message.id))).map(message => message.senderName))].join('、'),
+          })
+          await this.memoryChanged([agentId], run.id)
+          await this.homes.regenerate(currentAgent, await this.recallEmployeeMemory(currentAgent, current, this.messages.get(turn.triggerMessageId)?.content ?? ''), turn.conversationId)
         })
-        await this.finishRun(run, 'completed')
+        if (!terminal.has(run.status)) await this.finishRun(run, 'completed')
       } catch (error) { if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key)) }
       finally { this.runControllers.delete(run.id) }
     }))
@@ -1252,6 +1346,7 @@ export class AppService {
     const deadline = new AbortController(), signal = AbortSignal.any([context.signal, deadline.signal])
     return withAbort(this.modelCapacity.run(context.connection.id, signal, async () => {
       if (started) for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (attemptUsage[field] !== undefined) earlierAttempts[field] = (earlierAttempts[field] ?? 0) + attemptUsage[field]!
+      if (context.memory && !await this.memory.recallValid(context.memory)) fail('记忆已失效，旧模型请求被阻止')
       started = true; attemptUsage = {}
       if (run.origin && !reservedCallId) reservedCallId = await this.serialize(async () => {
         signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
@@ -1495,6 +1590,7 @@ export class AppService {
   async close() {
     if (this.closing) return
     this.closing = true
+    if (this.memoryTimer) clearInterval(this.memoryTimer)
     for (const timer of this.workTimers.values()) clearTimeout(timer)
     this.workTimers.clear()
     await this.teamCreation.close()

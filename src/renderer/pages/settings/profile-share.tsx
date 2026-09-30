@@ -1,18 +1,20 @@
 /*
- * [INPUT]: 已提交资料、同一活动快照、离线头像与当前全局主题。
- * [OUTPUT]: 全屏活动分享卡片、统一 SVG 默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
+ * [INPUT]: 已提交资料、已有活动快照或独立只读活动请求、离线头像与当前全局主题。
+ * [OUTPUT]: 页面/头像菜单共用全屏分享，独立加载/错误重试、统一 SVG 默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
  * [POS]: 个人资料分享弹窗；画布既是预览也是导出源，不依赖截图服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { LocalUserProfile, ProfileActivity } from '@shared/domain/profile'
+import { defaultUserProfile } from '@shared/domain/profile'
+import type { DesktopApi } from '@shared/ipc'
 import { userAvatarSource } from '@/assets/avatars'
-import { Banner, useMutation } from '@/components/common'
+import { Banner, errorText, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Copy, Download, X } from '@/components/icons'
-import { activityThresholds, mondayOffset, tokenText } from './profile-activity'
+import { activityThresholds, mondayOffset, profileActivityRange, tokenText } from './profile-activity'
 
 async function paintShareCard(canvas: HTMLCanvasElement, profile: LocalUserProfile, activity: ProfileActivity, current: () => boolean) {
   await document.fonts.ready
@@ -64,12 +66,22 @@ async function paintShareCard(canvas: HTMLCanvasElement, profile: LocalUserProfi
   context.textAlign = 'left'
 }
 
-export function ProfileShare({ profile, activity, onClose, finalFocus }: { profile: LocalUserProfile; activity: ProfileActivity; onClose: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
+export function ProfileShare({ api, profile = defaultUserProfile, activity: providedActivity, onClose, finalFocus }: { api: DesktopApi; profile?: LocalUserProfile; activity?: ProfileActivity; onClose: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
   const canvas = useRef<HTMLCanvasElement>(null), [blob, setBlob] = useState<Blob>(), [imageError, setImageError] = useState(''), [notice, setNotice] = useState('')
+  const [loadedActivity, setLoadedActivity] = useState<ProfileActivity>(), [loadError, setLoadError] = useState(''), [retry, setRetry] = useState(0)
+  const activity = providedActivity ?? loadedActivity
   const { busy, error, run } = useMutation()
+  useEffect(() => {
+    if (providedActivity) return
+    let current = true
+    setLoadError('')
+    void api.request('getProfileActivity', profileActivityRange()).then(result => { if (current) setLoadedActivity(result) }).catch(error => { if (current) setLoadError(errorText(error)) })
+    return () => { current = false }
+  }, [api, providedActivity, retry])
   useEffect(() => {
     let current = true
     setBlob(undefined); setImageError(''); setNotice('')
+    if (!activity) return
     const render = async () => {
       try {
         await paintShareCard(canvas.current!, profile, activity, () => current)
@@ -79,7 +91,7 @@ export function ProfileShare({ profile, activity, onClose, finalFocus }: { profi
     void render(); return () => { current = false }
   }, [profile, activity])
   const save = () => void run(async () => {
-    if (!blob) return
+    if (!blob || !activity) return
     const url = URL.createObjectURL(blob), link = document.createElement('a')
     link.href = url; link.download = `BoAI-活动-${activity.range.to}.png`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
@@ -93,7 +105,7 @@ export function ProfileShare({ profile, activity, onClose, finalFocus }: { profi
       <DialogClose render={<Button variant="ghost" size="icon-lg" className="profile-share-close" aria-label="关闭分享" />}><X size={24} /></DialogClose>
       <div className="profile-share-body">
         <DialogTitle className="text-3xl font-medium">分享你的活动</DialogTitle>
-        <Card className="profile-share-card gap-0 p-0"><canvas ref={canvas} width={1280} height={660} role="img" aria-label={`${profile.displayName}的 BoAI 活动，累计 ${tokenText(activity.totalTokens)} Token${activity.incomplete ? '，部分用量未记录' : ''}`} /></Card>
+        {activity ? <Card className="profile-share-card gap-0 p-0"><canvas ref={canvas} width={1280} height={660} role="img" aria-label={`${profile.displayName}的 BoAI 活动，累计 ${tokenText(activity.totalTokens)} Token${activity.incomplete ? '，部分用量未记录' : ''}`} /></Card> : loadError ? <Banner>{loadError}<Button variant="link" onClick={() => setRetry(value => value + 1)}>重试</Button></Banner> : <p role="status">正在读取本机活动…</p>}
         {(imageError || error) && <Banner>{imageError || error}</Banner>}
         <div className="profile-share-actions">
           <div><Button variant="ink" size="icon-lg" disabled={!blob || busy} aria-label="复制活动图片" onClick={copy}><Copy size={22} /></Button><span>复制图片</span></div>

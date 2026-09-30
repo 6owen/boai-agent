@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 团队需求、模型输出和用户编辑；无凭据或工具权限。
- * [OUTPUT]: planner v4 与宿主权威能力说明，来源版本跨升级保留；T1 严格方案校验、版本草稿、有界生成和冻结创建账本合同。
+ * [OUTPUT]: planner v5 的 T2 连续记忆能力说明；旧来源版本保留；严格方案校验、版本草稿、有界生成和冻结创建账本合同。
  * [POS]: shared/domain 团队创建跨进程合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { avatarPresets } from './avatars'
 import type { DigitalAgent, Conversation } from './index'
 
-export const TEAM_PLANNER_VERSION = 'team-planner-v4'
+export const TEAM_PLANNER_VERSION = 'team-planner-v5'
 export const TEAM_LIMITS = { members: 12, attempts: 2, deadlineMs: 120_000, outputTokens: 8192 } as const
 export const teamColors = ['#6675a4', '#438b80', '#ad8054', '#638ac5', '#a76c90', '#777b8d'] as const
 const text = (max: number) => z.string().trim().min(1).max(max).refine(value => !value.includes('\0'), '文本不能包含空字符')
@@ -33,8 +33,8 @@ export function teamCapabilityNotes(scenarioKind: TeamPlan['scenarioKind']): str
   return [
     '新员工使用所选同一 API 模型，默认无命令权限、无 Skills、无知识绑定，不自动安装工具或联网。',
     '成员可读写个人工作区文件并产生文件产物。',
-    '员工保留现有个人记忆机制；任意群聊经历跨会话自动回忆尚未提供。',
-    '命令权限、Skills 和知识绑定需用户通过现有设置另行配置；本方案不授予读取其他私聊的权限。',
+    '同一员工的新交流可在相关私聊与群聊中接续；仅此聊天限制、来源授权和有效期仍适用，旧会话记忆不自动开放。',
+    '命令权限、Skills 和知识绑定需用户通过现有设置另行配置；本方案不授予读取其他员工私有聊天的权限。',
     '创建仅保存员工和可选群聊，不发送欢迎词、不自动开始任务或发布到外部平台。',
     ...(scenarioKind === 'roleplay' ? ['仅创建玩家互动群；未支持正式游戏规则、隐藏身份、投票和胜负裁定。'] : []),
   ]

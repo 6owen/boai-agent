@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
- * [OUTPUT]: 实际模型步骤开始/回执和已解析技能成功激活观测，已收到的用量在取消后仍可记账；无工具的结构化日程草稿提取及原始用量记录；判断输入传递宿主确认的补充关联；各阶段与多步骤绑定唯一调用身份，白名单提取单次原始用量并保留未知；员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
+ * [OUTPUT]: 员工统一记忆的有证据分类/纠正候选与获准召回；实际模型步骤开始/回执和已解析技能成功激活观测，已收到的用量在取消后仍可记账；无工具的结构化日程草稿提取及原始用量记录；判断输入传递宿主确认的补充关联；各阶段与多步骤绑定唯一调用身份，白名单提取单次原始用量并保留未知；员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -84,6 +84,12 @@ const memorySchema = z.object({ candidates: z.array(z.object({
   content: z.string().trim().min(1).max(400),
   sourceMessageIds: z.array(z.string()).min(1).max(4),
   sourceResourceIds: z.array(z.string()).max(4).optional(),
+  kind: z.enum(['long_term', 'experience', 'temporary']).optional(),
+  evidence: z.enum(['fact', 'preference', 'decision', 'claim', 'inference']).optional(),
+  useScope: z.literal('conversation').optional(),
+  contextRef: z.object({ kind: z.enum(['conversation', 'work']), id: z.string().min(1).max(200) }).strict().optional(),
+  expiresAt: z.iso.datetime().optional(),
+  supersedes: z.array(z.object({ id: z.string().min(1).max(200), version: z.number().int().positive() }).strict()).max(4).optional(),
 }).strict()).max(6) }).strict()
 
 function parseJson(text: string): unknown {
@@ -290,7 +296,7 @@ export class MastraEngine implements AgentEngine {
     const messageIds = new Set(messages.map(message => message.id))
     const resources = context.resources.filter(resource => (!resource.ownerAgentId || resource.ownerAgentId === context.agent.id) && (context.agent.skillIds.includes(resource.id) || context.agent.knowledgeIds.includes(resource.id) || context.conversation.sharedKnowledgeIds.includes(resource.id)))
     const resourceIds = new Set(resources.map(resource => resource.id))
-    const retained = (context.memory?.entries ?? []).filter(entry => !entry.deletedAt && entry.ownerAgentId === context.agent.id && (entry.scope === 'profile' || entry.conversationId === context.conversation.id))
+    const retained = (context.memory?.entries ?? []).filter(entry => !entry.id.startsWith('observation:') && !entry.deletedAt && entry.ownerAgentId === context.agent.id && (context.memory?.recall?.conversationId === context.conversation.id || entry.scope === 'profile' || entry.conversationId === context.conversation.id))
     const bootstrap = bootstrapInstructions(context)
     const { agent, dispose } = await createStageAgent('memory', { ...context, signal })
     const data = {
@@ -298,8 +304,11 @@ export class MastraEngine implements AgentEngine {
       currentTurnMessages: messages.map(message => messageData(message, turn.root?.id)),
       // Bootstrap may contain only a bounded memory projection. Keep all remaining
       // authorized facts intact, without repeating those already present in full.
-      additionalRetainedFacts: retained.filter(entry => !bootstrap.includes(entry.content)).map(entry => ({ id: entry.id, content: entry.content })),
-      retainedFactsInstruction: 'Existing facts in the employee background and additionalRetainedFacts are for deduplication only, not candidate sources. Do not rewrite or delete them.',
+      retainedVersions: retained.filter(entry => !entry.id.startsWith('observation:')).map(entry => ({ id: entry.id, version: entry.version })),
+      additionalRetainedFacts: retained.filter(entry => !bootstrap.includes(entry.content)).map(entry => ({ id: entry.id, version: entry.version, content: entry.content })),
+      authorizedContexts: context.memoryContexts ?? [],
+      currentMemoryPolicy: { defaultUseScope: context.conversation.memoryScope ?? 'employee', linkedContext: context.conversation.memoryContextRef ?? null },
+      retainedFactsInstruction: 'Existing facts are deduplication context, never candidate evidence. Only explicit current user correction may supersede an authorized retained version.',
       validResourceReferences: resources.map(resource => ({ id: resource.id, name: resource.name })),
     }
     const schema = z.toJSONSchema(memorySchema)
@@ -342,7 +351,7 @@ export class MastraEngine implements AgentEngine {
           if (context.apiKey && candidate.content.includes(context.apiKey)) throw new Error('记忆候选不能包含模型凭据')
         }
         const existing = new Set(retained.map(entry => entry.content.trim()))
-        return candidates.filter(candidate => { const content = candidate.content.trim(); if (existing.has(content)) return false; existing.add(content); return true }).map(candidate => ({ content: candidate.content.trim(), sourceMessageIds: [...new Set(candidate.sourceMessageIds)], sourceResourceIds: [...new Set(candidate.sourceResourceIds ?? [])] }))
+        return candidates.filter(candidate => { const content = candidate.content.trim(); if (existing.has(content)) return false; existing.add(content); return true }).map(candidate => ({ ...candidate, content: candidate.content.trim(), sourceMessageIds: [...new Set(candidate.sourceMessageIds)], sourceResourceIds: [...new Set(candidate.sourceResourceIds ?? [])] }))
       }
       throw new Error('记忆整理未完成')
     } catch (error) { throw new Error(redact(`记忆整理失败：${errorText(error)}`, context.apiKey), { cause: error }) } finally { await dispose() }

@@ -1,0 +1,714 @@
+{
+  "version": "WG-real-v1",
+  "startedAt": "2026-09-30T16:52:02.199Z",
+  "rows": [
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p1",
+        "revision": 4,
+        "phaseVersion": 1,
+        "day": 1,
+        "phase": "wolf-talk",
+        "ownRole": "wolf",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [
+          {
+            "id": "eval-wolf-private",
+            "playerId": "p1",
+            "content": "本局你是主持人分发的狼人。狼队讨论时可用“月影”确认你记得这条建议，白天不要提该暗号；不要修改主持发牌。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.217Z"
+          }
+        ],
+        "legalTargets": [],
+        "canAbstain": false,
+        "wolfTeam": [
+          "p1",
+          "p5"
+        ],
+        "wolfDiscussion": []
+      },
+      "usage": {
+        "inputTokens": 1029,
+        "outputTokens": 464
+      },
+      "choice": {
+        "kind": "talk",
+        "text": "月影收到。首夜建议刀3号玩家（p2），你若同意也投他；备选4号。先统一票，避免平票随机。"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p5",
+        "revision": 5,
+        "phaseVersion": 1,
+        "day": 1,
+        "phase": "wolf-talk",
+        "ownRole": "wolf",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [],
+        "legalTargets": [],
+        "canAbstain": false,
+        "wolfTeam": [
+          "p1",
+          "p5"
+        ],
+        "wolfDiscussion": [
+          {
+            "day": 1,
+            "playerId": "p1",
+            "text": "月影收到。首夜建议刀3号玩家（p2），你若同意也投他；备选4号。先统一票，避免平票随机。"
+          }
+        ]
+      },
+      "usage": {
+        "inputTokens": 1001,
+        "outputTokens": 118
+      },
+      "choice": {
+        "kind": "talk",
+        "text": "月影收到。首夜就统一刀玩家3（p2），我投他，避免平票随机。若你改主意请在投票前说一声。"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p1",
+        "revision": 6,
+        "phaseVersion": 2,
+        "day": 1,
+        "phase": "wolf-vote",
+        "ownRole": "wolf",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [
+          {
+            "id": "eval-wolf-private",
+            "playerId": "p1",
+            "content": "本局你是主持人分发的狼人。狼队讨论时可用“月影”确认你记得这条建议，白天不要提该暗号；不要修改主持发牌。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.217Z"
+          }
+        ],
+        "legalTargets": [
+          "p0",
+          "p2",
+          "p3",
+          "p4"
+        ],
+        "canAbstain": false,
+        "wolfTeam": [
+          "p1",
+          "p5"
+        ],
+        "wolfDiscussion": [
+          {
+            "day": 1,
+            "playerId": "p1",
+            "text": "月影收到。首夜建议刀3号玩家（p2），你若同意也投他；备选4号。先统一票，避免平票随机。"
+          },
+          {
+            "day": 1,
+            "playerId": "p5",
+            "text": "月影收到。首夜就统一刀玩家3（p2），我投他，避免平票随机。若你改主意请在投票前说一声。"
+          }
+        ]
+      },
+      "usage": {
+        "inputTokens": 1137,
+        "outputTokens": 91
+      },
+      "choice": {
+        "kind": "target",
+        "targetId": "p2"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p5",
+        "revision": 7,
+        "phaseVersion": 2,
+        "day": 1,
+        "phase": "wolf-vote",
+        "ownRole": "wolf",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [],
+        "legalTargets": [
+          "p0",
+          "p2",
+          "p3",
+          "p4"
+        ],
+        "canAbstain": false,
+        "wolfTeam": [
+          "p1",
+          "p5"
+        ],
+        "wolfDiscussion": [
+          {
+            "day": 1,
+            "playerId": "p1",
+            "text": "月影收到。首夜建议刀3号玩家（p2），你若同意也投他；备选4号。先统一票，避免平票随机。"
+          },
+          {
+            "day": 1,
+            "playerId": "p5",
+            "text": "月影收到。首夜就统一刀玩家3（p2），我投他，避免平票随机。若你改主意请在投票前说一声。"
+          }
+        ]
+      },
+      "usage": {
+        "inputTokens": 1061,
+        "outputTokens": 81
+      },
+      "choice": {
+        "kind": "target",
+        "targetId": "p2"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p2",
+        "revision": 8,
+        "phaseVersion": 3,
+        "day": 1,
+        "phase": "seer",
+        "ownRole": "seer",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [],
+        "legalTargets": [
+          "p0",
+          "p1",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "canAbstain": false,
+        "investigations": []
+      },
+      "usage": {
+        "inputTokens": 958,
+        "outputTokens": 85
+      },
+      "choice": {
+        "kind": "target",
+        "targetId": "p1"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p3",
+        "revision": 9,
+        "phaseVersion": 4,
+        "day": 1,
+        "phase": "witch",
+        "ownRole": "witch",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          }
+        ],
+        "privateMessages": [
+          {
+            "id": "eval-witch-private",
+            "playerId": "p3",
+            "content": "本局你是主持人分发的女巫。建议首夜有解药且允许时优先救人；这条建议只留在局内，不要公开转述。身份仍以主持发牌为准。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.216Z"
+          }
+        ],
+        "legalTargets": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "canAbstain": false,
+        "witch": {
+          "save": true,
+          "poison": true,
+          "victimId": "p2",
+          "canSelfSave": true
+        }
+      },
+      "usage": {
+        "inputTokens": 1058,
+        "outputTokens": 277
+      },
+      "choice": {
+        "kind": "witch",
+        "potion": "save",
+        "targetId": "p2"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p0",
+        "revision": 10,
+        "phaseVersion": 5,
+        "day": 1,
+        "phase": "speech",
+        "ownRole": "villager",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          },
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:2",
+            "text": "天亮了，昨夜无人出局。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:11.348Z"
+          },
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:3",
+            "text": "第1天 · 白天发言。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:11.348Z"
+          }
+        ],
+        "privateMessages": [],
+        "legalTargets": [],
+        "canAbstain": false
+      },
+      "usage": {
+        "inputTokens": 1076,
+        "outputTokens": 176
+      },
+      "choice": {
+        "kind": "talk",
+        "text": "1号发言：我是村民。首夜平安夜，大概率女巫开了解药救人，也可能狼人空刀。建议预言家白天不必急着跳，先听后面发言；女巫若报刀口，能帮我们锁定范围。我先过，2号请。"
+      }
+    },
+    {
+      "view": {
+        "rules": "wg-v1",
+        "gameId": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627",
+        "playerId": "p1",
+        "revision": 11,
+        "phaseVersion": 5,
+        "day": 1,
+        "phase": "speech",
+        "ownRole": "wolf",
+        "players": [
+          {
+            "agentId": "p0",
+            "name": "玩家1",
+            "seat": 1,
+            "alive": true
+          },
+          {
+            "agentId": "p1",
+            "name": "玩家2",
+            "seat": 2,
+            "alive": true
+          },
+          {
+            "agentId": "p2",
+            "name": "玩家3",
+            "seat": 3,
+            "alive": true
+          },
+          {
+            "agentId": "p3",
+            "name": "玩家4",
+            "seat": 4,
+            "alive": true
+          },
+          {
+            "agentId": "p4",
+            "name": "玩家5",
+            "seat": 5,
+            "alive": true
+          },
+          {
+            "agentId": "p5",
+            "name": "玩家6",
+            "seat": 6,
+            "alive": true
+          }
+        ],
+        "publicEvents": [
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:1",
+            "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.215Z"
+          },
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:2",
+            "text": "天亮了，昨夜无人出局。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:11.348Z"
+          },
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:3",
+            "text": "第1天 · 白天发言。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:11.348Z"
+          },
+          {
+            "id": "b1987db4-8f17-4e80-9e4f-05b8cb8d4627:event:4",
+            "text": "1号发言：我是村民。首夜平安夜，大概率女巫开了解药救人，也可能狼人空刀。建议预言家白天不必急着跳，先听后面发言；女巫若报刀口，能帮我们锁定范围。我先过，2号请。",
+            "senderId": "p0",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:12.904Z"
+          }
+        ],
+        "privateMessages": [
+          {
+            "id": "eval-wolf-private",
+            "playerId": "p1",
+            "content": "本局你是主持人分发的狼人。狼队讨论时可用“月影”确认你记得这条建议，白天不要提该暗号；不要修改主持发牌。",
+            "day": 1,
+            "createdAt": "2026-09-30T16:52:02.217Z"
+          }
+        ],
+        "legalTargets": [],
+        "canAbstain": false,
+        "wolfTeam": [
+          "p1",
+          "p5"
+        ],
+        "wolfDiscussion": [
+          {
+            "day": 1,
+            "playerId": "p1",
+            "text": "月影收到。首夜建议刀3号玩家（p2），你若同意也投他；备选4号。先统一票，避免平票随机。"
+          },
+          {
+            "day": 1,
+            "playerId": "p5",
+            "text": "月影收到。首夜就统一刀玩家3（p2），我投他，避免平票随机。若你改主意请在投票前说一声。"
+          }
+        ]
+      },
+      "usage": {
+        "inputTokens": 1388,
+        "outputTokens": 900
+      },
+      "error": "模型未返回有效动作"
+    }
+  ],
+  "quality": "needs_review"
+}

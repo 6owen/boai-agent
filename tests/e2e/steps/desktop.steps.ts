@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
+ * [OUTPUT]: T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -166,12 +166,13 @@ async function prepareCollaboration(runtime: Desktop) {
 
 async function verifyConversationIsolation(previous: Awaited<ReturnType<typeof prepareCollaboration>>) {
   let { runtime, requests, desktop, launch, snapshot, detail, current, page, initial, direct, send, settled } = previous
+  await page.evaluate(c => window.boai.request('createConversation', { id: c.id, kind: c.kind, title: c.title, agentIds: c.agentIds, memoryScope: 'conversation' }), direct)
   await send(direct.id, 'PRIVATE_SENTINEL_7321，请记住这个私聊约定', [], 'private-1')
   await expect.poll(() => settled(direct.id), { timeout: 40000 }).toBe(true)
   const privateMemory = await page.evaluate((input) => window.boai.request('getMemory', input), {
     agentId: 'researcher',
-    scope: 'conversation' as const,
-    conversationId: direct.id,
+    scope: 'employee' as const,
+    sourceConversationId: direct.id,
   })
   expect(privateMemory.entries[0]?.content).toContain('PRIVATE_SENTINEL')
   const group = await page.evaluate(
@@ -297,11 +298,13 @@ async function editEmployeeResources(previous: Awaited<ReturnType<typeof exercis
   await panel.getByRole('tab', { name: '记忆', exact: true }).click()
   await panel.getByRole('button', { name: '添加', exact: true }).click()
   await panel.getByRole('textbox', { name: '新增记忆', exact: true }).fill('群内专属约定：所有结论需注明来源。')
+  await panel.getByRole('combobox', { name: '使用范围', exact: true }).click()
+  await page.getByRole('option', { name: '仅此聊天', exact: true }).click()
   await panel.getByRole('button', { name: '保存记忆', exact: true }).click()
   await expect(panel).toContainText('群内专属约定')
-  await panel.getByRole('button', { name: '删除', exact: true }).click()
-  await panel.getByRole('button', { name: '确认删除', exact: true }).click()
-  await expect(panel).toContainText('这个范围还没有记忆')
+  await panel.getByRole('button', { name: '忘记', exact: true }).click()
+  await panel.getByRole('button', { name: '确认忘记', exact: true }).click()
+  await expect(panel).toContainText('没有符合条件的记忆。')
   await panel.getByRole('tab', { name: '工作区', exact: true }).click()
   await expect(panel).toContainText('agents/researcher/workspace')
   await page.screenshot({ path: 'test-results/v02-desktop-group.png', fullPage: true })
@@ -334,8 +337,8 @@ async function verifyDesktopRestart(previous: Awaited<ReturnType<typeof editEmpl
   )
   const remembered = await page.evaluate((input) => window.boai.request('getMemory', input), {
     agentId: 'researcher',
-    scope: 'conversation' as const,
-    conversationId: direct.id,
+    scope: 'employee' as const,
+    sourceConversationId: direct.id,
   })
   expect(remembered.entries).toHaveLength(1)
   expect(requests.length).toBe(restartRequests)

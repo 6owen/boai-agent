@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 仓库全局约束、无 Node 版本门禁的 pnpm runtime、初始化 CLI、统一位于 `.agents` 的项目 skills、三应用、Web/Admin Base UI 与 Web Iconify UI、客户端 API/Server Route/后端实现分层、含 Web emailAndPassword/loopback local credential sign-in 的 Capability Profile、共享 Auth/Admin role-permission-ban/Consent/Analytics/Newsletter/Observability/Jobs/Webhooks、Admin audit、Data Operations、Projects/Content/Search/User Assets/Developer API/Product AI、Manifest/Environment/DB、部署/CI、Canvasight 与文档协议。
-[OUTPUT]: 团队草稿/生成预算、冻结文件准备/原子发布与显式恢复、群背景和 T2/T3 隔离；定时任务七项表单、受控草稿/创建回执与全量历史查询边界；个人资料稳定身份/原子保存与去重活动观测边界；sidebar 主页面与右侧详情标签的作用域隔离；已发布 JSON 监控的确定性比较、原子检查点与清理/恢复边界；明确额度追加与累计用量/工作身份/安全续行边界；自动化通知意图与结果同事务、原子领取/提交回执及重启不盲目重发；自动化任务聊天独立绑定/普通聊天复用隔离、编辑标签/完整历史和精确结果定位；自动化明确补充关联与原始工作身份；自动化统一 occurrence 预算/唯一调用回执与容量再认领；自动化跨工作来源/证据与定向取消待退出；自动化事务受理/分离版本/投递意图及原生时钟权威；Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
+[OUTPUT]: 团队草稿/生成预算、冻结文件准备/原子发布与显式恢复、群背景、T2 员工统一记忆/来源失效与 T3 撤销与普通对话边界；定时任务七项表单、受控草稿/创建回执与全量历史查询边界；个人资料稳定身份/原子保存与去重活动观测边界；sidebar 主页面与右侧详情标签的作用域隔离；已发布 JSON 监控的确定性比较、原子检查点与清理/恢复边界；明确额度追加与累计用量/工作身份/安全续行边界；自动化通知意图与结果同事务、原子领取/提交回执及重启不盲目重发；自动化任务聊天独立绑定/普通聊天复用隔离、编辑标签/完整历史和精确结果定位；自动化明确补充关联与原始工作身份；自动化统一 occurrence 预算/唯一调用回执与容量再认领；自动化跨工作来源/证据与定向取消待退出；自动化事务受理/分离版本/投递意图及原生时钟权威；Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
 [POS]: 位于仓库根目录，作为 Codex / Claude / 其他代理的权威操作手册。
 
 [PROTOCOL]:
@@ -150,7 +150,14 @@
 
 - 团队创建只在通讯录独立详情标签进行；单一未结束草稿按版本保存，生成无员工身份/工具/工作区/记忆，最多两次调用、绝对期限与共享容量，用量未知不得按零处理。
 - 确认时事务冻结方案与对象身份；文件按操作归属和 hash 在受管暂存区准备，复核配置/完整目录后一次事务发布全部员工、可选群和回执。重启只核对，继续或放弃必须明确；清理不得覆盖或删除外部修改，未结束创建与备份互斥。
-- 团队来源仅解释配置，不改变员工身份、既有工作区或记忆。群 teamSetup 是可编辑背景，不是当前请求，不自动制造消息/Work，也不启动正式游戏。T2/T3 未交付前不得宣称完整跨会话经历或游戏规则可用。
+- 团队来源仅解释配置，不改变员工身份、既有工作区或记忆。群 teamSetup 是可编辑背景，不是当前请求，不自动制造消息/Work，也不启动正式游戏。T2 已接员工统一记忆，仍受来源/范围/生命周期与保守迁移限制；T3 专用游戏实现已按用户要求撤销，群聊保持普通对话，不添加游戏面板、固定规则或代码主持。
+
+# Employee Memory Boundaries
+
+- 同一员工的新交流默认按相关性跨私聊/群聊召回；先核对员工、实际获知证据、来源授权、使用范围、事项和有效期，再排序与完整条目预算选择。全量管理列表不得作为模型输入，旧 conversation 不自动扩权。
+- SQLite 是唯一记忆权威。请求回执、版本、纠正/忘记屏障和来源链同事务；限制/纠正/撤权后旧快照不能启动新调用、工具或发布。刚完成的交流可用获准原文接续，但不能绕过忘记、到期或旧数据启用边界。
+- 来源失效传播至派生条目、获知回执和生成文件；文件只清理 hash 匹配的受管投影，外部修改保留并可见。重启核对和空闲确定性维护不调用模型、不重放工具；自动化维护仍归原 occurrence 预算。
+- 临时角色只承载有范围和有效期的陈述，不是正式游戏规则或永久人格。私人来源的披露提示不是硬防泄漏保证；需要硬限制时使用仅此聊天/明确关联事项。恢复旧备份恢复其历史状态，不承诺离线备份继承之后的忘记。
 
 # Local Agent Connections
 

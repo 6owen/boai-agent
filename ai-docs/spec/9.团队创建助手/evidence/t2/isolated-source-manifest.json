@@ -1,0 +1,33 @@
+{
+  "baseline": "99df989a4def6617e761525473841f1dfb98b0e8",
+  "overlays": [
+    "src/runtime/service.ts",
+    "src/runtime/contracts.ts",
+    "src/runtime/adapters/mastra/agent-factory.ts",
+    "src/runtime/adapters/mastra/engine.ts",
+    "src/runtime/modules/memory/memory-repository.ts",
+    "src/runtime/modules/memory/memory-policy.ts",
+    "src/runtime/modules/memory/memory-recall.ts",
+    "src/runtime/modules/workspaces/workspace-service.ts",
+    "src/runtime/modules/conversations/history.ts",
+    "src/shared/domain/index.ts",
+    "src/shared/domain/memory.ts",
+    "src/shared/ipc/index.ts",
+    "src/renderer/components/employee/index.tsx",
+    "src/renderer/components/employee/editors.tsx",
+    "src/renderer/components/employee/memory-pane.tsx",
+    "tests/mastra-engine.test.ts",
+    "tests/service.test.ts",
+    "tests/conversation-history.test.ts",
+    "tests/memory-repository.test.ts",
+    "tests/memory-recall.test.ts",
+    "tests/unified-memory.test.ts",
+    "tests/memory-recovery.test.ts",
+    "tests/fixtures/memory-process.ts",
+    "tests/e2e/steps/desktop.steps.ts",
+    "tests/e2e/features/unified-memory.feature",
+    "tests/e2e/steps/unified-memory.steps.ts",
+    "tests/evaluation/unified-memory.ts",
+    "scripts/evaluate-unified-memory.mjs"
+  ]
+}

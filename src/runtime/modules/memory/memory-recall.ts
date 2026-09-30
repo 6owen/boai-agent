@@ -1,0 +1,62 @@
+/*
+ * [INPUT]: SQLite 员工记忆/获知回执、宿主来源授权、已发布消息及当前请求。
+ * [OUTPUT]: 各阶段共用的有界召回快照；短期证据继承记忆限制，管理列表不进入模型。
+ * [POS]: runtime/modules/memory/memory-recall.ts；不调用模型或读取其他员工目录。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import type { MemoryEntry, MemoryObservation, MemoryView, Message } from '../../../shared/domain'
+import { MEMORY_CONTEXT_TOKENS, MEMORY_RECENT_OBSERVATIONS } from '../../../shared/domain/memory'
+import { memoryAllowed, memoryRelevance, memoryStatus, memoryText, memoryTokenEstimate, type MemoryAccess } from './memory-policy'
+export interface MemoryRecallInput {
+  view: MemoryView
+  observations: MemoryObservation[]
+  access: MemoryAccess
+  request: string
+  messages: Map<string, Message>
+  tokenBudget?: number
+}
+export function recallMemory(input: MemoryRecallInput): MemoryView {
+  const { view, access } = input
+  const eligible = view.entries.filter(entry => memoryAllowed(entry, access))
+  const raw: MemoryEntry[] = [], observationIds = new Map<string, string>()
+  for (const observation of input.observations.slice(0, MEMORY_RECENT_OBSERVATIONS)) {
+    if (observation.ownerAgentId !== access.agentId) continue
+    for (const messageId of observation.sourceMessageIds) {
+      const message = input.messages.get(messageId)
+      if (!message || message.status !== 'completed' || !message.content.trim()) continue
+      const retained = view.entries.filter(entry => entry.sourceMessageIds.includes(messageId))
+      // Raw evidence cannot bypass a saved restriction, correction, expiry or archive.
+      if (retained.some(entry => !memoryAllowed(entry, access))) continue
+      if (eligible.some(entry => entry.sourceMessageIds.includes(messageId))) continue
+      const parent = observation.sourceMemoryIds.map(id => view.entries.find(entry => entry.id === id))
+      if (parent.some(entry => !entry || !memoryAllowed(entry, access))) continue
+      const entry: MemoryEntry = {
+        id: `observation:${observation.id}:${messageId}`, ownerAgentId: access.agentId, scope: 'employee', conversationId: observation.conversationId,
+        schemaVersion: 2, kind: 'experience', evidence: 'claim', attribution: message.senderName,
+        content: message.content, origin: 'model', version: 1, createdAt: message.createdAt, updatedAt: observation.createdAt,
+        sourceMessageIds: [messageId], sourceResourceIds: observation.sourceResourceIds, sourceMemoryIds: observation.sourceMemoryIds,
+        sourceConversationIds: observation.sourceConversationIds ?? [observation.conversationId], useScope: observation.contextRef && observation.useScope === 'employee' ? 'context' : observation.useScope,
+        contextRef: observation.contextRef, disclosure: observation.disclosure ?? 'private', status: 'active',
+      }
+      if (!memoryAllowed(entry, access)) continue
+      raw.push(entry); observationIds.set(entry.id, observation.id)
+    }
+  }
+  const ranked = [...eligible, ...raw].map(entry => ({ entry, relevance: memoryRelevance(entry.content, input.request) }))
+    .filter(({ entry, relevance }) => relevance > 0 || entry.pinned || entry.kind === 'long_term' || entry.scope === 'profile' || entry.kind === 'temporary' && entry.contextRef?.id === access.conversationId)
+    .sort((a, b) => Number(!!b.entry.pinned) - Number(!!a.entry.pinned) || b.relevance - a.relevance || Number(b.entry.kind === 'long_term') - Number(a.entry.kind === 'long_term') || b.entry.createdAt.localeCompare(a.entry.createdAt) || b.entry.id.localeCompare(a.entry.id))
+  const selected: MemoryEntry[] = [], seen = new Set<string>(), selectedObservations = new Set<string>()
+  let tokenEstimate = 0
+  for (const { entry } of ranked) {
+    if (seen.has(entry.content)) continue
+    const size = memoryTokenEstimate(memoryText(entry))
+    if (tokenEstimate + size > (input.tokenBudget ?? MEMORY_CONTEXT_TOKENS)) continue
+    selected.push(entry); seen.add(entry.content); tokenEstimate += size
+    const observation = observationIds.get(entry.id); if (observation) selectedObservations.add(observation)
+  }
+  return { ...view, entries: selected, nextCursor: undefined, total: undefined,
+    recall: { conversationId: access.conversationId, versions: selected.filter(entry => !observationIds.has(entry.id)).map(entry => ({ id: entry.id, version: entry.version })), observationIds: [...selectedObservations], tokenEstimate } }
+}
+export function validRecallProjection(view: MemoryView, agentId: string, conversationId: string) {
+  return !!view.recall && view.recall.conversationId === conversationId && view.entries.every(entry => entry.ownerAgentId === agentId && memoryStatus(entry) === 'active')
+}

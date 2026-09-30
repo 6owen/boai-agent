@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 同一时区的日聚合 DTO 与项目 Chart/Tooltip 原语。
- * [OUTPUT]: 页面/分享共用色阶与周偏移；精简的七行年度热力图、每周柱图和区间累计曲线；日期/缺口保留在图格 tooltip 和可访问名称。
+ * [OUTPUT]: 页面/分享共用日期范围、色阶与周偏移；精简的七行年度热力图、每周柱图和区间累计曲线；日期/缺口保留在图格 tooltip 和可访问名称。
  * [POS]: 个人资料只读活动展示；粒度切换不重新请求模型或历史正文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,12 @@ import { InfoIcon } from '@/components/icons'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 export const tokenText = (value: number | null) => value === null ? '暂无记录' : value.toLocaleString('zh-CN')
+export function profileActivityRange() {
+  const now = new Date(), date = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const to = ['year', 'month', 'day'].map(type => date.find(part => part.type === type)!.value).join('-')
+  const from = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 11, 1)).toISOString().slice(0, 10)
+  return { from, to, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+}
 const dateOffset = (date: string, n: number) => new Date(Date.parse(`${date}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 export const mondayOffset = (date: string) => (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7
 export function activityThresholds(days: ActivityDay[]) {

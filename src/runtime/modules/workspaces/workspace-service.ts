@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管文件和范围内记忆。
- * [OUTPUT]: 现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
+ * [OUTPUT]: 宿主统一召回的完整预算条目与受控记忆文件投影；现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
  * [POS]: 工作区文件格式唯一来源，初始人格及记忆行为保持不变。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,8 @@ import { prepareEnvironment, describeEnvironment } from './environment-plan'
 import { createHash, randomUUID } from 'node:crypto'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
+import { validRecallProjection } from '../memory/memory-recall'
+import { memoryStatus, memoryText } from '../memory/memory-policy'
 import type { AgentFile, AgentFileContent, AgentHome, BootstrapSnapshot, Conversation, DigitalAgent, MemoryView, SessionWorkspace } from '../../../shared/domain'
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -170,6 +172,7 @@ export class WorkspaceService {
     return { agentId: agent.id, workspacePath: this.root(agent.id), ...(conversationId ? { sessionPath: this.session(agent.id, conversationId) } : {}), memoryNamespace: agent.memoryNamespace ?? `employee:${agent.id}`, configVersion: agent.configVersion, files }
   }
   async regenerate(agent: DigitalAgent, memory: MemoryView, conversationId?: string, force = false) {
+    memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active') }
     const manifest = await this.manifest(agent.id), root = conversationId ? this.session(agent.id, conversationId) : this.root(agent.id)
     const projected: string[] = []
     let projectedBytes = 0
@@ -210,11 +213,28 @@ export class WorkspaceService {
     manifest.configVersion = agent.configVersion; manifest.updatedAt = new Date().toISOString()
     await this.atomic(join(this.state(agent.id), 'bootstrap-manifest.json'), JSON.stringify(manifest, null, 2))
   }
+  /** Remove only unchanged host projections; source/personality/work files remain independent. */
+  async invalidateMemoryViews(agentId: string): Promise<string[]> {
+    const manifest = await this.manifest(agentId), conflicts: string[] = []
+    for (const [key, expected] of Object.entries(manifest.hashes)) {
+      if (!/^(?:sessions\/[a-zA-Z0-9_-]{1,200}\/)?(?:MEMORY\.md|USER\.md|memory\/\d{4}-\d{2}-\d{2}\.md)$/.test(key)) continue
+      const path = join(this.root(agentId), key); await this.safe(path)
+      if (await exists(path)) {
+        const info = await lstat(path)
+        if (!info.isFile() || info.size > 64 * 1024 || digest(await readFile(path, 'utf8')) !== expected) { conflicts.push(key); continue }
+        await rm(path)
+      }
+      delete manifest.hashes[key]
+    }
+    manifest.updatedAt = new Date().toISOString()
+    await this.atomic(join(this.state(agentId), 'bootstrap-manifest.json'), JSON.stringify(manifest, null, 2))
+    return conflicts
+  }
   async load(agent: DigitalAgent, conversation: Conversation, memory: MemoryView, runId: string): Promise<{ bootstrap: BootstrapSnapshot; workspace: SessionWorkspace }> {
     const rules = await this.source(agent.id, 'AGENTS.md'), soul = await this.source(agent.id, 'SOUL.md')
     if (rules.length + soul.length > 12000) throw new Error('工作规则与表达风格超过 12,000 字符，请精简后重试')
-    const allowed = memory.entries.filter(entry => entry.ownerAgentId === agent.id && !entry.deletedAt && (entry.scope === 'profile' || entry.conversationId === conversation.id))
-    const text = allowed.map(entry => `[记忆 ${entry.id} v${entry.version}，来源 ${entry.sourceMessageIds.join(', ') || '用户设置'}]\n${entry.content}`).join('\n').slice(0, 8000)
+    const allowed = memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && (validRecallProjection(memory, agent.id, conversation.id) || entry.scope === 'profile' || entry.conversationId === conversation.id))
+    const text = allowed.map(memoryText).join('\n')
     const root = this.session(agent.id, conversation.id), runPath = join(root, 'runs', safeId(runId)), workPath = join(root, 'work')
     await this.safe(runPath); await this.safe(workPath)
     await mkdir(runPath, { recursive: true }); await mkdir(workPath, { recursive: true })

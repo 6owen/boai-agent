@@ -1,0 +1,1623 @@
+{
+  "version": "WG-real-v1",
+  "session": {
+    "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+    "conversationId": "gg",
+    "startRequestId": "eval-start",
+    "rules": "wg-v1",
+    "seed": "a9296d2bd35fb3ef5e9b51039246ba253919bda793460d075d91ed2b690e37e5",
+    "revision": 43,
+    "phaseVersion": 18,
+    "phase": "speech",
+    "day": 3,
+    "status": "paused",
+    "players": [
+      {
+        "agentId": "p0",
+        "name": "玩家1",
+        "seat": 1,
+        "role": "seer",
+        "alive": false,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      },
+      {
+        "agentId": "p1",
+        "name": "玩家2",
+        "seat": 2,
+        "role": "villager",
+        "alive": true,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      },
+      {
+        "agentId": "p2",
+        "name": "玩家3",
+        "seat": 3,
+        "role": "wolf",
+        "alive": false,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      },
+      {
+        "agentId": "p3",
+        "name": "玩家4",
+        "seat": 4,
+        "role": "villager",
+        "alive": true,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      },
+      {
+        "agentId": "p4",
+        "name": "玩家5",
+        "seat": 5,
+        "role": "wolf",
+        "alive": true,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      },
+      {
+        "agentId": "p5",
+        "name": "玩家6",
+        "seat": 6,
+        "role": "witch",
+        "alive": false,
+        "configVersion": 1,
+        "connection": {
+          "id": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+          "name": "deepseek-flash",
+          "provider": "openai-compatible",
+          "baseUrl": "https://api.deepseek.com",
+          "defaultModel": "deepseek-flash",
+          "hasApiKey": true
+        },
+        "modelId": "deepseek-flash",
+        "personality": "简洁中文表达"
+      }
+    ],
+    "nightAlive": [
+      "p1",
+      "p3",
+      "p4",
+      "p5"
+    ],
+    "actions": [
+      {
+        "id": "db987472-1070-4d77-83e7-4de7c5addb7e",
+        "playerId": "p2",
+        "phaseVersion": 1,
+        "choice": {
+          "kind": "talk",
+          "text": "月影。队友，首夜先协商刀谁？我建议刀中间位p2或p3，容易搅混水。你定个目标，我配合。"
+        }
+      },
+      {
+        "id": "990b78b2-d0ca-4765-b7f3-a82714ba36b0",
+        "playerId": "p4",
+        "phaseVersion": 1,
+        "choice": {
+          "kind": "talk",
+          "text": "收到。首夜优先刀p1或p3，中位容易藏预言家。建议刀p3，避免暴露我们连号。你若有异议就说，统一后出票。"
+        }
+      },
+      {
+        "id": "31c016bd-5aa0-460c-9fbb-75eb8f7d26af",
+        "playerId": "p2",
+        "phaseVersion": 2,
+        "choice": {
+          "kind": "target",
+          "targetId": "p1"
+        }
+      },
+      {
+        "id": "f1b32fae-5fc4-448d-b092-83b46e87a62c",
+        "playerId": "p4",
+        "phaseVersion": 2,
+        "choice": {
+          "kind": "target",
+          "targetId": "p3"
+        }
+      },
+      {
+        "id": "cc16803c-4da8-40c2-996e-9d7e4f1bcfa4",
+        "playerId": "p0",
+        "phaseVersion": 3,
+        "choice": {
+          "kind": "target",
+          "targetId": "p2"
+        }
+      },
+      {
+        "id": "3aa84fbe-8236-4a75-afa1-4da985fc89a7",
+        "playerId": "p5",
+        "phaseVersion": 4,
+        "choice": {
+          "kind": "witch",
+          "potion": "save",
+          "targetId": "p3"
+        }
+      },
+      {
+        "id": "c15afd64-c092-4bd7-b1a9-07c1df4baed8",
+        "playerId": "p0",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是预言家，昨晚查验玩家3（p2），结果是狼人。今天优先出他，大家看票型。如果他有同伴试图捞人或转移焦点，请留意。好人跟票，别分票。"
+        }
+      },
+      {
+        "id": "66d647ac-ad3c-4167-b56c-480fab3e3d6f",
+        "playerId": "p1",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。玩家1跳预言家报玩家3是狼，第一天信息量有限，我暂时倾向相信这个查验。但也不排除狼悍跳的可能，玩家3可以自辩一下。今天如果没有更强对跳，我会跟上出玩家3，好人尽量别分票。"
+        }
+      },
+      {
+        "id": "1acde423-cecf-436a-a372-97c4aa76b3bc",
+        "playerId": "p2",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是好人视角。玩家1首置位跳预言家，直接报查杀玩家3，速度偏快；玩家2立刻跟票，像是见风使舵。第一天没出人，女巫可能用了解药，所以玩家1的“查杀”未必能立刻验证。我建议先别急着冲票，让玩家3自辩，同时听4、5、6的发言和对跳。若没有对跳预言家，我再考虑跟票；现在最怕狼队抱团带节奏。"
+        }
+      },
+      {
+        "id": "156e6e8d-4740-4161-8330-9cce5a9a5838",
+        "playerId": "p3",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。玩家1首置位跳预言家报查杀玩家3，玩家2紧跟支持。我倾向先听玩家3自辩，并关注是否有对跳预言家。目前没有更多信息，狼可能借预言家身份悍跳，也可能玩家3真是狼。我暂不急着站边，等后面玩家4、5、6发言和玩家3自辩后再定。好人别分票太散。"
+        }
+      },
+      {
+        "id": "0ac643a6-05ae-4905-80d1-17a52a4cf7ac",
+        "playerId": "p4",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。玩家1跳得很快，直接查杀玩家3，这种速度要么真预言家要么狼悍跳；玩家2马上跟票也有点急。我目前不急着冲票，玩家3先自辩，再看有没有对跳预言家。没对跳之前我会保留判断，好人别分票，但也别被单边节奏带走。"
+        }
+      },
+      {
+        "id": "5b1ad7e8-9016-46d6-ba5f-867722a2f536",
+        "playerId": "p5",
+        "phaseVersion": 5,
+        "choice": {
+          "kind": "talk",
+          "text": "我是女巫。昨夜无人出局，说明我这瓶解药已经用掉了；具体救了谁先不说，免得给狼刀路。玩家1首置位跳预言家报查杀，玩家2立刻跟票太急。我暂时不排除玩家1悍跳的可能，但今天没有对跳之前，玩家3必须好好自辩。玩家3刚才的发言在拉4、5、6，我听着有点自保。好人别急着定边，也别分票；我会重点关注玩家1和玩家3这一组。警徽没有，票型最真实。"
+        }
+      },
+      {
+        "id": "b5a7e17c-e306-40da-998e-52dcb948e262",
+        "playerId": "p0",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p2"
+        }
+      },
+      {
+        "id": "b2d7998a-b3ef-4e8b-9db2-88ffe3c860ba",
+        "playerId": "p1",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p3"
+        }
+      },
+      {
+        "id": "5e39fdff-99e5-446f-9c5c-890078c79f38",
+        "playerId": "p2",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p0"
+        }
+      },
+      {
+        "id": "fbbb88db-1845-492f-b919-503869260d0d",
+        "playerId": "p3",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p2"
+        }
+      },
+      {
+        "id": "73893871-1fea-42b1-adf1-ca741d6e31df",
+        "playerId": "p4",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p2"
+        }
+      },
+      {
+        "id": "36de5b55-86b8-4cca-bc72-5440759c0560",
+        "playerId": "p5",
+        "phaseVersion": 6,
+        "choice": {
+          "kind": "target",
+          "targetId": "p2"
+        }
+      },
+      {
+        "id": "1f48adf7-fa4e-48a7-ba8d-08ebd8c9f03f",
+        "playerId": "p4",
+        "phaseVersion": 7,
+        "choice": {
+          "kind": "talk",
+          "text": "兄弟，p2昨天被推出局了，我们只剩你我。昨晚刀口应该出在p1（预言家）或p5身上，先看明天死人再定。白天我会继续装好人，把火力引向p5，他跳女巫太可疑，解药这种事狼也能编。你别急着冲票，等我带节奏，咱们先集中出一好人，晚上再刀一个就赢了。"
+        }
+      },
+      {
+        "id": "75c04543-6727-478d-a8f6-ec6cf1f3cfd7",
+        "playerId": "p4",
+        "phaseVersion": 8,
+        "choice": {
+          "kind": "target",
+          "targetId": "p0"
+        }
+      },
+      {
+        "id": "1e2bb2d0-b6b0-49b3-99f9-e5f89477d0d7",
+        "playerId": "p0",
+        "phaseVersion": 9,
+        "choice": {
+          "kind": "target",
+          "targetId": "p3"
+        }
+      },
+      {
+        "id": "ab1a17e6-0da2-4c97-9642-2d2909ae3ab9",
+        "playerId": "p5",
+        "phaseVersion": 10,
+        "choice": {
+          "kind": "witch",
+          "potion": "poison",
+          "targetId": "p0"
+        }
+      },
+      {
+        "id": "bfea9631-66fe-4e48-8774-f84dcca4f31e",
+        "playerId": "p1",
+        "phaseVersion": 11,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。第一天我信了玩家1的查杀，跟票出了玩家3，结果3号翻身份不是狼，那玩家1的铁预言家面就很低了。昨晚1号出局，如果他是狼被毒，那说明真女巫动手了；如果不是狼，我们更要小心剩下的狼躲着带节奏。现在场上4、5、6里我认为1号悍跳时5号发言最像在踩1号又保自己，我暂时没有更硬的信息，先听4、6发言再定票。好人别分票。"
+        }
+      },
+      {
+        "id": "eb7215fc-50f0-459a-9f87-289bec0f3dce",
+        "playerId": "p3",
+        "phaseVersion": 11,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。第一天3号被票出，身份没公布，但玩家1报的查杀没得到验证就被夜里出局，1号的预言家面确实要打问号。2号现在急着说1号铁预言家面低、点5号，有顺着死人话带节奏的嫌疑。我目前没有硬信息，先听5、6怎么说；今天重点看谁在急着推票、谁在回避票型。好人别分票。"
+        }
+      },
+      {
+        "id": "55dd84ea-cbf8-4679-928d-941ebc6ee7dd",
+        "playerId": "p4",
+        "phaseVersion": 11,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。第一天跟票出了3，结果没公布身份，1号又夜里出局，现在信息很乱。我注意到2号今天一上来就把矛头转向5号，节奏带得挺急，这点我有点在意。5号之前跳女巫，敢在白天亮身份，狼一般不会这么早跳出来找刀，我更倾向信他。今天先听6号怎么说，别急着分票，我暂时看2号，票型别散。"
+        }
+      },
+      {
+        "id": "b840b43e-6599-48f4-b971-a0cc60429803",
+        "playerId": "p5",
+        "phaseVersion": 11,
+        "choice": {
+          "kind": "talk",
+          "text": "我是女巫，第一天就跳了。昨晚1号被刀，我没药了，救不了；也没毒。现在看：1号若真预言家，3号身份没公布，但狼肯定在趁机带节奏。2号今天急着把矛头引到我身上，和第一天跟票一样积极，我觉得2号狼面最大；4号发言偏稳。建议今天出2号，好人别分票。6号还没说话，听完再定，但票别散。"
+        }
+      },
+      {
+        "id": "a67871f9-c550-493b-8f2d-b0ac2f8dcc2c",
+        "playerId": "p1",
+        "phaseVersion": 12,
+        "choice": {
+          "kind": "target",
+          "targetId": "p5"
+        }
+      },
+      {
+        "id": "8905a748-074d-49d6-b4d1-692745ca01bc",
+        "playerId": "p3",
+        "phaseVersion": 12,
+        "choice": {
+          "kind": "target",
+          "targetId": "p1"
+        }
+      },
+      {
+        "id": "e1a38e10-15a7-4485-94a5-dbd6afd6254e",
+        "playerId": "p4",
+        "phaseVersion": 12,
+        "choice": {
+          "kind": "target",
+          "targetId": "p5"
+        }
+      },
+      {
+        "id": "3598c01e-0dcf-4a9a-82c3-d6a08221fa99",
+        "playerId": "p5",
+        "phaseVersion": 12,
+        "choice": {
+          "kind": "target",
+          "targetId": "p1"
+        }
+      },
+      {
+        "id": "a252a31a-2636-4537-9cde-1fc6d514cece",
+        "playerId": "p1",
+        "phaseVersion": 13,
+        "choice": {
+          "kind": "target",
+          "targetId": "p5"
+        }
+      },
+      {
+        "id": "2f2dd6a3-2879-4ac4-9919-345787f353f7",
+        "playerId": "p3",
+        "phaseVersion": 13,
+        "choice": {
+          "kind": "target",
+          "targetId": "p1"
+        }
+      },
+      {
+        "id": "0d3a33c9-654f-45e5-9aa6-c7ce3969dabc",
+        "playerId": "p4",
+        "phaseVersion": 13,
+        "choice": {
+          "kind": "target",
+          "targetId": "p5"
+        }
+      },
+      {
+        "id": "29ae800f-e7b3-4015-b722-2e0774645302",
+        "playerId": "p5",
+        "phaseVersion": 13,
+        "choice": {
+          "kind": "target",
+          "targetId": "p1"
+        }
+      },
+      {
+        "id": "03188078-cf84-43e8-806e-d6cb2ec8308a",
+        "playerId": "p4",
+        "phaseVersion": 14,
+        "choice": {
+          "kind": "talk",
+          "text": "今晚刀6号。2号明天接着咬5号女巫，我站边稳一点，别让4号起疑。6号第一天跟票3号、第二天投2号，留着他容易在白天带票冲我们。刀完6号，剩4、5，重点把5号做成狼，说他跳女巫是保命悍跳。"
+        }
+      },
+      {
+        "id": "8b492f93-1a34-49b3-9f20-d73bff6f2c08",
+        "playerId": "p4",
+        "phaseVersion": 15,
+        "choice": {
+          "kind": "target",
+          "targetId": "p5"
+        }
+      },
+      {
+        "id": "d1cb8265-3ea5-4d89-986f-626a2a815eeb",
+        "playerId": "p5",
+        "phaseVersion": 17,
+        "choice": {
+          "kind": "witch",
+          "potion": "none",
+          "targetId": null
+        }
+      },
+      {
+        "id": "8fe62495-fcb4-469b-9b96-414e46cdf73e",
+        "playerId": "p1",
+        "phaseVersion": 18,
+        "choice": {
+          "kind": "talk",
+          "text": "我是村民。现在只剩2、4、5、6四人，6号夜里出局，场上2、4、5。第一天3号被票出身份未公布，1号夜里出局，5号一直跳女巫，第一天说救过人、没毒。第二天2号和6号互票成平票，晚上6号出局。我盘一下：如果5号真女巫，狼只有可能是2号或4号里的一个，但5号没药没毒，昨晚6号被刀说明有狼在场；2号一直带节奏踩5号，像狼在冲女巫；4号相对稳，但也不能全信。今天关键局，我倾向出2号，票别散。如果有人对5号女巫身份有对跳，现在必须说清楚。"
+        }
+      }
+    ],
+    "events": [
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:1",
+        "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.161Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:2",
+        "text": "天亮了，昨夜无人出局。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:36.965Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:3",
+        "text": "第1天 · 白天发言。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:36.965Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:4",
+        "text": "我是预言家，昨晚查验玩家3（p2），结果是狼人。今天优先出他，大家看票型。如果他有同伴试图捞人或转移焦点，请留意。好人跟票，别分票。",
+        "senderId": "p0",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:37.830Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:5",
+        "text": "我是村民。玩家1跳预言家报玩家3是狼，第一天信息量有限，我暂时倾向相信这个查验。但也不排除狼悍跳的可能，玩家3可以自辩一下。今天如果没有更强对跳，我会跟上出玩家3，好人尽量别分票。",
+        "senderId": "p1",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:38.760Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:6",
+        "text": "我是好人视角。玩家1首置位跳预言家，直接报查杀玩家3，速度偏快；玩家2立刻跟票，像是见风使舵。第一天没出人，女巫可能用了解药，所以玩家1的“查杀”未必能立刻验证。我建议先别急着冲票，让玩家3自辩，同时听4、5、6的发言和对跳。若没有对跳预言家，我再考虑跟票；现在最怕狼队抱团带节奏。",
+        "senderId": "p2",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:39.881Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:7",
+        "text": "我是村民。玩家1首置位跳预言家报查杀玩家3，玩家2紧跟支持。我倾向先听玩家3自辩，并关注是否有对跳预言家。目前没有更多信息，狼可能借预言家身份悍跳，也可能玩家3真是狼。我暂不急着站边，等后面玩家4、5、6发言和玩家3自辩后再定。好人别分票太散。",
+        "senderId": "p3",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:41.250Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:8",
+        "text": "我是村民。玩家1跳得很快，直接查杀玩家3，这种速度要么真预言家要么狼悍跳；玩家2马上跟票也有点急。我目前不急着冲票，玩家3先自辩，再看有没有对跳预言家。没对跳之前我会保留判断，好人别分票，但也别被单边节奏带走。",
+        "senderId": "p4",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:42.365Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:9",
+        "text": "我是女巫。昨夜无人出局，说明我这瓶解药已经用掉了；具体救了谁先不说，免得给狼刀路。玩家1首置位跳预言家报查杀，玩家2立刻跟票太急。我暂时不排除玩家1悍跳的可能，但今天没有对跳之前，玩家3必须好好自辩。玩家3刚才的发言在拉4、5、6，我听着有点自保。好人别急着定边，也别分票；我会重点关注玩家1和玩家3这一组。警徽没有，票型最真实。",
+        "senderId": "p5",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:43.912Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:10",
+        "text": "第1天 · 白天投票。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:43.912Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:11",
+        "text": "投票：1号→3号；2号→4号；3号→1号；4号→3号；5号→3号；6号→3号。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:12",
+        "text": "3号 玩家3被投票出局。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:13",
+        "text": "第2天 · 夜晚。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:14",
+        "text": "天亮了，1号 玩家1出局。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:49.596Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:15",
+        "text": "第2天 · 白天发言。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:49.596Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:16",
+        "text": "我是村民。第一天我信了玩家1的查杀，跟票出了玩家3，结果3号翻身份不是狼，那玩家1的铁预言家面就很低了。昨晚1号出局，如果他是狼被毒，那说明真女巫动手了；如果不是狼，我们更要小心剩下的狼躲着带节奏。现在场上4、5、6里我认为1号悍跳时5号发言最像在踩1号又保自己，我暂时没有更硬的信息，先听4、6发言再定票。好人别分票。",
+        "senderId": "p1",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:50.921Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:17",
+        "text": "我是村民。第一天3号被票出，身份没公布，但玩家1报的查杀没得到验证就被夜里出局，1号的预言家面确实要打问号。2号现在急着说1号铁预言家面低、点5号，有顺着死人话带节奏的嫌疑。我目前没有硬信息，先听5、6怎么说；今天重点看谁在急着推票、谁在回避票型。好人别分票。",
+        "senderId": "p3",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:52.185Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:18",
+        "text": "我是村民。第一天跟票出了3，结果没公布身份，1号又夜里出局，现在信息很乱。我注意到2号今天一上来就把矛头转向5号，节奏带得挺急，这点我有点在意。5号之前跳女巫，敢在白天亮身份，狼一般不会这么早跳出来找刀，我更倾向信他。今天先听6号怎么说，别急着分票，我暂时看2号，票型别散。",
+        "senderId": "p4",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:53.479Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:19",
+        "text": "我是女巫，第一天就跳了。昨晚1号被刀，我没药了，救不了；也没毒。现在看：1号若真预言家，3号身份没公布，但狼肯定在趁机带节奏。2号今天急着把矛头引到我身上，和第一天跟票一样积极，我觉得2号狼面最大；4号发言偏稳。建议今天出2号，好人别分票。6号还没说话，听完再定，但票别散。",
+        "senderId": "p5",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:54.784Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:20",
+        "text": "第2天 · 白天投票。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:54.784Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:21",
+        "text": "投票：2号→6号；4号→2号；5号→6号；6号→2号。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:57.156Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:22",
+        "text": "第2天 · 平票复投（候选：2号、6号）。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:57.156Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:23",
+        "text": "投票：2号→6号；4号→2号；5号→6号；6号→2号。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:24",
+        "text": "本次投票无人出局。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:25",
+        "text": "第3天 · 夜晚。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:26",
+        "text": "天亮了，6号 玩家6出局。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:03.967Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:27",
+        "text": "第3天 · 白天发言。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:03.967Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:28",
+        "text": "我是村民。现在只剩2、4、5、6四人，6号夜里出局，场上2、4、5。第一天3号被票出身份未公布，1号夜里出局，5号一直跳女巫，第一天说救过人、没毒。第二天2号和6号互票成平票，晚上6号出局。我盘一下：如果5号真女巫，狼只有可能是2号或4号里的一个，但5号没药没毒，昨晚6号被刀说明有狼在场；2号一直带节奏踩5号，像狼在冲女巫；4号相对稳，但也不能全信。今天关键局，我倾向出2号，票别散。如果有人对5号女巫身份有对跳，现在必须说清楚。",
+        "senderId": "p1",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:05.582Z"
+      }
+    ],
+    "wolfTalk": [
+      {
+        "day": 1,
+        "playerId": "p2",
+        "text": "月影。队友，首夜先协商刀谁？我建议刀中间位p2或p3，容易搅混水。你定个目标，我配合。"
+      },
+      {
+        "day": 1,
+        "playerId": "p4",
+        "text": "收到。首夜优先刀p1或p3，中位容易藏预言家。建议刀p3，避免暴露我们连号。你若有异议就说，统一后出票。"
+      },
+      {
+        "day": 2,
+        "playerId": "p4",
+        "text": "兄弟，p2昨天被推出局了，我们只剩你我。昨晚刀口应该出在p1（预言家）或p5身上，先看明天死人再定。白天我会继续装好人，把火力引向p5，他跳女巫太可疑，解药这种事狼也能编。你别急着冲票，等我带节奏，咱们先集中出一好人，晚上再刀一个就赢了。"
+      },
+      {
+        "day": 3,
+        "playerId": "p4",
+        "text": "今晚刀6号。2号明天接着咬5号女巫，我站边稳一点，别让4号起疑。6号第一天跟票3号、第二天投2号，留着他容易在白天带票冲我们。刀完6号，剩4、5，重点把5号做成狼，说他跳女巫是保命悍跳。"
+      }
+    ],
+    "seerResults": [
+      {
+        "day": 1,
+        "playerId": "p0",
+        "targetId": "p2",
+        "isWolf": true
+      },
+      {
+        "day": 2,
+        "playerId": "p0",
+        "targetId": "p3",
+        "isWolf": false
+      }
+    ],
+    "privateMessages": [
+      {
+        "id": "eval-witch-private",
+        "playerId": "p5",
+        "content": "本局你是主持人分发的女巫。建议首夜有解药且允许时优先救人；这条建议只留在局内，不要公开转述。身份仍以主持发牌为准。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.163Z"
+      },
+      {
+        "id": "eval-wolf-private",
+        "playerId": "p2",
+        "content": "本局你是主持人分发的狼人。狼队讨论时可用“月影”确认你记得这条建议，白天不要提该暗号；不要修改主持发牌。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.163Z"
+      }
+    ],
+    "runoff": [],
+    "potions": {
+      "save": false,
+      "poison": false
+    },
+    "calls": 39,
+    "knownTokens": 85118,
+    "unknownUsage": false,
+    "createdAt": "2026-09-30T17:00:33.161Z",
+    "deadline": "2026-09-30T17:30:33.161Z",
+    "wolfTarget": "p5",
+    "reason": "模型请求失败或动作格式无效，未提交动作；请核对连接后继续"
+  },
+  "observer": {
+    "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+    "conversationId": "gg",
+    "rules": "wg-v1",
+    "revision": 43,
+    "phaseVersion": 18,
+    "status": "paused",
+    "phase": "speech",
+    "day": 3,
+    "reason": "模型请求失败或动作格式无效，未提交动作；请核对连接后继续",
+    "players": [
+      {
+        "agentId": "p0",
+        "name": "玩家1",
+        "seat": 1,
+        "role": "seer",
+        "alive": false
+      },
+      {
+        "agentId": "p1",
+        "name": "玩家2",
+        "seat": 2,
+        "role": "villager",
+        "alive": true
+      },
+      {
+        "agentId": "p2",
+        "name": "玩家3",
+        "seat": 3,
+        "role": "wolf",
+        "alive": false
+      },
+      {
+        "agentId": "p3",
+        "name": "玩家4",
+        "seat": 4,
+        "role": "villager",
+        "alive": true
+      },
+      {
+        "agentId": "p4",
+        "name": "玩家5",
+        "seat": 5,
+        "role": "wolf",
+        "alive": true
+      },
+      {
+        "agentId": "p5",
+        "name": "玩家6",
+        "seat": 6,
+        "role": "witch",
+        "alive": false
+      }
+    ],
+    "privateMessages": [
+      {
+        "id": "eval-witch-private",
+        "playerId": "p5",
+        "content": "本局你是主持人分发的女巫。建议首夜有解药且允许时优先救人；这条建议只留在局内，不要公开转述。身份仍以主持发牌为准。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.163Z"
+      },
+      {
+        "id": "eval-wolf-private",
+        "playerId": "p2",
+        "content": "本局你是主持人分发的狼人。狼队讨论时可用“月影”确认你记得这条建议，白天不要提该暗号；不要修改主持发牌。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.163Z"
+      }
+    ],
+    "events": [
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:1",
+        "text": "六人狼人杀已发牌。2狼人、女巫、预言家、2村民；身份已分别通知玩家。第1天夜晚，请点击继续游戏。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:33.161Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:2",
+        "text": "天亮了，昨夜无人出局。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:36.965Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:3",
+        "text": "第1天 · 白天发言。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:36.965Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:4",
+        "text": "我是预言家，昨晚查验玩家3（p2），结果是狼人。今天优先出他，大家看票型。如果他有同伴试图捞人或转移焦点，请留意。好人跟票，别分票。",
+        "senderId": "p0",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:37.830Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:5",
+        "text": "我是村民。玩家1跳预言家报玩家3是狼，第一天信息量有限，我暂时倾向相信这个查验。但也不排除狼悍跳的可能，玩家3可以自辩一下。今天如果没有更强对跳，我会跟上出玩家3，好人尽量别分票。",
+        "senderId": "p1",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:38.760Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:6",
+        "text": "我是好人视角。玩家1首置位跳预言家，直接报查杀玩家3，速度偏快；玩家2立刻跟票，像是见风使舵。第一天没出人，女巫可能用了解药，所以玩家1的“查杀”未必能立刻验证。我建议先别急着冲票，让玩家3自辩，同时听4、5、6的发言和对跳。若没有对跳预言家，我再考虑跟票；现在最怕狼队抱团带节奏。",
+        "senderId": "p2",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:39.881Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:7",
+        "text": "我是村民。玩家1首置位跳预言家报查杀玩家3，玩家2紧跟支持。我倾向先听玩家3自辩，并关注是否有对跳预言家。目前没有更多信息，狼可能借预言家身份悍跳，也可能玩家3真是狼。我暂不急着站边，等后面玩家4、5、6发言和玩家3自辩后再定。好人别分票太散。",
+        "senderId": "p3",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:41.250Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:8",
+        "text": "我是村民。玩家1跳得很快，直接查杀玩家3，这种速度要么真预言家要么狼悍跳；玩家2马上跟票也有点急。我目前不急着冲票，玩家3先自辩，再看有没有对跳预言家。没对跳之前我会保留判断，好人别分票，但也别被单边节奏带走。",
+        "senderId": "p4",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:42.365Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:9",
+        "text": "我是女巫。昨夜无人出局，说明我这瓶解药已经用掉了；具体救了谁先不说，免得给狼刀路。玩家1首置位跳预言家报查杀，玩家2立刻跟票太急。我暂时不排除玩家1悍跳的可能，但今天没有对跳之前，玩家3必须好好自辩。玩家3刚才的发言在拉4、5、6，我听着有点自保。好人别急着定边，也别分票；我会重点关注玩家1和玩家3这一组。警徽没有，票型最真实。",
+        "senderId": "p5",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:43.912Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:10",
+        "text": "第1天 · 白天投票。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:43.912Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:11",
+        "text": "投票：1号→3号；2号→4号；3号→1号；4号→3号；5号→3号；6号→3号。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:12",
+        "text": "3号 玩家3被投票出局。",
+        "day": 1,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:13",
+        "text": "第2天 · 夜晚。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:46.936Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:14",
+        "text": "天亮了，1号 玩家1出局。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:49.596Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:15",
+        "text": "第2天 · 白天发言。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:49.596Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:16",
+        "text": "我是村民。第一天我信了玩家1的查杀，跟票出了玩家3，结果3号翻身份不是狼，那玩家1的铁预言家面就很低了。昨晚1号出局，如果他是狼被毒，那说明真女巫动手了；如果不是狼，我们更要小心剩下的狼躲着带节奏。现在场上4、5、6里我认为1号悍跳时5号发言最像在踩1号又保自己，我暂时没有更硬的信息，先听4、6发言再定票。好人别分票。",
+        "senderId": "p1",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:50.921Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:17",
+        "text": "我是村民。第一天3号被票出，身份没公布，但玩家1报的查杀没得到验证就被夜里出局，1号的预言家面确实要打问号。2号现在急着说1号铁预言家面低、点5号，有顺着死人话带节奏的嫌疑。我目前没有硬信息，先听5、6怎么说；今天重点看谁在急着推票、谁在回避票型。好人别分票。",
+        "senderId": "p3",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:52.185Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:18",
+        "text": "我是村民。第一天跟票出了3，结果没公布身份，1号又夜里出局，现在信息很乱。我注意到2号今天一上来就把矛头转向5号，节奏带得挺急，这点我有点在意。5号之前跳女巫，敢在白天亮身份，狼一般不会这么早跳出来找刀，我更倾向信他。今天先听6号怎么说，别急着分票，我暂时看2号，票型别散。",
+        "senderId": "p4",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:53.479Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:19",
+        "text": "我是女巫，第一天就跳了。昨晚1号被刀，我没药了，救不了；也没毒。现在看：1号若真预言家，3号身份没公布，但狼肯定在趁机带节奏。2号今天急着把矛头引到我身上，和第一天跟票一样积极，我觉得2号狼面最大；4号发言偏稳。建议今天出2号，好人别分票。6号还没说话，听完再定，但票别散。",
+        "senderId": "p5",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:54.784Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:20",
+        "text": "第2天 · 白天投票。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:54.784Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:21",
+        "text": "投票：2号→6号；4号→2号；5号→6号；6号→2号。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:57.156Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:22",
+        "text": "第2天 · 平票复投（候选：2号、6号）。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:00:57.156Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:23",
+        "text": "投票：2号→6号；4号→2号；5号→6号；6号→2号。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:24",
+        "text": "本次投票无人出局。",
+        "day": 2,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:25",
+        "text": "第3天 · 夜晚。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:00.771Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:26",
+        "text": "天亮了，6号 玩家6出局。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:03.967Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:27",
+        "text": "第3天 · 白天发言。",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:03.967Z"
+      },
+      {
+        "id": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d:event:28",
+        "text": "我是村民。现在只剩2、4、5、6四人，6号夜里出局，场上2、4、5。第一天3号被票出身份未公布，1号夜里出局，5号一直跳女巫，第一天说救过人、没毒。第二天2号和6号互票成平票，晚上6号出局。我盘一下：如果5号真女巫，狼只有可能是2号或4号里的一个，但5号没药没毒，昨晚6号被刀说明有狼在场；2号一直带节奏踩5号，像狼在冲女巫；4号相对稳，但也不能全信。今天关键局，我倾向出2号，票别散。如果有人对5号女巫身份有对跳，现在必须说清楚。",
+        "senderId": "p1",
+        "day": 3,
+        "createdAt": "2026-09-30T17:01:05.582Z"
+      }
+    ],
+    "calls": 39,
+    "knownTokens": 85118,
+    "unknownUsage": false,
+    "deadline": "2026-09-30T17:30:33.161Z",
+    "notices": {
+      "p0": {
+        "ownRole": "seer",
+        "investigations": [
+          {
+            "day": 1,
+            "targetId": "p2",
+            "isWolf": true
+          },
+          {
+            "day": 2,
+            "targetId": "p3",
+            "isWolf": false
+          }
+        ]
+      },
+      "p1": {
+        "ownRole": "villager"
+      },
+      "p2": {
+        "ownRole": "wolf",
+        "wolfTeam": [
+          "p2",
+          "p4"
+        ]
+      },
+      "p3": {
+        "ownRole": "villager"
+      },
+      "p4": {
+        "ownRole": "wolf",
+        "wolfTeam": [
+          "p2",
+          "p4"
+        ]
+      },
+      "p5": {
+        "ownRole": "witch",
+        "witch": {
+          "save": false,
+          "poison": false,
+          "canSelfSave": false
+        }
+      }
+    }
+  },
+  "calls": [
+    {
+      "id": "db987472-1070-4d77-83e7-4de7c5addb7e",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p2",
+      "revision": 4,
+      "phaseVersion": 1,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:33.166Z",
+      "usage": {
+        "inputTokens": 857,
+        "outputTokens": 44
+      },
+      "finishedAt": "2026-09-30T17:00:34.052Z"
+    },
+    {
+      "id": "990b78b2-d0ca-4765-b7f3-a82714ba36b0",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 5,
+      "phaseVersion": 1,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:34.057Z",
+      "usage": {
+        "inputTokens": 830,
+        "outputTokens": 48
+      },
+      "finishedAt": "2026-09-30T17:00:34.796Z"
+    },
+    {
+      "id": "31c016bd-5aa0-460c-9fbb-75eb8f7d26af",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p2",
+      "revision": 6,
+      "phaseVersion": 2,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:34.798Z",
+      "usage": {
+        "inputTokens": 980,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:35.310Z"
+    },
+    {
+      "id": "f1b32fae-5fc4-448d-b092-83b46e87a62c",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 7,
+      "phaseVersion": 2,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:35.311Z",
+      "usage": {
+        "inputTokens": 904,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:35.758Z"
+    },
+    {
+      "id": "cc16803c-4da8-40c2-996e-9d7e4f1bcfa4",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p0",
+      "revision": 8,
+      "phaseVersion": 3,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:35.761Z",
+      "usage": {
+        "inputTokens": 797,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:36.467Z"
+    },
+    {
+      "id": "3aa84fbe-8236-4a75-afa1-4da985fc89a7",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 9,
+      "phaseVersion": 4,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:36.468Z",
+      "usage": {
+        "inputTokens": 1036,
+        "outputTokens": 16
+      },
+      "finishedAt": "2026-09-30T17:00:36.965Z"
+    },
+    {
+      "id": "c15afd64-c092-4bd7-b1a9-07c1df4baed8",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p0",
+      "revision": 10,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:36.969Z",
+      "usage": {
+        "inputTokens": 922,
+        "outputTokens": 54
+      },
+      "finishedAt": "2026-09-30T17:00:37.830Z"
+    },
+    {
+      "id": "66d647ac-ad3c-4167-b56c-480fab3e3d6f",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 11,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:37.833Z",
+      "usage": {
+        "inputTokens": 1014,
+        "outputTokens": 67
+      },
+      "finishedAt": "2026-09-30T17:00:38.760Z"
+    },
+    {
+      "id": "1acde423-cecf-436a-a372-97c4aa76b3bc",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p2",
+      "revision": 12,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:38.764Z",
+      "usage": {
+        "inputTokens": 1332,
+        "outputTokens": 117
+      },
+      "finishedAt": "2026-09-30T17:00:39.881Z"
+    },
+    {
+      "id": "156e6e8d-4740-4161-8330-9cce5a9a5838",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 13,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:39.885Z",
+      "usage": {
+        "inputTokens": 1314,
+        "outputTokens": 98
+      },
+      "finishedAt": "2026-09-30T17:00:41.250Z"
+    },
+    {
+      "id": "0ac643a6-05ae-4905-80d1-17a52a4cf7ac",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 14,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:41.254Z",
+      "usage": {
+        "inputTokens": 1587,
+        "outputTokens": 84
+      },
+      "finishedAt": "2026-09-30T17:00:42.365Z"
+    },
+    {
+      "id": "5b1ad7e8-9016-46d6-ba5f-867722a2f536",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 15,
+      "phaseVersion": 5,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:42.368Z",
+      "usage": {
+        "inputTokens": 1708,
+        "outputTokens": 130
+      },
+      "finishedAt": "2026-09-30T17:00:43.912Z"
+    },
+    {
+      "id": "b5a7e17c-e306-40da-998e-52dcb948e262",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p0",
+      "revision": 16,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:43.914Z",
+      "usage": {
+        "inputTokens": 1923,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:44.418Z"
+    },
+    {
+      "id": "b2d7998a-b3ef-4e8b-9db2-88ffe3c860ba",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 17,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:44.422Z",
+      "usage": {
+        "inputTokens": 1903,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:44.766Z"
+    },
+    {
+      "id": "5e39fdff-99e5-446f-9c5c-890078c79f38",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p2",
+      "revision": 18,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:44.771Z",
+      "usage": {
+        "inputTokens": 2096,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:45.348Z"
+    },
+    {
+      "id": "fbbb88db-1845-492f-b919-503869260d0d",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 19,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:45.352Z",
+      "usage": {
+        "inputTokens": 1903,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:45.980Z"
+    },
+    {
+      "id": "73893871-1fea-42b1-adf1-ca741d6e31df",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 20,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:45.984Z",
+      "usage": {
+        "inputTokens": 2020,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:46.454Z"
+    },
+    {
+      "id": "36de5b55-86b8-4cca-bc72-5440759c0560",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 21,
+      "phaseVersion": 6,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:46.456Z",
+      "usage": {
+        "inputTokens": 1999,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:46.936Z"
+    },
+    {
+      "id": "1f48adf7-fa4e-48a7-ba8d-08ebd8c9f03f",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 22,
+      "phaseVersion": 7,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:46.938Z",
+      "usage": {
+        "inputTokens": 2118,
+        "outputTokens": 95
+      },
+      "finishedAt": "2026-09-30T17:00:48.066Z"
+    },
+    {
+      "id": "75c04543-6727-478d-a8f6-ec6cf1f3cfd7",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 23,
+      "phaseVersion": 8,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:48.068Z",
+      "usage": {
+        "inputTokens": 2239,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:48.701Z"
+    },
+    {
+      "id": "1e2bb2d0-b6b0-49b3-99f9-e5f89477d0d7",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p0",
+      "revision": 24,
+      "phaseVersion": 9,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:48.705Z",
+      "usage": {
+        "inputTokens": 2143,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:49.065Z"
+    },
+    {
+      "id": "ab1a17e6-0da2-4c97-9642-2d2909ae3ab9",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 25,
+      "phaseVersion": 10,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:49.069Z",
+      "usage": {
+        "inputTokens": 2300,
+        "outputTokens": 17
+      },
+      "finishedAt": "2026-09-30T17:00:49.596Z"
+    },
+    {
+      "id": "bfea9631-66fe-4e48-8774-f84dcca4f31e",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 26,
+      "phaseVersion": 11,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:49.600Z",
+      "usage": {
+        "inputTokens": 2242,
+        "outputTokens": 127
+      },
+      "finishedAt": "2026-09-30T17:00:50.921Z"
+    },
+    {
+      "id": "eb7215fc-50f0-459a-9f87-289bec0f3dce",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 27,
+      "phaseVersion": 11,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:50.925Z",
+      "usage": {
+        "inputTokens": 2427,
+        "outputTokens": 107
+      },
+      "finishedAt": "2026-09-30T17:00:52.185Z"
+    },
+    {
+      "id": "55dd84ea-cbf8-4679-928d-941ebc6ee7dd",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 28,
+      "phaseVersion": 11,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:52.190Z",
+      "usage": {
+        "inputTokens": 2707,
+        "outputTokens": 110
+      },
+      "finishedAt": "2026-09-30T17:00:53.479Z"
+    },
+    {
+      "id": "b840b43e-6599-48f4-b971-a0cc60429803",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 29,
+      "phaseVersion": 11,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:53.481Z",
+      "usage": {
+        "inputTokens": 2856,
+        "outputTokens": 113
+      },
+      "finishedAt": "2026-09-30T17:00:54.784Z"
+    },
+    {
+      "id": "a67871f9-c550-493b-8f2d-b0ac2f8dcc2c",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 30,
+      "phaseVersion": 12,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:54.788Z",
+      "usage": {
+        "inputTokens": 3022,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:55.542Z"
+    },
+    {
+      "id": "8905a748-074d-49d6-b4d1-692745ca01bc",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 31,
+      "phaseVersion": 12,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:55.547Z",
+      "usage": {
+        "inputTokens": 3022,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:56.085Z"
+    },
+    {
+      "id": "e1a38e10-15a7-4485-94a5-dbd6afd6254e",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 32,
+      "phaseVersion": 12,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:56.090Z",
+      "usage": {
+        "inputTokens": 3137,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:56.580Z"
+    },
+    {
+      "id": "3598c01e-0dcf-4a9a-82c3-d6a08221fa99",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 33,
+      "phaseVersion": 12,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:56.582Z",
+      "usage": {
+        "inputTokens": 3118,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:57.156Z"
+    },
+    {
+      "id": "a252a31a-2636-4537-9cde-1fc6d514cece",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 34,
+      "phaseVersion": 13,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:57.162Z",
+      "usage": {
+        "inputTokens": 3009,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:57.900Z"
+    },
+    {
+      "id": "2f2dd6a3-2879-4ac4-9919-345787f353f7",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 35,
+      "phaseVersion": 13,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:57.904Z",
+      "usage": {
+        "inputTokens": 3015,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:00:59.710Z"
+    },
+    {
+      "id": "0d3a33c9-654f-45e5-9aa6-c7ce3969dabc",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 36,
+      "phaseVersion": 13,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:00:59.719Z",
+      "usage": {
+        "inputTokens": 3130,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:01:00.414Z"
+    },
+    {
+      "id": "29ae800f-e7b3-4015-b722-2e0774645302",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 37,
+      "phaseVersion": 13,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:01:00.418Z",
+      "usage": {
+        "inputTokens": 3105,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:01:00.771Z"
+    },
+    {
+      "id": "03188078-cf84-43e8-806e-d6cb2ec8308a",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 38,
+      "phaseVersion": 14,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:01:00.776Z",
+      "usage": {
+        "inputTokens": 2926,
+        "outputTokens": 86
+      },
+      "finishedAt": "2026-09-30T17:01:02.654Z"
+    },
+    {
+      "id": "8b492f93-1a34-49b3-9f20-d73bff6f2c08",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p4",
+      "revision": 39,
+      "phaseVersion": 15,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:01:02.659Z",
+      "usage": {
+        "inputTokens": 3032,
+        "outputTokens": 11
+      },
+      "finishedAt": "2026-09-30T17:01:03.414Z"
+    },
+    {
+      "id": "d1cb8265-3ea5-4d89-986f-626a2a815eeb",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p5",
+      "revision": 40,
+      "phaseVersion": 17,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:01:03.419Z",
+      "usage": {
+        "inputTokens": 3026,
+        "outputTokens": 15
+      },
+      "finishedAt": "2026-09-30T17:01:03.967Z"
+    },
+    {
+      "id": "8fe62495-fcb4-469b-9b96-414e46cdf73e",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p1",
+      "revision": 41,
+      "phaseVersion": 18,
+      "status": "accepted",
+      "startedAt": "2026-09-30T17:01:03.974Z",
+      "usage": {
+        "inputTokens": 2719,
+        "outputTokens": 179
+      },
+      "finishedAt": "2026-09-30T17:01:05.582Z"
+    },
+    {
+      "id": "0d6e508f-7910-491c-91f9-3936e0fd31a7",
+      "conversationId": "gg",
+      "gameId": "24a63f4a-3fcf-46de-bd7d-4aa37cc4d64d",
+      "playerId": "p3",
+      "revision": 42,
+      "phaseVersion": 18,
+      "status": "rejected",
+      "startedAt": "2026-09-30T17:01:05.584Z",
+      "usage": {
+        "inputTokens": 2814,
+        "outputTokens": 159
+      },
+      "error": "模型请求失败或动作格式无效，未提交动作；请核对连接后继续",
+      "finishedAt": "2026-09-30T17:01:06.860Z"
+    }
+  ],
+  "checks": {
+    "wholeGameFinished": false,
+    "privateOwnership": true,
+    "privateRoleIntact": true,
+    "witchSuggestionUsed": true,
+    "wolfPrivateAcknowledged": true,
+    "callsWithinBudget": true,
+    "usageKnown": true
+  },
+  "quality": "needs_review",
+  "elapsedMs": 33724
+}

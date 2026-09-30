@@ -1,10 +1,10 @@
 /*
  * [INPUT]: sidebar 主页面及其独立详情标签作用域、领域类型、员工思考强度配置、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
- * [OUTPUT]: 本人头像接管左下角设置下拉菜单并包含资料入口；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录独立团队创建标签； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格伙伴 SVG 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
+ * [OUTPUT]: 头像菜单首项展示本人头像/名称，后接分享/设置/帮助；分享直接打开全屏弹窗并恢复头像按钮焦点；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录独立团队创建标签； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格伙伴 SVG 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { useEditorGuard } from '@/components/common/use-editor-guard'
@@ -17,7 +17,7 @@ import { DesktopToolbar } from './desktop-toolbar'
 import { SkillsNavigation } from './skills-navigation'
 import { DetailPanel, DetailPanelHeader } from '../detail-panel'
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
-import { Library, Clock, Home, Contact, CircleHelp, MessageCircle, Plus, Users, FileText, Terminal, Workflow, RefreshCw } from '@/components/icons/index'
+import { Library, Clock, Home, Contact, CircleHelp, MessageCircle, Plus, Users, FileText, Terminal, Workflow, RefreshCw, Settings, Share } from '@/components/icons/index'
 import type { ConversationListChange } from '@shared/domain/conversation-list'
 import type { AppEvent } from '@shared/ipc'
 import type { ConversationDetail, DigitalAgent, Conversation, Message, Snapshot } from '@shared/domain'
@@ -41,6 +41,7 @@ import { LibraryPage, ResourceDetail } from '@/pages/library'
 import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
 import { UserAvatar } from '@/components/common/user-avatar'
+import { ProfileShare } from '@/pages/settings/profile-share'
 import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 
@@ -95,7 +96,8 @@ export function AppShell() {
   const settingsMounted = useRef(route.page === 'settings')
   if (route.page === 'settings') settingsMounted.current = true
   const [settingsSection,setSettingsSection]=useState<SettingsTab>('connections')
-  const [menu, setMenu] = useState<'settings' | 'help' | null>(null)
+  const [menu, setMenu] = useState<'settings' | null>(null)
+  const [sharingProfile, setSharingProfile] = useState(false), userMenuButton = useRef<HTMLButtonElement>(null)
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
   const mounted = useRef(true), selectedRef = useRef<string | null>(route.conversationId), snapshotRequest = useRef(0), detailRequest = useRef(0)
@@ -172,10 +174,10 @@ export function AppShell() {
   useEffect(() => { try { localStorage.setItem('boai.v2.listWidth', String(listWidth)); localStorage.setItem('boai.v2.detailWidth', String(detailWidth)); localStorage.setItem('boai.v2.page', route.page); localStorage.removeItem('boai.v2.conversation') } catch { /* Preferences are optional. */ } }, [listWidth, detailWidth, route.page])
   useEffect(() => { if (api) void api.request('setUnsavedChanges', { dirty: anyDirty }).catch(e => setError(errorText(e))) }, [api, anyDirty])
   useEffect(() => {
-    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !menu && !leaving && !creation && panel && !document.querySelector('[role=alertdialog]')) tabHandles.current.get(detailTabs.activeKey!)?.close() }
+    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !menu && !sharingProfile && !leaving && !creation && panel && !document.querySelector('[role=alertdialog]')) tabHandles.current.get(detailTabs.activeKey!)?.close() }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)
-  }, [menu, panel, leaving, creation, detailTabs.activeKey])
+  }, [menu, sharingProfile, panel, leaving, creation, detailTabs.activeKey])
   const action = async (fn: () => Promise<void>) => { if (busyRef.current) return; busyRef.current = true; setBusy(true); setError(''); try { await fn() } catch (e) { if (mounted.current) setError(errorText(e)) } finally { busyRef.current = false; if (mounted.current) setBusy(false) } }
   const applyRoute = (next: Route, addHistory = true) => {
     if (addHistory && (next.page !== route.page || next.conversationId !== route.conversationId)) { history.current = history.current.slice(0, historyIndex.current + 1); history.current.push(next); historyIndex.current++ }
@@ -289,14 +291,18 @@ export function AppShell() {
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
   return <GuardContext.Provider value={guard}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} style={{'--list-width':`${listWidth}px`,'--detail-width':`${actualDetailWidth}px`} as CSSProperties}>
     <DesktopToolbar title={title} detailHeader={panel && <DetailPanelHeader tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={() => navigate(() => { historyIndex.current--; applyRoute(history.current[historyIndex.current]!, false) })} onForward={() => navigate(() => { historyIndex.current++; applyRoute(history.current[historyIndex.current]!, false) })} onToggleList={() => setListShown(shown => !shown)} onToggleDetails={toggleDetails} />
-    <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([{page:'conversations',icon:Home,label:'会话'},{page:'contacts',icon:Contact,label:'通讯录'},{page:'schedules',icon:Clock,label:'定时任务'},{page:'library',icon:Library,label:'资料库'}] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom">{(['help', 'settings'] as const).map(item => <DropdownMenu key={item} open={menu === item} onOpenChange={open => setMenu(open ? item : null)}>
-      <DropdownMenuTrigger render={<Button variant={route.page === item ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label={item === 'settings' ? '我的菜单' : '帮助'} title={item === 'settings' ? '我' : '帮助'} />}>{item === 'settings' ? <UserAvatar profile={snapshot.userProfile} /> : <CircleHelp size={16} />}</DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-48"><DropdownMenuGroup><DropdownMenuLabel>{item === 'settings' ? snapshot.userProfile?.displayName ?? '我' : '帮助与说明'}</DropdownMenuLabel>
-        {item === 'settings' && <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('profile'); applyRoute({ ...route, page: 'settings' }) })}>个人资料</DropdownMenuItem>}
-        {item === 'settings' && <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('appearance'); applyRoute({ ...route, page: 'settings' }) })}>外观</DropdownMenuItem>}
-        <DropdownMenuItem onClick={() => navigate(() => { if (item === 'settings') setSettingsSection('connections'); applyRoute({ ...route, page: item }) })}>{item === 'settings' ? '模型连接与数据备份' : '使用说明与关于'}</DropdownMenuItem>
-      </DropdownMenuGroup></DropdownMenuContent>
-    </DropdownMenu>)}</div></nav>
+    <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([{page:'conversations',icon:Home,label:'会话'},{page:'contacts',icon:Contact,label:'通讯录'},{page:'schedules',icon:Clock,label:'定时任务'},{page:'library',icon:Library,label:'资料库'}] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu open={menu === 'settings'} onOpenChange={open => setMenu(open ? 'settings' : null)}>
+      <DropdownMenuTrigger render={<Button ref={userMenuButton} variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px]">
+        <DropdownMenuItem className="user-menu-profile" aria-label="个人资料" onClick={() => navigate(() => { setSettingsSection('profile'); applyRoute({ ...route, page: 'settings' }) })}><UserAvatar profile={snapshot.userProfile} /><span><strong>{snapshot.userProfile?.displayName ?? '我'}</strong>{snapshot.userProfile?.username && <small>@{snapshot.userProfile.username}</small>}</span></DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => { setMenu(null); setSharingProfile(true) }}><Share />分享</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('connections'); applyRoute({ ...route, page: 'settings' }) })}><Settings />设置</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => goPage('help')}><CircleHelp />帮助</DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu></div></nav>
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{error&&<Banner onClose={()=>setError('')}>{error}</Banner>}
       {<div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}>{effectiveList&&<><aside className="conversation-list-container"><ConversationList snapshot={snapshot} selectedId={selectedId} query={search} onQuery={setSearch} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onSelect={selectConversation} onChange={changeConversationList} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside>{resizer('list')}</>}
@@ -330,6 +336,7 @@ export function AppShell() {
       </DetailPanel>}
       {creation?.type==='agent'&&<CreateAgentDialog key={`agent-${panelGeneration}`} api={api} snapshot={snapshot} template={creation.template} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
       {creation?.type==='group'&&<CreateGroupDialog key={`group-${panelGeneration}`} api={api} snapshot={snapshot} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
+      {sharingProfile && <ProfileShare api={api} profile={snapshot.userProfile} onClose={() => setSharingProfile(false)} finalFocus={userMenuButton} />}
       {confirmation}
     </div></div>
   </Tabs></GuardContext.Provider>

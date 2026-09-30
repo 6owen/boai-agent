@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -1471,16 +1471,17 @@ describe('local product service', () => {
     expect(engine.contexts[1].resources.map(resource => resource.id)).toEqual([knowledge.id])
   })
 
-  it('keeps personal preferences across chats but scopes learned memory and inherits resource provenance', async () => {
+  it('keeps personal preferences across chats while explicit chat-only memory inherits resource provenance', async () => {
     const { service, engine, root } = await fixture(); await configure(service)
     await service.handle('saveMemory', { agentId: 'researcher', scope: 'profile', content: '用户喜欢简洁中文', expectedEpoch: 0 })
     const source = join(root, 'secret.txt'); await writeFile(source, '机密来源')
     const resource = await service.handle('importResource', { kind: 'knowledge', path: source }) as Resource
     await updateAgent(service, (await snapshot(service)).agents[0], { knowledgeIds: [resource.id] })
     const direct = await conversation(service), group = await conversation(service, true)
+    await service.handle('createConversation', { kind: 'direct', title: direct.title, agentIds: direct.agentIds, id: direct.id, memoryScope: 'conversation' })
     engine.extractMemory = async context => context.conversation.id === direct.id ? [{ content: '只属于单聊的结论', sourceMessageIds: [context.messages.at(-1)!.id] }] : []
     await send(service, direct, '从资料学习', 'learn'); await idle(service, direct, 1)
-    const query = { agentId: 'researcher', scope: 'conversation', conversationId: direct.id }
+    const query = { agentId: 'researcher', scope: 'employee', sourceConversationId: direct.id }
     const learned = await service.handle('getMemory', query) as MemoryView
     expect(learned.entries[0]).toMatchObject({ content: '只属于单聊的结论', sourceResourceIds: [resource.id] })
     expect((await detail(service, direct)).turns?.[0].modelCalls).toBe(3)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
- * [OUTPUT]: 待提交和提交中通知的清理/状态与引用不复活；无 Work 的自动化预算及调用回执清理验证；Trace 随会话删除；自动化跨工作证据清除/等待终结/去重保留、关联记录删除、共享数据保留、重启续清与符号链接边界验证。
+ * [OUTPUT]: T2 清理前来源屏障与后续历史清理各推进版本；待提交和提交中通知的清理/状态与引用不复活；无 Work 的自动化预算及调用回执清理验证；Trace 随会话删除；自动化跨工作证据清除/等待终结/去重保留、关联记录删除、共享数据保留、重启续清与符号链接边界验证。
  * [POS]: tests/conversation-history.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -32,7 +32,7 @@ it('removes linked content while preserving other conversations, contacts, share
     row('snapshots', 'target', { conversation: { id: 'c' } }),
     row('workItems', 'work', { conversationId: 'c', budgetId: 'budget' }), row('workExecutions', 'execution', { workId: 'work' }), row('workBudgets', 'budget', {}),
     row('requests', 'retry', { fingerprint: JSON.stringify({ kind: 'retry', id: 'target' }) }), row('requests', 'message', { messageId: 'target' }),
-    row('memory', 'memory', { ownerAgentId: 'a', conversationId: 'c', scope: 'conversation', sourceMessageIds: ['target'] }),
+    row('memory', 'memory', { ownerAgentId: 'a', conversationId: 'c', scope: 'conversation', content: '须删除的来源记忆', sourceMessageIds: ['target'], sourceResourceIds: [], origin: 'model', version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' }),
     row('memory', 'profile', { ownerAgentId: 'a', scope: 'profile', sourceMessageIds: [] }),
     row('memoryEpochs', 'employee:a:conversation:c', { epoch: 9 }),
     row('automationOccurrences', 'occurrence', { conversationId: 'c', status: 'completed', nativeRunId: 'native-id', messageId: 'target', turnId: 'target', reason: 'private text', runIds: ['target'], resultMessageIds: ['target'] }),
@@ -47,7 +47,7 @@ it('removes linked content while preserving other conversations, contacts, share
   for (const collection of owned) expect(await store.load(collection)).toEqual([{ id: 'other', conversationId: 'elsewhere' }])
   for (const collection of ['snapshots', 'workItems', 'workExecutions', 'workBudgets', 'decisions', 'contributions', 'grants', 'requests', 'conversationCleanup']) expect(await store.load(collection)).toEqual([])
   expect(await store.load('memory')).toEqual([{ id: 'profile', ownerAgentId: 'a', scope: 'profile', sourceMessageIds: [] }])
-  expect(result.memoryEpochs).toContainEqual({ id: 'employee:a:conversation:c', epoch: 10 })
+  expect(result.memoryEpochs).toContainEqual({ id: 'employee:a:conversation:c', epoch: 11 })
   expect(result.conversation).toMatchObject({ id: 'c', agentIds: ['a'], sharedKnowledgeIds: ['shared'], list: { hidden: true } })
   expect(await store.load('automationOccurrences')).toEqual([{ id: 'occurrence', conversationId: 'c', status: 'completed', nativeRunId: 'native-id', reason: '聊天记录已清空', runIds: [], resultMessageIds: [] }])
   expect(await store.load('automationDispatches')).toEqual([{ schemaVersion: 1, id: 'occurrence', requestId: 'automatic-request', status: 'cleared' }])

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；引导从模型连接接入本地 Agent；包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: 新交流记忆范围和可选事项关联；既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；引导从模型连接接入本地 Agent；包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -65,14 +65,18 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onO
   const [ids, setIds] = useState(conversation?.agentIds ?? [])
   const [knowledge, setKnowledge] = useState(conversation?.sharedKnowledgeIds ?? [])
   const [teamSetup, setTeamSetup] = useState(conversation?.teamSetup ?? null)
+  const [memoryScope, setMemoryScope] = useState(conversation?.memoryScope ?? 'employee')
+  const [memoryContextId, setMemoryContextId] = useState(conversation?.memoryContextRef?.kind === 'conversation' ? conversation.memoryContextRef.id : '')
   const { busy, error, run } = useMutation()
   const guard = useContext(GuardContext)
-  useDirty({ title, ids, knowledge, teamSetup })
-  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
+  useDirty({ title, ids, knowledge, teamSetup, memoryScope, memoryContextId })
+  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
   return <EditorFrame leading={<GroupMembers agents={snapshot.agents} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<><Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
     <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
+      <Field label="新交流的记忆范围" full hint="收紧立即生效；放宽后只有新交流使用新范围，旧记录不自动升级。"><SelectField value={memoryScope} onValueChange={value => setMemoryScope(value as 'employee' | 'conversation')} options={[{ value: 'employee', label: '各员工在相关聊天中使用' }, { value: 'conversation', label: '仅在此聊天使用' }]} /></Field>
+      <Field label="关联事项（可选）" full hint="明确关联已有聊天中的临时约定，同名聊天不会自动关联。"><SelectField value={memoryContextId} onValueChange={setMemoryContextId} options={[{ value: '', label: '不关联' }, ...snapshot.conversations.filter(c => c.id !== conversation?.id && ids.every(id => c.agentIds.includes(id))).map(c => ({ value: c.id, label: c.title }))]} /></Field>
 
       {teamSetup && <>
         <Field label="团队目的" full><Textarea required maxLength={1000} value={teamSetup.purpose} onChange={e => setTeamSetup({ ...teamSetup, purpose: e.target.value })} /></Field>

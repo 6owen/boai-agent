@@ -1,0 +1,17 @@
+{
+  "output": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/game-evaluation/WG-real-v1-1790787632203",
+  "connectionId": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+  "dataPath": "/Users/wangwenbo/Library/Application Support/BoAI Agent/v2",
+  "maxRequests": 60,
+  "maxOutputTokens": 20000,
+  "deadlineMs": 720000,
+  "hashes": {
+    "src/shared/domain/game.ts": "be3abb8bebd8e202ca6045ae73487d99ff128a5abbd174184c7af866e0b35ec9",
+    "src/runtime/modules/games/game-rules.ts": "4cdeef913354a38ae68f7b66d575ab3f8f25dc0fb2344bd252bcd78ab3ba593e",
+    "src/runtime/modules/games/game-repository.ts": "8f3fa1bdd3fff46134525fa88f94ae46f07d189fc56839f7928a4a4a4ff24a67",
+    "src/runtime/modules/games/game-service.ts": "d3d43aeef097d99e88aa0b17a00485e2658324c72ffebe8d497ccb299b5321cb",
+    "src/runtime/adapters/mastra/game-player.ts": "5509dc1eba89e14ce13c3944beaa82e43b5dcf7c4beb2d8bc52b519d41796b6e",
+    "tests/evaluation/werewolf.ts": "915a959ab3984f0695920a02087d0386d6831d962effcf39c3ba448d9e6acd47",
+    "pnpm-lock.yaml": "dcc2f9cba18634aa86c474111a74d0587565fb49b7200d00a2bbf74b6f2c2f33"
+  }
+}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 模型连接/本机 Agent 的步骤、标题，以及连接/个人资料的字段、反馈和操作回调。
- * [OUTPUT]: 原添加模型连接的共用弹窗布局：首级 520px、二级 620px、自然高度与统一标题/步骤；兼容接口和个人资料共用横向分组表单、间距和操作栏，卡片可沿用默认颜色。
+ * [OUTPUT]: 原添加模型连接的共用弹窗布局：首级 520px、二级 620px、自然高度与统一标题/步骤；兼容接口和个人资料共用横向分组表单、全局 soft-divide-y/Separator 和操作栏，卡片可沿用默认颜色。
  * [POS]: settings 内连接向导及个人资料卡片表单的共用布局，不持有业务状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Separator } from '@/components/ui/separator'
 
 export function ConnectionDialogLayout({ choosing, label, title, illustration, description, closeLabel, working, onClose, steps, children, finalFocus, initialFocus }: {
   choosing: boolean; label: string; title: string; illustration: ReactNode; description?: string
@@ -34,7 +35,8 @@ export function ConnectionDialogLayout({ choosing, label, title, illustration, d
 export function ConnectionForm({ children, footer, disabled, muted = true, ...props }: Omit<ComponentProps<'form'>, 'className'> & { footer: ReactNode; disabled: boolean; muted?: boolean }) {
   return <form {...props} data-edit-form className={`connection-editor soft-card${muted ? ' bg-muted' : ''}`} data-compact="true">
     <fieldset disabled={disabled} className="connection-fields soft-divide-y">{children}</fieldset>
-    <footer className="connection-editor-footer soft-divider-top">{footer}</footer>
+    <Separator />
+    <footer className="connection-editor-footer">{footer}</footer>
   </form>
 }
 

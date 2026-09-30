@@ -1,20 +1,21 @@
 /*
- * [INPUT]: 创建员工或群聊回调与统一 UI 菜单。
- * [OUTPUT]: 可选团队入口仅在通讯录接线； 会话和通讯录共用的单个加号入口。
+ * [INPUT]: 创建员工或群聊回调、可选页面菜单项与统一 UI 菜单。
+ * [OUTPUT]: 会话和通讯录共用的加号入口；通讯录可追加分类二级菜单。
  * [POS]: 跨页面的创建菜单，不持有业务数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Contact, Plus, Users } from '@/components/icons'
 
-export function AddContactMenu({ onCreate, onCreateTeam }: { onCreateTeam?(): void; onCreate(kind: 'agent' | 'group'): void }) {
+export function AddContactMenu({ onCreate, children }: { children?: ReactNode; onCreate(kind: 'agent' | 'group'): void }) {
   return <DropdownMenu>
     <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="新建" title="添加" />}><Plus /></DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-40"><DropdownMenuGroup>
-      {onCreateTeam && <DropdownMenuItem onClick={onCreateTeam}><Users />创建团队</DropdownMenuItem>}
       <DropdownMenuItem onClick={() => onCreate('agent')}><Contact />新建员工</DropdownMenuItem>
       <DropdownMenuItem onClick={() => onCreate('group')}><Users />新建群聊</DropdownMenuItem>
+      {children}
     </DropdownMenuGroup></DropdownMenuContent>
   </DropdownMenu>
 }

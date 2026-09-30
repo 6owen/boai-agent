@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
- * [OUTPUT]: 团队创建菜单、分组搜索和分类管理；分类标题拖拽/键盘排序与员工跨分类归类隔离；本机保存群聊/联系人/分类折叠状态，搜索临时展开不改写偏好；空分类无占位，未分类固定在最后。
+ * [OUTPUT]: 独立 SVG 动态团队创建按钮、加号内的分类二级菜单与分组搜索；分类标题拖拽/键盘排序与员工跨分类归类隔离；本机保存群聊/联系人/分类折叠状态，搜索临时展开不改写偏好；空分类无占位，未分类固定在最后。
  * [POS]: contacts 左侧列表；界面操作通过类型化 IPC 持久化，不修改会话顺序。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ContactCategories } from './contact-categories'
+import { TeamCreateIcon } from './team-create-icon'
 import { useContactList } from './use-contact-list'
 
 const LIST_STATE_KEY = 'boai.contacts.list-state'
@@ -77,7 +78,10 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   </ContextMenu>}</DragListItem>
   const renderAgents = (agents: DigitalAgent[]) => agents.map(agent => row({ kind: 'agent', id: agent.id }, agent.name, agent.active ? agent.role || '数字员工' : '已停用', <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />))
   return <aside className="contacts-list" aria-label="通讯录列表">
-    <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions"><ContactCategories value={value} agentIds={snapshot.agents.map(agent => agent.id)} change={preferences.change} busy={disabled} /><AddContactMenu onCreateTeam={onCreateTeam} onCreate={onCreate} /></div></div>
+    <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions">
+      <Button variant="ghost" size="icon-sm" className="create-team-button" aria-label="创建团队" title="创建团队" onClick={onCreateTeam}><TeamCreateIcon /></Button>
+      <AddContactMenu onCreate={onCreate}><ContactCategories value={value} agentIds={snapshot.agents.map(agent => agent.id)} change={preferences.change} busy={disabled} /></AddContactMenu>
+    </div></div>
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     {preferences.error && <Banner>{preferences.error}</Banner>}
     <div className="contacts-sections">

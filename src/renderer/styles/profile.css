@@ -1,12 +1,17 @@
 /*
- * [INPUT]: 设置布局、共用连接卡片表单、全局 Soft 表面及语义主题 token。
- * [OUTPUT]: 紧凑统计、头像悬停编辑、上下洞察卡片、全屏分享与响应式布局及单聊本人头像；资料编辑仅管理弹窗/头像布局，表单沿用共用横向行。
+ * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
+ * [OUTPUT]: 头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享及单聊本人头像；资料编辑沿用主题控件高度、共用横向行和 Separator。
  * [POS]: global.css 加载的个人资料局部布局，不维护独立主题。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 .user-avatar { border-radius:50%;background:var(--accent);color:var(--foreground);flex-shrink:0;font-weight:600 }
 .user-avatar img { width:100%;height:100%;object-fit:cover;border-radius:inherit }
 .rail-item>.user-avatar { width:28px;height:28px;font-size:11px }
+.user-menu-profile { gap:12px;min-height:52px }
+.user-menu-profile>.user-avatar { width:32px;height:32px }
+.user-menu-profile>span:last-child { display:grid;gap:2px;min-width:0 }
+.user-menu-profile strong { font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.user-menu-profile small { color:var(--muted-foreground);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .message-row.user .message-avatar { display:flex;flex:0 0 32px }
 .chat-panel:not(.group-chat) .message-row.user .message-avatar { order:2 }
 .message-row.user .message-avatar>.avatar { width:32px;height:32px;border-radius:50%;font-size:12px }
@@ -15,10 +20,11 @@
 .profile-identity { display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0 0 36px }
 .profile-identity .avatar-picker-trigger>.avatar { width:88px;height:88px;font-size:28px }
 .profile-identity h1 { font-size:24px;font-weight:600;margin:8px 0 0;max-width:100%;overflow-wrap:anywhere }
+.profile-name-edit { display:block;max-width:100%;padding:4px 12px;overflow-wrap:anywhere }
 .profile-identity p { color:var(--muted-foreground);margin:0;overflow-wrap:anywhere;max-width:100% }
 .profile-metrics { margin-bottom:32px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden }
-.profile-metrics>div { padding:16px 10px;text-align:center;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere }
-.profile-metrics>div+div { border-left:1px solid var(--border) }
+.profile-metrics>div { position:relative;min-width:0;padding:16px 10px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px;overflow-wrap:anywhere }
+.profile-metrics>div+div::before { content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;box-shadow:var(--shadow-divider-vertical);pointer-events:none }
 .profile-metrics strong { font-size:14px;font-weight:600 }
 .profile-metrics span { font-size:11px;color:var(--muted-foreground) }
 .profile-section-title { display:flex;align-items:center;gap:4px }
@@ -55,19 +61,24 @@
 .profile-skills button>span { min-width:0;overflow-wrap:anywhere }
 .profile-skills small { display:block;color:var(--muted-foreground);margin-top:4px }
 .profile-editor { max-height:calc(100dvh - 32px);overflow-y:auto }
+.profile-editor .connection-fields [data-slot=input] { min-height:var(--control-height) }
+.profile-editor .connection-fields .connection-setting-row { padding-block:10px }
+.profile-editor .connection-setting-row>[data-slot=field-label],.profile-editor .connection-setting-label { min-height:var(--control-height) }
 .profile-editor-avatar { display:flex;justify-content:center }
 .profile-editor-avatar .avatar { width:64px;height:64px;font-size:22px }
 @container (max-width:600px) {
-  .profile-metrics { grid-template-columns:repeat(2,minmax(0,1fr)) }
-  .profile-metrics>div+div { border-left:0 }
-  .profile-metrics>div:nth-child(even) { border-left:1px solid var(--border) }
-  .profile-metrics>div:nth-child(n+3) { border-top:1px solid var(--border) }
+  .profile-metrics { grid-template-columns:repeat(6,minmax(0,1fr)) }
+  .profile-metrics>div { grid-column:span 2 }
+  .profile-metrics>div:nth-child(n+4) { grid-column:span 3 }
+  .profile-metrics>div:nth-child(4)::before { display:none }
+  .profile-metrics>div:nth-child(4)::after { content:'';position:absolute;left:12px;top:0;width:calc(200% - 24px);height:1px;box-shadow:var(--shadow-divider);pointer-events:none }
   .profile-insights { gap:24px }
 }
 @container (max-width:280px) {
   .profile-metrics { grid-template-columns:1fr }
-  .profile-metrics>div:nth-child(even) { border-left:0 }
-  .profile-metrics>div+div { border-top:1px solid var(--border) }
+  .profile-metrics>div:nth-child(n) { grid-column:auto }
+  .profile-metrics>div:nth-child(n)::before { display:none }
+  .profile-metrics>div:nth-child(n+2)::after { content:'';position:absolute;left:12px;right:12px;top:0;width:auto;height:1px;box-shadow:var(--shadow-divider);pointer-events:none }
   .profile-document .settings-document-heading { align-items:flex-start;flex-direction:column;gap:12px }
   .profile-insights dl>div { flex-wrap:wrap }
 }

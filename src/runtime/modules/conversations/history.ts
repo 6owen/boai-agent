@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 清除会话关联的模型调用/技能激活/执行区间，保留个人资料；清除监控私有比较证据与来源检查点；清理通知正文引用，待提交抑制/提交中未知并保留最小身份；清理自动化待回答轮次引用；按会话清理尚无 Work 的 occurrence 预算与调用回执；Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料，清除自动化投递正文/跨工作证据、终结失去上下文的等待并保留去重身份。
+ * [OUTPUT]: 清理日志恢复先建立跨会话记忆来源屏障，再删除文件；清除会话关联的模型调用/技能激活/执行区间，保留个人资料；清除监控私有比较证据与来源检查点；清理通知正文引用，待提交抑制/提交中未知并保留最小身份；清理自动化待回答轮次引用；按会话清理尚无 Work 的 occurrence 预算与调用回执；Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料，清除自动化投递正文/跨工作证据、终结失去上下文的等待并保留去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,6 +11,7 @@ import type { Conversation, MemoryEntry } from '../../../shared/domain'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '../../../shared/domain/automations'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { pendingOccurrence } from '../automations/schedule-policy'
+import { MemoryRepository } from '../memory/memory-repository'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
 interface Cleanup { id: string; hide: boolean }
@@ -49,6 +50,9 @@ export class ConversationHistory {
     // Validate every parent before deleting anything; never follow recorded artifact/source paths.
     for (const path of paths) await this.safe(path)
     await this.store.write([{ collection: 'conversationCleanup', id, value: { id, hide } }])
+    // The durable source fence precedes file removal and is repeated by recovery.
+    const memoryRepository = new MemoryRepository(this.store)
+    for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
     for (const path of paths) await rm(path, { recursive: true, force: true })
     for (const agent of agents) {
       const state = join(this.dataPath, 'agents', agent.id, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')

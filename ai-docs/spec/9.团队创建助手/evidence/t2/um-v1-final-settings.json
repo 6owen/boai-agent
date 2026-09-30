@@ -1,0 +1,17 @@
+{
+  "output": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/memory-evaluation/UM-v1-1790759808261",
+  "connectionId": "b8085dae-8aa0-4fce-b96b-f9ad5a92a61f",
+  "dataPath": "/Users/wangwenbo/Library/Application Support/BoAI Agent/v2",
+  "maxRequests": 32,
+  "maxOutputTokens": 20000,
+  "deadlineMs": 720000,
+  "hashes": {
+    "src/shared/domain/memory.ts": "d5561012941084b3db4bb7ac9c41df825e934a7478ef60b66b4c41df69836346",
+    "src/runtime/service.ts": "11060288aee0f9b9a8e6e1069473cabb9210faae711a38cefa66f015794d494f",
+    "src/runtime/modules/memory/memory-repository.ts": "0875a7f253b818b922965e7b2bf5fce3cef530de7d7e7669ffe53a34b1c480de",
+    "src/runtime/modules/memory/memory-recall.ts": "c4ee6d537bf1311b81a197f6a0827d8d08e639e19e3c155099b7549d925452d1",
+    "src/runtime/adapters/mastra/engine.ts": "f3f9f73ce1142443b89b17a30b72716fa045a64ba50b425ae72a0e7d6c9d3516",
+    "tests/evaluation/unified-memory.ts": "d7be20df5a73383f75f2c3beec7acd4099b0495634d4482566b1880ffd14cd84",
+    "pnpm-lock.yaml": "dcc2f9cba18634aa86c474111a74d0587565fb49b7200d00a2bbf74b6f2c2f33"
+  }
+}

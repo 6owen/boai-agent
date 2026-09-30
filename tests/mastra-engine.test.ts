@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -493,6 +493,18 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await expect(readdir(ctx.workspace!.root)).rejects.toThrow()
   })
 
+  it('preserves unified candidate metadata and separates raw acknowledgments from retained correction versions', async () => {
+    const candidate = { content: '本局临时女巫', sourceMessageIds: ['message-1'], kind: 'temporary', evidence: 'claim', contextRef: { kind: 'conversation', id: 'conversation' }, expiresAt: '2030-01-01T00:00:00Z', supersedes: [{ id: 'previous', version: 3 }] }
+    const mock = await endpoint([JSON.stringify({ candidates: [candidate] })]), { ctx } = await context(mock.url)
+    ctx.memoryContexts = [{ kind: 'conversation', id: 'conversation' }]
+    ctx.memory = { namespace: 'employee:agent-a', epoch: 1, entries: [{ id: 'observation:raw', ownerAgentId: 'agent-a', scope: 'employee', content: 'RAW_ACK_MUST_NOT_SUPPRESS', sourceMessageIds: ['message-1'], sourceResourceIds: [], origin: 'model', version: 1, createdAt: '', updatedAt: '' }] }
+    expect(await new MastraEngine().extractMemory(ctx)).toEqual([{ ...candidate, sourceResourceIds: [] }])
+    const payload = JSON.parse(mock.requests[0].messages.find(message => message.role === 'user')!.content as string)
+    expect(payload.data.additionalRetainedFacts).toEqual([]); expect(payload.data.retainedVersions).toEqual([])
+    expect(payload.data.authorizedContexts).toEqual(ctx.memoryContexts)
+    expect(payload.data.currentMemoryPolicy).toEqual({ defaultUseScope: 'employee', linkedContext: null })
+  })
+
   it('extracts only current-turn memory deltas and keeps full retained facts as deduplication background', async () => {
     const mock = await endpoint([
       JSON.stringify({ candidates: [{ content: 'Prefers Chinese reports.', sourceMessageIds: ['message-3'] }] }),
@@ -521,7 +533,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(payload.protocol).toBe('private-memory-delta-v1')
     expect(payload.data.currentTurn).toEqual({ id: 'current', rootMessageId: 'message-3' })
     expect(payload.data.currentTurnMessages.map((message: { id: string }) => message.id)).toEqual(['message-3', 'message-4'])
-    expect(payload.data.additionalRetainedFacts).toEqual([{ id: 'm2', content: 'FULL_EXISTING_FACT_OUTSIDE_BOOTSTRAP' }])
+    expect(payload.data.additionalRetainedFacts).toEqual([{ id: 'm2', version: 1, content: 'FULL_EXISTING_FACT_OUTSIDE_BOOTSTRAP' }])
     for (const fact of ['FULL_EXISTING_FACT_IN_BOOTSTRAP', 'FULL_EXISTING_FACT_OUTSIDE_BOOTSTRAP']) expect(allMessageText(mock.requests[0]).match(new RegExp(fact, 'g'))).toHaveLength(1)
     expect(allMessageText(mock.requests[0])).not.toMatch(/OLD_USER_GREETING|OLD_SELF_INTRODUCTION|LATE_REPLY_FROM_OLD_TURN|OTHER_EMPLOYEE_PRIVATE_FACT|OTHER_CONVERSATION_PRIVATE_FACT/)
     expect(mock.requests[0].tools ?? []).toHaveLength(0)

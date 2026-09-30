@@ -1,0 +1,7 @@
+{
+  "name": "deepseek-flash",
+  "provider": "openai-compatible",
+  "model": "deepseek-flash",
+  "endpointHost": "api.deepseek.com",
+  "credentialsSaved": false
+}

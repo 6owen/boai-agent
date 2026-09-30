@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 Mastra SDK、本地 SSE、团队生成宿主与 SQLite。
- * [OUTPUT]: 模型或编辑不得改写能力事实；无工具调用、结构修复预算、版本去重、停止/放弃的迟到用量与重启不重发验收。
+ * [OUTPUT]: 模型或编辑不得改写 T2 统一记忆/T3 未支持能力事实；无工具调用、结构修复预算、版本去重、停止/放弃的迟到用量与重启不重发验收。
  * [POS]: T1.2 协议回归；离线返回不作为人工质量成绩。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -58,9 +58,10 @@ test.each(['work', 'roleplay'] as const)('host owns capability facts for %s even
   const { draft } = await finished(), plan = draft.plan!
   expect(plan.capabilityNotes.join('；')).not.toContain(misleading[0])
   expect(plan.capabilityNotes.join('；')).not.toContain(misleading[1])
-  expect(plan.capabilityNotes.join('；')).toContain('员工保留现有个人记忆机制')
+  expect(plan.capabilityNotes.join('；')).toContain('新交流可在相关私聊与群聊中接续')
+  expect(plan.capabilityNotes.join('；')).toContain('旧会话记忆不自动开放')
   expect(plan.capabilityNotes.join('；')).toContain('成员可读写个人工作区文件')
-  expect(plan.capabilityNotes.join('；')).toContain('本方案不授予读取其他私聊的权限')
+  expect(plan.capabilityNotes.join('；')).toContain('本方案不授予读取其他员工私有聊天的权限')
   expect(plan.capabilityNotes.some(note => note.includes('未支持正式游戏规则'))).toBe(scenarioKind === 'roleplay')
   const saved = await api('saveTeamDraft', { draftId: draft.id, expectedVersion: draft.version, editableFields: { prompt: draft.prompt, selectedConnectionId: draft.selectedConnectionId, selectedModelId: '', createGroup: true, groupTitle: '', plan: { ...plan, capabilityNotes: misleading } } })
   expect(saved.plan?.capabilityNotes).toEqual(plan.capabilityNotes)
