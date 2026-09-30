@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 多标签中文场景、Electron fixture 和真实本地数据。
- * [OUTPUT]: 会话菜单入口、浏览器式标签浅深色悬停、去重、草稿/滚动保留、独立表单保存、拖拽/键盘排序、会话范围和窄窗验证。
+ * [OUTPUT]: 按 Base UI 选中标签读取记忆范围；会话菜单入口、浏览器式标签浅深色悬停、去重、草稿/滚动保留、独立表单保存、拖拽/键盘排序、会话范围和窄窗验证。
  * [POS]: tests/e2e/steps/detail-tabs.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -116,9 +116,9 @@ Then('跨会话和窄窗口中的详情标签仍保持独立', async ({ runtime 
   const page = runtime.page, tabs = page.getByRole('tablist', { name: '详情标签' })
   await openMember(page, '研究员')
   await page.locator('.employee-detail').getByRole('tab', { name: '记忆', exact: true }).click()
-  const scope = await page.getByRole('combobox', { name: '记忆范围', exact: true }).inputValue()
+  const scope = await page.getByRole('combobox', { name: '记忆范围', exact: true }).innerText()
   await page.locator('.conversation-item').filter({ hasText: '另一组工作' }).click()
-  expect(await page.getByRole('combobox', { name: '记忆范围', exact: true }).inputValue()).toBe(scope)
+  expect(await page.getByRole('combobox', { name: '记忆范围', exact: true }).innerText()).toBe(scope)
   await tabs.getByRole('tab', { name: '任务与产物', exact: true }).click()
   await expect(page.locator('.detail-content:visible')).toContainText('会话全部产物')
   await expect(page.locator('.detail-content:visible')).not.toContainText('请先打开对应会话')

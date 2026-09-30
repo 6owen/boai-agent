@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 产品事务、现存员工/群聊和版本化通讯录操作。
- * [OUTPUT]: 员工分类、独立列表顺序的原子持久化；拒绝跨类型/跨分类拖拽和过期写入；删除分类保留员工。
+ * [INPUT]: 产品事务、现存员工/群聊、版本化通讯录操作及团队发布身份和成员。
+ * [OUTPUT]: 分类/顺序原子持久化，团队同事务新建唯一名称分类并归入成员；归类与组内排序分离，过期写入拒绝，删除分类保留员工。
  * [POS]: employees 的通讯录展示偏好，不写员工定义或会话列表偏好。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,9 @@ import { emptyContactList, sortedContacts, type ContactListAction, type ContactL
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 
 const id = z.string().trim().min(1).max(200)
-const name = z.string().trim().min(1).max(40)
+const CATEGORY_NAME_LIMIT = 40
+const CATEGORY_COUNT_LIMIT = 100
+const name = z.string().trim().min(1).max(CATEGORY_NAME_LIMIT)
 export const contactListChangeSchema = z.object({
   expectedRevision: z.number().int().nonnegative(),
   action: z.discriminatedUnion('kind', [
@@ -27,6 +29,23 @@ async function readPreferences(tx: RecordTransaction): Promise<ContactListPrefer
   return await tx.get<ContactListPreferences>('contactList', 'contacts') ?? emptyContactList()
 }
 
+export async function createTeamContactCategory(tx: RecordTransaction, categoryId: string, teamName: string, agentIds: string[]) {
+  const value = await readPreferences(tx)
+  if (value.categories.length >= CATEGORY_COUNT_LIMIT) throw new Error('最多创建 100 个分类，请删除不需要的分类后继续创建团队')
+  if (value.categories.some(category => category.id === categoryId)) throw new Error('团队分类身份已被占用')
+  const base = teamName.trim().replace(/\s+/g, ' ')
+  const usedNames = new Set(['未分类', ...value.categories.map(category => category.name.toLocaleLowerCase())])
+  let categoryName = base.slice(0, CATEGORY_NAME_LIMIT), index = 2
+  while (usedNames.has(categoryName.toLocaleLowerCase())) {
+    const suffix = `（${index++}）`
+    categoryName = base.slice(0, CATEGORY_NAME_LIMIT - suffix.length).trimEnd() + suffix
+  }
+  value.categories.push({ id: categoryId, name: categoryName })
+  for (const agentId of agentIds) value.categoryByAgentId[agentId] = categoryId
+  value.revision++
+  await tx.put({ collection: 'contactList', id: 'contacts', value })
+}
+
 export class ContactListRepository {
   constructor(private readonly store: ProductStore) {}
   read() { return this.store.transaction(readPreferences) }
@@ -37,10 +56,10 @@ export class ContactListRepository {
       if ('categoryId' in action && action.categoryId && !value.categories.some(category => category.id === action.categoryId)) throw new Error('员工分类不存在')
       if (action.kind === 'create-category' || action.kind === 'rename-category') {
         const categoryName = action.name.trim().replace(/\s+/g, ' ')
-        if (!categoryName || categoryName.length > 40) throw new Error('分类名称需要 1–40 个字符')
+        if (!categoryName || categoryName.length > CATEGORY_NAME_LIMIT) throw new Error('分类名称需要 1–40 个字符')
         if (categoryName === '未分类' || value.categories.some(category => category.name.toLocaleLowerCase() === categoryName.toLocaleLowerCase() && (action.kind === 'create-category' || category.id !== action.categoryId))) throw new Error('分类名称已存在')
         if (action.kind === 'create-category') {
-          if (value.categories.length >= 100) throw new Error('最多创建 100 个分类')
+          if (value.categories.length >= CATEGORY_COUNT_LIMIT) throw new Error('最多创建 100 个分类')
           value.categories.push({ id: randomUUID(), name: categoryName })
         } else value.categories = value.categories.map(category => category.id === action.categoryId ? { ...category, name: categoryName } : category)
       } else if (action.kind === 'delete-category') {
@@ -56,7 +75,7 @@ export class ContactListRepository {
           ? (await tx.list<DigitalAgent>('agents')).map(agent => ({ id: agent.id, name: agent.name }))
           : (await tx.list<Conversation>('conversations')).filter(conversation => conversation.kind === 'group').map(group => ({ id: group.id, name: group.title }))
         if (!items.some(item => item.id === action.id) || !items.some(item => item.id === action.targetId)) throw new Error('只能在同一类型的通讯录条目之间排序')
-        if (agents && value.categoryByAgentId[action.id] !== value.categoryByAgentId[action.targetId]) throw new Error('只能在同一员工分类内排序，请通过右键菜单切换分类')
+        if (agents && value.categoryByAgentId[action.id] !== value.categoryByAgentId[action.targetId]) throw new Error('只能在同一员工分类内排序，请拖到分类标题或通过右键菜单切换分类')
         const key = agents ? 'agentOrder' : 'groupOrder'
         const order = sortedContacts(items, value[key], item => item.name).map(item => item.id)
         if (action.id !== action.targetId) {

@@ -1,17 +1,18 @@
 /*
  * [INPUT]: sidebar 页面作用域、打开/激活/排序/关闭与显隐动作，带稳定身份的详情目标。
- * [OUTPUT]: 每个 sidebar 页面独立的标签/选中/显隐状态与命名空间；技能更新使用唯一常驻详情标签；新建自动化稳定草稿与按计划 ID 去重的编辑标签；商店标签按提供商和条目身份去重；执行过程标签按会话/轮次/员工去重，图标重开重新定位；移动保留选中项，关闭选中项后选择相邻标签。
+ * [OUTPUT]: 定时任务创建模式复用同一新建标签；团队创建固定标签身份； 每个 sidebar 页面独立的标签/选中/显隐状态与命名空间；技能更新使用唯一常驻详情标签；新建自动化稳定草稿与按计划 ID 去重的编辑标签；商店标签按提供商和条目身份去重；执行过程标签按会话/轮次/员工去重，图标重开重新定位；移动保留选中项，关闭选中项后选择相邻标签。
  * [POS]: detail-panel 的纯状态转换，不依赖页面路由或持久化。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { SkillMarketplaceProvider } from '@shared/domain/skill-marketplace'
 
-export type DetailTarget = { type: 'agent'; id: string; conversationId?: string } | { type: 'group' | 'activity' | 'resource'; id: string } | { type: 'trace'; requestId?: string; id: string; messageId?: string; turnId?: string; agentId?: string } | { type: 'marketplace'; provider: SkillMarketplaceProvider; id: string; name: string } | { type: 'automation-editor'; id?: string; name?: string } | { type: 'schedule' } | { type: 'skill-updates' }
+export type DetailTarget = { type: 'team-creator' } | { type: 'agent'; id: string; conversationId?: string } | { type: 'group' | 'activity' | 'resource'; id: string } | { type: 'trace'; requestId?: string; id: string; messageId?: string; turnId?: string; agentId?: string } | { type: 'marketplace'; provider: SkillMarketplaceProvider; id: string; name: string } | { type: 'automation-editor'; id?: string; name?: string; mode?: 'manual' | 'assistant' | 'monitor' } | { type: 'schedule' } | { type: 'skill-updates' }
 export interface DetailTab { key: string; target: DetailTarget }
 export interface DetailTabsState { tabs: DetailTab[]; activeKey: string | null; shown: boolean }
 export type DetailTabsAction = { type: 'open'; target: DetailTarget } | { type: 'select' | 'close'; key: string } | { type: 'visibility'; shown: boolean } | { type: 'move'; key: string; targetKey: string; placement: 'before' | 'after' }
 export const emptyDetailTabs: DetailTabsState = { tabs: [], activeKey: null, shown: false }
 export function detailTargetKey(target: DetailTarget): string {
+  if (target.type === 'team-creator') return 'team-creator'
   if (target.type === 'skill-updates') return 'skill-updates'
   if (target.type === 'automation-editor') return `automation-editor:${target.id ?? 'new'}`
   if (target.type === 'marketplace') return `marketplace:${target.provider}:${target.id}`

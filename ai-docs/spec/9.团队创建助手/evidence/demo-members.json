@@ -1,0 +1,57 @@
+{
+  "kind": "offline-protocol-demo",
+  "operationId": "3ce57104-4fe4-4a30-8938-e67c199eae7b",
+  "memberIds": [
+    {
+      "memberKey": "4c581770-7693-440a-8dd3-731afb29cd37",
+      "agentId": "2e8118df-6868-42fd-9d01-b96956ca1f20"
+    },
+    {
+      "memberKey": "4c8581dd-9989-4ffe-9ad7-25a0814a8057",
+      "agentId": "ee6bbf7c-4da7-4b7e-a785-39b3bfff0e8b"
+    },
+    {
+      "memberKey": "087b9d4f-30fc-4277-8418-77ec15c11c50",
+      "agentId": "549f9853-5f31-4a36-8563-08fbf64db2ec"
+    },
+    {
+      "memberKey": "d964f6d8-e743-4aff-b24b-7852875af2f1",
+      "agentId": "f495f802-3ddc-4bac-9ae6-b3f8437c6b5a"
+    }
+  ],
+  "createdAt": "2026-09-29T17:51:13.734Z",
+  "committedAt": "2026-09-29T17:51:13.863Z",
+  "creationDurationMs": 129,
+  "generation": {
+    "id": "4a32b308-1fe1-46f5-ae9e-61a4dc44135d",
+    "requestId": "d8db02a9-01da-495a-b2ed-aff79a19cdee",
+    "requestHash": "3ba49d9eeadcf9240f345d45ac14582e52ad1f4341b8c738963c4632cac0bc2f",
+    "draftId": "5a57d7eb-ee88-4ca9-a260-2eafee4a6f43",
+    "draftVersion": 3,
+    "inputHash": "606a7e716d6b2f94e8618b63f77a840a7c3a86ec252f3114621d690aacb863c5",
+    "plannerVersion": "team-planner-v2",
+    "schemaVersion": 1,
+    "connectionId": "a592c092-c2c7-4fd2-ba17-6687daf8d367",
+    "modelId": "team-fixture",
+    "connectionFingerprint": "49327531c95236ea8c1fda0942828a61504da60af08fdcf0a4e72571276999e0",
+    "status": "succeeded",
+    "deadline": "2026-09-29T17:53:12.662Z",
+    "startedAt": "2026-09-29T17:51:12.662Z",
+    "attempts": [
+      {
+        "callId": "3ab9680a-703a-4977-a7bc-f91fe9276c21",
+        "phase": "initial",
+        "status": "succeeded",
+        "usage": {
+          "inputTokens": 100,
+          "outputTokens": 200
+        }
+      }
+    ],
+    "finishedAt": "2026-09-29T17:51:12.714Z"
+  },
+  "userEdits": {
+    "firstRole": "确定读者与文章提纲",
+    "groupTitle": "我的写作讨论组"
+  }
+}

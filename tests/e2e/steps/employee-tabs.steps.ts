@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工共享标签页中文场景、Electron fixture 与产品 API。
- * [OUTPUT]: 会话菜单入口、分类面板语义、草稿保护、键盘切换、资料库筛选及跨页面/主题/窄窗的视觉验收。
+ * [OUTPUT]: 选择员工采用现有 Base UI option；会话菜单入口、分类面板语义、草稿保护、键盘切换、资料库筛选及跨页面/主题/窄窗的视觉验收。
  * [POS]: tests/e2e/steps/employee-tabs.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -119,7 +119,8 @@ Then('资料库分类共用标签样式并保留筛选内容', async ({ runtime 
   await page.getByRole('textbox', { name: '搜索资源', exact: true }).fill('保留筛选')
   await tabs.getByRole('tab', { name: '员工已绑定', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '员工已绑定', exact: true })).toContainText('选择一位员工')
-  await page.getByRole('combobox', { name: '选择员工', exact: true }).selectOption('researcher')
+  await page.getByRole('combobox', { name: '选择员工', exact: true }).click()
+  await page.getByRole('option', { name: '研究员', exact: true }).click()
   await expect(page.getByRole('button', { name: /研究员 的资源配置/ })).toBeVisible()
   await tabs.getByRole('tab', { name: '公共资源', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '公共资源', exact: true })).toContainText('公共资源表示可供绑定')

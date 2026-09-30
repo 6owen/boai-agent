@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 输入框配置持久化与员工隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 重载后显式选择会话验证配置持久化；群聊 @ 候选及 composer 正文内标签、隐藏配置控件、员工配置锁定与隔离、思考强度二级菜单的键盘/窄窗/重启和能力边界断言。
+ * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；会话条目按明确名称定位避免命中群成员摘要；重载后显式选择会话验证配置持久化；群聊 @ 候选及 composer 正文内标签、隐藏配置控件、员工配置锁定与隔离、思考强度二级菜单的键盘/窄窗/重启和能力边界断言。
  * [POS]: tests/e2e/steps/composer.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { createServer } from 'node:http'
@@ -77,7 +78,7 @@ async function saveComposerSettings(previous: Awaited<ReturnType<typeof prepareC
   await model.click()
   await page.getByRole('menuitemradio', { name: /writing-v1/ }).click()
   await expect.poll(async () => (await employee('researcher')).connectionId).toBe(data.b.id)
-  await expect(input).toHaveValue('这是一份未发送的草稿')
+  await expect.poll(() => messageDraft(input)).toBe('这是一份未发送的草稿')
   await page.reload()
   await page.locator('.conversation-item').filter({ hasText: '研究员' }).click()
   await expect(model).toHaveText('writing-v1')
@@ -102,7 +103,7 @@ async function verifyMemberIsolation(previous: Awaited<ReturnType<typeof saveCom
   await page.locator('.conversation-item').filter({ hasText: '工具栏协作' }).click()
   await expect(model).toHaveCount(0)
   await expect(permission).toHaveCount(0)
-  await page.locator('.conversation-item').filter({ hasText: '写手' }).click()
+  await page.locator('.conversation-item[aria-label="写手"]').click()
   await model.click()
   await expect(page.getByRole('menuitemradio', { name: /research-v1/ })).toBeEnabled()
   await page.getByRole('menuitemradio', { name: /research-v1/ }).click()
@@ -117,7 +118,7 @@ async function verifyMemberIsolation(previous: Awaited<ReturnType<typeof saveCom
   await page.getByRole('option', { name: '@写手', exact: true }).click()
   await expect(page.locator('.chat-composer .composer-mention-tag')).toBeVisible()
   await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@写手')
-  await page.locator('.conversation-item').filter({ hasText: '写手' }).click()
+  await page.locator('.conversation-item[aria-label="写手"]').click()
   return { app, page, errors, permission }
 }
 
@@ -173,7 +174,7 @@ When('通过模型二级菜单调整当前员工思考强度', async ({ runtime,
   await thinking.getByRole('menuitemradio', { name: /^关闭/ }).click()
   await expect.poll(async () => (await employee('researcher')).thinkingLevel).toBe('off')
   expect((await employee('writer')).thinkingLevel).toBeUndefined()
-  await expect(input).toHaveValue('这是一份未发送的草稿')
+  await expect.poll(() => messageDraft(input)).toBe('这是一份未发送的草稿')
   await expect(model).toBeFocused()
 
   await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))

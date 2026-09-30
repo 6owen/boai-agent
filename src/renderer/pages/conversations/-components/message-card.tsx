@@ -1,9 +1,10 @@
 /*
  * [INPUT]: 公开消息、共享表情目录、真实引用/Trace 回调和桌面请求封装。
- * [OUTPUT]: 共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好。
+ * [OUTPUT]: 本人操作与表情回应统一显示你，不重写历史名称；共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好；表情浮层开关不控制工具条显示。
  * [POS]: 群聊消息交互；不改变模型上下文、轮次或工作状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { messageDisplayName } from '@shared/domain/profile'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '@shared/domain'
 import { reactionEmojis, type ReactionEmoji } from '@shared/domain/message-reactions'
@@ -61,23 +62,23 @@ export function MessageCard({ message, children, onReply, onTrace }: { message: 
   const copy = () => void run(async () => { await navigator.clipboard.writeText(message.content); setCopied(true) })
   const pick = ([emoji, label]: typeof reactionEmojis[number]) => <Button key={emoji} variant="ghost" size="icon" className="reaction-choice" aria-label={`回应：${label}`} title={label} aria-pressed={reactions.some(item => item.emoji === emoji && item.senderId === 'user')} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span></Button>
   return <div className="message-content-space" ref={space}>
-    <div className="message-content" ref={content} data-toolbar-placement={placement} data-tools-open={open || undefined}>
+    <div className="message-content" ref={content} data-toolbar-placement={placement}>
       <div className="message-card soft-card">
         {children}
-        {!!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, people, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${people.map(person => person.senderName).join('、')}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{people.map(person => person.senderName).join('、')}</span></Button>)}</div>}
+        {!!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, people, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${people.map(person => person.senderId === 'user' ? '你' : person.senderName).join('、')}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{people.map(person => person.senderId === 'user' ? '你' : person.senderName).join('、')}</span></Button>)}</div>}
       </div>
-      <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${message.senderName} 的消息操作`}>
+      <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${messageDisplayName(message)} 的消息操作`}>
         <Popover open={open} onOpenChange={value => { setOpen(value); if (value) setUsage(reactionUsage()) }}>
-          <PopoverTrigger render={<Button ref={reactionTrigger} variant="ghost" size="icon-sm" className="reaction-action" aria-label={`回应 ${message.senderName} 的消息`} title="表情回应" disabled={message.status === 'streaming'} />}><ThumbsUp /></PopoverTrigger>
+          <PopoverTrigger render={<Button ref={reactionTrigger} variant="ghost" size="icon-sm" className="reaction-action" aria-label={`回应 ${messageDisplayName(message)} 的消息`} title="表情回应" disabled={message.status === 'streaming'} />}><ThumbsUp /></PopoverTrigger>
           <PopoverContent side="top" align={message.senderType === 'user' ? 'end' : 'start'} className="message-emoji-picker" aria-busy={busy} style={{ width: 360, maxWidth: 'calc(100vw - 24px)', padding: 0, gap: 0 }}>
             <PopoverTitle>默认表情</PopoverTitle>
             <div className="reaction-grid">{reactionEmojis.map(pick)}</div>
             {!!frequent.length && <section className="reaction-frequent"><h4>最常使用</h4><div className="reaction-grid">{frequent.map(pick)}</div></section>}
           </PopoverContent>
         </Popover>
-        <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} title="引用回复" onClick={onReply}><Reply /></Button>
-        <Button variant="ghost" size="icon-sm" aria-label={`复制 ${message.senderName} 的消息`} title={copied ? '已复制' : '复制消息'} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>
-        {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${message.senderName} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
+        <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${messageDisplayName(message)} 的消息`} title="引用回复" onClick={onReply}><Reply /></Button>
+        <Button variant="ghost" size="icon-sm" aria-label={`复制 ${messageDisplayName(message)} 的消息`} title={copied ? '已复制' : '复制消息'} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>
+        {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${messageDisplayName(message)} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
       </div>
     </div>
     {error && <Banner>{error}</Banner>}

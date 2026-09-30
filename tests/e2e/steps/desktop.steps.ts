@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
+ * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { createServer } from 'node:http'
@@ -249,12 +250,12 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容' }).fill('保留在这里的草稿')
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '安排任务', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '新建任务', exact: true }).click()
-  await expect(page.getByLabel('任务名称', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(page.getByRole('main').getByRole('heading', { name: '定时任务', exact: true })).toBeVisible()
+  await page.getByRole('complementary', { name: '任务列表' }).getByRole('button', { name: '新建任务', exact: true }).click()
+  await expect(page.getByRole('complementary', { name: '新建定时任务', exact: true }).getByRole('textbox', { name: '标题', exact: true })).toBeVisible()
+  await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.getByRole('button', { name: '会话', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveValue('保留在这里的草稿')
+  await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容' }))).toBe('保留在这里的草稿')
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   const panel = page.getByRole('complementary', { name: /群聊详情|数字员工/ })
@@ -268,8 +269,9 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await panel.getByRole('textbox', { name: '群聊名称', exact: true }).fill('未保存的群名')
   await page.getByRole('button', { name: '资料库', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
-  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
+  await expect(panel).toBeHidden()
   await page.getByRole('button', { name: '会话', exact: true }).click()
+  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-30",
+  "status": "approved",
+  "reviewer": "user",
+  "source": {
+    "type": "conversation-user-message",
+    "threadId": "01a0ee02-62c7-78f2-9b87-d126fd576011",
+    "quote": "认可当前方案质量"
+  },
+  "plannerVersion": "team-planner-v4",
+  "modelCaseVersion": "T1-v2",
+  "modelId": "deepseek-v4-pro",
+  "schemaVersionReviewed": 1,
+  "caseIds": [
+    "writing-four",
+    "writing-vague",
+    "single-assistant",
+    "personalities",
+    "werewolf",
+    "tool-overreach",
+    "writing-twelve"
+  ],
+  "memberCounts": [
+    4,
+    3,
+    1,
+    3,
+    6,
+    3,
+    12
+  ],
+  "reviewBasis": "Explicit approval of the seven current plans presented in 12-T1真实模型待评审.md; one overall verdict, no invented individual scores.",
+  "twelvePersonVariant": "Saved collaborationGuide in planner-v4-twelve-edit.json, clarifying separate personal workspaces and handoff through visible messages and artifacts.",
+  "artifacts": {
+    "planner-v4-results.json": "060a029856d73507668dcbfb697bafb36da53a675073894bf8ff211e091e891e",
+    "planner-v4-model.json": "7c363104e79c559be561d4ff0e7afbf4f1307597f51c080fc1ded9a20de4874a",
+    "planner-v4-twelve-edit.json": "0a87b685f99b23c63ac996d04e250081a761a0bca4390afa1b302ee81c324098"
+  },
+  "historicalRecordsPreserved": true,
+  "historicalPendingMeaning": "Pending in the raw generation batch describes its original state. This later human verdict supplies final review without rewriting that batch.",
+  "scope": "T1 plan quality for these samples and versions; no approval claim for T2/T3, arbitrary models or themes, or the unedited twelve-person workspace wording.",
+  "additionalModelCalls": 0
+}

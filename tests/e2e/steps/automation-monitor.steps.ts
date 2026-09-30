@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 监控中文场景、真实 Electron/IPC、隔离来源数据与系统通知提交替身。
- * [OUTPUT]: 编辑规则、手动检查、安静/重要/冷却/失败、证据与重启无模型调用的桌面验收。
+ * [OUTPUT]: 适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；编辑规则、手动检查、安静/重要/冷却/失败、证据与重启无模型调用的桌面验收。
  * [POS]: 自动化监控业务步骤；数据准备与系统通知替身位于 support。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page } from '@playwright/test'
+import { openSchedule, scheduleAction, selectScheduleOption } from '../support/schedule-controls'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import { publishMonitorSample, monitorCheckpoint } from '../support/automation-monitor'
@@ -16,7 +17,7 @@ export const test = base.extend<{ monitor: State }>({ monitor: async ({}, use) =
 const { Given, When, Then } = createBdd(test)
 async function check(page: Page) {
   const before = await page.evaluate(async () => (await window.boai.request('listAutomations', undefined)).occurrences.length)
-  await page.getByRole('button', { name: '立即运行一次', exact: true }).click()
+  await scheduleAction(page, '立即运行一次')
   await expect.poll(() => page.evaluate(async () => (await window.boai.request('listAutomations', undefined)).occurrences.filter(o => ['completed', 'failed'].includes(o.status)).length)).toBe(before + 1)
   return page.evaluate(async () => (await window.boai.request('listAutomations', undefined)).occurrences[0])
 }
@@ -33,18 +34,20 @@ Given('已准备一个聊天发布的结构化指标文件', async ({ runtime, m
 When('我创建只在重要变化时提醒的指标监控', async ({ runtime, monitor }) => {
   const page = runtime.page
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await page.getByRole('button', { name: '新建', exact: true }).click()
-  await page.getByLabel('任务名称', { exact: true }).fill('指标变化监控')
-  await page.getByLabel('任务类型', { exact: true }).selectOption('monitor')
-  await page.getByLabel('任务内容', { exact: true }).fill('计数累计变化十项时提醒我')
-  await page.getByLabel('目标会话', { exact: true }).selectOption(monitor.conversationId)
-  await page.getByLabel('变化条件 1', { exact: true }).selectOption('numeric_delta')
+  await page.getByRole('button', { name: '更多创建方式', exact: true }).click()
+  await page.getByRole('menuitem', { name: '监控已发布数据', exact: true }).click()
+  await page.getByLabel('标题', { exact: true }).fill('指标变化监控')
+  await page.getByLabel('任务描述', { exact: true }).fill('计数累计变化十项时提醒我')
+  await page.getByRole('button', { name: '运行于', exact: true }).click()
+  await selectScheduleOption(page, '目标会话', '指标来源 · 单聊')
+  await page.keyboard.press('Escape')
+  await selectScheduleOption(page, '变化条件 1', '数值累计变化达到阈值')
   await page.getByLabel('变化阈值 1', { exact: true }).fill('10')
   await page.getByLabel('重要变化提醒间隔（秒）', { exact: true }).fill('3600')
-  await page.getByRole('checkbox', { name: /启用计划/ }).uncheck()
-  await expect(page.getByLabel('系统通知', { exact: true })).toHaveValue('important_only')
-  await page.getByRole('button', { name: '保存任务', exact: true }).click()
-  await expect(page.getByRole('button', { name: '立即运行一次', exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: '通知', exact: true })).toContainText('重要更新')
+  await page.locator('.detail-content:visible').getByRole('button', { name: '创建', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '指标变化监控', exact: true })).toBeVisible()
+  await scheduleAction(page, '暂停计划')
   const d = await page.evaluate(async () => (await window.boai.request('listAutomations', undefined)).definitions[0])
   monitor.planId = d.id
   expect(d).toMatchObject({ taskKind: 'monitor', monitor: { source: { conversationId: monitor.conversationId, name: 'metrics.json' }, rules: [{ pointer: '/count', mode: 'numeric_delta', threshold: 10 }] } })

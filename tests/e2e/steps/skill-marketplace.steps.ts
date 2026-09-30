@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文商店业务场景、生产组件与受控商店服务。
- * [OUTPUT]: 搜索/跨提供方迟到响应、分页/详情/来源切换以及本地资料隔离的可访问交互断言。
+ * [OUTPUT]: 当前排序 Tabs 的能力与禁用断言；搜索/跨提供方迟到响应、分页/详情/来源切换以及本地资料隔离的可访问交互断言。
  * [POS]: Skills 商店 Electron 步骤；不联网、不安装真实技能。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -43,13 +43,13 @@ When('切换提供方再返回原商店', async ({ runtime }) => {
   await expect(runtime.page.getByRole('button', { name: /Claw alpha alice/ })).toBeVisible()
   await runtime.page.getByRole('textbox', { name: '搜索 ClawHub' }).fill('different')
   await runtime.page.getByRole('tab', { name: 'SkillHub', exact: true }).click()
-  await expect(runtime.page.getByRole('combobox', { name: '商店排序' })).toContainText('本页下载量')
+  await expect(runtime.page.getByRole('tablist', { name: '商店排序' }).getByRole('tab', { name: '本页下载量' })).toBeVisible()
   await expect(runtime.page.getByRole('button', { name: /Hub result/ })).toBeVisible()
   await runtime.page.getByRole('tab', { name: 'skills.sh', exact: true }).click()
 })
 Then('各商店保留搜索条件并显示各自的能力', async ({ runtime }) => {
   await expect(runtime.page.getByRole('textbox', { name: '搜索 skills.sh' })).toHaveValue('fast')
-  await expect(runtime.page.getByRole('combobox', { name: '商店排序' })).toBeDisabled()
+  for (const name of ['累计安装', '趋势', '热门']) await expect(runtime.page.getByRole('tablist', { name: '商店排序' }).getByRole('tab', { name, exact: true })).toBeDisabled()
   await expect(runtime.page.getByRole('button', { name: /fast owner/ })).toBeVisible()
 })
 Then('商店详情如实显示缺失正文和未知统计', async ({ runtime }) => {
@@ -60,7 +60,7 @@ Then('商店详情如实显示缺失正文和未知统计', async ({ runtime }) 
   await expect(detail.getByText('下载：未知 · 安装：未知 · 星标：未知')).toBeVisible()
 })
 Then('本地资料库仍能独立使用', async ({ runtime }) => {
-  await runtime.page.getByRole('tab', { name: '已安装 Skills' }).click()
+  await runtime.page.getByRole('tab', { name: '本地技能', exact: true }).click()
   await expect(runtime.page.getByRole('heading', { name: '暂无匹配资源' })).toBeVisible()
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).resources).toEqual([])
   expect(runtime.errors).toEqual([])

@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 自动化中断恢复场景、真实 Electron/IPC/文件工具和隔离模型响应。
- * [OUTPUT]: 工具完成后进程退出的可见故障、同数据重启中断记录与无重复模型/文件副作用验证。
+ * [OUTPUT]: 从新版总览进入指定计划，保留中断无重放断言；工具完成后进程退出的可见故障、同数据重启中断记录与无重复模型/文件副作用验证。
  * [POS]: 自动化恢复业务步骤；进程和网络故障注入位于 support。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
+import { openSchedule } from '../support/schedule-controls'
 import { createBdd } from 'playwright-bdd'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -52,7 +53,7 @@ Then('原运行保持中断且已执行的文件操作没有重放', async ({ ru
   expect(state.detail.runs.find(run => run.phase === 'execution')?.status).toBe('interrupted')
   expect(state.detail.workItems?.every(work => work.status === 'interrupted')).toBe(true)
   await runtime.page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await runtime.page.getByRole('button', { name: /写文件后中断/ }).click()
+  await openSchedule(runtime.page, '写文件后中断')
   await expect(runtime.page.locator(`[data-occurrence-id="${before.id}"]`)).toContainText('已中断')
   expect(recovery.fixture!.calls()).toBe(recovery.calls)
   expect((await stat(recovery.file!)).mtimeMs).toBe(recovery.modifiedAt)

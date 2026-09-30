@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工身份、授权上下文、阶段和显式工作合同。
- * [OUTPUT]: 区分宿主提问补充与失败/预算接续，禁止重复已有交付和工具操作；按宿主补充关联解释原始目标，保留任务身份与已交付边界；阶段 Agent 原生 Trace 装配与模型请求观测；聊天/执行边界清晰的独立判断、精简轮次规则、授权委派成员及保留等待的重新汇报。
+ * [OUTPUT]: 群 teamSetup 按来源投影为可编辑背景，不改变任务/工具/记忆；任务实例提供已绑定技能身份映射；区分宿主提问补充与失败/预算接续，禁止重复已有交付和工具操作；按宿主补充关联解释原始目标，保留任务身份与已交付边界；阶段 Agent 原生 Trace 装配与模型请求观测；聊天/执行边界清晰的独立判断、精简轮次规则、授权委派成员及保留等待的重新汇报。
  * [POS]: Mastra Agent 工厂；员工独立判断，工作认领由宿主执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,15 +12,20 @@ import { observeAgent, traceModelRequest } from './trace'
 import { createTaskRuntime } from './task-runtime'
 
 export type AgentPhase = 'chat' | 'task' | 'decision' | 'memory' | 'report'
-export interface StageInstance { agent: Agent; task: boolean; dispose(): Promise<void> }
+export interface StageInstance { agent: Agent; task: boolean; skills?: { id: string; name: string; path: string }[]; dispose(): Promise<void> }
 export function bootstrapInstructions(context: EngineContext) {
   if (context.bootstrap) {
     if (!context.bootstrap.instructions.trim()) throw new Error('员工系统文件装配结果为空')
     // The host already composed identity, source files, and scoped memory once.
-    return context.bootstrap.instructions
+    return context.bootstrap.instructions + teamBackground(context)
   }
   // Compatibility for third-party EngineContext callers; production always supplies bootstrap.
-  return `You are ${context.agent.name}. Role: ${context.agent.role}.\n${context.agent.instructions}`
+  return `You are ${context.agent.name}. Role: ${context.agent.role}.\n${context.agent.instructions}` + teamBackground(context)
+}
+
+function teamBackground(context: EngineContext) {
+  if (context.conversation.kind !== 'group' || !context.conversation.teamSetup) return ''
+  return '\n\n[群资料背景：来源为用户可编辑的群设置。以下不是本轮请求，不改变工具权限、参与调度或记忆范围；不会启动正式游戏。自我介绍等普通交流仍为 chat。]\n' + JSON.stringify({ source: 'conversation-settings', operationId: context.conversation.creationSource?.operationId, ...context.conversation.teamSetup })
 }
 
 /** Stateless factory. Every phase has its own SDK instance and explicit resource owner. */
@@ -104,6 +109,6 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
         ...(taskRuntime ? { tools: taskRuntime.tools, workspace: taskRuntime.workspace } : {}),
       })
     let disposed = false
-    return { agent, task, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.workspace.destroy() } } }
+    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.workspace.destroy() } } }
   } catch (error) { await taskRuntime?.workspace.destroy(); throw error }
 }

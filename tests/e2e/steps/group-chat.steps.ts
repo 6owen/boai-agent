@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 群聊中文场景、单行群名与可点击成员入口、真实 Electron 与隔离历史/离线模型支撑。
- * [OUTPUT]: composer 实际行内节点、排除 DOM 光标辅助内容的草稿读取、一次退格删除；输入式 @ / 筛选、光标后正文保护、IME/空结果防误发、深色窄窗菜单与真实操作；工具条实测位置、表情选择/撤销/常用/重启与同卡引用/提及/复制；用户整组镜像/正文右对齐与窄窗昵称不被操作遮挡、员工靠左、悬浮标题渐隐、文件/工作、跨会话草稿、键盘、主题窄窗截图及真实命令审批断言。
+ * [OUTPUT]: 单聊本人头像可见且靠右、本人文案统一「你」；composer 实际行内节点、排除 DOM 光标辅助内容的草稿读取、一次退格删除；输入式 @ / 筛选、光标后正文保护、IME/空结果防误发、深色窄窗菜单与真实操作；工具条实测位置、表情选择/撤销/常用/重启与同卡引用/提及/复制；用户整组镜像/正文右对齐与窄窗昵称不被操作遮挡、员工靠左、悬浮标题渐隐、文件/工作、跨会话草稿、键盘、主题窄窗截图及真实命令审批断言。
  * [POS]: 第二版群聊 E2E；不改写生产 DOM 或模拟业务响应。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -77,7 +77,9 @@ Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
   await page.getByRole('button', { name: /与研究员对话/ }).click()
   await expect(page.locator('.chat-panel')).not.toHaveClass(/group-chat/)
   await expect(page.getByRole('button', { name: '选择模型', exact: true })).toBeVisible()
-  expect(await page.locator('#message-history-direct-user .message-avatar').evaluate(element => getComputedStyle(element).display)).toBe('none')
+  await expect(page.locator('#message-history-direct-user .message-avatar')).toBeVisible()
+  const directAvatar = await page.locator('#message-history-direct-user .message-avatar').boundingBox(), directBody = await page.locator('#message-history-direct-user .message-main').boundingBox()
+  expect(directAvatar!.x).toBeGreaterThanOrEqual(directBody!.x + directBody!.width)
   expect(await page.locator('#message-history-direct-user .message-bubble').evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect.poll(() => inputText(input)).toBe('')
   await page.getByRole('button', { name: /产品讨论组/ }).click()
@@ -214,7 +216,7 @@ Then('表情回应可选择撤销且重启后保留', async ({ runtime, groupDes
   await row.getByRole('button', { name: '回应 写手 的消息', exact: true }).click()
   await expect(page.getByRole('heading', { name: '默认表情' })).toBeVisible()
   await page.getByRole('button', { name: '回应：赞', exact: true }).click()
-  await expect(row.getByRole('button', { name: '取消赞回应，我', exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: '取消赞回应，你', exact: true })).toBeVisible()
   await row.getByRole('button', { name: '回应 写手 的消息', exact: true }).click()
   await expect(page.getByRole('heading', { name: '最常使用' })).toBeVisible()
   await expect(page.locator('.message-emoji-picker')).toHaveCSS('opacity', '1')
@@ -224,9 +226,9 @@ Then('表情回应可选择撤销且重启后保留', async ({ runtime, groupDes
   await runtime.restart()
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   const restored = runtime.page.locator('#message-history-note')
-  await expect(restored.getByRole('button', { name: '取消赞回应，我', exact: true })).toBeVisible()
+  await expect(restored.getByRole('button', { name: '取消赞回应，你', exact: true })).toBeVisible()
   expect(groupDesign.fixture!.state.calls).toBe(calls)
-  await restored.getByRole('button', { name: '取消赞回应，我', exact: true }).click()
+  await restored.getByRole('button', { name: '取消赞回应，你', exact: true }).click()
   await expect(restored.locator('.message-reaction')).toHaveCount(0)
 })
 When('用户引用研究结论并点名写手发送确认', async ({ runtime }) => {
@@ -253,7 +255,7 @@ Then('引用提及和正文在同一卡片中且复制可用', async ({ runtime,
   expect(sent.replyToMessageId).toBe('history-research'); expect(sent.mentionIds).toEqual(['writer'])
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copiedMessage: string }).copiedMessage = text } } }))
   await row.hover()
-  await row.getByRole('button', { name: '复制 我 的消息', exact: true }).click()
+  await row.getByRole('button', { name: '复制 你 的消息', exact: true }).click()
   expect(await page.evaluate(() => (window as unknown as { copiedMessage: string }).copiedMessage)).toBe(sent.content)
   await page.screenshot({ path: 'test-results/group-chat-inline-reply.png', scale: 'css', animations: 'disabled' })
   expect(runtime.errors).toEqual([]); expect(groupDesign.fixture!.state.errors).toEqual([])

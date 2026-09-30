@@ -1,0 +1,312 @@
+{
+  "date": "2026-09-30",
+  "finalModuleTests": {
+    "filesPassed": 42,
+    "testsPassed": 589,
+    "testsFailed": 0,
+    "durationSeconds": 14.61,
+    "source": "migration-modules.log"
+  },
+  "finalChecks": {
+    "typecheck": "passed after legacy test migration and appearance wrapping",
+    "lintUi": "passed after appearance wrapping",
+    "build": "passed (existing large chunk warning); source used for the full Electron run",
+    "evaluationDataset": "passed; migration-dataset.log"
+  },
+  "teamElectron": {
+    "passed": 18,
+    "failed": 0,
+    "source": "migration-full-electron.json",
+    "scope": "@team-creation within the full 82-scenario run"
+  },
+  "fullElectronFirstRun": {
+    "passed": 57,
+    "failed": 24,
+    "minutes": 11.9
+  },
+  "followupPassed": [
+    "appearance",
+    "composer",
+    "conversation-list: unified creation",
+    "conversation-list: explicit selection",
+    "desktop: memories, workspace, cancellation, restart",
+    "detail-tabs",
+    "employee-tabs",
+    "history: hover toolbar, round and employee filters",
+    "local-connections: selected protocol",
+    "pages: model wizard",
+    "pages: first connection",
+    "skill-updates: readonly batch and preserved binding",
+    "skill-updates: explicit local replacement",
+    "skill-marketplace: provider capabilities and local isolation",
+    "native-skills: cancellation and private network rejection",
+    "native-skills: partial body cleanup",
+    "local-skills: grouping, dragging, keyboard order and restart"
+  ],
+  "remainingGlobalFailures": 0,
+  "humanReview": "approved by the user on 2026-09-30 for the seven current v4 plans, including the saved twelve-person workspace clarification",
+  "plannerVersion": "team-planner-v4",
+  "modelCaseVersion": "T1-v2",
+  "modelRequests": 29,
+  "modelKnownTokens": 57463,
+  "unknownModelUsage": false,
+  "sourceHashes": {
+    "src/shared/domain/team-creation.ts": "a2317ca69a3d375363df60f3429560d79e0afba41e947b260631ef5efbf19658",
+    "src/runtime/modules/teams/team-repository.ts": "309e9f822958e5cd7b0fb9aed885100692b897527ac2deef04634f4bea580675",
+    "src/runtime/modules/teams/team-generation.ts": "69f74f1ceb003dd82ba7119851df6d1655a65de3c469b2b857b3772b4a4f1646",
+    "src/runtime/modules/teams/team-creation.ts": "10cdfec3b9529198b31cbdfd1e474b8394856400ff0113c25c34b28f7bca33e1",
+    "src/runtime/modules/teams/team-files.ts": "0357ab5dd7765f8c2e6dad7d1e81e5796a414a204a98c7c073aaf5d4926f2603",
+    "src/runtime/adapters/mastra/team-planner.ts": "5bc5cb2d3f3995162a1b012cc71ac1073fd81ee66a13f0f45cc82048156e404f",
+    "src/renderer/pages/contacts/team-creator.tsx": "d3a1407a364ca1c30b9cdfe17c79db58e9d7f51387187d1c77c51638816c6266",
+    "src/renderer/pages/contacts/team-plan-editor.tsx": "dab2f6a5f591cae73597fa85e8d174acbeaa1ee8130f8d019028b4b7ae5ff62d",
+    "tests/team-creation.test.ts": "334285d8b3c9fe6429bd89236a70e59aa639922491fbcaed3660a4867faa04e4",
+    "tests/team-planner.test.ts": "6a4876a5391dbf8bf9e47517e5941a634c296a3ea9963c148f9d803b0d68c0a2",
+    "tests/team-publication.test.ts": "138b08183f03642933a384e4ae4aef98552ebf7434ba5c5fbe0ff83f65329170",
+    "tests/team-recovery.test.ts": "9c297e0d99c8e3946796cf6c415b3335c4d4eb884944570cb0e00d03b4600967",
+    "tests/e2e/features/team-creation.feature": "93ef6e23ae2158e515c8199c0e3b75fa054cad6c486d7a29dac5c5dcc7fe0ed8",
+    "tests/e2e/steps/team-creation.steps.ts": "c00e4d655e4d87c09fa77442cb9af5cbf9e4d02253008941f50e49b9e3766b65",
+    "tests/evaluation/team-creation.ts": "1862fceb8a909e6df4fab6a12304c6dca324e7e0d627c3ad766847b46c5c4b2d",
+    "scripts/evaluate-team-creation.mjs": "a46ca3e1028c739731499d3f19fa862f725d09551efa61095035417af148a4c3",
+    "tests/e2e/support/teams.ts": "6351dbd292d9a10de2ee9ba3f1896f2c57e02bfbd47743b7fd1a22739f7fdae9"
+  },
+  "fullElectronFollowup": {
+    "passed": 74,
+    "failed": 8,
+    "minutes": 8.2,
+    "source": "full-electron-followup.json"
+  },
+  "paginationFollowup": {
+    "passed": 1,
+    "failed": 0,
+    "seconds": 2.9,
+    "source": "/tmp/boai-team-followup-pagination.log",
+    "fix": "Scope earliest record to the history region instead of matching its sidebar copy"
+  },
+  "remainingGlobalFailureGroups": {},
+  "pendingDecisions": [],
+  "teamTagListing": {
+    "tag": "@team-creation",
+    "tests": 18
+  },
+  "followupTestHashes": {
+    "tests/e2e/steps/history.steps.ts": "46fa92ae1fc1c93cbbcb500ce0142cc1263cdfdbe7eb7f6ab432fcf1ec2a740c",
+    "tests/e2e/steps/pages.steps.ts": "879ff03914f7d3c0ebc72c4bb49d5b4c1cce2fb7efb54f356166591056282f76",
+    "tests/e2e/steps/local-connections.steps.ts": "1c423798b193feda53aefeed84ac2fcfe0d88063c789e148fa989ebfcf620eca",
+    "tests/e2e/steps/skill-updates.steps.ts": "a65cdae6c1f0efeef20580e0a94a3c57412aacc9807fa7965a2e7537f2e5d319",
+    "tests/e2e/steps/skill-marketplace.steps.ts": "fab7e9e05744ce655e05903837d9990bcad88175b48fa51e9b3e982812554f05",
+    "tests/e2e/steps/native-skills.steps.ts": "ea4960b05ced05ff06e1ba6d03c64c19ab7a17ee0986a12d4825edcf4ae08180",
+    "tests/e2e/steps/local-skills.steps.ts": "20fa6afcdc644245b6c41967b1ce1fabc42698a2449feb65645a719dfeaf31cf",
+    "tests/e2e/steps/extensions.steps.ts": "4acbca36c4dd3d4b65170ce9bdc42216723c8c88febb6a303c4b34de13256c4a",
+    "tests/e2e/support/skill-updates.ts": "108f7a05395c73e498b56d2dbeeb703698606cbd3854a74c6dd82fcd79c2847c",
+    "tests/e2e/support/local-skills.ts": "0aa5f320e1e003cebab50b6f7941e422cb3627d463c4c3f00ecf352dc1edb51e",
+    "tests/e2e/steps/skills.steps.ts": "d133af9701181429a8759861e44be4ad0c3cc3f0e3d922a9ddb487cbd9204707",
+    "tests/e2e/features/skills.feature": "a3629e7a7728068e8fde791a3d3bdd585fa334b3e3a35f252330950ac48b6e66",
+    "tests/e2e/features/local-skills.feature": "897f036f12a5e8084645486a37a03cf442ed55a7df791edc47aebbffa186e463",
+    "tests/e2e/features/native-skills.feature": "41718ff7061f6eb7b2f31008804bb8f810eb0eb28c31700e5d5ecfda8e4aad43",
+    "tests/e2e/features/extensions.feature": "4764c61985013df71f6bccf2313bb17d2b95749adcb1e00eee4a8649a0ef2d1a",
+    "tests/e2e/support/native-skills.ts": "7c7edd1e1dab26d2e458c490e771a8109fb29717b48f87bef5e0f767518b20f5",
+    "src/renderer/pages/settings/appearance.tsx": "e2c470af4d59fdd521dcbe6e819c2d04c7e9e00b4e27264bc0b92563dd73a5f6",
+    "src/renderer/styles/pages.css": "c41ce459a93b20aaa09fa787808821706ac9d02ed7ce4c91ae3a990bc86d1ea7"
+  },
+  "previousFinalModuleTests": {
+    "filesPassed": 42,
+    "testsPassed": 587,
+    "testsFailed": 0,
+    "durationSeconds": 12.72,
+    "source": "/tmp/boai-team-release-modules.log"
+  },
+  "v3ConcurrentModuleAttempt": {
+    "passed": 584,
+    "failed": 3,
+    "filesPassed": 40,
+    "filesFailed": 2,
+    "durationSeconds": 26.25,
+    "source": "v3-module-tests-first.log",
+    "finding": "Real file publication did not complete within the default one-second vi.waitFor under simultaneous Electron load; assertions preserved, explicit five-second bounded wait added before the next full run."
+  },
+  "teamAndExistingCompatibilityElectron": {
+    "passed": 21,
+    "failed": 0,
+    "minutes": 1.3,
+    "source": "v4-electron-tests.log",
+    "includes": [
+      "team creation (18)",
+      "existing contacts",
+      "manual employee/group creation",
+      "group, memory, workspace, cancellation and restart"
+    ]
+  },
+  "modelBatches": [
+    {
+      "batch": "planner-v1",
+      "requests": 7,
+      "knownTokens": 12456,
+      "unknownUsage": false
+    },
+    {
+      "batch": "planner-v2",
+      "requests": 7,
+      "knownTokens": 14591,
+      "unknownUsage": false
+    },
+    {
+      "batch": "planner-v2-twelve",
+      "requests": 1,
+      "knownTokens": 2345,
+      "unknownUsage": false
+    },
+    {
+      "batch": "planner-v3",
+      "requests": 7,
+      "knownTokens": 15536,
+      "unknownUsage": false
+    },
+    {
+      "batch": "planner-v4",
+      "requests": 7,
+      "knownTokens": 12535,
+      "unknownUsage": false
+    }
+  ],
+  "userFeedback": {
+    "date": "2026-09-30",
+    "quote": "对，将「创建50人中文」修改一下，最多只能有 12 个，然后继续",
+    "applied": "T1-v2 regular scenario changed to 12; existing max12 validation retained; historical over-limit rejection preserved"
+  },
+  "teamElectronBeforeFocus": {
+    "passed": 18,
+    "failed": 0,
+    "source": "v4-electron-tests.log"
+  },
+  "focusFollowup": {
+    "firstRun": {
+      "passed": 2,
+      "failed": 1,
+      "source": "focus-electron-first.log",
+      "finding": "Entering the submitting state disabled and blurred the invalid field after native validation; validation now happens before the action lock."
+    },
+    "targetedRetest": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 6.3,
+      "source": "focus-electron-retest.log"
+    },
+    "finalRun": {
+      "passed": 18,
+      "failed": 0,
+      "source": "focus-electron-final.log"
+    },
+    "assertions": [
+      "Generated plan title receives focus",
+      "Successful result title receives focus",
+      "Collapsed first invalid member expands and receives focus without publishing",
+      "Duplicate name error is associated with the field",
+      "Background autosave failure preserves typing focus"
+    ]
+  },
+  "closureFollowup": {
+    "firstRun": {
+      "passed": 1,
+      "failed": 1,
+      "seconds": 13.8,
+      "source": "closure-electron-first.log",
+      "finding": "The final test assertion referenced a Node-side draft inside page.evaluate without passing an argument. All preceding missing-model/navigation assertions and the group rename/removal case passed. Pass the draft ID explicitly; no product change for this test failure."
+    },
+    "finalRun": {
+      "passed": 18,
+      "failed": 0,
+      "minutes": 1.2,
+      "source": "closure-electron-final.log"
+    },
+    "assertions": [
+      "Whitespace model override falls back to the selected connection default",
+      "Legacy connection with missing default model disables generation and exposes configuration",
+      "Configuration navigation preserves the prompt and does not generate",
+      "Result uses current group name by stable ID",
+      "Removed group cannot be opened or resurrected after restart; published employees remain"
+    ]
+  },
+  "fullElectronAcceptance": {
+    "passed": 82,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "durationSeconds": 386.984,
+    "source": "migration-full-electron.json"
+  },
+  "legacyRegressionMigration": {
+    "fullRun": {
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "durationSeconds": 386.984,
+      "source": "migration-full-electron.json"
+    },
+    "productChanges": [
+      "Appearance content wraps within its available width; persisted sidebar width remains unchanged",
+      "Background image action buttons wrap in narrow content"
+    ],
+    "contractChanges": [
+      "Current local Skills UI and retained managed employee-resource IPC verified separately",
+      "Removed history UI replaced by persisted operation and cleanup receipt assertions; explicit binding, revocation, original files and safe cleanup assertions retained",
+      "Real appearance API validates supported 150% layout and rejects 200%; hidden Base UI form inputs excluded from user-visible control bounds"
+    ],
+    "scope": "No employee, group, workspace, memory or team runtime changes; no T2/T3",
+    "historicalResultsPreserved": true,
+    "initialTypecheckFailure": "Compatibility import omitted the required addToFavorites field; supplied false before the next check; final typecheck passed"
+  },
+  "humanReviewEvidence": {
+    "source": "planner-v4-human-review.json",
+    "sha256": "fc6c506c78df27b799b4703993beb20d76cc94d97e93d5bcd0d0e2525a956c42",
+    "quote": "认可当前方案质量"
+  },
+  "t1Acceptance": {
+    "status": "passed",
+    "date": "2026-09-30",
+    "completedSlices": [
+      "T1.1",
+      "T1.2",
+      "T1.3",
+      "T1.4",
+      "T1.5"
+    ],
+    "humanReviewSource": "planner-v4-human-review.json",
+    "technicalEvidenceUnchanged": true,
+    "historicalFailuresPreserved": true,
+    "t2Implemented": false,
+    "t3Implemented": false,
+    "versionPublished": false
+  },
+  "contactCategoryFollowup": {
+    "date": "2026-09-30",
+    "changes": [
+      "Empty category has no placeholder text",
+      "Employee drag onto category headers assigns category, including empty and collapsed categories",
+      "Team publication atomically creates an independent named category and assigns all new members"
+    ],
+    "moduleTests": {
+      "filesPassed": 3,
+      "testsPassed": 29,
+      "durationSeconds": 7.79,
+      "source": "contacts-category-modules.log"
+    },
+    "typecheck": {
+      "status": "passed",
+      "source": "contacts-category-typecheck.log"
+    },
+    "lintUi": {
+      "status": "passed",
+      "source": "contacts-category-ui.log"
+    },
+    "electron": "not run at explicit user request; visual review left to the user",
+    "fullSuite": "not rerun; prior 82/82 and 589 are the accepted T1 baseline, not this follow-up",
+    "sourceHashes": {
+      "src/renderer/pages/contacts/contact-list.tsx": "f651d816140f254fe70447aa725804688b1d33e0b627078bec7d674fb08d31e5",
+      "src/runtime/modules/employees/contact-list.ts": "99997b1fc8dec1d93ae3dafbb2586807b048c7342fc02c763212475910048df7",
+      "src/runtime/modules/teams/team-creation.ts": "db71c081ec88cda354f8f978110b00e5b74e1b754fe042c38c597d6075fbb3be",
+      "tests/team-publication.test.ts": "1a37c4ff1e315d358893b2631201e9a70979ead334ccefc14d870986947d46c8",
+      "tests/team-recovery.test.ts": "11603939bf08abe906860c9cfb7b6b313355ca97e03d765badc1a00e5a41adad"
+    }
+  }
+}

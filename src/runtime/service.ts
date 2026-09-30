@@ -1,9 +1,17 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
+ * [OUTPUT]: 团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；通讯录分类与组内排序的事务读写、版本检查和变更通知；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { automationDraftRequestSchema, validateAutomationDraft, type AutomationDraftTarget } from './modules/automations/automation-draft'
+import { teamSetupSchema } from '../shared/domain/team-creation'
+import { TeamCreationService } from './modules/teams/team-creation'
+import type { TeamFileCheckpoint } from './modules/teams/team-files'
+import { TeamGenerationService } from './modules/teams/team-generation'
+import { planTeam, type TeamPlanner } from './adapters/mastra/team-planner'
+import { TeamRepository, teamVersionSchema } from './modules/teams/team-repository'
+import { ProfileRepository } from './modules/profile/profile-repository'
 import { readMonitorArtifact } from './modules/automations/monitor-source'
 import { reactionEmojis, type ReactionEmoji } from '../shared/domain/message-reactions'
 import { AutomationNotifications } from './modules/automations/automation-notifications'
@@ -60,7 +68,7 @@ const ids = z.array(id).max(100).refine(value => new Set(value).size === value.l
 const text = (max: number) => z.string().trim().min(1).max(max)
 const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
 const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true }).extend({ baseUrl: text(2000) })
-const conversationSchema = z.object({ id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
+const conversationSchema = z.object({ teamSetup: teamSetupSchema.nullable().optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
 const conversationListSchema = z.discriminatedUnion('action', [
   z.object({ id, action: z.literal('pin'), pinned: z.boolean() }).strict(),
   z.object({ id, action: z.enum(['hide', 'show']) }).strict(),
@@ -78,7 +86,11 @@ const record = (collection: string, value: { id: string }): StoredRecord => ({ c
 const fail = (message: string): never => { throw new Error(message) }
 
 export class AppService {
+  private readonly teamCreation: TeamCreationService
+  private readonly teamGeneration: TeamGenerationService
+  private readonly teams: TeamRepository
   private readonly history: ConversationHistory
+  private readonly userProfile: ProfileRepository
   private readonly clearingConversations = new Set<string>()
   private readonly store: ProductStore
   private readonly notifications: AutomationNotifications
@@ -121,9 +133,12 @@ export class AppService {
   private initialized = false
   readonly dataPath: string
 
-  constructor(private readonly options: { dataPath: string; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.teams = new TeamRepository(this.store)
+    this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? planTeam, { key: id => options.secrets.get(id), changed: () => this.changed() })
+    this.userProfile = new ProfileRepository(this.store)
     this.contactList = new ContactListRepository(this.store)
     this.notifications = new AutomationNotifications(this.store)
     this.marketplace = new SkillMarketplace(options.skillMarketplaceFetch)
@@ -169,6 +184,20 @@ export class AppService {
     this.works = new WorkRepository(this.store)
     this.profiles=new LaunchProfiles(this.store)
     this.homes = new WorkspaceService(this.dataPath)
+    this.teamCreation = new TeamCreationService(this.teams, this.dataPath, this.homes, {
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
+      install: (agents, conversation) => {
+        const next = new Map(this.conversations); if (conversation) next.set(conversation.id, clone(conversation))
+        this.employees.installBatch(agents); this.conversations = next
+      },
+      reload: async () => {
+        try {
+          const [agents, conversations] = await Promise.all([this.store.load<DigitalAgent>('agents'), this.store.load<Conversation>('conversations')])
+          const next = new Map(conversations.map(value => [value.id, value])); this.employees.installBatch(agents, true); this.conversations = next
+        } catch (error) { this.initialized = false; throw error }
+      },
+      changed: () => this.changed(), checkpoint: options.teamFileCheckpoint,
+    })
     this.memory = new MemoryRepository(this.store)
     this.employees = new EmployeeService(this.store, this.homes, {
       connection: id => this.getConnection(id), resource: id => { this.skillUpdates.assertAvailable(id); return this.resources.get(id) },
@@ -219,6 +248,8 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await this.teams.recover()
+    await this.teamCreation.recover()
     await this.history.recover()
     await this.profiles.init()
     const collections = ['connections', 'conversations', 'resources', 'messages', 'runs', 'requests', 'snapshots', 'approvals', 'artifacts'] as const
@@ -287,6 +318,20 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    if (method === 'acceptTeamCreation') return this.serialize(() => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); return this.teamCreation.accept(input) })
+    if (method === 'getTeamCreation') return this.teamCreation.get(input)
+    if (method === 'resumeTeamCreation') return this.teamCreation.resume(input)
+    if (method === 'generateTeamPlan') return this.serialize(() => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); return this.teamGeneration.generate(input) })
+    if (method === 'cancelTeamGeneration') return this.serialize(() => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); return this.teamGeneration.cancel(input) })
+    if (method === 'openTeamDraft') return this.serialize(() => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); return this.teams.open(input) })
+    if (method === 'getTeamDraft') return this.teams.get(input)
+    if (method === 'listTeamCreationRecovery') { z.undefined().parse(input); return this.teams.recovery() }
+    if (method === 'saveTeamDraft') return this.serialize(async () => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); const result = await this.teams.save(input); this.changed(); return result })
+    if (method === 'abandonTeamDraft') {
+      const value = teamVersionSchema.parse(input), view = await this.teams.get({ draftId: value.draftId })
+      const result = await (view.draft.creationOperationId ? this.teamCreation.abandon(value) : this.teamGeneration.abandon(value))
+      this.changed(); return result
+    }
     if (method === 'listLocalSkills') { const value = z.object({ refresh: z.boolean().optional() }).strict().optional().parse(input); return this.localSkills.list(value?.refresh) }
     if (method === 'getLocalSkillDetail') { const value = lookupSchema.parse(input); this.skillUpdates.assertAvailable(value.id); return this.localSkills.detail(value.id) }
     if (method === 'scanLocalSkill') {
@@ -339,6 +384,9 @@ export class AppService {
     if(method==='listAutomationHistory')return this.automations.history(input)
     if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
     if(method==='saveAutomation')return this.automations.save(automationSchema.parse(input))
+    if(method==='generateAutomationDraft')return this.generateAutomationDraft(input)
+    if(method==='getAutomationCreation')return this.automations.creation(z.object({requestId:id}).strict().parse(input).requestId)
+    if(method==='resumeAutomation')return this.automations.resumePlan(lookupSchema.parse(input).id)
     if(method==='previewAutomation')return this.automations.preview(input)
     if(method==='pauseAutomation'||method==='deleteAutomation')return this.automations.pause(lookupSchema.parse(input).id,method==='deleteAutomation')
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
@@ -398,6 +446,8 @@ export class AppService {
         case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
         case 'snapshot': z.undefined().parse(input); return this.snapshot()
+        case 'updateUserProfile': { const profile = await this.userProfile.update(input as import('../shared/domain/profile').UserProfileInput); this.changed(); return profile }
+        case 'getProfileActivity': return this.userProfile.activity(input)
         case 'saveAgent': {const value=agentSchema.parse(input);if(value.executionBackend?.kind==='acp-local'){this.profiles.get(value.executionBackend.profileId);if(value.id&&[...this.conversations.values()].some(c=>c.kind==='group'&&c.agentIds.includes(value.id!)))fail('请先将员工移出群聊，再切换为外部任务后端')}return this.employees.save(value)}
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
         case 'getConnectionApiKey': return await this.options.secrets.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
@@ -467,7 +517,7 @@ export class AppService {
       const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
       return { ...conversation, activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
     }).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
-    return clone({ agents: [...this.employees.values()], conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
+    return clone({ userProfile: await this.userProfile.get(), agents: [...this.employees.values()], conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
   }
   private async detail(id: string): Promise<ConversationDetail> {
     const conversation = this.getConversation(id)
@@ -613,6 +663,7 @@ export class AppService {
   }
 
   private async saveConversation(input: z.infer<typeof conversationSchema>) {
+    if (input.kind !== 'group' && input.teamSetup !== undefined) fail('团队背景仅用于群聊')
     if (input.kind === 'direct' && input.agentIds.length !== 1) fail('单聊只能选择一名员工')
     for (const id of input.agentIds) {const a=this.getAgent(id);if(input.kind==='group'&&a.executionBackend?.kind==='acp-local')fail('外部任务员工暂不支持自主群聊，请使用单聊任务入口')}
     this.validateResources(input.sharedKnowledgeIds ?? [], 'knowledge')
@@ -624,8 +675,8 @@ export class AppService {
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
-    const { expectedConfigVersion: _, ...definition } = input
-    const conversation: Conversation = { ...previous, ...definition, configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
+    const { expectedConfigVersion: _, teamSetup, ...definition } = input
+    const conversation: Conversation = { ...previous, ...definition, ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
     await this.store.write([record('conversations', conversation)]); this.conversations.set(conversation.id, conversation)
     if (previous) {
@@ -660,7 +711,7 @@ export class AppService {
     for (const member of input.mentionIds) if (!conversation.agentIds.includes(member)) fail('@ 的员工不是当前会话的有效成员')
     if (input.replyToMessageId && this.messages.get(input.replyToMessageId)?.conversationId !== conversation.id) fail('引用消息不属于当前会话')
     if (input.stopPrevious) await this.cancelConversation(conversation.id)
-    const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: '我', content: input.content, status: 'completed' })
+    const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content: input.content, status: 'completed' })
     if(origin){message.origin=origin;if(!humanReply){message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}}
     message.mentionIds = input.mentionIds; message.replyToMessageId = input.replyToMessageId
     const prepared = this.scheduler.prepare(conversation, message)
@@ -697,6 +748,44 @@ export class AppService {
   private async publishExternal(id:string,relativePath:string){const run=this.externalRun(id),agent=this.getAgent(run.agentId),workspace=this.externalWorkspace(run);await publishArtifact({agent,runId:run.id,signal:new AbortController().signal,onArtifact:async artifact=>{const saved={...artifact,id:artifact.id!,conversationId:run.conversationId};await this.store.write([record('artifacts',saved)]);this.artifacts.set(saved.id,saved)}},workspace,`self:/runs/${run.id}/${relativePath}`);this.changed(run.conversationId)}
 
   private conversationBusy(conversationId:string){return this.clearingConversations.has(conversationId)||[...this.scheduler.turns.values()].some(t=>t.conversationId===conversationId&&(this.scheduler.hasActiveTurn(t.id)||!['completed','failed','cancelled','interrupted','budget_exhausted','waiting_user'].includes(t.status)))||[...this.runs.values()].some(r=>r.conversationId===conversationId&&!terminal.has(r.status))}
+  private async generateAutomationDraft(input: unknown) {
+    const request = automationDraftRequestSchema.parse(input)
+    if (this.closing || this.backingUp) fail('服务正在退出或备份，请稍后生成草稿')
+    if (!this.options.engine.draftAutomation) fail('当前模型适配器不支持草稿生成，可继续手动创建')
+    const connection = clone(this.getConnection(request.connectionId))
+    if (!connection.defaultModel) fail('请先为所选连接配置模型')
+    const targets: AutomationDraftTarget[] = []
+    for (const agent of this.employees.values()) {
+      try { this.automationFingerprint({ conversationPolicy: 'new-conversation', employeeIds: [agent.id] } as AutomationInput); targets.push({ kind: 'employee', id: agent.id, name: agent.name }) } catch { /* Unavailable identities are not candidates. */ }
+    }
+    for (const conversation of this.conversations.values()) {
+      try { this.automationFingerprint(conversation.id); targets.push({ kind: 'conversation', id: conversation.id, name: conversation.title }) } catch { /* Keep invalid chats out of the authorized input. */ }
+    }
+    const controller = new AbortController(), signal = AbortSignal.any([controller.signal, AbortSignal.timeout(PARTICIPATION_TIMEOUT_MS)])
+    this.externalTests.add(controller)
+    const call = { id: request.requestId, draftId: request.draftId, version: request.version, connectionId: connection.id, modelId: connection.defaultModel, createdAt: now(), status: 'running', usage: undefined as ModelUsage | undefined, finishedAt: undefined as string | undefined }
+    const task = (async () => {
+      await this.store.transaction(async tx => {
+        if (await tx.get('automationDraftCalls', call.id)) fail('这次草稿请求已经受理，请明确重新生成；不会自动重试模型')
+        await tx.put(record('automationDraftCalls', call))
+      })
+      try {
+        const output = await this.modelCapacity.run(connection.id, signal, async () => this.options.engine.draftAutomation!({ connection, apiKey: await this.options.secrets.get(connection.id) ?? '', instruction: request.instruction, timezone: request.timezone, targets, signal,
+          onUsage: async usage => { call.usage = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage); await this.store.write([record('automationDraftCalls', call)]) } }))
+        signal.throwIfAborted()
+        const result = validateAutomationDraft(request, output, targets)
+        // Revalidate selected identities after the model returns; revoked authority cannot enter a ready draft.
+        if (result.candidate.conversationId || result.candidate.employeeIds?.length) this.automationFingerprint(result.candidate as AutomationInput)
+        call.status = 'completed'
+        return { ...result, usage: call.usage }
+      } catch (error) { call.status = 'failed'; throw error }
+      finally { call.finishedAt = now(); await this.store.write([record('automationDraftCalls', call)]) }
+    })()
+    const settled = task.then(() => {}, () => {})
+    this.externalTasks.add(settled)
+    try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled) }
+  }
+
   private automationFingerprint(target: string | AutomationInput) {
     const c = typeof target === 'string' ? this.getConversation(target) : target.conversationPolicy !== 'new-conversation' ? this.getConversation(target.conversationId!) : undefined
     const agentIds = c?.agentIds ?? (typeof target !== 'string' ? target.employeeIds! : [])
@@ -714,7 +803,7 @@ export class AppService {
   private async prepareAutomationConversation(d: AutomationDefinition, o: AutomationOccurrence): Promise<StoredRecord[]> {
     const input = conversationSchema.parse({ kind: 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
     for (const id of input.agentIds) this.getAgent(id)
-    const conversation: Conversation = { ...input, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
+    const conversation: Conversation = { ...input, teamSetup: undefined, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
     return [record('conversations', conversation)]
   }
@@ -756,7 +845,7 @@ export class AppService {
     if(this.externalTasks.size>=2)fail('同时最多运行两个外部任务')
     const profile=this.profiles.get((agent.executionBackend as {profileId:string}).profileId)
     const verified=profile.verified??fail('请先在设置中测试外部启动项')
-    const message=this.nextMessage(conversation.id,{senderType:'user',senderId:'user',senderName:'我',content:input.content,status:'completed'})
+    const message=this.nextMessage(conversation.id,{senderType:'user',senderId:'user',senderName:(await this.userProfile.get()).displayName,content:input.content,status:'completed'})
     const run=this.newRun(conversation,agent.id,message.id);run.responseKind='task';run.status='running';run.backend={program:{name:verified.name,version:verified.version,executableHash:profile.executableHash},kind:'acp-local',profileId:profile.id,profileRevision:profile.revision,externalInvocations:1,sessionPolicy:'fresh',toolControl:'external'}
     const request={id:input.requestId,fingerprint,messageId:message.id},controller=new AbortController()
     await this.store.write([record('messages',message),record('runs',run),record('requests',request)])
@@ -848,12 +937,16 @@ export class AppService {
         if (run.origin) return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.workId) await this.works.reserveCall(run.id)
         signal.throwIfAborted()
+        return randomUUID()
       }),
-      onModelCallUsage: run.origin ? async (callId, usage) => {
+      onModelCallStarted: (callId, phase, thinking) => this.observeActivity(run, () => this.userProfile.start({ id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin), thinking })),
+      onSkillActivated: (toolCallId, skill) => this.observeActivity(run, () => this.userProfile.skill({ id: `${run.id}:${toolCallId}`, runId: run.id, conversationId: run.conversationId, skillId: skill.id, name: skill.name, createdAt: now() })),
+      onModelCallUsage: async (callId, usage) => {
         if (this.closing) return
+        if (!run.origin) { await this.observeActivity(run, () => this.userProfile.settle(callId, usage)); return }
         const budget = await this.works.settleAutomationCall(run.id, callId, usage)
         if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限')
-      } : undefined,
+      },
       onUsage: async usage => {
         if (signal.aborted || terminal.has(run.status) || this.closing) return
         const clean = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage)
@@ -1004,7 +1097,11 @@ export class AppService {
         if (index < 0) run.toolEvents.push(safe); else run.toolEvents[index] = safe
         await this.store.write([record('runs', run)]); if (alive()) this.changed(conversation.id)
       }
-      context.approveCommand = (command, cwd) => this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !run.origin)
+      context.approveCommand = async (command, cwd) => {
+        await this.observeActivity(run, () => this.userProfile.execution(run, 'pause'))
+        try { return await this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !run.origin) }
+        finally { if (!effective.aborted) await this.observeActivity(run, () => this.userProfile.execution(run, 'start')) }
+      }
       context.onArtifact = artifact => this.serialize(async () => {
         if (!alive()) throw new Error('任务已停止，不能发布产物')
         if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
@@ -1137,6 +1234,15 @@ export class AppService {
     }))
   }
 
+  private async observeActivity(run: AgentRun, operation: () => Promise<void>) {
+    if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
+    try { await operation() } catch {
+      run.activityError = '活动记录保存失败，部分统计未记录。'
+      try { await this.store.write([record('runs', run)]) } catch { /* Reporting must never replay business operations. */ }
+      this.emit({ type: 'runtime-error', error: run.activityError })
+    }
+  }
+
   private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {
     const readOnly = run.phase === 'decision' || run.phase === 'memory'
     const previousTiming = run.timing
@@ -1152,19 +1258,20 @@ export class AppService {
         await this.automations.assertExecutable(run.origin!, run.conversationId)
         return this.works.reserveAutomationCall(run, randomUUID(), run.phase ?? 'execution')
       })
-      const modelCallId = reservedCallId; reservedCallId = undefined
+      const modelCallId = reservedCallId ?? randomUUID(); reservedCallId = undefined
       // Queueing is governed by turn cancellation; the phase deadline starts after admission.
       const timer = timeoutMs ? setTimeout(() => deadline.abort(new DOMException('模型阶段超时', 'TimeoutError')), timeoutMs) : undefined
       timer?.unref()
       signal.throwIfAborted()
       // The caller can cancel immediately, but the permit belongs to the actual adapter lifetime.
       this.activeAdapters.add(run.id)
+      await this.observeActivity(run, () => this.userProfile.execution(run, 'start'))
       try { return await operation({ ...context, signal, modelCallId, onUsage: context.onUsage ? async usage => {
         attemptUsage = usage
         const cumulative = { ...earlierAttempts }
         for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (earlierAttempts[field] ?? 0) + usage[field]!
         await context.onUsage!(cumulative)
-      } : undefined }) } finally { this.activeAdapters.delete(run.id); if (timer) clearTimeout(timer); if (run.origin) this.changed(run.conversationId) }
+      } : undefined }) } finally { await this.observeActivity(run, () => this.userProfile.execution(run, 'finish')); this.activeAdapters.delete(run.id); if (timer) clearTimeout(timer); if (run.origin) this.changed(run.conversationId) }
     }, {
       retryRateLimit: readOnly,
       reserveRetry: async () => {
@@ -1367,6 +1474,8 @@ export class AppService {
     this.backingUp = true
     try {
       await this.mutations
+      await this.teamCreation.assertBackup()
+      if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy) fail('有任务或技能管理操作正在执行或等待修复，请先停止任务或完成修复后备份')
       await mkdir(destination, { recursive: true })
@@ -1388,6 +1497,8 @@ export class AppService {
     this.closing = true
     for (const timer of this.workTimers.values()) clearTimeout(timer)
     this.workTimers.clear()
+    await this.teamCreation.close()
+    await this.teamGeneration.close()
     await this.skillUpdates.close()
     await Promise.all([this.skills.close(), this.marketplace.close(), this.skillLibrary.close()])
     await this.mutations

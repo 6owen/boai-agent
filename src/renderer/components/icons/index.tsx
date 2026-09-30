@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 离线 Carbon 图标集合与图标尺寸。
- * [OUTPUT]: 消息回应点赞与复制图标；技能闪电、商店、目录与统计图标；新增执行过程 Carbon flow 图标；默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
+ * [OUTPUT]: 活动分享和图片下载图标； 消息回应点赞与复制图标；技能闪电、商店、目录与统计图标；新增执行过程 Carbon flow 图标；默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -54,6 +54,8 @@ const classes = {
   Pin: 'i-carbon-pin',
   Pencil: 'i-carbon-edit',
   Upload: 'i-carbon-upload',
+  Share: 'i-carbon-share',
+  Download: 'i-carbon-download',
   RefreshCw: 'i-carbon-renew',
   Reply: 'i-carbon-reply',
   Search: 'i-carbon-search',
@@ -115,6 +117,8 @@ export const Pin = component('Pin')
 export const Plus = component('Plus')
 export const Pencil = component('Pencil')
 export const Upload = component('Upload')
+export const Share = component('Share')
+export const Download = component('Download')
 export const RefreshCw = component('RefreshCw')
 export const Reply = component('Reply')
 export const Search = component('Search')

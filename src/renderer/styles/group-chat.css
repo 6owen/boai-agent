@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 全局语义 token、群聊消息/审批/输入与真实工作详情结构。
- * [OUTPUT]: 单行群名、无悬停底色/焦点外圈/层级变化的重叠头像与紧邻的剩余人数文字；浮层焦点辅助节点不影响头像重叠和位置，人数仅悬停变色；保留悬浮渐隐；消息/工具条共用 Soft Card 边缘、时间悬停显示；composer 由 prompt-bar.css 管理；表情裁切/居中和镜像布局。
+ * [OUTPUT]: 单行群名、无悬停底色/焦点外圈/层级变化的重叠头像与紧邻的剩余人数文字；浮层焦点辅助节点不影响头像重叠和位置，人数仅悬停变色；保留悬浮渐隐；消息/工具条共用 Soft Card 边缘、时间悬停显示；工具条仅随消息悬停显示，两侧按钮顺序一致，用户气泡靠右且正文左对齐；composer 由 prompt-bar.css 管理；表情裁切/居中和镜像布局。
  * [POS]: 群聊、其任务详情与门户中的员工资料/表情浮层；global.css 在基础皮肤之后加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -65,14 +65,14 @@
 .group-chat .message-row.user .quoted-message { flex-direction:row-reverse;border-left:0;border-right:2px solid var(--border);padding:0 8px 0 0 }
 .group-chat .message-content-space { min-width:0;width:100% }
 .group-chat .message-content { position:relative;width:fit-content;max-width:100%;text-align:left }
-.group-chat .message-row.user .message-content { margin-left:auto;max-width:85%;text-align:right }
+.group-chat .message-row.user .message-content { margin-left:auto;max-width:85% }
 .group-chat .message-card { min-width:0;max-width:100%;padding:10px 12px }
 .group-chat .message-tools { position:absolute;z-index:2;display:flex;align-items:center;gap:2px;padding:3px;top:0;left:calc(100% + 8px);width:max-content;overflow:hidden;opacity:0;pointer-events:none }
 .group-chat .message-tools .soft-button { flex:none }
-.group-chat .message-row.user .message-tools { left:auto;right:calc(100% + 8px);flex-direction:row-reverse }
+.group-chat .message-row.user .message-tools { left:auto;right:calc(100% + 8px) }
 .group-chat .message-content[data-toolbar-placement=corner]>.message-tools { left:auto;right:0;transform:translateY(calc(-100% + 4px)) }
 .group-chat .message-row.user .message-content[data-toolbar-placement=corner]>.message-tools { left:0;right:auto }
-.group-chat .message-row:is(:hover,:focus-within) .message-tools,.group-chat .message-content[data-tools-open]>.message-tools { opacity:1;pointer-events:auto }
+.group-chat .message-row:hover .message-tools { opacity:1;pointer-events:auto }
 .group-chat .message-mention { display:inline;padding:1px 5px;border:0;border-radius:var(--radius-pill);background:var(--primary);color:var(--primary-foreground);font:inherit;white-space:nowrap;cursor:pointer }
 .group-chat .message-mentions { margin-right:6px }
 .group-chat .message-mention+.message-mention { margin-left:4px }

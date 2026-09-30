@@ -1,0 +1,91 @@
+/*
+ * [INPUT]: 设置布局、共用连接卡片表单、全局 Soft 表面及语义主题 token。
+ * [OUTPUT]: 紧凑统计、头像悬停编辑、上下洞察卡片、全屏分享与响应式布局及单聊本人头像；资料编辑仅管理弹窗/头像布局，表单沿用共用横向行。
+ * [POS]: global.css 加载的个人资料局部布局，不维护独立主题。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+.user-avatar { border-radius:50%;background:var(--accent);color:var(--foreground);flex-shrink:0;font-weight:600 }
+.user-avatar img { width:100%;height:100%;object-fit:cover;border-radius:inherit }
+.rail-item>.user-avatar { width:28px;height:28px;font-size:11px }
+.message-row.user .message-avatar { display:flex;flex:0 0 32px }
+.chat-panel:not(.group-chat) .message-row.user .message-avatar { order:2 }
+.message-row.user .message-avatar>.avatar { width:32px;height:32px;border-radius:50%;font-size:12px }
+.profile-document { container-type:inline-size;min-width:0 }
+.profile-document h3 { font-size:16px;font-weight:600;margin:0 }
+.profile-identity { display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0 0 36px }
+.profile-identity .avatar-picker-trigger>.avatar { width:88px;height:88px;font-size:28px }
+.profile-identity h1 { font-size:24px;font-weight:600;margin:8px 0 0;max-width:100%;overflow-wrap:anywhere }
+.profile-identity p { color:var(--muted-foreground);margin:0;overflow-wrap:anywhere;max-width:100% }
+.profile-metrics { margin-bottom:32px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden }
+.profile-metrics>div { padding:16px 10px;text-align:center;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere }
+.profile-metrics>div+div { border-left:1px solid var(--border) }
+.profile-metrics strong { font-size:14px;font-weight:600 }
+.profile-metrics span { font-size:11px;color:var(--muted-foreground) }
+.profile-section-title { display:flex;align-items:center;gap:4px }
+.profile-section-title button { color:var(--muted-foreground) }
+.profile-identity .avatar-edit-badge { opacity:0;transition:opacity .15s }
+.profile-identity .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge { opacity:1 }
+.profile-section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px }
+.profile-section-heading .button-row { gap:2px }
+.profile-heatmap-scroll { overflow-x:auto;max-width:100%;padding:8px 2px }
+.profile-heatmap,.profile-months { display:grid;grid-template-columns:repeat(var(--weeks),minmax(12px,1fr));gap:3px;min-width:calc(var(--weeks) * 15px - 3px) }
+.profile-heatmap { grid-template-rows:repeat(7,12px);grid-auto-flow:column }
+.profile-day { position:relative;min-width:12px!important;min-height:12px!important;width:100%;height:12px!important;padding:0!important;border-radius:3px!important;background:var(--muted)!important;box-shadow:none!important;font-size:9px;line-height:12px }
+.profile-day::before { content:'';position:absolute;inset:0;background:var(--primary);border-radius:inherit }
+.profile-day span { position:relative;z-index:1 }
+[data-level='-1']::before,[data-level='0']::before { display:none }
+.profile-day[data-level='-1'] { border:1px solid var(--border) }
+[data-level='1']::before { opacity:.25 }
+[data-level='2']::before { opacity:.45 }
+[data-level='3']::before { opacity:.7 }
+[data-level='4']::before { opacity:1 }
+.profile-day[data-level='4'] { color:var(--primary-foreground) }
+.profile-day:focus-visible { box-shadow:0 0 0 2px var(--foreground)!important;z-index:2 }
+.profile-months { margin-top:6px;font-size:10px;color:var(--muted-foreground) }
+.profile-months>span { white-space:nowrap }
+.profile-chart { width:100%;height:220px;min-width:0;aspect-ratio:auto }
+.profile-insights { display:flex;flex-direction:column;gap:28px;margin-top:32px }
+.profile-insight-card { margin-top:14px }
+.profile-insights dl { margin:0 }
+.profile-insights dl>div { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 }
+.profile-insights dt { color:var(--muted-foreground) }
+.profile-insights dd { margin:0;text-align:right }
+.profile-skills { list-style:none;padding:0;margin:0 }
+.profile-skills button { display:flex;align-items:center;gap:12px;padding:10px 0;width:100%;text-align:left }
+.profile-skills button>span { min-width:0;overflow-wrap:anywhere }
+.profile-skills small { display:block;color:var(--muted-foreground);margin-top:4px }
+.profile-editor { max-height:calc(100dvh - 32px);overflow-y:auto }
+.profile-editor-avatar { display:flex;justify-content:center }
+.profile-editor-avatar .avatar { width:64px;height:64px;font-size:22px }
+@container (max-width:600px) {
+  .profile-metrics { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .profile-metrics>div+div { border-left:0 }
+  .profile-metrics>div:nth-child(even) { border-left:1px solid var(--border) }
+  .profile-metrics>div:nth-child(n+3) { border-top:1px solid var(--border) }
+  .profile-insights { gap:24px }
+}
+@container (max-width:280px) {
+  .profile-metrics { grid-template-columns:1fr }
+  .profile-metrics>div:nth-child(even) { border-left:0 }
+  .profile-metrics>div+div { border-top:1px solid var(--border) }
+  .profile-document .settings-document-heading { align-items:flex-start;flex-direction:column;gap:12px }
+  .profile-insights dl>div { flex-wrap:wrap }
+}
+@media (max-width:600px) {
+  .settings-page:has(.profile-document) .page-subnav { max-width:40%;flex-shrink:1;min-width:100px }
+  .settings-page:has(.profile-document) .settings-content { padding:20px 12px }
+}
+
+.profile-share-dialog { background:var(--background);overflow-y:auto }
+.profile-share-close { position:absolute;top:20px;right:20px;z-index:1 }
+.profile-share-body { display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:44px;padding:76px 32px 28px;min-width:0 }
+.profile-share-card { width:min(100%,800px);flex-shrink:0;border-radius:28px;box-shadow:var(--shadow-popover) }
+.profile-share-card canvas { display:block;width:100%;height:auto }
+.profile-share-actions { display:flex;justify-content:center;gap:32px }
+.profile-share-actions>div { display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted-foreground) }
+.profile-share-actions button { width:56px;height:56px;border-radius:50%;corner-shape:round }
+.profile-share-notice { color:var(--muted-foreground);min-height:20px;margin:0 }
+@media (max-width:600px) {
+  .profile-share-body { gap:28px;padding:76px 16px 24px }
+  .profile-share-card { border-radius:16px }
+}

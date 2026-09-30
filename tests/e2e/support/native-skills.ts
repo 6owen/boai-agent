@@ -1,17 +1,18 @@
 /*
  * [INPUT]: 独立 Desktop、生产 main/worker 构建与本地 provider/ZIP 响应。
- * [OUTPUT]: 真实原生 IPC 的商店安装/更新、取消/中途断流与重启支撑，以及脚本/远程图片的副作用探针；替换进程内网络边界并隔离用户技能目录。
+ * [OUTPUT]: 真实原生 IPC 的本地与受管商店安装/更新、取消/中途断流与重启支撑，以及脚本/远程图片的副作用探针；替换进程内网络边界并创建隔离用户目录。
  * [POS]: Skills 原生桌面验收支撑；不新增产品测试入口或关闭产品来源校验。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createServer, type ServerResponse } from 'node:http'
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { strToU8, zipSync } from 'fflate'
 import type { Desktop } from './desktop'
 
 export async function startNativeSkills(runtime: Desktop) {
+  await mkdir(join(runtime.root, 'local-user'), { recursive: true })
   let version = 1, offline = false, stall = false, partial = false
   let imageRequests = 0, imageURL = ''
   const executionMarker = join(runtime.root, 'unexpected-skill-execution')

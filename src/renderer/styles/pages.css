@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 会话侧栏的小尺寸伙伴空态与通讯录嵌套分类标题；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用伙伴 SVG 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话伙伴 SVG 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话恢复文字分组，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
+ * [OUTPUT]: 通讯录滚动区域延伸至侧栏边缘，列表内容保持内侧留白；外观表单按内容容器宽度折行，在保留手动侧栏宽度时适配窄窗与缩放； 任务总览与七项设置行、上下文浮层和通讯录式分类布局；会话侧栏的小尺寸伙伴空态与通讯录嵌套分类标题；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用伙伴 SVG 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话伙伴 SVG 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话恢复文字分组，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、步骤 SVG 插画/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,6 +16,7 @@
 .settings-document { width:100%;max-width:840px;margin:0 auto }
 .settings-document-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:44px }
 .settings-document-heading h2 { font-size:28px;font-weight:600;line-height:40px;letter-spacing:-.6px;margin:0 }
+.appearance-settings { container:appearance / inline-size }
 .appearance-settings fieldset { border:0;padding:0;margin:0;min-width:0 }
 .settings-section-title { font-size:14px;line-height:22px;font-weight:600;padding:0;margin:0 0 12px }
 .appearance-mode-row { display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:78px;margin-bottom:16px;font-size:13px;font-weight:500 }
@@ -33,6 +34,16 @@
 .appearance-color input { position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;opacity:0;cursor:pointer }
 .appearance-advanced { margin-top:40px }
 .appearance-footer { display:flex;justify-content:flex-end;margin-top:24px }
+@container appearance (max-width:420px) {
+  .appearance-mode-row,.appearance-row { flex-direction:column;align-items:stretch;gap:8px }
+  .appearance-mode-row { padding:12px 8px }
+  .appearance-modes,.appearance-row-controls { flex-wrap:wrap;justify-content:flex-start;gap:8px }
+  .appearance-modes .theme-card { max-width:100% }
+  .appearance-options { padding-inline:8px }
+  .appearance-row-controls>* { min-width:0;max-width:100% }
+  .appearance-row .appearance-color { min-width:0;max-width:100%;padding-inline:4px }
+  .appearance-row [data-slot=select-trigger] { max-width:100% }
+}
 /* Model connections reuse the settings surface and keep setup in a focused dialog. */
 .connection-settings>.banner { margin-bottom:20px }
 .connection-section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px }
@@ -215,7 +226,7 @@
 
 .contacts-page { display:flex;flex:1;min-height:0;min-width:0 }
 .contacts-list { display:flex;flex-direction:column;flex-shrink:0;width:var(--list-width,312px);min-height:0;padding:0 10px;background:var(--list) }
-.contacts-sections { flex:1;min-height:0;overflow-y:auto;padding:10px 0 }
+.contacts-sections { flex:1;min-height:0;overflow-y:auto;margin:0 -10px;padding:10px }
 .contacts-section-heading { width:100%;text-align:left }
 .contacts-section-heading.contacts-category-heading { padding-left:16px }
 .contacts-count { margin-left:auto;color:var(--muted-foreground);font-size:11px;font-variant-numeric:tabular-nums }
@@ -316,3 +327,29 @@
 .automation-reading { display:grid;gap:28px }
 .automation-reading section>h3 { margin:0 0 16px;font-size:16px;font-weight:600 }
 .automation-reading section { min-width:0 }
+
+/* Scheduled task overview and contextual seven-field editor share global surfaces. */
+.schedule-overview-heading { display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap }
+.schedule-overview-heading h2 { margin:0;font-size:22px }
+.schedule-overview-tools { display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:100% }
+.schedule-overview-tools>[data-slot=input-group] { width:180px;max-width:100% }
+.schedule-filters { margin:24px 0 12px;flex-wrap:wrap }
+.schedule-overview-row { display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border) }
+.schedule-overview-plan { display:grid;gap:6px;flex:1;min-width:0;text-align:left;padding:16px 10px;white-space:normal }
+.schedule-overview-plan strong { font-weight:600;overflow-wrap:anywhere }
+.schedule-overview-plan span,.schedule-overview-plan small { color:var(--muted-foreground);font-size:12px;overflow-wrap:anywhere }
+.schedule-overview-row>[data-slot=dropdown-menu-trigger] { opacity:0 }
+.schedule-overview-row:hover>[data-slot=dropdown-menu-trigger],.schedule-overview-row:focus-within>[data-slot=dropdown-menu-trigger] { opacity:1 }
+.automation-fields { display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0 }
+.automation-settings { border-radius:var(--radius-control);background:var(--card);box-shadow:var(--shadow-card);padding:0 10px }
+.automation-setting { display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px }
+.automation-setting+.automation-setting { border-top:1px solid var(--border) }
+.automation-setting>span:first-child { flex-shrink:0;color:var(--muted-foreground) }
+.automation-setting>[data-slot=select-trigger] { width:auto;max-width:65% }
+.automation-setting>[data-slot=button] { min-width:0;max-width:75%;height:auto;white-space:normal;text-align:right }
+.automation-setting-popover { display:grid;gap:12px;width:min(320px,calc(100vw - 32px));max-height:min(600px,75vh);overflow:auto }
+.automation-setting-popover ol { padding-left:18px;font-size:12px;line-height:1.8 }
+.automation-assistant { display:grid;gap:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-control) }
+.automation-history-filters { display:grid;gap:12px }
+.automation-history-filters .button-row { flex-wrap:wrap }
+.schedule-page [hidden] { display:none }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
- * [OUTPUT]: 下拉字段统一使用 shadcn Select；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
+ * [OUTPUT]: 下拉字段统一使用 shadcn Select；外观按实际内容宽度换行，图片动作在窄栏仍可达；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -77,7 +77,7 @@ export function AppearanceSettings() {
         <Card className="gap-0 p-0"><CardContent><FieldGroup className="soft-divide-y gap-0">
           <Field orientation="responsive" className="py-4">
             <FieldContent><FieldTitle>背景图片</FieldTitle><FieldDescription>PNG、JPEG、WebP，最大 10 MiB。</FieldDescription></FieldContent>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('importAppearanceBackground')}>{p.background.assetId ? '更换图片' : '选择图片'}</Button>
               {p.background.assetId && <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('removeAppearanceBackground')}>移除图片</Button>}
             </div>

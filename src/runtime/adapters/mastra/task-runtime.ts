@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
- * [OUTPUT]: 受约束的文件/命令/产物工具、委派/等待及业务结果声明。
+ * [OUTPUT]: 原生技能名/路径解析到固定资源身份供激活观测；受约束的文件/命令/产物工具、委派/等待及业务结果声明。
  * [POS]: Mastra 任务工具适配器；副作用前先登记持久核对标记。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -28,11 +28,16 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
   const skillRoots = plan.skills.map(version => path.resolve(version.resource.path))
   const knowledge = plan.knowledge.map(version => version.resource)
   const workspace = new Workspace({ id: `run-${ctx.runId}`, filesystem, skills: skillRoots, skillSource: new BoundSkillSource(skillRoots, plan.skills, signal), tools: { enabled: false } })
+  const identities: { id: string; name: string; path: string }[] = []
   try {
     await workspace.init()
     if (skillRoots.length) {
       const loadedSkills = await workspace.skills?.list() ?? []
       if (loadedSkills.length !== new Set(skillRoots).size) throw new Error('部分绑定 Skill 无法加载，请检查 SKILL.md 元数据与技能目录名')
+      for (const skill of loadedSkills) {
+        const version = plan.skills.find(item => path.resolve(item.resource.path) === path.resolve(skill.path))
+        if (version) identities.push({ id: version.resource.id, name: skill.name, path: skill.path })
+      }
       const names = loadedSkills.map(skill => skill.name)
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
@@ -121,7 +126,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       } : {}),
     }
     return {
-      workspace, tools,
+      workspace, tools, skills: identities,
       instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Write outputs in self:/runs/${ctx.runId}/; self:/work/ contains this session's working files. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
   } catch (error) { await workspace.destroy(); throw error }

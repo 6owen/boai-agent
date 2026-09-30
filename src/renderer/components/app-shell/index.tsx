@@ -1,6 +1,6 @@
 /*
  * [INPUT]: sidebar 主页面及其独立详情标签作用域、领域类型、员工思考强度配置、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
- * [OUTPUT]: 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格伙伴 SVG 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
+ * [OUTPUT]: 本人头像接管左下角设置下拉菜单并包含资料入口；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录独立团队创建标签； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格伙伴 SVG 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +17,7 @@ import { DesktopToolbar } from './desktop-toolbar'
 import { SkillsNavigation } from './skills-navigation'
 import { DetailPanel, DetailPanelHeader } from '../detail-panel'
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
-import { Library, Clock, Home, Contact, CircleHelp, MessageCircle, Plus, Settings, Users, FileText, Terminal, Workflow, RefreshCw } from '@/components/icons/index'
+import { Library, Clock, Home, Contact, CircleHelp, MessageCircle, Plus, Users, FileText, Terminal, Workflow, RefreshCw } from '@/components/icons/index'
 import type { ConversationListChange } from '@shared/domain/conversation-list'
 import type { AppEvent } from '@shared/ipc'
 import type { ConversationDetail, DigitalAgent, Conversation, Message, Snapshot } from '@shared/domain'
@@ -30,6 +30,7 @@ import { draftContent } from '@/pages/conversations/inline-mentions'
 import { GroupEditor, templates } from '@/components/employee/editors'
 import { CreateAgentDialog, CreateGroupDialog } from '@/components/employee/creation-dialogs'
 import { EmployeeDetail } from '@/components/employee/index'
+import { TeamCreator } from '@/pages/contacts/team-creator'
 import { ContactsPage, type ContactSelection } from '@/pages/contacts'
 import { HelpPage } from '@/pages/help'
 import { SkillsWorkspace, type SkillsSection } from '@/pages/library/skills-workspace'
@@ -37,9 +38,10 @@ import type { SkillMarketplaceProvider } from '@shared/domain/skill-marketplace'
 import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
 import { SkillUpdateBatchView } from '@/pages/library/skill-update-batch'
 import { LibraryPage, ResourceDetail } from '@/pages/library'
-import { ScheduleDetail, SchedulePage } from '@/pages/schedules'
+import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
-import { SettingsPage } from '@/pages/settings'
+import { UserAvatar } from '@/components/common/user-avatar'
+import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 
 type Page = 'conversations' | 'contacts' | 'schedules' | 'library' | 'skills' | 'settings' | 'help'
@@ -63,8 +65,7 @@ export function AppShell() {
   const [skillsRevision, setSkillsRevision] = useState(0)
   const skillUpdated = useCallback(() => setSkillsRevision(value => value + 1), [])
   const skillsNavigation = route.page === 'skills'
-  const [focusedAutomation, setFocusedAutomation] = useState<{ id: string; requestId: string } | undefined>()
-  const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null)
+  const [scheduleLocation, setScheduleLocation] = useState<ScheduleLocation>({ kind: 'overview' })
   const [detailWorkspaces, dispatchWorkspace] = useReducer(detailWorkspacesReducer, {} as DetailWorkspaces)
   const detailTabs = detailWorkspaces[route.page] ?? emptyDetailTabs
   const allDetailTabs = Object.entries(detailWorkspaces).flatMap(([scope, state]) => state.tabs.map(tab => ({ scope, ...tab })))
@@ -91,7 +92,9 @@ export function AppShell() {
   const [, setDraftVersion] = useState(0), drafts = useRef(new Map<string, ChatDraft>()), scrollPositions = useRef(new Map<string, number>())
   const [previews, setPreviews] = useState<Record<string,string>>({})
   const [messageTimes, setMessageTimes] = useState<Record<string,string>>({})
-  const [settingsSection,setSettingsSection]=useState<'connections'|'data'|'appearance'>('connections')
+  const settingsMounted = useRef(route.page === 'settings')
+  if (route.page === 'settings') settingsMounted.current = true
+  const [settingsSection,setSettingsSection]=useState<SettingsTab>('connections')
   const [menu, setMenu] = useState<'settings' | 'help' | null>(null)
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
@@ -134,7 +137,7 @@ export function AppShell() {
       if (!target || !mounted.current) return
       navigate(() => {
         if (target.conversationId && target.messageId) { selectedRef.current = target.conversationId; setRoute({ page: 'conversations', conversationId: target.conversationId, focusMessage: { id: target.messageId, requestId: crypto.randomUUID() } }) }
-        else { setSelectedAutomationId(target.automationId); setFocusedAutomation({ id: target.occurrenceId, requestId: crypto.randomUUID() }); setRoute(previous => ({ ...previous, page: 'schedules' })) }
+        else { setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() }); setRoute(previous => ({ ...previous, page: 'schedules' })) }
       })
     }).catch(report) }
     const unsubscribe = api.subscribe((event: AppEvent) => {
@@ -257,7 +260,7 @@ export function AppShell() {
   const onOpenPath = (path: string) => { if (!api) return; void action(async () => { await api.request('openPath', { path }) }) }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? '群聊详情' : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const title = item.type === 'team-creator' ? '创建团队' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? '群聊详情' : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
     const name = item.type === 'automation-editor' ? item.name : item.type === 'marketplace' ? item.name : item.type === 'trace' ? `执行过程${item.agentId ? ` · ${snapshot.agents.find(a => a.id === item.agentId)?.name ?? '员工'}` : ''}` : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
@@ -287,22 +290,23 @@ export function AppShell() {
   return <GuardContext.Provider value={guard}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} style={{'--list-width':`${listWidth}px`,'--detail-width':`${actualDetailWidth}px`} as CSSProperties}>
     <DesktopToolbar title={title} detailHeader={panel && <DetailPanelHeader tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={() => navigate(() => { historyIndex.current--; applyRoute(history.current[historyIndex.current]!, false) })} onForward={() => navigate(() => { historyIndex.current++; applyRoute(history.current[historyIndex.current]!, false) })} onToggleList={() => setListShown(shown => !shown)} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([{page:'conversations',icon:Home,label:'会话'},{page:'contacts',icon:Contact,label:'通讯录'},{page:'schedules',icon:Clock,label:'定时任务'},{page:'library',icon:Library,label:'资料库'}] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom">{(['help', 'settings'] as const).map(item => <DropdownMenu key={item} open={menu === item} onOpenChange={open => setMenu(open ? item : null)}>
-      <DropdownMenuTrigger render={<Button variant={route.page === item ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label={item === 'settings' ? '设置' : '帮助'} title={item === 'settings' ? '设置' : '帮助'} />}>{item === 'settings' ? <Settings size={16} /> : <CircleHelp size={16} />}</DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-48"><DropdownMenuGroup><DropdownMenuLabel>{item === 'settings' ? '应用设置' : '帮助与说明'}</DropdownMenuLabel>
+      <DropdownMenuTrigger render={<Button variant={route.page === item ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label={item === 'settings' ? '我的菜单' : '帮助'} title={item === 'settings' ? '我' : '帮助'} />}>{item === 'settings' ? <UserAvatar profile={snapshot.userProfile} /> : <CircleHelp size={16} />}</DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-48"><DropdownMenuGroup><DropdownMenuLabel>{item === 'settings' ? snapshot.userProfile?.displayName ?? '我' : '帮助与说明'}</DropdownMenuLabel>
+        {item === 'settings' && <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('profile'); applyRoute({ ...route, page: 'settings' }) })}>个人资料</DropdownMenuItem>}
         {item === 'settings' && <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('appearance'); applyRoute({ ...route, page: 'settings' }) })}>外观</DropdownMenuItem>}
         <DropdownMenuItem onClick={() => navigate(() => { if (item === 'settings') setSettingsSection('connections'); applyRoute({ ...route, page: item }) })}>{item === 'settings' ? '模型连接与数据备份' : '使用说明与关于'}</DropdownMenuItem>
       </DropdownMenuGroup></DropdownMenuContent>
     </DropdownMenu>)}</div></nav>
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{error&&<Banner onClose={()=>setError('')}>{error}</Banner>}
-      {route.page==='conversations'&&<div className="conversation-layout">{effectiveList&&<><aside className="conversation-list-container"><ConversationList snapshot={snapshot} selectedId={selectedId} query={search} onQuery={setSearch} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onSelect={selectConversation} onChange={changeConversationList} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside>{resizer('list')}</>}
+      {<div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}>{effectiveList&&<><aside className="conversation-list-container"><ConversationList snapshot={snapshot} selectedId={selectedId} query={search} onQuery={setSearch} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onSelect={selectConversation} onChange={changeConversationList} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside>{resizer('list')}</>}
         <div className="conversation-stage">{currentDetail?<ChatView key={currentDetail.conversation.id} detail={currentDetail} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onStop={()=>{if(selectedId)void action(async()=>{await api.request('cancelRun',{conversationId:selectedId});await refreshDetail(selectedId)})}} onDetails={()=>{if(conversation)openPanel(conversation.kind==='group'?{type:'group',id:conversation.id}:{type:'agent',id:conversation.agentIds[0]!,conversationId:conversation.id})}} onChangeConversationList={changeConversationList} onClear={clearConversationHistory} onActivity={()=>{if(selectedId)openPanel({type:'activity',id:selectedId})}} onTrace={message=>{if(selectedId)openPanel({type:'trace',requestId:crypto.randomUUID(),id:selectedId,messageId:message?.id,turnId:message?.turnId,agentId:message?.senderId})}} onSettings={()=>{setSettingsSection('connections');goPage('settings')}} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty} onApprove={(id,approved)=>{void action(async()=>{await api.request('approve',{id,approved});await refreshSnapshot();if(selectedRef.current)await refreshDetail(selectedRef.current)})}} onOpenPath={onOpenPath} focusMessage={route.focusMessage} scrollPosition={scrollPositions.current.get(currentDetail.conversation.id)} onScrollPosition={position=>scrollPositions.current.set(currentDetail.conversation.id,position)}/>:loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" title={hasConversations ? '小伙伴们，随时待命' : '和你的数字同事一起工作'}>{!hasConversations && <><div className="button-row"><Button onClick={()=>openCreation({type:'agent'})}><Plus size={16}/>新建员工</Button><Button variant="secondary" onClick={()=>openCreation({type:'group'})}>创建群聊</Button></div><div className="starter-cards">{templates.map((template,index)=><Button variant="surface" size="content" key={template.name} onClick={()=>openCreation({type:'agent',template:index})}><template.icon size={22}/><strong>{template.name}</strong><small>{template.role}</small></Button>)}</div></>}</IllustratedEmpty>}</div>
       </div>}
-      {route.page==='contacts'&&<ContactsPage api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} sidebarShown={effectiveList} divider={resizer('list')} generation={panelGeneration} busy={busy}/>}
+      {route.page==='contacts'&&<ContactsPage onCreateTeam={() => openPanel({ type: 'team-creator' }, 'contacts')} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} sidebarShown={effectiveList} divider={resizer('list')} generation={panelGeneration} busy={busy}/>}
       {route.page==='library'&&<LibraryPage onSkills={section=>{setSkillsSection(section);goPage('skills')}} api={api} snapshot={snapshot} refresh={refreshSnapshot} onMarketplace={item=>openPanel({type:'marketplace',provider:item.provider,id:item.id,name:item.name})} onResource={resource=>openPanel({type:'resource',id:resource.id})} onAgent={agent=>openAgent(agent)}/>}
       {route.page==='skills'&&<SkillsWorkspace api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={resizer('list')} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
-      {route.page==='schedules'&&<SchedulePage api={api} snapshot={snapshot} sidebarShown={effectiveList} divider={resizer('list')} selected={selectedAutomationId} focusOccurrence={focusedAutomation} onSelect={id=>{setSelectedAutomationId(id);setFocusedAutomation(undefined)}} onEdit={definition=>openPanel({type:'automation-editor',id:definition?.id,name:definition?.name})} onConversation={(id, messageId)=>selectConversation(id, true, messageId)} onInfo={()=>openPanel({type:'schedule'})}/>}
-      {route.page==='settings'&&<SettingsPage key={`${panelGeneration}-${settingsSection}`} divider={resizer('list')} initialTab={settingsSection} api={api} snapshot={snapshot} refresh={refreshSnapshot}/>}
+      <SchedulePage api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={resizer('list')} location={scheduleLocation} onLocation={setScheduleLocation} onEdit={(definition,mode)=>openPanel({type:'automation-editor',id:definition?.id,name:definition?.name,mode})} onConversation={(id, messageId)=>selectConversation(id, true, messageId)} onInfo={()=>openPanel({type:'schedule'})}/>
+      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={resizer('list')} tab={settingsSection} setTab={setSettingsSection} active={route.page === 'settings'} onSkill={id => openPanel({ type: 'resource', id }, 'settings')} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>
       {panel && resizer('detail')}
@@ -318,8 +322,9 @@ export function AppShell() {
             {target.type === 'resource' && (snapshot.resources.find(r => r.id === target.id) ? <ResourceDetail api={api} resource={snapshot.resources.find(r => r.id === target.id)!} snapshot={snapshot} refresh={refreshSnapshot} onRemoved={() => closeTab(tab.key, tab.scope)} onAgent={agent => openPanel({ type: 'agent', id: agent.id }, tab.scope)} /> : <p className="empty-note">该资源已被移除。</p>)}
             {target.type === 'marketplace' && <SkillMarketplaceDetail api={api} provider={target.provider} id={target.id} refresh={refreshSnapshot} onResource={() => { setSkillsSection('all'); goPage('skills') }} />}
             {target.type === 'skill-updates' && <div className="detail-section"><SkillUpdateBatchView api={api} active={active} autoStart localOnly onUpdated={skillUpdated} onResource={openLocalSkill} /></div>}
+            {target.type === 'team-creator' && <TeamCreator onAgent={id => openPanel({ type: 'agent', id }, 'contacts')} onMessage={(kind, id) => messageContact({ kind, id })} onGroup={() => openCreation({ type: 'group' })} api={api} snapshot={snapshot} active={active} onConfigure={() => { setSettingsSection('connections'); goPage('settings') }} />}
             {target.type === 'schedule' && <ScheduleDetail />}
-            {target.type === 'automation-editor' && <AutomationEditorTab api={api} snapshot={snapshot} id={target.id} onClose={() => closeTab(tab.key, tab.scope)} onSaved={(value, created) => { setSelectedAutomationId(value.id); if (created) closeTab(tab.key, tab.scope); else dispatchDetails({ type: 'open', target: { type: 'automation-editor', id: value.id, name: value.name } }, tab.scope) }} />}
+            {target.type === 'automation-editor' && <AutomationEditorTab api={api} snapshot={snapshot} id={target.id} mode={target.mode} onClose={() => closeTab(tab.key, tab.scope)} onSaved={(value, created) => { setScheduleLocation({ kind: 'definition', id: value.id }); if (created) closeTab(tab.key, tab.scope); else dispatchDetails({ type: 'open', target: { type: 'automation-editor', id: value.id, name: value.name } }, tab.scope) }} />}
           </DetailTabSession>
         })}
       </DetailPanel>}

@@ -1,17 +1,18 @@
 /*
  * [INPUT]: 自动化分页历史、会话结果、DesktopApi 与共享控件。
- * [OUTPUT]: 监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
+ * [OUTPUT]: 数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
  * [POS]: schedules 阅读区；历史分页与编辑草稿独立，刷新不扩大单次查询上限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { AutomationHistoryPage, AutomationNotice, AutomationOccurrence, ConversationDetail } from '@shared/domain'
+import type { AutomationHistoryQuery, AutomationHistoryPage, AutomationNotice, AutomationOccurrence, ConversationDetail } from '@shared/domain'
 import { automationNeedsAttention } from '@shared/domain/automations'
 import { WORK_BUDGET_ALLOWANCE as allowance } from '@shared/domain/work'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, Field, Loading, useMutation } from '@/components/common'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
 export const occurrenceStatusLabels:Record<AutomationOccurrence['status'],string>={admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',waiting_work:'等待工作',cancelling:'正在停止',completed:'运行结束',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}
@@ -25,28 +26,31 @@ function usageLabel(o: AutomationOccurrence) {
   return known ? `${known}${o.usageIncomplete ? '（已知部分，用量不完整）' : ''}` : o.modelCalls === 0 ? '尚无模型请求' : '用量未知'
 }
 
-export function AutomationHistory({ api, automationId, attentionOnly = false, latestOccurrenceId, focusOccurrence, summary, onConversation }: { api: DesktopApi; automationId?: string; attentionOnly?: boolean; latestOccurrenceId?: string; focusOccurrence?: { id: string; requestId: string }; summary?: ReactNode; onConversation(id: string, messageId?: string): void }) {
+export function AutomationHistory({ api, active = true, automationId, attentionOnly = false, latestOccurrenceId, focusOccurrence, summary, onConversation, onOccurrence }: { api: DesktopApi; active?: boolean; onOccurrence?(id: string): void; automationId?: string; attentionOnly?: boolean; latestOccurrenceId?: string; focusOccurrence?: { id: string; requestId: string }; summary?: ReactNode; onConversation(id: string, messageId?: string): void }) {
+  const [search, setSearch] = useState(''), [status, setStatus] = useState<AutomationHistoryQuery['status']>(attentionOnly ? 'attention' : 'all')
   const focusedRequest = useRef<string | undefined>(undefined)
   const [pages, setPages] = useState(1), [attentionPages, setAttentionPages] = useState(1), [revision, setRevision] = useState(0)
   const [history, setHistory] = useState<AutomationHistoryPage>({ occurrences: [] }), [attention, setAttention] = useState<AutomationHistoryPage>({ occurrences: [] })
   const [focused, setFocused] = useState<AutomationHistoryPage['occurrences'][number]>(), [latestRecord, setLatestRecord] = useState<AutomationHistoryPage['occurrences'][number]>()
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
   useEffect(() => {
+    if (!active) return
     let timer: ReturnType<typeof setTimeout> | undefined
     const unsubscribe = api.subscribe(event => {
       if (event.type !== 'changed' || timer) return
       timer = setTimeout(() => { timer = undefined; setRevision(value => value + 1) }, 100)
     })
     return () => { unsubscribe(); clearTimeout(timer) }
-  }, [api])
+  }, [api, active])
   useEffect(() => {
+    if (!active) return
     let live = true
     setLoading(true); setLoadError('')
     const readPages = async (count: number, onlyAttention: boolean): Promise<AutomationHistoryPage> => {
       const occurrences: AutomationHistoryPage['occurrences'] = []
       let before: AutomationHistoryPage['nextCursor']
       for (let page = 0; page < count; page++) {
-        const result = await api.request('listAutomationHistory', { automationId, attentionOnly: onlyAttention, before, limit: 30 })
+        const result = await api.request('listAutomationHistory', { automationId, attentionOnly: onlyAttention, search: automationId ? undefined : search, status: onlyAttention ? 'attention' : status, before, limit: 30 })
         if (!live) return { occurrences: [] }
         occurrences.push(...result.occurrences); before = result.nextCursor
         if (!before) break
@@ -64,7 +68,7 @@ export function AutomationHistory({ api, automationId, attentionOnly = false, la
       if (live) { setHistory(result); setAttention(pending); setFocused(target); setLatestRecord(latest) }
     })().catch(cause => { if (live) setLoadError(errorText(cause)) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
-  }, [api, automationId, attentionOnly, latestOccurrenceId, pages, attentionPages, revision, focusOccurrence])
+  }, [api, active, automationId, attentionOnly, latestOccurrenceId, pages, attentionPages, revision, focusOccurrence, search, status])
   useEffect(() => { if (!focusOccurrence || focusedRequest.current === focusOccurrence.requestId || loading) return; const element = document.getElementById(`occurrence-${focusOccurrence.id}`); if (element) { focusedRequest.current = focusOccurrence.requestId; element.scrollIntoView({ block: 'center' }); element.focus({ preventScroll: true }) } }, [focusOccurrence, history, focused, loading])
   const refresh = async () => { setRevision(value => value + 1) }
   // The two bounded queries can observe adjacent commits. Prefer the newer version and render each identity once.
@@ -75,8 +79,13 @@ export function AutomationHistory({ api, automationId, attentionOnly = false, la
   const pending = attention.occurrences.map(o => records.get(o.id)!).filter(o => o.id !== latest?.id && automationNeedsAttention(o))
   const featuredIds = new Set([...(latest ? [latest.id] : []), ...pending.map(o => o.id)])
   const earlier = history.occurrences.map(o => records.get(o.id)!).filter(o => !featuredIds.has(o.id))
-  const card = (o: AutomationHistoryPage['occurrences'][number], expanded = false) => <AutomationOccurrenceCard key={o.id} api={api} occurrence={o} expanded={expanded} onRefresh={refresh} onConversation={onConversation} />
+  const card = (o: AutomationHistoryPage['occurrences'][number], expanded = false) => <AutomationOccurrenceCard key={o.id} api={api} occurrence={o} expanded={expanded} onRefresh={refresh} onConversation={onConversation} onOccurrence={onOccurrence} />
+  if (!active) return null
   return <div className="automation-reading">
+    {!automationId && <div className="automation-history-filters">
+      <Input aria-label="搜索执行记录" placeholder="搜索记录中的任务标题" maxLength={200} value={search} onChange={e => { setSearch(e.target.value); setPages(1) }} />
+      <div className="button-row" aria-label="执行记录筛选">{([{value:'all',label:'全部'},{value:'active',label:'进行中'},{value:'completed',label:'已完成'},{value:'attention',label:'需处理'}] as const).map(item => <Button key={item.value} size="sm" variant={status === item.value ? 'secondary' : 'ghost'} aria-pressed={status === item.value} onClick={() => { setStatus(item.value); setPages(1) }}>{item.label}</Button>)}</div>
+    </div>}
     {loadError && <Banner>{loadError}</Banner>}
     {automationId && !attentionOnly && <>
       <section aria-label="最新结果"><h3>最新结果</h3>{latest ? card(latest, true) : !loading && <p className="empty-note">尚未执行此计划。</p>}</section>
@@ -85,7 +94,7 @@ export function AutomationHistory({ api, automationId, attentionOnly = false, la
     {summary}
     {focused && !records.has(focused.id) && <section aria-label="定位记录"><h3>定位记录</h3>{card(focused, true)}</section>}
     <section aria-label="运行记录"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3>
-      {!loading && !loadError && !earlier.length && <p className="empty-note">{attentionOnly ? '当前没有待处理记录。' : latest ? '其余已加载记录已在上方展示。' : '尚无执行记录。'}</p>}
+      {!loading && !loadError && !earlier.length && <p className="empty-note">{attentionOnly || status === 'attention' ? '当前没有待处理记录。' : latest ? '其余已加载记录已在上方展示。' : '尚无执行记录。'}</p>}
       <div className="automation-history">{earlier.map(o => card(o))}</div>
       {loading && <Loading>正在读取执行记录…</Loading>}
       {history.nextCursor && <Button variant="secondary" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
@@ -93,16 +102,31 @@ export function AutomationHistory({ api, automationId, attentionOnly = false, la
     </section>
   </div>
 }
-function AutomationOccurrenceCard({ api, occurrence: o, expanded, onRefresh, onConversation }: { api: DesktopApi; occurrence: AutomationHistoryPage['occurrences'][number]; expanded: boolean; onRefresh(): Promise<void>; onConversation(id: string, messageId?: string): void }) {
+export function AutomationOccurrenceView({ api, id, active, onConversation }: { api: DesktopApi; id: string; active: boolean; onConversation(id: string, messageId?: string): void }) {
+  const [record, setRecord] = useState<AutomationHistoryPage['occurrences'][number]>(), [error, setError] = useState(''), [revision, setRevision] = useState(0)
+  useEffect(() => {
+    if (!active) return
+    let live = true, timer: ReturnType<typeof setTimeout> | undefined
+    void api.request('getAutomationOccurrence', { id }).then(value => { if (live) { setRecord(value); setError('') } }).catch(cause => { if (live) setError(errorText(cause)) })
+    const unsubscribe = api.subscribe(event => { if (event.type === 'changed' && !timer) timer = setTimeout(() => setRevision(v => v + 1), 100) })
+    return () => { live = false; clearTimeout(timer); unsubscribe() }
+  }, [api, id, active, revision])
+  useEffect(() => { if (!active || !record) return; const element = document.getElementById(`occurrence-${id}`); element?.focus({ preventScroll: true }); element?.scrollIntoView({ block: 'nearest' }) }, [active, id, record?.id])
+  return <section aria-label="单次执行结果"><h2>本次执行结果</h2>{error && <Banner>{error}</Banner>}{record ? <AutomationOccurrenceCard api={api} occurrence={record} expanded onRefresh={async () => setRevision(v => v + 1)} onConversation={onConversation} /> : !error && <Loading>正在读取本次结果…</Loading>}</section>
+}
+
+function AutomationOccurrenceCard({ api, occurrence: o, expanded, onRefresh, onConversation, onOccurrence }: { api: DesktopApi; onOccurrence?(id: string): void; occurrence: AutomationHistoryPage['occurrences'][number]; expanded: boolean; onRefresh(): Promise<void>; onConversation(id: string, messageId?: string): void }) {
   const { busy, error, run } = useMutation()
   return <>{error && <Banner>{error}</Banner>}<Card className="connection-card gap-0 p-4" data-occurrence-id={o.id} id={`occurrence-${o.id}`} tabIndex={-1}><CardContent className="p-0">
       <div className="connection-card-top"><strong>{o.name}</strong><span className="pill"><span>{occurrenceStatusLabels[o.status]}</span> · <span>{deliveries[o.deliveryStatus]}</span></span></div>
       <p>{new Date(o.startedAt).toLocaleString()} · {o.source === 'manual' ? '手动触发' : '定时触发'}</p>{o.reason && <p>{o.reason}</p>}
+      <details><summary>运行明细</summary>
       <p className="field-hint">{o.taskKind === 'monitor' ? '数据检查 · 未调用模型' : <>{o.resultMessageIds.length} 条结果 · {o.runIds.length} 条运行记录{o.modelCalls !== undefined ? ` · ${o.modelCalls} 次模型请求` : ''} · {usageLabel(o)}</>}</p>
       {o.taskKind !== 'monitor' && o.budget && <p className="field-hint">本次累计预算：{o.modelCalls ?? 0}/{o.budget.maxModelCalls} 次模型请求 · {o.budget.runs}/{o.budget.maxRuns} 次工作执行 · 当前期限 {new Date(o.budget.deadlineAt).toLocaleString()}</p>}
       {!!o.budget?.renewals?.length && <details><summary>额度追加记录（{o.budget.renewals.length} 次）</summary>{o.budget.renewals.map(grant => <p className="field-hint" key={grant.id}>{new Date(grant.createdAt).toLocaleString()} · 模型请求上限 {grant.before.maxModelCalls} → {grant.after.maxModelCalls} · 工作执行上限 {grant.before.maxRuns} → {grant.after.maxRuns} · 追加前已用 {grant.used.modelCalls} 次请求、{grant.used.runs} 次工作执行{grant.used.usageIncomplete ? '，用量仍不完整' : ''} · 截止 {new Date(grant.after.deadlineAt).toLocaleString()}<Button variant="ghost" size="sm" onClick={() => onConversation(o.conversationId, grant.messageId)}>定位确认消息</Button></p>)}</details>}
       <NoticeReceipts notices={o.notices ?? []} legacy={o.notificationDelivered} />
-      <div className="button-row">{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>
+      </details>
+      <div className="button-row">{onOccurrence && <Button variant="ghost" size="sm" onClick={() => onOccurrence(o.id)}>查看本次结果</Button>}{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>
       {o.monitor && <MonitorResult occurrence={o} expanded={expanded} />}
       {o.messageId && <AutomationResult expanded={expanded} api={api} occurrence={o} onConversation={onConversation} />}
       {o.taskKind !== 'monitor' && (o.status === 'waiting_user' || exhausted(o) && o.deliveryStatus !== 'delivered' && (['failed', 'completed', 'waiting_work'].includes(o.status) || o.status === 'cancelled' && o.cancellationCause === 'budget')) && <AutomationReply api={api} occurrence={o} onSent={onRefresh} />}

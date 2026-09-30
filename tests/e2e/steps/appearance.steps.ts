@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
+ * [OUTPUT]: 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -19,6 +19,11 @@ export const test = base.extend<{ scenario: Scenario }>({
   scenario: async ({}, use) => use({}),
 })
 const { Given, When, Then } = createBdd(test)
+
+async function selectAppearance(page: Page, label: string, option: string) {
+  await page.getByRole('combobox', { name: label, exact: true }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
 
 async function prepareAppearance(runtime: Desktop) {
   const root = runtime.root
@@ -88,7 +93,7 @@ async function resizeAndZoom(previous: Awaited<ReturnType<typeof prepareAppearan
   }
   await open()
   for (const factor of ['0.75', '1.5', '1']) {
-    await page!.getByLabel('界面缩放', { exact: true }).selectOption(factor)
+    await selectAppearance(page!, '界面缩放', `${Number(factor) * 100}%${factor === '1' ? '（默认）' : ''}`)
     await expect.poll(zoom).toBeCloseTo(Number(factor))
     await expectWindowFilled()
   }
@@ -101,12 +106,12 @@ async function customizeAppearance(previous: Awaited<ReturnType<typeof resizeAnd
   await expect(page!.getByRole('button', { name: '模型连接', exact: true })).toHaveCount(0)
   await page!.getByLabel('搜索设置').fill('')
   await page!.getByRole('button', { name: '浅色', exact: true }).click()
-  await page!.getByLabel('浅色配色', { exact: true }).selectOption('vscode-plus-light')
-  await page!.getByLabel('字体', { exact: true }).selectOption('system')
+  await selectAppearance(page!, '浅色配色', 'VS Code Plus')
+  await selectAppearance(page!, '字体', '系统默认')
   await page!.getByLabel('强调色', { exact: true }).fill('#007acc')
   await page!.getByLabel('背景色', { exact: true }).fill('#f8fafc')
   await page!.getByLabel('前景色', { exact: true }).fill('#101010')
-  await page!.getByLabel('界面缩放', { exact: true }).selectOption('0.9')
+  await selectAppearance(page!, '界面缩放', '90%')
   await expect.poll(zoom).toBeCloseTo(0.9)
   await expectWindowFilled()
   await expect(page!.locator('html')).toHaveCSS('--card', '#f8fafc')
@@ -125,8 +130,8 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await open()
   await expect.poll(zoom).toBeCloseTo(0.9)
   await expectWindowFilled()
-  await expect(page!.getByLabel('界面缩放', { exact: true })).toHaveValue('0.9')
-  await expect(page!.getByLabel('字体', { exact: true })).toHaveValue('system')
+  await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('90%')
+  await expect(page!.getByLabel('字体', { exact: true })).toContainText('系统默认')
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#f8fafc')
   await page!.getByRole('button', { name: '深色', exact: true }).click()
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#212121')
@@ -140,10 +145,10 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   })
   await expect.poll(zoom).toBe(1)
   await expectWindowFilled()
-  await expect(page!.getByLabel('界面缩放', { exact: true })).toHaveValue('1')
+  await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('100%')
   await expect(page!.getByRole('button', { name: '恢复默认外观' })).toBeEnabled()
   await page!.getByRole('button', { name: '恢复默认外观' }).click()
-  await expect(page!.getByLabel('字体', { exact: true })).toHaveValue('geist')
+  await expect(page!.getByLabel('字体', { exact: true })).toContainText('Geist')
   await page!.evaluate(() => document.fonts.ready)
   expect(await page!.evaluate(() => [...document.fonts].some((font) => font.family === 'Geist' && font.status === 'loaded'))).toBe(true)
   await expect

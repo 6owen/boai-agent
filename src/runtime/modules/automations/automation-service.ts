@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品事务账本、原生日程适配器与宿主许可/消息投递。
- * [OUTPUT]: 异步监控读取、提交前授权复核、停止待退出与无模型比较；全历史待处理计数与最近结束结果投影；预算追加后的计时器重排与旧期限回调隔离，系统时钟回拨不延长已启动时限；持久通知消费唤醒与预算停止原因；新任务聊天准备/授权、共享规则的纯日程预览和完整分页查询；指定 occurrence 的补充上下文与事务提交入口；原始预算期限与计算槽释放后的接续重查；有界配置同步、事务投递、跨工作结果汇总、停止待退出与重启证据核对；不自动重放业务。
+ * [OUTPUT]: 稳定创建回执查询/重试与显式恢复；异步监控读取、提交前授权复核、停止待退出与无模型比较；全历史待处理计数与最近结束结果投影；预算追加后的计时器重排与旧期限回调隔离，系统时钟回拨不延长已启动时限；持久通知消费唤醒与预算停止原因；新任务聊天准备/授权、共享规则的纯日程预览和完整分页查询；指定 occurrence 的补充上下文与事务提交入口；原始预算期限与计算槽释放后的接续重查；有界配置同步、事务投递、跨工作结果汇总、停止待退出与重启证据核对；不自动重放业务。
  * [POS]: 自动化用例入口，SQLite 为权威，内存仅供活跃状态查询。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,7 +16,7 @@ import { AutomationRepository } from './automation-repository'
 import { activeOccurrence, pendingOccurrence, AUTOMATION_RUN_MS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
-export const automationSchema = scheduleSchema.extend({ id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).length(1).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict().superRefine((value, ctx) => {
+export const automationSchema = scheduleSchema.extend({ requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).length(1).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict().superRefine((value, ctx) => {
   if (value.taskKind === 'monitor') {
     if (!value.monitor || value.conversationPolicy === 'new-conversation' || value.monitor.source.conversationId !== value.conversationId) ctx.addIssue({ code: 'custom', path: ['monitor'], message: '监控需指定聊天及该聊天已发布的 JSON 文件' })
   } else if (value.monitor) ctx.addIssue({ code: 'custom', path: ['monitor'], message: '报告任务不能包含监控规则' })
@@ -168,10 +168,16 @@ export class AutomationService {
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
       const value = automationSchema.parse(input)
-      const d = await this.hooks.critical(() => this.repository.save(value, this.hooks.validate(value)))
+      const d = await this.hooks.critical(async () => (!value.id ? await this.repository.creation(value.requestId) : null) ?? await this.repository.save(value, this.hooks.validate(value)))
       this.retryCount = 0; await this.synchronize(d.id); this.hooks.changed()
       return structuredClone(this.definitions.get(d.id)!)
     })
+  }
+  creation(requestId: string) { return this.repository.creation(requestId) }
+  async resumePlan(id: string) {
+    const d = (await this.repository.view()).definitions.find(d => d.id === id && !d.deletedAt)
+    if (!d) throw new Error('定时任务不存在')
+    return this.save({ id, expectedRevision: d.revision, name: d.name, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor })
   }
   pause(id: string, deleted = false) {
     return this.serialize(async () => {
@@ -194,7 +200,7 @@ export class AutomationService {
   run(id: string, requestId: string) { return this.admit(id, undefined, 'manual', requestId, Date.now()) }
   async occurrence(id: string) { const page = await this.store.automationHistory({ id, limit: 1 }); if (!page.occurrences[0]) throw new Error('本次执行记录不存在'); return page.occurrences[0] }
   history(input: unknown) {
-    const query = z.object({ automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
+    const query = z.object({ automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
     return this.store.automationHistory(query)
   }
   preview(input: unknown) { const parsed = scheduleSchema.safeParse(input); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查日程设置'); const value = parsed.data; return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }

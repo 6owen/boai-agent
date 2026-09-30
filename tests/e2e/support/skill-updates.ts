@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 隔离 Desktop、真实 AppService/SQLite 与仅替换下载传输的 ZIP fixture。
- * [OUTPUT]: 生产更新组件的服务端请求/事件桥、可变上游内容与本地修改准备。
+ * [OUTPUT]: 场景隔离用户目录，避免扫描真实本机技能；生产更新组件的服务端请求/事件桥、可变上游内容与本地修改准备。
  * [POS]: Electron 更新场景支撑；不进入生产包，不访问外网或运行技能脚本。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +17,7 @@ import type { Method, Methods } from '../../../src/shared/ipc'
 export async function startSkillUpdatesFixture(runtime: Desktop) {
   let upstream = '原始上游说明'
   const events = new Set<ServerResponse>()
-  const service = new AppService({ dataPath: join(runtime.root, 'skills-service'), engine: { run: async () => { throw new Error('No skill or model should execute during updates') }, test: async () => 'ok' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => { for (const response of events) response.write(`data: ${JSON.stringify(event)}\n\n`) }, skillDownloads: async () => ({ status: 200, body: Readable.from([zipSync({ 'SKILL.md': strToU8(`---\nname: update-helper\ndescription: 可更新的离线技能\n---\n# ${upstream}`), 'references/guide.md': strToU8('上游参考资料'), ...(upstream !== '原始上游说明' ? { 'references/new.md': strToU8('本次新增的依据') } : {}) })]) }) })
+  const service = new AppService({ dataPath: join(runtime.root, 'skills-service'), skillDiscovery: { homeDir: join(runtime.root, 'skills-home') }, engine: { run: async () => { throw new Error('No skill or model should execute during updates') }, test: async () => 'ok' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => { for (const response of events) response.write(`data: ${JSON.stringify(event)}\n\n`) }, skillDownloads: async () => ({ status: 200, body: Readable.from([zipSync({ 'SKILL.md': strToU8(`---\nname: update-helper\ndescription: 可更新的离线技能\n---\n# ${upstream}`), 'references/guide.md': strToU8('上游参考资料'), ...(upstream !== '原始上游说明' ? { 'references/new.md': strToU8('本次新增的依据') } : {}) })]) }) })
   const api = <K extends Method>(method: K, input: Methods[K]['input']) => service.handle(method, input) as Promise<Methods[K]['output']>
   await service.init()
   const scan = await api('scanSkillSource', { kind: 'url', source: 'https://example.com/fixture.zip' })

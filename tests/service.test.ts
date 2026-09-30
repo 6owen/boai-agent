@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -79,6 +79,33 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it('records an activity gap without replaying a business operation or blocking a reply', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service), store = (service as unknown as { store: ProductStore }).store
+    engine.decisionHandler = async context => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence })
+    const transaction = store.transaction.bind(store)
+    const failure = vi.spyOn(store, 'transaction').mockImplementation(operation => transaction(tx => operation({ ...tx, put: async record => {
+      if (record.collection === 'profileModelCalls') throw new Error('activity disk failure')
+      await tx.put(record)
+    } })))
+    let operations = 0
+    engine.handler = async context => {
+      operations++
+      await context.onModelCallStarted!(context.modelCallId!, 'chat')
+      await context.onModelCallUsage!(context.modelCallId!, { totalTokens: 12 })
+      await context.onDelta('观测失败仍保留本次答复')
+    }
+    try {
+      await send(service, direct, '你好', 'profile-observation-failure'); await idle(service, direct, 1)
+      const result = await detail(service, direct)
+      expect(operations).toBe(1); expect(result.workItems ?? []).toHaveLength(0)
+      expect(result.messages.some(message => message.senderType === 'agent' && message.status === 'completed' && message.content === '观测失败仍保留本次答复')).toBe(true)
+      expect(result.runs.find(run => run.phase === 'execution')).toMatchObject({ status: 'completed', activityError: '活动记录保存失败，部分统计未记录。' })
+      const today = new Date().toISOString().slice(0, 10)
+      expect(await service.handle('getProfileActivity', { from: today, to: today, timezone: 'UTC' })).toMatchObject({ totalTokens: null, incomplete: true })
+    } finally { failure.mockRestore() }
+  })
+
   it('persists message reactions idempotently without new turns, model calls or changing the last message', async () => {
     const { service, engine, root, secrets } = await fixture(); await configure(service)
     engine.decisionHandler = async context => ({ action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence })
@@ -674,7 +701,12 @@ describe('local product service', () => {
     engine.handler = async context => {
       await context.onDelta('待提交的答复')
       const store = (service as unknown as { store: ProductStore }).store
-      vi.spyOn(store, 'transaction').mockRejectedValueOnce(new Error('注入发布写入失败'))
+      const transaction = store.transaction.bind(store)
+      let rejected = false
+      vi.spyOn(store, 'transaction').mockImplementation(operation => transaction(tx => operation({ ...tx, put: async record => {
+        if (!rejected && record.collection === 'events' && (record.value as { type?: string }).type === 'agent_message') { rejected = true; throw new Error('注入发布写入失败') }
+        await tx.put(record)
+      } })))
     }
     await send(service, direct, '计算', 'failed-publication'); await idle(service, direct, 1)
     const result = await detail(service, direct)

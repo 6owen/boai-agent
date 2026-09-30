@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
+ * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 
@@ -117,7 +118,7 @@ When('在搜索结果中排序并从右键菜单删除当前会话', async ({ ru
   await page.getByRole('button', { name: '删除会话及记录', exact: true }).click()
   await expect(list(runtime).getByRole('button', { name: filtered[1], exact: true })).toHaveCount(0)
   await expect(list(runtime).locator('.selected')).toHaveCount(0)
-  await expect(page.getByRole('img', { name: '等你开聊的小伙伴' })).toBeVisible()
+  await expect(page.locator('img.empty-illustration[alt="等你开聊的小伙伴"]:visible')).toBeVisible()
   expect((await snapshot(runtime)).conversations.find(c => c.id === listScenario.removedId)?.list?.hidden).toBe(true)
 })
 Then('重启后会话仍隐藏且通讯录恢复的是空会话', async ({ runtime, listScenario }) => {
@@ -152,7 +153,8 @@ Given('通讯录具有一至十位成员的群聊', async ({ runtime }) => {
 Then('群头像按人数居中排列并且最多显示九位真实成员', async ({ runtime }) => {
   const page = runtime.page, contacts = page.getByRole('complementary', { name: '通讯录列表' })
   const patterns = [[1], [2], [1, 2], [2, 2], [1, 2, 2], [3, 3], [1, 3, 3], [2, 3, 3], [3, 3, 3], [3, 3, 3]]
-  await expect(contacts.locator('.list-heading button')).toHaveCount(1)
+  await expect(contacts.getByRole('button', { name: '新建', exact: true })).toHaveCount(1)
+  await expect(contacts.getByRole('button', { name: /^(新建员工|新建群聊)$/ })).toHaveCount(0)
   for (let n = 1; n <= 10; n++) {
     const item = contacts.getByRole('button', { name: `${n}人群`, exact: true })
     await item.scrollIntoViewIfNeeded()
@@ -185,7 +187,7 @@ When('从通讯录添加菜单创建员工和群聊', async ({ runtime }) => {
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录' }).click()
   await page.getByRole('complementary', { name: '通讯录列表' }).getByRole('button', { name: '通讯录新同事', exact: true }).click()
   await page.getByRole('button', { name: '发消息', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveValue('')
+  await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容' }))).toBe('')
   const directs = (await snapshot(runtime)).conversations.filter(item => item.kind === 'direct')
   expect(directs.map(item => item.id)).toEqual([directId])
   expect(directs[0].list?.hidden).toBe(false)
@@ -231,7 +233,7 @@ When('选中会话后重新加载页面', async ({ runtime }) => {
 })
 Then('会话默认未选中并显示伙伴插画', async ({ runtime }) => {
   await expect(list(runtime).locator('[aria-current=page]')).toHaveCount(0)
-  const illustration = runtime.page.getByRole('img', { name: '等你开聊的小伙伴' })
+  const illustration = runtime.page.locator('img.empty-illustration[alt="等你开聊的小伙伴"]:visible')
   await expect(illustration).toBeVisible()
   await expect(illustration).toHaveJSProperty('naturalWidth', 240)
   await expect(runtime.page.getByRole('textbox', { name: '消息内容' })).toHaveCount(0)
@@ -246,12 +248,12 @@ When('删除其他会话后再删除当前及最后一个会话', async ({ runti
   await page.getByRole('button', { name: '删除会话及记录', exact: true }).click()
   await expect(list(runtime).getByRole('button', { name: '资料库项目', exact: true })).toHaveCount(0)
   await expect(list(runtime).locator('.selected')).toHaveAttribute('aria-label', '协作甲')
-  await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveValue('保留当前会话草稿')
+  await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容' }))).toBe('保留当前会话草稿')
   await context(runtime, '协作甲', '删除会话')
   await page.getByRole('button', { name: '删除会话及记录', exact: true }).click()
   await expect(list(runtime).locator('.conversation-item')).toHaveCount(1)
   await expect(list(runtime).locator('.selected')).toHaveCount(0)
-  await expect(page.getByRole('img', { name: '等你开聊的小伙伴' })).toBeVisible()
+  await expect(page.locator('img.empty-illustration[alt="等你开聊的小伙伴"]:visible')).toBeVisible()
   await page.evaluate(async () => { const a = await window.boai.request('getAppearance', undefined); await window.boai.request('updateAppearance', { patch: { mode: 'dark' }, expectedRevision: a.revision }) })
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.screenshot({ path: 'test-results/conversation-empty-dark.png', animations: 'disabled' })

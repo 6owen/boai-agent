@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自动化定义/触发、宿主许可判断与 ProductStore 事务。
- * [OUTPUT]: 监控检查点/比较证据/通知同事务提交与规则变更重建基线；以可信预算当前期限准入续行；结果/通知、聊天/触发、补充/容量/消息同事务；版本化受理、执行许可与无重放恢复。
+ * [OUTPUT]: 创建请求与计划同事务去重，删除保留创建身份防止重建；监控检查点/比较证据/通知同事务提交与规则变更重建基线；以可信预算当前期限准入续行；结果/通知、聊天/触发、补充/容量/消息同事务；版本化受理、执行许可与无重放恢复。
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -130,8 +130,26 @@ export class AutomationRepository {
     return this.store.transaction(async tx => ({ definitions: await tx.list<AutomationDefinition>('automations'), occurrences: await tx.list<AutomationOccurrence>('automationOccurrences') }))
   }
 
+  creation(requestId?: string): Promise<AutomationDefinition | null> {
+    if (!requestId) return Promise.resolve(null)
+    return this.store.transaction(async tx => {
+      const receipt = await tx.get<{ automationId: string }>('automationCreations', requestId)
+      if (!receipt) return null
+      const definition = await tx.get<AutomationDefinition>('automations', receipt.automationId)
+      if (!definition || definition.deletedAt) throw new Error('此创建请求对应的计划已删除，不会重复创建；请开始新的草稿')
+      return definition
+    })
+  }
   save(input: AutomationInput, authorizedFingerprint: string) {
     return this.store.transaction(async tx => {
+      if (input.requestId && !input.id) {
+        const receipt = await tx.get<{ automationId: string }>('automationCreations', input.requestId)
+        if (receipt) {
+          const existing = await tx.get<AutomationDefinition>('automations', receipt.automationId)
+          if (!existing || existing.deletedAt) throw new Error('此创建请求对应的计划已删除，不会重复创建；请开始新的草稿')
+          return existing
+        }
+      }
       const prior = input.id ? await tx.get<AutomationDefinition>('automations', input.id) : undefined
       if (input.id && (!prior || prior.deletedAt)) throw new Error('定时任务不存在')
       if (prior && prior.revision !== input.expectedRevision) throw new Error('任务配置已变更，请刷新')
@@ -140,7 +158,7 @@ export class AutomationRepository {
       const monitor = input.taskKind === 'monitor' ? monitorPolicySchema.parse(input.monitor) : undefined
       const monitorChanged = !!prior && ((prior.taskKind ?? 'report') !== (input.taskKind ?? 'report') || JSON.stringify(prior.monitor) !== JSON.stringify(monitor))
       const executionChanged = !!prior && (monitorChanged || prior.prompt !== input.prompt || prior.conversationId !== input.conversationId || prior.conversationPolicy !== policy || JSON.stringify(prior.employeeIds ?? []) !== JSON.stringify(input.employeeIds ?? []) || prior.authorizedFingerprint !== authorizedFingerprint)
-      const { expectedRevision: _, ...fields } = input, now = timestamp()
+      const { expectedRevision: _, requestId, ...fields } = input, now = timestamp()
       const notifications = notificationPolicy(input, prior)
       const d: AutomationDefinition = { ...prior, ...fields, schemaVersion: 1, id: prior?.id ?? randomUUID(), revision: (prior?.revision ?? 0) + 1,
         executionRevision: (prior?.executionRevision ?? 1) + Number(executionChanged), scheduleGeneration: (prior?.scheduleGeneration ?? 1) + Number(scheduleChanged),
@@ -150,7 +168,9 @@ export class AutomationRepository {
       if (executionChanged || scheduleChanged || prior?.enabled !== d.enabled) delete d.legacyRevision
       delete d.syncError
       if (monitorChanged || prior && prior.authorizedFingerprint !== authorizedFingerprint) await tx.remove('automationMonitorCheckpoints', d.id)
-      await tx.put(row('automations', d)); return d
+      await tx.put(row('automations', d))
+      if (!prior && requestId) await tx.put(row('automationCreations', { id: requestId, automationId: d.id, createdAt: now }))
+      return d
     })
   }
 

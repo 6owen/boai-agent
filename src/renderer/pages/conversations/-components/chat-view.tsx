@@ -1,9 +1,11 @@
 /*
  * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、共享 ScrollFade/Markdown/Shiki 与统一 UI 基础组件。
- * [OUTPUT]: 标题成员资料接入同一资料快照与群配置入口；姓名/消息提及插入实际行内标签，无独立提及栏；头像资料与悬停时间、Prompt Bar @ /、镜像卡片与共享 Soft 输入/渐隐。
+ * [OUTPUT]: 按稳定 user 身份展示当前个人头像，自动化来源独立，引用本人显示你；标题成员资料接入同一资料快照与群配置入口；姓名/消息提及插入实际行内标签，无独立提及栏；头像资料与悬停时间、Prompt Bar @ /、镜像卡片与共享 Soft 输入/渐隐。
  * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { UserAvatar } from '@/components/common/user-avatar'
+import { isPersonalMessage, messageDisplayName } from '@shared/domain/profile'
 import { Card, CardContent } from '@/components/ui/card'
 
 import { Button } from '@/components/ui/button'
@@ -71,25 +73,25 @@ export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onSt
         const previous = messages[index - 1]
         const attachedApprovals = group ? approvalGroups.byMessage.get(message.id) ?? [] : []
         const continued = group && continuesMessage(previous, message, Boolean(attachedApprovals.length || previous && approvalGroups.byMessage.has(previous.id)))
-        const sender = message.origin ? message.senderName : message.senderType === 'user' ? '你' : message.senderName
+        const sender = messageDisplayName(message)
         const useCard = group && message.senderType !== 'system'
         const canMention = group && message.senderType === 'agent' && agent?.active && members.some(member => member.id === agent.id)
         const mentioned = members.filter(member => message.mentionIds?.includes(member.id))
         const body = <>
-            {message.replyToMessageId && <div className="quoted-message">{quoted ? <><strong>{group ? '回复 ' : ''}{quoted.senderName}：</strong><span>{(group ? quoted.content.trim().split('\n')[0] : quoted.content).slice(0, 120)}</span></> : '原消息已不可用'}</div>}
+            {message.replyToMessageId && <div className="quoted-message">{quoted ? <><strong>{group ? '回复 ' : ''}{messageDisplayName(quoted)}：</strong><span>{(group ? quoted.content.trim().split('\n')[0] : quoted.content).slice(0, 120)}</span></> : '原消息已不可用'}</div>}
             <div className="message-bubble markdown">{group && !!mentioned.length && <span className="message-mentions">{mentioned.map(member => <button type="button" className="message-mention" key={member.id} onClick={() => mention(member.id)}>@{member.name}</button>)}</span>}{message.content ? <Markdown>{message.content}</Markdown> : message.status === 'streaming' ? <span className="typing-indicator"><i /><i /><i /></span> : <span className="muted">暂无公开内容</span>}</div>
             {group && !!files.get(message.id)?.length && <ArtifactList artifacts={files.get(message.id)!} onOpenPath={onOpenPath} />}
             {message.status === 'completed' && message.runId && detail.runs.find(run => run.id === message.runId)?.backend && <ExternalFiles runId={message.runId} />}
             {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
         </>
         return <article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={`message-${message.id}`}>
-          <div className="message-avatar">{message.senderType === 'user' ? <span className="avatar user-avatar" aria-hidden="true">{message.origin ? '定' : '我'}</span> : group && message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : group && agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} avatar={agent?.avatar} color={agent?.color} />}</div>
+          <div className="message-avatar">{isPersonalMessage(message) ? <UserAvatar profile={snapshot.userProfile} /> : message.senderType === 'user' ? <span className="avatar automation-avatar" aria-hidden="true">定</span> : group && message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : group && agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} avatar={agent?.avatar} color={agent?.color} />}</div>
           <div className="message-main">
             <div className="message-meta">
               {canMention ? <Button variant="ghost" size="content" className="message-author" aria-label={`提及 ${sender}`} onClick={() => mention(agent!.id)}><span className="message-author-at" aria-hidden="true">@</span><strong>{sender}</strong></Button> : <strong>{sender}</strong>}
               <time dateTime={message.createdAt}>{timeText(message.createdAt)}</time>
-              {!useCard && message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${message.senderName} 的执行过程`} title="查看执行过程" onClick={() => onTrace(message)}><Workflow size={14} /></Button>}
-              {!useCard && <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${message.senderName} 的消息`} onClick={() => setDraft({ ...draft, replyId: message.id })}><Reply size={14} /></Button>}
+              {!useCard && message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${messageDisplayName(message)} 的执行过程`} title="查看执行过程" onClick={() => onTrace(message)}><Workflow size={14} /></Button>}
+              {!useCard && <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${messageDisplayName(message)} 的消息`} onClick={() => setDraft({ ...draft, replyId: message.id })}><Reply size={14} /></Button>}
             </div>
             {useCard ? <MessageCard message={message} onReply={() => setDraft({ ...draft, replyId: message.id })} onTrace={() => onTrace(message)}>{body}</MessageCard> : body}
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
@@ -99,7 +101,7 @@ export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onSt
       {(group ? approvalGroups.pending : approvals).map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
     </ScrollFade>{newMessages && <Button variant="outline" size="sm" className="new-messages" onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; following.current = true; setNewMessages(false) }}><ArrowDown size={14} />有新消息 · 返回最新</Button>}
     <div className="composer-wrap">
-      {reply && <div className="reply-preview">{!group && <Reply size={14} />}<Button variant="ghost" size="icon-sm" className={!group ? 'order-last' : undefined} aria-label="取消引用" onClick={() => setDraft({ ...draft, replyId: undefined })}><X size={14} /></Button><span>回复 {reply.senderName}：{reply.content.trim().replace(/\s+/g, ' ').slice(0, 160)}</span></div>}
+      {reply && <div className="reply-preview">{!group && <Reply size={14} />}<Button variant="ghost" size="icon-sm" className={!group ? 'order-last' : undefined} aria-label="取消引用" onClick={() => setDraft({ ...draft, replyId: undefined })}><X size={14} /></Button><span>回复 {messageDisplayName(reply)}：{reply.content.trim().replace(/\s+/g, ' ').slice(0, 160)}</span></div>}
       <PromptBar ref={composerRef} draft={draft} setDraft={setDraft} members={members} group={group} external={external} placeholder={group ? `发消息给 ${conversation.title}，@ 提及 · / 命令` : external ? '描述明确任务，然后点击执行外部任务…' : '说说你想完成什么，/ 查看命令…'} onSend={onSend} onActivity={onActivity} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)}>
         {(openMenu, menu) => <ComposerToolbar members={members} snapshot={snapshot} group={group} external={external} busy={busy} active={active} canSend={Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} commandsVisible={menu === 'slash'} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onChangeAgent={onChangeAgent} onSend={onSend} onStop={onStop} />}
       </PromptBar>

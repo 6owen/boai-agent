@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 历史失败与当前群聊轮次隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
+ * [OUTPUT]: 实际悬停工具条与 Base UI 筛选交互；消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
  * [POS]: tests/e2e/steps/history.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -144,9 +144,10 @@ async function inspectRoundActivity(previous: Awaited<ReturnType<typeof startFre
       .click()
     const greetingReply = successful.messages.find(message => message.turnId === greeting.turnId && message.senderId === 'researcher')!
     await expect(runtime.page.locator('.composer-wrap .turn-status')).toHaveCount(0)
+    await runtime.page.locator(`#message-${greetingReply.id} .message-card`).hover()
     await runtime.page.locator(`#message-${greetingReply.id}`).getByRole('button', { name: '查看 研究员 的执行过程', exact: true }).click()
     const panel = runtime.page.locator('.detail-content:visible')
-    await expect(panel.getByRole('combobox', { name: '筛选员工', exact: true })).toHaveValue('researcher')
+    await expect(panel.getByRole('combobox', { name: '筛选员工', exact: true }).locator('[data-slot=select-value]')).toHaveText('研究员')
     await expect(panel.getByRole('region', { name: '调用树与时间线' })).toBeVisible()
     const spans = await runtime.page.evaluate(input => window.boai.request('getConversationTrace', input), { conversationId: successful.conversation.id, messageId: greetingReply.id })
     expect(new Set(spans.map(span => span.agentId)).size).toBe(3)
@@ -159,7 +160,8 @@ async function inspectRoundActivity(previous: Awaited<ReturnType<typeof startFre
     expect((await runtime.page.getByRole('dialog', { name: '节点详情', exact: true }).boundingBox())!.width).toBeGreaterThan(400)
     await runtime.page.screenshot({ path: 'test-results/conversation-trace-current.png', animations: 'disabled' })
     await runtime.page.getByRole('button', { name: '关闭节点详情', exact: true }).click()
-    await panel.getByRole('combobox', { name: '筛选员工', exact: true }).selectOption('')
+    await panel.getByRole('combobox', { name: '筛选员工', exact: true }).click()
+    await runtime.page.getByRole('option', { name: '全部员工', exact: true }).click()
     await panel.locator('.trace-run-summary > summary').click()
     const current = panel.getByRole('region', { name: '本轮详情', exact: true })
     await expect(current).toHaveAttribute('data-turn-id', greeting.turnId!)
@@ -168,7 +170,8 @@ async function inspectRoundActivity(previous: Awaited<ReturnType<typeof startFre
     await expect(current.locator('.delivery-row small')).toHaveText([/^已回复/, /^已回复/, /^已回复/])
     await expect(current.locator('.run-card[data-run-id="' + failedRun.id + '"]')).toHaveCount(0)
     await expect(panel.getByText('OLD_ERR', { exact: false })).not.toBeVisible()
-    await panel.getByRole('combobox', { name: '执行轮次', exact: true }).selectOption(`turn:${failedMessage.turnId}`)
+    await panel.getByRole('combobox', { name: '执行轮次', exact: true }).click()
+    await runtime.page.getByRole('option', { name: /^旧轮故障 ·/ }).click()
     await expect(panel.locator('.trace-detail')).toHaveAttribute('data-turn-id', failedMessage.turnId!)
     await panel.locator('.trace-run-summary > summary').click()
     const history = panel.getByRole('region', { name: '历史轮次详情', exact: true })
@@ -178,9 +181,10 @@ async function inspectRoundActivity(previous: Awaited<ReturnType<typeof startFre
     await history.locator('.error-details > summary').click()
     await expect(history).toContainText('OLD_ERR')
     await runtime.page.screenshot({ path: 'test-results/conversation-trace.png', animations: 'disabled' })
+    await runtime.page.locator(`#message-${greetingReply.id} .message-card`).hover()
     await runtime.page.locator(`#message-${greetingReply.id}`).getByRole('button', { name: '查看 研究员 的执行过程', exact: true }).click()
     await expect(panel.locator('.trace-detail')).toHaveAttribute('data-turn-id', greeting.turnId!)
-    await expect(panel.getByRole('combobox', { name: '筛选员工', exact: true })).toHaveValue('researcher')
+    await expect(panel.getByRole('combobox', { name: '筛选员工', exact: true }).locator('[data-slot=select-value]')).toHaveText('研究员')
     await runtime.page.getByRole('button', { name: '会话操作', exact: true }).click()
     await runtime.page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
     await expect(runtime.page.locator('.detail-content:visible')).toContainText('暂无工作任务')

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -603,6 +603,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       'The report is ready.',
     ])
     const { ctx, directory, tools } = await context(mock.url)
+    const activations: { id: string; name: string }[] = []
+    ctx.onSkillActivated = async (_id, skill) => { activations.push(skill) }
     const skills = path.join(directory, 'skills', 'opaque-resource-id', 'research-note')
     await mkdir(path.join(skills, 'scripts'), { recursive: true })
     await writeFile(path.join(skills, 'SKILL.md'), '---\nname: research-note\ndescription: Research Orion and produce a report\n---\nUse search_knowledge, cite sources, then write a report.\n')
@@ -617,6 +619,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       { id: 'unbound', kind: 'skill', name: 'Private skill', description: '', path: '/does-not-exist', createdAt: '' },
     ]
     await new MastraEngine().run(ctx)
+    expect(activations).toEqual([{ id: 'skill-1', name: 'research-note' }])
     expect(mock.requests[0].tools?.map(tool => tool.function.name)).toContain('skill')
     expect(allMessageText(mock.requests[0])).toContain('research-note')
     expect(allMessageText(mock.requests[0])).not.toContain('Private skill')
@@ -971,10 +974,12 @@ it('maps each real SDK request to its own usage receipt across tool steps, repai
     send(response, replies[index], index, index === 1 ? undefined : { prompt_tokens: 20, completion_tokens: 7, total_tokens: 27 })
   })
   const receipts: { id: string; usage: ModelUsage }[] = []
+  const started: string[] = []
   let phase = 'task'
   const { ctx } = await context(mock.url, {
     modelCallId: 'task-0', onAdditionalModelCall: async () => `${phase}-1`,
     onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
+    onModelCallStarted: async id => { started.push(id) },
   })
   const engine = new MastraEngine()
   await engine.run(ctx)
@@ -984,6 +989,7 @@ it('maps each real SDK request to its own usage receipt across tool steps, repai
   await engine.report(ctx, { text: 'Old report', observedThroughSequence: 1, revisions: 0, status: 'private' })
   expect(mock.requests).toHaveLength(6)
   expect(receipts.map(receipt => receipt.id)).toEqual(['task-0', 'task-1', 'decision-0', 'decision-1', 'memory-0', 'report-0'])
+  expect(started).toEqual(receipts.map(receipt => receipt.id))
   expect(receipts[1].usage).toEqual({})
   expect(receipts.filter(receipt => receipt.id !== 'task-1').every(receipt => JSON.stringify(receipt.usage) === JSON.stringify({ inputTokens: 20, outputTokens: 7, totalTokens: 27 }))).toBe(true)
 })

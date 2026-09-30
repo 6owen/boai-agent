@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: 数据库分页前筛选待处理事项；历史分页/单记录附带对应通知回执；自动化历史按时间与 ID 稳定分页且在数据库内限制条数；支持按会话范围读取记录；读检查写事务及跨连接写锁有界等待（不重试已开始的事务）、备份和空间回收。
+ * [OUTPUT]: 全量记录标题搜索及进行中/完成/需处理条件在分页前求交；数据库分页前筛选待处理事项；历史分页/单记录附带对应通知回执；自动化历史按时间与 ID 稳定分页且在数据库内限制条数；支持按会话范围读取记录；读检查写事务及跨连接写锁有界等待（不重试已开始的事务）、备份和空间回收。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { AutomationHistoryPage, AutomationHistoryQuery } from '../../../shared/domain/automations'
-import { AUTOMATION_ATTENTION_STATUSES } from '../../../shared/domain/automations'
+import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '../../../shared/domain/automations'
 
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
 
@@ -44,7 +44,10 @@ export class ProductStore {
       const where = ["collection = 'automationOccurrences'"], args: (string | number)[] = []
       if (query.id) { where.push('id = ?'); args.push(query.id) }
       if (query.automationId) { where.push("json_extract(value, '$.automationId') = ?"); args.push(query.automationId) }
-      if (query.attentionOnly) {
+      if (query.search?.trim()) { where.push("instr(lower(json_extract(value, '$.name')), lower(?)) > 0"); args.push(query.search.trim()) }
+      if (query.status === 'active') { where.push(`json_extract(value, '$.status') IN (${AUTOMATION_ONGOING_STATUSES.map(() => '?').join(',')})`); args.push(...AUTOMATION_ONGOING_STATUSES) }
+      if (query.status === 'completed') where.push("json_extract(value, '$.status') = 'completed'")
+      if (query.attentionOnly || query.status === 'attention') {
         // Mirror automationNeedsAttention before LIMIT, so old unresolved records cannot disappear behind recent successes.
         where.push(`(json_extract(value, '$.status') IN (${AUTOMATION_ATTENTION_STATUSES.map(() => '?').join(',')}) OR json_extract(value, '$.attentionReason') = 'authorization' OR (json_extract(value, '$.status') = 'cancelled' AND json_extract(value, '$.cancellationCause') = 'budget') OR (json_extract(value, '$.status') = 'completed' AND json_extract(value, '$.deliveryStatus') IN ('blocked', 'partial')))`)
         args.push(...AUTOMATION_ATTENTION_STATUSES)

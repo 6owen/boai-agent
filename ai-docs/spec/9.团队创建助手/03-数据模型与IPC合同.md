@@ -1,12 +1,12 @@
 <!--
 [INPUT]: T1 用户流程、内置助手输出、现有 DigitalAgent/Conversation 和类型化 IPC。
-[OUTPUT]: 拟新增实体、字段约束、状态、请求身份、IPC 与兼容合同。
+[OUTPUT]: 已落地实体、字段约束、宿主能力事实、状态、请求身份、IPC 与兼容合同。
 [POS]: ai-docs/spec/9.团队创建助手/03-数据模型与IPC合同.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md；字段调整时同步 02/04/09。
 -->
 # 数据模型与 IPC 合同
 
-状态：T1 待实施。以下名称为拟新增合同，现有代码还没有这些接口。类型归 shared/domain，业务校验和权威状态归 runtime。
+状态：T1 数据与 IPC 合同已落地；完成状态和真实证据统一见 [08](08-实施步骤与交付清单.md)。类型归 shared/domain/team-creation.ts，业务校验和权威状态归 runtime/modules/teams。
 
 ## 1. 助手输出与宿主方案分开
 
@@ -21,11 +21,11 @@
 | assumptions | 最多 5 条，每条最多 300 字符 |
 | collaborationGuide | 最多 2,000 字符；允许空，不能作为代码调度指令 |
 | members | 1–12 项，每项 name 1–80、role 1–300、instructions 1–2,000 字符 |
-| capabilityNotes | 最多 8 条，每条最多 300 字符，只说明需求或缺口 |
+| capabilityNotes | 保留 schema 兼容：最多 8 条，每条最多 300 字符；模型按当前提示返回空数组，宿主重建产品能力事实，不展示模型自报权限 |
 
 文本经 trim 后按 JavaScript 字符串 length 校验，前后端一致；成员 instructions 总长度最多 16,000 字符。schema 拒绝未知字段。创建后的单个员工继续服从既有员工/系统文件组合长度限制。
 
-宿主在有效输出上增加每项唯一 `memberKey`、预设头像/现有颜色、plannerVersion 和源 generationId。memberKey 只在本草稿内识别一张卡；最终映射到独立 agentId。手动新增成员也由宿主分配 memberKey。修改、排序不改变 key；重新生成整份方案产生新 key。
+宿主在有效输出上先以 teamCapabilityNotes(scenarioKind) 填写权威能力说明，编辑保存时同样重建；该字段不可用来变更权限或记忆范围。其余模型方案不由固定模板替代。宿主再增加每项唯一 `memberKey`、预设头像/现有颜色、plannerVersion 和源 generationId。memberKey 只在本草稿内识别一张卡；最终映射到独立 agentId。手动新增成员也由宿主分配 memberKey。修改、排序不改变 key；重新生成整份方案产生新 key。
 
 模型不输出 connectionId、modelId、allowCommands、skillIds、knowledgeIds、目录或真实员工 ID。未知权限字段使结果失效，不能静默当作已授权。
 
@@ -52,7 +52,7 @@
       "instructions": "给出具体且有依据的修改意见，区分事实错误与风格建议，不替其他成员发言。"
     }
   ],
-  "capabilityNotes": ["实时网页资料需要另行接通相应能力"]
+  "capabilityNotes": []
 }
 ```
 
@@ -96,7 +96,7 @@ attempts 每项记录独立 callId、阶段 initial/repair、状态和已知/未
 | 竞争保护 | version、执行持有者/attempt、取消门禁；条件更新不能由旧运行覆盖新状态 |
 | 回执 | committedAt、真实结果 ID、错误码/可重试步骤；committed 与对象在同一事务落库 |
 
-可以复用 ProductStore 的 records 机制，建议集合 teamDrafts/teamGenerations/teamCreations；不另建数据库。字段可以在实现中按现有命名调整，但请求、版本、归属、冻结载荷与原子边界不可省略。
+复用 ProductStore 的 records 机制，集合为 teamDrafts/teamGenerations/teamCreations；不另建数据库。字段可以在实现中按现有命名调整，但请求、版本、归属、冻结载荷与原子边界不可省略。
 
 创建状态和生成状态独立：生成成功不等于创建成功。committed 是终态；后来删掉员工不使旧操作变成“未完成”。
 
@@ -110,7 +110,7 @@ Conversation 可增加同类 creationSource 与可选 teamSetup：purpose、coll
 
 不增加 Team 权限实体，不预建各成员单聊，不在 Conversation 里复制一份员工配置。不向 workspace 写入其他成员的私有目录。
 
-## 6. 拟新增 IPC
+## 6. 已落地 IPC
 
 | 方法 | 关键输入 | 输出/行为 |
 | --- | --- | --- |

@@ -1,0 +1,7 @@
+{
+  "name": "OpenAI 兼容接口",
+  "provider": "openai-compatible",
+  "model": "deepseek-v4-pro",
+  "endpointHost": "api.deepseek.com",
+  "credentialsSaved": false
+}

@@ -1,0 +1,14 @@
+{
+  "caseVersion": "T1-v1",
+  "maxCases": 7,
+  "maxRequests": 14,
+  "maxOutputTokensPerRequest": 8192,
+  "deadlineMsPerCase": 120000,
+  "hashes": {
+    "src/shared/domain/team-creation.ts": "54c81753bbdd781d99500af5600a0a0b6c8075b382fc9861d7255cceaf275e20",
+    "src/runtime/adapters/mastra/team-planner.ts": "8a0471f3d3b782e508a1050104a6f6187426c2b32ad0207ce6ef996d324e033f",
+    "src/runtime/modules/teams/team-generation.ts": "ef2e3c17c180c9775d3fdd45ed8d02cdb29b05467f7b7d4c6d471392bcd6c804",
+    "tests/evaluation/team-creation.ts": "df2038c8891981bd8483c711191de139904a1e24e0a5560031c18b28405584ef",
+    "pnpm-lock.yaml": "dcc2f9cba18634aa86c474111a74d0587565fb49b7200d00a2bbf74b6f2c2f33"
+  }
+}

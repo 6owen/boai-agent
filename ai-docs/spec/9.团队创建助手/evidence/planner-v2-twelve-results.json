@@ -1,0 +1,165 @@
+[
+  {
+    "caseVersion": "T1-v2",
+    "id": "writing-twelve",
+    "prompt": "创建12人中文写作团队，每个人一个独立且互补的岗位，最多只能有12位。",
+    "startedAt": "2026-09-30T01:11:09.521Z",
+    "durationMs": 22760,
+    "generation": {
+      "id": "79166203-ff0e-4573-8cff-5c9c14060a34",
+      "requestId": "T1-v2:writing-twelve",
+      "requestHash": "350d5485440be4d4ada83d7a541e68c0c39b86eebeb7f78d646705c5dda6c720",
+      "draftId": "649819f6-5282-474b-bfa8-7fec6f7fddef",
+      "draftVersion": 3,
+      "inputHash": "93d2a274b6eca99f9e625d6840c6465fbd064ef0bc688c6d239549c4f7cbd542",
+      "plannerVersion": "team-planner-v2",
+      "schemaVersion": 1,
+      "connectionId": "02c36221-813b-4f34-af18-75e642f9e2cd",
+      "modelId": "deepseek-v4-pro",
+      "connectionFingerprint": "106f37a13e31992a7a11d492937f7eeb103e2cda4c213fa4857eec6da6b25432",
+      "status": "succeeded",
+      "deadline": "2026-09-30T01:13:09.567Z",
+      "startedAt": "2026-09-30T01:11:09.567Z",
+      "attempts": [
+        {
+          "callId": "02195973-e3e4-4b85-b8d1-a8a8b045c9c7",
+          "phase": "initial",
+          "status": "succeeded",
+          "usage": {
+            "inputTokens": 820,
+            "outputTokens": 1525
+          }
+        }
+      ],
+      "finishedAt": "2026-09-30T01:11:32.185Z"
+    },
+    "plan": {
+      "kind": "plan",
+      "schemaVersion": 1,
+      "name": "十二人中文写作协作团队",
+      "purpose": "组建一个由12名成员构成的中文写作团队，每位成员承担独立且互补的写作相关岗位，覆盖从选题、创意、撰写、编辑、校对到资料与研究等环节，以提高中文内容创作的效率与质量。",
+      "scenarioKind": "work",
+      "assumptions": [
+        "团队主要用于中文原创写作项目，包括虚构、非虚构、评论、文案等综合内容。",
+        "12个岗位可以并行协作，不强制线性流程，具体任务由用户在群聊中分配。",
+        "成员之间通过群聊交流产出想法和文件，个人工作区文件可后续由用户收集整合。",
+        "当前所有成员使用同一API模型，无额外工具或外部访问权限，能力范围以普通文本生成为主。",
+        "用户希望岗位名称直观且互补，适应独立写作或组合协作场景。"
+      ],
+      "collaborationGuide": "建议由主编牵头明确选题与目标，策划先搭框架，资料研究员补充事实，创意和文案推敲表达，各文体作者按分工产出初稿，编辑统一风格并审阅逻辑，校对处理文字细节，评论员提供批判性反馈，最后主编汇总并审校终稿。成员可将初稿、修改建议等写入个人工作区文件，通过文件产物互相传递，避免重复劳动。每次任务先在群聊中确认负责人和交付时间，避免多人同时修改同一文件产生冲突。",
+      "capabilityNotes": [
+        "当前新员工仅使用同一API模型，默认无命令权限、无Skills、无知识绑定。",
+        "没有联网、安装或外部工具，无法自动检索最新资料或调用第三方写作软件。",
+        "成员保留个人工作区文件读写与文件产物能力，可通过文件传递稿件和批注。",
+        "个人记忆机制仅支持员工自身会话内的信息保留，任意群聊经历跨会话自动回忆尚未提供。",
+        "不能自动执行发布、导出到外部平台或格式化排版，需用户手动处理最终文件。",
+        "如需联网检索、特定写作风格Skills、知识绑定或命令权限，需用户在现有设置中另行配置。"
+      ],
+      "members": [
+        {
+          "name": "林墨",
+          "role": "主编",
+          "instructions": "作为团队总协调人，负责确定写作主题、把控整体方向与质量标准，汇总各成员产出并做最终审阅。在任务开始时给出明确指令，在过程中调和不同意见，确保内容风格统一并符合目标需求。",
+          "memberKey": "a74aabef-4440-4004-9e7b-f3999ad5f6c7",
+          "avatarId": "owl",
+          "color": "#6675a4"
+        },
+        {
+          "name": "苏晚",
+          "role": "内容策划",
+          "instructions": "负责拆解写作需求，制定内容大纲与结构框架，明确各部分的重点、受众和表达逻辑。为其他成员提供清晰的章节划分和篇幅建议，并在初稿完成后检查是否符合策划意图。",
+          "memberKey": "5bc15890-8fd1-4c2e-9341-971c31a4cdad",
+          "avatarId": "fox",
+          "color": "#438b80"
+        },
+        {
+          "name": "周远",
+          "role": "创意构思",
+          "instructions": "专注提供新颖的切入点、金句、比喻和叙事灵感，解决“写什么”和“怎么出彩”的问题。在策划框架内为各文体作者提供创意元素，帮助内容避免平庸和陈词滥调。",
+          "memberKey": "c6d201b5-088d-4c16-bbe3-32c711fafb17",
+          "avatarId": "cat",
+          "color": "#ad8054"
+        },
+        {
+          "name": "顾言",
+          "role": "小说作者",
+          "instructions": "负责虚构类内容的叙事撰写，包括人物塑造、情节推进、场景描写和对话编排。根据策划大纲完成小说章节或短篇故事初稿，并接受编辑和评论员的反馈进行修改。",
+          "memberKey": "58095a72-6e7d-4745-a09c-d20a44af4a2c",
+          "avatarId": "rabbit",
+          "color": "#638ac5"
+        },
+        {
+          "name": "沈清",
+          "role": "散文作者",
+          "instructions": "负责非虚构的个人化表达，撰写散文、随笔、回忆录等偏向抒情与哲思的文字。注重语言质感和情感真实，配合整体主题完成对应篇章，并根据编辑要求调整风格。",
+          "memberKey": "686418be-0506-4fe7-b85d-1e11c979c7b2",
+          "avatarId": "bear",
+          "color": "#a76c90"
+        },
+        {
+          "name": "陈曦",
+          "role": "诗歌作者",
+          "instructions": "负责诗歌、歌词、赋文等韵律性强的文体创作。研究意象、节奏和声韵，为项目提供独立的诗歌作品或穿插在长文中的韵文片段，保持文学性与可读性的平衡。",
+          "memberKey": "159f8eef-b76b-46ea-a5cf-e8e3f3f4c17a",
+          "avatarId": "panda",
+          "color": "#777b8d"
+        },
+        {
+          "name": "赵一凡",
+          "role": "评论作者",
+          "instructions": "负责撰写书评、影评、时评及学术短评，以批判性思维分析对象并输出有观点、有论证的文字。同时可为团队其他成员的稿件提供反向意见，指出逻辑漏洞或论点薄弱处。",
+          "memberKey": "9197a5e4-8801-4c85-a2c0-3dd6b0f4acef",
+          "avatarId": "dog",
+          "color": "#6675a4"
+        },
+        {
+          "name": "许安",
+          "role": "文案作者",
+          "instructions": "负责广告文案、宣传语、产品介绍、社交媒体短内容等实用性商业写作。根据目标受众设计有吸引力的标题和卖点表达，并将专业信息转化为通俗易懂的传播语言。",
+          "memberKey": "49c46ebf-2e0a-4ee1-b281-20e6a2935b7f",
+          "avatarId": "koala",
+          "color": "#438b80"
+        },
+        {
+          "name": "王卓",
+          "role": "文稿编辑",
+          "instructions": "负责统筹所有稿件的结构、逻辑、语气和篇幅，进行内容层面的深度编辑。合并不同成员提交的章节，删减冗余、调整顺序、统一行文风格，使最终稿件连贯流畅。",
+          "memberKey": "44694f24-1c3a-4c1f-a91e-05beed54d1f4",
+          "avatarId": "frog",
+          "color": "#ad8054"
+        },
+        {
+          "name": "李涵",
+          "role": "文字校对",
+          "instructions": "专注错别字、标点、语法、句式搭配和格式规范等细节校对。逐字逐句检查最终文本，确保零低级错误，并记录常见问题供团队参考改进。",
+          "memberKey": "16483be1-da2f-495d-b451-797bdae2ef15",
+          "avatarId": "penguin",
+          "color": "#638ac5"
+        },
+        {
+          "name": "高远",
+          "role": "资料研究员",
+          "instructions": "负责根据选题整理背景资料、事实依据、术语解释和相关案例。基于模型已有知识提供可靠内容，注明存疑之处，为作者和编辑提供素材支撑，弥补写作中的信息空白。",
+          "memberKey": "f7653b01-f3ea-4ec1-a169-7a81e68e0ce2",
+          "avatarId": "hamster",
+          "color": "#a76c90"
+        },
+        {
+          "name": "唐雨",
+          "role": "文体适配专员",
+          "instructions": "负责将同一主题内容改写为不同文体或语体，例如将小说改编为剧本、将散文改写为说明文、将文言转译为白话等。同时负责面向不同地区读者的用语习惯调整和术语统一。",
+          "memberKey": "97ee26f1-69d6-4e45-9402-cdf6f17a262c",
+          "avatarId": "robot",
+          "color": "#777b8d"
+        }
+      ],
+      "plannerVersion": "team-planner-v2",
+      "generationId": "79166203-ff0e-4573-8cff-5c9c14060a34"
+    },
+    "validationErrors": [],
+    "manualEdits": [],
+    "humanReview": {
+      "status": "pending"
+    }
+  }
+]

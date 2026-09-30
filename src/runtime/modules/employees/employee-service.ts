@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: 版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
+ * [OUTPUT]: 已提交员工整批内存安装与完整重载； 版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -42,6 +42,12 @@ export class EmployeeService {
   values(): DigitalAgent[] { return [...this.definitions.values()].map(clone) }
   /** Install only a successfully persisted definition; callers never retain the registry object. */
   install(id: string, agent: DigitalAgent) { this.definitions.set(id, clone(agent)) }
+  /** Clone the entire batch before one registry swap; no partially installed snapshot. */
+  installBatch(agents: DigitalAgent[], replace = false) {
+    const next = replace ? new Map<string, DigitalAgent>() : new Map(this.definitions)
+    for (const agent of agents) next.set(agent.id, clone(agent))
+    this.definitions = next
+  }
   async initialize(): Promise<StoredRecord[]> {
     this.definitions = new Map((await this.store.load<DigitalAgent>('agents')).map(agent => [agent.id, agent]))
     const updates: StoredRecord[] = []

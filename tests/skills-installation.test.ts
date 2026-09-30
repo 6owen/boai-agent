@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 AppService/SQLite、完整 ZIP、受控 HTTPS/GitHub/商店响应与取消信号。
- * [OUTPUT]: 真实更新写入断点快照恢复与上游名称/路径变更拒绝；安装取消/备份竞争、实际包与来源、更新确认/回滚、批量检查、使用阻断和删除清理验证。
+ * [OUTPUT]: 场景独立 home 隔离本机扫描；真实更新写入断点快照恢复与上游名称/路径变更拒绝；安装取消/备份竞争、实际包与来源、更新确认/回滚、批量检查、使用阻断和删除清理验证。
  * [POS]: Skills 多来源安装集成回归；不访问真实网络或执行包内代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,7 +30,7 @@ async function setup(options: { skillDownloads?: DownloadTransport; skillMarketp
   const root = await mkdtemp(join(tmpdir(), 'boai-install-')); roots.push(root)
   const dataPath = join(root, 'data')
   const start = async (location = dataPath) => {
-    const service = new AppService({ dataPath: location, engine: { run: async () => {}, test: async () => 'ok' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {}, ...options })
+    const service = new AppService({ dataPath: location, skillDiscovery: { homeDir: join(root, 'isolated-home') }, engine: { run: async () => {}, test: async () => 'ok' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {}, ...options })
     services.push(service); await service.init()
     const api = <K extends Method>(method: K, input: Methods[K]['input']) => service.handle(method, input) as Promise<Methods[K]['output']>
     return { service, api }

@@ -1,0 +1,15 @@
+{
+  "caseId": "writing-twelve",
+  "caseVersion": "T1-v2",
+  "maxCases": 1,
+  "maxRequests": 2,
+  "maxOutputTokensPerRequest": 8192,
+  "deadlineMsPerCase": 120000,
+  "hashes": {
+    "src/shared/domain/team-creation.ts": "3e4a8e5f1bad780091c71bb4865612783b35fc5d0217b43ac070aec2d33fbefb",
+    "src/runtime/adapters/mastra/team-planner.ts": "74bd5677b5347896690426ed07bb15a1d7d9863e24defcdeb044dbe5ce7327b9",
+    "src/runtime/modules/teams/team-generation.ts": "ef2e3c17c180c9775d3fdd45ed8d02cdb29b05467f7b7d4c6d471392bcd6c804",
+    "tests/evaluation/team-creation.ts": "1862fceb8a909e6df4fab6a12304c6dca324e7e0d627c3ad766847b46c5c4b2d",
+    "pnpm-lock.yaml": "dcc2f9cba18634aa86c474111a74d0587565fb49b7200d00a2bbf74b6f2c2f33"
+  }
+}

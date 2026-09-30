@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 仓库全局约束、无 Node 版本门禁的 pnpm runtime、初始化 CLI、统一位于 `.agents` 的项目 skills、三应用、Web/Admin Base UI 与 Web Iconify UI、客户端 API/Server Route/后端实现分层、含 Web emailAndPassword/loopback local credential sign-in 的 Capability Profile、共享 Auth/Admin role-permission-ban/Consent/Analytics/Newsletter/Observability/Jobs/Webhooks、Admin audit、Data Operations、Projects/Content/Search/User Assets/Developer API/Product AI、Manifest/Environment/DB、部署/CI、Canvasight 与文档协议。
-[OUTPUT]: sidebar 主页面与右侧详情标签的作用域隔离；已发布 JSON 监控的确定性比较、原子检查点与清理/恢复边界；明确额度追加与累计用量/工作身份/安全续行边界；自动化通知意图与结果同事务、原子领取/提交回执及重启不盲目重发；自动化任务聊天独立绑定/普通聊天复用隔离、编辑标签/完整历史和精确结果定位；自动化明确补充关联与原始工作身份；自动化统一 occurrence 预算/唯一调用回执与容量再认领；自动化跨工作来源/证据与定向取消待退出；自动化事务受理/分离版本/投递意图及原生时钟权威；Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
+[OUTPUT]: 团队草稿/生成预算、冻结文件准备/原子发布与显式恢复、群背景和 T2/T3 隔离；定时任务七项表单、受控草稿/创建回执与全量历史查询边界；个人资料稳定身份/原子保存与去重活动观测边界；sidebar 主页面与右侧详情标签的作用域隔离；已发布 JSON 监控的确定性比较、原子检查点与清理/恢复边界；明确额度追加与累计用量/工作身份/安全续行边界；自动化通知意图与结果同事务、原子领取/提交回执及重启不盲目重发；自动化任务聊天独立绑定/普通聊天复用隔离、编辑标签/完整历史和精确结果定位；自动化明确补充关联与原始工作身份；自动化统一 occurrence 预算/唯一调用回执与容量再认领；自动化跨工作来源/证据与定向取消待退出；自动化事务受理/分离版本/投递意图及原生时钟权威；Codex 登录的本地 ACP 连接与执行边界；本地 Trace 与业务交付分离；持久父子工作/依赖/预算/结果边界、Electron BDD 与 Vitest 分层测试规约、AI 统一规约、无 Node pin 的 runtime/CLI、clone 后 retained-source discovery/spec/显式授权实现 skill、顶级目录/Web 分层与 Base UI/Iconify-only 边界/Social-only 可用且本地开发不受 OAuth 阻塞的 Capability Profile/持久化管理员权限与公开端点隔离/Analytics/Newsletter/Content/Search/Developer API/Product AI/异步基础设施/共享表现层/数据恢复/配置索引、统一 skill 来源、自动化边界与同步检查清单。
 [POS]: 位于仓库根目录，作为 Codex / Claude / 其他代理的权威操作手册。
 
 [PROTOCOL]:
@@ -137,6 +137,7 @@
 - 自动化结构化监控仅读取明确授权聊天的已发布 JSON 来源；比较、累计阈值、冷却由代码决定，数据缺失/过期不能记作无变化。规则/来源证据、结果、成功检查点与通知意图同事务；失败不推进检查点，来源/规则/授权改变及备份恢复重建基线。停止后等待读取实际退出再释放容量，重启不自动重读；清空聊天同步清除私有比较值与检查点，保留触发去重身份。
 - 自动化通知意图与 occurrence 结果同事务，主进程原子领取后再提交系统通知；submitted 仅表示提交，不证明送达/已读。回执失联或提交中重启保留 unknown，不盲目重发；恢复备份不重发旧提醒。通知偏好、回执与业务交付/预算分离，点击使用明确消息或 occurrence 身份。
 - 新计划默认每次独立任务聊天，员工必须显式选择；旧计划保留指定聊天。聊天记录与 occurrence/预算/投递意图同事务绑定，准备失败可见，重复触发不新建聊天；普通单聊复用排除自动化聊天。编辑复用现有详情标签与草稿守卫；完整历史按稳定游标分页，结果跳转携带具体消息身份。
+- 定时任务普通创建仅保留七项常驻配置，执行对象明确选择；Agent 只生成可审阅草稿，使用明确模型连接、校验获准身份和支持的周期，迟到回填不能覆盖新版本。草稿模型用量单独记账，不制造 Work/occurrence；用户提交绑定稳定请求身份，定义与创建回执同事务，响应未知先核对而不新建。完整历史搜索/状态过滤在数据库分页前执行；隐藏页面暂停列表读取，运行和通知回执不受影响。
 - 自动化周期时钟仅用 Mastra 原生 schedules；产品定义/触发身份由 AutomationRepository 的 SQLite 事务管理。编辑、执行与日程版本分离，受理与待投递意图同事务，消息/轮次与消费意图同事务；提交后才调度。配置同步可有界重试，业务执行与已开始的数据库事务不得自动重放。
 
 - 自动化受理时原子创建每次触发的共享预算；初始判断、执行步骤、修复、记忆、子工作与重试按唯一请求身份预留/结算，未知用量不按零处理，不为普通聊天制造 Work。等待不重置绝对期限，恢复先事务认领计算槽；旧记录无可信请求账本时拒绝隐式续用。用户补充必须显式关联 occurrence，提问关联与消息同事务提交，仍用最初触发的工作身份；普通聊天不解除自动化等待。
@@ -145,11 +146,23 @@
 
 - Mastra Trace 仅观测真实执行，绑定会话/轮次/员工/运行并随会话清理和备份；采集失败不重试业务工具，不把 Span 结束当作任务交付。会话输入框上方不展示状态条，回复旁图标进入 Trace；任务与产物只承载真实工作目标、交付状态与文件。
 
+# Team Creation Boundaries
+
+- 团队创建只在通讯录独立详情标签进行；单一未结束草稿按版本保存，生成无员工身份/工具/工作区/记忆，最多两次调用、绝对期限与共享容量，用量未知不得按零处理。
+- 确认时事务冻结方案与对象身份；文件按操作归属和 hash 在受管暂存区准备，复核配置/完整目录后一次事务发布全部员工、可选群和回执。重启只核对，继续或放弃必须明确；清理不得覆盖或删除外部修改，未结束创建与备份互斥。
+- 团队来源仅解释配置，不改变员工身份、既有工作区或记忆。群 teamSetup 是可编辑背景，不是当前请求，不自动制造消息/Work，也不启动正式游戏。T2/T3 未交付前不得宣称完整跨会话经历或游戏规则可用。
+
 # Local Agent Connections
 
 - 模型连接页统一管理 API 连接与本地 ACP 启动项。扫描和保存不执行或安装外部程序；测试必须成功创建 ACP 会话后才记录验证。
 - Codex OAuth 归 Codex 自身管理；BoAI 只保存账号来源标识、程序身份与明确的 `CODEX_HOME`，不复制登录 token。Node 类型 ACP 使用应用运行时，继续过滤继承环境中的模型密钥。
 - ACP 保持单聊显式任务、外部自有工具与新会话边界，不自动成为 Mastra 模型、群协作或 A2A 后端。
+
+# Personal Profile Boundaries
+
+- 本人身份固定为 `senderType=user && senderId=user`，不能按 automation origin 判断本人；资料只影响显示和新消息名称，不回写旧消息、员工配置或模型记忆。
+- 个人资料在 SQLite 单例按 revision 原子保存，头像宿主独立校验；快照为唯一已提交资料来源。
+- 活动按唯一模型调用记账；自动化沿用 budgetModelCalls 权威回执，普通聊天不创建 Work。未知回执不作零，统计失败不重试业务；会话清理同步清除关联观测，资料保留。
 
 # Frontend Rules
 

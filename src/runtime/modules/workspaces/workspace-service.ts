@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: 员工配置、受管文件和范围内记忆。
+ * [OUTPUT]: 现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
+ * [POS]: 工作区文件格式唯一来源，初始人格及记忆行为保持不变。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { prepareEnvironment, describeEnvironment } from './environment-plan'
 import { createHash, randomUUID } from 'node:crypto'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
@@ -8,6 +14,8 @@ const digest = (text: string) => createHash('sha256').update(text).digest('hex')
 const sourceNames = ['AGENTS.md', 'SOUL.md'] as const
 const descriptions: Record<string, string> = { 'AGENTS.md': '工作规则与工具使用说明 · 所有获准会话', 'SOUL.md': '表达风格与协作习惯 · 所有获准会话', 'IDENTITY.md': '员工身份 · 从员工资料生成', 'USER.md': '当前范围用户资料 · 生成视图', 'MEMORY.md': '当前范围有效记忆 · 生成视图' }
 const DEFAULT_SOUL = '用自然、清楚、具体的语言交流。日常问候简短回应；有明确任务时再开展工作。尊重其它成员的身份，不代替他人发言。\n'
+const identityView = (agent: DigitalAgent) => `<!-- BoAI 生成视图：请编辑员工资料 -->\n# ${agent.name}\n\n${agent.role}\n\n员工 ID：${agent.id}\n`
+const memoryHeader = (namespace: string, epoch: number, conversationId?: string) => `<!-- BoAI 生成视图：请在应用的记忆入口编辑。外部修改不会自动成为记忆。 -->\n# ${conversationId ? '当前会话' : '员工基础资料'}\n范围：${namespace}\n版本：${epoch}\n\n`
 interface Manifest { version: 1; hashes: Record<string, string>; configVersion: number; updatedAt: string }
 interface PendingUpdate { name: 'AGENTS.md' | 'SOUL.md'; oldHash: string; nextHash: string; oldVersion: number }
 
@@ -53,6 +61,15 @@ export class WorkspaceService {
     const info = await lstat(path)
     if (!info.isFile() || info.size > 64 * 1024) throw new Error(`${name} 不是有效文件或超过 64 KiB`)
     const content = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(path)); this.validateSource(content); return content
+  }
+  /** Pure unpublished blueprint; the team file journal controls where/when it is written. */
+  initialFiles(agent: DigitalAgent, timestamp: string) {
+    safeId(agent.id); this.validateSource(agent.instructions)
+    if (agent.instructions.length + DEFAULT_SOUL.length > 12000) throw new Error('工作规则与表达风格超过 12,000 字符')
+    const header = memoryHeader(`employee:${agent.id}:profile`, 0)
+    const contents = { 'workspace/AGENTS.md': agent.instructions, 'workspace/SOUL.md': DEFAULT_SOUL, 'workspace/IDENTITY.md': identityView(agent), 'workspace/MEMORY.md': header + '尚无记忆。\n', 'workspace/USER.md': header + '尚无用户手动保留的资料。\n' }
+    const hashes = Object.fromEntries(Object.entries(contents).map(([name, value]) => [name.slice('workspace/'.length), digest(value)]))
+    return { ...contents, 'state/bootstrap-manifest.json': JSON.stringify({ version: 1, hashes, configVersion: agent.configVersion, updatedAt: timestamp } satisfies Manifest, null, 2) }
   }
   async initialize(agent: DigitalAgent) {
     const root = this.root(agent.id), initialized = await exists(join(this.state(agent.id), 'bootstrap-manifest.json'))
@@ -162,9 +179,9 @@ export class WorkspaceService {
       projected.push(block); projectedBytes += Buffer.byteLength(block)
     }
     const body = projected.join('\n') + (projected.length < memory.entries.length ? '\n此视图仅显示最近条目，完整记忆请在应用中查看。\n' : '')
-    const header = `<!-- BoAI 生成视图：请在应用的记忆入口编辑。外部修改不会自动成为记忆。 -->\n# ${conversationId ? '当前会话' : '员工基础资料'}\n范围：${memory.namespace}\n版本：${memory.epoch}\n\n`
+    const header = memoryHeader(memory.namespace, memory.epoch, conversationId)
     const files: [string, string][] = [
-      [join(this.root(agent.id), 'IDENTITY.md'), `<!-- BoAI 生成视图：请编辑员工资料 -->\n# ${agent.name}\n\n${agent.role}\n\n员工 ID：${agent.id}\n`],
+      [join(this.root(agent.id), 'IDENTITY.md'), identityView(agent)],
       [join(root, 'MEMORY.md'), header + (body || '尚无记忆。\n')],
       [join(root, 'USER.md'), header + (memory.entries.filter(entry => entry.origin !== 'model').slice(0, 4).map(entry => `- ${entry.content}`).join('\n') || '尚无用户手动保留的资料。\n')],
     ]

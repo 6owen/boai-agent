@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 下拉字段统一使用 shadcn Select；引导从模型连接接入本地 Agent；包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: 既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；引导从模型连接接入本地 Agent；包含头像选择/上传的员工和群配置编辑器及员工模板；群聊直接展示 1–12 人头像网格和设置字段，无重复标题/说明，独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -64,15 +64,21 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onO
   const [title, setTitle] = useState(conversation?.title ?? '')
   const [ids, setIds] = useState(conversation?.agentIds ?? [])
   const [knowledge, setKnowledge] = useState(conversation?.sharedKnowledgeIds ?? [])
+  const [teamSetup, setTeamSetup] = useState(conversation?.teamSetup ?? null)
   const { busy, error, run } = useMutation()
   const guard = useContext(GuardContext)
-  useDirty({ title, ids, knowledge })
-  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge }); await onSaved(result); guard.saved(onClose) }) }
+  useDirty({ title, ids, knowledge, teamSetup })
+  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
   return <EditorFrame leading={<GroupMembers agents={snapshot.agents} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<><Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
     <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
 
+      {teamSetup && <>
+        <Field label="团队目的" full><Textarea required maxLength={1000} value={teamSetup.purpose} onChange={e => setTeamSetup({ ...teamSetup, purpose: e.target.value })} /></Field>
+        <Field label="协作建议" hint="这是背景建议，不改变发言调度或工具权限" full><Textarea maxLength={2000} value={teamSetup.collaborationGuide} onChange={e => setTeamSetup({ ...teamSetup, collaborationGuide: e.target.value })} /></Field>
+        <Button type="button" variant="outline" onClick={() => setTeamSetup(null)}>移除团队背景</Button>
+      </>}
       <div className="field full"><span className="field-label">群内共享知识</span><p className="field-hint">只有明确共享的资料才可用于这个群的任务。员工私聊不会自动加入群上下文。</p><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={knowledge} onChange={setKnowledge} empty="还没有可共享的知识资料。" /></div>
     </form>
   </EditorFrame>

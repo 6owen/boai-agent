@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 清除监控私有比较证据与来源检查点；清理通知正文引用，待提交抑制/提交中未知并保留最小身份；清理自动化待回答轮次引用；按会话清理尚无 Work 的 occurrence 预算与调用回执；Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料，清除自动化投递正文/跨工作证据、终结失去上下文的等待并保留去重身份。
+ * [OUTPUT]: 清除会话关联的模型调用/技能激活/执行区间，保留个人资料；清除监控私有比较证据与来源检查点；清理通知正文引用，待提交抑制/提交中未知并保留最小身份；清理自动化待回答轮次引用；按会话清理尚无 Work 的 occurrence 预算与调用回执；Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料，清除自动化投递正文/跨工作证据、终结失去上下文的等待并保留去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -77,7 +77,7 @@ export class ConversationHistory {
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes', 'budgetModelCalls']) {
+      for (const collection of ['profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes', 'budgetModelCalls']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       await collect('snapshots', item => item.conversation?.id === id || runIds.has(item.id))

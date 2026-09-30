@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 AppService 与隔离的 Agent/全局/插件技能目录。
- * [OUTPUT]: 首次打开即发现本机技能、链接去重、插件开关、错误可见、刷新/重启及收藏不授权回归。
+ * [OUTPUT]: 显式刷新缓存后核对外部变化；首次打开即发现本机技能、链接去重、插件开关、错误可见、刷新/重启及收藏不授权回归。
  * [POS]: tests 的本机技能发现集成验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -52,7 +52,7 @@ test('refresh and restart retain favorite identities, exclude disabled plugins a
   await writeFile(join(codexHome, 'config.toml'), '[plugins."kata-code@plugins-cli"]\nenabled = false\n')
   await skill(join(homeDir, '.agents/skills/new'), 'new')
   await writeFile(join(homeDir, '.agents/skills/new/SKILL.md'), 'malformed')
-  const refreshed = await api('listLocalSkills', undefined)
+  const refreshed = await api('listLocalSkills', { refresh: true })
   expect(refreshed.skills.some(skill => skill.source === 'plugin')).toBe(false)
   expect(refreshed.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: expect.stringContaining('/new') })]))
   await service.close(); const restarted = await start()
