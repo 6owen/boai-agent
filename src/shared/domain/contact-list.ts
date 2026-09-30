@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 通讯录员工/群聊身份与用户分类、排序操作。
- * [OUTPUT]: 独立于会话的版本化通讯录偏好合同，以及未排序条目的稳定名称排序。
+ * [OUTPUT]: 独立于会话的版本化通讯录偏好合同、分类前后落点排序，以及未排序条目的稳定名称排序。
  * [POS]: shared/domain 的通讯录展示合同，不改变员工配置或聊天状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,6 +16,7 @@ export type ContactListAction =
   | { kind: 'create-category'; name: string }
   | { kind: 'rename-category'; categoryId: string; name: string }
   | { kind: 'delete-category'; categoryId: string }
+  | { kind: 'move-category'; categoryId: string; targetId: string; placement: 'before' | 'after' }
   | { kind: 'assign-category'; agentId: string; categoryId?: string }
   | { kind: 'move'; itemKind: 'agent' | 'group'; id: string; targetId: string; placement: 'before' | 'after' }
 

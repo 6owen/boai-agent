@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品事务、现存员工/群聊、版本化通讯录操作及团队发布身份和成员。
- * [OUTPUT]: 分类/顺序原子持久化，团队同事务新建唯一名称分类并归入成员；归类与组内排序分离，过期写入拒绝，删除分类保留员工。
+ * [OUTPUT]: 分类/顺序原子持久化，分类按完整列表的前后落点重排且保留成员归属；团队同事务新建唯一名称分类并归入成员；归类与组内排序分离，过期写入拒绝，删除分类保留员工。
  * [POS]: employees 的通讯录展示偏好，不写员工定义或会话列表偏好。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,6 +20,7 @@ export const contactListChangeSchema = z.object({
     z.object({ kind: z.literal('create-category'), name }).strict(),
     z.object({ kind: z.literal('rename-category'), categoryId: id, name }).strict(),
     z.object({ kind: z.literal('delete-category'), categoryId: id }).strict(),
+    z.object({ kind: z.literal('move-category'), categoryId: id, targetId: id, placement: z.enum(['before', 'after']) }).strict(),
     z.object({ kind: z.literal('assign-category'), agentId: id, categoryId: id.optional() }).strict(),
     z.object({ kind: z.literal('move'), itemKind: z.enum(['agent', 'group']), id, targetId: id, placement: z.enum(['before', 'after']) }).strict(),
   ]),
@@ -65,6 +66,13 @@ export class ContactListRepository {
       } else if (action.kind === 'delete-category') {
         value.categories = value.categories.filter(category => category.id !== action.categoryId)
         value.categoryByAgentId = Object.fromEntries(Object.entries(value.categoryByAgentId).filter(([, categoryId]) => categoryId !== action.categoryId))
+      } else if (action.kind === 'move-category') {
+        const category = value.categories.find(category => category.id === action.categoryId)!
+        if (!value.categories.some(category => category.id === action.targetId)) throw new Error('目标员工分类不存在')
+        if (action.categoryId !== action.targetId) {
+          value.categories = value.categories.filter(category => category.id !== action.categoryId)
+          value.categories.splice(value.categories.findIndex(category => category.id === action.targetId) + (action.placement === 'after' ? 1 : 0), 0, category)
+        }
       } else if (action.kind === 'assign-category') {
         if (!await tx.get<DigitalAgent>('agents', action.agentId)) throw new Error('员工不存在')
         if (action.categoryId) value.categoryByAgentId[action.agentId] = action.categoryId

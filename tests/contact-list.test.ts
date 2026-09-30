@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 AppService/SQLite 与隔离通讯录数据。
- * [OUTPUT]: 分类和排序跨重启持久化、跨类型/分类拒绝、搜索落点保留完整顺序、过期写入和配置隔离验证。
+ * [OUTPUT]: 分类前后落点排序/重启恢复且不改成员归属；非法分类落点和过期排序不覆盖偏好；跨类型/分类拒绝、搜索落点保留完整顺序和配置隔离验证。
  * [POS]: 通讯录持久偏好模块回归；不启动 Electron 或执行模型请求。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -60,6 +60,40 @@ test('group ordering uses the complete list and persists independently of conver
   expect((await api('snapshot', undefined)).conversations).toEqual(before)
   await close()
   expect((await (await start()).api('getContactList', undefined)).groupOrder).toEqual(moved.groupOrder)
+})
+
+test('category sorting preserves hidden categories, employee membership and configuration across restart', async () => {
+  const { api, change, close, start } = await setup()
+  const original = await api('snapshot', undefined)
+  for (const name of ['A', 'B', 'C', 'D']) await change({ kind: 'create-category', name })
+  const categories = (await api('getContactList', undefined)).categories
+  await change({ kind: 'assign-category', agentId: original.agents[0].id, categoryId: categories[3].id })
+  const before = await api('getContactList', undefined)
+  // A and C may be hidden by search; moving D after B must preserve the complete list.
+  const moved = await change({ kind: 'move-category', categoryId: categories[3].id, targetId: categories[1].id, placement: 'after' })
+  expect(moved.categories.map(category => category.name)).toEqual(['A', 'B', 'D', 'C'])
+  expect(moved.categoryByAgentId).toEqual(before.categoryByAgentId)
+  expect(moved.agentOrder).toEqual(before.agentOrder)
+  expect(moved.groupOrder).toEqual(before.groupOrder)
+  const movedBefore = await change({ kind: 'move-category', categoryId: categories[2].id, targetId: categories[0].id, placement: 'before' })
+  expect(movedBefore.categories.map(category => category.name)).toEqual(['C', 'A', 'B', 'D'])
+  expect((await api('snapshot', undefined)).agents).toEqual(original.agents)
+  expect((await api('snapshot', undefined)).conversations).toEqual(original.conversations)
+  await close()
+  expect(await (await start()).api('getContactList', undefined)).toEqual(movedBefore)
+})
+
+test('invalid category drop targets and stale category moves leave the saved arrangement intact', async () => {
+  const { api, change } = await setup()
+  await change({ kind: 'create-category', name: '设计' })
+  const before = await change({ kind: 'create-category', name: '研究' })
+  const [first, second] = before.categories
+  await expect(change({ kind: 'move-category', categoryId: 'missing', targetId: first.id, placement: 'before' })).rejects.toThrow('分类不存在')
+  await expect(change({ kind: 'move-category', categoryId: first.id, targetId: 'missing', placement: 'after' })).rejects.toThrow('分类不存在')
+  expect(await api('getContactList', undefined)).toEqual(before)
+  const moved = await change({ kind: 'move-category', categoryId: second.id, targetId: first.id, placement: 'before' })
+  await expect(api('updateContactList', { expectedRevision: before.revision, action: { kind: 'move-category', categoryId: second.id, targetId: first.id, placement: 'after' } })).rejects.toThrow('其他窗口')
+  expect(await api('getContactList', undefined)).toEqual(moved)
 })
 
 test('dragging cannot cross employee categories or employee/group boundaries; explicit assignment can', async () => {

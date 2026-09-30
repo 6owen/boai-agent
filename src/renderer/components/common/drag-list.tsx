@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 有序条目身份、可移动边界、受控保存回调与自定义行内容。
- * [OUTPUT]: 会话式原生拖拽、前后落点/归组提示、拖动态、取消清理和 Alt 方向键排序。
+ * [OUTPUT]: 会话式原生拖拽、前后落点/归组提示、按条目身份校验归组目标、拖动态、取消清理和 Alt 方向键排序。
  * [POS]: 跨页面列表拖拽组件；只管理手势，不保存业务数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,7 @@ interface DragListProps {
   ids: string[]; disabled?: boolean; children: ReactNode
   onMove(move: ListMove): void
   canMove?(id: string, targetId: string): boolean
+  canGroupDrop?(id: string, groupId: string): boolean
   onGroupDrop?(id: string, groupId: string): void
 }
 type DragContextValue = DragListProps & {
@@ -69,11 +70,11 @@ export function DragListItem({ id, className = '', children }: { id: string; cla
 
 export function DragListGroupTarget({ id, children }: { id: string; children: ReactNode }) {
   const drag = useDragList()
-  const source = () => !drag.disabled && drag.onGroupDrop && drag.source.current && drag.ids.includes(drag.source.current) ? drag.source.current : null
+  const source = () => !drag.disabled && drag.onGroupDrop && drag.source.current && drag.ids.includes(drag.source.current) && (!drag.canGroupDrop || drag.canGroupDrop(drag.source.current, id)) ? drag.source.current : null
   return <div className="drag-list-group-target" data-drop={drag.target?.id === id && drag.target.placement === 'inside' ? 'inside' : undefined}
     onDragOver={event => { if (!source()) return; event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move'; drag.setTarget({ id, placement: 'inside' }) }}
     onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.setTarget(null) }}
-    onDrop={event => { const idToMove = source(); if (idToMove) { event.stopPropagation(); event.preventDefault(); drag.onGroupDrop!(idToMove, id) } drag.finish() }}>
+    onDrop={event => { const idToMove = source(); if (idToMove) { event.stopPropagation(); event.preventDefault(); drag.onGroupDrop!(idToMove, id); drag.finish() } }}>
     {children}
   </div>
 }
