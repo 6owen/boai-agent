@@ -1,13 +1,16 @@
 /*
  * [INPUT]: 会话记录、列表操作与最近消息时间。
- * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；核心助手与普通会话独立排序。
+ * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；核心助手与普通会话独立排序；可见核心会话的有界标题更新仅改标题，保留身份、偏好与授权配置。
  * [POS]: 会话列表的跨进程排序真源，不改变聊天历史或群配置。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { Conversation } from './index'
 import { isCoreConversation } from './core-agent'
 
+export const CONVERSATION_TITLE_MAX_LENGTH = 200
+
 export type ConversationListChange =
+  | { id: string; action: 'rename'; title: string }
   | { id: string; action: 'pin'; pinned: boolean }
   | { id: string; action: 'hide' }
   | { id: string; action: 'show' }
@@ -31,6 +34,12 @@ export function conversationListUpdates(conversations: Conversation[], change: C
   if (change.action === 'hide') return [{ ...item, list: { hidden: true, pinned: false } }]
   if (change.action === 'show') return item.list?.hidden ? putFirst(false) : []
   if (item.list?.hidden) throw new Error('请先从通讯录打开会话')
+  if (change.action === 'rename') {
+    if (!isCoreConversation(item)) throw new Error('仅核心助手会话可编辑标题')
+    const title = change.title.trim()
+    if (!title || title.length > CONVERSATION_TITLE_MAX_LENGTH) throw new Error(`会话标题应为 1–${CONVERSATION_TITLE_MAX_LENGTH} 个字符`)
+    return [{ ...item, title }]
+  }
   if (change.action === 'pin') return putFirst(change.pinned)
   const target = visible.find(item => item.id === change.targetId)
   if (!target) throw new Error('目标会话不存在')

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 历史失败与当前群聊轮次隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；实际悬停工具条与 Base UI 筛选交互；消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；单聊/群聊通过悬停工具条进入 Trace，使用 Base UI 筛选交互；消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
  * [POS]: tests/e2e/steps/history.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -230,6 +230,7 @@ Then('单聊回复图标打开自己的执行过程且切换会话不漂移', as
     return detail.turns?.find(turn => turn.id === message.turnId)?.status === 'completed' && detail.runs.every(run => run.status === 'completed')
   }).toBe(true)
   await page.locator('.conversation-item').filter({ hasText: '研究员单聊' }).click()
+  await page.locator('.message-row.agent .message-card').last().hover()
   await page.locator('.messages').getByRole('button', { name: '查看 研究员 的执行过程', exact: true }).click()
   const panel = page.locator('.detail-content:visible')
   await expect(panel.locator('.trace-detail')).toHaveAttribute('data-turn-id', message.turnId!)

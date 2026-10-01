@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 群聊展示投影与消息、工作、产物合同。
- * [OUTPUT]: 普通回复去除重复触发引用而保留明确引用/原数据、连续发言不得跨边界、歧义文件不得错挂、审批不得错归属、无证据不得显示已交付。
+ * [OUTPUT]: 即时宿主证据优先且 false 不回退陈旧正文、不覆盖人工待审；普通回复去除重复触发引用而保留明确引用/原数据、连续发言不得跨边界、歧义文件不得错挂、审批不得错归属、无证据不得显示已交付。
  * [POS]: Vitest 群聊展示不变量回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -75,5 +75,13 @@ describe('group messages preserve origin and result boundaries', () => {
     const approval = { id: 'approval', runId: 'r', conversationId: 'c', agentName: '写手', command: 'pwd', cwd: '/fixture' }
     expect(workDisplayState({ ...work, status: 'running', activeRunId: 'r' }, detail, [approval]).label).toBe('待确认')
     expect(workDisplayState({ ...work, status: 'running', activeRunId: 'other' }, detail, [approval]).label).toBe('正在处理')
+  })
+  it('uses current host evidence checks without loading historical bodies or overriding review', () => {
+    const metadata = { ...detail, messages: [], workEvidenceVerified: { w: true } }
+    expect(workDisplayState(work, metadata, []).label).toBe('已交付')
+    expect(workDisplayState(work, { ...detail, workEvidenceVerified: { w: false } }, []).label).toBe('交付待核对')
+    expect(workDisplayState({ ...work, requiresReview: true }, metadata, []).label).toBe('交付待核对')
+    expect(workDisplayState({ ...work, outcome: { disposition: 'delivered', summary: '无证据' } }, metadata, []).label).toBe('交付待核对')
+    expect(workDisplayState({ ...work, status: 'blocked' }, metadata, []).label).toBe('需要处理')
   })
 })

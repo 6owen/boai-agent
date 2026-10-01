@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 完整/缺损/失败评估证据、原始文件、外部评审和跨批次预算。
- * [OUTPUT]: 防止假通过的评分回归、离线重评分/HTML安全、留出冻结与独立校准门禁。
+ * [OUTPUT]: 防止假通过的评分回归、离线重评分/HTML安全、留出冻结与独立校准门禁；预留、实际 fetch 尝试和 HTTP 到达逐项核对，取消失败仍计额度。
  * [POS]: tests/evaluation.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -139,13 +139,26 @@ it('keeps 16 independent frozen holdout clusters and validates every matrix entr
   const manifest = datasetManifest(); expect(manifest.matrix).toHaveLength(32)
   for (const row of manifest.matrix) { expect(row.protocol.length + row.desktop.length + row.realCases.length).toBeGreaterThan(0); for (const file of [...row.protocol, ...row.desktop]) await access(file) }
 })
-it('runs actual AppService and Mastra through the harness, retaining real artifacts, event input and every HTTP request', async () => {
+it('runs actual AppService and Mastra through the harness, retaining real artifacts, event input and every charged fetch attempt', async () => {
   const root = await temporary(); let calls = 0
   const errors: string[] = []
+  const attempts: { id: number; url: string; body: string; received: boolean; status?: number; error?: string; aborted?: boolean }[] = []
+  const originalFetch = globalThis.fetch
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+    const attempt: typeof attempts[number] = { id: attempts.length, url: url instanceof Request ? url.url : String(url), body: typeof options?.body === 'string' ? options.body : '', received: false }
+    attempts.push(attempt)
+    const headers = new Headers(options?.headers); headers.set('x-boai-evaluation-test-attempt', String(attempt.id))
+    try { const response = await originalFetch(url, { ...options, headers }); attempt.status = response.status; return response }
+    catch (error) { attempt.error = (error instanceof Error ? error.message : String(error)).replaceAll('fixture-only-secret', '[REDACTED]'); attempt.aborted = options?.signal?.aborted ?? false; throw error }
+  })
   const server = createServer(async (request, response) => {
     try {
       let text = ''; for await (const part of request) text += part
       const body = JSON.parse(text), messages = body.messages as { role: string; content: string }[], system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
+      const attempt = attempts[Number(request.headers['x-boai-evaluation-test-attempt'])]
+      expect(attempt).toBeDefined(); expect(attempt.received).toBe(false)
+      expect(request.url).toBe(new URL(attempt.url).pathname + new URL(attempt.url).search); expect(text).toBe(attempt.body)
+      attempt.received = true
       calls++; let content = 'connected', tool: { name: string; arguments: string } | undefined
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(messages.at(-1)!.content).data, prompt = data.currentTurnMessages.find((message: { isRootRequest?: boolean }) => message.isRootRequest)?.content ?? ''
@@ -179,7 +192,31 @@ it('runs actual AppService and Mastra through the harness, retaining real artifa
     for (const sample of samples) { expect(sample.score.executionStatus).toBe('completed'); expect(sample.score.hardChecks, JSON.stringify({ metadata: sample.record.metadata, checks: sample.score.hardChecks })).toEqual(expect.arrayContaining(sample.score.hardChecks.map(check => expect.objectContaining({ name: check.name, status: 'passed' })))); expect(sample.score.runtimeErrors).toEqual([]); expect(sample.score.verdict).toBe('review-needed') }
     const clarification = samples.find(sample => sample.record.caseId.startsWith('clarify'))!.record
     expect(clarification.events).toMatchObject([{ id: 'refund-policy', status: 'applied' }]); expect(clarification.detail!.messages.filter(message => message.senderType === 'user')).toHaveLength(2)
-    const ledger = JSON.parse(await readFile(join(root, 'request-budget.json'), 'utf8')); expect(ledger.used).toBe(calls); expect(ledger.phases.connection).toBe(1)
+    const ledger = JSON.parse(await readFile(join(root, 'request-budget.json'), 'utf8'))
+    const summary = JSON.parse(await readFile(join(root, 'summary.json'), 'utf8')) as { requestCount: number; results: { caseId: string }[] }
+    type RetainedRequest = EvaluationRecord['requests'][number] & { requestBytes: number; headersMs?: number }
+    const probe = JSON.parse(await readFile(join(root, 'probe.json'), 'utf8')) as { ok: boolean; requests: RetainedRequest[] }
+    expect(probe.ok).toBe(true); expect(probe.requests).toHaveLength(1)
+    expect(summary.results.map(result => result.caseId)).toEqual(['independent-files-1', 'clarify-refunds-1'])
+    const retained = [...probe.requests, ...summary.results.flatMap(result => samples.find(sample => sample.record.caseId === result.caseId)!.record.requests as RetainedRequest[])]
+    expect(ledger.used).toBe(summary.requestCount); expect(summary.requestCount).toBe(attempts.length); expect(retained).toHaveLength(attempts.length)
+    const phases: Record<string, number> = {}
+    for (const [index, attempt] of attempts.entries()) {
+      const request = retained[index]
+      // The harness pushes this receipt immediately before invoking the observed fetch.
+      const messages = JSON.parse(attempt.body).messages as { role: string; content: string }[]
+      const system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
+      const phase = index === 0 ? 'connection' : system.includes('Private participation decision') ? 'decision' : system.includes('Private memory maintenance') ? 'memory' : system.includes('private-work-report-v1') ? 'report' : 'execution'
+      expect(request).toMatchObject({ phase, requestBytes: Buffer.byteLength(attempt.body) })
+      expect(request.status).toBe(attempt.status); expect(request.error).toBe(attempt.error); expect(request.headersMs).toBeGreaterThanOrEqual(0)
+      phases[phase] = (phases[phase] ?? 0) + 1
+      if (!attempt.received) {
+        expect(attempt.aborted, JSON.stringify({ index, phase, error: request.error })).toBe(true)
+        expect(request.error).toEqual(expect.any(String)); expect(request.status).toBeUndefined()
+      }
+    }
+    expect(attempts.filter(attempt => attempt.received)).toHaveLength(calls)
+    expect(ledger.phases).toEqual(phases); expect(ledger.phases.connection).toBe(1)
     expect((await readFile(join(root, 'independent-files-1.json'), 'utf8')).includes('fixture-only-secret')).toBe(false)
   } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
 })

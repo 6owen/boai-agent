@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 生产个人资料/聊天 UI、真实 IPC 与隔离 Desktop。
- * [OUTPUT]: 通过本人菜单进入资料、损坏旧图片回退到可解码的内置头像；编辑/联动/重启、未保存/冲突、运行中保存及主题缩放验收。
+ * [OUTPUT]: 通过本人菜单/聊天本人头像资料入口进入资料；当前姓名/头像/用户名联动历史昵称、引用、工具条与表情，改名及重启同步且不回写旧 senderName；稳定 senderType/senderId 隔离自动化和员工；损坏旧图片回退、未保存/冲突、运行中保存及主题缩放验收。
  * [POS]: profile.feature 的业务步骤，协议服务在 support/profile。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,9 +8,10 @@ import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
 import { test } from '../support/test'
 import { cancelProfileWindowClose, prepareProfile } from '../support/profile'
+import { messageDraft } from '../support/editor-controls'
 import type { Desktop } from '../support/desktop'
 
-const states = new WeakMap<Desktop, Awaited<ReturnType<typeof prepareProfile>> & { uploaded?: string }>()
+const states = new WeakMap<Desktop, Awaited<ReturnType<typeof prepareProfile>> & { uploaded?: string; displayName?: string }>()
 const { Given, When, Then } = createBdd(test)
 const openProfile = async (runtime: Desktop) => { await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '个人资料', exact: true }).click(); await expect(runtime.page.getByRole('heading', { name: '个人资料', exact: true })).toBeVisible() }
 Given('个人资料使用隔离的旧历史桌面', async ({ runtime }) => {
@@ -37,6 +38,7 @@ When('从设置搜索进入资料并保存名称用户名和上传头像', async
   await expect(dialog.locator('.user-avatar img')).toHaveAttribute('src', /^data:image\/png;base64,/)
   states.get(runtime)!.uploaded = (await dialog.locator('.user-avatar img').getAttribute('src'))!
   await dialog.getByRole('button', { name: '保存', exact: true }).click(); await expect(dialog).toBeHidden()
+  states.get(runtime)!.displayName = 'Ada 王'
   await expect(page.locator('.profile-identity h1')).toHaveText('Ada 王'); await expect(page.locator('.profile-identity p')).toHaveText('@ada_wang')
   await expect(page.locator('.rail-bottom .user-avatar img')).toHaveAttribute('src', states.get(runtime)!.uploaded!)
 })
@@ -47,6 +49,7 @@ Then('单聊群聊人工补充与外部历史使用同一个头像', async ({ ru
     await page.locator('.conversation-item').filter({ hasText: chat.title }).first().click()
     const message = page.locator(`#message-${kind}-human`), avatar = message.locator('.user-avatar')
     await expect(avatar).toBeVisible(); await expect(avatar.locator('img')).toHaveAttribute('src', state.uploaded!)
+    await expect(message.locator('.message-meta strong')).toHaveText(state.displayName!)
     const boxes = await message.evaluate(element => ({ avatar: element.querySelector('.message-avatar')!.getBoundingClientRect().x, body: element.querySelector('.message-main,.message-content-space')!.getBoundingClientRect().x }))
     expect(boxes.avatar).toBeGreaterThan(boxes.body)
     const before = await page.evaluate(async id => (await window.boai.request('getConversation', { id })).messages.find(message => message.senderId === 'user')!.senderName, chat.id)
@@ -57,10 +60,73 @@ Then('自动触发与连续消息仍保留各自的身份布局', async ({ runti
   const page = runtime.page, state = states.get(runtime)!
   await page.locator('.conversation-item').filter({ hasText: state.chats.group.title }).first().click()
   await expect(page.locator('#message-group-auto .automation-avatar')).toHaveText('定')
+  await expect(page.locator('#message-group-auto .message-meta strong')).toHaveText('定时任务 · 资料检查')
+  await expect(page.locator('#message-group-auto .user-avatar')).toHaveCount(0)
+  await expect(page.locator('#message-group-auto .message-avatar button')).toHaveCount(0)
   await expect(page.locator('#message-group-supplement .user-avatar img')).toHaveAttribute('src', state.uploaded!)
+  await expect(page.locator('#message-group-supplement .message-meta strong')).toHaveText(state.displayName!)
   await expect(page.locator('#message-group-continued')).toHaveClass(/message-continuation/)
+  await expect(page.locator('#message-group-agent .message-meta strong')).toHaveText('研究员')
+  await expect(page.locator('#message-group-agent .quoted-message strong')).toHaveText(`回复 ${state.displayName}：`)
+  await expect(page.locator('#message-group-foreign .message-meta strong')).toHaveText('同 ID 员工')
+  await expect(page.locator('#message-group-foreign .user-avatar')).toHaveCount(0)
+  await expect(page.locator('#message-group-foreign .message-avatar button')).toHaveCount(0)
   await page.locator('#message-group-human').hover()
-  await expect(page.locator('#message-group-human').getByRole('button', { name: '引用 你 的消息' })).toBeVisible()
+  await expect(page.locator('#message-group-human').getByRole('button', { name: `引用 ${state.displayName} 的消息`, exact: true })).toBeVisible()
+})
+Then('本人资料浮层和聊天昵称随改名同步且不回写历史', async ({ runtime }) => {
+  const page = runtime.page, state = states.get(runtime)!, reactionNames = new Map<string, string>()
+  for (const renamed of [false, true]) {
+    for (const kind of ['direct', 'group'] as const) {
+      const chat = state.chats[kind], name = state.displayName!
+      await page.getByRole('button', { name: '会话', exact: true }).first().click()
+      await page.locator('.conversation-item').filter({ hasText: chat.title }).first().click()
+      const row = page.locator(`#message-${kind}-human`)
+      await expect(row.locator('.message-meta strong')).toHaveText(name)
+      await row.hover()
+      await expect(row.getByRole('toolbar', { name: `${name} 的消息操作`, exact: true })).toBeVisible()
+      for (const action of ['回应', '引用', '复制']) await expect(row.getByRole('button', { name: `${action} ${name} 的消息`, exact: true })).toBeVisible()
+      await expect(row.getByRole('button', { name: /^(回应|引用|复制) 你 的消息$/ })).toHaveCount(0)
+      if (!renamed) {
+        await row.getByRole('button', { name: `回应 ${name} 的消息`, exact: true }).click()
+        await page.locator('.message-emoji-picker[data-open]>.reaction-grid').getByRole('button', { name: '回应：赞', exact: true }).click()
+      }
+      await expect(row.getByRole('button', { name: `取消赞回应，${name}`, exact: true })).toBeVisible()
+      const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), chat.id), historical = detail.messages.find(message => message.id === `${kind}-human`)!
+      expect(historical.senderName).toBe('旧名称')
+      const reactor = historical.reactions!.find(reaction => reaction.senderId === 'user' && reaction.emoji === '👍')!
+      if (!renamed) reactionNames.set(kind, reactor.senderName)
+      else expect(reactor.senderName).toBe(reactionNames.get(kind))
+      const composer = page.getByRole('textbox', { name: '消息内容', exact: true })
+      await composer.fill('保留本人的引用草稿')
+      await row.hover()
+      await row.getByRole('button', { name: `引用 ${name} 的消息`, exact: true }).click()
+      await expect(page.locator('.reply-preview')).toContainText(`回复 ${name}：保留的本人消息`)
+      expect(await messageDraft(composer)).toBe('保留本人的引用草稿')
+      await page.getByRole('button', { name: '取消引用', exact: true }).click(); await composer.fill('')
+      if (kind === 'group') await expect(page.locator('#message-group-agent .quoted-message strong')).toHaveText(`回复 ${name}：`)
+      const trigger = row.getByRole('button', { name: `查看 ${name} 的个人资料`, exact: true }), popover = page.locator('.user-info-popover[data-open]')
+      await trigger.click()
+      await expect(popover.getByRole('heading', { name, exact: true })).toBeVisible()
+      await expect(popover).toContainText('@ada_wang')
+      await expect(popover.locator('.user-avatar img')).toHaveAttribute('src', state.uploaded!)
+      await page.keyboard.press('Escape')
+      await expect(popover).toHaveCount(0); await expect(trigger).toBeFocused()
+      await trigger.click()
+      await popover.getByRole('button', { name: '个人资料', exact: true }).click()
+      await expect(popover).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: '个人资料', exact: true })).toBeVisible()
+      await expect(page.locator('.profile-identity h1')).toHaveText(name)
+    }
+    if (!renamed) {
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: '编辑个人资料', exact: true })
+      await dialog.getByRole('textbox', { name: '显示名称', exact: true }).fill('Ada 新名')
+      await dialog.getByRole('button', { name: '保存', exact: true }).click()
+      await expect(dialog).toBeHidden(); state.displayName = 'Ada 新名'
+      await expect(page.locator('.profile-identity h1')).toHaveText(state.displayName)
+    }
+  }
 })
 Then('个人资料在重启后保留且资料取消不会修改历史', async ({ runtime }) => {
   const state = states.get(runtime)!
@@ -70,8 +136,19 @@ Then('个人资料在重启后保留且资料取消不会修改历史', async ({
   await runtime.page.getByRole('textbox', { name: '显示名称' }).fill('放弃的名称')
   await runtime.page.getByRole('button', { name: '取消', exact: true }).click()
   await runtime.page.getByRole('button', { name: '放弃并退出' }).click()
-  await expect(runtime.page.locator('.profile-identity h1')).toHaveText('Ada 王')
+  await expect(runtime.page.locator('.profile-identity h1')).toHaveText(state.displayName!)
   await expect(runtime.page.getByRole('button', { name: '编辑', exact: true })).toBeFocused()
+  for (const kind of ['direct', 'group'] as const) {
+    await runtime.page.getByRole('button', { name: '会话', exact: true }).first().click()
+    await runtime.page.locator('.conversation-item').filter({ hasText: state.chats[kind].title }).first().click()
+    const row = runtime.page.locator(`#message-${kind}-human`)
+    await expect(row.locator('.message-meta strong')).toHaveText(state.displayName!)
+    await expect(row.getByRole('button', { name: `取消赞回应，${state.displayName}`, exact: true })).toBeVisible()
+    await row.getByRole('button', { name: `查看 ${state.displayName} 的个人资料`, exact: true }).click()
+    await expect(runtime.page.locator('.user-info-popover[data-open]')).toContainText('@ada_wang')
+    await runtime.page.keyboard.press('Escape')
+    expect((await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.chats[kind].id)).messages.find(message => message.id === `${kind}-human`)!.senderName).toBe('旧名称')
+  }
   expect(runtime.errors).toEqual([])
 })
 Then('个人资料支持关闭守卫输入校验和冲突恢复', async ({ runtime }) => {

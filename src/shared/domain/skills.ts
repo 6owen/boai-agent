@@ -1,5 +1,6 @@
 /*
- * [INPUT]: 受管技能、用户收藏、扫描计划与管理操作。
+ * [INPUT]: 受管技能、用户收藏、扫描计划、已保存员工和管理操作。
+ * [OUTPUT]: 本机来源/hash 与员工版本冻结的单技能绑定计划，原子绑定结果和只读请求回执；本机来源身份与运行副本独立。
  * [OUTPUT]: 冻结 ZIP 的实际相对文件路径/类型/大小清单供二级导出预览；外部 CLI 来源的未知内容基线标识； 本地安装目标与员工资源隔离；本机身份与受管 ID 共用原版技能库导出预览；本机技能发现与详情、独立收藏标识、前后排序与原子跨组移动；多来源安装/更新、便携库/收藏恢复及持久操作合同。
  * [POS]: shared/domain/skills.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -48,6 +49,8 @@ export interface SkillInstallation {
   baselineUnknown?: boolean
   installedAt: string
   updatedAt?: string
+  /** 显式本机绑定的发现身份；不能按名称或上游来源推断同一副本。 */
+  localSkillId?: string
 }
 export interface SkillUpdateCheck {
   resourceId: string
@@ -117,7 +120,7 @@ export interface InstallSkillsInput {
 }
 export interface SkillOperation {
   id: string
-  kind?: 'install' | 'update' | 'library-import' | 'library-export'
+  kind?: 'install' | 'update' | 'library-import' | 'library-export' | 'binding'
   outputName?: string
   scanId: string
   status: 'running' | 'completed' | 'cancelled' | 'interrupted'
@@ -148,3 +151,31 @@ export interface LocalSkill {
 }
 export interface LocalSkillCatalog { skills: LocalSkill[]; issues: { path: string; message: string }[] }
 export interface LocalSkillDetail { skill: LocalSkill; content: string; filePath: string }
+
+/** 只对已保存员工准备；扫描/准备不授予权限，也不执行脚本。 */
+export interface PrepareLocalSkillBindingInput { localSkillId: string; agentId: string; expectedConfigVersion: number }
+export interface SkillBindingPlan extends PrepareLocalSkillBindingInput {
+  id: string
+  candidateId: string
+  localSkill: LocalSkill
+  expiresAt: string
+  source: SkillSource
+  contentHash: string
+  warnings: string[]
+  existingResourceId?: string
+}
+export interface BindLocalSkillInput extends PrepareLocalSkillBindingInput { requestId: string; planId: string; contentHash: string }
+export interface SkillBindingReceipt extends PrepareLocalSkillBindingInput {
+  id: string
+  planId: string
+  contentHash: string
+  source: SkillSource
+  status: 'running' | 'completed' | 'failed' | 'interrupted'
+  createdAt: string
+  resource?: Resource
+  agent?: import('./index').DigitalAgent
+  error?: string
+  /** 保留外改副本或提交后的工作区同步失败；不意味着重放绑定。 */
+  cleanupError?: string
+  synchronizationError?: string
+}

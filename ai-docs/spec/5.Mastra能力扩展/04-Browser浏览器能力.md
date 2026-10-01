@@ -1,6 +1,6 @@
 <!--
-[INPUT]: Browser 浏览器能力相关规格与当前模块实现。
-[OUTPUT]: Browser 浏览器能力的说明和源码入口。
+[INPUT]: Browser 浏览器能力相关规格与当前模块实现，以及第 11 组用户确认的原版浏览器迁移路线。
+[OUTPUT]: Browser 的历史框架选型、通用边界和源码入口；当前实现路线明确转至第 11 组。
 [POS]: ai-docs/spec/5.Mastra能力扩展/04-Browser浏览器能力.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -8,7 +8,9 @@
 
 日期：2026-09-27  
 任务：BR1  
-状态：**新增能力建议；当前项目尚未安装或接入 Mastra Browser provider。**
+状态：**历史框架选型与通用边界；当前产品尚未接入浏览器。**
+
+2026-10-02 用户确认尽量照搬旧 `boai-app`，当前实现入口转为 [第 11 组浏览器能力迁移](../11.浏览器能力迁移/README.md)：保留 Electron 窗口/工具栏/CDP/browser_tool，以 Mastra task 工具和宿主桥接入。下文独立 AgentBrowser provider 的首期建议保留为历史备选，不再是执行指令；授权、文件、取消与备份边界仍适用。新分期 BRM0–BRM4 唯一进度见第 11 组 05，全待实施。
 
 首期采用本地 `@mastra/agent-browser` SDK，为员工提供可见的专用 Chromium 窗口，让用户可以登录、查看操作、接管和停止。浏览器租约与 profile 采用“员工 × 会话”作用域，沿用当前任务取消与授权规则，不默认接管用户日常浏览器或 Electron 产品窗口。
 

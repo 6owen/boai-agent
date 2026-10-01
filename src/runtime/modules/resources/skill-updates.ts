@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 已安装来源、同一技能扫描管道、SQLite、宿主使用状态与受管目录。
+ * [OUTPUT]: 显式更新 D4 新副本时仅在原最终事务同步其 hash/文件清单，UUID/所有权不变，失败保留旧清理证据。
  * [OUTPUT]: 本机技能和受管副本共用检查/更新；读取旧 CLI 来源、未知安装基线须确认替换、本地同盘恢复且不创建员工资源； 只读单项/批量检查、文件差异/本地修改确认、固定预览提交及保留真实旧内容的交换/回滚/恢复。
  * [POS]: Skills 更新用例；下载和 hash 不占宿主锁，文件切换前独占资源，不取消员工任务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -15,6 +16,7 @@ import { restrictedPath } from '../workspaces/file-access'
 import { inspectResourceTree } from './local-resources'
 import type { SkillManagement } from './skill-management'
 import type { LocalSkillUpdateTargets } from './local-skill-updates'
+import type { BindingFiles } from './skill-binding-files'
 
 const id = z.string().min(1).max(200), digest = z.string().regex(/^[a-f0-9]{64}$/)
 export const updateSkillSchema = z.object({ requestId: id, planId: id, expectedRevision: z.number().int().positive(), expectedHash: digest, replaceLocalChanges: z.boolean().optional() }).strict()
@@ -248,18 +250,21 @@ export class SkillUpdates {
       })
       // Keep the resource locked while hashing the detached old tree and its replacement.
       if (await this.hash(paths.old, paths.boundary) !== operation.journal.oldHash || await this.hash(paths.target, paths.boundary) !== operation.journal.newHash) throw new Error('文件交换期间内容已变化，更新未提交')
+      const currentTree = (installed as SkillInstallation & { bindingCopy?: BindingFiles }).bindingCopy ? await inspectResourceTree(paths.target, signal) : undefined
+      if (currentTree && currentTree.hash !== operation.journal.newHash) throw new Error('更新内容已变化，未提交')
       await this.hooks.critical(async () => {
         signal.throwIfAborted()
         let publish!: () => Promise<void>
         await this.store.transaction(async tx => {
-          const current = await tx.get<SkillInstallation>('skillInstallations', resource.id)
+          const current = await tx.get<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations', resource.id)
           if (current?.revision !== installed.revision || current.contentHash !== installed.contentHash) throw new Error('提交时技能版本已变化')
+          if (current.bindingCopy && !currentTree) throw new Error('技能绑定清理证据已变化，请重新检查')
           if (resource.managed) {
             const updated = { ...resource.managed, description: candidate.candidate.description }
             await tx.put({ collection: 'resources', id: resource.id, value: updated })
             publish = await this.hooks.commit(tx, updated)
           } else publish = async () => { this.local?.changed() }
-          await tx.put({ collection: 'skillInstallations', id: resource.id, value: { ...installed, baselineUnknown: undefined, source: candidate.source, revision: installed.revision + 1, contentHash: operation.journal.newHash, updatedAt: time() } satisfies SkillInstallation })
+          await tx.put({ collection: 'skillInstallations', id: resource.id, value: { ...installed, ...(current.bindingCopy && currentTree ? { bindingCopy: { ...current.bindingCopy, contentHash: currentTree.hash, files: currentTree.files } } : {}), baselineUnknown: undefined, source: candidate.source, revision: installed.revision + 1, contentHash: operation.journal.newHash, updatedAt: time() } satisfies SkillInstallation & { bindingCopy?: BindingFiles } })
           operation.journal.phase = 'committed'; operation.items[0].status = 'updated'; operation.items[0].resourceId = resource.id; operation.status = 'completed'
           await tx.put({ collection: 'skillOperations', id: operation.id, value: operation })
           await tx.remove('skillUpdateChecks', resource.id)

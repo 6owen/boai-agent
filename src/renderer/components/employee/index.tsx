@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 员工领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 员工身份行不展示启用状态；员工统一记忆页委托独立 MemoryPane；下拉字段统一使用 shadcn Select；带持久头像的员工资料、共享 Soft Tabs 与未保存保护、共用 surface 卡片按钮的系统文件、工作区和记忆详情；会话清空后更新只读投影。
+ * [INPUT]: 员工领域类型、显式配置导航请求、DesktopApi 与公共组件、统一 UI 基础组件。
+ * [OUTPUT]: 本机技能绑定页面隔离/隐藏停读，真实能力状态与当前受管说明/来源入口；群知识仍按既有共享交集提示；配置导航请求经未保存守卫返回配置页；员工统一记忆页及系统文件/工作区详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,15 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { MemoryPane } from './memory-pane'
 import { SelectField } from '@/components/ui/select-field'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { SkillContent } from '@/pages/library/skill-content'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, FileText, FolderOpen, Plus, RefreshCw } from '@/components/icons/index'
-import type { AgentFileContent, AgentHome, DigitalAgent, MemoryQuery, Snapshot } from '@shared/domain'
+import type { AgentFileContent, AgentHome, Conversation, DigitalAgent, MemoryQuery, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
 import { Avatar, Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 
 type EmployeeTab = 'profile' | 'files' | 'workspace' | 'memory'
-export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, onClose }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; refresh: () => Promise<void>; onClose: () => void }) {
+export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts' }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string }) {
   const [tab, setTab] = useState<EmployeeTab>('profile')
   const [home, setHome] = useState<AgentHome | null>(null), [error, setError] = useState('')
   const [fileName, setFileName] = useState<string | null>(null)
@@ -42,6 +44,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, 
     // Switching panels unmounts the old form; keep this tab owner mounted on discard.
     guard.navigate(() => { setTab(next); setFileName(null) }, { resetOnDiscard: false })
   }
+  useEffect(() => { if (configurationRequest) selectTab('profile') }, [configurationRequest])
   return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div className="employee-identity"><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><div><strong>{agent.name}</strong><small>{agent.role || '独立数字员工'}</small></div></div>
     <div className="employee-tabs-bar"><TabsList aria-label="员工详情分类">
       <TabsTrigger value="profile">配置</TabsTrigger>
@@ -50,18 +53,22 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, 
       <TabsTrigger value="memory">记忆</TabsTrigger>
     </TabsList></div>
     {error && <Banner>{error}</Banner>}
-    <TabsContent value="profile"><AgentEditor api={api} snapshot={snapshot} agent={agent} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
+    <TabsContent value="profile"><AgentEditor api={api} snapshot={snapshot} agent={agent} active={active && tab === 'profile'} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
     <TabsContent value="files">{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '记忆由同一员工持有。这里的文件是来源范围投影，统一记录可在记忆页管理。'}</div></>}</div>}</TabsContent>
-    <TabsContent value="workspace"><WorkspaceView api={api} agent={agent} home={home} onRefresh={async () => { await refresh(); await loadHome() }} /></TabsContent>
+    <TabsContent value="workspace"><WorkspaceView api={api} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => selectTab('profile')} onRefresh={async () => { await refresh(); await loadHome() }} /></TabsContent>
     <TabsContent value="memory"><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></TabsContent>
   </Tabs>
 }
 
-function WorkspaceView({ api, agent, home, onRefresh }: { api: DesktopApi; agent: DigitalAgent; home: AgentHome | null; onRefresh: () => Promise<void> }) {
+function WorkspaceView({ api, agent, home, active, conversation, onConfigure, onRefresh }: { api: DesktopApi; agent: DigitalAgent; home: AgentHome | null; active: boolean; conversation?: Conversation; onConfigure(): void; onRefresh: () => Promise<void> }) {
   const { busy, error, run } = useMutation()
   const [notice, setNotice] = useState('')
+  const [skillId, setSkillId] = useState<string>()
+  useEffect(() => { if (!active) setSkillId(undefined) }, [active])
+  const selectedSkill = home?.environment?.skills.find(skill => skill.resourceId === skillId)
+  const unsharedKnowledge = conversation?.kind === 'group' ? agent.knowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id)) : []
   if (!home) return <Loading />
-  return <div className="detail-section">{error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}<h3>独立工作区</h3><p className="field-hint">这里属于 {agent.name}。群任务只会获得当前会话授权的目录，不会自动访问全部私有文件。</p><p className="resource-path">{home.workspacePath}</p><Button variant="secondary" onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen size={16} />打开员工工作区</Button>{home.sessionPath && <><h4>当前会话空间</h4><p className="resource-path">{home.sessionPath}</p><Button variant="secondary" onClick={() => { void run(async () => { await api.request('openPath', { path: home.sessionPath! }) }) }}><FolderOpen size={16} />打开会话空间</Button></>}<h4>已绑定技能的可用性</h4>{home.environment?.skills.length ? home.environment.skills.map(skill => <Card className="connection-card gap-0 p-4" key={skill.resourceId}><CardContent className="p-0"><strong>{skill.name}</strong><p><span className="pill">{skill.instructions === 'available' ? '说明可用' : '说明不可用'}</span> <span className="pill">{skill.execution === 'disabled' ? '命令未启用' : '执行依赖未验证'}</span></p><p className="field-hint">{skill.detail}</p></CardContent></Card>) : <p className="field-hint">尚未绑定技能。导入后可在“配置”中启用。</p>}<h4>员工专属技能</h4><p className="field-hint">导入到该员工自己的空间。技能的实际启用情况可在“配置”中查看。</p><Button variant="secondary" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('choosePath', { kind: 'skill' }); if (!path) return; const resource = await api.request('importResource', { kind: 'skill', path, ownerAgentId: agent.id }); await onRefresh(); setNotice(`已导入专属 Skill「${resource.name}」，请核对员工的启用绑定。`) }) }}><Plus size={15} />导入专属 Skill</Button><h4>记忆命名空间</h4><p className="resource-path">{home.memoryNamespace}</p><p className="field-hint">工作目录不是系统安全沙箱。已授权的主机命令仍使用应用进程权限。</p></div>
+  return <div className="detail-section">{error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}<h3>独立工作区</h3><p className="field-hint">这里属于 {agent.name}。群任务只会获得当前会话授权的目录，不会自动访问全部私有文件。</p><p className="resource-path">{home.workspacePath}</p><Button variant="secondary" onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen size={16} />打开员工工作区</Button>{home.sessionPath && <><h4>当前会话空间</h4><p className="resource-path">{home.sessionPath}</p><Button variant="secondary" onClick={() => { void run(async () => { await api.request('openPath', { path: home.sessionPath! }) }) }}><FolderOpen size={16} />打开会话空间</Button></>}<h4>已绑定技能的可用性</h4>{home.environment?.skills.length ? home.environment.skills.map(skill => <Card className="connection-card gap-0 p-4" key={skill.resourceId}><CardContent className="p-0"><strong>{skill.name}</strong><p><span className="pill">{skill.instructions === 'available' ? '说明可用' : '说明不可用'}</span> <span className="pill">{skill.execution === 'disabled' ? '命令未启用' : '执行依赖未验证'}</span></p><p className="field-hint">{skill.detail}</p><Button variant="ghost" size="sm" onClick={() => setSkillId(skill.resourceId)}>查看 {skill.name} 的来源与说明</Button></CardContent></Card>) : <p className="field-hint">尚未绑定技能，可在“配置”中从本机技能选择。</p>}<Button variant="secondary" size="sm" onClick={onConfigure}>查看员工配置</Button>{unsharedKnowledge.length > 0 && <p className="scope-note">资料未共享：{unsharedKnowledge.length} 项已绑定知识未在群“{conversation?.title}”中共享，请到该群配置核对。技能沿员工现有绑定使用。</p>}<h4>员工专属技能</h4><p className="field-hint">导入到该员工自己的空间。技能的实际启用情况可在“配置”中查看。</p><Button variant="secondary" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('choosePath', { kind: 'skill' }); if (!path) return; const resource = await api.request('importResource', { kind: 'skill', path, ownerAgentId: agent.id }); await onRefresh(); setNotice(`已导入专属 Skill「${resource.name}」，请核对员工的启用绑定。`) }) }}><Plus size={15} />导入专属 Skill</Button><h4>记忆命名空间</h4><p className="resource-path">{home.memoryNamespace}</p><p className="field-hint">工作目录不是系统安全沙箱。已授权的主机命令仍使用应用进程权限。</p><Dialog open={active && Boolean(selectedSkill)} onOpenChange={value => { if (!value) setSkillId(undefined) }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{selectedSkill?.name} · 来源与说明</DialogTitle><DialogDescription>当前员工的受管副本；说明可读取不表示依赖已验证。</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto">{selectedSkill && <SkillContent key={selectedSkill.resourceId} api={api} resourceId={selectedSkill.resourceId} />}</div></DialogContent></Dialog></div>
 }
 
 function SystemFileEditor({ api, agent, home, name, conversationId, onBack, onUpdated, onMemory }: { api: DesktopApi; agent: DigitalAgent; home: AgentHome | null; name: string; conversationId?: string; onBack: () => void; onUpdated: (home: AgentHome) => Promise<void>; onMemory: () => void }) {

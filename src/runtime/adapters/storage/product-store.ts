@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: 全量记录标题搜索及进行中/完成/需处理条件在分页前求交；数据库分页前筛选待处理事项；历史分页/单记录附带对应通知回执；自动化历史按时间与 ID 稳定分页且在数据库内限制条数；支持按会话范围读取记录；读检查写事务及跨连接写锁有界等待（不重试已开始的事务）、备份和空间回收。
+ * [OUTPUT]: D6 完整历史正文/文件名固定筛选及时间/ID/类型游标、明确目标核对和当前 epoch 完成身份的 sequence/ID 消息页；事务内按完成序号/有界缺口查询首条未读；宿主固定 inbox SELECT 在 LIMIT 前过滤四类当前事项、来源/清理条件及时间/ID 游标；全量记录标题搜索及进行中/完成/需处理条件在分页前求交；数据库分页前筛选待处理事项；历史分页/单记录附带对应通知回执；自动化历史按时间与 ID 稳定分页且在数据库内限制条数；支持按会话范围读取记录；读检查写事务及跨连接写锁有界等待（不重试已开始的事务）、备份和空间回收。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,10 @@ import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { AutomationHistoryPage, AutomationHistoryQuery } from '../../../shared/domain/automations'
 import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '../../../shared/domain/automations'
+import { inboxSql, type InboxSqlRow } from '../../modules/inbox/inbox-sql'
+import type { InboxQuery } from '../../../shared/domain/inbox'
+import type { ConversationCompletion, ConversationMessagePageQuery, ConversationSearchQuery } from '../../../shared/domain/reading'
+import { conversationMessagesSql, conversationSearchSql, conversationSearchTargetSql, firstUnreadCompletionSql, type ConversationMessageSqlRow, type ConversationSearchSqlRow, type ConversationSearchSqlTarget, type FirstUnreadCompletionSqlQuery } from '../../modules/conversations/reading-sql'
 
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
 
@@ -17,6 +21,7 @@ export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface RecordTransaction {
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string): Promise<T[]>
+  firstUnreadCompletion(query: FirstUnreadCompletionSqlQuery): Promise<ConversationCompletion | undefined>
   put(record: StoredRecord): Promise<void>
   remove(collection: string, id: string): Promise<void>
 }
@@ -68,6 +73,32 @@ export class ProductStore {
     this.tail = next.catch(() => undefined)
     return next
   }
+  /** Fixed host-owned inbox SELECT; renderer only supplies typed filters and a bounded cursor. */
+  inboxRows(query: InboxQuery & { limit: number; id?: string }): Promise<InboxSqlRow[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(inboxSql(query))
+      return result.rows.map(row => ({ id: String(row.id), kind: String(row.kind), sourceCollection: String(row.sourceCollection), sourceId: String(row.sourceId), time: String(row.time), conversation: String(row.conversation), agent: row.agent == null ? null : String(row.agent), message: row.message == null ? null : String(row.message), artifact: row.artifact == null ? null : String(row.artifact), source: String(row.source) }))
+    })
+  }
+  /** Fixed full-history queries filter before LIMIT and never infer another object's identity. */
+  conversationSearchRows(query: ConversationSearchQuery & { limit: number }): Promise<ConversationSearchSqlRow[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(conversationSearchSql(query))
+      return result.rows.map(row => ({ id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), completion: row.completion == null ? null : String(row.completion) }))
+    })
+  }
+  conversationSearchTarget(target: ConversationSearchSqlTarget): Promise<ConversationSearchSqlRow | null> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(conversationSearchTargetSql(target)), row = result.rows[0]
+      return row ? { id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), completion: row.completion == null ? null : String(row.completion) } : null
+    })
+  }
+  conversationMessageRows(query: Pick<ConversationMessagePageQuery, 'conversationId' | 'before' | 'after'> & { limit: number }): Promise<ConversationMessageSqlRow[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(conversationMessagesSql(query))
+      return result.rows.map(row => ({ source: String(row.source), completion: row.completion == null ? null : String(row.completion) }))
+    })
+  }
   write(records: StoredRecord[], removals: { collection: string; id: string }[] = []): Promise<void> {
     // Serialize now so a later in-memory change cannot alter this transaction.
     const statements = records.map(record => ({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, JSON.stringify(record.value)] }))
@@ -87,6 +118,10 @@ export class ProductStore {
           list: async <R>(collection: string) => {
             const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? ORDER BY rowid', args: [collection] })
             return result.rows.map(row => JSON.parse(String(row.value)) as R)
+          },
+          firstUnreadCompletion: async query => {
+            const result = await transaction.execute(firstUnreadCompletionSql(query))
+            return result.rows.length ? JSON.parse(String(result.rows[0].completion)) as ConversationCompletion : undefined
           },
           put: async record => {
             await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, JSON.stringify(record.value)] })

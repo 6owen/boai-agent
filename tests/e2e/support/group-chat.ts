@@ -1,11 +1,11 @@
 /*
  * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
- * [OUTPUT]: 真实文件/已交付历史群聊、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
- * [POS]: 群聊设计验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
+ * [OUTPUT]: 受管 artifacts 目录中的真实文件/已交付历史群聊、单聊长历史和真实聊天/Trace 离线回复、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
+ * [POS]: 单聊/群聊共享交互验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createServer } from 'node:http'
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
@@ -22,8 +22,11 @@ export async function prepareGroupChat(runtime: Desktop) {
       state.calls++
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(input.messages.at(-1)!.content).data
-        content = JSON.stringify(data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
+        const root = data.currentTurnMessages?.find((message: { id: string }) => message.id === data.currentTurn.rootMessageId)
+        const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content)
+        content = JSON.stringify(directChat && data.currentEmployeeId === 'researcher' && !data.currentTurn.ownCompletedMessageIds.length ? { action: 'reply', responseKind: 'chat' } : data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
       } else if (system.includes('Private memory maintenance')) content = JSON.stringify({ candidates: [] })
+      else if (JSON.stringify(input.messages).includes('单聊统一交互验收') || JSON.stringify(input.messages).includes('单聊滚动补充消息')) content = '研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。'
       else if (!input.messages.some(message => message.role === 'tool')) tool = { name: 'execute_command', arguments: JSON.stringify({ command: 'printf group-chat-approved > approval-marker.txt' }) }
       else content = '排版检查已结束，请查看执行过程中的命令结果。'
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
@@ -61,17 +64,22 @@ export async function prepareGroupChat(runtime: Desktop) {
     makeMessage('history-note', 'writer', '重点建议已经放在第一节，可以先看这一部分。', 4),
     makeMessage('history-continuation', 'writer', '后续可以再补充实际使用截图。', 5),
   ]
+  const directMessages = [
+    { ...makeMessage('history-direct-user', 'user', '单聊历史中也要保留头像、发言人与正文。', 1), conversationId: setup.direct.id, turnId: 'direct-history-1' },
+    ...Array.from({ length: 12 }, (_, index) => ({ ...makeMessage(`history-direct-${index + 2}`, index % 2 ? 'user' : 'researcher', `第 ${index + 1} 轮阅读记录。\n\n${'查阅历史时保持阅读位置，新消息不应打断正在阅读的内容。'.repeat(8)}`, index + 2), conversationId: setup.direct.id, turnId: `direct-history-${index + 2}` })),
+  ]
   const makeWork = (id: string, ownerAgentId: string, deliverable: string, message: Message, artifactId: string, parentWorkId?: string): WorkItem => ({ schemaVersion: 2, id, conversationId: group.id, sourceMessageId: 'history-user', key: id, scope: deliverable, deliverable, ownerAgentId, version: 2, status: 'delivered', budgetId: 'history-budget', rootWorkId: 'history-root', parentWorkId, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, outcome: { disposition: 'delivered', summary: '结果已发布到群聊。', evidence: [{ kind: 'answer', reference: message.content.slice(0, 14) }] }, resultMessageIds: [message.id], artifactIds: [artifactId], resultVersion: 1, requiresReview: false, createdAt: message.createdAt, updatedAt: message.createdAt })
   const works = [makeWork('history-root', 'researcher', 'AI 协作产品竞品分析', messages[1], 'research-file'), makeWork('history-writing', 'writer', '整理竞品分析报告初稿', messages[2], 'report-file', 'history-root')]
   const artifacts: (Artifact & { conversationId: string })[] = [
-    { id: 'research-file', name: '研究要点.md', ownerAgentId: 'researcher', runId: 'history-researcher', path: join(group.workspacePath, '研究要点.md'), size: 0, publishedAt: messages[1].createdAt, conversationId: group.id },
-    { id: 'report-file', name: '竞品分析报告.md', ownerAgentId: 'writer', runId: 'history-writer', path: join(group.workspacePath, '竞品分析报告.md'), size: 0, publishedAt: messages[2].createdAt, conversationId: group.id },
+    { id: 'research-file', name: '研究要点.md', ownerAgentId: 'researcher', runId: 'history-researcher', path: join(group.workspacePath, 'artifacts', '研究要点.md'), size: 0, publishedAt: messages[1].createdAt, conversationId: group.id },
+    { id: 'report-file', name: '竞品分析报告.md', ownerAgentId: 'writer', runId: 'history-writer', path: join(group.workspacePath, 'artifacts', '竞品分析报告.md'), size: 0, publishedAt: messages[2].createdAt, conversationId: group.id },
   ]
+  await mkdir(join(group.workspacePath, 'artifacts'), { recursive: true })
   for (const artifact of artifacts) { const body = `# ${artifact.name}\n\n群聊验收的离线报告。\n`; await writeFile(artifact.path, body); artifact.size = Buffer.byteLength(body) }
   const store = new ProductStore(join(setup.dataPath, 'boai.sqlite')); await store.init()
   try { await store.write([
     ...messages.map(value => ({ collection: 'messages', id: value.id, value })),
-    { collection: 'messages', id: 'history-direct-user', value: { ...makeMessage('history-direct-user', 'user', '单聊仍然使用原有气泡', 1), conversationId: setup.direct.id } },
+    ...directMessages.map(value => ({ collection: 'messages', id: value.id, value })),
     ...works.map(value => ({ collection: 'workItems', id: value.id, value })),
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
   ]) } finally { await store.close() }

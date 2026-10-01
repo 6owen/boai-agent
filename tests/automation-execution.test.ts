@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
- * [OUTPUT]: 到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
+ * [OUTPUT]: 实际受管发布原件/复制 hash 与未知/缺失交付证据；到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
  * [POS]: 自动化执行意图回归；不调用外部模型或真实用户计划。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, it } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
@@ -176,9 +177,10 @@ it.each(['deadline', 'capacity', 'permission', 'commit'] as const)('rejects a cl
 })
 it.each([true, false])('validates that a registered artifact is still an inspectable file (present=%s)', async present => {
   const f = await setup({ test: async () => '', decide, run: async context => {
-    const path = join(context.workspace!.sharedPath, 'result.txt')
+    await mkdir(join(context.workspace!.sharedPath, 'artifacts'), { recursive: true })
+    const path = join(context.workspace!.sharedPath, 'artifacts', 'file-result.txt')
     await writeFile(path, '42')
-    await context.onArtifact!({ id: 'file', path, name: 'result.txt', size: 2 })
+    await context.onArtifact!({ id: 'file', path, name: 'result.txt', size: 2, contentHash: createHash('sha256').update('42').digest('hex') })
     if (!present) await rm(path)
     await context.onDelta('核查结果已保存')
     await context.onWorkOutcome!({ disposition: 'delivered', summary: '核查结果', evidence: [{ kind: 'artifact', reference: 'file' }] })

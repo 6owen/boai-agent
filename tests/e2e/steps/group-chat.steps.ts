@@ -1,7 +1,7 @@
 /*
- * [INPUT]: 群聊中文场景、单行群名与可点击成员入口、真实 Electron 与隔离历史/离线模型支撑。
- * [OUTPUT]: 单聊本人头像可见且靠右、本人文案统一「你」；composer 实际行内节点、排除 DOM 光标辅助内容的草稿读取、一次退格删除；输入式 @ / 筛选、光标后正文保护、IME/空结果防误发、深色窄窗菜单与真实操作；工具条实测位置、表情选择/撤销/常用/重启与同卡引用/提及/复制；用户整组镜像/正文右对齐与窄窗昵称不被操作遮挡、员工靠左、悬浮标题渐隐、文件/工作、跨会话草稿、键盘、主题窄窗截图及真实命令审批断言。
- * [POS]: 第二版群聊 E2E；不改写生产 DOM 或模拟业务响应。
+ * [INPUT]: 单聊/群聊中文场景、单行群名与可点击成员入口、真实 Electron 与隔离历史/离线模型支撑。
+ * [OUTPUT]: 单聊/群聊头像真实资料无启用标签，按展开状态区分当前资料浮层与退出动画；资料底部直接进入对应员工可编辑配置并关闭浮层、复用记忆页的同一标签切回配置、关闭后头像恢复焦点且可再打开；群消息和标题指定不同成员不误开首人或群配置；同卡片与消息工具条、表情持久回执/引用草稿/复制/真实 Trace 和主题窄窗交互；长历史新消息不抢滚动且无旧式新消息悬浮返回按钮；D6提供显式阅读导航；Markdown真实应用内预览后显式外开并保留原路径/任务标签；本人头像靠右与当前个人资料名称；composer 姓名提及恢复实际 DOM 选区/连续点名/续写和选中替换，行内节点/草稿、提及/IME/空结果防误发；用户整组镜像且正文左对齐、员工靠左、渐隐标题、文件/工作、跨会话草稿、键盘及真实命令审批断言。
+ * [POS]: 单聊/群聊共享交互 E2E；不改写生产 DOM 或模拟业务响应。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Locator } from '@playwright/test'
@@ -13,7 +13,7 @@ import { prepareGroupChat, resizeGroupWindow } from '../support/group-chat'
 
 const inputText = (input: Locator) => input.evaluate(element => element instanceof HTMLTextAreaElement ? element.value : Array.from(element.querySelector('p')?.childNodes ?? []).map(node => node instanceof HTMLBRElement ? node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n' : node instanceof HTMLElement && node.matches('[data-mention-id]') ? node.querySelector('.composer-mention-tag')?.textContent ?? '' : node.textContent ?? '').join(''))
 
-type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; approvalCwd?: string }
+type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; approvalCwd?: string; directReplyId?: string; directTurnId?: string }
 export const test = base.extend<{ groupDesign: State }>({ groupDesign: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 Given('产品讨论组已有研究结论和已交付报告', async ({ runtime, groupDesign }) => { groupDesign.fixture = await prepareGroupChat(runtime) })
@@ -30,11 +30,12 @@ Then('群聊我的发言靠右员工靠左且文件归属明确', async ({ runti
   const userAvatar = await page.locator('#message-history-user .message-avatar').boundingBox(), userRow = await page.locator('#message-history-user').boundingBox()
   expect(Math.abs(userAvatar!.x + userAvatar!.width - userRow!.x - userRow!.width)).toBeLessThan(1)
   expect(user!.x + user!.width).toBeLessThan(userAvatar!.x)
-  const userName = await page.locator('#message-history-user .message-meta strong').boundingBox(), userTime = await page.locator('#message-history-user time').boundingBox(), userAction = await page.locator('#message-history-user .reply-action').boundingBox()
+  const userName = await page.locator('#message-history-user .message-meta strong').boundingBox(), userTime = await page.locator('#message-history-user time').boundingBox()
   expect(Math.abs(userName!.x + userName!.width - user!.x - user!.width)).toBeLessThan(1)
   expect(userTime!.x + userTime!.width).toBeLessThan(userName!.x)
-  expect(userAction!.x + userAction!.width).toBeLessThan(userTime!.x)
-  expect(await page.locator('#message-history-user .message-bubble').evaluate(element => getComputedStyle(element).textAlign)).toBe('right')
+  await expect(page.locator('#message-history-user .message-meta .reply-action')).toHaveCount(0)
+  expect(await page.locator('#message-history-user .message-tools button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')))).toEqual(['回应 我 的消息', '引用 我 的消息', '复制 我 的消息'])
+  expect(await page.locator('#message-history-user .message-bubble').evaluate(element => getComputedStyle(element).textAlign)).toBe('left')
   const agentAvatar = await page.locator('#message-history-research .message-avatar').boundingBox()
   expect(agentAvatar!.x + agentAvatar!.width).toBeLessThan(agent!.x)
   await expect(page.locator('#message-history-writer .quoted-message')).toContainText('研究员')
@@ -56,7 +57,13 @@ Then('任务面板展示真实父子工作且文件可以打开', async ({ runti
   await expect(page.locator('.work-child [data-work-id="history-writing"]')).toContainText('已交付')
   await runtime.app.evaluate(({ shell }) => { shell.openPath = async path => { (globalThis as unknown as { groupOpened: string }).groupOpened = path; return '' } })
   await page.locator('#message-history-writer').getByRole('button', { name: '打开 竞品分析报告.md', exact: true }).click()
+  const preview = page.getByRole('tabpanel', { name: '竞品分析报告.md', exact: true })
+  await expect(preview.getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('群聊验收的离线报告。')
+  await preview.getByRole('button', { name: '外部打开', exact: true }).click()
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.artifacts[1].path))
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(page.locator('.group-activity')).toBeVisible()
+  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
   await page.locator('.messages').evaluate(element => { element.scrollTop = 0 })
   await page.screenshot({ path: 'test-results/group-chat-light.png', scale: 'css', animations: 'disabled' })
   await resizeGroupWindow(runtime, 1440, 1024)
@@ -80,7 +87,7 @@ Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
   await expect(page.locator('#message-history-direct-user .message-avatar')).toBeVisible()
   const directAvatar = await page.locator('#message-history-direct-user .message-avatar').boundingBox(), directBody = await page.locator('#message-history-direct-user .message-main').boundingBox()
   expect(directAvatar!.x).toBeGreaterThanOrEqual(directBody!.x + directBody!.width)
-  expect(await page.locator('#message-history-direct-user .message-bubble').evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+  expect(await page.locator('#message-history-direct-user .message-card').evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect.poll(() => inputText(input)).toBe('')
   await page.getByRole('button', { name: /产品讨论组/ }).click()
   await expect.poll(() => inputText(input)).toBe(draft)
@@ -216,7 +223,8 @@ Then('表情回应可选择撤销且重启后保留', async ({ runtime, groupDes
   await row.getByRole('button', { name: '回应 写手 的消息', exact: true }).click()
   await expect(page.getByRole('heading', { name: '默认表情' })).toBeVisible()
   await page.getByRole('button', { name: '回应：赞', exact: true }).click()
-  await expect(row.getByRole('button', { name: '取消赞回应，你', exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: '取消赞回应，我', exact: true })).toBeVisible()
+  await row.hover()
   await row.getByRole('button', { name: '回应 写手 的消息', exact: true }).click()
   await expect(page.getByRole('heading', { name: '最常使用' })).toBeVisible()
   await expect(page.locator('.message-emoji-picker')).toHaveCSS('opacity', '1')
@@ -226,9 +234,9 @@ Then('表情回应可选择撤销且重启后保留', async ({ runtime, groupDes
   await runtime.restart()
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   const restored = runtime.page.locator('#message-history-note')
-  await expect(restored.getByRole('button', { name: '取消赞回应，你', exact: true })).toBeVisible()
+  await expect(restored.getByRole('button', { name: '取消赞回应，我', exact: true })).toBeVisible()
   expect(groupDesign.fixture!.state.calls).toBe(calls)
-  await restored.getByRole('button', { name: '取消赞回应，你', exact: true }).click()
+  await restored.getByRole('button', { name: '取消赞回应，我', exact: true }).click()
   await expect(restored.locator('.message-reaction')).toHaveCount(0)
 })
 When('用户引用研究结论并点名写手发送确认', async ({ runtime }) => {
@@ -255,7 +263,7 @@ Then('引用提及和正文在同一卡片中且复制可用', async ({ runtime,
   expect(sent.replyToMessageId).toBe('history-research'); expect(sent.mentionIds).toEqual(['writer'])
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copiedMessage: string }).copiedMessage = text } } }))
   await row.hover()
-  await row.getByRole('button', { name: '复制 你 的消息', exact: true }).click()
+  await row.getByRole('button', { name: '复制 我 的消息', exact: true }).click()
   expect(await page.evaluate(() => (window as unknown as { copiedMessage: string }).copiedMessage)).toBe(sent.content)
   await page.screenshot({ path: 'test-results/group-chat-inline-reply.png', scale: 'css', animations: 'disabled' })
   expect(runtime.errors).toEqual([]); expect(groupDesign.fixture!.state.errors).toEqual([])
@@ -310,6 +318,52 @@ Then('输入提及可筛选和键盘选择且保留前后文', async ({ runtime,
   expect((await page.evaluate(id => window.boai.request('getConversation', { id }), groupDesign.fixture!.group.id)).messages).toHaveLength(5)
 })
 
+Then('姓名提及后光标保持在标签后并保留实际选区', async ({ runtime, groupDesign }) => {
+  const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容' }), calls = groupDesign.fixture!.state.calls
+  const mention = (id: string, name: string) => page.locator(`#message-${id}`).getByRole('button', { name: `提及 ${name}`, exact: true }).click()
+  const beforeCaret = () => input.evaluate(element => {
+    const selection = window.getSelection()!
+    if (!selection.isCollapsed || !element.contains(selection.anchorNode)) return null
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    range.setEnd(selection.anchorNode!, selection.anchorOffset)
+    return range.cloneContents().textContent!.replaceAll('\u200B', '')
+  })
+  await input.fill('')
+  await mention('history-research', '研究员')
+  await expect(input).toBeFocused()
+  await expect.poll(beforeCaret).toBe('@研究员')
+  await mention('history-writer', '写手')
+  await expect.poll(beforeCaret).toBe('@研究员@写手')
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText(['@研究员', '@写手'])
+  await page.screenshot({ path: test.info().outputPath('group-chat-name-mention-caret.png'), scale: 'css', animations: 'disabled', caret: 'initial' })
+  await input.press('Backspace')
+  await expect.poll(() => inputText(input)).toBe('@研究员')
+  await input.pressSequentially('请继续')
+  await expect.poll(() => inputText(input)).toBe('@研究员请继续')
+
+  await input.fill('前文 后文')
+  await input.press('ArrowLeft'); await input.press('ArrowLeft')
+  await mention('history-research', '研究员')
+  await expect.poll(beforeCaret).toBe('前文 @研究员')
+  await input.pressSequentially('补充')
+  await expect.poll(() => inputText(input)).toBe('前文 @研究员补充后文')
+
+  await input.fill('前文 待替换 后文')
+  for (let index = 0; index < '前文 待替换 后文'.length; index++) await input.press('ArrowLeft')
+  for (let index = 0; index < 3; index++) await input.press('ArrowRight')
+  for (let index = 0; index < 3; index++) await input.press('Shift+ArrowRight')
+  await expect.poll(() => input.evaluate(() => ({ collapsed: window.getSelection()!.isCollapsed, text: window.getSelection()!.toString() }))).toEqual({ collapsed: false, text: '待替换' })
+  await mention('history-writer', '写手')
+  await expect.poll(beforeCaret).toBe('前文 @写手')
+  await expect.poll(() => inputText(input)).toBe('前文 @写手 后文')
+  await input.pressSequentially('续写')
+  await expect.poll(() => inputText(input)).toBe('前文 @写手续写 后文')
+  await expect(page.locator('.composer-mention-tag')).toHaveText('@写手')
+  expect(groupDesign.fixture!.state.calls).toBe(calls)
+  expect((await page.evaluate(id => window.boai.request('getConversation', { id }), groupDesign.fixture!.group.id)).messages).toHaveLength(5)
+})
+
 Then('快捷命令只填草稿或打开已有功能', async ({ runtime, groupDesign }) => {
   const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容' }), calls = groupDesign.fixture!.state.calls
   await input.fill('/')
@@ -351,4 +405,179 @@ Then('快捷命令只填草稿或打开已有功能', async ({ runtime, groupDes
   await input.press('Escape'); await input.fill('')
   expect(groupDesign.fixture!.state.calls).toBe(calls)
   expect(runtime.errors).toEqual([])
+})
+
+When('用户打开员工单聊并完成一轮真实回复', async ({ runtime, groupDesign }) => {
+  const page = runtime.page, id = groupDesign.fixture!.direct.id
+  await page.getByRole('button', { name: /与研究员对话/ }).click()
+  await expect(page.getByRole('button', { name: '选择模型', exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveJSProperty('tagName', 'TEXTAREA')
+  await page.getByRole('textbox', { name: '消息内容' }).fill('单聊统一交互验收')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect.poll(async () => {
+    const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), id)
+    const sent = detail.messages.find(message => message.content === '单聊统一交互验收')
+    return Boolean(sent && detail.messages.some(message => message.turnId === sent.turnId && message.senderType === 'agent' && message.status === 'completed') && detail.turns?.find(turn => turn.id === sent.turnId)?.status === 'completed' && detail.runs.every(run => !['queued', 'running', 'waiting_approval'].includes(run.status)))
+  }).toBe(true)
+  const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), id)
+  const sent = detail.messages.find(message => message.content === '单聊统一交互验收')!
+  const reply = detail.messages.find(message => message.turnId === sent.turnId && message.senderType === 'agent')!
+  groupDesign.directReplyId = reply.id; groupDesign.directTurnId = sent.turnId
+  expect(reply.runId).toBeTruthy(); expect(detail.workItems).toHaveLength(0)
+  await expect(page.locator(`#message-${reply.id} .message-card`)).toBeVisible()
+  await expect.poll(() => page.locator('.messages').evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThan(80)
+})
+
+Then('单聊头像资料和消息卡片与群聊保持一致', async ({ runtime, groupDesign }) => {
+  const page = runtime.page
+  const cardStyle = (card: Locator) => card.evaluate(element => { const style = getComputedStyle(element); return { padding: style.padding, radius: style.borderRadius, background: style.backgroundColor, shadow: style.boxShadow } })
+  await page.getByRole('button', { name: /产品讨论组/ }).click()
+  const groupStyle = await cardStyle(page.locator('#message-history-research .message-card'))
+  await page.getByRole('button', { name: /与研究员对话/ }).click()
+  const row = page.locator(`#message-${groupDesign.directReplyId}`)
+  await row.scrollIntoViewIfNeeded()
+  expect(await cardStyle(row.locator('.message-card'))).toEqual(groupStyle)
+  const avatar = await row.locator('.message-avatar').boundingBox(), body = await row.locator('.message-main').boundingBox()
+  expect(avatar!.x + avatar!.width).toBeLessThan(body!.x)
+  const user = page.locator('#message-history-direct-user'), userAvatar = await user.locator('.message-avatar').boundingBox(), userBody = await user.locator('.message-main').boundingBox()
+  expect(userAvatar!.x).toBeGreaterThanOrEqual(userBody!.x + userBody!.width)
+  const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined)), agent = snapshot.agents.find(agent => agent.id === 'researcher')!
+  await row.getByRole('button', { name: '查看 研究员 的资料', exact: true }).click()
+  const popover = page.locator('.agent-info-popover[data-open]')
+  await expect(popover.getByRole('heading', { name: agent.name, exact: true })).toBeVisible()
+  await expect(popover).toContainText(agent.role)
+  await expect(popover.getByText(/^(已启用|已停用)$/)).toHaveCount(0)
+  for (const ids of [agent.skillIds, agent.knowledgeIds]) await expect(popover).toContainText(ids.length ? ids.map(id => snapshot.resources.find(resource => resource.id === id)?.name ?? '资料已移除').join('、') : '未绑定')
+  await page.keyboard.press('Escape')
+  await expect(row.getByRole('button', { name: '查看 研究员 的资料', exact: true })).toBeFocused()
+  const openConfiguration = async (trigger: Locator, agentId: string, reuseMemoryTab = false) => {
+    const target = snapshot.agents.find(agent => agent.id === agentId)!
+    await trigger.click()
+    await expect(popover.getByRole('heading', { name: target.name, exact: true })).toBeVisible()
+    await expect(popover.getByText(/^(已启用|已停用)$/)).toHaveCount(0)
+    await popover.getByRole('button', { name: '配置 Agent', exact: true }).click()
+    await expect(popover).toHaveCount(0)
+    const panel = page.locator('.detail-content:visible')
+    await expect(panel.getByRole('tabpanel', { name: '配置', exact: true })).toBeVisible()
+    const name = panel.getByRole('textbox', { name: '员工名称', exact: true }), role = panel.getByRole('textbox', { name: '职责简介', exact: true })
+    await expect(name).toHaveValue(target.name); await expect(name).toBeEditable()
+    await expect(role).toHaveValue(target.role); await expect(role).toBeEditable()
+    await expect(panel.getByRole('button', { name: '保存修改', exact: true })).toBeVisible()
+    await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveCount(0)
+    if (reuseMemoryTab) {
+      const tabs = page.getByRole('tablist', { name: '详情标签', exact: true }), count = await tabs.getByRole('tab').count()
+      await panel.getByRole('tab', { name: '记忆', exact: true }).click()
+      await expect(panel.getByRole('tabpanel', { name: '记忆', exact: true })).toBeVisible()
+      await trigger.click()
+      await popover.getByRole('button', { name: '配置 Agent', exact: true }).click()
+      await expect(popover).toHaveCount(0)
+      await expect(tabs.getByRole('tab')).toHaveCount(count)
+      await expect(tabs.getByRole('tab', { name: target.name, exact: true })).toHaveAttribute('aria-selected', 'true')
+      await expect(panel.getByRole('tabpanel', { name: '配置', exact: true })).toBeVisible()
+      await expect(name).toHaveValue(target.name); await expect(role).toHaveValue(target.role)
+    }
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+    await expect(trigger).toBeFocused()
+    await trigger.click()
+    await expect(popover.getByRole('heading', { name: target.name, exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+  }
+  await openConfiguration(row.getByRole('button', { name: '查看 研究员 的资料', exact: true }), 'researcher', true)
+  await page.getByRole('button', { name: /产品讨论组/ }).click()
+  const writer = page.locator('#message-history-writer')
+  await writer.scrollIntoViewIfNeeded()
+  await openConfiguration(writer.getByRole('button', { name: '查看 写手 的资料', exact: true }), 'writer')
+  await openConfiguration(page.locator('.chat-members').getByRole('button', { name: '查看 设计师 的资料', exact: true }), 'reviewer')
+  await page.getByRole('button', { name: /与研究员对话/ }).click()
+  await row.scrollIntoViewIfNeeded()
+  await row.hover()
+  await expect(row.getByRole('toolbar', { name: '研究员 的消息操作', exact: true })).toHaveCSS('opacity', '1')
+  expect(await row.locator('.message-tools button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')))).toEqual(['回应 研究员 的消息', '引用 研究员 的消息', '复制 研究员 的消息', '查看 研究员 的执行过程'])
+  await page.screenshot({ path: 'test-results/direct-chat-shared-messages.png', scale: 'css', animations: 'disabled' })
+})
+
+Then('单聊表情引用复制与执行过程入口对应真实消息', async ({ runtime, groupDesign }) => {
+  const page = runtime.page, row = page.locator(`#message-${groupDesign.directReplyId}`), id = groupDesign.fixture!.direct.id
+  await row.hover()
+  await row.getByRole('button', { name: '回应 研究员 的消息', exact: true }).click()
+  await page.getByRole('button', { name: '回应：赞', exact: true }).click()
+  await expect(row.getByRole('button', { name: '取消赞回应，我', exact: true })).toBeVisible()
+  const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), id)
+  const message = detail.messages.find(message => message.id === groupDesign.directReplyId)!
+  expect(message.reactions?.some(reaction => reaction.senderId === 'user' && reaction.emoji === '👍')).toBe(true)
+  const input = page.getByRole('textbox', { name: '消息内容' })
+  await input.fill('单聊保留草稿')
+  await row.hover()
+  await row.getByRole('button', { name: '引用 研究员 的消息', exact: true }).click()
+  await expect(page.locator('.reply-preview')).toContainText(`回复 研究员：${message.content}`)
+  await expect(input).toHaveValue('单聊保留草稿')
+  await page.getByRole('button', { name: /产品讨论组/ }).click()
+  await expect(page.locator('.reply-preview')).toHaveCount(0)
+  await page.getByRole('button', { name: /与研究员对话/ }).click()
+  await expect(input).toHaveValue('单聊保留草稿')
+  await expect(page.locator('.reply-preview')).toContainText(message.content)
+  await page.getByRole('button', { name: '取消引用', exact: true }).click()
+  await expect(input).toHaveValue('单聊保留草稿')
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copiedMessage: string }).copiedMessage = text } } }))
+  await row.hover()
+  await row.getByRole('button', { name: '复制 研究员 的消息', exact: true }).click()
+  expect(await page.evaluate(() => (window as unknown as { copiedMessage: string }).copiedMessage)).toBe(message.content)
+  await row.getByRole('button', { name: '查看 研究员 的执行过程', exact: true }).click()
+  const panel = page.locator('.detail-content:visible')
+  await expect(panel.locator('.trace-detail')).toHaveAttribute('data-turn-id', groupDesign.directTurnId!)
+  await expect(panel.locator('.trace-trigger')).toHaveText('单聊统一交互验收')
+  await expect(panel.getByRole('region', { name: '调用树与时间线', exact: true })).toBeVisible()
+  expect((await page.evaluate(input => window.boai.request('getConversationTrace', input), { conversationId: id, messageId: message.id })).length).toBeGreaterThan(0)
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  expect((await page.evaluate(id => window.boai.request('getConversation', { id }), id)).messages).toHaveLength(detail.messages.length)
+})
+
+Then('单聊明暗窄窗中的资料浮层和工具条可操作', async ({ runtime, groupDesign }) => {
+  const page = runtime.page, row = page.locator(`#message-${groupDesign.directReplyId}`)
+  await page.getByRole('button', { name: '显示或隐藏会话列表', exact: true }).click()
+  await resizeGroupWindow(runtime, 760, 688)
+  for (const mode of ['light', 'dark'] as const) {
+    await page.evaluate(async mode => { const appearance = await window.boai.request('getAppearance', undefined); await window.boai.request('updateAppearance', { patch: { mode, zoomFactor: 1.25 }, expectedRevision: appearance.revision }) }, mode)
+    await expect.poll(() => runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())).toBe(1.25)
+    await row.scrollIntoViewIfNeeded()
+    await row.getByRole('button', { name: '查看 研究员 的资料', exact: true }).click()
+    await expect(page.locator('.agent-info-popover[data-open]')).toBeInViewport()
+    await expect(page.locator('.agent-info-popover[data-open]').getByRole('button', { name: '配置 Agent', exact: true })).toBeInViewport()
+    expect(await page.locator('.agent-info-popover[data-open]').evaluate(element => { const rect = element.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight })).toBe(true)
+    await page.keyboard.press('Escape')
+    await row.hover()
+    for (const name of ['回应 研究员 的消息', '引用 研究员 的消息', '复制 研究员 的消息', '查看 研究员 的执行过程']) await expect(row.getByRole('button', { name, exact: true })).toBeInViewport()
+    await row.getByRole('button', { name: '回应 研究员 的消息', exact: true }).click()
+    await expect(page.locator('.message-emoji-picker>.reaction-grid').getByRole('button', { name: '回应：赞', exact: true })).toBeInViewport()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeInViewport()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: `test-results/direct-chat-${mode}-narrow.png`, scale: 'css', animations: 'disabled' })
+  }
+})
+
+Then('单聊和群聊新消息保持阅读位置并继续跟随底部', async ({ runtime, groupDesign }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: '显示或隐藏会话列表', exact: true }).click()
+  for (const [kind, conversation] of [['direct', groupDesign.fixture!.direct], ['group', groupDesign.fixture!.group]] as const) {
+    await page.locator('.conversation-item').filter({ hasText: conversation.title }).click()
+    const messages = page.locator('.messages')
+    expect(await messages.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(100)
+    await messages.hover(); await page.mouse.wheel(0, 100_000)
+    await expect.poll(() => messages.evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThan(2)
+    const append = async (position: string) => {
+      const sent = await page.evaluate(({ id, content, requestId }) => window.boai.request('sendMessage', { conversationId: id, content, mentionIds: [], requestId }), { id: conversation.id, content: kind === 'direct' ? '单聊滚动补充消息' : '群聊滚动补充消息', requestId: `${kind}-scroll-${position}` })
+      await expect.poll(async () => (await page.evaluate(id => window.boai.request('getConversation', { id }), conversation.id)).turns?.find(turn => turn.id === sent.turnId)?.status).toBe('completed')
+      await expect(page.locator(`#message-${sent.id}`)).toHaveCount(1)
+    }
+    await append('following')
+    await expect.poll(() => messages.evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThan(80)
+    await messages.hover(); await page.mouse.wheel(0, -100_000)
+    await expect.poll(() => messages.evaluate(element => element.scrollTop)).toBeLessThan(2)
+    await append('reading')
+    await expect.poll(() => messages.evaluate(element => element.scrollTop)).toBeLessThan(2)
+    await expect(page.getByRole('button', { name: /有新消息.*返回最新|返回最新/ })).toHaveCount(0)
+    await page.screenshot({ path: `test-results/${kind}-chat-reading-position.png`, scale: 'css', animations: 'disabled' })
+  }
+  expect(runtime.errors).toEqual([]); expect(groupDesign.fixture!.state.errors).toEqual([])
 })

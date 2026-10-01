@@ -1,6 +1,6 @@
 /*
- * [INPUT]: DesktopApi 通讯录偏好和宿主变更事件。
- * [OUTPUT]: 持久分类/顺序、串行提交与错误反馈；版本冲突刷新、迟到读取不覆盖保存结果。
+ * [INPUT]: DesktopApi 通讯录偏好、通讯录局部事件和员工删除/恢复的全局变更事件。
+ * [OUTPUT]: 持久多标签/顺序、标签/排序只刷新通讯录偏好，批量操作串行提交与错误反馈；版本冲突刷新、迟到读取不覆盖保存结果。
  * [POS]: contacts 的局部数据 Hook。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -23,7 +23,7 @@ export function useContactList(api: DesktopApi) {
   }, [api])
   useEffect(() => {
     void reload()
-    const unsubscribe = api.subscribe(event => { if (event.type === 'changed' && !event.conversationId) void reload() })
+    const unsubscribe = api.subscribe(event => { if (event.type === 'contact-list:changed' || event.type === 'changed' && !event.conversationId) void reload() })
     return () => { generation.current++; unsubscribe() }
   }, [api, reload])
   const change = useCallback(async (action: ContactListAction) => {

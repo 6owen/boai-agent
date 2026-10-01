@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 场景独立 Desktop、真实持久目录和浏览器窗口。
- * [OUTPUT]: 缺失默认模型的旧记录、独立存储竞争、生成进程中断、已发布员工/群移除及文件冲突准备和真实创建耗时记录。
+ * [OUTPUT]: 核心首发真实受理后的回复丢失/查询不可读与请求身份观测；缺失默认模型的旧记录、独立存储竞争、生成进程中断、已发布员工/群移除及文件冲突准备和真实创建耗时记录。
  * [POS]: 团队创建 BDD 故障支撑；生产 UI 不提供故障入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,45 @@ import { TeamRepository } from '../../../src/runtime/modules/teams/team-reposito
 import type { TeamDraft } from '../../../src/shared/domain/team-creation'
 import type { TestInfo } from '@playwright/test'
 import type { Connection } from '../../../src/shared/domain'
+import type { Methods } from '../../../src/shared/ipc'
+
+type CoreStartInput = Methods['startCoreConversation']['input']
+interface CoreReplyState { starts: CoreStartInput[]; lookups: string[]; committedIds: string[]; lostStarts: number; unavailableLookups: number; lookupUnavailable: boolean }
+type CoreReplyGlobal = typeof globalThis & { __boaiCoreReplyFault: CoreReplyState }
+
+/** Preserve production IPC and transactions; fault only replies after the real handler returns. */
+export async function coreReplyFault(runtime: Desktop, options: { loseStartReply?: boolean; lookupUnavailable?: boolean } = {}) {
+  await runtime.app.evaluate(({ ipcMain }, options) => {
+    const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
+    const original = handlers.get('boai:request')!
+    const state: CoreReplyState = { starts: [], lookups: [], committedIds: [], lostStarts: 0, unavailableLookups: 0, lookupUnavailable: options.lookupUnavailable ?? false }
+    Object.assign(globalThis, { __boaiCoreReplyFault: state })
+    let loseStart = options.loseStartReply !== false
+    ipcMain.removeHandler('boai:request')
+    ipcMain.handle('boai:request', async (event, payload) => {
+      if (payload.method === 'startCoreConversation') state.starts.push(structuredClone(payload.input))
+      if (payload.method === 'getCoreConversationStart') state.lookups.push(payload.input.requestId)
+      const result = await original(event, payload)
+      if (payload.method === 'startCoreConversation') {
+        state.committedIds.push((result as { id: string }).id)
+        if (loseStart) { loseStart = false; state.lostStarts++; throw new Error('验收：首发已受理，但回复丢失') }
+      }
+      if (payload.method === 'getCoreConversationStart' && state.lookupUnavailable) {
+        state.unavailableLookups++; throw new Error('验收：首发回执暂不可读')
+      }
+      return result
+    })
+  }, options)
+  return {
+    inspect: () => runtime.app.evaluate(() => structuredClone((globalThis as CoreReplyGlobal).__boaiCoreReplyFault)),
+    allowLookup: () => runtime.app.evaluate(() => { (globalThis as CoreReplyGlobal).__boaiCoreReplyFault.lookupUnavailable = false }),
+  }
+}
+
+export async function coreStartReceipts(runtime: Desktop) {
+  const store = new ProductStore(join(runtime.root, 'v2', 'boai.sqlite')); await store.init()
+  try { return await store.load<{ id: string; conversationId: string; fingerprint: string; cleared?: boolean }>('coreConversationStarts') } finally { await store.close() }
+}
 
 export async function saveCompetingTeamDraft(runtime: Desktop, draft: TeamDraft) {
   // The product has a single-instance/main-window guard. Exercise an independent

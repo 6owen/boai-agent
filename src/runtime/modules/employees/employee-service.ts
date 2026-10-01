@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
+ * [OUTPUT]: 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
  * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -7,7 +8,7 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { AgentInput, DigitalAgent, Connection, Resource, MemoryEntry } from '../../../shared/domain'
-import { ProductStore, type StoredRecord } from '../../adapters/storage/product-store'
+import { ProductStore, type StoredRecord, type RecordTransaction } from '../../adapters/storage/product-store'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/avatars'
 import { thinkingLevels } from '../../../shared/domain/model-preferences'
@@ -81,6 +82,35 @@ export class EmployeeService {
   }
   private validateResources(ids: string[], kind: Resource['kind']) {
     for (const id of ids) if (this.hooks.resource(id)?.kind !== kind) fail(kind === 'skill' ? 'Skill 不存在或类型不匹配' : '知识资源不存在或类型不匹配')
+  }
+  assertSkillBinding(agentId: string, expectedConfigVersion: number) {
+    const agent = this.get(agentId)
+    if (agent.configVersion !== expectedConfigVersion) fail('员工配置已变更，请刷新后绑定')
+    if (agent.executionBackend?.kind === 'acp-local') fail('外部任务后端暂不支持 BoAI 的 Skills 绑定')
+    return agent
+  }
+  /** Resource, installation, employee and receipt are committed by the same caller transaction. */
+  async bindSkillInTransaction(tx: RecordTransaction, agentId: string, expectedConfigVersion: number, resource: Resource): Promise<DigitalAgent> {
+    const agent = await tx.get<DigitalAgent>('agents', agentId) ?? fail('员工不存在，请先保存员工')
+    if (agent.configVersion !== expectedConfigVersion) fail('员工配置已变更，请刷新后绑定')
+    if (agent.executionBackend?.kind === 'acp-local') fail('外部任务后端暂不支持 BoAI 的 Skills 绑定')
+    if (resource.kind !== 'skill' || (resource.ownerAgentId && resource.ownerAgentId !== agent.id)) fail('不能绑定其他员工的专属技能')
+    for (const skillId of agent.skillIds) {
+      const bound = await tx.get<Resource>('resources', skillId) ?? fail('已绑定技能不存在，请刷新员工')
+      if (bound.id !== resource.id && bound.name === resource.name) fail('同一员工不能绑定名称相同但来源或内容不同的 Skills')
+    }
+    if (agent.skillIds.includes(resource.id)) return agent
+    if (agent.skillIds.length >= 100) fail('员工最多绑定 100 个 Skills')
+    const updated = { ...agent, skillIds: [...agent.skillIds, resource.id], configVersion: agent.configVersion + 1 }
+    await tx.put(record('agents', updated))
+    return updated
+  }
+  async commitSkillBinding(agent: DigitalAgent) {
+    this.install(agent.id, agent)
+    await this.hooks.cancel(agent.id, '员工技能已变更，请重新执行')
+    await this.hooks.invalidateMemory(agent.id, entry => entry.sourceResourceIds.some(id => ![...agent.skillIds, ...agent.knowledgeIds].includes(id)))
+    await this.homes.commit(agent)
+    this.hooks.changed()
   }
   async save(input: AgentInput & { systemRole?: 'core' }) {
     const previous = input.id ? this.get(input.id) : undefined

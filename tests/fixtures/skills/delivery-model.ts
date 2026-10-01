@@ -1,13 +1,13 @@
 /*
  * [INPUT]: 固定技能名、真实 Mastra SDK 的本地模型请求与工具返回。
- * [OUTPUT]: 可检查的阶段/工具请求记录；产物内容只能取自实际 skill_read 返回。
+ * [OUTPUT]: 可检查的阶段/工具请求记录；产物内容只能取自实际 skill_read 返回；可选业务交付模式在真实发布后引用原成果回执 report_work。
  * [POS]: Skills 模块与桌面交付验收共用的离线协议服务，不代替生产技能工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createServer } from 'node:http'
 
 export type SkillModelRequest = { stream?: boolean; model: string; messages: { role: string; content: unknown }[]; tools?: { function: { name: string } }[] }
-export async function startSkillDeliveryModel(skillName: string) {
+export async function startSkillDeliveryModel(skillName: string, options: { reportWork?: boolean } = {}) {
   const requests: SkillModelRequest[] = []
   const server = createServer(async (request, response) => {
     try {
@@ -31,6 +31,11 @@ export async function startSkillDeliveryModel(skillName: string) {
           { name: 'write_file', arguments: JSON.stringify({ path: 'self:/work/skill-report.md', content: `# 技能依据\n${proof}` }) },
           { name: 'publish_artifact', arguments: JSON.stringify({ path: 'self:/work/skill-report.md', name: 'skill-report.md' }) },
         ]
+        if (options.reportWork && results.length >= operations.length) {
+          const artifactId = results.map(result => { try { return JSON.parse(String(result.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
+          if (!artifactId) throw new Error('实际发布没有返回成果身份，不能报告业务已交付')
+          operations.push({ name: 'report_work', arguments: JSON.stringify({ disposition: 'delivered', summary: '已读取获准技能依据并发布报告。', evidence: [{ kind: 'artifact', reference: artifactId }] }) })
+        }
         tool = operations[results.length]; content = '已读取获准技能并发布报告。'
       } else if (!input.tools?.length) content = '这是普通聊天，没有读取技能。'
       if (!input.stream) {

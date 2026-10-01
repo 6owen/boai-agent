@@ -1,19 +1,18 @@
 /*
  * [INPUT]: 工作结果、会话产物领域类型与统一 UI 基础组件。
- * [OUTPUT]: 群聊按真实父子工作呈现目标、证据状态与产物；保留单聊进度、依赖、停止和接续信息。
+ * [OUTPUT]: 群聊按真实父子工作呈现目标、证据状态与产物；单群成果共用固定版本应用内预览/外开入口，保留单聊进度、依赖、停止和接续信息。
  * [POS]: src/renderer/pages/conversations/-components/activity-detail.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'
-import { FileText, FolderOpen } from '@/components/icons/index'
-import type { ConversationDetail, Snapshot, WorkItem } from '@shared/domain'
-import { Avatar, sizeText } from '@/components/common/index'
+import type { Artifact, ConversationDetail, Snapshot, WorkItem } from '@shared/domain'
+import { Avatar } from '@/components/common/index'
 import { workDisplayState } from '../group-chat'
 import { ArtifactList } from './artifact-list'
 
 import { workDispositionLabels } from '../presentation'
 const workStatusLabels: Record<WorkItem['status'], string> = { ready: '等待接续', running: '正在处理', delivered: '已交付', waiting: '等待输入或依赖', blocked: '需要处理', failed: '执行失败', cancelled: '已停止', interrupted: '已中断，需明确恢复' }
-export function ActivityDetail({ detail, snapshot, busy, onOpenPath, onStopWork }: { detail: ConversationDetail; snapshot: Snapshot; busy: boolean; onOpenPath: (path: string) => void; onStopWork: (id: string) => void }) {
+export function ActivityDetail({ detail, snapshot, busy, onOpenPath, onPreviewArtifact, onStopWork }: { detail: ConversationDetail; snapshot: Snapshot; busy: boolean; onOpenPath: (path: string) => void; onPreviewArtifact?: (artifact: Artifact) => void; onStopWork: (id: string) => void }) {
   if (detail.conversation.kind === 'group') {
     const works = detail.workItems ?? [], visited = new Set<string>()
     const renderWork = (work: WorkItem, depth = 0): React.ReactNode => {
@@ -46,7 +45,7 @@ export function ActivityDetail({ detail, snapshot, busy, onOpenPath, onStopWork 
       {families}{remaining}
       {!works.length && <p className="field-hint">暂无工作任务。明确的工作目标会显示在这里。</p>}
       <div className="activity-section-heading artifacts-heading"><h3>会话全部产物</h3><small>{detail.artifacts.length}</small></div>
-      <ArtifactList artifacts={detail.artifacts} onOpenPath={onOpenPath} dates />
+      <ArtifactList artifacts={detail.artifacts} onOpenPath={onOpenPath} onPreview={onPreviewArtifact} dates />
       {!detail.artifacts.length && <p className="field-hint">生成并发布的文件将在这里显示。</p>}
     </div>
   }
@@ -61,6 +60,6 @@ export function ActivityDetail({ detail, snapshot, busy, onOpenPath, onStopWork 
       {['ready', 'running', 'waiting', 'blocked'].includes(work.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onStopWork(work.id)}>停止此工作及子工作</Button>}
     </section>)}</details>}
     {!detail.workItems?.length && <p className="field-hint">暂无工作任务。明确的工作目标会显示在这里。</p>}
-    <h4>会话全部产物 · {detail.artifacts.length}</h4>{detail.artifacts.map(artifact => <Button variant="surface" size="content" className="artifact-item" key={artifact.path} onClick={() => onOpenPath(artifact.path)}><FileText size={18} /><span><strong>{artifact.name}</strong><small>{sizeText(artifact.size)}</small></span><FolderOpen size={15} /></Button>)}{!detail.artifacts.length && <p className="field-hint">生成并发布的文件将在这里显示。</p>}
+    <h4>会话全部产物 · {detail.artifacts.length}</h4><ArtifactList artifacts={detail.artifacts} onOpenPath={onOpenPath} onPreview={onPreviewArtifact} dates />{!detail.artifacts.length && <p className="field-hint">生成并发布的文件将在这里显示。</p>}
   </div>
 }

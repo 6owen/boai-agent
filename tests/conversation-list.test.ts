@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 会话列表排序和纯更新规则。
- * [OUTPUT]: 手动顺序不随消息跳动、核心/普通分类与置顶边界及隐藏不删除记录的回归验证。
+ * [OUTPUT]: 手动顺序不随消息跳动、核心/普通分类与置顶边界及隐藏不删除记录的回归验证；核心标题 trim/长度/可见范围校验不改变身份、排序与授权配置。
  * [POS]: 会话展示偏好的模块测试；真实 IPC/重启由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
 import type { Conversation } from '../src/shared/domain'
-import { conversationListUpdates, sortedConversations, type ConversationListChange } from '../src/shared/domain/conversation-list'
+import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../src/shared/domain/conversation-list'
 const conversation = (id: string, time: string): Conversation => ({ id, kind: 'group', title: id, agentIds: ['researcher'], mode: 'natural', workspacePath: `/work/${id}`, sharedKnowledgeIds: [], createdAt: time, updatedAt: time, configVersion: 3 })
 const names = (items: Conversation[]) => sortedConversations(items).map(item => item.id)
 const change = (items: Conversation[], action: ConversationListChange) => {
@@ -14,6 +14,19 @@ const change = (items: Conversation[], action: ConversationListChange) => {
   return items.map(item => updates.find(update => update.id === item.id) ?? item)
 }
 describe('conversation list preferences', () => {
+  it('renames only a visible core conversation without changing its identity, ordering or authorization', () => {
+    const core: Conversation = { ...conversation('core', '2026-01-01'), kind: 'direct', purpose: 'core', agentIds: ['bobo'], list: { pinned: true, order: 2 }, memoryScope: 'employee', sharedKnowledgeIds: ['existing-source'] }
+    const ordinary = conversation('ordinary', '2026-01-02')
+    const updated = change([core, ordinary], { id: core.id, action: 'rename', title: '  订单讨论  ' })
+    expect(updated[0]).toEqual({ ...core, title: '订单讨论' })
+    expect(updated[1]).toBe(ordinary)
+    expect(names(updated)).toEqual(names([core, ordinary]))
+    expect(core.title).toBe('core')
+    for (const title of ['', ' \n ', 'a'.repeat(CONVERSATION_TITLE_MAX_LENGTH + 1)]) expect(() => change([core], { id: core.id, action: 'rename', title })).toThrow('会话标题')
+    expect(change([core], { id: core.id, action: 'rename', title: 'a'.repeat(CONVERSATION_TITLE_MAX_LENGTH) })[0].title).toHaveLength(CONVERSATION_TITLE_MAX_LENGTH)
+    expect(() => change([{ ...core, list: { hidden: true } }], { id: core.id, action: 'rename', title: '不能恢复' })).toThrow('通讯录')
+    expect(() => change([ordinary], { id: ordinary.id, action: 'rename', title: '不改员工显示' })).toThrow('仅核心助手')
+  })
   it('keeps legacy recency until manually sorted, then resists incoming message jumps', () => {
     const original = [conversation('A', '2026-01-01'), conversation('B', '2026-01-02'), conversation('C', '2026-01-03')]
     expect(names(original)).toEqual(['C', 'B', 'A'])

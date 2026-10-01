@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 受控草稿、候选键盘回调与共享 Button 皮肤/class 合并、Tiptap 编辑模型。
- * [OUTPUT]: 实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
+ * [OUTPUT]: 实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；外部提及恢复编辑器实际选区，恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
  * [POS]: 群聊私有输入控件；单聊继续使用 ChatComposerInput。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -31,7 +31,7 @@ export function MentionInput(props: Props) {
     return instance ? { start: draftOffset(instance.state.doc, instance.state.selection.from), end: draftOffset(instance.state.doc, instance.state.selection.to) } : { start: 0, end: 0 }
   }
   useImperativeHandle(props.ref, () => ({
-    focus: () => editor.current?.view.dom.focus({ preventScroll: true }),
+    focus: () => editor.current?.view.focus(),
     selection,
     replace: (range, text, member) => {
       const instance = editor.current
@@ -41,7 +41,9 @@ export function MentionInput(props: Props) {
       const positions = { from: documentPosition(doc, range.start), to: documentPosition(doc, range.end) }
       if (content.length) instance.commands.insertContentAt(positions, content)
       else instance.commands.deleteRange(positions)
-      instance.view.dom.focus({ preventScroll: true })
+      // EditorView restores its transaction's selection as well as focusing without scrolling.
+      // Native DOM focus alone returns a blurred contenteditable's caret to the paragraph start.
+      instance.view.focus()
     },
   }), [])
   useLayoutEffect(() => {

@@ -1,14 +1,13 @@
 /*
- * [INPUT]: React 本地状态、当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
- * [OUTPUT]: 首发前不展示会话目录操作；@ 与 / 入口共用 Prompt Bar 菜单回调；核心助手隐藏命令权限菜单；单聊模型/思考强度与普通员工权限菜单、配置锁定及发送/停止语义。
- * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理，完全访问预览不写入权限。
+ * [INPUT]: 当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
+ * [OUTPUT]: 已有 API 聊天加号接入原生材料选择，空白首发/ACP 不开放；首发前不展示会话目录操作；@ 与 / 共用 Prompt Bar；核心助手隐藏命令权限菜单；普通员工权限仅呈现已提交的禁止命令/逐次批准，模型/思考强度、配置锁定及发送/停止语义。
+ * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import { supportsThinkingControl, type ThinkingLevel } from '@shared/domain/model-preferences'
-import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FolderOpen, LoaderCircle, Plus, ShieldCheck, Square, Terminal } from '@/components/icons'
+import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FileText, FolderOpen, LoaderCircle, Plus, ShieldCheck, Square, Terminal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ChatComposerActions, ChatComposerFooter, ChatComposerOption, ChatComposerSelect } from '@/components/ui/chat-composer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -27,18 +26,17 @@ interface Props {
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
   commandsVisible: boolean; onCommands(): void
   onOpenWorkspace(): void; onMentions(): void; onSettings(): void
+  onAddMaterial?(): void; materialsDisabled?: boolean
   onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): void; onSend(stopPrevious?: boolean): void; onStop(): void
 }
 
 export function ComposerToolbar(props: Props) {
   const { members, snapshot, group, external, busy, active, configurationLocked, onChangeAgent } = props
-  const [fullAccessPreview, setFullAccessPreview] = useState<Record<string, boolean>>({})
   const primary = members[0]
-  const previewingFullAccess = !external && primary && fullAccessPreview[primary.id]
   const runningAgents = new Set(snapshot.conversations.filter(c => ['running', 'queued', 'waiting_approval'].includes(c.activity ?? '')).flatMap(c => c.agentIds))
   const locked = (agent: DigitalAgent) => busy || active || configurationLocked || !agent.active || runningAgents.has(agent.id)
   const modelLabel = external ? '外部 Agent' : primary?.modelId || snapshot.connections.find(c => c.id === primary?.connectionId)?.defaultModel || '选择模型'
-  const permissionLabel = previewingFullAccess ? '完全访问' : external || primary?.allowCommands ? '请求批准' : '禁止命令'
+  const permissionLabel = external || primary?.allowCommands ? '请求批准' : '禁止命令'
   const choices = snapshot.connections.flatMap(connection => {
     const custom = [...new Set(snapshot.agents.filter(a => a.connectionId === connection.id).map(a => a.modelId).filter(model => model && model !== connection.defaultModel))]
     const models = [...(connection.defaultModel ? [{ modelId: '', label: connection.defaultModel }] : []), ...custom.map(modelId => ({ modelId, label: modelId }))]
@@ -55,6 +53,7 @@ export function ComposerToolbar(props: Props) {
         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" round aria-label="添加或更多操作" />}><Plus /></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
           <DropdownMenuGroup>
+            {!external && props.onAddMaterial && <DropdownMenuItem disabled={busy || props.materialsDisabled} onClick={props.onAddMaterial}><FileText />添加文件</DropdownMenuItem>}
             <DropdownMenuItem onClick={props.onOpenWorkspace}><FolderOpen />打开会话工作目录</DropdownMenuItem>
             {group && <DropdownMenuItem onClick={props.onMentions}><AtSign />{props.mentionsVisible ? '收起成员点名' : '提及成员'}</DropdownMenuItem>}
           </DropdownMenuGroup>
@@ -63,20 +62,16 @@ export function ComposerToolbar(props: Props) {
       {group && <Button variant="ghost" size="icon-sm" round aria-label="提及群聊成员" aria-expanded={props.mentionsVisible} onClick={props.onMentions}><AtSign /></Button>}
       <Button variant="ghost" size="icon-sm" round aria-label="快捷命令" aria-expanded={props.commandsVisible} onClick={props.onCommands}><span aria-hidden="true">/</span></Button>
       {!group && !isCoreAgent(primary) && <DropdownMenu>
-        <DropdownMenuTrigger render={<ChatComposerSelect kind="permission" data-permission={previewingFullAccess ? 'full' : undefined} aria-label="权限批准" />}><ShieldCheck /><span>{permissionLabel}</span></DropdownMenuTrigger>
+        <DropdownMenuTrigger render={<ChatComposerSelect kind="permission" aria-label="权限批准" />}><ShieldCheck /><span>{permissionLabel}</span></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="chat-composer-menu w-[280px] max-w-[calc(100vw-32px)] p-2" aria-label="权限批准">
           {members.map(agent => <DropdownMenuGroup key={agent.id}>
             <DropdownMenuLabel>{agent.name}的命令权限{locked(agent) ? ' · 当前不可修改' : ' · 保存到员工设置'}</DropdownMenuLabel>
             {agent.executionBackend?.kind === 'acp-local' ? <DropdownMenuItem disabled><ShieldCheck /><ChatComposerOption label="逐次批准外部请求" description="外部程序提出的权限请求，每次由你确认。" /></DropdownMenuItem> :
-              <DropdownMenuRadioGroup value={fullAccessPreview[agent.id] ? 'full' : agent.allowCommands ? 'ask' : 'deny'} onValueChange={value => {
-                if (locked(agent) || !['ask', 'deny', 'full'].includes(value)) return
-                setFullAccessPreview(previous => ({ ...previous, [agent.id]: value === 'full' }))
-                // Full access is a UI preview; never translate it into a persisted permission.
-                if (value !== 'full') onChangeAgent(agent, { allowCommands: value === 'ask' })
+              <DropdownMenuRadioGroup value={agent.allowCommands ? 'ask' : 'deny'} onValueChange={value => {
+                if (!locked(agent) && ['ask', 'deny'].includes(value)) onChangeAgent(agent, { allowCommands: value === 'ask' })
               }}>
                 <DropdownMenuRadioItem closeOnClick className="gap-3 py-2" value="ask" disabled={locked(agent)}><ShieldCheck /><ChatComposerOption label="请求批准" description="允许申请运行命令，每次执行前由你确认。" /></DropdownMenuRadioItem>
                 <DropdownMenuRadioItem closeOnClick className="gap-3 py-2" value="deny" disabled={locked(agent)}><Terminal /><ChatComposerOption label="禁止命令" description="不运行系统命令，保留已授权的文件与知识访问。" /></DropdownMenuRadioItem>
-                <DropdownMenuRadioItem closeOnClick className="gap-3 py-2" data-permission="full" value="full" disabled={locked(agent)}><ShieldCheck /><ChatComposerOption label="完全访问权限" description="可不受限制地访问沙盒内的网络和文件。" /></DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>}
           </DropdownMenuGroup>)}
         </DropdownMenuContent>

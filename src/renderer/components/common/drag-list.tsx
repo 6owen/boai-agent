@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 有序条目身份、可移动边界、受控保存回调与自定义行内容。
- * [OUTPUT]: 会话式原生拖拽、前后落点/归组提示、按条目身份校验归组目标、拖动态、取消清理和 Alt 方向键排序。
+ * [OUTPUT]: 会话式原生拖拽、前后落点/归组提示；有效行内排序优先，无效排序保留来源并冒泡至分类目标；按条目身份校验归组目标、拖动态、取消清理和 Alt 方向键排序。
  * [POS]: 跨页面列表拖拽组件；只管理手势，不保存业务数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -61,9 +61,9 @@ export function DragListItem({ id, className = '', children }: { id: string; cla
     'aria-description': '可拖拽排序，或按 Alt 加上下方向键移动。',
   }
   return <div className={`drag-list-row ${className}`} data-drop={drag.target?.id === id && drag.target.placement !== 'inside' ? drag.target.placement : undefined}
-    onDragOver={event => { const next = target(event); event.stopPropagation(); drag.setTarget(next ? { id, placement: next.placement } : null); if (next) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
+    onDragOver={event => { const next = target(event); drag.setTarget(next ? { id, placement: next.placement } : null); if (next) { event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
     onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.setTarget(null) }}
-    onDrop={event => { const next = target(event); event.stopPropagation(); if (next) { event.preventDefault(); drag.onMove(next) } drag.finish() }}>
+    onDrop={event => { const next = target(event); if (next) { event.stopPropagation(); event.preventDefault(); drag.onMove(next); drag.finish() } }}>
     {children({ dragging: drag.dragged === id, dragProps })}
   </div>
 }

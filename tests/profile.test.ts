@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite、资料用例和隔离活动证据。
- * [OUTPUT]: 保存竞争/失败/重启/备份、图片校验、时区/缺失/去重/区间/清理及旧预算无调用日期的意图回归。
+ * [OUTPUT]: 当前资料名称覆盖本人历史显示且不改历史原文；按 senderType/senderId 隔离自动化与员工同 ID；保存竞争/失败/重启/备份、图片校验、时区/缺失/去重/区间/清理及旧预算无调用日期的意图回归。
  * [POS]: 个人资料模块与持久化测试；不使用真实用户数据或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -49,8 +49,14 @@ test('default is a projection; concurrent revisions cannot overwrite and invalid
 test('Unicode names, personal identity and validated local images keep employee defaults separate', async () => {
   expect(profileInitials('  Ada Lovelace ')).toBe('AL'); expect(profileInitials('王文博')).toBe('王文'); expect(profileInitials('👨‍👩‍👦😊X')).toBe('👨‍👩‍👦😊'); expect(profileInitials('')).toBe('我')
   const human = message('h', now, { origin: { automationId: 'a', occurrenceId: 'o', name: '闹钟' } as Message['origin'] })
-  expect(isPersonalMessage(human)).toBe(true); expect(messageDisplayName(human)).toBe('你')
-  expect(isPersonalMessage({ ...human, senderId: 'automation:a' })).toBe(false); expect(isPersonalMessage({ ...human, senderType: 'agent' })).toBe(false)
+  const profile = { ...defaultUserProfile, displayName: 'Ada 王' }
+  expect(isPersonalMessage(human)).toBe(true); expect(messageDisplayName(human)).toBe(defaultUserProfile.displayName)
+  expect(messageDisplayName(human, profile)).toBe('Ada 王')
+  expect(messageDisplayName(human, { ...profile, displayName: 'Ada 新名' })).toBe('Ada 新名')
+  expect(human.senderName).toBe('旧名字')
+  const automated = { ...human, senderId: 'automation:a', senderName: '定时任务 · 闹钟' }, employee = { ...human, senderType: 'agent' as const, senderName: '同 ID 员工' }
+  expect(isPersonalMessage(automated)).toBe(false); expect(isPersonalMessage(employee)).toBe(false)
+  expect(messageDisplayName(automated, profile)).toBe(automated.senderName); expect(messageDisplayName(employee, profile)).toBe(employee.senderName)
   const { repo } = await setup(), image = png()
   expect(() => validateAvatarImage(image)).not.toThrow()
   for (const invalid of [png(1), png(256, true), image.slice(0, -10), 'data:image/png;base64,' + 'A'.repeat(400001)]) expect(() => validateAvatarImage(invalid)).toThrow()

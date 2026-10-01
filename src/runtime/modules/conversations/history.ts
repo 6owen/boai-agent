@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 清空/解散保留核心首发最小 cleared 回执、历史指纹去正文且重试不重放；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；先建立跨会话记忆来源屏障，再删除文件；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
+ * [OUTPUT]: D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
+ * [OUTPUT]: 成果先失效再 hash 安全清理，冲突阻止后续递归删除；修订/采用 cleared 回执与恢复门禁；清空/解散保留核心首发和普通消息最小 cleared 回执；撤销材料及派生记忆后只清理 hash 匹配的私有原件，冲突聊天保持门禁并在恢复时显性返回；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,18 +12,27 @@ import type { Conversation, MemoryEntry } from '../../../shared/domain'
 import type { ContactListPreferences } from '../../../shared/domain/contact-list'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '../../../shared/domain/automations'
 import { ProductStore } from '../../adapters/storage/product-store'
+import type { MaterialRepository } from '../materials/material-repository'
+import type { ArtifactRepository } from '../workspaces/artifact-repository'
+import type { ConversationReadingRepository } from './reading-repository'
 import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
 interface Cleanup { id: string; hide: boolean; remove?: boolean }
 export class ConversationHistory {
-  constructor(private store: ProductStore, private dataPath: string) {}
+  constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository) {}
   async recover() {
+    const conflicts: { conversationId: string; error: string }[] = []
     for (const pending of await this.store.load<Cleanup>('conversationCleanup')) {
       const conversation = (await this.store.load<Conversation>('conversations')).find(item => item.id === pending.id)
-      if (conversation) await this.clear(conversation, pending.hide, pending.remove)
+      if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
+        const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
+        if (!sourceConflicts) throw error
+        conflicts.push({ conversationId: conversation.id, error: error instanceof Error ? error.message : '材料或成果清理未完成' })
+      }
     }
+    return conflicts
   }
   private async safe(path: string) {
     const parts = relative(this.dataPath, path).split(sep)
@@ -52,9 +62,18 @@ export class ConversationHistory {
     // Validate every parent before deleting anything; never follow recorded artifact/source paths.
     for (const path of paths) await this.safe(path)
     await this.store.write([{ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}) } }])
-    // The durable source fence precedes file removal and is repeated by recovery.
+    // Revoke derived memory even if a later hash conflict preserves a private original.
     const memoryRepository = new MemoryRepository(this.store)
     for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
+    if (this.artifacts) {
+      await this.store.transaction(tx => this.artifacts!.invalidateConversation(tx, id))
+      await this.artifacts.cleanupConversation(id)
+    }
+    if (this.materials) {
+      await this.store.transaction(tx => this.materials!.invalidateConversation(tx, id))
+      await this.materials.cleanupConversation(id)
+    }
+    // The durable source fence precedes file removal and is repeated by recovery.
     for (const path of paths) await rm(path, { recursive: true, force: true })
     for (const agent of agents) {
       const state = join(this.dataPath, 'agents', agent.id, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')
@@ -72,6 +91,9 @@ export class ConversationHistory {
     }
     if (!remove) await mkdir(join(this.dataPath, 'workspaces', id), { recursive: true })
     return this.store.transaction(async tx => {
+      await this.materials?.invalidateConversation(tx, id)
+      await this.artifacts?.invalidateConversation(tx, id)
+      await this.reading?.resetConversation(tx, id)
       const removals: { collection: string; id: string }[] = []
       const collect = async (collection: string, match: (item: HistoryRecord) => boolean) => {
         const items = (await tx.list<HistoryRecord>(collection)).filter(match)
@@ -80,6 +102,7 @@ export class ConversationHistory {
       }
       const owned = (item: HistoryRecord) => item.conversationId === id
       const messages = new Set((await collect('messages', owned)).map(item => item.id))
+      await collect('materials', owned)
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
@@ -96,6 +119,9 @@ export class ConversationHistory {
       for (const receipt of (await tx.list<HistoryRecord>('coreConversationStarts')).filter(owned)) {
         const fingerprint = /^[a-f0-9]{64}$/.test(receipt.fingerprint ?? '') ? receipt.fingerprint : createHash('sha256').update(receipt.fingerprint ?? '').digest('hex')
         await tx.put({ collection: 'coreConversationStarts', id: receipt.id, value: { id: receipt.id, fingerprint, conversationId: id, cleared: true } })
+      }
+      for (const receipt of (await tx.list<HistoryRecord>('messageReceipts')).filter(owned)) {
+        await tx.put({ collection: 'messageReceipts', id: receipt.id, value: { id: receipt.id, fingerprint: receipt.fingerprint, conversationId: id, cleared: true } })
       }
       const epochs = new Map(agents.map(agent => [`employee:${agent.id}:conversation:${id}`, 0]))
       const memory = (await tx.list<MemoryEntry>('memory')).filter(entry => entry.conversationId === id)

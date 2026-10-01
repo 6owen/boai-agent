@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 保存的完整样本、评分侧答案、可选独立评审。
- * [OUTPUT]: 确定性目标/协议检查、证据不足及运行错误分离的可解释评分；不调用员工或供应商。
+ * [OUTPUT]: 确定性目标/协议与可选 MD-v1 材料/成果/采用/重启检查；新增证据入hash、技术采用与独立人工质量分开，旧样本hash不变。
  * [POS]: tests/evaluation/checks.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto'
 import { relative } from 'node:path'
 import type { CheckResult, CheckSpec, EvaluationCase, EvaluationRecord, EvaluationScore, ExternalReview } from './schema'
 import { SCORER_VERSION } from './schema'
-export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events })).digest('hex')
+import { checkMaterialDelivery } from './material-delivery'
+export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events, ...(record.delivery ? { delivery: record.delivery, deliveryContract: { contract: record.scenario?.delivery, prompt: record.scenario?.prompt, checks: record.scenario?.checks, semantic: record.scenario?.semantic } } : {}) })).digest('hex')
 const result = (name: string, passed: boolean | undefined, reason: string, evidence: string[] = []): CheckResult => ({ name, status: passed === undefined ? 'incomplete' : passed ? 'passed' : 'failed', reason, evidence })
 function measured(record: EvaluationRecord) {
   const primary = record.detail?.messages.find(message => message.senderType === 'user' && Date.parse(message.createdAt) >= record.sentAt)
@@ -16,7 +17,7 @@ function measured(record: EvaluationRecord) {
   const ids = new Set(turns.map(turn => turn.id))
   return { turns, runs: record.detail?.runs.filter(run => run.turnId && ids.has(run.turnId)) ?? [], replies: record.detail?.messages.filter(message => message.senderType === 'agent' && message.status === 'completed' && message.turnId && ids.has(message.turnId)) ?? [], ids }
 }
-function check(record: EvaluationRecord, spec: CheckSpec): CheckResult {
+function check(record: EvaluationRecord, spec: Exclude<CheckSpec, { kind: 'material-delivery' }>): CheckResult {
   const data = measured(record), detail = record.detail!
   const name = spec.kind + ('name' in spec ? `:${spec.name}` : '')
   if (spec.kind === 'first-opportunity') {
@@ -70,11 +71,11 @@ export function scoreRecord(record: EvaluationRecord, scenario: EvaluationCase, 
   record = { ...record, scenario }
   const data = measured(record), hash = sampleHash(record)
   const executionStatus = !record.sentAt || !record.detail || !data.turns.length ? 'incomplete' : record.error || data.turns.some(turn => ['failed', 'budget_exhausted', 'interrupted', 'cancelled'].includes(turn.status)) ? 'failed' : data.turns.every(turn => ['completed', 'waiting_user'].includes(turn.status)) ? 'completed' : 'incomplete'
-  const hardChecks = record.detail ? scenario.checks.map(spec => { try { return check(record, spec) } catch (error) { return result(spec.kind, undefined, `评分器异常：${String(error)}`) } }) : [result('evidence', undefined, '没有完整运行记录')]
+  const hardChecks = record.detail ? scenario.checks.flatMap(spec => { try { return spec.kind === 'material-delivery' ? scenario.delivery ? checkMaterialDelivery(record, scenario.delivery) : [result(spec.kind, undefined, '缺少专用交付合同')] : [check(record, spec)] } catch (error) { return [result(spec.kind, undefined, `评分器异常：${String(error)}`)] } }) : [result('evidence', undefined, '没有完整运行记录')]
   let judgeStatus: EvaluationScore['judgeStatus'] = scenario.semantic.length ? 'pending' : 'not-required'
   let semanticVerdict: EvaluationScore['goalVerdict'] = scenario.semantic.length ? 'review-needed' : 'passed'
   if (review && scenario.semantic.length) {
-    const references = new Set([...(record.detail?.messages.map(message => message.id) ?? []), ...record.artifacts.flatMap(artifact => [artifact.id, artifact.path].filter((id): id is string => !!id)), ...(record.detail?.runs.map(run => run.id) ?? [])])
+    const references = new Set([...(record.detail?.messages.map(message => message.id) ?? []), ...record.artifacts.flatMap(artifact => [artifact.id, artifact.path].filter((id): id is string => !!id)), ...(record.detail?.runs.map(run => run.id) ?? []), ...(record.delivery?.materials.map(value => value.material.id) ?? []), ...(record.delivery?.beforeRestart?.revisionRequests.map(value => value.id) ?? []), ...(record.delivery?.beforeRestart?.previews.flatMap(value => value.adoption.events.map(event => event.id)) ?? [])])
     const valid = review.caseId === record.caseId && review.sampleHash === hash && review.scorerVersion === SCORER_VERSION && !!review.reviewer?.trim() && ['human', 'model-assisted'].includes(review.source) && Array.isArray(review.criteria) && scenario.semantic.every(criterion => review.criteria.filter(item => item?.criterion === criterion).length === 1 && review.criteria.some(item => item?.criterion === criterion && [0, 1, 2].includes(item.score) && typeof item.reason === 'string' && item.reason.trim() && Array.isArray(item.evidence) && item.evidence.length && item.evidence.every(id => references.has(id))))
     judgeStatus = valid ? review.source : 'invalid'
     semanticVerdict = !valid ? 'incomplete' : scenario.semantic.every(criterion => review.criteria.find(item => item.criterion === criterion)!.score === 2) ? 'passed' : 'failed'

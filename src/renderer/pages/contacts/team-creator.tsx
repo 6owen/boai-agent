@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 核心助手会话 IPC、员工快照、受控弹窗状态与会话/设置导航。
- * [OUTPUT]: 团队名称和需求两项必填弹窗；失败先核对当前请求回执，未核对时锁定原字段与身份，确定未受理后才允许改新请求。
+ * [INPUT]: 核心助手会话 IPC、员工快照、受控弹窗状态、共享 Tooltip/主题主色按钮与会话/设置导航。
+ * [OUTPUT]: 团队名称和需求两项必填弹窗，说明收纳到标题后图标 Tooltip，生成使用主题主色；失败先核对当前请求回执，未核对时锁定原字段与身份，确定未受理后才允许改新请求。
  * [POS]: contacts 加号菜单的团队创建弹窗；核心助手负责方案和原子创建，不保存团队草稿。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,11 +9,13 @@ import type { DesktopApi } from '@shared/ipc'
 import type { Conversation, Snapshot } from '@shared/domain'
 import { CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '@shared/domain/core-agent'
 import { Banner, Field, errorText } from '@/components/common'
+import { InfoIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Props {
   api: DesktopApi
@@ -62,7 +64,7 @@ export function TeamCreator({ api, snapshot, open, onOpenChange, onStarted, onCo
   }
   return <Dialog open={open} onOpenChange={value => { if (!inFlight.current) onOpenChange(value) }}>
     <DialogContent showCloseButton={false} initialFocus={nameInput} finalFocus={() => document.querySelector<HTMLElement>('.contacts-list .list-heading [aria-label="新建"]')} className="max-h-[calc(100dvh-32px)] overflow-y-auto p-6 sm:max-w-[520px]">
-      <DialogHeader><DialogTitle>创建团队</DialogTitle><DialogDescription>{name} 会根据需求安排成员、分工并创建群聊。</DialogDescription></DialogHeader>
+      <DialogHeader><div className="flex items-center gap-2"><DialogTitle>创建团队</DialogTitle><Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="创建团队说明" />}><InfoIcon /></TooltipTrigger><TooltipContent side="bottom">{name} 会根据需求安排成员、分工并创建群聊。</TooltipContent></Tooltip></div></DialogHeader>
       <form id={formId} onSubmit={event => { void submit(event) }}>
         <FieldGroup>
           {error && <Banner>{error}</Banner>}
@@ -73,7 +75,7 @@ export function TeamCreator({ api, snapshot, open, onOpenChange, onStarted, onCo
             </FieldGroup>
           </fieldset>
           {error && <Button type="button" variant="outline" onClick={onConfigure}>设置模型连接</Button>}
-          <DialogFooter variant="plain"><Button type="button" variant="ghost" disabled={busy} onClick={() => onOpenChange(false)}>取消</Button><Button type="submit" variant="ink" disabled={busy || !teamName.trim() || !prompt.trim()}>{busy ? '正在进入会话…' : '生成'}</Button></DialogFooter>
+          <DialogFooter variant="plain"><Button type="button" variant="ghost" disabled={busy} onClick={() => onOpenChange(false)}>取消</Button><Button type="submit" disabled={busy || !teamName.trim() || !prompt.trim()}>{busy ? '正在进入会话…' : '生成'}</Button></DialogFooter>
         </FieldGroup>
       </form>
     </DialogContent>

@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 版本化业务题、固定素材、公开运行记录与外部评审。
- * [OUTPUT]: 员工输入和评分侧答案分离的数据合同、事件脚本及可重评分记录。
+ * [OUTPUT]: 员工输入和评分侧答案分离的数据合同、事件脚本及可重评分记录；可选独立版本 MD-v1 交付证据保留旧样本合同。
  * [POS]: tests/evaluation/schema.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { Artifact, ConversationDetail } from '../../src/shared/domain'
+import type { MaterialDeliveryContract, MaterialDeliveryEvidence } from './material-delivery'
 export const DATASET_VERSION = 'boai-team-2026-09-28-v1'
 export const SCORER_VERSION = 'boai-team-checks-v1'
 export type CheckSpec =
@@ -14,6 +15,7 @@ export type CheckSpec =
   | { kind: 'json-fields'; name: string; fields: Record<string, string | number | boolean | string[]>; tolerance?: number }
   | { kind: 'text-pattern'; pattern: string }
   | { kind: 'event-hit'; id: string }
+  | { kind: 'material-delivery' }
 export interface EventScript {
   id: string
   when: 'public-message' | 'tool-completed' | 'child-output'
@@ -28,6 +30,7 @@ export interface EvaluationCase {
   roles?: [string, string][]; files?: { path: string; content: string }[]; events?: EventScript[]
   checks: CheckSpec[]; semantic: string[]; timeoutMs?: number; maxRequests?: number
   source?: string; comparableSingle?: boolean
+  delivery?: MaterialDeliveryContract
 }
 export interface ArtifactEvidence extends Artifact { content?: string; sha256?: string; bytes?: number; complete?: boolean; captureError?: string }
 export interface EventEvidence { id: string; action: string; at: number; trigger: string; status: 'applied' | 'failed'; error?: string }
@@ -36,6 +39,7 @@ export interface EvaluationRecord {
   scenario?: EvaluationCase; datasetVersion?: string; error?: string; runtimeErrors: string[]
   metadata: { label: string; revision: string; sourceHashes: Record<string, string>; model: string; provider: string; members: { id: string; name: string; role: string; instructions?: string }[]; promptHash?: string; datasetHash?: string; modelSignature?: string; team?: 'single' | 'multi'; requestLimit?: number }
   detail?: ConversationDetail; artifacts: ArtifactEvidence[]; events?: EventEvidence[]
+  delivery?: MaterialDeliveryEvidence
   phases?: { phase: string; agentId: string; runId: string; startAt: number; endAt?: number }[]
   emitted?: { id: string; at: number; content: string; status: string }[]
   requests: { startedAt: number; phase: string; runId: string; status?: number; error?: string }[]

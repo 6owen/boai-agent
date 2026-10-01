@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 输入框配置持久化与员工隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；会话条目按明确名称定位避免命中群成员摘要；重载后显式选择会话验证配置持久化；群聊 @ 候选及 composer 正文内标签、隐藏配置控件、员工配置锁定与隔离、思考强度二级菜单的键盘/窄窗/重启和能力边界断言。
+ * [OUTPUT]: 仅支持真实禁止命令/逐次批准的权限往返保存、无虚假完全访问选项；失败保持已提交权限和真实重启持久化；单聊/群聊草稿、明确会话定位、点名、配置锁定/员工隔离与思考强度键盘/窄窗/重启断言。
  * [POS]: tests/e2e/steps/composer.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,7 @@ import { createBdd } from 'playwright-bdd'
 import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
+import { rejectNextPermissionSave } from '../support/composer'
 import { createServer } from 'node:http'
 
 import { resolve } from 'node:path'
@@ -63,7 +64,17 @@ async function saveComposerSettings(previous: Awaited<ReturnType<typeof prepareC
   await expect(more).toBeFocused()
   const permission = page.getByRole('button', { name: '权限批准', exact: true })
   await permission.click()
+  await expect(page.getByRole('menuitemradio', { name: /^完全访问/ })).toHaveCount(0)
+  await expect(page.getByRole('menu', { name: '权限批准', exact: true }).getByRole('menuitemradio')).toHaveCount(2)
   await expect(page.getByRole('menuitemradio', { name: /^禁止命令/ })).toBeChecked()
+  await page.getByRole('menuitemradio', { name: /^请求批准/ }).click()
+  await expect.poll(async () => (await employee('researcher')).allowCommands).toBe(true)
+  await permission.click()
+  await expect(page.getByRole('menuitemradio', { name: /^请求批准/ })).toBeChecked()
+  await page.getByRole('menuitemradio', { name: /^禁止命令/ }).click()
+  await expect.poll(async () => (await employee('researcher')).allowCommands).toBe(false)
+  await expect(permission).toHaveText('禁止命令')
+  await permission.click()
   await page.getByRole('menuitemradio', { name: /^请求批准/ }).click()
   await expect.poll(async () => (await employee('researcher')).allowCommands).toBe(true)
   await expect(permission).toHaveText('请求批准')
@@ -146,6 +157,43 @@ Given('输入框场景具备两条模型连接与私聊群聊', async ({ runtime
 
 When('通过输入框菜单修改权限和模型', async ({ scenario }) => {
   scenario.saveComposerSettings = await saveComposerSettings(scenario.prepareComposer!)
+})
+
+When('权限保存失败后仍显示已提交的禁止命令', async ({ runtime, scenario }) => {
+  const { page, employee } = scenario.prepareComposer!
+  const before = await employee('researcher')
+  await rejectNextPermissionSave(runtime, 'researcher')
+  const permission = page.getByRole('button', { name: '权限批准', exact: true })
+  await permission.click()
+  await expect(page.getByRole('menuitemradio', { name: /^完全访问/ })).toHaveCount(0)
+  await page.getByRole('menuitemradio', { name: /^请求批准/ }).click()
+  await expect(page.getByText(/验收：权限保存失败，未提交/)).toBeVisible()
+  await expect(permission).toHaveText('禁止命令')
+  expect((await employee('researcher')).allowCommands).toBe(false)
+  expect((await employee('researcher')).configVersion).toBe(before.configVersion)
+  await permission.click()
+  await expect(page.getByRole('menuitemradio', { name: /^禁止命令/ })).toBeChecked()
+  await page.keyboard.press('Escape')
+})
+
+Then('明确重试保存批准权限后真实重启仍保持员工隔离', async ({ runtime, scenario }) => {
+  const { page, employee } = scenario.prepareComposer!
+  await page.getByRole('button', { name: '权限批准', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: /^请求批准/ }).click()
+  await expect.poll(async () => (await employee('researcher')).allowCommands).toBe(true)
+  expect((await employee('writer')).allowCommands).toBe(false)
+  await runtime.restart()
+  await expect(runtime.page.locator('.app-shell')).toBeVisible()
+  await runtime.page.locator('.conversation-item[aria-label="研究员"]').click()
+  const permission = runtime.page.getByRole('button', { name: '权限批准', exact: true })
+  await expect(permission).toHaveText('请求批准')
+  await permission.click()
+  await expect(runtime.page.getByRole('menuitemradio', { name: /^请求批准/ })).toBeChecked()
+  await expect(runtime.page.getByRole('menuitemradio', { name: /^完全访问/ })).toHaveCount(0)
+  const saved = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+  expect(saved.agents.find(agent => agent.id === 'researcher')!.allowCommands).toBe(true)
+  expect(saved.agents.find(agent => agent.id === 'writer')!.allowCommands).toBe(false)
+  expect(runtime.errors).toEqual([])
 })
 
 Then('运行中的员工配置锁定且群成员修改相互隔离', async ({ scenario }) => {

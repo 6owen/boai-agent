@@ -1,11 +1,13 @@
 /*
  * [INPUT]: 用户请求、员工工作意图、执行权与可检查结果。
- * [OUTPUT]: 显式追加额度的固定方案与前后限额/累计用量回执；版本化父子工作、依赖、共享预算/调用账本及私有汇报合同。
+ * [OUTPUT]: 明确用户问题与公开结果绑定，依赖等待保持独立，补充沿原工作/预算；宿主修订请求绑定新根工作并由子工作继承来源身份；材料来源约束工作正文与父子继承；显式追加额度的固定方案与前后限额/累计用量回执；版本化父子工作、依赖、共享预算/调用账本及私有汇报合同。
  * [POS]: 协作工作领域；独立于历史 Contribution 和单次 AgentRun。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { ModelUsage } from './index'
 import type { AutomationOrigin } from './automations'
+import type { MaterialReadRef } from './materials'
+import type { PublishedUserQuestion } from './inbox'
 
 /** Explicit source key identifies shared work; purpose text and employee identity do not. */
 export interface WorkIntent {
@@ -17,6 +19,8 @@ export interface WorkIntent {
 }
 export type WorkDisposition = 'delivered' | 'progress' | 'waiting' | 'blocked' | 'no_progress'
 export interface WorkOutcome {
+  /** Explicit question, quoted in this publication; dependency waiting is a separate protocol. */
+  userQuestion?: string
   disposition: WorkDisposition
   summary: string
   evidence?: { kind: 'answer' | 'artifact'; reference: string }[]
@@ -59,6 +63,10 @@ export interface WorkWake {
   createdAt: string
 }
 export interface WorkItem {
+  userQuestion?: PublishedUserQuestion
+  /** Host-accepted revision source; children inherit it without acquiring replacement publication rights. */
+  revisionRequestId?: string
+  materialSources?: MaterialReadRef[]
   origin?: AutomationOrigin
   schemaVersion: 2
   id: string

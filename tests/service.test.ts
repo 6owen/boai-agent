@@ -1,11 +1,11 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 核心会话仅标题及更新时间的严格保存、非法输入零写/隐藏与普通会话拒绝、写失败内存不污染和重启保留原配置/历史/工作/记忆且零模型；用明确 writer 开始屏障验证流式起始/完成乱序与只汇报补判；真实不可覆盖发布/内容 hash 随备份搬迁的验证；清空后旧发送请求拒绝重放、新请求仍可从序号一开始；核心预置身份与普通员工场景隔离，保留原业务断言；显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cp, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
@@ -13,6 +13,7 @@ import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail
 import type { StoredTraceSpan } from '../src/shared/domain/traces'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
 
 const roots: string[] = []
 const services: AppService[] = []
@@ -250,14 +251,18 @@ describe('local product service', () => {
   it('rechecks a task report when an earlier streaming message completes after a later message', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await service.handle('createConversation', { kind: 'group', title: '并行完成顺序', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
-    let releaseWriter!: () => void, releaseTask!: () => void, releaseReport!: () => void
+    let releaseWriter!: () => void, releaseTask!: () => void, releaseReport!: () => void, markWriterEntered!: () => void
     const writerHeld = new Promise<void>(resolve => { releaseWriter = resolve }), taskHeld = new Promise<void>(resolve => { releaseTask = resolve }), reportHeld = new Promise<void>(resolve => { releaseReport = resolve })
+    const writerEntered = new Promise<void>(resolve => { markWriterEntered = resolve })
     const decide = engine.decisionHandler
-    engine.decisionHandler = async context => ({ ...await decide(context), ...(context.agent.id === 'researcher' ? {} : { responseKind: 'chat', work: undefined }) })
+    engine.decisionHandler = async context => {
+      if (context.agent.id === 'reviewer') await writerEntered
+      return { ...await decide(context), ...(context.agent.id === 'researcher' ? {} : { responseKind: 'chat', work: undefined }) }
+    }
     let reports = 0, effects = 0
     engine.handler = async context => {
       if (context.agent.id === 'researcher') { effects++; await taskHeld }
-      if (context.agent.id === 'writer') await writerHeld
+      if (context.agent.id === 'writer') { markWriterEntered(); await writerHeld }
       await context.onDelta(`${context.agent.name}结果`)
     }
     engine.report = async context => {
@@ -275,7 +280,7 @@ describe('local product service', () => {
       releaseWriter(); await until(async () => (await detail(service, group)).messages.some(message => message.senderId === 'writer' && message.status === 'completed'))
       releaseReport(); await idle(service, group, 3)
       expect(reports).toBe(2); expect(effects).toBe(1)
-    } finally { releaseWriter(); releaseTask(); releaseReport() }
+    } finally { markWriterEntered(); releaseWriter(); releaseTask(); releaseReport() }
   })
 
   it('maintains distinct member memories concurrently after their replies', async () => {
@@ -1654,9 +1659,9 @@ describe('local product service', () => {
     const skill = await service.handle('importResource', { kind: 'skill', path: skillSource }) as Resource
     const direct = await conversation(service)
     engine.handler = async context => {
-      const sourcePath = join(context.workspace!.runPath, 'owned.md'), destination = join(context.conversation.workspacePath, 'published.md')
-      await writeFile(sourcePath, 'published'); await cp(sourcePath, destination)
-      await context.onArtifact?.({ path: destination, sourcePath, name: 'published.md', size: 9 })
+      const sourcePath = join(context.workspace!.runPath, 'owned.md')
+      await writeFile(sourcePath, 'published')
+      await publishArtifact(context, context.workspace!, `self:/runs/${context.runId}/owned.md`, 'published.md')
       await context.onDelta('done')
     }
     await send(service, direct, 'preserve me', 'backup-msg'); await idle(service, direct, 1)
@@ -1678,8 +1683,72 @@ describe('local product service', () => {
     expect((await detail(restored, restoredConversation)).messages.some(message => message.content === 'preserve me')).toBe(true)
     expect(await readFile(join(restoredConversation.workspacePath, 'output.md'), 'utf8')).toBe('saved output')
     const published = (await detail(restored, restoredConversation)).artifacts.find(artifact => artifact.name === 'published.md')!
-    expect(published.path.startsWith(restorePath)).toBe(true); expect(published.sourcePath?.startsWith(restorePath)).toBe(true)
+    const restoredRoot = await realpath(restorePath)
+    expect((await realpath(published.path)).startsWith(restoredRoot)).toBe(true); expect((await realpath(published.sourcePath!)).startsWith(restoredRoot)).toBe(true)
     expect(published.ownerAgentId).toBe('researcher')
+  })
+})
+
+describe('core conversation title editing', () => {
+  it('persists only the core title and update time across restart while preserving history, work, memory and authorization', async () => {
+    const { service, root, engine, secrets } = await fixture(); await configure(service, ['bobo'])
+    const ordinary = await conversation(service)
+    const core = await service.handle('startCoreConversation', { requestId: 'core-title-first', content: '核对现有订单' }) as Conversation
+    await idle(service, core, 1)
+    await service.handle('updateConversationList', { id: core.id, action: 'pin', pinned: true })
+    const before = await detail(service, core), initial = await snapshot(service)
+    expect(before.workItems).toHaveLength(1)
+    const query = { agentId: 'bobo', scope: 'employee' as const }
+    const memory = await service.handle('getMemory', query) as MemoryView
+    await service.handle('saveMemory', { ...query, expectedEpoch: memory.epoch, content: '这段会话已有的订单记忆', sourceMessageIds: [before.messages[0].id], origin: 'user' })
+    const store = (service as unknown as { store: ProductStore }).store
+    const memoryRecords = await store.load('memory'), receipts = await store.load('coreConversationStarts')
+    expect(memoryRecords).not.toHaveLength(0)
+    const calls = { decisions: engine.decisions.length, executions: engine.contexts.length }
+    const write = vi.spyOn(store, 'write')
+    try {
+      await service.handle('updateConversationList', { id: core.id, action: 'rename', title: '  订单处理记录  ' })
+      for (const title of ['', ' \n ', 'x'.repeat(201), 7]) await expect(service.handle('updateConversationList', { id: core.id, action: 'rename', title })).rejects.toThrow()
+      await expect(service.handle('updateConversationList', { id: core.id, action: 'rename', title: '合法但额外改配置', agentIds: ['researcher'] })).rejects.toThrow()
+      await expect(service.handle('updateConversationList', { id: ordinary.id, action: 'rename', title: '不可改普通员工' })).rejects.toThrow('仅核心助手')
+      expect(write).toHaveBeenCalledTimes(1)
+    } finally { write.mockRestore() }
+    const renamed = await detail(service, core)
+    expect(renamed.conversation).toEqual({ ...before.conversation, title: '订单处理记录', updatedAt: renamed.conversation.updatedAt })
+    expect(Date.parse(renamed.conversation.updatedAt)).toBeGreaterThan(Date.parse(before.conversation.updatedAt))
+    expect(renamed).toEqual({ ...before, conversation: renamed.conversation })
+    expect((await snapshot(service)).agents).toEqual(initial.agents)
+    expect(await store.load('memory')).toEqual(memoryRecords)
+    expect(await store.load('coreConversationStarts')).toEqual(receipts)
+    expect({ decisions: engine.decisions.length, executions: engine.contexts.length }).toEqual(calls)
+    await service.close(); services.splice(services.indexOf(service), 1)
+    const restarted = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(restarted); await restarted.init()
+    expect(await detail(restarted, core)).toEqual(renamed)
+    expect((await snapshot(restarted)).agents).toEqual(initial.agents)
+    expect(await restarted.handle('getCoreConversationStart', { requestId: 'core-title-first' })).toEqual(renamed.conversation)
+    expect({ decisions: engine.decisions.length, executions: engine.contexts.length }).toEqual(calls)
+    const reopenedStore = (restarted as unknown as { store: ProductStore }).store
+    expect(await reopenedStore.load('memory')).toEqual(memoryRecords)
+    await restarted.handle('updateConversationList', { id: core.id, action: 'hide' })
+    const hidden = await detail(restarted, core)
+    await expect(restarted.handle('updateConversationList', { id: core.id, action: 'rename', title: '不能恢复旧会话' })).rejects.toThrow('通讯录')
+    expect(await detail(restarted, core)).toEqual(hidden)
+  })
+
+  it('keeps the committed core title when storage fails and lets the same rename be explicitly retried', async () => {
+    const { service, engine } = await fixture(); await configure(service, ['bobo'])
+    const core = await service.handle('startCoreConversation', { requestId: 'core-title-write-failure', content: '保留旧标题' }) as Conversation
+    await idle(service, core, 1)
+    const before = await detail(service, core), calls = engine.contexts.length
+    const store = (service as unknown as { store: ProductStore }).store
+    const write = vi.spyOn(store, 'write').mockRejectedValueOnce(new Error('title storage failed'))
+    try { await expect(service.handle('updateConversationList', { id: core.id, action: 'rename', title: '新标题' })).rejects.toThrow('title storage failed') }
+    finally { write.mockRestore() }
+    expect(await detail(service, core)).toEqual(before)
+    expect((await store.load<Conversation>('conversations')).find(item => item.id === core.id)).toEqual(before.conversation)
+    await service.handle('updateConversationList', { id: core.id, action: 'rename', title: '新标题' })
+    expect((await detail(service, core)).conversation).toEqual({ ...before.conversation, title: '新标题', updatedAt: expect.any(String) })
+    expect(engine.contexts).toHaveLength(calls)
   })
 })
 
@@ -1714,7 +1783,8 @@ describe('conversation history cleanup', () => {
     expect(restored.id).toBe(target.id)
     expect((await detail(restarted, target)).messages).toEqual([])
     await restarted.handle('updateConversationList', { id: target.id, action: 'show' })
-    await send(restarted, target, '新的聊天', 'erase-request')
+    await expect(send(restarted, target, '新的聊天', 'erase-request')).rejects.toThrow('旧请求不能重放')
+    await send(restarted, target, '新的聊天', 'fresh-after-clear')
     await idle(restarted, target, 1)
     const fresh = await detail(restarted, target)
     expect(fresh.messages[0].sequence).toBe(1)

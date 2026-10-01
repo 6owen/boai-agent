@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 每场景独立 Desktop 与已结束的历史消息。
- * [OUTPUT]: 本人/自动化/人工补充/外部单聊、可控离线模型与大历史。
+ * [OUTPUT]: 本人/自动化/人工补充/外部单聊、员工引用与 senderId=user 的非本人历史、可控离线模型与大历史。
  * [POS]: 个人资料 BDD 数据和模型协议支撑，不接触用户目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -56,6 +56,8 @@ export async function prepareProfile(runtime: Desktop, large = false) {
         const origin = { kind: 'automation' as const, authorizedFingerprint: 'fixture', automationId: 'a', occurrenceId: 'o', name: '资料检查', scheduledFor: new Date().toISOString() }
         messages.push({ ...base, id: 'group-auto', senderId: 'automation:a', senderName: '定时任务 · 资料检查', content: '自动触发消息', origin, sequence: 3003 })
         messages.push({ ...base, id: 'group-supplement', content: '我补充的信息', origin, sequence: 3004 })
+        messages.push({ ...base, id: 'group-agent', senderType: 'agent', senderId: 'researcher', senderName: '研究员', content: '员工引用历史本人消息', replyToMessageId: 'group-human', sequence: 3005 })
+        messages.push({ ...base, id: 'group-foreign', senderType: 'agent', senderId: 'user', senderName: '同 ID 员工', content: '员工身份不能冒认本人', sequence: 3006 })
       }
     }
     await db.write(messages.map(message => ({ collection: 'messages', id: message.id, value: message })))

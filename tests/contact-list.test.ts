@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 AppService/SQLite 与隔离通讯录数据。
- * [OUTPUT]: 员工删除清空全部单聊/记忆/专属文件且保留其他群历史；关联员工新任务聊天/群计划暂停；保留群中的自动化等待随员工删除终结并保留原预算/触发身份；群目录链接失败可修复重试且外部文件保留；空群/明确群解散持久删除；整类删除及过期版本拒绝；核心身份和运行/取消待退出保护；分类排序/归属/搜索顺序及重启隔离验证。
+ * [OUTPUT]: 标签提交仅通知通讯录且员工删除仍使关联页面失效，版本冲突不广播；旧分类无损转多标签、原子批量标签/选中员工删除、统一排序和核心/未知身份整批拒绝；标签错误文案及未分类/无标签保留名；员工删除清空全部单聊/记忆/专属文件且保留其他群历史；关联员工新任务聊天/群计划暂停；保留群中的自动化等待随员工删除终结并保留原预算/触发身份；群目录链接失败可修复重试且外部文件保留；空群/明确群解散持久删除；完整多标签成员删除及过期版本拒绝；核心身份和运行/取消待退出保护；标签排序/归属/搜索顺序及重启隔离验证。
  * [POS]: 通讯录真实 AppService/SQLite 集成回归；不启动 Electron 或请求外部模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,8 +12,9 @@ import { AppService } from '../src/runtime/service'
 import type { AgentEngine } from '../src/runtime/contracts'
 import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import type { DigitalAgent } from '../src/shared/domain'
-import type { Method, Methods } from '../src/shared/ipc'
-import { sortedContacts, type ContactListAction } from '../src/shared/domain/contact-list'
+import type { AppEvent, Method, Methods } from '../src/shared/ipc'
+import { contactTagIds, sortedContacts, type ContactListAction, type ContactListPreferences } from '../src/shared/domain/contact-list'
+import { createTeamContactCategory } from '../src/runtime/modules/employees/contact-list'
 
 const roots: string[] = [], services = new Set<AppService>()
 afterEach(async () => {
@@ -21,10 +22,10 @@ afterEach(async () => {
   services.clear()
   for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true })
 })
-async function setup(engine: AgentEngine = { run: async () => {}, test: async () => 'ok' }) {
+async function setup(engine: AgentEngine = { run: async () => {}, test: async () => 'ok' }, emit: (event: AppEvent) => void = () => {}) {
   const dataPath = await mkdtemp(join(tmpdir(), 'boai-contacts-')); roots.push(dataPath)
   const start = async () => {
-    const service = new AppService({ dataPath, engine, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {} })
+    const service = new AppService({ dataPath, engine, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit })
     services.add(service); await service.init()
     const api = <K extends Method>(method: K, input: Methods[K]['input']) => service.handle(method, input) as Promise<Methods[K]['output']>
     const change = async (action: ContactListAction) => api('updateContactList', { expectedRevision: (await api('getContactList', undefined)).revision, action })
@@ -36,6 +37,26 @@ async function setup(engine: AgentEngine = { run: async () => {}, test: async ()
 }
 
 type ContactApi = Awaited<ReturnType<typeof setup>>['api']
+
+test('tag commits update only contacts; employee deletion still invalidates related pages', async () => {
+  const events: AppEvent[] = []
+  const { api, change } = await setup(undefined, event => events.push(event))
+  events.length = 0
+  const created = await change({ kind: 'create-category', name: '局部标签' }), categoryId = created.categories[0].id
+  await change({ kind: 'rename-category', categoryId, name: '仅更新通讯录' })
+  await change({ kind: 'set-agent-tags', agentIds: ['researcher'], tagIds: [categoryId], mode: 'add' })
+  await change({ kind: 'set-agent-tags', agentIds: ['researcher'], tagIds: [categoryId], mode: 'remove' })
+  await change({ kind: 'delete-category', categoryId })
+  expect(events).toEqual(Array.from({ length: 5 }, () => ({ type: 'contact-list:changed' })))
+  const current = await api('getContactList', undefined)
+  await expect(api('updateContactList', { expectedRevision: current.revision - 1, action: { kind: 'create-category', name: '过期写入' } })).rejects.toThrow('其他窗口')
+  expect(events).toHaveLength(5)
+  events.length = 0
+  await change({ kind: 'delete-agents', agentIds: ['researcher'] })
+  expect(events.some(event => event.type === 'changed' && !event.conversationId)).toBe(true)
+  expect((await api('snapshot', undefined)).agents.some(agent => agent.id === 'researcher')).toBe(false)
+})
+
 const replyEngine = (): AgentEngine => ({
   test: async () => 'ok',
   decide: async context => ({ action: context.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...context.messages.map(message => message.sequence)) }),
@@ -122,30 +143,122 @@ test('invalid category drop targets and stale category moves leave the saved arr
   await change({ kind: 'create-category', name: '设计' })
   const before = await change({ kind: 'create-category', name: '研究' })
   const [first, second] = before.categories
-  await expect(change({ kind: 'move-category', categoryId: 'missing', targetId: first.id, placement: 'before' })).rejects.toThrow('分类不存在')
-  await expect(change({ kind: 'move-category', categoryId: first.id, targetId: 'missing', placement: 'after' })).rejects.toThrow('分类不存在')
+  await expect(change({ kind: 'move-category', categoryId: 'missing', targetId: first.id, placement: 'before' })).rejects.toThrow('标签不存在')
+  await expect(change({ kind: 'move-category', categoryId: first.id, targetId: 'missing', placement: 'after' })).rejects.toThrow('标签不存在')
   expect(await api('getContactList', undefined)).toEqual(before)
   const moved = await change({ kind: 'move-category', categoryId: second.id, targetId: first.id, placement: 'before' })
   await expect(api('updateContactList', { expectedRevision: before.revision, action: { kind: 'move-category', categoryId: second.id, targetId: first.id, placement: 'after' } })).rejects.toThrow('其他窗口')
   expect(await api('getContactList', undefined)).toEqual(moved)
 })
 
-test('dragging cannot cross employee categories or employee/group boundaries; explicit assignment can', async () => {
+test('all ordinary employees share one order across tags while employee/group identities remain separate', async () => {
   const { api, change } = await setup()
   const agents = (await api('snapshot', undefined)).agents
   const categoryId = (await change({ kind: 'create-category', name: '写作' })).categories[0].id
   await change({ kind: 'assign-category', agentId: agents[0].id, categoryId })
   const before = await api('getContactList', undefined)
-  await expect(change({ kind: 'move', itemKind: 'agent', id: agents[0].id, targetId: agents[1].id, placement: 'before' })).rejects.toThrow('同一员工分类')
+  const across = await change({ kind: 'move', itemKind: 'agent', id: agents[0].id, targetId: agents[1].id, placement: 'before' })
+  expect(across.categoryByAgentId).toEqual(before.categoryByAgentId)
+  expect(contactTagIds(across, agents[0].id)).toEqual([categoryId])
   const group = await api('createConversation', { kind: 'group', title: '讨论', agentIds: agents.slice(0, 2).map(agent => agent.id) })
   await expect(change({ kind: 'move', itemKind: 'group', id: group.id, targetId: agents[0].id, placement: 'before' })).rejects.toThrow('同一类型')
   await expect(change({ kind: 'assign-category', agentId: group.id, categoryId })).rejects.toThrow('员工不存在')
-  expect(await api('getContactList', undefined)).toEqual(before)
+  expect(await api('getContactList', undefined)).toEqual(across)
   await change({ kind: 'assign-category', agentId: agents[1].id, categoryId })
   const moved = await change({ kind: 'move', itemKind: 'agent', id: agents[1].id, targetId: agents[0].id, placement: 'before' })
   expect(sortedContacts(agents.filter(agent => moved.categoryByAgentId[agent.id] === categoryId), moved.agentOrder, agent => agent.name).map(agent => agent.id)).toEqual([agents[1].id, agents[0].id])
   const ungrouped = await change({ kind: 'assign-category', agentId: agents[1].id })
   expect(ungrouped.categoryByAgentId[agents[1].id]).toBeUndefined()
+})
+
+test('legacy category identities become multiple tags without changing unselected employees or their configuration', async () => {
+  const f = await setup(), { api, change, store } = f
+  const original = (await api('snapshot', undefined)).agents
+  const legacy: ContactListPreferences = { revision: 7, categories: [{ id: 'old-a', name: '旧研究' }, { id: 'old-b', name: '旧写作' }], categoryByAgentId: { researcher: 'old-a', writer: 'old-b', reviewer: 'old-a' }, agentOrder: ['reviewer', 'writer', 'researcher'], groupOrder: [] }
+  await store.write([{ collection: 'contactList', id: 'contacts', value: legacy }])
+  expect(contactTagIds(await api('getContactList', undefined), 'researcher')).toEqual(['old-a'])
+  const added = await change({ kind: 'set-agent-tags', agentIds: ['researcher', 'researcher', 'writer'], tagIds: ['old-a', 'old-b', 'old-b'], mode: 'add' })
+  expect(added.categories).toEqual(legacy.categories)
+  expect(contactTagIds(added, 'researcher')).toEqual(['old-a', 'old-b'])
+  expect(contactTagIds(added, 'writer')).toEqual(['old-b', 'old-a'])
+  expect(contactTagIds(added, 'reviewer')).toEqual(['old-a'])
+  expect(added.agentOrder).toEqual(legacy.agentOrder)
+  const removed = await change({ kind: 'set-agent-tags', agentIds: ['researcher'], tagIds: ['old-a'], mode: 'remove' })
+  expect(contactTagIds(removed, 'researcher')).toEqual(['old-b'])
+  expect(contactTagIds(removed, 'writer')).toEqual(['old-b', 'old-a'])
+  const replaced = await change({ kind: 'set-agent-tags', agentIds: ['writer'], tagIds: [], mode: 'replace' })
+  expect(contactTagIds(replaced, 'writer')).toEqual([])
+  expect(replaced.categoryByAgentId.writer).toBeUndefined()
+  expect(contactTagIds({ categoryByAgentId: { writer: 'old-a' }, tagIdsByAgentId: { writer: [] } }, 'writer')).toEqual([])
+  await f.close()
+  const restarted = await f.start(), saved = await restarted.api('getContactList', undefined)
+  expect(saved).toEqual(replaced)
+  expect((await restarted.api('snapshot', undefined)).agents).toEqual(original)
+  const deletedTag = await restarted.change({ kind: 'delete-category', categoryId: 'old-a' })
+  expect(contactTagIds(deletedTag, 'reviewer')).toEqual([])
+  expect(contactTagIds(deletedTag, 'researcher')).toEqual(['old-b'])
+})
+
+test('batch tag changes validate every employee and tag before committing and reject stale confirmations', async () => {
+  const { api, change } = await setup()
+  const tagId = (await change({ kind: 'create-category', name: '批量标签' })).categories[0].id
+  const before = await api('getContactList', undefined), agents = (await api('snapshot', undefined)).agents
+  for (const agentIds of [['researcher', 'missing'], ['researcher', 'bobo']]) {
+    await expect(change({ kind: 'set-agent-tags', agentIds, tagIds: [tagId], mode: 'add' })).rejects.toThrow()
+    expect(await api('getContactList', undefined)).toEqual(before)
+  }
+  await expect(change({ kind: 'set-agent-tags', agentIds: ['researcher', 'writer'], tagIds: [tagId, 'missing'], mode: 'replace' })).rejects.toThrow('标签不存在')
+  await expect(change({ kind: 'set-agent-tags', agentIds: [], tagIds: [tagId], mode: 'add' })).rejects.toThrow()
+  await expect(change({ kind: 'move', itemKind: 'agent', id: 'bobo', targetId: 'researcher', placement: 'before' })).rejects.toThrow()
+  expect(await api('getContactList', undefined)).toEqual(before)
+  const writes = await Promise.allSettled(['researcher', 'writer'].map(agentId => api('updateContactList', { expectedRevision: before.revision, action: { kind: 'set-agent-tags', agentIds: [agentId], tagIds: [tagId], mode: 'add' } })))
+  expect(writes.filter(item => item.status === 'fulfilled')).toHaveLength(1)
+  const saved = await api('getContactList', undefined)
+  expect(['researcher', 'writer'].filter(agentId => contactTagIds(saved, agentId).includes(tagId))).toHaveLength(1)
+  expect((await api('snapshot', undefined)).agents).toEqual(agents)
+})
+
+test('team publication binds a unique tag without replacing members existing tags or the global employee order', async () => {
+  const { api, change, store } = await setup()
+  const previous = (await change({ kind: 'create-category', name: '研究团队' })).categories[0].id
+  await change({ kind: 'set-agent-tags', agentIds: ['researcher', 'reviewer'], tagIds: [previous], mode: 'add' })
+  const before = await api('getContactList', undefined)
+  await store.transaction(tx => createTeamContactCategory(tx, 'published-team', '研究团队', ['researcher', 'writer']))
+  const saved = await api('getContactList', undefined)
+  expect(saved.categories).toEqual([...before.categories, { id: 'published-team', name: '研究团队（2）' }])
+  expect(contactTagIds(saved, 'researcher')).toEqual([previous, 'published-team'])
+  expect(contactTagIds(saved, 'writer')).toEqual(['published-team'])
+  expect(contactTagIds(saved, 'reviewer')).toEqual([previous])
+  expect(saved.agentOrder).toEqual(before.agentOrder)
+  await store.transaction(tx => createTeamContactCategory(tx, 'reserved-team', '无标签', ['writer']))
+  expect((await api('getContactList', undefined)).categories.at(-1)).toEqual({ id: 'reserved-team', name: '无标签（2）' })
+})
+
+test('selected employee deletion is one validated batch and preserves unselected tags, employees and group history across restart', async () => {
+  const f = await setup(), { api, change } = f
+  const tagId = (await change({ kind: 'create-category', name: '共同标签' })).categories[0].id
+  await change({ kind: 'set-agent-tags', agentIds: ['researcher', 'writer', 'reviewer'], tagIds: [tagId], mode: 'add' })
+  const group = await api('createConversation', { kind: 'group', title: '选中员工混合群', agentIds: ['researcher', 'writer', 'reviewer'] })
+  const before = await api('snapshot', undefined), preferences = await api('getContactList', undefined)
+  for (const agentIds of [['researcher', 'missing'], ['researcher', 'bobo']]) {
+    await expect(api('updateContactList', { expectedRevision: preferences.revision, action: { kind: 'delete-agents', agentIds } })).rejects.toThrow()
+    expect(await api('snapshot', undefined)).toEqual(before)
+    expect(await api('getContactList', undefined)).toEqual(preferences)
+  }
+  await expect(api('updateContactList', { expectedRevision: preferences.revision - 1, action: { kind: 'delete-agents', agentIds: ['researcher', 'writer'] } })).rejects.toThrow('其他窗口')
+  const saved = await api('updateContactList', { expectedRevision: preferences.revision, action: { kind: 'delete-agents', agentIds: ['researcher', 'researcher', 'writer'] } })
+  expect(saved.revision).toBe(preferences.revision + 1)
+  expect(saved.categories).toEqual(preferences.categories)
+  expect(contactTagIds(saved, 'reviewer')).toEqual([tagId])
+  expect(contactTagIds(saved, 'researcher')).toEqual([])
+  expect(saved.tagIdsByAgentId).not.toHaveProperty('writer')
+  expect((await api('snapshot', undefined)).agents.map(agent => agent.id).sort()).toEqual(['bobo', 'reviewer'])
+  expect((await api('getConversation', { id: group.id })).conversation.agentIds).toEqual(['reviewer'])
+  for (const id of ['researcher', 'writer']) await expect(access(join(f.dataPath, 'agents', id))).rejects.toMatchObject({ code: 'ENOENT' })
+  await f.close()
+  const restarted = await f.start()
+  expect(await restarted.api('getContactList', undefined)).toEqual(saved)
+  expect((await restarted.api('snapshot', undefined)).agents.map(agent => agent.id).sort()).toEqual(['bobo', 'reviewer'])
 })
 
 test('invalid categories and concurrent stale writes cannot overwrite a saved arrangement', async () => {
@@ -154,9 +267,11 @@ test('invalid categories and concurrent stale writes cannot overwrite a saved ar
   expect(writes.filter(result => result.status === 'fulfilled')).toHaveLength(1)
   const value = await api('getContactList', undefined)
   expect(value.revision).toBe(1)
-  await expect(change({ kind: 'create-category', name: value.categories[0].name })).rejects.toThrow('名称已存在')
-  await expect(change({ kind: 'create-category', name: '未分类' })).rejects.toThrow('名称已存在')
-  await expect(change({ kind: 'rename-category', categoryId: 'missing', name: '新名称' })).rejects.toThrow('分类不存在')
+  await expect(change({ kind: 'create-category', name: value.categories[0].name })).rejects.toThrow('标签名称已存在')
+  await expect(change({ kind: 'create-category', name: '未分类' })).rejects.toThrow('标签名称已存在')
+  await expect(change({ kind: 'create-category', name: ' 无标签 ' })).rejects.toThrow('标签名称已存在')
+  await expect(change({ kind: 'rename-category', categoryId: value.categories[0].id, name: '无标签' })).rejects.toThrow('标签名称已存在')
+  await expect(change({ kind: 'rename-category', categoryId: 'missing', name: '新名称' })).rejects.toThrow('标签不存在')
   await expect(change({ kind: 'create-category', name: '   ' })).rejects.toThrow()
   expect(await api('getContactList', undefined)).toEqual(value)
 })
@@ -283,6 +398,22 @@ test('batch category deletion uses its complete saved membership and refuses sta
   expect((await restarted.api('getContactList', undefined)).categories).toEqual([])
   expect((await restarted.api('snapshot', undefined)).agents.some(agent => ['researcher', 'writer'].includes(agent.id))).toBe(false)
   expect((await restarted.api('getConversation', { id: group.id })).conversation.agentIds).toEqual(['reviewer'])
+})
+
+test('legacy tag deletion includes secondary memberships and preserves employees with unrelated tags', async () => {
+  const { api, change, store } = await setup()
+  const otherId = (await change({ kind: 'create-category', name: '保留标签' })).categories[0].id
+  const target = await change({ kind: 'create-category', name: '删除标签' }), targetId = target.categories[1].id
+  await change({ kind: 'set-agent-tags', agentIds: ['researcher', 'reviewer'], tagIds: [otherId], mode: 'add' })
+  const before = await change({ kind: 'set-agent-tags', agentIds: ['researcher', 'writer'], tagIds: [targetId], mode: 'add' })
+  expect(before.categoryByAgentId.researcher).toBe(otherId)
+  expect(contactTagIds(before, 'researcher')).toEqual([otherId, targetId])
+  const saved = await api('updateContactList', { expectedRevision: before.revision, action: { kind: 'delete-category-agents', categoryId: targetId } })
+  expect((await api('snapshot', undefined)).agents.map(agent => agent.id).sort()).toEqual(['bobo', 'reviewer'])
+  expect(saved.categories).toEqual([{ id: otherId, name: '保留标签' }])
+  expect(saved.categoryByAgentId).toEqual({ reviewer: otherId })
+  expect(saved.tagIdsByAgentId).toEqual({ reviewer: [otherId] })
+  expect((await store.load<DigitalAgent>('agents')).map(agent => agent.id).sort()).toEqual(['bobo', 'reviewer'])
 })
 
 test('core identity cannot be deleted and a direct conversation cannot be dissolved as a group', async () => {

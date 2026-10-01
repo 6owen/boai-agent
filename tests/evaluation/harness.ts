@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 相同场景/模型配置、基线或候选 AppService/Mastra 和临时运行目录。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；业务素材/任意角色/事件与注入、完整产物hash、共享预算/留出冻结校验、分阶段时间及自动报告。
+ * [OUTPUT]: 普通员工与核心隔离；既有素材/事件及可选 MD-v1 真实材料到报告/修订/采用/重启证据、完整hash、共享预算/冻结校验与人工待评审报告。
  * [POS]: tests/evaluation/harness.ts，手动供应商评估；不将自动检查替代语义复核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -19,6 +19,7 @@ import { scoreRecord } from './checks'
 import { writeReport } from './report'
 import { EvaluationBudget } from './budget'
 import { validateFrozenHoldout } from './matrix'
+import { executeMaterialDelivery, newMaterialDeliveryEvidence } from './material-delivery'
 
 interface Settings { split?: string; team?: 'single' | 'multi'; budgetFile?: string; label: string; source: string; output: string; samples: number; sampleStart?: number; maxRequests: number; cases: string[]; revision: string; hashes: Record<string, string> }
 interface Input { settings: Settings; connection: Connection; apiKey: string; connections?: { connection: Connection; apiKey: string }[] }
@@ -33,9 +34,10 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
   const connections = input.connections ?? [{ connection, apiKey }]
   const redact = (value: string) => connections.reduce((text, item) => item.apiKey ? text.replaceAll(item.apiKey, '[REDACTED]') : text, value)
   const save = (name: string, value: unknown) => writeFile(join(settings.output, name), redact(JSON.stringify(value, null, 2)))
-  const selected = settings.cases.length ? cases.filter(item => settings.cases.includes(item.id)) : cases.filter(item => item.split === (settings.split ?? 'regression') || settings.split === 'all')
+  const selected = settings.cases.length ? cases.filter(item => settings.cases.includes(item.id)) : cases.filter(item => !item.delivery && (item.split === (settings.split ?? 'regression') || settings.split === 'all'))
   if (settings.team === 'single' && selected.some(item => !item.comparableSingle)) throw new Error('所选协议题不能作为单人对照；请选择 comparableSingle 留出业务题')
   if (!selected.length || settings.cases.some(id => !cases.some(item => item.id === id))) throw new Error('Unknown evaluation scenario')
+  if (selected.some(item => item.delivery) && (selected.length !== 1 || settings.samples !== 1 || settings.team !== 'single' || connections.length !== 1 || settings.maxRequests > selected[0].delivery!.requestLimit)) throw new Error('MD-v1 首轮仅允许单独一题、1 sample、--team single、1连接且全局请求预算不超过40')
   if (selected.some(item => item.split === 'holdout')) await validateFrozenHoldout()
   const context = new AsyncLocalStorage<Phase>(), requests: Call[] = [], caseRequests = new Map<string, number>()
   const originalFetch = globalThis.fetch
@@ -94,14 +96,16 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
         ...(engine.report ? { report: (ctx: EngineContext, draft: Parameters<NonNullable<AgentEngine['report']>>[1]) => phase('report', ctx, () => engine.report(ctx, draft)) } : {}),
         test: (value, key) => engine.test(value, key),
       }
-      const service = new constructors.AppService({ dataPath, engine: observed, secrets: { get: async id => keys.get(id), set: async () => { throw new Error('Evaluation cannot modify credentials') }, delete: async () => { throw new Error('Evaluation cannot modify credentials') } }, emit: event => {
+      const createService = () => new constructors.AppService({ dataPath, engine: observed, secrets: { get: async id => keys.get(id), set: async () => { throw new Error('Evaluation cannot modify credentials') }, delete: async () => { throw new Error('Evaluation cannot modify credentials') } }, emit: event => {
         if (event.type === 'runtime-error') runtimeErrors.push(event.error)
         if (event.type === 'message' && event.message.status === 'completed' && event.message.senderType === 'agent' && sentAt) pendingEvents = pendingEvents.then(() => applyEvent('public-message')).catch(error => { runtimeErrors.push(String(error)) })
         if (event.type === 'message' && event.message.senderType === 'agent' && event.message.content.trim()) emitted.push({ id: event.message.id, at: Date.now(), content: event.message.content, status: event.message.status })
       } })
+      let service = createService()
       active = service
       let conversation: Conversation | undefined, detail: ConversationDetail | undefined, error: string | undefined, sentAt = 0
       let members: DigitalAgent[] = []
+      const delivery = scenario.delivery ? newMaterialDeliveryEvidence(caseId, scenario.delivery) : undefined
       try {
         await service.init()
         const savedConnections: Connection[] = []
@@ -139,8 +143,16 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
         const send = async (content: string, suffix: string, mention = false) => service.handle('sendMessage', { conversationId: conversation!.id, content, mentionIds: mention && scenario.mention !== undefined ? [members[scenario.mention].id] : [], requestId: `${caseId}-${suffix}` })
         if (scenario.seed) { await send(scenario.seed, 'seed'); await settle(service, conversation) }
         if (stopped) throw new Error('EVALUATION_INTERRUPTED: stopped before measured input')
-        sentAt = Date.now(); await send(scenario.prompt, 'measure', true)
-        detail = await settle(service, conversation, scenario.timeoutMs, () => pendingEvents)
+        if (scenario.delivery && delivery) {
+          detail = await executeMaterialDelivery({ service: () => service, dataPath, conversation, member: members[0], caseId, scenario: { ...scenario, delivery: scenario.delivery }, evidence: delivery,
+            onSent: () => { sentAt = Date.now() }, requests: () => requests.length,
+            settle: () => settle(service, conversation!, scenario.timeoutMs, () => pendingEvents),
+            restart: async () => { await service.close(); service = createService(); active = service; await service.init() },
+          })
+        } else {
+          sentAt = Date.now(); await send(scenario.prompt, 'measure', true)
+          detail = await settle(service, conversation, scenario.timeoutMs, () => pendingEvents)
+        }
       } catch (caught) {
         error = redact(caught instanceof Error ? caught.message : String(caught))
         if (conversation) {
@@ -173,7 +185,7 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
       const result: EvaluationRecord = { caseId, scenario, datasetVersion: DATASET_VERSION, events, phases, criterion: scenario.criterion, prompt: scenario.prompt, seed: scenario.seed, startedAt, sentAt, elapsedMs: Date.now() - (sentAt || startedAt),
         metadata: { label: settings.label, revision: settings.revision, sourceHashes: settings.hashes, datasetHash: createHash('sha256').update(JSON.stringify({ version: DATASET_VERSION, scenario })).digest('hex'), team: settings.team ?? 'multi', requestLimit: settings.maxRequests, modelSignature: createHash('sha256').update(JSON.stringify(connections.map(({ connection: item }) => ({ provider: item.provider, baseUrl: item.baseUrl, model: item.defaultModel })))).digest('hex'), model: connections.map(item => item.connection.defaultModel).join(' + '), provider: connection.provider, members: members.map(({ id, name, role, instructions }) => ({ id, name, role, instructions })), promptHash: createHash('sha256').update(scenario.prompt).digest('hex') },
         metrics: { firstVisibleReplyMs: firstVisible === undefined ? null : firstVisible - sentAt, measuredRuns: runs.length, completedReplies: replies.length, decisionRuns: runs.filter(run => run.phase === 'decision').length, providerRequestsIncludingSeed: measuredRequests.length, providerRequestsAfterInput: measuredRequests.filter(call => call.startedAt >= sentAt).length, usage: sumUsage(runs), decisionUsage: sumUsage(runs.filter(run => run.phase === 'decision')), invalidDeliveries: detail?.deliveries?.filter(delivery => delivery.status === 'failed').length ?? 0 },
-        error, runtimeErrors, requests: measuredRequests, detail, artifacts, emitted }
+        error, runtimeErrors, requests: measuredRequests, detail, artifacts, emitted, ...(delivery ? { delivery } : {}) }
       await save(`${caseId}.json`, result); retained.push(JSON.parse(redact(JSON.stringify(result))) as EvaluationRecord); results.push({ caseId, error, metrics: result.metrics, runtimeErrors })
       await save('summary.json', { settings, scenarios: selected, model: { name: connection.name, provider: connection.provider, model: connection.defaultModel }, results, requestCount: requests.length, complete: false })
       safeLog({ caseId, requests: measuredRequests.length, replies: replies.length, failedRuns: runs.filter(run => run.status === 'failed').length, error, firstVisibleReplyMs: result.metrics!.firstVisibleReplyMs })

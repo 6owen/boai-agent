@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite 员工删除用例及隔离受管/外部文件目录。
- * [OUTPUT]: 整分类员工/记忆/专属资源原子删除、共享群历史保留、版本/成员变化拒绝、符号链接边界和本地清理日志重启恢复验证。
+ * [OUTPUT]: 选中员工/多标签完整成员及记忆/专属资源原子删除、共享群历史保留、偏好版本/成员变化与未知身份整批拒绝、符号链接边界和本地清理日志重启恢复验证。
  * [POS]: tests/contact-deletion.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -65,8 +65,27 @@ it('deletes the entire category and private employee data while keeping group hi
 it('rejects stale category versions and incomplete category membership without deleting any employee', async () => {
   const { store, deletion } = await setup()
   await expect(deletion.delete({ agentIds: ['a', 'b'], category: { id: 'team', expectedRevision: 3 } })).rejects.toThrow('其他窗口')
-  await expect(deletion.delete({ agentIds: ['a'], category: { id: 'team', expectedRevision: 4 } })).rejects.toThrow('分类成员')
+  await expect(deletion.delete({ agentIds: ['a'], category: { id: 'team', expectedRevision: 4 } })).rejects.toThrow('标签成员')
   expect(await store.load('agents')).toHaveLength(3)
+  expect(await store.load('contactDeletions')).toEqual([])
+})
+
+it('uses every tag association for complete membership and removes only selected employee tag records', async () => {
+  const { store, deletion } = await setup()
+  await store.write([row('contactList', 'contacts', { revision: 4, categories: [{ id: 'team', name: '团队' }, { id: 'other', name: '保留' }], categoryByAgentId: { a: 'other', b: 'team', c: 'other' }, tagIdsByAgentId: { a: ['other', 'team'], b: ['team'], c: ['other'] }, agentOrder: ['a', 'c', 'b'], groupOrder: [] })])
+  await expect(deletion.delete({ agentIds: ['b'], category: { id: 'team', expectedRevision: 4 } })).rejects.toThrow('标签成员')
+  expect(await store.load('agents')).toHaveLength(3)
+  const result = await deletion.delete({ agentIds: ['a', 'b'], category: { id: 'team', expectedRevision: 4 } })
+  expect(result.preferences).toMatchObject({ revision: 5, categories: [{ id: 'other', name: '保留' }], categoryByAgentId: { c: 'other' }, tagIdsByAgentId: { c: ['other'] }, agentOrder: ['c'] })
+  expect((await store.load<DigitalAgent>('agents')).map(item => item.id)).toEqual(['c'])
+})
+
+it('rejects a stale selected batch or unknown member before deleting any valid employee', async () => {
+  const { store, deletion } = await setup()
+  await expect(deletion.delete({ agentIds: ['a', 'b'], expectedRevision: 3 })).rejects.toThrow('其他窗口')
+  await expect(deletion.delete({ agentIds: ['a', 'missing'], expectedRevision: 4 })).rejects.toThrow('员工不存在')
+  expect(await store.load('agents')).toHaveLength(3)
+  expect(await store.load('contactList')).toEqual([expect.objectContaining({ revision: 4, categoryByAgentId: { a: 'team', b: 'team', c: 'other' } })])
   expect(await store.load('contactDeletions')).toEqual([])
 })
 

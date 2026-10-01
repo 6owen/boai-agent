@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管文件和范围内记忆。
- * [OUTPUT]: 宿主统一召回的完整预算条目与受控记忆文件投影；现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
+ * [OUTPUT]: 宿主统一召回的完整预算条目与受控记忆文件投影；员工根投影排除限定会话/事项来源；现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
  * [POS]: 工作区文件格式唯一来源，初始人格及记忆行为保持不变。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
 import { validRecallProjection } from '../memory/memory-recall'
-import { memoryStatus, memoryText } from '../memory/memory-policy'
+import { memoryStatus, memoryText, memoryUseScope } from '../memory/memory-policy'
 import type { AgentFile, AgentFileContent, AgentHome, BootstrapSnapshot, Conversation, DigitalAgent, MemoryView, SessionWorkspace } from '../../../shared/domain'
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -172,7 +172,7 @@ export class WorkspaceService {
     return { agentId: agent.id, workspacePath: this.root(agent.id), ...(conversationId ? { sessionPath: this.session(agent.id, conversationId) } : {}), memoryNamespace: agent.memoryNamespace ?? `employee:${agent.id}`, configVersion: agent.configVersion, files }
   }
   async regenerate(agent: DigitalAgent, memory: MemoryView, conversationId?: string, force = false) {
-    memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active') }
+    memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && (conversationId || memoryUseScope(entry) === 'employee')) }
     const manifest = await this.manifest(agent.id), root = conversationId ? this.session(agent.id, conversationId) : this.root(agent.id)
     const projected: string[] = []
     let projectedBytes = 0

@@ -1,7 +1,6 @@
 /*
- * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构。
- * [OUTPUT]: 通讯录分类标题使用 11px 字号，团队创建入口位于加号菜单；通讯录滚动区域延伸至侧栏边缘，列表内容保持内侧留白；外观表单按内容容器宽度折行，在保留手动侧栏宽度时适配窄窗与缩放； 任务总览与七项设置行、上下文浮层和通讯录式分类布局；会话侧栏的小尺寸伙伴空态与通讯录嵌套分类标题；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用毛绒伙伴 WebP 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话毛绒伙伴 WebP 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话恢复文字分组，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、毛绒步骤插图/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
- *           分类 label 操作沿用行悬停/聚焦显示，确认期间保留，隐藏时不响应指针并继承 label 颜色。
+ * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构及 Motion 面板容器。
+ * [OUTPUT]: 通讯录主列表仅群聊/联系人，管理入口位于加号菜单；940×600 有界管理弹窗、双栏筛选/表格、列表内常规按钮新建标签与独立滚动；较高批量面板的 Motion 容器及 240px 紧凑只读名单/危险删除浮层，标签保存时保留按钮亮度与悬停背景、勾选亮度并维持真实禁用锁；原不可用按钮保留禁用外观，标签选择复用语义 token、支持窄窗；团队创建入口位于加号菜单；通讯录滚动区域延伸至侧栏边缘，列表内容保持内侧留白；外观表单按内容容器宽度折行，在保留手动侧栏宽度时适配窄窗与缩放； 任务总览与七项设置行、上下文浮层和通讯录式分类布局；会话侧栏的小尺寸伙伴空态；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用毛绒伙伴 WebP 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话毛绒伙伴 WebP 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话常驻名称输入与唯一核心头像名称分组，空历史保留标题、整行折叠及独立更多/新会话图标；核心分组与列表紧凑间距、历史12px子级缩进/32px行高、整行统一选中/悬停背景且标题按钮始终透明，默认标题占满可用行宽，更多/编辑随hover/focus/menu覆盖末尾并用同表面渐隐衔接，标题宽度不跳变，普通会话保留头像预览；分组操作沿 hover/focus-within/菜单保持显示，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、毛绒步骤插图/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -224,17 +223,87 @@
 .empty-illustration { display:block;width:200px;max-width:100%;height:auto;flex-shrink:0 }
 .conversation-list-empty { min-height:240px;user-select:none }
 .conversation-list-empty img { display:block;max-width:100%;height:auto }
+.conversation-section-row.conversation-core-section-row { flex-shrink:0;margin:4px 0 0 }
+.conversation-core-section-row>.conversation-core-heading { gap:6px;min-height:36px;font-size:13px;color:var(--foreground) }
+.conversation-section-row.conversation-core-section-row>.conversation-section-action { color:var(--foreground) }
+.conversation-list-panel .conversation-list { margin-top:0 }
+.conversation-list .conversation-section-heading { margin-top:4px }
+.conversation-core-history { padding-left:12px }
+.conversation-item.conversation-core-item { --core-action-surface:var(--list);position:relative;min-height:32px;gap:2px;margin-bottom:0;padding:2px 4px 2px 8px }
+.conversation-item.conversation-core-item:hover { --core-action-surface:var(--accent) }
+.conversation-item.conversation-core-item.selected { --core-action-surface:var(--selection);background:var(--selection) }
+.conversation-core-title { display:flex;flex:1;min-width:0;min-height:28px;align-items:center;text-align:left;background:transparent;font-size:12px }
+.conversation-item.conversation-core-item>.conversation-core-title.soft-button:is(:hover,:active,:focus-visible,[aria-current=page]) { background:transparent }
+.conversation-core-actions { position:absolute;top:2px;right:4px;bottom:2px;display:flex;align-items:center;gap:2px;background:var(--core-action-surface);opacity:0;pointer-events:none }
+.conversation-core-actions::before { content:'';position:absolute;top:0;bottom:0;right:100%;width:12px;background:linear-gradient(to right,transparent,var(--core-action-surface));pointer-events:none }
+.conversation-core-item>.conversation-core-actions>.conversation-core-action { color:var(--muted-foreground);flex-shrink:0;opacity:inherit }
+.conversation-core-item:is(:hover,:focus-within,[data-menu-open=true])>.conversation-core-actions { opacity:1;pointer-events:auto }
 
 .contacts-page { display:flex;flex:1;min-height:0;min-width:0 }
 .contacts-list { display:flex;flex-direction:column;flex-shrink:0;width:var(--list-width,312px);min-height:0;padding:0 10px;background:var(--list) }
 .contacts-sections { flex:1;min-height:0;overflow-y:auto;margin:0 -10px;padding:10px }
 .contacts-section-heading { width:100%;text-align:left }
-.contacts-section-heading.contacts-category-heading { padding-left:16px;font-size:11px }
-.contact-categories-heading { color:var(--muted-foreground) }
-:is(.contact-categories-heading,.contact-category-item) .contact-category-action.soft-button { opacity:0;pointer-events:none }
-:is(.contact-categories-heading,.contact-category-item):is(:hover,:focus-within,[data-editing],[data-confirming],[data-highlighted]) .contact-category-action.soft-button { opacity:1;pointer-events:auto }
-/* Menu focus utilities must keep these label actions in the same inherited color. */
-.contact-category-action,.contact-category-action>.app-icon { color:inherit !important }
+.contact-manager[data-slot=dialog-content] { --contact-manager-width:min(940px,calc(100vw - 48px));--contact-manager-height:min(600px,calc(100dvh - 64px));--contact-manager-search-width:220px;--contact-manager-search-flex:0 0 auto }
+.contact-manager[data-tag-saving] .soft-button:is(:disabled,[aria-disabled=true]):not([data-unavailable]),.contact-manager .soft-button[data-tag-saving]:is(:disabled,[aria-disabled=true]):not([data-unavailable]) { opacity:1 }
+.contact-manager[data-tag-saving] .soft-button-secondary:hover:is(:disabled,[aria-disabled=true]):not([data-unavailable]),.contact-manager .soft-button-secondary[data-tag-saving]:hover { --soft-hover-layer:var(--soft-hover) }
+.contact-manager[data-tag-saving] .soft-button-ghost:is(:disabled,[aria-disabled=true]):is(:hover,[aria-expanded=true]):not([data-unavailable]) { background:var(--accent) }
+.contact-manager[data-tag-saving] :is(.soft-button-primary,.soft-button-ink,.soft-button-destructive):hover:is(:disabled,[aria-disabled=true]):not([data-unavailable]) { background-image:linear-gradient(to bottom,var(--soft-emphasis-highlight),transparent) }
+.contact-manager-sidebar { width:190px;flex-shrink:0;min-height:0;overflow-y:auto;background:var(--list);padding:22px 12px }
+.contact-manager-sidebar-heading { display:flex;align-items:center;gap:8px;padding:0 8px;margin-bottom:24px;font-weight:600 }
+.contact-manager-menu { display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;min-height:36px;padding:8px;margin:0 0 3px;text-align:left }
+.contact-manager-filter-label { margin:24px 8px 8px;font-size:11px;color:var(--muted-foreground) }
+.contact-manager-filter-heading { margin:8px 0 3px;font-size:13px;color:var(--foreground) }
+.contact-manager-filter-heading>.app-icon:last-child { margin-left:auto }
+.contact-manager-filter-heading[aria-expanded=true]>.app-icon:first-child { transform:none }
+.contact-manager-submenu { padding-left:12px }
+.contact-manager-create-tag { margin:8px 0 3px }
+.contact-manager-main { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0 }
+.contact-manager-header { display:flex;align-items:center;gap:12px;min-height:76px;padding:18px 24px }
+.contact-manager-header [data-slot=dialog-title] { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.contact-manager-main>.banner { margin:0 24px 12px }
+.contact-manager-table-scroll { flex:1;min-height:0;overflow:auto;padding:0 16px }
+.contact-manager-table-scroll [data-slot=table-container] { overflow:visible }
+.contact-manager-table { min-width:620px;font-size:13px }
+.contact-manager-table thead { position:sticky;top:0;z-index:1;background:var(--popover) }
+.contact-manager-table th { color:var(--muted-foreground);font-size:12px }
+.contact-manager-table tbody tr { cursor:pointer }
+.contact-manager-table tbody tr:is([data-state=selected],:focus-visible) { background:var(--selection) }
+.contact-manager-table td { height:64px;max-width:190px }
+.contact-manager-check { width:36px }
+.contact-manager-identity { display:flex;align-items:center;gap:10px;min-width:0 }
+.contact-manager-identity>.avatar { width:36px;height:36px;flex-shrink:0 }
+.contact-manager-identity>span,.contact-manager-role { overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.contact-manager-tags { display:flex;flex-wrap:wrap;gap:4px;min-width:90px;white-space:normal }
+.contact-manager-tags>span { padding:2px 6px;border-radius:var(--radius-control);background:var(--muted);font-size:11px;overflow-wrap:anywhere }
+.contact-manager-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:260px;color:var(--muted-foreground) }
+.contact-manager-selection-shell { flex-shrink:0;overflow:hidden }
+.contact-manager-selection { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:112px;padding:24px;border-top:1px solid var(--border);background:var(--muted) }
+.contact-manager-selection>div,.contact-manager-selection-actions { display:flex;align-items:center;gap:8px;flex-wrap:wrap }
+.contact-manager-selection>div:first-child { font-size:12px }
+.contact-manager-selected-list[data-slot=popover-content] { max-width:calc(100vw - 32px) }
+.contact-manager-selected-list>div { max-height:240px;overflow-y:auto }
+.contact-manager-selected-agent { display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12px;line-height:18px }
+.contact-manager-selected-agent>.app-icon { width:12px;height:12px;flex-shrink:0 }
+.contact-manager-selected-agent>.avatar { width:24px;height:24px;flex-shrink:0 }
+.contact-manager-selected-agent>span { min-width:0;overflow-wrap:anywhere }
+.contact-manager-delete-confirm[data-slot=popover-content] { width:340px;max-width:calc(100vw - 32px) }
+.contact-manager-confirm-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:8px }
+.contact-tag-create-row { display:flex;align-items:center;gap:2px;margin:4px 0 }
+.contact-tag-create-row [data-slot=input] { min-width:0;flex:1;padding-inline:6px }
+.contact-tag-assignment { width:300px;max-width:calc(100vw - 32px) }
+.contact-tag-assignment[data-tag-saving] [data-slot=checkbox] { opacity:1 }
+.contact-tag-options { max-height:280px;overflow-y:auto;min-height:40px }
+.contact-tag-option { display:flex;align-items:center;gap:10px;padding:10px 8px;cursor:pointer;border-radius:var(--radius-control) }
+.contact-tag-option:hover { background:var(--accent) }
+.contact-tag-option>span { min-width:0;overflow-wrap:anywhere }
+.contact-tag-option>.avatar { width:28px;height:28px;flex-shrink:0 }
+@media (max-width:760px) {
+  .contact-manager[data-slot=dialog-content] { --contact-manager-width:min(940px,calc(100vw - 24px));--contact-manager-height:min(600px,calc(100dvh - 32px));--contact-manager-search-width:auto;--contact-manager-search-flex:1 1 auto }
+  .contact-manager-sidebar { width:150px;padding:18px 8px }
+  .contact-manager-header { flex-wrap:wrap;padding:16px;gap:8px }
+  .contact-manager-header [data-slot=input-group] { min-width:100px }
+  .contact-manager-selection { padding:20px 16px;flex-direction:column;align-items:flex-start }
+}
 .contacts-count { margin-left:auto;color:var(--muted-foreground);font-size:11px;font-variant-numeric:tabular-nums }
 .contacts-list-empty { padding:4px 8px 12px;font-size:12px;color:var(--muted-foreground);margin:0 }
 .contacts-detail { flex:1;min-width:0;min-height:0;overflow:auto;container-type:inline-size }

@@ -1,6 +1,8 @@
 /*
- * [INPUT]: Electron、共享领域/IPC 合同、宿主服务与技能库保存请求。
- * [OUTPUT]: 放行员工删除和真实群解散 IPC；放行核心助手新会话/团队需求受理 IPC；T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入与宿主服务及技能库保存请求。
+ * [OUTPUT]: D6 无正文会话元信息白名单；D6 有界个人历史/搜索/精确来源复核、阅读观测及独立锚点白名单，沿唯一类型化请求通道。
+ * [OUTPUT]: 放行只读待处理分页/来源、原问题补充和显式本人固定版成果验收资格/回执；放行本机发现 ID 的单技能准备、原子员工绑定和只读请求回执；不暴露任意路径绑定。
+ * [OUTPUT]: 放行固定 hash 成果预览、独立修订/采用及只读采用回执 IPC；仅原生选取的材料来源 token、严格 prepareMaterial 公共输入及材料/消息核对接口；放行员工删除和真实群解散 IPC；放行核心助手新会话/团队需求受理 IPC；T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
  *           放行核心首发按请求身份只读核对，响应失联不重发创建。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -13,8 +15,8 @@ import { decodeImage } from './decode-image'
 import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu } from 'electron'
 import type { UtilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises'
-import { extname, isAbsolute, join, relative, resolve } from 'node:path'
+import { mkdir, realpath, stat, lstat, rm, readFile, writeFile } from 'node:fs/promises'
+import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { resolveTheme, zoomFactors } from '../shared/appearance'
@@ -47,6 +49,7 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
 }, decodeImage)
 const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
+const materialSelections = new Map<string, string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
@@ -65,6 +68,22 @@ methods.add('startCoreConversation')
 methods.add('getCoreConversationStart')
 methods.add('deleteAgent')
 methods.add('deleteConversation')
+for (const method of ['chooseMaterialSource', 'prepareMaterial', 'getMaterialPreparation', 'getMaterialPreview', 'discardMaterial', 'setMaterialAuthorization', 'getMessageReceipt'] as const) methods.add(method)
+for (const method of ['getArtifactPreview', 'reviseArtifact', 'adoptArtifact', 'getArtifactAdoptionReceipt'] as const) methods.add(method)
+for (const method of ['prepareLocalSkillBinding', 'bindLocalSkill', 'getSkillBindingReceipt'] as const) methods.add(method)
+for (const method of ['listInbox', 'getInboxItem', 'replyInboxQuestion', 'requestArtifactAcceptance', 'getArtifactAcceptanceReceipt'] as const) methods.add(method)
+for (const method of ['listConversationMessages', 'searchConversations', 'resolveConversationSearchTarget', 'getConversationReading', 'observeConversationReading', 'saveConversationAnchor', 'getConversationView', 'getConversationMetadata'] as const) methods.add(method)
+
+async function selectMaterial(path: string) {
+  if (!isAbsolute(path)) throw new Error('无法读取所选文件')
+  if ((await lstat(path)).isSymbolicLink()) throw new Error('不支持作为材料导入的符号链接')
+  const selected = await realpath(path)
+  if (!(await stat(selected)).isFile()) throw new Error('请选择普通文本文件')
+  // The importer reports unsupported types without silently dropping them from the draft.
+  const id = randomUUID()
+  materialSelections.set(id, resolve(path))
+  return { id, name: basename(selected) }
+}
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
@@ -177,6 +196,11 @@ async function openResource(input: unknown) {
 
 function registerIpc() {
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
+  ipcMain.handle('boai:material-file', async (event, input: unknown) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
+    const value = z.object({ path: z.string().min(1).max(8000) }).strict().parse(input)
+    return selectMaterial(value.path)
+  })
   ipcMain.handle('boai:skill-file', async (event, input: unknown) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
     const value = z.object({ path: z.string().min(1).max(8000), kind: z.enum(['folder', 'zip']) }).strict().parse(input)
@@ -191,6 +215,18 @@ function registerIpc() {
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
+    if (method === 'chooseMaterialSource') {
+      z.undefined().parse(input)
+      const selection = await dialog.showOpenDialog(window, { title: '添加聊天材料', properties: ['openFile'], filters: [{ name: 'UTF-8 文本材料', extensions: ['txt', 'md', 'markdown'] }] })
+      return selection.canceled || !selection.filePaths[0] ? null : selectMaterial(selection.filePaths[0])
+    }
+    if (method === 'prepareMaterial') {
+      const value = z.object({ conversationId: z.string().min(1).max(200), selectionId: z.string().uuid(), requestId: z.string().min(1).max(200), authorizedAgentIds: z.array(z.string().min(1).max(200)).max(12) }).strict().parse(input)
+      const path = materialSelections.get(value.selectionId)
+      if (!path) throw new Error('请重新选择文件；原准备结果可先按请求核对')
+      const { selectionId: _, ...request } = value
+      return requestRuntime('prepareMaterial', { ...request, path })
+    }
     if (method === 'getPendingAutomationNavigation') { z.undefined().parse(input); const target = pendingAutomationNavigation; pendingAutomationNavigation = null; return target }
     if (method === 'scanLocalConnections') {
       const options = z.object({ chooseDirectory: z.boolean().optional() }).strict().parse(input)

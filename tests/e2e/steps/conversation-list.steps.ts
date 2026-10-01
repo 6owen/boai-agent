@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 会话管理中文场景、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 会话行计数/键盘排序排除核心分类导航按钮；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；透明毛绒伙伴图片加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
+ * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
+ * [OUTPUT]: 标题添加/检索入口同行，加号仅员工/群聊，常驻名称输入与唯一核心头像/名称分组标题与右侧新会话图标；名称筛选暂时展开且禁止子集重排、清除恢复原折叠；Dialog 搜索折叠会话不改变原折叠选择、定位后键盘换序保留非匹配会话；会话行计数/键盘排序排除核心分类导航按钮；无核心历史时仍保留分组标题；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；空态仅保留透明毛绒伙伴图片并验证加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；原生鼠标排序先等待分组实际展开且高度过渡结束，避免自动悬停滚动改变取点；忽略无限光标动画的稳定截图、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、清理后旧请求不可重放且新请求仍可交流、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -19,30 +19,79 @@ const { Given, When, Then } = createBdd(test)
 const list = (runtime: Desktop) => runtime.page.getByRole('navigation', { name: '会话列表' })
 const titles = (runtime: Desktop) => list(runtime).locator('.conversation-item').evaluateAll(items => items.map(item => item.getAttribute('aria-label')!))
 const snapshot = (runtime: Desktop) => runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+const searchDialog = (runtime: Desktop) => runtime.page.getByRole('dialog', { name: '搜索会话内容', exact: true })
+async function searchNames(runtime: Desktop, keyword: string) {
+  await runtime.page.getByRole('button', { name: '搜索会话内容', exact: true }).click()
+  const dialog = searchDialog(runtime)
+  await dialog.getByRole('combobox', { name: '检索类型', exact: true }).click()
+  await runtime.page.getByRole('option', { name: '会话', exact: true }).click()
+  await dialog.getByRole('textbox', { name: '搜索关键词', exact: true }).fill(keyword)
+  return dialog
+}
 const context = async (runtime: Desktop, title: string, action: string) => {
   await list(runtime).getByRole('button', { name: title, exact: true }).click({ button: 'right' })
   await runtime.page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
-Given('三个群聊出现在会话列表且标题只有添加入口', async ({ runtime }) => {
+Given('三个群聊出现在会话列表且标题提供添加与检索入口', async ({ runtime }) => {
   await runtime.start()
   await expect(runtime.page.locator('.app-shell')).toBeVisible()
   await runtime.page.evaluate(async () => {
     for (const title of ['协作甲', '资料库项目', '协作乙']) await window.boai.request('createConversation', { title, kind: 'group', agentIds: ['researcher', 'writer'] })
   })
   await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
-  await expect(runtime.page.locator('.conversation-list-panel .list-heading button')).toHaveCount(1)
+  await expect(runtime.page.locator('.conversation-list-panel .list-heading button')).toHaveCount(2)
+  const search = (await runtime.page.getByRole('button', { name: '搜索会话内容', exact: true }).boundingBox())!, add = (await runtime.page.getByRole('button', { name: '新建', exact: true }).boundingBox())!
+  expect(Math.abs(search.y - add.y)).toBeLessThan(2); expect(Math.min(Math.abs(search.x + search.width - add.x), Math.abs(add.x + add.width - search.x))).toBeLessThan(16)
   await runtime.page.getByRole('button', { name: '新建', exact: true }).click()
+  await expect(runtime.page.getByRole('menuitem')).toHaveCount(2)
   await expect(runtime.page.getByRole('menuitem', { name: '新建员工' })).toBeVisible()
   await expect(runtime.page.getByRole('menuitem', { name: '新建群聊' })).toBeVisible()
   await runtime.page.keyboard.press('Escape')
   await expect(runtime.page.getByRole('menu')).toBeHidden()
   await expect(runtime.page.getByRole('button', { name: '新建', exact: true })).toBeFocused()
 })
+When('常驻名称输入筛选会话且清除恢复折叠', async ({ runtime }) => {
+  const page = runtime.page, panel = page.locator('.conversation-list-panel')
+  const input = panel.getByRole('textbox', { name: '搜索会话', exact: true })
+  await expect(input).toBeVisible()
+  await expect(input).toHaveAttribute('placeholder', '搜索会话名称')
+  const core = (await snapshot(runtime)).agents.find(agent => agent.id === 'bobo' && agent.systemRole === 'core')!
+  const entry = panel.getByRole('button', { name: `${core.name} 的会话分组`, exact: true })
+  await expect(entry).toHaveText(core.name)
+  await expect(entry.locator('.avatar.small img')).toHaveCount(1)
+  await expect.poll(() => entry.locator('img').evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true)
+  expect((await entry.boundingBox())!.y).toBeGreaterThanOrEqual((await input.boundingBox())!.y + (await input.boundingBox())!.height)
+  const heading = list(runtime).getByRole('button', { name: '会话', exact: true })
+  const group = list(runtime).getByRole('group', { name: '普通会话', exact: true })
+  const before = await titles(runtime)
+  await heading.click(); await expect(group).toBeHidden()
+  await input.fill('协作')
+  await expect(group).toBeVisible()
+  await expect.poll(() => titles(runtime)).toEqual(before.filter(title => title.includes('协作')))
+  const row = list(runtime).getByRole('button', { name: '协作乙', exact: true })
+  await expect(row).toHaveAttribute('draggable', 'false')
+  await row.press('Alt+ArrowUp')
+  await expect.poll(() => titles(runtime)).toEqual(before.filter(title => title.includes('协作')))
+  await expect(entry).toBeVisible()
+  await input.fill('没有匹配的会话')
+  await expect(list(runtime).locator('.conversation-item')).toHaveCount(0)
+  await expect(entry).toBeVisible(); await expect(input).toBeVisible()
+  expect((await snapshot(runtime)).conversations).toHaveLength(3)
+  await input.fill(''); await expect(group).toBeHidden()
+  await heading.click(); await expect(group).toBeVisible()
+  await expect.poll(() => titles(runtime)).toEqual(before)
+})
 When('把最后一个会话拖到首位并置顶另一个会话', async ({ runtime, listScenario }) => {
   const before = await titles(runtime)
   const source = list(runtime).getByRole('button', { name: before[2], exact: true })
   const target = list(runtime).getByRole('button', { name: before[0], exact: true })
+  await expect(source).toHaveAttribute('draggable', 'true')
+  const panel = list(runtime).getByRole('group', { name: '普通会话', exact: true }).locator('..')
+  await expect.poll(() => panel.evaluate(element => {
+    return Math.abs(element.getBoundingClientRect().height - element.scrollHeight) < 1 && !element.getAnimations().some(animation => animation.playState === 'running')
+  })).toBe(true)
+  await source.hover()
   const from = (await source.boundingBox())!, to = (await target.boundingBox())!
   await runtime.page.mouse.move(from.x + 80, from.y + from.height / 2)
   await runtime.page.mouse.down()
@@ -81,9 +130,11 @@ Then('重启后手动顺序和置顶状态仍然保留', async ({ runtime, listS
     await expect(heading).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     await heading.click({ position: { x: triggerBounds.width - 4, y: triggerBounds.height / 2 } })
     await expect(list(runtime).getByRole('group', { name: group })).toBeHidden()
-    await runtime.page.getByRole('textbox', { name: '搜索会话' }).fill(group === '置顶会话' ? listScenario.order[0] : '协作')
-    await expect(list(runtime).getByRole('group', { name: group })).toBeVisible()
-    await runtime.page.getByRole('textbox', { name: '搜索会话' }).fill('')
+    const keyword = group === '置顶会话' ? listScenario.order[0] : '协作', dialog = await searchNames(runtime, keyword)
+    const matches = (await snapshot(runtime)).conversations.filter(item => Boolean(item.list?.pinned) === (group === '置顶会话') && item.title.includes(keyword))
+    expect(matches.length).toBeGreaterThan(0)
+    for (const item of matches) await expect(dialog.locator(`[data-search-kind="conversation"][data-search-result-id="${item.id}"]`)).toBeVisible()
+    await runtime.page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0)
     await expect(list(runtime).getByRole('group', { name: group })).toBeHidden()
     await heading.click()
     await expect(list(runtime).getByRole('group', { name: group })).toBeVisible()
@@ -91,13 +142,17 @@ Then('重启后手动顺序和置顶状态仍然保留', async ({ runtime, listS
   await context(runtime, listScenario.order[0], '取消置顶')
   await expect(list(runtime).locator('.conversation-pin')).toHaveCount(0)
 })
-When('在搜索结果中排序并从右键菜单删除当前会话', async ({ runtime, listScenario }) => {
+When('检索定位会话后排序并从右键菜单删除当前会话', async ({ runtime, listScenario }) => {
   const page = runtime.page
-  await page.getByRole('textbox', { name: '搜索会话' }).fill('协作')
-  const filtered = await titles(runtime)
-  await list(runtime).locator('.conversation-item').last().press('Alt+ArrowUp')
-  await expect.poll(() => titles(runtime)).toEqual([...filtered].reverse())
-  await page.getByRole('textbox', { name: '搜索会话' }).fill('')
+  const before = await titles(runtime), filtered = before.filter(title => title.includes('协作')), other = before.filter(title => !title.includes('协作'))
+  expect(filtered).toHaveLength(2)
+  const dialog = await searchNames(runtime, '协作')
+  await expect(dialog.locator('[data-search-kind="conversation"]')).toHaveCount(2)
+  const selected = (await snapshot(runtime)).conversations.find(item => item.title === filtered[1])!
+  await dialog.locator(`[data-search-result-id="${selected.id}"]`).click(); await expect(dialog).toHaveCount(0)
+  await expect(list(runtime).getByRole('button', { name: filtered[1], exact: true })).toHaveClass(/selected/)
+  await list(runtime).getByRole('button', { name: filtered[1], exact: true }).press('Alt+ArrowUp')
+  await expect.poll(() => titles(runtime)).toEqual([...filtered].reverse().concat(other))
   await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
   listScenario.removedTitle = filtered[1]
   listScenario.removedId = (await snapshot(runtime)).conversations.find(c => c.title === filtered[1])!.id
@@ -113,7 +168,9 @@ When('在搜索结果中排序并从右键菜单删除当前会话', async ({ ru
   await expect(page.getByText('确认前保留、删除后清空的历史', { exact: true })).toHaveCount(0)
   expect((await page.evaluate(id => window.boai.request('getConversation', { id }), listScenario.removedId!)).messages).toEqual([])
   await expect(readFile(join(workspace, 'media.png'))).rejects.toMatchObject({ code: 'ENOENT' })
-  await page.evaluate(id => window.boai.request('sendMessage', { conversationId: id, content: '确认前保留、删除后清空的历史', mentionIds: [], requestId: 'list-history' }), listScenario.removedId)
+  await expect(page.evaluate(id => window.boai.request('sendMessage', { conversationId: id, content: '确认前保留、删除后清空的历史', mentionIds: [], requestId: 'list-history' }), listScenario.removedId)).rejects.toThrow('原消息已清理，旧请求不能重放')
+  expect((await page.evaluate(id => window.boai.request('getConversation', { id }), listScenario.removedId!)).messages).toEqual([])
+  await page.evaluate(id => window.boai.request('sendMessage', { conversationId: id, content: '确认前保留、删除后清空的历史', mentionIds: [], requestId: 'list-history-after-clear' }), listScenario.removedId)
   await expect(page.getByText('确认前保留、删除后清空的历史', { exact: true })).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容' }).fill('保留这份草稿')
   await context(runtime, filtered[1], '删除会话')
@@ -238,6 +295,12 @@ When('选中会话后重新加载页面', async ({ runtime }) => {
 })
 Then('会话默认未选中并显示伙伴插画', async ({ runtime }) => {
   await expect(list(runtime).locator('[aria-current=page]')).toHaveCount(0)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toHaveCount(1)
+  await expect(list(runtime).getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
+  const stage = runtime.page.locator('.conversation-stage')
+  await expect(stage).toHaveText('')
+  await expect(stage.getByRole('button')).toHaveCount(0)
+  await expect(stage.locator('.starter-cards')).toHaveCount(0)
   const illustration = runtime.page.locator('img.empty-illustration[alt="等你开聊的小伙伴"]:visible')
   await expect(illustration).toBeVisible()
   await expect(illustration).toHaveJSProperty('naturalWidth', 600)

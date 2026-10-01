@@ -1,11 +1,32 @@
+/*
+ * [INPUT]: 当前员工会话工作区、宿主材料来源授权门禁与真实文件请求。
+ * [OUTPUT]: 发布真实字节 hash、明确宿主修订请求，失败只删除本次未外改原件；拒绝路径/链接越界、按当前来源授权核对内建文件访问，并仅在私有源和共享目标均获准时发布真实产物。
+ * [POS]: runtime/modules/workspaces 的逻辑路径、授权检查和真实文件副作用边界。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
 import { constants } from 'node:fs'
 import { lstat, mkdir, open, realpath, rm } from 'node:fs/promises'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { Artifact, SessionWorkspace } from '../../../shared/domain'
 import type { EngineContext } from '../../contracts'
 export const MAX_FILE_BYTES = 1024 * 1024
 const check = (signal: AbortSignal) => signal.throwIfAborted()
+
+type TaskFileContext = Pick<EngineContext, 'signal' | 'materialRefs' | 'canAccessTaskPath'>
+type TaskPathOperation = 'read' | 'list' | 'write' | 'publish'
+
+export async function taskPathAllowed(context: TaskFileContext, target: string, operation: TaskPathOperation): Promise<boolean> {
+  check(context.signal)
+  if (!context.canAccessTaskPath && context.materialRefs?.length) throw new Error('Material-backed file access requires the host authorization gate')
+  const allowed = context.canAccessTaskPath ? await context.canAccessTaskPath(path.resolve(target), operation) : true
+  check(context.signal)
+  return allowed === true
+}
+
+export async function assertTaskPathAccess(context: TaskFileContext, target: string, operation: TaskPathOperation) {
+  if (!await taskPathAllowed(context, target, operation)) throw new Error(`Task file ${operation} access is not authorized`)
+}
 
 export function contained(root: string, target: string) {
   const relative = path.relative(root, target)
@@ -113,35 +134,55 @@ export async function initializeWorkspace(context: Pick<EngineContext, 'workspac
   if ((await lstat(normalized.sharedPath)).isSymbolicLink()) throw new Error('Shared workspace cannot be a symbolic link')
   return normalized
 }
-export async function publishArtifact(context: Pick<EngineContext, 'onArtifact' | 'signal' | 'agent' | 'runId'>, workspace: SessionWorkspace, source: string, name?: string) {
+export async function publishArtifact(context: Pick<EngineContext, 'onArtifact' | 'signal' | 'agent' | 'runId' | 'materialRefs' | 'canAccessTaskPath' | 'artifactRevision'>, workspace: SessionWorkspace, source: string, name?: string, revisionRequestId?: string) {
   if (!context.onArtifact) throw new Error('Artifact publication is not configured by the host')
+  if (revisionRequestId && context.artifactRevision?.id !== revisionRequestId) throw new Error('Artifact revision publication is not authorized by the host')
   const location = logicalPath(workspace, source)
   if (location.mount !== 'self') throw new Error('Only this employee’s current-session files may be published')
+  await assertTaskPathAccess(context, path.resolve(location.root, location.relative), 'publish')
   const sourcePath = await workspaceTarget(location.root, location.relative)
   const filename = name ?? path.basename(sourcePath)
   if (!filename || filename === '.' || filename === '..' || /[\\/:\0]/.test(filename) || RESERVED_SYSTEM_FILES.has(filename.toUpperCase())) throw new Error('Invalid artifact filename')
   const id = randomUUID()
   const destination = path.join('artifacts', `${id}-${filename}`)
+  await assertTaskPathAccess(context, path.resolve(workspace.sharedPath, destination), 'publish')
   const target = await workspaceTarget(workspace.sharedPath, destination, true)
   const input = await open(sourcePath, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
-  let created = false
+  let created = false, contentHash: string | undefined
   try {
     const stat = await input.stat()
     if (!stat.isFile() || stat.nlink > 1 || stat.size > 20 * MAX_FILE_BYTES) throw new Error('Published artifact must be an ordinary file of at most 20 MiB')
     const bytes = Buffer.alloc(stat.size + 1)
     const { bytesRead } = await input.read(bytes, 0, bytes.length, 0)
-    if (bytesRead > stat.size) throw new Error('Artifact changed while publishing; retry after it finishes writing')
-    check(context.signal)
+    const after = await input.stat()
+    if (bytesRead !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) throw new Error('Artifact changed while publishing; retry after it finishes writing')
+    contentHash = createHash('sha256').update(bytes.subarray(0, bytesRead)).digest('hex')
+    await assertTaskPathAccess(context, sourcePath, 'publish')
+    await assertTaskPathAccess(context, target, 'publish')
     const output = await open(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600)
     created = true
     try { await output.writeFile(bytes.subarray(0, bytesRead)) } finally { await output.close() }
     check(context.signal)
-    const artifact: Artifact = { id, name: filename, path: target, size: bytesRead, ownerAgentId: context.agent.id, runId: context.runId, sourcePath, publishedAt: new Date().toISOString() }
+    const artifact: Artifact = { id, name: filename, path: target, size: bytesRead, ownerAgentId: context.agent.id, runId: context.runId, sourcePath, contentHash, ...(revisionRequestId ? { revisionRequestId } : {}), publishedAt: new Date().toISOString() }
     await context.onArtifact(artifact)
     return { artifact, sharedPath: `shared:/${destination.split(path.sep).join('/')}` }
   } catch (error) {
-    if (created) await rm(target, { force: true })
+    if (created && contentHash) {
+      // A rejected publication only owns its unchanged bytes. Preserve external edits.
+      try {
+        await workspaceTarget(workspace.sharedPath, destination)
+        const failed = await open(target, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+        let unchanged = false
+        try {
+          const state = await failed.stat()
+          if (state.isFile() && state.nlink === 1 && state.size <= 20 * MAX_FILE_BYTES) {
+            const current = await failed.readFile(), after = await failed.stat(), entry = await lstat(target)
+            unchanged = state.ino === entry.ino && state.dev === entry.dev && state.size === after.size && state.mtimeMs === after.mtimeMs && state.ctimeMs === after.ctimeMs && createHash('sha256').update(current).digest('hex') === contentHash
+          }
+        } finally { await failed.close() }
+        if (unchanged) await rm(target, { force: true })
+      } catch { /* Missing or changed paths remain for controlled inspection. */ }
+    }
     throw error
   } finally { await input.close() }
 }
-

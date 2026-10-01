@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 共享领域类型、产品存储与群事件。
- * [OUTPUT]: 自动化来源贯穿轮次并定向停止执行；删除员工/群时显式终结等待，保留已完成投递；群聊轮次、并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与清理后的投影回收。
+ * [OUTPUT]: 普通聊天最终公开回复通过宿主 commitReply hook 同事务保存真实完成事实；失败/流式/取消不计完成，task 仍由原 Work 事务所有者提交。
+ * [OUTPUT]: 公开 chat ask 的具体问题消息/判断关系同事务，原问题回答定向轮次及投影仅在提交后安装；自动化来源贯穿轮次并定向停止执行；删除员工/群时显式终结等待，保留已完成投递；群聊轮次、并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与清理后的投影回收。
  * [POS]: src/runtime/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -29,6 +30,7 @@ type Grant = { id: string; turnId: string; agentId: string; decisionId: string; 
 type Active = { turn: TurnRecord; controller: AbortController; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; timer: ReturnType<typeof setTimeout>; done: boolean }
 export type PublishReply = (message: Message, records: StoredRecord[], commit?: (records: StoredRecord[]) => Promise<void>) => Promise<void>
 export interface SchedulerHooks {
+  commitReply?(message: Message, records: StoredRecord[]): Promise<void>
   critical<T>(operation: () => Promise<T>): Promise<T>
   conversation(id: string): Conversation
   agent(id: string): DigitalAgent
@@ -103,6 +105,19 @@ export class GroupScheduler {
     const event: EventRecord = { id: randomUUID(), turnId: turn.id, conversationId: conversation.id, type: 'work_ready', messageId: message.id, recipientAgentIds: [work.ownerAgentId], generation: 0, sequence, createdAt: now(), work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version } }
     const deliveries = [this.delivery(event, work.ownerAgentId)]
     return { turn, event, deliveries, records: [row('turns', turn), row('events', event), ...deliveries.map(delivery => row('deliveries', delivery))] }
+  }
+  prepareQuestionReply(conversation: Conversation, message: Message, questionTurnId: string, ownerAgentId: string, work?: WorkItem) {
+    const prepared = this.prepare({ ...conversation, agentIds: [ownerAgentId] }, message)
+    prepared.turn.replyToTurnIds = [questionTurnId]
+    if (work) {
+      prepared.turn.workId = work.id
+      prepared.event.work = { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version + 1 }
+    }
+    return prepared
+  }
+  installQuestionAnswer(decision?: DecisionRecord, turn?: DiscussionTurn) {
+    if (decision) this.decisions.set(decision.id, decision)
+    if (turn) Object.assign(this.turns.get(turn.id)!, turn)
   }
   accept(prepared: ReturnType<GroupScheduler['prepare']>) {
     this.turns.set(prepared.turn.id, prepared.turn); this.events.set(prepared.event.id, prepared.event)
@@ -385,7 +400,7 @@ export class GroupScheduler {
     try {
       await this.store.write([row('grants', grant), row('deliveries', delivery), row('turns', active.turn), ...(contribution ? [row('contributions', contribution)] : [])]); this.hooks.changed(delivery.conversationId)
       let published = false
-      const result = await this.hooks.speak(active.turn, event, decision, active.controller.signal, async (message, records, commit = records => this.store.write(records)) => {
+      const result = await this.hooks.speak(active.turn, event, decision, active.controller.signal, async (message, records, commit = records => this.hooks.commitReply ? this.hooks.commitReply(message, records) : this.store.write(records)) => {
         if (!this.alive(active) || grant.status !== 'active') throw new Error('发言权已经失效')
         const nextGrant = { ...grant, status: 'done' as const }
         const nextDelivery = { ...delivery, status: 'completed' as const }
@@ -397,9 +412,11 @@ export class GroupScheduler {
         const previous = [...new Map(candidates.flatMap(candidate => [active.pending.get(candidate.agentId), this.deliveries.get(active.ready.get(candidate.agentId)?.deliveryId ?? ''), this.deliveries.get(active.waiting.get(candidate.agentId)?.deliveryId ?? '')]).filter((value): value is AgentDelivery => !!value).map(item => [item.id, structuredClone(item)])).values()]
         for (const item of previous) this.mergeDelivery(item, candidates.find(candidate => candidate.agentId === item.agentId)!)
         const nextTurn = { ...active.turn, publicMessages: active.turn.publicMessages + 1, generation: Math.max(active.turn.generation, next.generation) }
-        await commit([...records, row('events', next), row('grants', nextGrant), row('deliveries', nextDelivery), row('turns', nextTurn), ...(nextContribution ? [row('contributions', nextContribution)] : []), ...candidates.map(candidate => row('deliveries', candidate)), ...previous.map(candidate => row('deliveries', candidate))])
+        const questionDecision = decision.action === 'ask' && decision.responseKind !== 'task' ? { ...decision, userQuestion: { id: `decision:${decision.id}`, messageId: message.id, content: message.content, revision: 1 } } : undefined
+        await commit([...records, row('events', next), row('grants', nextGrant), row('deliveries', nextDelivery), row('turns', nextTurn), ...(questionDecision ? [row('decisions', questionDecision)] : []), ...(nextContribution ? [row('contributions', nextContribution)] : []), ...candidates.map(candidate => row('deliveries', candidate)), ...previous.map(candidate => row('deliveries', candidate))])
         // Only acknowledge delivery and speaking rights after durable publication.
         Object.assign(grant, nextGrant); Object.assign(delivery, nextDelivery)
+        if (questionDecision) Object.assign(decision, questionDecision)
         active.turn.publicMessages = nextTurn.publicMessages; active.turn.generation = nextTurn.generation
         active.contributions.set(decision.agentId, previousContributions + 1)
         if (decision.action === 'ask') active.asked = true

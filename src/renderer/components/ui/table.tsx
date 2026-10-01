@@ -1,7 +1,7 @@
 /*
- * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: table 基础组件及其可组合的样式/变体。
- * [POS]: components/ui 的 table 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
+ * [INPUT]: React、原生表格元素与全局 Soft 分割线皮肤。
+ * [OUTPUT]: Table 组合组件；表头、行间和页脚通过 soft-table 与 Card 共用细线/高光 token，固定表头保留底线，末行无额外尾线。
+ * [POS]: components/ui 的 table 源码；由 shadcn base-nova 安装，分割线统一由 skin.css 提供，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import * as React from "react"
@@ -15,7 +15,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("soft-table w-full caption-bottom text-sm", className)}
         {...props}
       />
     </div>
@@ -26,7 +26,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={className}
       {...props}
     />
   )
@@ -36,7 +36,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      className={className}
       {...props}
     />
   )
@@ -47,7 +47,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        "bg-muted/50 font-medium",
         className
       )}
       {...props}
@@ -60,7 +60,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
         className
       )}
       {...props}

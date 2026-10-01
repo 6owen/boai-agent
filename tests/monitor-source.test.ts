@@ -1,11 +1,12 @@
 /*
- * [INPUT]: 隔离已发布文件、真实 AppService/SQLite 和可控读取退出信号。
- * [OUTPUT]: 来源权限/路径/版本/文件边界，生产 IPC 无模型监控、清理/重启及停止待实际退出验证。
+ * [INPUT]: 隔离已发布文件/可信根别名、真实 AppService/SQLite、内容身份和可控读取/授权退出信号。
+ * [OUTPUT]: 已登记 hash 外改拒绝/检查点不变、canonical/逻辑根兼容且子路径拒绝链接、唯一最新来源前后复核；保留来源权限/版本/文件边界、生产 IPC 无模型监控、清理/重启及停止待实际退出验证。
  * [POS]: 监控数据入口与宿主集成验收；不使用真实用户资料或在线模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, it } from 'vitest'
-import { mkdtemp, mkdir, writeFile, rm, symlink, link } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, writeFile, rm, symlink, link } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Artifact, AutomationDefinition, AutomationInput, AutomationMonitorCheckpoint, AutomationMonitorRead, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../src/shared/domain'
@@ -54,6 +55,62 @@ it('rejects symlinks, hard links, excessive files and invalid JSON instead of re
   await expect(readMonitorArtifact(path, chat, [a], source, signal)).rejects.toThrow('128 KiB')
   await writeFile(a.path, '{broken')
   await expect(readMonitorArtifact(path, chat, [a], source, signal)).rejects.toThrow()
+})
+
+it('requires registered content identity while retaining the legacy hashless source contract', async () => {
+  const path = await root(), chat = { id: 'chat', workspacePath: join(path, 'workspaces', 'chat') } as Conversation
+  const original = await published(path, chat, 'hashed', data(100)), contentHash = createHash('sha256').update(await readFile(original.path)).digest('hex')
+  const artifact = { ...original, contentHash }, source = input(chat.id).monitor!.source, signal = new AbortController().signal
+  expect(await readMonitorArtifact(path, chat, [artifact], source, signal)).toMatchObject({ observation: { data: { count: 100 } }, evidence: { artifactId: original.id, fileHash: contentHash } })
+  await writeFile(original.path, JSON.stringify(data(999)))
+  await expect(readMonitorArtifact(path, chat, [artifact], source, signal)).rejects.toThrow('外部修改')
+  expect(await readMonitorArtifact(path, chat, [original], source, signal)).toMatchObject({ observation: { data: { count: 999 } } })
+})
+
+it('accepts only the trusted root alias or canonical fixed publication paths and rejects linked descendants', async () => {
+  const parent = await realpath(await root()), canonicalData = join(parent, 'managed'), aliasData = join(parent, 'host-root-alias')
+  await mkdir(canonicalData); await symlink(canonicalData, aliasData)
+  const chat = { id: 'chat', workspacePath: join(aliasData, 'workspaces', 'chat') } as Conversation
+  const artifact = await published(canonicalData, chat, 'canonical', data(100)), source = input(chat.id).monitor!.source, signal = new AbortController().signal
+  for (const workspacePath of [chat.workspacePath, join(canonicalData, 'workspaces', chat.id)]) for (const path of [artifact.path, join(aliasData, 'workspaces', chat.id, 'artifacts', 'canonical-metrics.json')]) {
+    expect(await readMonitorArtifact(aliasData, { ...chat, workspacePath }, [{ ...artifact, path }], source, signal)).toMatchObject({ observation: { data: { count: 100 } }, evidence: { artifactId: artifact.id } })
+  }
+  const unrelatedAlias = join(parent, 'file-alias'); await symlink(artifact.path, unrelatedAlias)
+  await expect(readMonitorArtifact(aliasData, chat, [{ ...artifact, path: unrelatedAlias }], source, signal)).rejects.toThrow('受管发布')
+  const directory = join(canonicalData, 'workspaces', chat.id, 'artifacts'), outside = join(parent, 'external-artifacts')
+  await mkdir(outside); await writeFile(join(outside, 'canonical-metrics.json'), JSON.stringify(data(900))); await rm(directory, { recursive: true }); await symlink(outside, directory)
+  await expect(readMonitorArtifact(aliasData, chat, [artifact], source, signal)).rejects.toThrow('Symbolic')
+})
+
+it('verifies the selected latest source before opening and after reading without falling back to an older file', async () => {
+  const path = await root(), chat = { id: 'chat', workspacePath: join(path, 'workspaces', 'chat') } as Conversation
+  const old = await published(path, chat, 'old', data(1), '2026-01-01T00:00:00Z'), fresh = await published(path, chat, 'new', data(2), '2026-01-02T00:00:00Z')
+  const source = input(chat.id).monitor!.source, signal = new AbortController().signal, verified: string[] = []
+  await expect(readMonitorArtifact(path, chat, [old, fresh], source, signal, async artifact => { verified.push(artifact.id); if (verified.length === 2) throw new Error('材料来源已撤权') })).rejects.toThrow('材料来源已撤权')
+  expect(verified).toEqual(['new', 'new'])
+  await rm(fresh.path)
+  await expect(readMonitorArtifact(path, chat, [old, fresh], source, signal, async artifact => { expect(artifact.id).toBe('new'); throw new Error('打开前已撤权') })).rejects.toThrow('打开前已撤权')
+})
+
+it('keeps the real SQLite comparison checkpoint when a registered file changes or post-read source authority is revoked', async () => {
+  const path = await root(), store = new ProductStore(join(path, 'boai.sqlite')); await store.init(); disposers.push(() => store.close())
+  const chat = { id: 'chat', workspacePath: join(path, 'workspaces', 'chat') } as Conversation, original = await published(path, chat, 'registered', data(100))
+  const bytes = await readFile(original.path), artifact = { ...original, contentHash: createHash('sha256').update(bytes).digest('hex') }
+  let modelCalls = 0, revokeAfterRead = false, verifications = 0
+  const service = new AutomationService(store, path, { critical: fn => fn(), validate: () => 'authorized', busy: () => false, changed: () => {}, notify: () => {}, inspect: () => undefined, cancel: async () => {}, dispatch: async () => { modelCalls++; throw new Error('unexpected model dispatch') }, readMonitor: (_definition, signal) => readMonitorArtifact(path, chat, [artifact], input(chat.id).monitor!.source, signal, async selected => { expect(selected.id).toBe(artifact.id); verifications++; if (revokeAfterRead && verifications === 2) throw new Error('材料来源已撤权') }) })
+  disposers.push(() => service.close()); await service.init()
+  const definition = await service.save(input(chat.id))
+  const check = async (requestId: string) => { verifications = 0; const occurrence = await service.run(definition.id, requestId); await until(async () => !['admitted', 'running'].includes((await service.occurrence(occurrence.id)).status)); return service.occurrence(occurrence.id) }
+  expect((await check('baseline')).monitor?.outcome).toBe('baseline')
+  const checkpoint = await store.load<AutomationMonitorCheckpoint>('automationMonitorCheckpoints'); expect(checkpoint).toHaveLength(1)
+  await writeFile(original.path, JSON.stringify(data(999)))
+  const changed = await check('externally-modified')
+  expect(changed).toMatchObject({ status: 'failed', monitor: { outcome: 'data_error' } }); expect(changed.reason).toContain('外部修改')
+  expect(await store.load('automationMonitorCheckpoints')).toEqual(checkpoint); expect(verifications).toBe(1)
+  await writeFile(original.path, bytes); revokeAfterRead = true
+  const revoked = await check('revoked-after-read')
+  expect(revoked).toMatchObject({ status: 'failed', monitor: { outcome: 'data_error' } }); expect(revoked.reason).toContain('撤权'); expect(verifications).toBe(2)
+  expect(await store.load('automationMonitorCheckpoints')).toEqual(checkpoint); expect(modelCalls).toBe(0)
 })
 
 it('runs the real product monitoring IPC without model calls or chat spam and clears private checkpoints with chat history', async () => {

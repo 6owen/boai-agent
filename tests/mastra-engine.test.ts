@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
- * [OUTPUT]: 记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
+ * [OUTPUT]: 明确 task ask 的 JSON 判断合同与原有 ask/handoff 无工具实际 SDK 验证；官方 DeepSeek Chat 判断原生 JSON mode 的真实 HTTP 参数、协议拒绝、一次修复/预算和唯一调用用量回执；内建文件工具的真实来源授权、隐藏列举/猜路径拒绝、当前 run 写入和双端产物发布门禁及取消回归；记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,15 +9,18 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { RequestContext } from '@mastra/core/request-context'
+import { noopObserve } from '@mastra/core/tools'
 import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { thinkingProviderOptions } from '../src/runtime/adapters/mastra/model-config'
+import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { thinkingProviderOptions, decisionProviderOptions } from '../src/runtime/adapters/mastra/model-config'
 import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import type { EngineContext } from '../src/runtime/contracts'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
 
-type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
+type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; response_format?: { type: string }; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close() })
 
@@ -84,6 +87,12 @@ async function context(url: string, overrides: Partial<EngineContext> = {}) {
   }
   return { ctx, deltas, tools, approvals, artifacts, additionalCalls, directory, controller }
 }
+async function nativeTask(overrides: Partial<EngineContext> = {}) {
+  const fixture = await context('http://127.0.0.1:1/v1', overrides)
+  const runtime = await createTaskRuntime(fixture.ctx)
+  cleanup.push(() => runtime.workspace.destroy())
+  return { ...fixture, runtime, invocation: { requestContext: new RequestContext(), observe: noopObserve } }
+}
 function allMessageText(request: RequestBody) { return request.messages.map(message => JSON.stringify(message.content)).join('\n') }
 function toolResultText(request: RequestBody) { return request.messages.filter(message => message.role === 'tool').map(message => JSON.stringify(message.content)).join('\n') }
 
@@ -120,7 +129,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await engine.run(run.ctx)
     await engine.report(run.ctx, { text: '草稿', observedThroughSequence: 1, revisions: 0, status: 'private' })
     expect(server.requests).toHaveLength(2)
-    for (const request of server.requests) { expect(request.thinking).toBeUndefined(); expect(request.reasoning_effort).toBeUndefined() }
+    for (const request of server.requests) { expect(request.thinking).toBeUndefined(); expect(request.reasoning_effort).toBeUndefined(); expect(request.response_format).toBeUndefined() }
   })
 
   it('only adds thinking parameters for verified endpoint, protocol and effective model combinations', () => {
@@ -152,7 +161,105 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       expect(request.thinking).toEqual({ type: 'enabled' })
       expect(request.reasoning_effort).toBe('low')
     }
+    expect(server.requests.map(request => request.response_format)).toEqual([{ type: 'json_object' }, undefined, undefined])
     expect(run.deltas.join('')).toBe('今天是星期一。')
+  })
+
+  it('limits native JSON mode to the verified official DeepSeek Chat effective model', () => {
+    const official = { ...connection('https://api.deepseek.com/v1'), defaultModel: 'deepseek-v4-pro' }
+    expect(decisionProviderOptions(official, '', 'off')).toEqual({ openai: { thinking: { type: 'disabled' }, response_format: { type: 'json_object' } } })
+    expect(decisionProviderOptions(official, 'deepseek-flash', 'high')).toEqual({ openai: { thinking: { type: 'enabled' }, reasoningEffort: 'high', response_format: { type: 'json_object' } } })
+    for (const settings of [
+      { ...official, baseUrl: 'https://gateway.example/v1' },
+      { ...official, baseUrl: 'https://api.deepseek.com.gateway.example/v1' },
+      { ...official, provider: 'anthropic' as const },
+      { ...official, api: 'responses' as const },
+      { ...official, defaultModel: 'deepseek-reasoner' },
+      { ...official, defaultModel: 'unverified-model' },
+    ]) expect(decisionProviderOptions(settings, '', 'off')).toBeUndefined()
+    expect(decisionProviderOptions(official, 'employee-override', 'high')).toBeUndefined()
+  })
+
+  it('uses native JSON mode in both accounted decision attempts without changing authorized input or publishing rejected text', async () => {
+    const server = await endpoint((_body, response, index) => send(response, index ? '{"action":"reply","responseKind":"task","purpose":"Revise the exact authorized version"}' : 'Kind: "task" }', index, { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
+    redirectDeepSeekTo(server.url)
+    const started: string[] = [], receipts: { id: string; usage: ModelUsage }[] = [], usages: ModelUsage[] = []
+    const run = await context('https://api.deepseek.com', {
+      agent: employee({ modelId: 'deepseek-v4-pro' }),
+      messages: [message('Revise V1 hash=original-hash using the authorized 订单记录.txt and 核对口径.md; preserve the original.')],
+      modelCallId: 'decision-original', onAdditionalModelCall: async () => 'decision-repair',
+      onModelCallStarted: async id => { started.push(id) },
+      onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
+      onUsage: async usage => { usages.push(usage) },
+    })
+    expect(await new MastraEngine().decide(run.ctx)).toMatchObject({ action: 'reply', responseKind: 'task' })
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests.map(request => request.response_format)).toEqual([{ type: 'json_object' }, { type: 'json_object' }])
+    const [original, repair] = server.requests.map(request => JSON.parse(request.messages.find(message => message.role === 'user')!.content as string))
+    expect(repair.data).toEqual(original.data)
+    expect(repair.jsonSchema).toEqual(original.jsonSchema)
+    expect(repair.repair.instruction).toContain('return a valid JSON object only')
+    expect(repair.repair.invalidOutput).toBe('Kind: "task" }')
+    expect(started).toEqual(['decision-original', 'decision-repair'])
+    expect(receipts).toEqual(started.map(id => ({ id, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } })))
+    expect(usages.at(-1)).toEqual({ inputTokens: 20, outputTokens: 10, totalTokens: 30 })
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
+  })
+
+  it('rejects visible prose even in JSON mode and stops after one repair while preserving unknown usage and call identity', async () => {
+    const server = await endpoint((_body, response, index) => send(response, index ? 'Kind task sufficient.\n{"action":"reply","responseKind":"task"}' : 'Kind: "task" }', index, index ? undefined : { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
+    redirectDeepSeekTo(server.url)
+    const started: string[] = [], receipts: { id: string; usage: ModelUsage }[] = [], reserved: string[] = []
+    const run = await context('https://api.deepseek.com/v1', {
+      agent: employee({ modelId: 'deepseek-v4-pro' }), modelCallId: 'decision-original',
+      onAdditionalModelCall: async () => { reserved.push('decision-repair'); return 'decision-repair' },
+      onModelCallStarted: async id => { started.push(id) },
+      onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
+    })
+    await expect(new MastraEngine().decide(run.ctx)).rejects.toThrow('连续两次未返回有效的成员判断')
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests.map(request => request.response_format)).toEqual([{ type: 'json_object' }, { type: 'json_object' }])
+    expect(reserved).toEqual(['decision-repair'])
+    expect(started).toEqual(['decision-original', 'decision-repair'])
+    expect(receipts).toEqual([{ id: 'decision-original', usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }, { id: 'decision-repair', usage: {} }])
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
+  })
+
+  it('does not send a JSON repair request when the host rejects its budget', async () => {
+    const server = await endpoint((_body, response, index) => send(response, 'Kind task sufficient.', index, { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
+    redirectDeepSeekTo(server.url)
+    const started: string[] = [], receipts: { id: string; usage: ModelUsage }[] = []
+    const run = await context('https://api.deepseek.com', {
+      agent: employee({ modelId: 'deepseek-v4-pro' }), modelCallId: 'decision-original',
+      onAdditionalModelCall: async () => { throw new Error('判断预算已用尽') },
+      onModelCallStarted: async id => { started.push(id) },
+      onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
+    })
+    await expect(new MastraEngine().decide(run.ctx)).rejects.toThrow('判断预算已用尽')
+    expect(server.requests).toHaveLength(1)
+    expect(server.requests[0].response_format).toEqual({ type: 'json_object' })
+    expect(started).toEqual(['decision-original'])
+    expect(receipts).toEqual([{ id: 'decision-original', usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }])
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
+  })
+
+  it.each([
+    { action: 'ask', responseKind: 'chat', purpose: 'Ask a clarification' },
+    { action: 'ask', responseKind: 'task', purpose: 'Keep the original task pending until the explicit question is answered' },
+    { action: 'wait', dependencyMessageIds: ['message-2'] },
+    { action: 'request_handoff', recipientAgentIds: ['agent-b'] },
+  ])('preserves optional fields and $action semantics in native JSON mode', async decision => {
+    const server = await endpoint([JSON.stringify(decision)])
+    redirectDeepSeekTo(server.url)
+    const run = await context('https://api.deepseek.com', {
+      agent: employee({ modelId: 'deepseek-v4-pro' }),
+      members: [employee({ modelId: 'deepseek-v4-pro' }), employee({ id: 'agent-b', name: 'Bob' })],
+      messages: [message('Please coordinate the task'), message('An actual result', 2, { senderType: 'agent', senderId: 'agent-b' })],
+    })
+    expect(await new MastraEngine().decide(run.ctx)).toMatchObject(decision)
+    expect(server.requests).toHaveLength(1)
+    expect(server.requests[0].response_format).toEqual({ type: 'json_object' })
+    expect(run.additionalCalls).toEqual([]); expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
   })
 
   it('delivers chat text while the provider stream is still open, without publishing reasoning', async () => {
@@ -968,6 +1075,127 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await new MastraEngine().run(ctx)
     expect(toolResultText(mock.requests[1])).toContain('output exceeded')
     expect(toolResultText(mock.requests[1]).length).toBeLessThan(5000)
+  })
+})
+
+describe('native task file source authorization', () => {
+  const materialRef = { id: 'material-a', revision: 1, contentHash: 'content-hash', parseVersion: 'text-v1' as const, conversationId: 'conversation' }
+
+  it('hides denied files, directories and old runs, and rejects guessed paths', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const shared = ctx.workspace!.sharedPath, previous = path.join(ctx.workspace!.root, 'runs/run-previous')
+    const hidden = path.join(shared, 'confidential-name.md'), hiddenDirectory = path.join(shared, 'confidential-directory')
+    await mkdir(hiddenDirectory)
+    await mkdir(previous)
+    await writeFile(hidden, 'PRIVATE_MATERIAL')
+    await writeFile(path.join(hiddenDirectory, 'notes.md'), 'PRIVATE_DERIVED_NOTES')
+    await writeFile(path.join(previous, 'report.md'), 'REVOKED_RUN_RESULT')
+    await writeFile(path.join(shared, 'public.md'), 'Public result')
+    const denied = [hidden, hiddenDirectory, previous, ctx.workspace!.workPath]
+    ctx.canAccessTaskPath = async target => !denied.some(root => target === root || target.startsWith(root + path.sep))
+    expect(await runtime.tools.list_files.execute!({ path: 'shared:/' }, invocation)).toEqual([{ name: 'public.md', type: 'file' }])
+    expect(await runtime.tools.list_files.execute!({ path: 'self:/' }, invocation)).toEqual([{ name: 'runs', type: 'directory' }])
+    expect(await runtime.tools.list_files.execute!({ path: 'self:/runs/' }, invocation)).toEqual([{ name: 'run-1', type: 'directory' }])
+    await expect(runtime.tools.read_file.execute!({ path: 'shared:/confidential-name.md' }, invocation)).rejects.toThrow('not authorized')
+    await expect(runtime.tools.list_files.execute!({ path: 'shared:/confidential-directory' }, invocation)).rejects.toThrow('not authorized')
+    await expect(runtime.tools.read_file.execute!({ path: 'self:/runs/run-previous/report.md' }, invocation)).rejects.toThrow('not authorized')
+    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result' })
+  })
+
+  it('honors provenance acquired by a read before later writes and limits material-backed outputs to the current run', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const source = path.join(ctx.workspace!.sharedPath, 'authorized.md')
+    const previous = path.join(ctx.workspace!.root, 'runs/run-previous')
+    await writeFile(source, 'Authorized material')
+    await mkdir(previous)
+    await writeFile(path.join(ctx.workspace!.workPath, 'notes.md'), 'Keep session notes')
+    await writeFile(path.join(previous, 'notes.md'), 'Keep prior run')
+    ctx.canAccessTaskPath = async (target, operation) => {
+      if (operation === 'read' && target === source) ctx.materialRefs = [materialRef]
+      return operation !== 'write' || !ctx.materialRefs?.length || target.startsWith(ctx.workspace!.runPath + path.sep)
+    }
+    await runtime.tools.read_file.execute!({ path: 'shared:/authorized.md' }, invocation)
+    expect(ctx.materialRefs).toEqual([materialRef])
+    await expect(runtime.tools.write_file.execute!({ path: 'self:/work/notes.md', content: 'Private overwrite' }, invocation)).rejects.toThrow('not authorized')
+    await expect(runtime.tools.write_file.execute!({ path: 'self:/runs/run-previous/notes.md', content: 'Private overwrite' }, invocation)).rejects.toThrow('not authorized')
+    await runtime.tools.write_file.execute!({ path: 'self:/runs/run-1/report.md', content: 'Private result' }, invocation)
+    expect(await readFile(path.join(ctx.workspace!.runPath, 'report.md'), 'utf8')).toBe('Private result')
+    expect(await readFile(path.join(ctx.workspace!.workPath, 'notes.md'), 'utf8')).toBe('Keep session notes')
+    expect(await readFile(path.join(previous, 'notes.md'), 'utf8')).toBe('Keep prior run')
+  })
+
+  it.each(['source', 'target'] as const)('does not copy or register an artifact when its %s is denied', async deniedEnd => {
+    const { ctx, runtime, invocation, artifacts } = await nativeTask({ materialRefs: [materialRef] })
+    const source = path.join(ctx.workspace!.runPath, 'report.md')
+    await writeFile(source, 'Private result')
+    ctx.canAccessTaskPath = async (target, operation) => operation !== 'publish' || (deniedEnd === 'source' ? target !== source : !target.startsWith(ctx.workspace!.sharedPath + path.sep))
+    await expect(runtime.tools.publish_artifact.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)).rejects.toThrow('not authorized')
+    expect(artifacts).toEqual([])
+    expect(await readdir(ctx.workspace!.sharedPath)).toEqual([])
+    expect(await readFile(source, 'utf8')).toBe('Private result')
+  })
+
+  it('checks both publication ends and does not expose unregistered shared artifacts', async () => {
+    const { ctx, runtime, invocation, artifacts } = await nativeTask({ materialRefs: [materialRef] })
+    const source = path.join(ctx.workspace!.runPath, 'report.md'), sharedArtifacts = path.join(ctx.workspace!.sharedPath, 'artifacts')
+    await writeFile(source, 'Approved result')
+    await mkdir(sharedArtifacts)
+    await writeFile(path.join(sharedArtifacts, 'unregistered-secret.md'), 'UNREGISTERED_PRIVATE_RESULT')
+    const registered = new Set<string>(), calls: { target: string; operation: string }[] = []
+    const register = ctx.onArtifact!
+    ctx.onArtifact = async artifact => { await register(artifact); registered.add(artifact.path) }
+    ctx.canAccessTaskPath = async (target, operation) => {
+      calls.push({ target, operation })
+      return operation !== 'read' || !target.startsWith(sharedArtifacts + path.sep) || registered.has(target)
+    }
+    await runtime.tools.publish_artifact.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)
+    expect(artifacts).toHaveLength(1)
+    expect(calls).toContainEqual({ target: source, operation: 'publish' })
+    expect(calls).toContainEqual({ target: artifacts[0].path, operation: 'publish' })
+    expect(await readFile(artifacts[0].path, 'utf8')).toBe('Approved result')
+    expect(await runtime.tools.list_files.execute!({ path: 'shared:/artifacts' }, invocation)).toEqual([{ name: path.basename(artifacts[0].path), type: 'file' }])
+    await expect(runtime.tools.read_file.execute!({ path: 'shared:/artifacts/unregistered-secret.md' }, invocation)).rejects.toThrow('not authorized')
+    expect(await runtime.tools.read_file.execute!({ path: `shared:/artifacts/${path.basename(artifacts[0].path)}` }, invocation)).toMatchObject({ content: 'Approved result' })
+  })
+
+  it('fails closed when a material-backed context has no host file gate', async () => {
+    const { ctx, runtime, invocation, artifacts } = await nativeTask({ materialRefs: [materialRef] })
+    await writeFile(path.join(ctx.workspace!.runPath, 'report.md'), 'Private result')
+    await expect(runtime.tools.read_file.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)).rejects.toThrow('host authorization gate')
+    await expect(runtime.tools.list_files.execute!({ path: 'self:/' }, invocation)).rejects.toThrow('host authorization gate')
+    await expect(runtime.tools.write_file.execute!({ path: 'self:/runs/run-1/new.md', content: 'Private output' }, invocation)).rejects.toThrow('host authorization gate')
+    await expect(runtime.tools.publish_artifact.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)).rejects.toThrow('host authorization gate')
+    await expect(readFile(path.join(ctx.workspace!.runPath, 'new.md'))).rejects.toThrow()
+    expect(artifacts).toEqual([])
+  })
+
+  it('propagates expired-source failures rather than treating them as a hidden list item', async () => {
+    const { ctx, runtime, invocation } = await nativeTask({ materialRefs: [materialRef] })
+    const source = path.join(ctx.workspace!.sharedPath, 'expired.md')
+    await writeFile(source, 'Expired material')
+    ctx.canAccessTaskPath = async target => { if (target === source) throw new Error('材料来源版本已失效'); return true }
+    await expect(runtime.tools.list_files.execute!({ path: 'shared:/' }, invocation)).rejects.toThrow('材料来源版本已失效')
+    await expect(runtime.tools.read_file.execute!({ path: 'shared:/expired.md' }, invocation)).rejects.toThrow('材料来源版本已失效')
+  })
+
+  it.each(['read', 'list', 'write', 'publish'] as const)('stops %s before or after a host authorization callback is cancelled', async operation => {
+    const { ctx, runtime, invocation, controller, artifacts } = await nativeTask()
+    await writeFile(path.join(ctx.workspace!.runPath, 'report.md'), 'Private result')
+    let checks = 0
+    ctx.canAccessTaskPath = async () => { checks++; controller.abort(new Error('授权核对中已停止')); return true }
+    const invoke = () => {
+      if (operation === 'read') return runtime.tools.read_file.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)
+      if (operation === 'list') return runtime.tools.list_files.execute!({ path: 'self:/' }, invocation)
+      if (operation === 'write') return runtime.tools.write_file.execute!({ path: 'self:/runs/run-1/new.md', content: 'Private output' }, invocation)
+      return runtime.tools.publish_artifact.execute!({ path: 'self:/runs/run-1/report.md' }, invocation)
+    }
+    await expect(invoke()).rejects.toThrow('授权核对中已停止')
+    expect(checks).toBe(1)
+    await expect(invoke()).rejects.toThrow('授权核对中已停止')
+    expect(checks).toBe(1)
+    await expect(readFile(path.join(ctx.workspace!.runPath, 'new.md'))).rejects.toThrow()
+    expect(await readdir(ctx.workspace!.sharedPath)).toEqual([])
+    expect(artifacts).toEqual([])
   })
 })
 

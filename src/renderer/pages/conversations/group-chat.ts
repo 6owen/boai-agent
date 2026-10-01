@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 已发布消息、工作结果、产物与当前审批的共享合同。
- * [OUTPUT]: 本轮用户触发关联不重复显示为引用，保留手动/跨消息引用；保守连续发言、文件/审批关联与有证据的工作状态展示。
- * [POS]: 群聊纯展示投影，不创建任务或推断执行归属。
+ * [OUTPUT]: 群工作优先使用宿主即时证据 bool，false 不回退旧缓存，兼容旧局部证据与人工待审边界；本轮用户触发关联不重复显示为引用，保留手动/跨消息引用；保守连续发言、文件/审批关联与有证据的工作状态展示。
+ * [POS]: 单聊/群聊共用的纯消息展示投影及群工作状态，不创建任务或推断执行归属。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { Approval, Artifact, ConversationDetail, Message, WorkItem } from '@shared/domain'
@@ -75,9 +75,9 @@ export function approvalsByMessage(detail: ConversationDetail, approvals: Approv
 export function workDisplayState(work: WorkItem, detail: ConversationDetail, approvals: Approval[]) {
   if (work.status === 'delivered') {
     const evidence = work.outcome?.evidence ?? []
-    const verified = !work.requiresReview && work.outcome?.disposition === 'delivered' && evidence.length > 0 && evidence.every(item => item.kind === 'artifact'
+    const verified = !work.requiresReview && work.outcome?.disposition === 'delivered' && evidence.length > 0 && (detail.workEvidenceVerified?.[work.id] ?? evidence.every(item => item.kind === 'artifact'
       ? work.artifactIds.includes(item.reference) && detail.artifacts.some(artifact => artifact.id === item.reference && (!artifact.ownerAgentId || artifact.ownerAgentId === work.ownerAgentId))
-      : Boolean(item.reference.trim()) && detail.messages.some(message => work.resultMessageIds.includes(message.id) && message.conversationId === work.conversationId && message.senderType === 'agent' && message.senderId === work.ownerAgentId && message.status === 'completed' && message.content.includes(item.reference)))
+      : Boolean(item.reference.trim()) && detail.messages.some(message => work.resultMessageIds.includes(message.id) && message.conversationId === work.conversationId && message.senderType === 'agent' && message.senderId === work.ownerAgentId && message.status === 'completed' && message.content.includes(item.reference))))
     return { label: verified ? '已交付' : '交付待核对', tone: verified ? 'success' : 'warning' }
   }
   if (work.activeRunId && ['running', 'waiting'].includes(work.status) && approvals.some(approval => approval.conversationId === work.conversationId && approval.runId === work.activeRunId)) return { label: '待确认', tone: 'warning' }

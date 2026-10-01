@@ -1,11 +1,13 @@
 /*
  * [INPUT]: 自动化分页历史、会话结果、DesktopApi 与共享控件。
- * [OUTPUT]: 数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
+ * [OUTPUT]: 单次结果仅按 occurrence 明确消息 ID 分批有界核读，活跃/清理/来源变化与迟到守卫隔离正文；数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
  * [POS]: schedules 阅读区；历史分页与编辑草稿独立，刷新不扩大单次查询上限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { AutomationHistoryQuery, AutomationHistoryPage, AutomationNotice, AutomationOccurrence, ConversationDetail } from '@shared/domain'
+import type { AutomationHistoryQuery, AutomationHistoryPage, AutomationNotice, AutomationOccurrence } from '@shared/domain'
+import type { ConversationMessageItem } from '@shared/domain/reading'
+import { readDetailMessages } from '@/pages/conversations/detail-reading'
 import { automationNeedsAttention } from '@shared/domain/automations'
 import { WORK_BUDGET_ALLOWANCE as allowance } from '@shared/domain/work'
 import type { DesktopApi } from '@shared/ipc'
@@ -79,7 +81,7 @@ export function AutomationHistory({ api, active = true, automationId, attentionO
   const pending = attention.occurrences.map(o => records.get(o.id)!).filter(o => o.id !== latest?.id && automationNeedsAttention(o))
   const featuredIds = new Set([...(latest ? [latest.id] : []), ...pending.map(o => o.id)])
   const earlier = history.occurrences.map(o => records.get(o.id)!).filter(o => !featuredIds.has(o.id))
-  const card = (o: AutomationHistoryPage['occurrences'][number], expanded = false) => <AutomationOccurrenceCard key={o.id} api={api} occurrence={o} expanded={expanded} onRefresh={refresh} onConversation={onConversation} onOccurrence={onOccurrence} />
+  const card = (o: AutomationHistoryPage['occurrences'][number], expanded = false) => <AutomationOccurrenceCard key={o.id} api={api} active={active} occurrence={o} expanded={expanded} onRefresh={refresh} onConversation={onConversation} onOccurrence={onOccurrence} />
   if (!active) return null
   return <div className="automation-reading">
     {!automationId && <div className="automation-history-filters">
@@ -112,10 +114,10 @@ export function AutomationOccurrenceView({ api, id, active, onConversation }: { 
     return () => { live = false; clearTimeout(timer); unsubscribe() }
   }, [api, id, active, revision])
   useEffect(() => { if (!active || !record) return; const element = document.getElementById(`occurrence-${id}`); element?.focus({ preventScroll: true }); element?.scrollIntoView({ block: 'nearest' }) }, [active, id, record?.id])
-  return <section aria-label="单次执行结果"><h2>本次执行结果</h2>{error && <Banner>{error}</Banner>}{record ? <AutomationOccurrenceCard api={api} occurrence={record} expanded onRefresh={async () => setRevision(v => v + 1)} onConversation={onConversation} /> : !error && <Loading>正在读取本次结果…</Loading>}</section>
+  return <section aria-label="单次执行结果"><h2>本次执行结果</h2>{error && <Banner>{error}</Banner>}{record ? <AutomationOccurrenceCard api={api} active={active} occurrence={record} expanded onRefresh={async () => setRevision(v => v + 1)} onConversation={onConversation} /> : !error && <Loading>正在读取本次结果…</Loading>}</section>
 }
 
-function AutomationOccurrenceCard({ api, occurrence: o, expanded, onRefresh, onConversation, onOccurrence }: { api: DesktopApi; onOccurrence?(id: string): void; occurrence: AutomationHistoryPage['occurrences'][number]; expanded: boolean; onRefresh(): Promise<void>; onConversation(id: string, messageId?: string): void }) {
+function AutomationOccurrenceCard({ api, active, occurrence: o, expanded, onRefresh, onConversation, onOccurrence }: { api: DesktopApi; active: boolean; onOccurrence?(id: string): void; occurrence: AutomationHistoryPage['occurrences'][number]; expanded: boolean; onRefresh(): Promise<void>; onConversation(id: string, messageId?: string): void }) {
   const { busy, error, run } = useMutation()
   return <>{error && <Banner>{error}</Banner>}<Card className="connection-card gap-0 p-4" data-occurrence-id={o.id} id={`occurrence-${o.id}`} tabIndex={-1}><CardContent className="p-0">
       <div className="connection-card-top"><strong>{o.name}</strong><span className="pill"><span>{occurrenceStatusLabels[o.status]}</span> · <span>{deliveries[o.deliveryStatus]}</span></span></div>
@@ -128,7 +130,7 @@ function AutomationOccurrenceCard({ api, occurrence: o, expanded, onRefresh, onC
       </details>
       <div className="button-row">{onOccurrence && <Button variant="ghost" size="sm" onClick={() => onOccurrence(o.id)}>查看本次结果</Button>}{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>
       {o.monitor && <MonitorResult occurrence={o} expanded={expanded} />}
-      {o.messageId && <AutomationResult expanded={expanded} api={api} occurrence={o} onConversation={onConversation} />}
+      {o.messageId && <AutomationResult expanded={expanded} api={api} active={active} occurrence={o} onConversation={onConversation} />}
       {o.taskKind !== 'monitor' && (o.status === 'waiting_user' || exhausted(o) && o.deliveryStatus !== 'delivered' && (['failed', 'completed', 'waiting_work'].includes(o.status) || o.status === 'cancelled' && o.cancellationCause === 'budget')) && <AutomationReply api={api} occurrence={o} onSent={onRefresh} />}
     </CardContent></Card></>
 }
@@ -144,19 +146,31 @@ function MonitorResult({ occurrence, expanded }: { occurrence: AutomationOccurre
     <details><summary>比较与来源证据</summary><p className="field-hint">比较器：{result.policy.comparator} · 数据有效期 {result.policy.maxAgeSeconds} 秒 · 提醒间隔 {result.policy.cooldownSeconds} 秒</p><p className="field-hint">规则版本：{result.policyFingerprint}</p>{result.evidence && <><p className="field-hint">产物：{result.evidence.artifactId} · 发布于 {new Date(result.evidence.publishedAt).toLocaleString()}</p><p className="field-hint">文件 SHA-256：{result.evidence.fileHash}</p></>} {result.sourceHash && <p className="field-hint">数据 SHA-256：{result.sourceHash}</p>}</details>
   </details>
 }
-function AutomationResult({ api, occurrence, onConversation, expanded = false }: { expanded?: boolean; api: DesktopApi; occurrence: AutomationOccurrence; onConversation(id: string, messageId?: string): void }) {
-  const [open, setOpen] = useState(expanded), [detail, setDetail] = useState<ConversationDetail | null>(null), [error, setError] = useState('')
+function AutomationResult({ api, active, occurrence, onConversation, expanded = false }: { expanded?: boolean; api: DesktopApi; active: boolean; occurrence: AutomationOccurrence; onConversation(id: string, messageId?: string): void }) {
+  const [open, setOpen] = useState(expanded), [items, setItems] = useState<ConversationMessageItem[]>(), [error, setError] = useState('')
+  const resultKey = occurrence.resultMessageIds.join('|')
   useEffect(() => {
-    if (!open) return
-    let live = true
-    setDetail(null); setError('')
-    void api.request('getConversation', { id: occurrence.conversationId }).then(value => { if (live) setDetail(value) }).catch(cause => { if (live) setError(errorText(cause)) })
-    return () => { live = false }
-  }, [api, open, occurrence.conversationId, occurrence.stateVersion])
-  const results = detail?.messages.filter(message => occurrence.resultMessageIds.includes(message.id) && (!message.origin || message.origin.occurrenceId === occurrence.id)) ?? []
+    if (!open || !active) return
+    let live = true, request = 0, timer: ReturnType<typeof setTimeout> | undefined
+    const load = async () => {
+      const token = ++request; setItems(undefined); setError('')
+      try { const result = await readDetailMessages(api, occurrence.conversationId, occurrence.resultMessageIds, () => live && token === request); if (live && token === request) setItems(result) }
+      catch (cause) { if (live && token === request) { setItems(undefined); setError(errorText(cause)) } }
+    }
+    void load()
+    const unsubscribe = api.subscribe(event => {
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === occurrence.conversationId) { request++; clearTimeout(timer); setItems(undefined); setError('来源聊天已清理，本次结果正文不可用。'); return }
+      if (event.type !== 'changed' || event.conversationId && event.conversationId !== occurrence.conversationId) return
+      request++; setItems(undefined)
+      if (!timer) timer = setTimeout(() => { timer = undefined; void load() }, 120)
+    })
+    return () => { live = false; clearTimeout(timer); unsubscribe() }
+  }, [api, open, active, occurrence.id, occurrence.conversationId, occurrence.stateVersion, resultKey])
+  const results = items?.flatMap(item => item.status === 'available' && item.message && (!item.message.origin || item.message.origin.occurrenceId === occurrence.id) ? [item.message] : []) ?? []
   return <details open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>结果与证据</summary>
-    {error ? <Banner>{error}</Banner> : !detail ? open && <Loading>正在读取本次结果…</Loading> : <>
+    {error ? <Banner>{error}</Banner> : !items ? open && active && <Loading>正在读取本次结果…</Loading> : <>
+      {items.filter(item => item.status === 'unavailable').map(item => <Banner key={item.messageId}>{item.reason ?? '这条明确结果暂不可用。'}</Banner>)}
       {!results.length && <p className="field-hint">本次尚无可读取的结果正文，原始请求和执行状态可在聊天中核对。</p>}
       {results.map(message => <div className="automation-result" key={message.id}><strong>{message.senderName}</strong><p className="automation-result-text">{message.content || '暂无公开内容'}</p><Button variant="secondary" size="sm" onClick={() => onConversation(occurrence.conversationId, message.id)}>定位这条结果</Button></div>)}
       {!!occurrence.resultEvidence?.length && <ul>{occurrence.resultEvidence.map((evidence, index) => <li key={`${evidence.workId}:${index}`}>{evidence.kind === 'artifact' ? '文件' : '回答'} · {evidence.reference}{evidence.messageId && <Button variant="ghost" size="sm" onClick={() => onConversation(occurrence.conversationId, evidence.messageId)}>定位证据消息</Button>}</li>)}</ul>}

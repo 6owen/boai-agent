@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 模型连接、API Key、可选模型覆盖、OpenAI 接口协议与员工思考强度。
- * [OUTPUT]: Anthropic 或 OpenAI Chat/Responses 的真实 SDK 配置；旧连接默认使用 Chat；已验证 DeepSeek 模型的自动/关闭/低/高/最高思考参数。
+ * [OUTPUT]: Anthropic 或 OpenAI Chat/Responses 的真实 SDK 配置；旧连接默认使用 Chat；已验证 DeepSeek 模型的自动/关闭/低/高/最高思考参数；官方 DeepSeek Chat 判断阶段的原生 JSON mode。
  * [POS]: runtime/adapters/mastra 的统一模型配置适配器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,6 +17,14 @@ export function thinkingProviderOptions(connection: Connection, override: string
   // reasoningEffort maps to reasoning_effort; thinking is passed into the request body.
   if (level === 'off') return { openai: { thinking: { type: 'disabled' } } }
   return { openai: { thinking: { type: 'enabled' }, reasoningEffort: automatic ? 'low' as const : level } }
+}
+
+export function decisionProviderOptions(connection: Connection, override: string | undefined, level: ThinkingLevel | undefined) {
+  const options = thinkingProviderOptions(connection, override, level, 'decision')
+  // The verified official Chat family supports JSON mode. Explicit-URL compatibility
+  // forwards this body parameter in the same request; other providers keep their options.
+  if (!supportsThinkingControl(connection, override)) return options
+  return { openai: { ...options?.openai, response_format: { type: 'json_object' as const } } }
 }
 
 export function modelConfig(connection: Connection, apiKey: string, override?: string) {
