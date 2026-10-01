@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 跨进程产品实体、材料授权/版本、桌面请求与宿主事件。
- * [OUTPUT]: getConversationMetadata 显式选择有界来源摘要；D6 无正文会话元信息与即时工作证据检查；D6 有界会话视图/消息页、确定性个人检索/点击复核、真实完成快照阅读 CAS 与独立锚点 IPC；输入只携明确对象身份，不暴露路径读取。
+ * [OUTPUT]: 本会话浏览器窗口读取/明确员工控制与 browser:changed 局部事件；原始浏览器桥仅 runtime/Main 内部使用。
+ * [OUTPUT]: getConversationMetadata 显式选择有界来源摘要；D6 无正文会话元信息与即时工作证据检查；D6 有界会话视图/消息页、确定性个人检索/正文位置与有界覆盖回执/索引代际游标及点击复核、真实完成快照阅读 CAS 与独立锚点 IPC；输入只携明确对象身份，不暴露路径读取。
  * [OUTPUT]: 四来源待处理稳定分页/精确读取、原问题定向补充及显式成果验收资格/只读回执；已保存员工的本机单技能准备/原子绑定与按原请求只读核对；输入仅发现 ID、所见 hash 和员工配置版本。
  * [OUTPUT]: 固定成果 ID/hash 预览、明确新请求修订及幂等采用/只读回执；原生材料来源身份、准备/回执/预览/移除/授权与消息稳定受理核对；通讯录标签/顺序专属局部变更事件，员工删除/群解散请求与会话删除事件；核心助手非空首发与具名团队请求的互斥受理合同；员工级记忆查询/管理和稳定请求身份；T1.3 批量创建/原子安装与显式恢复； 本机个人资料版本化保存与只读活动聚合接口；T1.2 生成/取消与可编辑方案； 定时任务草稿提取、持久创建回执查询及显式恢复计划；团队草稿打开/版本保存/恢复/放弃 IPC； 按会话/消息设置本地用户表情回应的幂等接口；扫描来源的 API 草稿测试合同，凭据不返回渲染端；通讯录分类/独立排序读取与版本化更新合同；本机 Agent 扫描预填与未保存配置测试合同；本机技能目录默认命中缓存，refresh 明确重新扫描； 本地安装目标与原生 File 拖入授权、本机技能发现/详情/明确预览导入/编辑定位合同；带预期状态版本的明确预算追加合同；单次执行/通知回执读取与主进程待消费导航；纯日程预览与完整历史分页查询；按 occurrence 提交补充信息的独立入口；商店、技能管理/便携库预览导出/收藏恢复/删除清理及持久操作合同；会话 Trace、本地连接导入、类型化 DesktopApi、连接编辑/测试和会话控制；快照不包含凭据。
  *           核心首发回执按稳定请求 ID 只读核对，未受理返回 null，历史已清理或权威提交未安装明确拒绝。
@@ -9,6 +10,7 @@
  */
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
 import type { StartCoreConversationInput } from '../domain/core-agent'
+import type { BrowserControlInput, BrowserWindowState } from './browser'
 import type { ConversationMaterial, MaterialSelection, MaterialPreview } from '../domain/materials'
 import type { SkillMarketplaceListRequest, SkillMarketplaceDetailRequest, SkillMarketplaceListResult, SkillMarketplaceItem, SkillMarketplaceProvider, MarketplaceResult } from '../domain/skill-marketplace'
 import type { AutomationDraftRequest, AutomationDraftResult, AutomationBudgetRenewalInput, AutomationHistoryPage, AutomationHistoryQuery, AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
@@ -32,11 +34,14 @@ export type AppEvent =
   | { type: 'conversation:cleared'; conversationId: string }
   | { type: 'conversation:deleted'; conversationId: string }
   | { type: 'contact-list:changed' }
+  | { type: 'browser:changed'; conversationId: string }
   | { type: 'changed'; conversationId?: string }
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  getBrowserWindows: { input: { conversationId: string }; output: BrowserWindowState[] }
+  browserControl: { input: BrowserControlInput; output: void }
   listConversationMessages: { input: import('../domain/reading').ConversationMessagePageQuery; output: import('../domain/reading').ConversationMessagePage }
   searchConversations: { input: import('../domain/reading').ConversationSearchQuery; output: import('../domain/reading').ConversationSearchPage }
   resolveConversationSearchTarget: { input: import('../domain/reading').ConversationSearchTarget; output: import('../domain/reading').ConversationSearchResult }

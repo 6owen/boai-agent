@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
- * [OUTPUT]: 结果协议显式 userQuestion 引用公开问题，不能替代工作依赖等待；成果读取直接使用宿主 hash 校验所得字节而不重开原件；显式宿主修订身份的成果发布；核心身份且宿主授权时提供 create_team，按工具调用身份进入原子发布并复用副作用门禁；原生技能名/路径解析到固定资源身份供激活观测；内建文件工具复核宿主来源授权、隐藏未获准列举项且拒绝猜路径访问；受约束的命令/产物工具、委派/等待及业务结果声明。
+ * [OUTPUT]: 手动已认领工作显式浏览器工具，disposal 等待实际退出；结果协议显式 userQuestion 引用公开问题，不能替代工作依赖等待；成果读取直接使用宿主 hash 校验所得字节而不重开原件；显式宿主修订身份的成果发布；核心身份且宿主授权时提供 create_team，按工具调用身份进入原子发布并复用副作用门禁；原生技能名/路径解析到固定资源身份供激活观测；内建文件工具复核宿主来源授权、隐藏未获准列举项且拒绝猜路径访问；受约束的命令/产物工具、委派/等待及业务结果声明。
  * [POS]: Mastra 任务工具适配器；副作用前先登记持久核对标记。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -18,6 +18,7 @@ import { logicalPath, workspaceTarget, boundedRead, writeWorkspaceFile, publishA
 import { searchKnowledge } from '../../modules/resources/knowledge-search'
 import { BoundSkillSource } from './bound-skill-source'
 import { abortable, executeCommand } from './host-command'
+import { createBrowserTool } from './browser-tool'
 const MAX_TOOL_OUTPUT = 48_000
 const check = (signal: AbortSignal) => signal.throwIfAborted()
 
@@ -44,6 +45,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
     const tools = {
+      ...(ctx.browserSession && ctx.agent.allowBrowser && ctx.agent.executionBackend?.kind !== 'acp-local' && ctx.work && !ctx.work.origin && ctx.responseKind === 'task' ? { browser_tool: createBrowserTool(ctx.browserSession) } : {}),
       ...(isCoreAgent(ctx.agent) && ctx.createTeam ? {
         create_team: createTool({
           id: 'create_team', description: 'Create the team explicitly requested by the user and its group chat in one product operation. Choose the team name, member names, roles and working instructions from the requirement. Returns the committed group and member identities; only a successful receipt proves creation. New members share the core Agent model connection, with no commands or resource bindings. Do not call for ordinary conversation or repeat an already delivered creation.',
@@ -158,7 +160,8 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     }
     return {
       workspace, tools, skills: identities,
+      dispose: async () => { try { await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
       instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Write outputs in self:/runs/${ctx.runId}/; self:/work/ contains this session's working files. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
-  } catch (error) { await workspace.destroy(); throw error }
+  } catch (error) { try { await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
   }

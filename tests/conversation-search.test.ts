@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 ProductStore/SQLite 中万条中文历史、材料/成果受管原件与来源校验、发布事务完成身份和类型化分页过滤。
- * [OUTPUT]: 隐藏会话及四类来源在 SQL 分页前和点击拒绝、隐藏后游标继续可见来源/显式恢复才可搜、校验竞态不泄漏旧名称正文；固定窗口跨会话目标、已删除目标及校验前后删除均只返回原身份无游标空页、不报提示或回退旧正文；隐藏不撤销内部明确历史核读授权，材料撤权仍拒绝正文；四类统一检索与原会话只读定位；会话名称按真实成员及 lastMessageAt/createdAt 在 LIMIT 前筛选、同名会话不合并；同文/同名不合并、稳定搜索/消息游标、候选读取后删除的有界补页与目标不猜测、清理/来源撤权/原件外改门禁、当前完成 epoch/事务内按完成顺序返回首条未读、浏览限额与跨筛选游标拒绝的意图验证。
+ * [OUTPUT]: R1 相关性/多词游标保持历史与来源不变量；隐藏会话及四类来源在 SQL 分页前和点击拒绝、隐藏后游标继续可见来源/显式恢复才可搜、校验竞态不泄漏旧名称正文；固定窗口跨会话目标、已删除目标及校验前后删除均只返回原身份无游标空页、不报提示或回退旧正文；隐藏不撤销内部明确历史核读授权，材料撤权仍拒绝正文；四类统一检索与原会话只读定位；会话名称按真实成员及 lastMessageAt/createdAt 在 LIMIT 前筛选、同名会话不合并；同文/同名不合并、稳定搜索/消息游标、候选读取后删除的有界补页与目标不猜测、清理/来源撤权/原件外改门禁、当前完成 epoch/事务内按完成顺序返回首条未读、浏览限额与跨筛选游标拒绝的意图验证。
  * [POS]: tests/conversation-search.test.ts；D6 固定 SQL 离线持久化验收，不调用模型或 Electron。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,6 +20,8 @@ import { ConversationReadingRepository } from '../src/runtime/modules/conversati
 import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
 import { materialDirectory } from '../src/runtime/modules/materials/material-files'
 import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
+import { SEARCH_INDEX_LIMITS } from '../src/shared/domain/reading'
+import { SEARCH_INDEX_COLLECTION, type SearchBodyRecord } from '../src/runtime/modules/conversations/search-index-sql'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -30,7 +32,7 @@ const material = (id: string, patch: Partial<ConversationMaterial> = {}): Conver
 const artifact = (id: string, patch: Partial<ArtifactVersion> = {}): ArtifactVersion => ({ id, conversationId: 'chat', name: '季度核对.md', path: `/managed/${id}`, size: 10, ownerAgentId: 'alice', publishedAt: time(1), logicalArtifactId: id, contentVersion: 1, contentHash: 'b'.repeat(64), contentStatus: 'ready', managedRelativePath: `artifacts/${id}/季度核对.md`, registrationSource: 'publication', ...patch })
 const record = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const query = (patch: Partial<ConversationSearchQuery> = {}): ConversationSearchQuery & { limit: number } => ({ keyword: '季度核对', scope: 'all', limit: 40, ...patch })
-const cursor = (row: ConversationSearchSqlRow): ConversationSearchCursor => ({ time: row.time, id: row.id, kind: row.kind as ConversationSearchCursor['kind'], queryKey: 'repository-owned-key' })
+const cursor = (row: ConversationSearchSqlRow): ConversationSearchCursor => ({ time: row.time, id: row.id, kind: row.kind as ConversationSearchCursor['kind'], queryKey: 'repository-owned-key', score: row.score })
 const identity = (rows: ConversationSearchSqlRow[]) => rows.map(row => `${row.kind}:${row.id}`)
 const messages = async (store: ProductStore, input: Parameters<ProductStore['conversationMessageRows']>[0]) => (await store.conversationMessageRows(input)).map(row => ({ message: JSON.parse(row.source) as Message, completion: row.completion ? JSON.parse(row.completion) as ConversationCompletion : null }))
 const noSources: ConversationSourceHooks = { validateMessage: async () => {}, validateMaterial: async () => {}, validateArtifact: async () => {} }
@@ -42,14 +44,18 @@ async function database() {
   return store
 }
 
-async function sourceDatabase() {
+async function sourceDatabase(extraHooks: Partial<ConversationSourceHooks> = {}) {
   const store = await database(), root = await realpath(dirname(store.filename)), materials = new MaterialRepository(store, root)
   const artifacts = new ArtifactRepository(store, root, { validateSources: (refs, agentId, conversationId, tx) => materials.validateRefsInTransaction(tx, refs, agentId, conversationId) })
-  const search = new ConversationSearchRepository(store, {
+  const hooks: ConversationSourceHooks = {
     validateMessage: (value, chat) => store.transaction(tx => materials.validateRefsInTransaction(tx, value.materialSources ?? [], value.senderType === 'agent' ? value.senderId : undefined, chat.id)),
     validateMaterial: async value => { await materials.preview(value.id, value.revision) },
     validateArtifact: async value => { if (!value.contentHash) throw new Error('成果缺少可信内容身份'); await store.transaction(tx => artifacts.validateCurrentArtifact(tx, value.id, value.contentHash!)) },
-  })
+    readMaterialText: async value => (await materials.preview(value.id, value.revision)).text,
+    readArtifactText: async value => (await store.transaction(tx => artifacts.readSearchText(tx, value.id, value.contentHash!))).text,
+    ...extraHooks,
+  }
+  const search = new ConversationSearchRepository(store, hooks)
   const alice: DigitalAgent = { id: 'alice', name: '作者', role: 'writer', instructions: '', color: '', connectionId: 'local', modelId: 'fixture', skillIds: [], knowledgeIds: [], allowCommands: false, active: true, configVersion: 1 }
   await store.write([record('agents', alice), record('connections', { id: 'local', name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1/v1', defaultModel: 'fixture', hasApiKey: false })])
   const attach = async (id = 'source', text = '季度核对：本人私有材料原文。') => {
@@ -68,7 +74,7 @@ async function sourceDatabase() {
   const register = async (id: string, text?: string, refs?: MaterialReadRef[], binding: ArtifactRegistration = { conversationId: 'chat', revisionRequestId: null, sourceWorkId: null, sourceMessageId: null }) => {
     const input = await publication(id, text, refs); return store.transaction(tx => artifacts.register(tx, input, binding))
   }
-  return { store, root, search, materials, artifacts, attach, register }
+  return { store, root, search, materials, artifacts, hooks, attach, register }
 }
 
 describe('D6 complete-history fixed SQL search', () => {
@@ -82,7 +88,7 @@ describe('D6 complete-history fixed SQL search', () => {
       record('messages', message('safe-message', 1, { conversationId: 'other' })), record('materials', material('safe-material', { conversationId: 'other', createdAt: time(2) })), record('artifacts', artifact('safe-artifact', { conversationId: 'other', publishedAt: time(3) })),
     ])
     const first = await store.conversationSearchRows(query({ limit: 2 })), second = await store.conversationSearchRows(query({ limit: 2, before: cursor(first[1]) }))
-    expect([...identity(first), ...identity(second)]).toEqual(['artifact:safe-artifact', 'material:safe-material', 'message:safe-message', 'conversation:other'])
+    expect([...identity(first), ...identity(second)]).toEqual(['artifact:safe-artifact', 'material:safe-material', 'conversation:other', 'message:safe-message'])
     expect(JSON.stringify([...first, ...second])).not.toContain('PRIVATE_HIDDEN')
     expect(identity(await store.conversationSearchRows(query({ agentId: 'alice', from: time(1), to: time(110), kinds: ['message'], limit: 1 })))).toEqual(['message:safe-message'])
     expect(await store.conversationSearchRows(query({ scope: 'current', conversationId: 'chat', agentId: 'alice', kinds: ['conversation', 'message', 'material', 'artifact'] }))).toEqual([])
@@ -97,12 +103,12 @@ describe('D6 complete-history fixed SQL search', () => {
       record('messages', message('same')), record('materials', material('same')), record('artifacts', artifact('same')),
     ])
     const rows = await store.conversationSearchRows(query())
-    expect(identity(rows)).toEqual(['conversation:chat', 'message:same', 'material:same', 'artifact:same', 'conversation:other'])
+    expect(identity(rows)).toEqual(['conversation:chat', 'material:same', 'artifact:same', 'conversation:other', 'message:same'])
     const first = await store.conversationSearchRows(query({ limit: 2 })), second = await store.conversationSearchRows(query({ limit: 2, before: cursor(first[1]) })), third = await store.conversationSearchRows(query({ limit: 2, before: cursor(second[1]) }))
     expect([...identity(first), ...identity(second), ...identity(third)]).toEqual(identity(rows))
     expect(rows.filter(row => row.kind === 'conversation').every(row => row.completion === null)).toBe(true)
-    expect(identity(await store.conversationSearchRows(query({ kinds: ['message', 'material', 'artifact'] })))).toEqual(['message:same', 'material:same', 'artifact:same'])
-    expect(identity(await store.conversationSearchRows(query({ scope: 'current', conversationId: 'chat' })))).toEqual(['conversation:chat', 'message:same', 'material:same', 'artifact:same'])
+    expect(identity(await store.conversationSearchRows(query({ kinds: ['message', 'material', 'artifact'] })))).toEqual(['material:same', 'artifact:same', 'message:same'])
+    expect(identity(await store.conversationSearchRows(query({ scope: 'current', conversationId: 'chat' })))).toEqual(['conversation:chat', 'material:same', 'artifact:same', 'message:same'])
   })
 
   it('filters conversation titles by current member IDs and last-message time or creation fallback before LIMIT', async () => {
@@ -162,7 +168,7 @@ describe('D6 complete-history fixed SQL search', () => {
     const store = await database()
     await store.write([record('messages', message('same', 1)), record('materials', material('same')), record('artifacts', artifact('same'))])
     const first = await store.conversationSearchRows(query({ limit: 1 })), second = await store.conversationSearchRows(query({ limit: 1, before: cursor(first[0]) })), third = await store.conversationSearchRows(query({ limit: 1, before: cursor(second[0]) }))
-    expect([...identity(first), ...identity(second), ...identity(third)]).toEqual(['message:same', 'material:same', 'artifact:same'])
+    expect([...identity(first), ...identity(second), ...identity(third)]).toEqual(['material:same', 'artifact:same', 'message:same'])
     expect(await store.conversationSearchRows(query({ limit: 1, before: cursor(third[0]) }))).toEqual([])
   })
 
@@ -174,8 +180,8 @@ describe('D6 complete-history fixed SQL search', () => {
       record('artifacts', artifact('alice-artifact')), record('artifacts', artifact('bob-artifact', { ownerAgentId: 'bob', publishedAt: time(2) })),
       record('messages', message('other-alice', 4, { conversationId: 'other' })),
     ])
-    expect(identity(await store.conversationSearchRows(query({ agentId: 'alice', scope: 'current', conversationId: 'chat' })))).toEqual(['message:alice-message', 'material:alice-material', 'artifact:alice-artifact'])
-    expect(identity(await store.conversationSearchRows(query({ agentId: 'alice' })))[0]).toBe('message:other-alice')
+    expect(identity(await store.conversationSearchRows(query({ agentId: 'alice', scope: 'current', conversationId: 'chat' })))).toEqual(['material:alice-material', 'artifact:alice-artifact', 'message:alice-message'])
+    expect(identity(await store.conversationSearchRows(query({ agentId: 'alice', kinds: ['message'] })))[0]).toBe('message:other-alice')
     expect(await store.conversationSearchRows(query({ agentId: 'missing' }))).toEqual([])
     expect(await store.conversationSearchRows(query({ scope: 'current' }))).toEqual([])
   })
@@ -300,7 +306,7 @@ describe('D6 current-source personal browsing repository', () => {
     ])
     const original = await search.search(query()), hiddenTargets = original.results.filter(item => item.conversationId === 'chat').map(item => item.target)
     expect(hiddenTargets).toHaveLength(4)
-    const first = await search.search(query({ limit: 1 })); expect(first.results[0].id).toBe('to-hide')
+    const first = await search.search(query({ limit: 1 })); expect(first.results[0].id).toBe('to-hide-material')
     await store.write([record('conversations', { ...conversation(), title: '季度核对 PRIVATE_HIDDEN_TITLE', list: { hidden: true } })])
     const continued = await search.search(query({ limit: 1, before: first.nextCursor }))
     expect(continued.results.map(item => item.id)).toEqual(['safe']); expect(JSON.stringify(continued)).not.toContain('PRIVATE_HIDDEN')
@@ -597,5 +603,156 @@ describe('D6 transaction-owned first unread completion', () => {
     expect(statement.sql).not.toContain(payload); expect(statement.args).toContain(payload)
     for (const sparseSeen of [Array.from({ length: 257 }, (_, i) => i + 1), [NaN], [1.5], [0], ["1) OR 1=1" as unknown as number]]) await expect(store.transaction(tx => tx.firstUnreadCompletion({ conversationId: 'chat', epoch: 1, boundary: 0, sparseSeen }))).rejects.toThrow('有界完成序号')
     expect(await store.load('messages')).toHaveLength(1); expect(await store.load('conversationCompletions')).toHaveLength(1)
+  })
+})
+
+describe('R1 committed text bodies and bounded coverage', () => {
+  it('indexes real sent TXT and registered TXT bytes and rejects a falsely named binary text file', async () => {
+    const { store, root, materials, artifacts, search } = await sourceDatabase(), text = 'TXT正文专有词'
+    const input = join(root, '输入.txt'); await writeFile(input, text)
+    const prepared = await materials.prepare({ conversationId: 'chat', path: input, requestId: 'prepare-real-txt', authorizedAgentIds: ['alice'] })
+    const sent = message('sent-real-txt', 1, { senderType: 'user', senderId: 'user', content: '交给你这份材料', materialIds: [prepared.id] })
+    await store.transaction(async tx => { await tx.put(record('messages', sent)); await materials.attach(tx, 'chat', sent.id, [{ id: prepared.id, revision: prepared.revision }]) })
+    for (const [id, bytes] of [['txt-output', Buffer.from(text)], ['bad-utf8', Buffer.from([0xff, 0xfe, 0x00])]] as const) {
+      const directory = join(root, 'workspaces', 'chat', 'artifacts', id), path = join(directory, '结果.txt'); await mkdir(directory, { recursive: true }); await writeFile(path, bytes)
+      await store.transaction(tx => artifacts.register(tx, { id, conversationId: 'chat', name: '结果.txt', path, size: bytes.length, contentHash: createHash('sha256').update(bytes).digest('hex'), ownerAgentId: 'alice' }, { conversationId: 'chat', revisionRequestId: null, sourceWorkId: null, sourceMessageId: null }))
+    }
+    const page = await search.search(query({ keyword: text, kinds: ['material', 'artifact'] }))
+    expect(page.results.map(value => value.id).sort()).toEqual([prepared.id, 'txt-output'].sort())
+    expect(page.results.every(value => value.matchedIn === 'body' && value.excerpt === text)).toBe(true)
+    expect(page.coverage).toMatchObject({ total: 3, indexed: 2, failed: 1, pending: 0, skipped: 0 })
+    expect(page.coverage!.failures![0].reason).toContain('UTF-8')
+  })
+
+  it('finds body-only words in sent materials and each registered same-name artifact without guessing another version', async () => {
+    const { store, search, attach, register } = await sourceDatabase()
+    const sent = await attach('body-material', '苹开彩虹浏览器：这一关键词只在已发送材料正文。')
+    const first = await register('body-v1', '# 早期成果\n苹开彩虹浏览器的旧版证据。'), second = await register('body-v2', '# 后续成果\n另一份正文。')
+    const page = await search.search(query({ keyword: '苹开彩虹浏览器', kinds: ['material', 'artifact'] }))
+    expect(page.results.map(value => value.id).sort()).toEqual([sent.material.id, first.id].sort())
+    expect(page.results.every(value => value.matchedIn === 'body' && value.excerpt?.includes('苹开彩虹浏览器') && value.name === '季度核对.md')).toBe(true)
+    expect(page.coverage).toMatchObject({ total: 3, indexed: 3, pending: 0, failed: 0, skipped: 0, hasMore: false })
+    expect(page.results.find(value => value.id === first.id)?.target).toMatchObject({ kind: 'artifact', artifactId: first.id, contentVersion: 1, contentHash: first.contentHash })
+    expect(await search.resolve(page.results.find(value => value.id === first.id)!.target)).toMatchObject({ id: first.id, status: 'available' })
+    expect(page.results.some(value => value.id === second.id)).toBe(false)
+    for (const collection of ['workItems', 'runs', 'turns', 'workBudgets', 'conversationReadingStates']) expect(await store.load(collection)).toEqual([])
+  })
+
+  it('does not index drafts, loose directory files or a source rolled back before its publication', async () => {
+    const { store, root, search, register } = await sourceDatabase()
+    await store.write([record('materials', material('draft-body', { messageId: undefined })), record('artifacts', { ...artifact('loose-body'), registrationSource: undefined })])
+    await mkdir(join(root, 'workspaces', 'chat', 'work'), { recursive: true }); await writeFile(join(root, 'workspaces', 'chat', 'work', 'loose.md'), '未发布独有关键词')
+    await expect(store.transaction(async tx => { await tx.put(record('artifacts', artifact('rolled-back'))); throw new Error('故意回滚发布') })).rejects.toThrow('回滚')
+    const before = await search.search(query({ keyword: '未发布独有关键词' }))
+    expect(before.results).toEqual([]); expect(before.coverage).toMatchObject({ total: 0, indexed: 0, pending: 0 })
+    expect(await store.load(SEARCH_INDEX_COLLECTION)).toEqual([])
+    const source = await register('rollback-invalidation', '# 季度核对\n保留正文唯一关键词')
+    expect((await search.search(query({ keyword: '保留正文唯一关键词' }))).results.map(value => value.id)).toEqual([source.id])
+    const bodies = await store.load(SEARCH_INDEX_COLLECTION)
+    await expect(store.transaction(async tx => { await tx.remove('artifacts', source.id); throw new Error('删除事务回滚') })).rejects.toThrow('回滚')
+    expect(await store.load(SEARCH_INDEX_COLLECTION)).toEqual(bodies)
+    expect((await search.search(query({ keyword: '保留正文唯一关键词' }))).results.map(value => value.id)).toEqual([source.id])
+  })
+
+  it('persists bounded backfill progress, keeps pending coverage explicit and does not rebuild a continuation page', async () => {
+    const store = await database(); let reads = 0
+    const count = SEARCH_INDEX_LIMITS.filesPerBatch * 2 + 1
+    const sources = Array.from({ length: count }, (_, i) => artifact(`body-${String(i).padStart(2, '0')}`, { size: 10, publishedAt: time(i) }))
+    await store.write(sources.map(value => record('artifacts', value)))
+    const search = new ConversationSearchRepository(store, { ...noSources, readArtifactText: async () => { reads++; return '多词回填 苹果 浏览器' } })
+    const first = await search.search(query({ keyword: '苹果 浏览器', kinds: ['artifact'], limit: 1 }))
+    expect(first.coverage!.batchProcessed).toBeGreaterThan(0); expect(first.coverage!.batchProcessed).toBeLessThanOrEqual(SEARCH_INDEX_LIMITS.filesPerBatch)
+    expect(first.coverage!.pending).toBeGreaterThan(0); expect(first.coverage!.hasMore).toBe(true); expect(first.results).toHaveLength(1)
+    const previousReads = reads
+    const next = await search.search(query({ keyword: '苹果 浏览器', kinds: ['artifact'], limit: 1, before: first.nextCursor }))
+    expect(reads).toBe(previousReads); expect(next.coverage).toMatchObject({ batchProcessed: 0, indexRevision: first.coverage!.indexRevision })
+    expect(next.results[0].id).not.toBe(first.results[0].id)
+    for (let i = 0; i < count && (await store.searchBodyCoverage(query())).pending; i++) await search.search(query({ keyword: '苹果 浏览器', kinds: ['artifact'] }))
+    expect(await store.searchBodyCoverage(query())).toMatchObject({ total: count, indexed: count, pending: 0, hasMore: false })
+    await expect(search.search(query({ keyword: '苹果 浏览器', kinds: ['artifact'], limit: 1, before: first.nextCursor }))).rejects.toThrow('索引已更新')
+    expect(reads).toBe(count)
+  })
+
+  it('records unsupported and oversized bodies rather than reporting them as fully searchable', async () => {
+    const store = await database(); let reads = 0
+    await store.write([record('artifacts', artifact('binary', { name: '图像.png' })), record('artifacts', artifact('too-big', { size: SEARCH_INDEX_LIMITS.bytesPerFile + 1 })), record('artifacts', artifact('too-many-characters'))])
+    const search = new ConversationSearchRepository(store, { ...noSources, readArtifactText: async () => { reads++; return '核'.repeat(SEARCH_INDEX_LIMITS.charactersPerFile + 1) } })
+    const page = await search.search(query({ keyword: '核' }))
+    expect(page.coverage).toMatchObject({ total: 3, indexed: 0, pending: 0, skipped: 3, failed: 0, hasMore: false }); expect(reads).toBe(1)
+    expect(page.coverage!.failures).toHaveLength(3)
+    expect(JSON.stringify(page.coverage)).not.toContain('/managed/'); expect(page.results.every(value => value.excerpt === undefined)).toBe(true)
+  })
+
+  it('withdraws an indexed body on file mutation and reports its failure without returning the old excerpt', async () => {
+    const { store, search, register, attach } = await sourceDatabase()
+    const registered = await register('changed-body', '# 苹开浏览器旧正文'), sent = await attach('changed-material', '苹开浏览器材料旧正文')
+    const original = await search.search(query({ keyword: '苹开浏览器', kinds: ['artifact', 'material'] })); expect(original.results).toHaveLength(2)
+    await writeFile(registered.path, '外部修改的新正文'); await writeFile(sent.path, '外部修改的新材料')
+    const changed = await search.search(query({ keyword: '苹开浏览器', kinds: ['artifact', 'material'] }))
+    expect(changed.results.every(value => value.status === 'unavailable' && value.excerpt === undefined && value.name === undefined)).toBe(true)
+    expect(changed.coverage).toMatchObject({ indexed: 0, failed: 2, pending: 0 }); expect(changed.coverage!.failures!.every(value => /外部修改/.test(value.reason))).toBe(true)
+    expect(JSON.stringify(changed)).not.toContain('苹开浏览器旧正文'); expect(JSON.stringify(changed)).not.toContain('苹开浏览器材料旧正文')
+    expect((await store.load<SearchBodyRecord>(SEARCH_INDEX_COLLECTION)).every(value => value.text === undefined)).toBe(true)
+    for (const result of original.results) { const current = await search.resolve(result.target); expect(current.status).toBe('unavailable'); expect(current.excerpt).toBeUndefined() }
+  })
+
+  it('rejects stale bytes changed after indexing read and before commit through the final source check', async () => {
+    let file = ''
+    const fixture = await sourceDatabase({ beforeBodyCommit: async () => { await writeFile(file, '提交前外改') } })
+    const source = await fixture.register('late-file-mutation', '# 迟到正文独有词'); file = source.path
+    const page = await fixture.search.search(query({ keyword: '迟到正文独有词', kinds: ['artifact'] }))
+    expect(page.results).toHaveLength(1); expect(page.results[0].status).toBe('unavailable'); expect(page.results[0].excerpt).toBeUndefined()
+    expect(page.coverage).toMatchObject({ indexed: 0, failed: 1 }); expect(JSON.stringify(page)).not.toContain('迟到正文独有词')
+    expect((await fixture.store.load<SearchBodyRecord>(SEARCH_INDEX_COLLECTION))[0].text).toBeUndefined()
+  })
+
+  it('cannot resurrect body bytes when cleanup wins between source read and index commit', async () => {
+    let store: ProductStore
+    const fixture = await sourceDatabase({ beforeBodyCommit: async id => { await store.transaction(async tx => { await tx.put(record('conversationCleanup', { id: 'chat' })); await tx.remove('artifacts', id) }) } }); store = fixture.store
+    await fixture.register('late-cleanup', '# 清理不能复活关键词')
+    const page = await fixture.search.search(query({ keyword: '清理不能复活关键词', kinds: ['artifact'] }))
+    expect(page.results).toEqual([]); expect(page.coverage).toMatchObject({ total: 0, indexed: 0, pending: 0 })
+    expect(await store.load(SEARCH_INDEX_COLLECTION)).toEqual([])
+    await store.write([], [{ collection: 'conversationCleanup', id: 'chat' }]); expect((await fixture.search.search(query({ keyword: '清理不能复活关键词' }))).results).toEqual([])
+  })
+
+  it('invalidates material-derived bodies in the same permission transaction and does not search an old source version', async () => {
+    const { store, search, attach, register, materials } = await sourceDatabase(), sent = await attach('derived-permission', '原材料正文')
+    const source = await register('derived-body', '# 撤权派生独有关键词', [sent.ref])
+    const original = await search.search(query({ keyword: '撤权派生独有关键词', kinds: ['artifact'] })); expect(original.results).toHaveLength(1)
+    await materials.authorize(sent.material.id, sent.material.revision, [])
+    expect((await store.load<SearchBodyRecord>(SEARCH_INDEX_COLLECTION)).some(value => value.sourceId === source.id && value.text)).toBe(false)
+    const revoked = await search.search(query({ keyword: '撤权派生独有关键词', kinds: ['artifact'] }))
+    expect(revoked.results).toEqual([]); expect(revoked.coverage).toMatchObject({ indexed: 0, failed: 1 })
+    const current = await search.resolve(original.results[0].target); expect(current.status).toBe('unavailable'); expect(current.excerpt).toBeUndefined()
+  })
+
+  it('clears unverified body text on restored-database startup and rebuilds only local committed sources', async () => {
+    const { store, root, search, register } = await sourceDatabase(), source = await register('restored-body', '# 恢复前独有关键词')
+    expect((await search.search(query({ keyword: '恢复前独有关键词', kinds: ['artifact'] }))).results).toHaveLength(1)
+    const backup = join(root, 'snapshot.sqlite'); await store.backup(backup); await writeFile(source.path, '恢复时已经外改')
+    const restored = new ProductStore(backup); stores.push(restored); await restored.init()
+    expect(await restored.searchBodyCoverage(query())).toMatchObject({ indexed: 0, pending: 1 })
+    expect((await restored.load<SearchBodyRecord>(SEARCH_INDEX_COLLECTION)).every(value => value.text === undefined)).toBe(true)
+    const artifacts = new ArtifactRepository(restored, root), browsing = new ConversationSearchRepository(restored, { ...noSources, readArtifactText: async value => (await restored.transaction(tx => artifacts.readSearchText(tx, value.id, value.contentHash!))).text, validateArtifact: async value => { await restored.transaction(tx => artifacts.validateCurrentArtifact(tx, value.id, value.contentHash!)) } })
+    const page = await browsing.search(query({ keyword: '恢复前独有关键词', kinds: ['artifact'] }))
+    expect(page.results).toEqual([]); expect(page.coverage).toMatchObject({ indexed: 0, failed: 1, pending: 0 })
+    for (const collection of ['workItems', 'runs', 'turns', 'workBudgets']) expect(await restored.load(collection)).toEqual([])
+  })
+
+  it('rejects a ranking cursor after title or message text changes while a reaction alone leaves that cursor valid', async () => {
+    const store = await database(), search = new ConversationSearchRepository(store, noSources)
+    await store.write([record('conversations', { ...conversation(), title: '苹果 浏览器' }), record('messages', message('rank-a', 1, { content: '苹果 浏览器' })), record('messages', message('rank-b', 2, { content: '苹果 浏览器' }))])
+    const first = await search.search(query({ keyword: '苹果 浏览器', limit: 1 }))
+    const original = (await store.load<Message>('messages')).find(value => value.id === 'rank-b')!
+    await store.write([record('messages', { ...original, reactions: [{ senderId: 'user', senderName: '本人', emoji: '👍' }] })])
+    expect((await search.search(query({ keyword: '苹果 浏览器', limit: 1, before: first.nextCursor }))).results).toHaveLength(1)
+    await store.write([record('messages', message('private-stream', 3, { content: '苹果 浏览器 未提交草稿', status: 'streaming' }))])
+    expect((await search.search(query({ keyword: '苹果 浏览器', limit: 1, before: first.nextCursor }))).results).toHaveLength(1)
+    await store.transaction(async tx => { const current = await tx.get<Conversation>('conversations', 'chat'); await tx.put(record('conversations', { ...current!, title: '别的会话名' })) })
+    await expect(search.search(query({ keyword: '苹果 浏览器', limit: 1, before: first.nextCursor }))).rejects.toThrow('索引已更新')
+    const refreshed = await search.search(query({ keyword: '苹果 浏览器', limit: 1, kinds: ['message'] }))
+    await store.write([record('messages', { ...original, content: '浏览器 苹果 苹果 浏览器' })])
+    await expect(search.search(query({ keyword: '苹果 浏览器', limit: 1, kinds: ['message'], before: refreshed.nextCursor }))).rejects.toThrow('索引已更新')
   })
 })

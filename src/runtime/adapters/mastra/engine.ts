@@ -1,9 +1,10 @@
 /*
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
- * [OUTPUT]: 明确 task ask 可保留工作意图且始终无工具，handoff 仍不可开启 task；官方 DeepSeek Chat 判断及一次有预算修复使用同调用原生 JSON mode，原文/结构/语义违例仍拒绝；员工统一记忆的有证据分类/纠正候选与获准召回；实际模型步骤开始/回执和已解析技能成功激活观测，已收到的用量在取消后仍可记账；无工具的结构化日程草稿提取及原始用量记录；判断输入传递宿主确认的补充关联；各阶段与多步骤绑定唯一调用身份，白名单提取单次原始用量并保留未知；员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
+ * [OUTPUT]: 工具媒体观测只保留 MIME/字节数/hash； 明确 task ask 可保留工作意图且始终无工具，handoff 仍不可开启 task；官方 DeepSeek Chat 判断及一次有预算修复使用同调用原生 JSON mode，原文/结构/语义违例仍拒绝；员工统一记忆的有证据分类/纠正候选与获准召回；实际模型步骤开始/回执和已解析技能成功激活观测，已收到的用量在取消后仍可记账；无工具的结构化日程草稿提取及原始用量记录；判断输入传递宿主确认的补充关联；各阶段与多步骤绑定唯一调用身份，白名单提取单次原始用量并保留未知；员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { summarizeMedia } from '../../modules/browser/media'
 import { automationDraftCandidateSchema } from '../../modules/automations/automation-draft'
 import { Agent } from '@mastra/core/agent'
 import { z } from 'zod'
@@ -139,7 +140,7 @@ export class MastraEngine implements AgentEngine {
     const events = new Map<string, ToolEvent>()
     const usage = new UsageRecorder()
     const report = async (id: string, name: string, status: ToolEvent['status'], detail: unknown) => {
-      const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(detail) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
+      const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(summarizeMedia(detail)) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
       events.set(id, event)
       await ctx.onTool(event)
     }

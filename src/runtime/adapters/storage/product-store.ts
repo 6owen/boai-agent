@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: D6 完整历史正文/文件名固定筛选及时间/ID/类型游标、明确目标核对和当前 epoch 完成身份的 sequence/ID 消息页；事务内按完成序号/有界缺口查询首条未读；宿主固定 inbox SELECT 在 LIMIT 前过滤四类当前事项、来源/清理条件及时间/ID 游标；全量记录标题搜索及进行中/完成/需处理条件在分页前求交；数据库分页前筛选待处理事项；历史分页/单记录附带对应通知回执；自动化历史按时间与 ID 稳定分页且在数据库内限制条数；支持按会话范围读取记录；读检查写事务及跨连接写锁有界等待（不重试已开始的事务）、备份和空间回收。
+ * [OUTPUT]: 浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,14 +8,46 @@ import { createClient, type Client } from '@libsql/client'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import type { BrowserArtifactSource } from '../../../shared/domain/artifacts'
 import type { AutomationHistoryPage, AutomationHistoryQuery } from '../../../shared/domain/automations'
 import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '../../../shared/domain/automations'
 import { inboxSql, type InboxSqlRow } from '../../modules/inbox/inbox-sql'
 import type { InboxQuery } from '../../../shared/domain/inbox'
-import type { ConversationCompletion, ConversationMessagePageQuery, ConversationSearchQuery } from '../../../shared/domain/reading'
+import type { ConversationCompletion, ConversationMessagePageQuery, ConversationSearchCoverage, ConversationSearchQuery } from '../../../shared/domain/reading'
 import { conversationMessagesSql, conversationSearchSql, conversationSearchTargetSql, firstUnreadCompletionSql, type ConversationMessageSqlRow, type ConversationSearchSqlRow, type ConversationSearchSqlTarget, type FirstUnreadCompletionSqlQuery } from '../../modules/conversations/reading-sql'
+import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLLECTION, searchBodyCandidatesSql, searchBodyCoverageSql, searchBodyFailuresSql, type SearchBodyCandidate } from '../../modules/conversations/search-index-sql'
 
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
+const advanceSearchClockSql = `INSERT INTO records(collection,id,value) SELECT '${SEARCH_INDEX_CLOCK_COLLECTION}','${SEARCH_INDEX_CLOCK_ID}',json_object('id','${SEARCH_INDEX_CLOCK_ID}','revision',1) WHERE changes()>0 ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1)`
+const rankingFields: Record<string, string[]> = {
+  conversations: ['title', 'lastMessageAt', 'createdAt'],
+  messages: ['content', 'status', 'senderType', 'senderId', 'createdAt', 'conversationId'],
+  materials: ['name', 'messageId', 'conversationId', 'createdAt', 'revision', 'contentHash', 'authorizedAgentIds', 'status'],
+  artifacts: ['name', 'conversationId', 'publishedAt', 'registrationSource', 'contentHash', 'contentVersion', 'logicalArtifactId', 'ownerAgentId', 'contentStatus', 'materialSources'],
+}
+function advanceRankingClock(collection: string, id: string, value?: string) {
+  const fields = rankingFields[collection]
+  if (!fields) return []
+  const same = fields.map(field => `json_extract(previous.value,'$.${field}') IS json_extract(incoming.value,'$.${field}')`).join(' AND ')
+  const eligible = collection === 'messages' ? "json_extract(VALUE,'$.status')='completed'" : collection === 'materials' ? "COALESCE(json_extract(VALUE,'$.messageId'),'')<>''" : collection === 'artifacts' ? "COALESCE(json_extract(VALUE,'$.registrationSource'),'')<>''" : undefined
+  const oldEligible = eligible ? `EXISTS(SELECT 1 FROM records previous WHERE previous.collection=? AND previous.id=? AND ${eligible.replaceAll('VALUE', 'previous.value')})` : '1'
+  const newEligible = eligible && value !== undefined ? `(SELECT ${eligible.replaceAll('VALUE', 'incoming.value')} FROM incoming)` : '0'
+  const predicate = value === undefined ? 'EXISTS(SELECT 1 FROM records previous WHERE previous.collection=? AND previous.id=?)' : `NOT EXISTS(SELECT 1 FROM records previous CROSS JOIN incoming WHERE previous.collection=? AND previous.id=? AND ${same})`
+  return [{ sql: `${value === undefined ? '' : 'WITH incoming(value) AS (SELECT ?) '}INSERT INTO records(collection,id,value) SELECT '${SEARCH_INDEX_CLOCK_COLLECTION}','${SEARCH_INDEX_CLOCK_ID}',json_object('id','${SEARCH_INDEX_CLOCK_ID}','revision',1) WHERE (${newEligible} OR ${oldEligible}) AND ${predicate} ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1)`, args: [...(value === undefined ? [] : [value]), ...(eligible ? [collection, id] : []), collection, id] }]
+}
+
+/** Derived bodies lose eligibility in the same source mutation, including material-derived artifacts. */
+function invalidateSearchBodies(collection: string, id: string, value?: string) {
+  if (collection !== 'materials' && collection !== 'artifacts' && collection !== 'conversationCleanup' && !(collection === 'conversations' && value === undefined)) return []
+  const isFile = collection === 'materials' || collection === 'artifacts', args: (string | number)[] = []
+  let predicate: string
+  if (isFile) {
+    predicate = 'id=?'; args.push(`${collection === 'materials' ? 'material' : 'artifact'}:${id}`)
+    if (value !== undefined) { predicate += " AND json_extract(value,'$.sourceValue')<>?"; args.push(value) }
+    if (collection === 'materials') { predicate = `(${predicate}) OR (json_extract(records.value,'$.kind')='artifact' AND EXISTS(SELECT 1 FROM json_each(json_extract(json_extract(records.value,'$.sourceValue'),'$.materialSources')) source WHERE json_extract(source.value,'$.id')=?))`; args.push(id) }
+  } else { predicate = "json_extract(value,'$.conversationId')=?"; args.push(id) }
+  return [{ sql: `DELETE FROM records WHERE collection='${SEARCH_INDEX_COLLECTION}' AND (${predicate})`, args }, { sql: advanceSearchClockSql, args: [] }]
+}
 
 export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface RecordTransaction {
@@ -36,11 +68,20 @@ export class ProductStore {
     this.client = createClient({ url: pathToFileURL(this.filename).href })
     await this.client.execute('PRAGMA journal_mode=WAL')
     await this.client.execute('CREATE TABLE IF NOT EXISTS records (collection TEXT NOT NULL, id TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (collection, id))')
+    // A reopened or restored database never trusts old bytes before bounded source verification.
+    await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
   }
   async load<T>(collection: string, scope?: { conversationId: string }): Promise<T[]> {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
       return result.rows.map(row => JSON.parse(String(row.value)) as T)
+    })
+  }
+  /** Source projection is bounded in SQLite before parsing any private historical rows. */
+  browserSourcesForRun(runId:string):Promise<BrowserArtifactSource[]> {
+    return this.enqueue(async()=>{
+      const result=await this.client.execute({sql:"SELECT json_object('url',json_extract(value,'$.url'),'title',json_extract(value,'$.title'),'obtainedAt',json_extract(value,'$.obtainedAt'),'pageVersion',json_extract(value,'$.pageVersion')) AS value FROM records WHERE collection='browserEvidence' AND json_extract(value,'$.runId')=? ORDER BY rowid DESC LIMIT 20",args:[runId]})
+      return result.rows.map(row=>JSON.parse(String(row.value)) as BrowserArtifactSource).reverse()
     })
   }
   /** Stable keyset pagination: new inserts and removals cannot shift an older page's boundary. */
@@ -84,13 +125,27 @@ export class ProductStore {
   conversationSearchRows(query: ConversationSearchQuery & { limit: number }): Promise<ConversationSearchSqlRow[]> {
     return this.enqueue(async () => {
       const result = await this.client.execute(conversationSearchSql(query))
-      return result.rows.map(row => ({ id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), completion: row.completion == null ? null : String(row.completion) }))
+      return result.rows.map(row => ({ id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), body: row.body == null ? null : String(row.body), score: Number(row.score), completion: row.completion == null ? null : String(row.completion) }))
     })
   }
   conversationSearchTarget(target: ConversationSearchSqlTarget): Promise<ConversationSearchSqlRow | null> {
     return this.enqueue(async () => {
       const result = await this.client.execute(conversationSearchTargetSql(target)), row = result.rows[0]
-      return row ? { id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), completion: row.completion == null ? null : String(row.completion) } : null
+      return row ? { id: String(row.id), kind: String(row.kind), time: String(row.time), conversation: String(row.conversation), source: String(row.source), body: row.body == null ? null : String(row.body), score: Number(row.score), completion: row.completion == null ? null : String(row.completion) } : null
+    })
+  }
+  searchBodyCandidates(query: ConversationSearchQuery, limit: number): Promise<SearchBodyCandidate[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(searchBodyCandidatesSql(query, limit))
+      return result.rows.map(row => ({ id: String(row.id), kind: String(row.kind) as SearchBodyCandidate['kind'], conversationId: String(row.conversationId), source: String(row.source), conversation: String(row.conversation) }))
+    })
+  }
+  searchBodyCoverage(query: ConversationSearchQuery): Promise<ConversationSearchCoverage> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(searchBodyCoverageSql(query)), row = result.rows[0]
+      const failures = await this.client.execute(searchBodyFailuresSql(query))
+      const pending = Number(row.pending)
+      return { total: Number(row.total), indexed: Number(row.indexed), pending, failed: Number(row.failed), skipped: Number(row.skipped), indexRevision: Number(row.revision ?? 0), batchProcessed: 0, hasMore: pending > 0, ...(failures.rows.length ? { failures: failures.rows.map(failure => ({ kind: String(failure.kind) as 'material' | 'artifact', id: String(failure.id), name: String(failure.name), reason: String(failure.reason ?? '正文无法核读') })) } : {}) }
     })
   }
   conversationMessageRows(query: Pick<ConversationMessagePageQuery, 'conversationId' | 'before' | 'after'> & { limit: number }): Promise<ConversationMessageSqlRow[]> {
@@ -101,8 +156,8 @@ export class ProductStore {
   }
   write(records: StoredRecord[], removals: { collection: string; id: string }[] = []): Promise<void> {
     // Serialize now so a later in-memory change cannot alter this transaction.
-    const statements = records.map(record => ({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, JSON.stringify(record.value)] }))
-    statements.push(...removals.map(record => ({ sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] })))
+    const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
+    statements.push(...removals.flatMap(record => [...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
     return this.enqueue(async () => { if (statements.length) await this.client.batch(statements, 'write') })
   }
   /** BEGIN IMMEDIATE protects the read/check/write sequence, including other writers. */
@@ -124,9 +179,14 @@ export class ProductStore {
             return result.rows.length ? JSON.parse(String(result.rows[0].completion)) as ConversationCompletion : undefined
           },
           put: async record => {
-            await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, JSON.stringify(record.value)] })
+            const value = JSON.stringify(record.value)
+            for (const statement of advanceRankingClock(record.collection, record.id, value)) await transaction.execute(statement)
+            for (const statement of invalidateSearchBodies(record.collection, record.id, value)) await transaction.execute(statement)
+            await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] })
           },
           remove: async (collection, id) => {
+            for (const statement of advanceRankingClock(collection, id)) await transaction.execute(statement)
+            for (const statement of invalidateSearchBodies(collection, id)) await transaction.execute(statement)
             await transaction.execute({ sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [collection, id] })
           },
         })

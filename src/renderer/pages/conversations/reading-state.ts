@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 有界个人历史页、已捕获完成身份、当前阅读/锚点 CAS 与明确搜索目标。
- * [OUTPUT]: 流式更新不继承旧完成快照、可见完成去重、有界历史合并与独立版本合并；统一历史滚动边界距离；会话/消息/文件导航固定身份不漂移。
+ * [OUTPUT]: 流式更新不继承旧完成快照、可见完成去重、有界历史合并与独立版本合并；统一历史滚动边界距离；会话/消息/文件导航固定身份不漂移；搜索分页保持索引代际与最新覆盖回执，关键词摘录按多个原词有界高亮。
  * [POS]: D6 Renderer 的纯状态边界；不生成完成身份、不推测旧历史已读。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -53,16 +53,36 @@ export function sameSearchTarget(a: ConversationSearchTarget, b: ConversationSea
 export function readingSourceKey(target: ConversationSearchTarget) { return JSON.stringify([target.kind, target.conversationId, target.kind === 'conversation' ? target.conversationId : target.kind === 'message' ? target.messageId : target.kind === 'material' ? target.materialId : target.artifactId]) }
 export async function readConversationSearchPages(input: ConversationSearchQuery, pages: number, current: () => boolean, load: (query: ConversationSearchQuery) => Promise<ConversationSearchPage>): Promise<ConversationSearchPage | undefined> {
   if (!Number.isSafeInteger(pages) || pages < 1 || pages > READING_UI_LIMITS.searchPages) throw new Error('搜索页数超出本次上限。')
-  const results = new Map<string, ConversationSearchResult>(); let before: ConversationSearchQuery['before'], queryKey = ''
+  const results = new Map<string, ConversationSearchResult>(); let before: ConversationSearchQuery['before'], queryKey = '', coverage: ConversationSearchPage['coverage']
   for (let page = 0; page < pages; page++) {
     if (!current()) return
     const next = await load({ ...input, before })
     if (!current()) return
     if (queryKey && next.queryKey !== queryKey) throw new Error('搜索条件已变化，请重新查询。')
-    queryKey = next.queryKey
+    if (coverage && next.coverage && next.coverage.indexRevision !== coverage.indexRevision) throw new Error('文件正文索引已更新，请重新搜索。')
+    queryKey = next.queryKey; coverage = next.coverage ?? coverage
     for (const item of next.results) results.set(`${item.kind}:${item.id}`, item)
     if (before && next.nextCursor && JSON.stringify(before) === JSON.stringify(next.nextCursor)) throw new Error('搜索游标未前进，请重新查询。')
     before = next.nextCursor; if (!before) break
   }
-  return { results: [...results.values()], queryKey, nextCursor: before }
+  return { results: [...results.values()], queryKey, nextCursor: before, coverage }
+}
+
+/** Highlight literal query words only; this never infers synonyms or changes source text. */
+export function searchExcerptParts(text: string, keyword: string): { text: string; matched: boolean }[] {
+  const words = [...new Set(keyword.trim().toLowerCase().split(/\s+/u).filter(Boolean))], lower = text.toLowerCase(), ranges: { start: number; end: number }[] = []
+  for (const word of words) {
+    let offset = 0
+    while (offset < lower.length) {
+      const start = lower.indexOf(word, offset); if (start < 0) break
+      ranges.push({ start, end: start + word.length }); offset = start + word.length
+    }
+  }
+  ranges.sort((a, b) => a.start - b.start || a.end - b.end)
+  const merged: typeof ranges = []
+  for (const range of ranges) { const last = merged.at(-1); if (last && range.start <= last.end) last.end = Math.max(last.end, range.end); else merged.push({ ...range }) }
+  const parts: { text: string; matched: boolean }[] = []; let offset = 0
+  for (const range of merged) { if (range.start > offset) parts.push({ text: text.slice(offset, range.start), matched: false }); parts.push({ text: text.slice(range.start, range.end), matched: true }); offset = range.end }
+  if (offset < text.length) parts.push({ text: text.slice(offset), matched: false })
+  return parts
 }

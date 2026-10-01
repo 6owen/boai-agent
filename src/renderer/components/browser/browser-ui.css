@@ -1,0 +1,7 @@
+/* [INPUT]: 原独立无框窗口拖拽布局。
+ * [OUTPUT]: 保留工具栏拖拽区与可点击控件。
+ * [POS]: src/renderer/components/browser/browser-ui.css。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。 */
+.titlebar-drag-region { -webkit-app-region: drag; }
+.titlebar-no-drag, button, input { -webkit-app-region: no-drag; }
+html, body, #root { min-width: 0; }

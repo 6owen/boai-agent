@@ -1,9 +1,10 @@
 /*
  * [INPUT]: 阶段 Agent、Mastra 原生追踪事件与宿主持久化回调。
- * [OUTPUT]: 本地调用树及模型边界输入；逐阶段刷盘、密钥脱敏，观测失败不重放业务。
+ * [OUTPUT]: 媒体只记录 MIME/字节数/hash，不保存截图到模型请求/工具Trace；本地调用树及模型边界输入；逐阶段刷盘、密钥脱敏，观测失败不重放业务。
  * [POS]: Mastra 阶段观测适配器，不改变工具权限或工作交付状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { summarizeMedia } from '../../modules/browser/media'
 import { Mastra } from '@mastra/core/mastra'
 import type { Agent } from '@mastra/core/agent'
 import { SpanType, type ObservabilityExporter } from '@mastra/core/observability'
@@ -24,10 +25,10 @@ export function traceModelRequest(model: ProcessInputStepArgs['model']): Process
       if (property !== 'doStream' && property !== 'doGenerate') return typeof value === 'function' ? value.bind(target) : value
       return async (options: Record<string, unknown>) => {
         const { abortSignal: _signal, headers: _headers, ...input } = options
-        const span = getCurrentSpan()?.createChildSpan({ type: SpanType.GENERIC, name: '模型请求', input, metadata: { captureStage: String(property), modelId: target.modelId, provider: target.provider } })
+        const span = getCurrentSpan()?.createChildSpan({ type: SpanType.GENERIC, name: '模型请求', input: summarizeMedia(input), metadata: { captureStage: String(property), modelId: target.modelId, provider: target.provider } })
         try {
           const result = await Reflect.apply(value, target, [options]) as Awaited<ReturnType<ProcessInputStepArgs['model']['doStream']>>
-          span?.end({ output: result.request?.body === undefined ? undefined : { providerRequestBody: result.request.body } })
+          span?.end({ output: result.request?.body === undefined ? undefined : { providerRequestBody: summarizeMedia(result.request.body) } })
           return result
         } catch (error) {
           span?.error({ error: error instanceof Error ? error : new Error(String(error)), endSpan: true })
@@ -52,7 +53,7 @@ export function observeAgent(agent: Agent, context: EngineContext, phase: string
         }
         // The native filter handles named credentials; also redact the configured key
         // when a provider includes it inside an error or serialized request body.
-        const serialized = JSON.stringify(value)
+        const serialized = JSON.stringify(summarizeMedia(value))
         const clean = context.apiKey ? serialized.split(JSON.stringify(context.apiKey).slice(1, -1)).join('[redacted]') : serialized
         await context.onTrace?.(JSON.parse(clean))
       } catch (error) { await context.onTraceError?.(error instanceof Error ? error.message : String(error)) }

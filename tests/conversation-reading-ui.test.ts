@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Renderer 真实个人历史/可见完成快照、独立阅读/锚点版本、搜索游标和原会话/消息/文件目标。
- * [OUTPUT]: 详情固定 ID/limit1/四项并行、隐藏停止后续批次与错误身份不泄露正文；旧页底部保持历史锚点而非切换最新跟随；不以开始序号猜已读、失焦隐藏/流式拒绝、完成去重与缺口保留、独立 CAS 迟到合并、有界历史和固定搜索目标的意图测试；显式核对只解除后续真实交互的去重屏障，不重放失联写入。
+ * [OUTPUT]: 搜索索引代际不混页/最新覆盖回执与中文多词原样高亮；详情固定 ID/limit1/四项并行、隐藏停止后续批次与错误身份不泄露正文；旧页底部保持历史锚点而非切换最新跟随；不以开始序号猜已读、失焦隐藏/流式拒绝、完成去重与缺口保留、独立 CAS 迟到合并、有界历史和固定搜索目标的意图测试；显式核对只解除后续真实交互的去重屏障，不重放失联写入。
  * [POS]: D6 Renderer 纯状态验收；不执行 Electron、模型或业务动作。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Message } from '../src/shared/domain'
 import type { ConversationMessageItem, ConversationMessagePage, ConversationReadingState, ConversationSearchPage, ConversationSearchResult, ConversationSearchTarget, ConversationView } from '../src/shared/domain/reading'
 import type { DesktopApi } from '../src/shared/ipc'
-import { mergeMessagePages, mergeReadingState, readConversationSearchPages, sameSearchTarget, updateLiveMessage, visibleCompletions } from '../src/renderer/pages/conversations/reading-state'
+import { mergeMessagePages, mergeReadingState, readConversationSearchPages, sameSearchTarget, searchExcerptParts, updateLiveMessage, visibleCompletions } from '../src/renderer/pages/conversations/reading-state'
 import { useConversationReading } from '../src/renderer/pages/conversations/-components/use-conversation-reading'
 import { readDetailMessages } from '../src/renderer/pages/conversations/detail-reading'
 
@@ -147,6 +147,22 @@ describe('search fixed query and source target', () => {
     await expect(readConversationSearchPages(query, 11, () => true, load)).rejects.toThrow('上限')
     let pageIndex = 0
     await expect(readConversationSearchPages(query, 2, () => true, async () => ({ queryKey: pageIndex++ ? 'new-query' : 'query', results: [], nextCursor: cursor }))).rejects.toThrow('条件已变化')
+  })
+  it('preserves the latest bounded coverage receipt and refuses pages from a changed body index', async () => {
+    const coverage = { total: 5, indexed: 2, pending: 1, failed: 1, skipped: 1, indexRevision: 3, batchProcessed: 2, hasMore: true, failures: [{ kind: 'artifact' as const, id: 'failed', name: '原件.md', reason: '原件已经改变' }] }
+    const loaded = await readConversationSearchPages(query, 2, () => true, async input => ({ queryKey: 'query', results: [result(input.before ? 'two' : 'one')], coverage: { ...coverage, batchProcessed: input.before ? 0 : 2 }, nextCursor: input.before ? undefined : cursor }))
+    expect(loaded?.coverage).toEqual({ ...coverage, batchProcessed: 0 })
+    let calls = 0
+    await expect(readConversationSearchPages(query, 2, () => true, async () => ({ queryKey: 'query', results: [], nextCursor: cursor, coverage: { ...coverage, indexRevision: calls++ ? 4 : 3 } }))).rejects.toThrow('索引已更新')
+  })
+  it('highlights Chinese and English literal words without hiding unmatched original source characters', () => {
+    const text = '苹果浏览器支持 Browser，来源仍按原件核对。'
+    const parts = searchExcerptParts(text, '  浏览器   browser 浏览器  ')
+    expect(parts.filter(part => part.matched).map(part => part.text)).toEqual(['浏览器', 'Browser'])
+    expect(parts.map(part => part.text).join('')).toBe(text)
+    expect(searchExcerptParts('浏览器浏览器', '浏览器 浏览')).toEqual([{ text: '浏览器浏览器', matched: true }])
+    expect(searchExcerptParts(text, '没有出现的词')).toEqual([{ text, matched: false }])
+    expect(searchExcerptParts(text, '')).toEqual([{ text, matched: false }])
   })
   it('requires the original ID and exact file version/hash instead of a same-name latest file', () => {
     const target: ConversationSearchTarget = { kind: 'artifact', conversationId: 'chat', artifactId: 'v1', logicalArtifactId: 'report', contentVersion: 1, contentHash: 'a' }

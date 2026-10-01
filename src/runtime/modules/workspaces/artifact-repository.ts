@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主复制时 hash 的已发布原件/明确来源绑定、ProductStore 事务、用户修订/采用/显式待验收与事务内材料来源校验。
- * [OUTPUT]: 固定本人/版/hash 的显式待验收资格、原事务终结及只读核对/最小清理回执，资格不表示质量批准；hash 身份和独立成果链、同一验证字节供工具读取、真实字节核对与严格有界 Markdown 预览分离、用户消息修订关系、幂等采用事件/当前指向/回执及 hash 安全清理和仅核对恢复。
+ * [OUTPUT]: 发布保留宿主真实浏览器有界来源； 正文索引使用同一次来源/hash 核读的严格 UTF-8 TXT/MD；固定本人/版/hash 的显式待验收资格与原事务终结/最小清理回执；独立成果链、核验字节供工具读取、严格有界 Markdown 预览、用户修订/幂等采用及安全清理与仅核对恢复。
  * [POS]: workspaces 的成果持久权威；不按同名关联，不改 Work 结果/预算，不执行模型或继承旧审核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -97,11 +97,11 @@ export class ArtifactRepository {
     if (verifyLinks) await noLinks(target, allowMissing)
     return { path: target, managedRelativePath: relative(workspace, target).split(sep).join('/') }
   }
-  private async bytes(conversationId: string, artifactId: string, file?: string, managedRelativePath?: string) {
-    try { return await this.readBytes(conversationId, artifactId, file, managedRelativePath) }
+  private async bytes(conversationId: string, artifactId: string, file?: string, managedRelativePath?: string, maxBytes = ARTIFACT_LIMITS.publicationBytes) {
+    try { return await this.readBytes(conversationId, artifactId, file, managedRelativePath, maxBytes) }
     catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
   }
-  private async readBytes(conversationId: string, artifactId: string, file?: string, managedRelativePath?: string) {
+  private async readBytes(conversationId: string, artifactId: string, file?: string, managedRelativePath?: string, maxBytes = ARTIFACT_LIMITS.publicationBytes) {
     const location = await this.location(conversationId, file, managedRelativePath)
     const beforePath = await lstat(location.path)
     if (!beforePath.isFile() || beforePath.nlink > 1) throw new ContentError('成果只能是无链接的普通文件')
@@ -109,7 +109,7 @@ export class ArtifactRepository {
     try {
       const before = await handle.stat()
       if (!before.isFile() || before.nlink > 1 || before.ino !== beforePath.ino || before.dev !== beforePath.dev) throw new ContentError('成果文件身份已改变')
-      if (before.size > ARTIFACT_LIMITS.publicationBytes) throw new ContentError('发布成果最多 20 MiB')
+      if (before.size > maxBytes) throw new ContentError(maxBytes === ARTIFACT_LIMITS.previewBytes ? '正文索引每份文件最多 1 MiB' : '发布成果最多 20 MiB')
       const buffer = Buffer.alloc(before.size + 1); let size = 0
       for (;;) { const read = await handle.read(buffer, size, buffer.length - size, null); size += read.bytesRead; if (size > before.size) throw new ContentError('成果在读取时已改变'); if (!read.bytesRead) break }
       await this.options.checkpoint?.('after-read', artifactId)
@@ -120,17 +120,17 @@ export class ArtifactRepository {
     } catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
     finally { await handle.close() }
   }
-  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requireMarkdown = true, readText = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
+  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requireMarkdown = true, readText: boolean | 'search' = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
     await this.conversation(tx, artifact.conversationId)
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
     if (artifact.contentStatus === 'removed' || !artifact.contentHash) throw new Error(artifact.contentError ?? '成果尚无可信内容身份')
     await this.sourceRefs(tx, artifact, artifact.conversationId, agentId)
-    const actual = await this.bytes(artifact.conversationId, artifact.id, undefined, artifact.managedRelativePath)
+    const actual = await this.bytes(artifact.conversationId, artifact.id, undefined, artifact.managedRelativePath, readText === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
     if (actual.contentHash !== artifact.contentHash) throw new ContentError('成果已被外部修改，原文件已保留')
     const supported = ['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())
     if (requireMarkdown && !supported) throw new Error('首批仅支持 Markdown 预览和采用，请使用外部打开')
     if (readText && actual.size > MAX_FILE_BYTES) throw new ContentError('文本文件最多 1 MiB')
-    const text = requireMarkdown && supported ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : '', verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(requireMarkdown ? { contentStatus: supported ? 'ready' as const : 'unsupported' as const } : {}) }
+    const text = requireMarkdown && supported || readText === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : '', verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(requireMarkdown ? { contentStatus: supported ? 'ready' as const : 'unsupported' as const } : {}) }
     if (requireMarkdown && supported) delete verified.contentError
     if (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError) await tx.put(record('artifacts', verified))
     return { artifact: verified, text }
@@ -183,7 +183,7 @@ export class ArtifactRepository {
     }
     const logicalArtifactId = previous?.logicalArtifactId ?? artifactId
     const family = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === conversation.id && value.logicalArtifactId === logicalArtifactId)
-    const artifact: ArtifactVersion = { id: artifactId, conversationId: conversation.id, name: publication.name, path: actual.path, size: actual.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt ?? new Date().toISOString(), materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId, contentVersion: Math.max(0, ...family.map(value => value.contentVersion)) + 1, contentHash: actual.contentHash, contentStatus: 'ready', managedRelativePath: actual.managedRelativePath, registrationSource: 'publication', ...(binding.sourceWorkId ? { sourceWorkId: binding.sourceWorkId } : {}), ...(binding.sourceMessageId ? { sourceMessageId: binding.sourceMessageId } : {}), ...(previous ? { previousArtifactId: previous.id, revisionRequestId: revisionRequest!.id } : {}) }
+    const artifact: ArtifactVersion = { id: artifactId, conversationId: conversation.id, name: publication.name, path: actual.path, size: actual.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt ?? new Date().toISOString(), browserSources: publication.browserSources ? clone(publication.browserSources.slice(0,20)) : undefined, materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId, contentVersion: Math.max(0, ...family.map(value => value.contentVersion)) + 1, contentHash: actual.contentHash, contentStatus: 'ready', managedRelativePath: actual.managedRelativePath, registrationSource: 'publication', ...(binding.sourceWorkId ? { sourceWorkId: binding.sourceWorkId } : {}), ...(binding.sourceMessageId ? { sourceMessageId: binding.sourceMessageId } : {}), ...(previous ? { previousArtifactId: previous.id, revisionRequestId: revisionRequest!.id } : {}) }
     await this.sourceRefs(tx, artifact, conversation.id, publication.ownerAgentId)
     try { if (['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())) markdown(actual.bytes); else { artifact.contentStatus = 'unsupported'; artifact.contentError = '首批仅支持 Markdown 预览和采用，请使用外部打开' } }
     catch (error) { artifact.contentStatus = 'unavailable'; artifact.contentError = errorText(error) }
@@ -201,7 +201,7 @@ export class ArtifactRepository {
     if (existing?.conversationId && existing.conversationId !== conversationId) throw new Error('历史成果身份已属于另一聊天')
     if (existing && known(existing)) { if (existing.managedRelativePath !== location.managedRelativePath) throw new Error('历史成果身份已绑定另一原件'); return clone(existing) }
     const artifactId = identifier(publication.id ?? existing?.id ?? randomUUID())
-    const artifact: ArtifactVersion = { id: artifactId, conversationId, name: publication.name, path: location.path, size: publication.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt, materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId: artifactId, contentVersion: 1, contentHash: '', contentStatus: 'unavailable', managedRelativePath: location.managedRelativePath, registrationSource: 'legacy_verified' }
+    const artifact: ArtifactVersion = { id: artifactId, conversationId, name: publication.name, path: location.path, size: publication.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt, browserSources: publication.browserSources ? clone(publication.browserSources.slice(0,20)) : undefined, materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId: artifactId, contentVersion: 1, contentHash: '', contentStatus: 'unavailable', managedRelativePath: location.managedRelativePath, registrationSource: 'legacy_verified' }
     // Historical files receive no inferred chain, review, adoption or source-work relationship.
     try {
       const actual = await this.bytes(conversationId, artifactId, undefined, location.managedRelativePath)
@@ -411,6 +411,13 @@ export class ArtifactRepository {
   }
   async validateCurrentArtifact(tx: RecordTransaction, artifactId: string, contentHash: string, agentId?: string, readText = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
     return this.checked(tx, await this.version(tx, artifactId), contentHash, agentId, false, readText)
+  }
+  /** Search consumes the already checked bytes, never rereads a mutable path or a loose file. */
+  async readSearchText(tx: RecordTransaction, artifactId: string, contentHash: string): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
+    const artifact = await this.version(tx, artifactId)
+    if (!/\.(txt|md|markdown)$/i.test(artifact.name)) throw new Error('正文索引仅支持 TXT 和 Markdown')
+    if (artifact.size > ARTIFACT_LIMITS.previewBytes) throw new Error('正文索引每份文件最多 1 MiB')
+    return this.checked(tx, artifact, contentHash, undefined, false, 'search')
   }
   async adoptionReceipt(requestId: string): Promise<ArtifactAdoptionReceipt | null> {
     return this.store.transaction(async tx => {

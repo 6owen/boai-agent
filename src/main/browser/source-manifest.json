@@ -1,0 +1,140 @@
+{
+  "sourceRoot": "/Users/wangwenbo/Desktop/demo/boai/boai-app",
+  "commit": "5c023b984fd05aaad71cbc97a0a7de8b3fc4d00b",
+  "workingTree": "",
+  "files": [
+    {
+      "path": "apps/electron/src/main/browser-pane-manager.ts",
+      "sha256": "0552fdebdee03d9ef01ec6ef8c3a5732369f6fb234dcbd8cfbff68ce5ae1b5ac",
+      "bytes": 131996
+    },
+    {
+      "path": "apps/electron/src/main/browser-cdp.ts",
+      "sha256": "cb4fe8d3a5dce3c85e0df8b1edfb9db4d8bdb3767decbf5487a86f6d0a1a25ad",
+      "bytes": 35871
+    },
+    {
+      "path": "apps/electron/src/shared/browser-live-fx.ts",
+      "sha256": "bc7f006723d2d2c50c95b6c2e6d7c38705d005e963dc0fa7f973b8cd33b06b62",
+      "bytes": 1319
+    },
+    {
+      "path": "apps/electron/src/preload/browser-toolbar.ts",
+      "sha256": "bd582ccebd21580348e703d45ae022dd79360cac673432588f350a81547e1069",
+      "bytes": 2511
+    },
+    {
+      "path": "apps/electron/src/renderer/browser-toolbar.html",
+      "sha256": "0c850b50a14bad775a8d0c3180d60479b002ee4a1e0c9097f960166eb4021254",
+      "bytes": 1522
+    },
+    {
+      "path": "apps/electron/src/renderer/browser-toolbar.tsx",
+      "sha256": "72254b621c6f0b833683f5178161902833b6a30fce8f0d9385a8ec77e5ae0051",
+      "bytes": 7623
+    },
+    {
+      "path": "apps/electron/src/renderer/browser-empty-state.html",
+      "sha256": "e549bc9c9d71e8ba6eb813e8a57090ebfed922711c9ee5ccda66a641ebc44ba4",
+      "bytes": 1362
+    },
+    {
+      "path": "apps/electron/src/renderer/browser-empty-state.tsx",
+      "sha256": "af57e6192aa5d44b6d218ad188e7fec82bc839924c8fd3892c5027beff2a4028",
+      "bytes": 1647
+    },
+    {
+      "path": "packages/ui/src/components/ui/BrowserControls.tsx",
+      "sha256": "186dafe9c903c64dc469031a9f604389bfbf3d54837e90f5fe10c8922a2cf4dc",
+      "bytes": 12493
+    },
+    {
+      "path": "packages/ui/src/components/ui/BrowserEmptyStateCard.tsx",
+      "sha256": "06b9b064ac8a61a435d5b7d48abf523c6dee7fdca784a513948713f94c2ac445",
+      "bytes": 2395
+    },
+    {
+      "path": "apps/electron/src/renderer/components/browser/BrowserTabStrip.tsx",
+      "sha256": "9682f92266362c24182d102c98ec1c02eb87fccbccabed57e4ecd143ce629972",
+      "bytes": 11532
+    },
+    {
+      "path": "apps/electron/src/renderer/components/browser/BrowserTabBadge.tsx",
+      "sha256": "111f860edb614e35a6ea220ee49f2a7140c7c29e535e1c4ec43ce1f157deb7a4",
+      "bytes": 3450
+    },
+    {
+      "path": "apps/electron/src/renderer/components/browser/utils.ts",
+      "sha256": "2c622049e158f3f992cab91021ff24677d5dc4bf3eef5ef4fb55097d06e1e3f4",
+      "bytes": 2096
+    },
+    {
+      "path": "apps/electron/src/renderer/components/browser/empty-state-prompts.ts",
+      "sha256": "e286e81722ba38283f6673a51a734106d9055dc32dc8a3bb38cc13f9130567c2",
+      "bytes": 2871
+    },
+    {
+      "path": "packages/shared/src/agent/browser-tool-types.ts",
+      "sha256": "789eada242e84ccf4ecb7a170af79023284220d2a010b8ddfe1960eb35c1c12d",
+      "bytes": 4649
+    },
+    {
+      "path": "packages/shared/src/agent/browser-tool-runtime.ts",
+      "sha256": "5929bb7af28b89605bec5916ec24b321a5e7b088947b95f90d21556ff409d87e",
+      "bytes": 59843
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c",
+      "bytes": 10770
+    },
+    {
+      "path": "NOTICE",
+      "sha256": "caa334b760b4c7835957c91ac24c3d52e7abc7ac770050445027766b4ce4ce7f",
+      "bytes": 388
+    }
+  ],
+  "status": "migration_in_progress_after_R1_gate",
+  "strategy": "Copy original BrowserWindow + toolbar/page/nativeOverlay BrowserViews and CDP algorithms; adapt authorization, scope profiles, actual drain, IPC sender, build and current UI dependencies.",
+  "excluded": [
+    "remote WebSocket capabilities",
+    "Pi tool registration",
+    "global persist:browser-pane profile",
+    "automatic deep-link/new-session prompt sends",
+    "native permission allowlist",
+    "model arbitrary evaluate/clipboard/upload/logs",
+    "model multi-command batches"
+  ],
+  "mappings": {
+    "apps/electron/src/main/browser-pane-manager.ts": "src/main/browser/browser-pane-manager.ts",
+    "apps/electron/src/main/browser-cdp.ts": "src/main/browser/browser-cdp.ts",
+    "apps/electron/src/shared/browser-live-fx.ts": "src/shared/ipc/browser-live-fx.ts",
+    "apps/electron/src/preload/browser-toolbar.ts": "src/main/browser-toolbar-preload.ts",
+    "apps/electron/src/renderer/browser-toolbar.html": "src/renderer/browser-toolbar.html",
+    "apps/electron/src/renderer/browser-toolbar.tsx": "src/renderer/browser-toolbar.tsx",
+    "apps/electron/src/renderer/browser-empty-state.html": "src/renderer/browser-empty-state.html",
+    "apps/electron/src/renderer/browser-empty-state.tsx": "src/renderer/browser-empty-state.tsx",
+    "packages/ui/src/components/ui/BrowserControls.tsx": "src/renderer/components/browser/BrowserControls.tsx",
+    "packages/ui/src/components/ui/BrowserEmptyStateCard.tsx": "src/renderer/components/browser/BrowserEmptyStateCard.tsx",
+    "apps/electron/src/renderer/components/browser/BrowserTabBadge.tsx": "src/renderer/components/browser/BrowserTabBadge.tsx",
+    "apps/electron/src/renderer/components/browser/BrowserTabStrip.tsx": "src/renderer/components/browser/BrowserTabStrip.tsx",
+    "apps/electron/src/renderer/components/browser/utils.ts": "src/renderer/components/browser/utils.ts",
+    "packages/shared/src/agent/browser-tool-types.ts": "src/runtime/adapters/mastra/browser-tool-types.ts",
+    "packages/shared/src/agent/browser-tool-runtime.ts": "src/runtime/adapters/mastra/browser-tool-runtime.ts"
+  },
+  "adaptations": [
+    "private employee/conversation/epoch persistent partitions",
+    "ephemeral app toolbar session separate from websites",
+    "runtime-only browser service leases and actual start handshake",
+    "per-session observers and deny all native permissions",
+    "strict toolbar sender/mainFrame/local URL",
+    "HTTP(S) origin gates for navigation/redirect/popup/mainframe/subframe",
+    "bounded StaticText article content and password AX node/value/name/description redaction",
+    "challenge/release completed receipt parks the original runtime tool after actual window focus",
+    "underlying navigation/CDP/download drain and retained real WebContents destruction before handoff/close/shutdown",
+    "persistent scope profile registry outside business backups with explicit failure and cleared private in-memory projections",
+    "single shared parser and disabled arbitrary evaluate/clipboard/upload/model logs",
+    "download real source/hash and logical model paths",
+    "current Iconify/Base UI/theme tokens and standalone packaged entries"
+  ]
+}

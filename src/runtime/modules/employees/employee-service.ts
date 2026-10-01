@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
+ * [OUTPUT]: 浏览器仅已保存员工显式启用，旧/新默认关闭、省略字段保留现权且 ACP 拒绝；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
  * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -22,7 +22,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -118,14 +118,16 @@ export class EmployeeService {
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
     if (isCoreAgent(previous) && (!input.active || input.allowCommands || executionBackend.kind !== 'mastra-model')) fail('系统核心 Agent 必须启用模型 API，且不能启用宿主命令或外部任务后端')
-    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定和命令策略；请先取消这些绑定。')
+    if (!previous && input.allowBrowser) fail('请先保存员工，再明确启用浏览器能力')
+    const allowBrowser = input.allowBrowser ?? previous?.allowBrowser ?? false
+    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands||allowBrowser))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定、命令策略和浏览器能力；请先取消这些绑定。')
     if (input.connectionId) this.hooks.connection(input.connectionId)
     this.validateResources(input.skillIds, 'skill'); this.validateResources(input.knowledgeIds, 'knowledge')
     const skillNames = input.skillIds.map(id => this.hooks.resource(id)!.name)
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
     const { expectedConfigVersion: _, systemRole: _systemRole, ...definition } = input
-    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (previous && previous.instructions !== input.instructions) { const source = await this.homes.read(previous, 'AGENTS.md'); await this.homes.save(previous, 'AGENTS.md', input.instructions, source.hash) }
     if (!previous) await this.homes.initialize(agent)
     await this.store.write([record('agents', agent)]); this.install(agent.id, agent); await this.homes.commit(agent)

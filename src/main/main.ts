@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入与宿主服务及技能库保存请求。
+ * [OUTPUT]: 单一 runtime 浏览器桥、实际动作开始回执、旧连接退出门禁、窗口局部事件与实际 Chromium 退出后应用退出。
  * [OUTPUT]: D6 无正文会话元信息白名单；D6 有界个人历史/搜索/精确来源复核、阅读观测及独立锚点白名单，沿唯一类型化请求通道。
  * [OUTPUT]: 放行只读待处理分页/来源、原问题补充和显式本人固定版成果验收资格/回执；放行本机发现 ID 的单技能准备、原子员工绑定和只读请求回执；不暴露任意路径绑定。
  * [OUTPUT]: 放行固定 hash 成果预览、独立修订/采用及只读采用回执 IPC；仅原生选取的材料来源 token、严格 prepareMaterial 公共输入及材料/消息核对接口；放行员工删除和真实群解散 IPC；放行核心助手新会话/团队需求受理 IPC；T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
@@ -8,6 +9,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { AutomationNotificationConsumer } from './automation-notifications'
+import { BrowserService } from './browser/browser-service'
+import type { BrowserHostMethods, BrowserLease } from '../shared/ipc/browser'
 import type { AutomationNotice } from '../shared/domain/automations'
 import { z } from 'zod'
 import { LocalConfigDiscovery } from './local-configs/discovery'
@@ -36,6 +39,7 @@ let runtime: UtilityProcess | null = null
 let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['output'] = null
 let ready: Promise<void> | null = null
 let quitting = false
+let quitApproved = false
 let stopped: (() => void) | null = null
 const dirtySources = new Set<string>()
 const hasUnsavedChanges = () => dirtySources.size > 0
@@ -51,6 +55,20 @@ const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
 const materialSelections = new Map<string, string>()
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
+let browserConnectionDrain: Promise<void> = Promise.resolve()
+const browsers = new BrowserService({
+  rendererDirectory: join(__dirname, '../renderer'),
+  preloadPath: join(__dirname, 'browser-toolbar-preload.cjs'),
+  developmentUrl: process.env.BOAI_RENDERER_URL,
+  profileRegistryPath: join(legacyDataPath, 'browser', 'profile-scopes.json'),
+  managedDataDirectory: dataPath,
+  onStateChanged: state => sendEvent({ type: 'browser:changed', conversationId: state.conversationId }),
+  onUserControl: async ({ action, lease }) => {
+    if (quitting || !runtime) throw new Error('任务运行服务已退出，浏览器不会自动续行。')
+    if (action === 'stop') await requestRuntime('cancelRun', { conversationId: lease.conversationId, workId: lease.workId })
+    else await requestRuntime('browserControl', { agentId: lease.agentId, conversationId: lease.conversationId, action })
+  },
+})
 const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
 for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
@@ -68,6 +86,8 @@ methods.add('startCoreConversation')
 methods.add('getCoreConversationStart')
 methods.add('deleteAgent')
 methods.add('deleteConversation')
+methods.add('getBrowserWindows')
+methods.add('browserControl')
 for (const method of ['chooseMaterialSource', 'prepareMaterial', 'getMaterialPreparation', 'getMaterialPreview', 'discardMaterial', 'setMaterialAuthorization', 'getMessageReceipt'] as const) methods.add(method)
 for (const method of ['getArtifactPreview', 'reviseArtifact', 'adoptArtifact', 'getArtifactAdoptionReceipt'] as const) methods.add(method)
 for (const method of ['prepareLocalSkillBinding', 'bindLocalSkill', 'getSkillBindingReceipt'] as const) methods.add(method)
@@ -109,7 +129,7 @@ function flushAutomationNotifications() { void automationNotifications.flush().c
 
 function startRuntime() {
   if (ready) return ready
-  ready = new Promise<void>((resolveReady, rejectReady) => {
+  ready = browserConnectionDrain.then(() => new Promise<void>((resolveReady, rejectReady) => {
     // Only carry platform essentials into the worker. Model credentials arrive through the vault.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USER|SHELL|LANG|LC_.*|TMPDIR|TEMP|TMP|SystemRoot|APPDATA|LOCALAPPDATA|USERPROFILE)$/i.test(key)))
     const child = utilityProcess.fork(join(__dirname, '../runtime/worker.mjs'), [dataPath], {
@@ -118,6 +138,7 @@ function startRuntime() {
     runtime = child
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)
     child.on('message', async (message) => {
+      if (runtime !== child) return
       if (message?.type === 'ready') { clearTimeout(timer); resolveReady(); flushAutomationNotifications(); return }
       if (message?.type === 'stopped') { stopped?.(); return }
       if (message?.type === 'response') {
@@ -130,6 +151,15 @@ function startRuntime() {
         else request.resolve(response.result)
       } else if (message?.type === 'event') { if (message.event?.type === 'automation:notice') flushAutomationNotifications(); else sendEvent(message.event) }
 
+      else if (message?.type === 'browser-host') {
+        try {
+          if (quitting && (message.method === 'acquire' || message.method === 'executeSingle')) throw new Error('应用正在退出，浏览器不再受理新动作。')
+          const result = await handleBrowserHostRequest(child, message.method, message.input)
+          if (runtime === child) child.postMessage({ type: 'browser-host-result', id: message.id, result })
+        } catch (error) {
+          if (runtime === child) child.postMessage({ type: 'browser-host-result', id: message.id, error: error instanceof Error ? error.message : '浏览器操作结果未知，请核对原动作。' })
+        }
+      }
       else if (message?.type === 'secret') {
         try {
           if (typeof message.key !== 'string' || message.key.length > 200) throw new Error('无效凭据标识。')
@@ -149,6 +179,9 @@ function startRuntime() {
     child.on('exit', (code) => {
       clearTimeout(timer)
       if (runtime !== child) return
+      // Replacing the connection cannot issue a new lease until old actions really exit.
+      browserConnectionDrain = browsers.disconnectAll().catch(error => { sendEvent({ type: 'runtime-error', error: String(error) }); throw error })
+      void browserConnectionDrain.catch(() => {})
       runtime = null
       ready = null
       stopped?.()
@@ -158,8 +191,32 @@ function startRuntime() {
       pending.clear()
       if (!quitting) sendEvent({ type: 'runtime-error', error: error.message })
     })
-  })
+  }))
   return ready
+}
+
+async function handleBrowserHostRequest(child: UtilityProcess, method: keyof BrowserHostMethods, input: unknown): Promise<unknown> {
+  await browserConnectionDrain
+  if (runtime !== child) throw new Error('浏览器原运行连接已失效。')
+  switch (method) {
+    case 'acquire': return browsers.acquire(input as BrowserLease)
+    case 'inspect': return browsers.inspect(input as BrowserLease)
+    case 'resumeSnapshot': return browsers.resumeSnapshot(input as BrowserLease)
+    case 'executeSingle': {
+      const value = input as BrowserHostMethods['executeSingle']['input']
+      return browsers.executeSingle(value, async () => {
+        if (runtime !== child || quitting) throw new Error('浏览器动作尚未开始，原连接已经退出。')
+        await requestRuntime('__startBrowserAction', { actionId: value.actionId, generation: value.lease.generation, runId: value.lease.runId, workId: value.lease.workId })
+      })
+    }
+    case 'lookup': return browsers.lookup(input as BrowserHostMethods['lookup']['input'])
+    case 'drain': await browsers.drain(input as BrowserLease); return { drained: true }
+    case 'clearScope': await browsers.clearScope(input as BrowserHostMethods['clearScope']['input']); return { cleared: true }
+    case 'list': return browsers.list()
+    case 'userControl': return browsers.userControl(input as BrowserHostMethods['userControl']['input'])
+    case 'disconnect': return browsers.disconnectAll()
+    default: throw new Error('未知浏览器宿主操作。')
+  }
 }
 
 async function requestRuntime(method: string, input?: unknown) {
@@ -403,13 +460,21 @@ else {
   }).catch((error) => { dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', (event) => {
+    if (quitApproved) return
     if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void confirmDiscard(() => app.quit()); return }
-    if (quitting || !runtime) return
     event.preventDefault()
+    if (quitting) return
     quitting = true
     const child = runtime
-    const timeout = setTimeout(() => { child.kill(); app.quit() }, 8_000)
-    stopped = () => { clearTimeout(timeout); child.kill(); app.quit() }
-    child.postMessage({ type: 'shutdown' })
+    const runtimeExit = child ? new Promise<void>(resolveExit => {
+      const timeout = setTimeout(() => child.kill(), 8_000)
+      stopped = () => { clearTimeout(timeout); child.kill(); resolveExit() }
+      child.postMessage({ type: 'shutdown' })
+    }) : Promise.resolve()
+    // A timeout may terminate the worker, but never counts as Chromium action exit.
+    void Promise.all([runtimeExit, browsers.shutdown()]).then(() => { quitApproved = true; app.quit() }).catch(error => {
+      quitting = false
+      dialog.showErrorBox('浏览器尚未退出', error instanceof Error ? error.message : String(error))
+    })
   })
 }

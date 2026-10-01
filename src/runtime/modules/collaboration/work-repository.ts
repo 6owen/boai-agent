@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 显式工作意图、运行身份、当前权限校验后的上下文与 SQLite 事务。
- * [OUTPUT]: settle 可组合原事务消息完成 hook；工作结果/消息/完成身份任一失败同事务回滚，不按运行结束推断公开完成。
+ * [OUTPUT]: 浏览器 prepared/start/terminal 与原持有者和副作用标记同事务；取消后只确认原执行事实、不释放新运行；settle 可组合原事务消息完成 hook；工作结果/消息/完成身份任一失败同事务回滚，不按运行结束推断公开完成。
  * [OUTPUT]: 公开 task 用户问题同结果事务保存；补充原工作版本/执行/副作用/预算/依赖门禁同回答消息复核，不新建预算；用户修订请求/目标员工与唯一新根预算同事务绑定，重试/唤醒/子工作保留修订身份但不继承原成果工作或 occurrence；材料来源随认领/父子继承及持有者条件事务追加；显式额度追加/工作接续/消息/容量同事务；原工作身份与已交付结果保留；共享预算、执行权、父子/依赖和停止门禁。
  * [POS]: collaboration 的持久工作控制；不选举发言人、不重放工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -220,6 +220,32 @@ export class WorkRepository {
     await this.revisionWork(tx, work)
     if (work.origin) await assertAutomationExecution(tx, work.origin, work.conversationId)
     return { execution, work }
+  }
+  /** Browser receipt changes and effect accounting share this original holder transaction. */
+  browserTransaction<T>(runId: string, phase: 'prepare' | 'start' | 'finish', action: (tx: RecordTransaction, owner: { work: WorkItem; execution: WorkExecution }) => Promise<{ value: T; effect?: 'start' | 'confirm' }>) {
+    return this.store.transaction(async tx => {
+      let owner: { work: WorkItem; execution: WorkExecution }
+      if (phase === 'finish') {
+        const execution = await tx.get<WorkExecution>('workExecutions', runId)
+        const work = execution && await tx.get<WorkItem>('workItems', execution.workId)
+        if (!execution || !work) throw new WorkUnavailableError('原浏览器工作已清理')
+        owner = { execution, work }
+        if (execution.status === 'active') owner = await this.holder(tx, runId)
+      } else owner = await this.holder(tx, runId)
+      const budget=await tx.get<WorkBudget>('workBudgets',owner.work.budgetId)
+      if (phase!=='finish') { if(!budget) throw new WorkUnavailableError('原浏览器工作预算缺失'); checkWorkBudget(budget) }
+      const result = await action(tx, owner)
+      if (result.effect === 'start') {
+        owner.execution.pendingEffects = (owner.execution.pendingEffects ?? 0) + 1
+        owner.work.requiresReview = true
+        await tx.put(row('workItems',owner.work)); await tx.put(row('workExecutions',owner.execution))
+      } else if (result.effect === 'confirm') {
+        if (!owner.execution.pendingEffects) throw new WorkUnavailableError('原浏览器动作没有待核对标记')
+        owner.execution.pendingEffects--
+        await tx.put(row('workExecutions',owner.execution))
+      }
+      return result.value
+    })
   }
   recordMaterialSources(runId: string, sources: MaterialReadRef[]) {
     return this.store.transaction(async tx => {

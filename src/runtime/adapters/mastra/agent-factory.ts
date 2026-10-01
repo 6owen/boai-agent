@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工身份、授权上下文、阶段和显式工作合同。
- * [OUTPUT]: 明确 task ask 无工具且保留原工作意图，普通补充保持原预算/已执行效果边界；核心 Agent 明确团队请求使用实际创建工具与回执，不在普通对话制造工作；员工连续记忆下的当前轮候选/显式纠正与临时状态协议；群 teamSetup 按来源投影为可编辑背景，不改变任务/工具/记忆；任务实例提供已绑定技能身份映射；区分宿主提问补充与失败/预算接续，禁止重复已有交付和工具操作；按宿主补充关联解释原始目标，保留任务身份与已交付边界；阶段 Agent 原生 Trace 装配与模型请求观测；聊天/执行边界清晰的独立判断、精简轮次规则、授权委派成员及保留等待的重新汇报。
+ * [OUTPUT]: 任务 browser lease 随阶段 disposal 实际退出；明确 task ask 无工具且保留原工作意图，普通补充保持原预算/已执行效果边界；核心 Agent 明确团队请求使用实际创建工具与回执，不在普通对话制造工作；员工连续记忆下的当前轮候选/显式纠正与临时状态协议；群 teamSetup 按来源投影为可编辑背景，不改变任务/工具/记忆；任务实例提供已绑定技能身份映射；区分宿主提问补充与失败/预算接续，禁止重复已有交付和工具操作；按宿主补充关联解释原始目标，保留任务身份与已交付边界；阶段 Agent 原生 Trace 装配与模型请求观测；聊天/执行边界清晰的独立判断、精简轮次规则、授权委派成员及保留等待的重新汇报。
  * [POS]: Mastra Agent 工厂；员工独立判断，工作认领由宿主执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,7 @@ import { Agent } from '@mastra/core/agent'
 import type { EngineContext } from '../../contracts'
 import { modelConfig } from './model-config'
 import { observeAgent, traceModelRequest } from './trace'
+import { browserChatModel } from './browser-model'
 import { createTaskRuntime } from './task-runtime'
 import { isCoreAgent } from '../../../shared/domain/core-agent'
 
@@ -41,7 +42,8 @@ export async function createStageAgent(phase: AgentPhase, context: EngineContext
 
 async function createStageInstance(phase: AgentPhase, context: EngineContext, commandTimeoutMs?: number): Promise<StageInstance> {
   context.signal.throwIfAborted()
-  const inputProcessors = context.onTrace ? [{ id: 'model-request-trace', processInputStep: ({ model }: ProcessInputStepArgs) => ({ model: traceModelRequest(model) }) }] : undefined
+  const adaptBrowser=!!context.browserSession && context.connection.provider!=='anthropic' && (context.connection.api ?? 'chat')==='chat'
+  const inputProcessors = context.onTrace || adaptBrowser ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptBrowser ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : undefined
   if (phase === 'report') {
     const agent = new Agent({
       inputProcessors,
@@ -112,6 +114,6 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
         ...(taskRuntime ? { tools: taskRuntime.tools, workspace: taskRuntime.workspace } : {}),
       })
     let disposed = false
-    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.workspace.destroy() } } }
-  } catch (error) { await taskRuntime?.workspace.destroy(); throw error }
+    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.dispose() } } }
+  } catch (error) { await taskRuntime?.dispose(); throw error }
 }

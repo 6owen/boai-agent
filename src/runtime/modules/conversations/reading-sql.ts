@@ -1,17 +1,18 @@
 /*
  * [INPUT]: records 中真实会话、消息、已发送材料、登记成果及本周期完成身份；类型化筛选与游标。
- * [OUTPUT]: LIMIT 前确定性会话名称/正文/文件名筛选与当前隐藏/清理门禁，搜索点击不能恢复隐藏旧来源；仅内部明确历史核读可包含隐藏，不跳过清理或来源授权；名称按当前成员与实际 lastMessageAt/createdAt 筛选；时间/ID/类型稳定搜索页和明确目标；sequence/ID 消息页与当前 epoch 完成身份；按完成 ordinal 与连续已读/有界缺口确定首条未读。
+ * [OUTPUT]: LIMIT 前名称/正文多词 AND、确定性字段相关性与分数/时间/身份游标；只关联相同来源版本的正文索引，隐藏/清理门禁与点击保留；内部明确历史窗口和完成 ordinal/epoch 查询独立。
  * [POS]: D6 宿主固定只读 SQL；不接受外部查询片段，不推断目标，不创建阅读或业务状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { READING_LIMITS, type ConversationMessagePageQuery, type ConversationSearchKind, type ConversationSearchQuery } from '../../../shared/domain/reading'
+import { searchRankingSql } from './search-matching'
 
-export interface ConversationSearchSqlRow { id: string; kind: string; time: string; conversation: string; source: string; completion: string | null }
+export interface ConversationSearchSqlRow { id: string; kind: string; time: string; conversation: string; source: string; completion: string | null; body?: string | null; score?: number }
 export interface ConversationMessageSqlRow { source: string; completion: string | null }
 export interface ConversationSearchSqlTarget { kind: ConversationSearchKind; id: string; conversationId: string; includeHidden?: boolean }
 export interface FirstUnreadCompletionSqlQuery { conversationId: string; epoch: number; boundary: number; sparseSeen: number[] }
 
-const sources = `
+export const conversationSearchSourcesSql = `
 SELECT s.id,'message' AS kind,json_extract(s.value,'$.conversationId') AS conversationId,json_extract(s.value,'$.createdAt') AS time,s.value AS source,json_extract(s.value,'$.content') AS text,s.id AS messageId FROM records s WHERE s.collection='messages' AND json_extract(s.value,'$.id')=s.id
 UNION ALL
 SELECT s.id,'material' AS kind,json_extract(s.value,'$.conversationId'),json_extract(s.value,'$.createdAt'),s.value,json_extract(s.value,'$.name'),NULL FROM records s WHERE s.collection='materials' AND json_extract(s.value,'$.id')=s.id AND COALESCE(json_extract(s.value,'$.messageId'),'')<>''
@@ -20,14 +21,14 @@ SELECT s.id,'artifact' AS kind,json_extract(s.value,'$.conversationId'),COALESCE
 UNION ALL
 SELECT s.id,'conversation' AS kind,s.id,COALESCE(NULLIF(json_extract(s.value,'$.lastMessageAt'),''),json_extract(s.value,'$.createdAt')),s.value,json_extract(s.value,'$.title'),NULL FROM records s WHERE s.collection='conversations' AND json_extract(s.value,'$.id')=s.id`
 const availableConversation = "NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=i.conversationId)"
-const searchableConversation = `${availableConversation} AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0`
+export const searchableConversationSql = `${availableConversation} AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0`
 const completionJoin = `LEFT JOIN records clock ON clock.collection='conversationCompletionClocks' AND clock.id=i.conversationId LEFT JOIN records completion ON completion.collection='conversationCompletions' AND completion.id=i.messageId AND json_extract(completion.value,'$.messageId')=i.messageId AND json_extract(completion.value,'$.conversationId')=i.conversationId AND json_extract(completion.value,'$.epoch')=json_extract(clock.value,'$.epoch')`
-const searchSelect = `WITH sources AS (${sources}) SELECT i.id,i.kind,i.time,c.value AS conversation,i.source,completion.value AS completion FROM sources i JOIN records c ON c.collection='conversations' AND c.id=i.conversationId ${completionJoin}`
+const searchSelect = (score = '0') => `WITH originals AS (${conversationSearchSourcesSql}), sources AS (SELECT original.*,CASE WHEN json_extract(body.value,'$.status')='indexed' AND json_extract(body.value,'$.formatVersion')=1 AND json_extract(body.value,'$.sourceValue')=original.source THEN json_extract(body.value,'$.text') ELSE NULL END AS body FROM originals original LEFT JOIN records body ON body.collection='conversationSearchBodies' AND body.id=original.kind||':'||original.id) SELECT i.id,i.kind,i.time,c.value AS conversation,i.source,i.body,${score} AS score,completion.value AS completion FROM sources i JOIN records c ON c.collection='conversations' AND c.id=i.conversationId ${completionJoin}`
 
 /** Fixed branches and operators; all keyword, filter and cursor values remain bound data. */
 export function conversationSearchSql(query: ConversationSearchQuery & { limit: number }) {
-  const predicates = [searchableConversation, "(i.kind<>'message' OR json_extract(i.source,'$.status')='completed')"], args: (string | number)[] = []
-  predicates.push("instr(lower(COALESCE(i.text,'')),lower(?))>0"); args.push(query.keyword.trim())
+  const ranking = searchRankingSql(query.keyword), predicates = [searchableConversationSql, "(i.kind<>'message' OR json_extract(i.source,'$.status')='completed')"], args: (string | number)[] = [...ranking.args]
+  for (const term of ranking.terms) { predicates.push("(instr(lower(COALESCE(i.text,'')),?)>0 OR instr(lower(COALESCE(i.body,'')),?)>0)"); args.push(term, term) }
   if (query.scope === 'current' || query.conversationId) { predicates.push('i.conversationId=?'); args.push(query.conversationId ?? '') }
   if (query.agentId) {
     predicates.push("((i.kind='conversation' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.agentIds')) member WHERE member.value=?)) OR (i.kind='message' AND json_extract(i.source,'$.senderType')='agent' AND json_extract(i.source,'$.senderId')=?) OR (i.kind='material' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.authorizedAgentIds')) member WHERE member.value=?)) OR (i.kind='artifact' AND json_extract(i.source,'$.ownerAgentId')=?))")
@@ -39,14 +40,15 @@ export function conversationSearchSql(query: ConversationSearchQuery & { limit: 
     predicates.push(query.kinds.length ? `i.kind IN (${query.kinds.map(() => '?').join(',')})` : '0')
     args.push(...query.kinds)
   }
-  if (query.before) { predicates.push('(i.time,i.id,i.kind)<(?,?,?)'); args.push(query.before.time, query.before.id, query.before.kind) }
+  if (query.before?.score !== undefined) { predicates.push('(score,i.time,i.id,i.kind)<(?,?,?,?)'); args.push(query.before.score, query.before.time, query.before.id, query.before.kind) }
+  else if (query.before) { predicates.push('(i.time,i.id,i.kind)<(?,?,?)'); args.push(query.before.time, query.before.id, query.before.kind) }
   args.push(query.limit)
-  return { sql: `${searchSelect} WHERE ${predicates.join(' AND ')} ORDER BY i.time DESC,i.id DESC,i.kind DESC LIMIT ?`, args }
+  return { sql: `${searchSelect(ranking.sql)} WHERE ${predicates.join(' AND ')} ORDER BY score DESC,i.time DESC,i.id DESC,i.kind DESC LIMIT ?`, args }
 }
 
 /** Public search clicks require visible scope; only internal authorized history reads may include a hidden chat. */
 export function conversationSearchTargetSql(target: ConversationSearchSqlTarget) {
-  return { sql: `${searchSelect} WHERE ${target.includeHidden ? availableConversation : searchableConversation} AND i.kind=? AND i.id=? AND i.conversationId=? LIMIT 1`, args: [target.kind, target.id, target.conversationId] }
+  return { sql: `${searchSelect()} WHERE ${target.includeHidden ? availableConversation : searchableConversationSql} AND i.kind=? AND i.id=? AND i.conversationId=? LIMIT 1`, args: [target.kind, target.id, target.conversationId] }
 }
 
 /** Before/default traverse newest first; after traverses oldest first to avoid skipping nearby rows. */

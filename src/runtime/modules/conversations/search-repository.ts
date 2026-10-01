@@ -1,6 +1,6 @@
 /*
  * [INPUT]: ProductStore 固定 SQL、当前会话及来源验证 hooks；有界个人搜索和稳定历史目标。
- * [OUTPUT]: LIMIT 前过滤后的统一会话名称/正文/文件名搜索、稳定原会话与固定旧版身份、sequence/ID 历史页及完成快照；隐藏/清理来源在搜索查询与点击均拒绝且不恢复，校验途中退出可见范围不返回旧条目；固定消息缺失或校验期间删除只返回原目标身份的无游标空页，不报提示或回退其他消息；内部明确历史窗口仍核对原来源授权，不把隐藏当撤权；其余失效仅原因，查询与点击均核对当前来源。
+ * [OUTPUT]: 本地多词 AND/固定相关性、已核验正文片段与覆盖进度、绑定索引版本的分页；来源身份和来源 hooks 在查询/点击复核，失效不返回旧摘录；有界回填不创建 Work/模型；原明确历史窗口/完成事实和隐藏/清理门禁保留。
  * [POS]: conversations 的 D6 个人浏览读模型，独立于 getConversation/模型上下文窗口；不读取任意路径或制造业务动作。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,8 +11,10 @@ import { READING_LIMITS, type ConversationCompletion, type ConversationCompletio
 import { ProductStore } from '../../adapters/storage/product-store'
 import type { ConversationMessageSqlRow, ConversationSearchSqlRow } from './reading-sql'
 import { completionHash, readingIdentifier } from './reading-repository'
+import { SearchBodyIndex, type SearchBodyHooks } from './search-body-index'
+import { firstSearchMatch, searchTerms } from './search-matching'
 
-export interface ConversationSourceHooks {
+export interface ConversationSourceHooks extends SearchBodyHooks {
   validateMessage(message: Message, conversation: Conversation): Promise<void>
   validateMaterial(material: ConversationMaterial, conversation: Conversation): Promise<void>
   validateArtifact(artifact: Artifact & { id: string; conversationId: string }, conversation: Conversation): Promise<void>
@@ -25,7 +27,8 @@ const compareMessages = (a: Message, b: Message) => a.sequence - b.sequence || (
 const fileIdentity = (target: ConversationSearchTarget) => JSON.stringify(target)
 
 export class ConversationSearchRepository {
-  constructor(private store: ProductStore, private hooks: ConversationSourceHooks) {}
+  private readonly index: SearchBodyIndex
+  constructor(private store: ProductStore, private hooks: ConversationSourceHooks) { this.index = new SearchBodyIndex(store, hooks) }
   private async conversation(conversationId: string): Promise<void> {
     readingIdentifier(conversationId)
     await this.store.transaction(async tx => { if (!await tx.get('conversations', conversationId)) throw new Error('聊天已不存在'); if (await tx.get('conversationCleanup', conversationId)) throw new Error('聊天正在清理，历史内容不可用') })
@@ -55,7 +58,7 @@ export class ConversationSearchRepository {
     return fresh
   }
   private excerpt(content: string, keyword: string): string {
-    const index = keyword ? content.toLowerCase().indexOf(keyword.toLowerCase()) : 0, start = Math.max(0, index - 60)
+    const index = keyword ? firstSearchMatch(content, keyword) : 0, start = Math.max(0, index - 60)
     return `${start > 0 ? '…' : ''}${content.slice(start, start + READING_LIMITS.excerptCharacters)}${content.length > start + READING_LIMITS.excerptCharacters ? '…' : ''}`
   }
   private result(row: ConversationSearchSqlRow, keyword: string, unavailableReason?: string): ConversationSearchResult {
@@ -63,13 +66,17 @@ export class ConversationSearchRepository {
     const base: ConversationSearchResult = { id: row.id, kind, conversationId: conversation.id, conversationTitle: conversation.title, time: row.time, target: this.target(row), status: unavailableReason ? 'unavailable' : 'available' }
     if (unavailableReason) return { ...base, reason: unavailableReason }
     if (kind === 'conversation') return { ...base, name: conversation.title }
-    if (kind !== 'message') return { ...base, name: source.name, ...(kind === 'artifact' && source.ownerAgentId ? { agentId: source.ownerAgentId } : {}) }
+    if (kind !== 'message') {
+      const terms = keyword ? searchTerms(keyword) : [], name = source.name.toLowerCase(), body = row.body?.toLowerCase(), inName = terms.some(term => name.includes(term)), inBody = !!body && terms.some(term => body.includes(term))
+      return { ...base, name: source.name, ...(kind === 'artifact' && source.ownerAgentId ? { agentId: source.ownerAgentId } : {}), ...(terms.length ? { matchedIn: inBody ? inName ? 'name_and_body' as const : 'body' as const : 'name' as const } : {}), ...(inBody && row.body ? { excerpt: this.excerpt(row.body, keyword), matchOffset: firstSearchMatch(row.body, keyword) } : {}) }
+    }
     const completion = this.completion(row.completion, source)
     return { ...base, senderName: source.senderName, ...(source.senderType === 'agent' ? { agentId: source.senderId } : {}), excerpt: this.excerpt(source.content, keyword), ...(completion ? { completion } : {}) }
   }
   private normalize(query: ConversationSearchQuery) {
     const keyword = query.keyword.trim(), limit = limitOf(query.limit)
     if (!keyword || [...keyword].length > READING_LIMITS.keywordCharacters) throw new Error('搜索关键词须为 1 至 200 字符')
+    searchTerms(keyword)
     if (query.scope !== 'all' && query.scope !== 'current') throw new Error('无效搜索范围')
     if (query.scope === 'current' && !query.conversationId) throw new Error('会话内搜索须明确聊天')
     if (query.conversationId) readingIdentifier(query.conversationId)
@@ -79,27 +86,39 @@ export class ConversationSearchRepository {
     if (from && to && from > to) throw new Error('搜索开始时间不能晚于结束时间')
     const selected = query.kinds ? [...new Set(query.kinds)].sort() : undefined
     if (selected && (!selected.length || selected.some(kind => !kinds.includes(kind)))) throw new Error('无效搜索类型')
-    const normalized = { keyword, scope: query.scope, ...(query.conversationId ? { conversationId: query.conversationId } : {}), ...(query.agentId ? { agentId: query.agentId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(selected ? { kinds: selected } : {}) }, queryKey = createHash('sha256').update(JSON.stringify(normalized)).digest('hex')
-    if (query.before) { readingIdentifier(query.before.id); if (query.before.queryKey !== queryKey || !kinds.includes(query.before.kind) || typeof query.before.time !== 'string' || query.before.time.length > 100) throw new Error('搜索游标与当前条件不一致') }
+    const normalized = { keyword, scope: query.scope, ...(query.conversationId ? { conversationId: query.conversationId } : {}), ...(query.agentId ? { agentId: query.agentId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(selected ? { kinds: selected } : {}) }, queryKey = createHash('sha256').update(JSON.stringify({ ...normalized, ranking: 'and-fields-v1' })).digest('hex')
+    if (query.before) { readingIdentifier(query.before.id); if (query.before.queryKey !== queryKey || !kinds.includes(query.before.kind) || typeof query.before.time !== 'string' || query.before.time.length > 100 || !Number.isSafeInteger(query.before.score) || query.before.score! < 0 || !Number.isSafeInteger(query.before.indexRevision) || query.before.indexRevision! < 0) throw new Error('搜索游标与当前条件不一致') }
     return { normalized, queryKey, limit }
   }
   async search(query: ConversationSearchQuery): Promise<ConversationSearchPage> {
     const { normalized, queryKey, limit } = this.normalize(query)
     if (normalized.conversationId) await this.conversation(normalized.conversationId)
+    const processed = query.before ? 0 : await this.index.backfill(normalized), initialCoverage = await this.store.searchBodyCoverage(normalized)
+    if (query.before && query.before.indexRevision !== initialCoverage.indexRevision) throw new Error('正文索引已更新，请重新搜索后继续翻页')
     const results: ConversationSearchResult[] = [], cursors: NonNullable<ConversationSearchQuery['before']>[] = []
     let before = query.before, exhausted = false
     for (let pass = 0; pass < 4 && results.length <= limit && !exhausted; pass++) {
       const rows = await this.store.conversationSearchRows({ ...normalized, ...(before ? { before } : {}), limit: limit + 1 })
       exhausted = rows.length < limit + 1
       for (const row of rows) {
-        const cursor = { time: row.time, id: row.id, kind: row.kind as ConversationSearchKind, queryKey }; before = cursor
+        const cursor = { time: row.time, id: row.id, kind: row.kind as ConversationSearchKind, queryKey, score: row.score ?? 0, indexRevision: initialCoverage.indexRevision }; before = cursor
         try { const fresh = await this.validate(row); if (!fresh) continue; results.push(this.result(fresh, normalized.keyword)) }
-        catch (error) { const current = await this.store.conversationSearchTarget({ kind: row.kind as ConversationSearchKind, id: row.id, conversationId: this.target(row).conversationId }); if (!current) continue; results.push(this.result(row, normalized.keyword, reasonOf(error))) }
+        catch (error) {
+          const current = await this.store.conversationSearchTarget({ kind: row.kind as ConversationSearchKind, id: row.id, conversationId: this.target(row).conversationId }); if (!current) continue
+          if (row.kind === 'material' || row.kind === 'artifact') {
+            const failedSource = JSON.parse(current.source)
+            await this.index.invalidate({ id: row.id, kind: row.kind, conversationId: this.target(row).conversationId, source: failedSource.status === 'unavailable' ? current.source : row.source, conversation: current.conversation }, error)
+          }
+          results.push(this.result(row, normalized.keyword, reasonOf(error)))
+        }
         cursors.push(cursor)
         if (results.length > limit) break
       }
     }
-    return { results: results.slice(0, limit), queryKey, ...(results.length > limit ? { nextCursor: cursors[limit - 1] } : !exhausted && before ? { nextCursor: before } : {}) }
+    const coverage = { ...await this.store.searchBodyCoverage(normalized), batchProcessed: processed }
+    if (query.before && coverage.indexRevision !== initialCoverage.indexRevision) throw new Error('正文来源已变化，请重新搜索后继续翻页')
+    const next = results.length > limit ? cursors[limit - 1] : !exhausted && before ? before : undefined
+    return { results: results.slice(0, limit), queryKey, coverage, ...(next ? { nextCursor: { ...next, indexRevision: coverage.indexRevision } } : {}) }
   }
   async resolve(target: ConversationSearchTarget): Promise<ConversationSearchResult> {
     readingIdentifier(target.conversationId); readingIdentifier(this.targetId(target))

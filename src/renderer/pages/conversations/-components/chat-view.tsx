@@ -1,5 +1,7 @@
 /*
  * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、共享 ScrollFade/Markdown/Shiki 与统一 UI 基础组件。
+ * [OUTPUT]: 按真实 Approval.kind 展示网页审批目标/页面变化说明，主机命令仍显示工作目录和权限。
+ * [OUTPUT]: 标题区读取本会话的真实浏览器窗口徽标，查看/接管/关闭沿 typed IPC，隐藏停止读取。
  * [OUTPUT]: 核心会话标题菜单传递明确会话编辑入口、普通会话保留置顶；缺失固定消息窗口保持空态，不展示定位诊断提示；消息成果接入固定版本应用内预览，打开不采用；材料草稿/原生drop/真实消息材料与共享对象、未知发送核对和仅可检查来源行引用；单聊与群聊共用消息卡片、无状态标签并可跳转对应员工配置的头像资料浮层、工具条、引用预览及按明确归属展示的文件/审批/连续发言；滚动边界自动有界加载、同游标单次请求和失败不循环，滚动同步本机锚点、补页保持当前位置且旧页底部不误跟随最新，空更早页保留原最新资格并仅在仍贴底时恢复跟随；保留手动滚动/自动跟随，局部有符号锚点保留顶部留白，宿主持久锚点仍使用非负偏移；固定标题区提供紧凑返回未读/最新与可展开的完整阅读说明，不挤移消息渐隐；真实完成可见观测和独立稳定锚点；旧历史未知显性展示；核心会话接入按工作身份隔离的团队交付/显式恢复卡片，隐藏主页面暂停读取；按稳定 user 身份展示当前配置姓名和可点击圆角方形个人头像，自动化来源独立，引用和工具条共用当前姓名；群聊姓名/消息提及插入实际行内标签，单聊保留模型/权限与输入边界。
  * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -10,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { isCoreConversation } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { CoreTeamResults } from './core-team-results'
+import { ConversationBrowser } from './conversation-browser'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
@@ -124,6 +127,7 @@ export function ChatView({ api, pageActive, onTeamGroup, detail, snapshot, draft
     <ConversationHeader members={members} resources={snapshot.resources} conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onConfigureAgent={onConfigureAgent} onActivity={onActivity} onTrace={() => onTrace()} onSearch={onSearch} onChange={onChangeConversationList} onEditTitle={onEditTitle} onClear={onClear}
       readingStatus={<Popover><PopoverTrigger render={<Button variant="link" size="content" className="chat-reading-status" aria-label="展开阅读状态说明" />}><span className="chat-reading-count" data-unread-count={detail.reading.unreadCount}>{detail.reading.unreadCount > 0 ? `${detail.reading.unreadCount} 条未读` : '新回复已读'}</span>{detail.reading.legacyCompletedUnknown && <span className="chat-reading-unknown">{legacyReadingText}</span>}</PopoverTrigger><PopoverContent align="start" className="max-w-[calc(100vw-24px)]"><PopoverTitle>阅读状态</PopoverTitle><PopoverDescription>{unreadText}{detail.reading.legacyCompletedUnknown && <><br />{legacyReadingText}</>}</PopoverDescription></PopoverContent></Popover>}
       readingActions={<div className="chat-reading-actions" aria-label="阅读导航">{detail.reading.firstUnreadMessageId && <Button variant="ghost" size="icon-sm" aria-label="返回未读" title="返回未读" onClick={() => onUnread(detail.reading.firstUnreadMessageId!)}><BookOpen /></Button>}<Button variant="ghost" size="icon-sm" aria-label="查看最新消息" title="查看最新消息" onClick={onLatest}><ArrowDown /></Button></div>} />
+    <ConversationBrowser api={api} conversationId={conversation.id} active={pageActive} />
     {reading.error && <Banner>{reading.error}<Button variant="link" size="sm" onClick={() => void reading.check()}>核对阅读状态</Button></Banner>}
     <ScrollFade className="messages" ref={scrollRef} aria-busy={paging}
       onScroll={() => {
@@ -192,4 +196,7 @@ export function ChatView({ api, pageActive, onTeamGroup, detail, snapshot, draft
     </div></div>
 }
 
-export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean) => void; busy: boolean }) { return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} role="region" aria-label={`${approval.agentName} 的命令审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} 申请运行命令</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre><p className="field-hint">工作目录：{approval.cwd}</p><p className="field-hint">命令使用应用的主机权限，请核对实际操作范围。</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button></div></CardContent></Card> }
+export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean) => void; busy: boolean }) {
+  const browser = approval.kind === 'browser'
+  return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} role="region" aria-label={`${approval.agentName} 的${browser ? '网页操作' : '命令'}审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} {browser ? '申请操作网页' : '申请运行命令'}</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre>{!browser && <p className="field-hint">工作目录：{approval.cwd}</p>}<p className="field-hint">{browser ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : '命令使用应用的主机权限，请核对实际操作范围。'}</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button></div></CardContent></Card>
+}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 仅 Trace 显式请求时按真实触发身份返回最多80项/60字符且当前来源复核的摘要，来源失效不回传缓存；D6 详情只返回元信息，按明确结果身份核对当前材料/成果来源与实际正文后投影证据 bool，不输出全部聊天正文或持久化证明；D6 有界个人历史/会话名称、消息正文和登记文件名统一检索、原会话及精确目标核对独立于模型窗口；chat/task/ACP 实际最终发布同事务记完成身份，材料/成果实际来源门禁、固定可见阅读与独立锚点 CAS，清空保留 epoch 且重启/备份零重放。
+ * [OUTPUT]: 手动已认领 task 独占浏览器租约、Main 实际开始回执与定向控制/清理； R1 材料/成果正文沿同次 hash 核验文本接线，本地多词相关性/有界覆盖与索引版本游标严格校验，不创建 Work/模型；仅 Trace 明确请求才返回有界核源摘要；D6 元信息/即时结果证据、独立个人历史/固定目标与发布完成身份/阅读锚点，清空保留 epoch，重启/备份零重放。
  * [OUTPUT]: 只读待处理四来源投影、实际公开问题/回答消息同事务和稳定未知回执；安全补充定向沿原 task/budget，初次 task ask 无工具；这两种 task 路径跳过已释放持有者后的额外自动记忆模型维护，保留授权召回；显式本人固定成果版本的待验收请求及只读回执，不代表质量批准；已保存员工的本机单技能准备与来源/hash/版本冻结，受管副本和员工授权同事务绑定，原请求只读核对与安全恢复。
  * [OUTPUT]: 真实成果内容 hash/不可变版本、修订消息原子关系/新根预算、逐阶段来源复核、采用与回执、启动历史独立登记/活动列表不推断发布、实际文件交付与 Markdown 预览分离/直接返回验证字节、监控选定来源复核和无 WAL 备份快照及 hash 清理门禁；私有材料准备/原子消息关联与持久受理回执，每阶段来源授权、回复/成果来源和限定聊天记忆，hash 清理冲突及仅已发送材料备份；通讯录员工/整类删除与空群解散、群记录保留及运行退出门禁、定时计划暂停和删除投影回收；核心会话非空首条消息/具名团队请求与受理回执同事务、用户团队名按原消息强制绑定、默认模型绑定和核心专属团队工具/原工作去重；员工统一召回、即时获知回执与增量记忆的原始预算/发布门禁；团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；兼容旧分类的多标签/普通员工统一排序、原子批量标签与选中员工删除、版本检查，标签/排序仅广播通讯录局部通知，删除保持关联全局失效；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  *           核心首发响应失联可只读核对权威回执，已提交却未安装须重启且不重放；可靠未提交只清理独占空目录，未知提交不删除；清理后首发明确拒绝重放。
@@ -77,6 +77,9 @@ import { recallMemory } from './modules/memory/memory-recall'
 import { memoryUseScope } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '../shared/domain/memory'
 import { ModelCapacity } from './modules/collaboration/model-capacity'
+import type { BrowserHostBridge, BrowserLease, BrowserControlInput } from '../shared/ipc/browser'
+import { BrowserRepository, browserScopeKey } from './modules/browser/repository'
+import { BrowserSession } from './modules/browser/session'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
 import { Inbox, inboxQuerySchema, inboxReplySchema } from './modules/inbox/inbox'
 import { questionSource, validateQuestionReply, answerQuestion, type QuestionSource } from './modules/inbox/user-question'
@@ -90,7 +93,7 @@ const ids = z.array(id).max(100).refine(value => new Set(value).size === value.l
 const messageCursorSchema = z.object({ id, sequence: z.number().int().nonnegative() }).strict()
 const messagePageSchema = z.object({ conversationId: id, limit: z.number().int().min(1).max(READING_LIMITS.maxPage).optional(), before: messageCursorSchema.optional(), after: messageCursorSchema.optional(), aroundMessageId: id.optional() }).strict()
 const searchKindSchema = z.enum(['conversation', 'message', 'material', 'artifact'])
-const searchSchema = z.object({ keyword: z.string().trim().min(1).max(800), scope: z.enum(['all', 'current']), conversationId: id.optional(), agentId: id.optional(), from: z.string().max(100).optional(), to: z.string().max(100).optional(), kinds: z.array(searchKindSchema).max(4).optional(), limit: z.number().int().min(1).max(READING_LIMITS.maxPage).optional(), before: z.object({ time: z.string().max(100), id, kind: searchKindSchema, queryKey: z.string().min(1).max(200) }).strict().optional() }).strict()
+const searchSchema = z.object({ keyword: z.string().trim().min(1).max(800), scope: z.enum(['all', 'current']), conversationId: id.optional(), agentId: id.optional(), from: z.string().max(100).optional(), to: z.string().max(100).optional(), kinds: z.array(searchKindSchema).max(4).optional(), limit: z.number().int().min(1).max(READING_LIMITS.maxPage).optional(), before: z.object({ time: z.string().max(100), id, kind: searchKindSchema, queryKey: z.string().min(1).max(200), score: z.number().int().nonnegative().optional(), indexRevision: z.number().int().nonnegative().optional() }).strict().optional() }).strict()
 const searchTargetSchema = z.discriminatedUnion('kind', [z.object({ kind: z.literal('conversation'), conversationId: id }).strict(), z.object({ kind: z.literal('message'), conversationId: id, messageId: id }).strict(), z.object({ kind: z.literal('material'), conversationId: id, materialId: id, revision: z.number().int().positive(), contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(), z.object({ kind: z.literal('artifact'), conversationId: id, artifactId: id, logicalArtifactId: id.optional(), contentVersion: z.number().int().positive().optional(), contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()])
 const readingLookupSchema = z.object({ conversationId: id }).strict()
 const conversationMetadataSchema = z.object({ id, includeTriggerSummaries: z.boolean().optional() }).strict()
@@ -173,6 +176,8 @@ export class AppService {
   private readonly modelCapacity = new ModelCapacity()
   private readonly taskAdmission = new TaskAdmission()
   private readonly works: WorkRepository
+  private readonly browser: BrowserRepository
+  private browserSessions = new Map<string,{ session:BrowserSession; validate:()=>Promise<void> }>()
   private workTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private mutations: Promise<unknown> = Promise.resolve()
   private closing = false
@@ -180,7 +185,7 @@ export class AppService {
   private initialized = false
   readonly dataPath: string
 
-  constructor(private readonly options: { dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.materials = new MaterialRepository(this.store, this.dataPath)
@@ -237,6 +242,7 @@ export class AppService {
     this.reading = new ConversationReadingRepository(this.store, { validateMessage: (tx, message) => this.validateReadingMessage(tx, message) })
     this.history = new ConversationHistory(this.store, this.dataPath, this.materials, this.artifactRepository, this.reading)
     this.works = new WorkRepository(this.store)
+    this.browser = new BrowserRepository(this.store,this.works)
     this.profiles=new LaunchProfiles(this.store)
     this.homes = new WorkspaceService(this.dataPath)
     this.teamCreation = new TeamCreationService(this.teams, this.dataPath, this.homes, {
@@ -310,6 +316,10 @@ export class AppService {
     await this.store.init()
     await this.teams.recover()
     await this.teamCreation.recover()
+    for (const pending of await this.store.load<{id:string;conversationId:string}>('browserCleanups')) {
+      try { await this.clearBrowserScopes(scope=>scope.scopeKey===pending.id) }
+      catch (error) { this.clearingConversations.add(pending.conversationId); this.emit({type:'runtime-error',error:`浏览器存储清理待修复：${this.errorMessage(error)}`}) }
+    }
     for (const conflict of await this.history.recover()) {
       this.clearingConversations.add(conflict.conversationId)
       this.emit({ type: 'runtime-error', error: `聊天 ${conflict.conversationId} 的材料或成果清理待修复：${conflict.error}；外部修改已保留，请处理后重试清空。` })
@@ -357,7 +367,7 @@ export class AppService {
     this.approvals.clear()
     updates.push(...await this.employees.initialize())
     await this.store.write(updates, removed)
-    this.memoryActivatedAt = await this.memory.init(); await this.works.init(); await this.scheduler.init()
+    this.memoryActivatedAt = await this.memory.init(); await this.works.init(); await this.browser.recover(); await this.scheduler.init()
     for (const conversation of this.conversations.values()) if (conversation.memoryScope === 'conversation') for (const member of conversation.agentIds) await this.memory.restrictConversation(member, conversation.id)
     await this.memory.maintain()
     await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
@@ -436,6 +446,13 @@ export class AppService {
     }
     if (method === 'bindLocalSkill') return this.skills.bindLocal(bindLocalSkillSchema.parse(input))
     if (method === 'getSkillBindingReceipt') return this.skills.getBindingReceipt(z.object({ requestId: id }).strict().parse(input).requestId)
+    if (method === 'getBrowserWindows') {
+      const value=z.object({conversationId:id}).strict().parse(input)
+      const conversation=this.getConversation(value.conversationId)
+      const states=await this.options.browserHost?.request('list',{}) ?? []
+      return states.filter(state => state.conversationId===conversation.id && conversation.agentIds.includes(state.agentId))
+    }
+    if (method === 'browserControl') return this.browserControl(z.object({agentId:id,conversationId:id,action:z.enum(['take','resume','show','hide','close','clear'])}).strict().parse(input))
     if (method === 'listSkillMarketplace') return this.marketplace.list(input)
     if (method === 'getSkillMarketplaceDetail') return this.marketplace.detail(input)
     if (method === 'refreshSkillMarketplace') return this.marketplace.invalidate(z.object({ provider: marketplaceProviderSchema }).strict().parse(input).provider)
@@ -737,6 +754,8 @@ export class AppService {
       validateMessage: (message, conversation) => { this.getConversation(conversation.id); return this.store.transaction(tx => this.validateReadingMessage(tx, message)) },
       validateMaterial: async (material, conversation) => { this.getConversation(conversation.id); if (!material.messageId || material.status !== 'ready') fail('材料未发送或已不可用'); await this.materials.preview(material.id, material.revision) },
       validateArtifact: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份，请核对原文件'); await this.store.transaction(tx => this.artifactRepository.validateCurrentArtifact(tx, artifact.id, artifact.contentHash!, undefined, false)) },
+      readMaterialText: async (material, conversation) => { this.getConversation(conversation.id); if (!material.messageId || material.status !== 'ready') fail('材料未发送或已不可用'); return (await this.materials.preview(material.id, material.revision)).text },
+      readArtifactText: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份'); return (await this.store.transaction(tx => this.artifactRepository.readSearchText(tx, artifact.id, artifact.contentHash!))).text },
     })
   }
   private async conversationView(query: ConversationMessagePageQuery): Promise<ConversationView> {
@@ -941,6 +960,7 @@ export class AppService {
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
     for (const agentId of agentIds) await this.cancelEmployee(agentId, '员工已删除')
+    await this.clearBrowserScopes(scope => agentIds.includes(scope.agentId))
     if (ownedResourceIds.length) {
       await this.memory.invalidateResources(ownedResourceIds)
       await this.memoryChanged(this.employees.values().map(agent => agent.id))
@@ -973,6 +993,7 @@ export class AppService {
     this.workTimers.delete(id)
     for (const agent of this.employees.values()) await this.memory.invalidateConversation(agent.id, id)
     await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
+    await this.clearBrowserScopes(scope => scope.conversationId === id)
     const result = remove ? await this.history.remove(conversation) : await this.history.clear(conversation, hide)
     for (const item of result.removals) {
       switch (item.collection) {
@@ -1733,6 +1754,20 @@ export class AppService {
             if (!work || !visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该依赖')
           }
         }
+        if (this.options.browserHost && context.agent.allowBrowser && !run.origin && decision.action === 'reply') {
+          const epoch=(await this.reading.readState(conversation.id)).epoch
+          const lease:BrowserLease={scopeKey:browserScopeKey(run.agentId,conversation.id,epoch),scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work.id,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:this.runDirectories.get(run.id)!}
+          const validate=async () => {
+            effective.throwIfAborted()
+            if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id)) fail('浏览器工作已停止或正在清理')
+            const agent=this.getAgent(run.agentId),chat=this.getConversation(conversation.id)
+            if (!agent.allowBrowser || agent.configVersion!==lease.configVersion || agent.executionBackend?.kind==='acp-local' || !chat.agentIds.includes(agent.id)) fail('浏览器员工授权或会话成员已变化')
+            await this.assertMaterialRefs(context)
+            if (!await this.memory.recallValid(context.memory!)) fail('浏览器任务的记忆来源已失效')
+          }
+          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,originalRequest:this.messages.get(context.work.sourceMessageId)?.content ?? '',validate,approve:command=>this.requestApproval(run,controller,command,lease.downloadDirectory,true,'browser')})
+          this.browserSessions.set(run.id,{session,validate}); context.browserSession=session
+        }
         context.beforeEffect = () => this.serialize(async () => { effective.throwIfAborted(); await this.assertMaterialRefs(context); if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本工具执行'); await this.works.markEffect(run.id) })
         context.afterEffect = async () => { effective.throwIfAborted(); await this.works.confirmEffect(run.id) }
         if (isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin) context.createTeam = async plan => {
@@ -1814,12 +1849,13 @@ export class AppService {
         if (run.origin) await this.automations.assertExecutable(run.origin, conversation.id)
         if (!isWithin(conversation.workspacePath, artifact.path)) fail('发布产物不在本群共享目录内')
         if (artifact.revisionRequestId && artifact.revisionRequestId !== context.artifactRevision?.id) fail('成果新版发布不属于当前宿主修订授权')
-        const saved = await this.store.transaction(tx => this.artifactRepository.register(tx, { ...artifact, id: artifact.id ?? randomUUID(), conversationId: conversation.id, ownerAgentId: run.agentId, runId: run.id, publishedAt: now(), ...(context.materialRefs?.length ? { materialSources: clone(context.materialRefs) } : {}) }, { conversationId: conversation.id, revisionRequestId: artifact.revisionRequestId ?? null, sourceWorkId: run.workId ?? null, sourceMessageId: null }))
+        const browserSources=await this.browser.sourcesForRun(run.id)
+        const saved = await this.store.transaction(tx => this.artifactRepository.register(tx, { ...artifact,...(browserSources.length ? {browserSources}:{}), id: artifact.id ?? randomUUID(), conversationId: conversation.id, ownerAgentId: run.agentId, runId: run.id, publishedAt: now(), ...(context.materialRefs?.length ? { materialSources: clone(context.materialRefs) } : {}) }, { conversationId: conversation.id, revisionRequestId: artifact.revisionRequestId ?? null, sourceWorkId: run.workId ?? null, sourceMessageId: null }))
         Object.assign(artifact, saved); this.artifacts.set(saved.id, saved); this.changed(conversation.id)
       })
       if (decision.action === 'ask') {
         context.resources = []; context.workspace = undefined; context.environment = undefined
-        context.createTeam = undefined; context.delegateWork = undefined; context.waitForWork = undefined; context.onWorkOutcome = undefined
+        context.browserSession = undefined; context.createTeam = undefined; context.delegateWork = undefined; context.waitForWork = undefined; context.onWorkOutcome = undefined
         context.onTool = async () => { fail('补充提问不允许执行工具') }
         context.beforeEffect = async () => { fail('补充提问不允许执行副作用') }
         context.onArtifact = async () => { fail('补充提问不允许发布成果') }
@@ -1914,7 +1950,7 @@ export class AppService {
           const reportCall = await context.onAdditionalModelCall!('report')
           const baseline = { ...run.usage }
           const reportContext: EngineContext = { ...context, ...stale, materialRefs: context.materialRefs, modelCallId: typeof reportCall === 'string' ? reportCall : undefined, resources: [], responseKind: 'chat',
-            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, createTeam: undefined, delegateWork: undefined, waitForWork: undefined,
+            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, browserSession: undefined, createTeam: undefined, delegateWork: undefined, waitForWork: undefined,
             work: { ...context.work!, outcome, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) },
             onDelta: async () => {}, onTool: async () => { throw new Error('重新汇报不允许执行工具') }, approveCommand: async () => false,
             onUsage: async usage => {
@@ -1939,7 +1975,9 @@ export class AppService {
       if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
       if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
       throw new Error(this.redact(this.errorMessage(error), key))
-    } finally { releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); await this.clearApprovals(run.id) }
+    } finally {
+      await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id)
+      releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); await this.clearApprovals(run.id) }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
     if (!this.options.engine.extractMemory || this.closing) return
@@ -2051,13 +2089,13 @@ export class AppService {
     await this.store.write([record('runs', run), ...(message ? [record('messages', message)] : [])])
     if (message) this.emit({ type: 'message', message }); this.changed(run.conversationId)
   }
-  private async requestApproval(run: AgentRun, controller: AbortController, command: string, cwd: string, commandsAllowed: boolean): Promise<boolean> {
+  private async requestApproval(run: AgentRun, controller: AbortController, command: string, cwd: string, commandsAllowed: boolean, kind: 'command' | 'browser' = 'command'): Promise<boolean> {
     if (!commandsAllowed) fail('该员工未启用命令执行')
     if (controller.signal.aborted || terminal.has(run.status)) return false
     const expected = this.runDirectories.get(run.id) ?? fail('任务工作目录不存在')
     if (!isAbsolute(cwd) || !isWithin(expected, cwd)) fail('命令只能在本次任务目录内执行')
     if (!command.trim() || command.length > 20000) fail('命令为空或过长')
-    const approval: Approval = { id: randomUUID(), runId: run.id, conversationId: run.conversationId, agentName: run.agentName, command, cwd }
+    const approval: Approval = { id: randomUUID(), kind, runId: run.id, conversationId: run.conversationId, agentName: run.agentName, command, cwd }
     run.status = 'waiting_approval'; this.approvals.set(approval.id, approval)
     let settle!: (approved: boolean) => void
     const result = new Promise<boolean>(resolve => { settle = resolve })
@@ -2089,6 +2127,59 @@ export class AppService {
     for (const approval of approvals) { this.pendingApprovals.get(approval.id)?.(false); this.pendingApprovals.delete(approval.id); this.approvals.delete(approval.id) }
     await this.store.write([], approvals.map(approval => ({ collection: 'approvals', id: approval.id })))
   }
+  /** Internal Main handshake; never wait for Main while holding the host serializer. */
+  async startBrowserAction(input:{actionId:string;generation:string;runId:string;workId:string}) {
+    const session=this.browserSessions.get(input.runId) ?? fail('原浏览器运行已结束')
+    if (session.session.lease.generation!==input.generation || session.session.lease.workId!==input.workId) fail('浏览器租约身份不一致')
+    await session.validate()
+    return this.browser.start(input)
+  }
+  async browserControl(input:BrowserControlInput) {
+    const conversation=this.getConversation(input.conversationId),agent=this.getAgent(input.agentId)
+    if (!conversation.agentIds.includes(agent.id)) fail('员工不属于当前会话')
+    const host=this.options.browserHost ?? fail('浏览器宿主未连接')
+    const epoch=(await this.reading.readState(conversation.id)).epoch,scopeKey=browserScopeKey(agent.id,conversation.id,epoch)
+    const sessions=[...this.browserSessions.values()].filter(({session})=>session.lease.scopeKey===scopeKey)
+    if (input.action==='resume') {
+      const owner=sessions.find(({session})=>{const run=this.runs.get(session.lease.runId);return run && !terminal.has(run.status) && this.runControllers.has(run.id)}) ?? fail('原运行已经结束，请发送新任务以重新核对来源并取得新租约')
+      await owner.validate();await this.browser.authorizeResume(owner.session.lease)
+      await owner.session.resume(randomUUID())
+      this.emit({type:'browser:changed',conversationId:conversation.id});return
+    }
+    if (input.action==='take') {
+      const owner=sessions.find(({session})=>{const run=this.runs.get(session.lease.runId);return run && !terminal.has(run.status)})
+      if(owner) await owner.session.pause()
+      await host.request('userControl',{scopeKey,action:'take'})
+      this.emit({type:'browser:changed',conversationId:conversation.id});return
+    }
+    if (['close','clear'].includes(input.action)) {
+      await this.serialize(async () => {
+        for (const {session} of sessions) {
+          const run=this.runs.get(session.lease.runId)
+          if (run && !terminal.has(run.status)) { this.runControllers.get(run.id)?.abort(new Error('用户关闭浏览器')); await this.finishRun(run,'cancelled','用户关闭浏览器'); await this.clearApprovals(run.id) }
+        }
+      })
+      await Promise.all(sessions.map(({session})=>session.drain()))
+    }
+    if (input.action==='clear') await this.clearBrowserScopes(scope=>scope.scopeKey===scopeKey)
+    else await host.request('userControl',{scopeKey,action:input.action})
+    this.emit({type:'browser:changed',conversationId:conversation.id})
+  }
+  private async clearBrowserScopes(matches:(lease:BrowserLease)=>boolean) {
+    const scopes=(await this.browser.scopes()).filter(matches)
+    for (const scope of scopes) {
+      const cleanup={id:scope.scopeKey,conversationId:scope.conversationId,agentId:scope.agentId,status:'pending'}
+      await this.store.write([record('browserCleanups',cleanup)])
+      const host=this.options.browserHost ?? fail('浏览器存储未能实际清理，请重启后修复')
+      await Promise.all([...this.browserSessions.values()].filter(({session})=>session.lease.scopeKey===scope.scopeKey).map(({session})=>session.drain()))
+      await host.request('clearScope',{scopeKey:scope.scopeKey})
+      await this.store.transaction(async tx=>{
+        for(const action of await tx.list<import('./modules/browser/repository').BrowserActionRecord>('browserActions')) if(action.lease?.scopeKey===scope.scopeKey) await tx.put({collection:'browserActions',id:action.id,value:{id:action.id,argumentHash:action.argumentHash,conversationId:scope.conversationId,status:'cleared'}})
+        for(const evidence of await tx.list<{id:string;scopeKey:string}>('browserEvidence')) if(evidence.scopeKey===scope.scopeKey) await tx.remove('browserEvidence',evidence.id)
+        await tx.remove('browserCleanups',scope.scopeKey);await tx.remove('browserScopes',scope.scopeKey)
+      })
+    }
+  }
   private async cancelWhere(matches: (run: AgentRun) => boolean, reason?: string) {
     const affected = new Set<string>()
     for (const run of this.runs.values()) if (!terminal.has(run.status) && matches(run)) {
@@ -2103,6 +2194,7 @@ export class AppService {
     for (const conversation of this.conversations.values()) if (!conversationId || conversation.id === conversationId) {
       for (const work of (await this.works.view(conversation.id)).workItems.filter(work => work.ownerAgentId === agentId)) await this.works.cancelTree(work.id, reason)
     }
+    await Promise.all([...this.browserSessions.values()].filter(({session}) => session.lease.agentId===agentId && (!conversationId || session.lease.conversationId===conversationId)).map(({session}) => session.drain()))
     // A completed decision may still hold a speaking candidate after its Run ended.
     for (const conversation of this.conversations.values()) if (conversation.agentIds.includes(agentId) && (!conversationId || conversation.id === conversationId)) await this.scheduler.cancel(conversation.id, reason, this.closing)
   }
@@ -2247,6 +2339,9 @@ export class AppService {
       await this.automations.backup(destination)
       const backupClient = createClient({ url: pathToFileURL(databaseFile).href })
       try {
+        // Browser profiles and private page receipts are not part of a portable business backup.
+        await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
+        await backupClient.execute("UPDATE records SET value=json_object('id',id,'argumentHash',json_extract(value,'$.argumentHash'),'conversationId',coalesce(json_extract(value,'$.lease.conversationId'),json_extract(value,'$.conversationId')),'status','cleared') WHERE collection='browserActions'")
         await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: ['automationRuntime', 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
         // Seal the acknowledged database into a file that no preparation connection has opened.
         await backupClient.execute({ sql: 'VACUUM INTO ?', args: [join(destination, 'boai.sqlite')] })
@@ -2279,6 +2374,8 @@ export class AppService {
     // Abort-aware SDK engines settle promptly. Do not hang shutdown on a broken adapter.
     await this.scheduler.close()
     await Promise.allSettled([...this.externalTasks])
+    await Promise.all([...this.browserSessions.values()].map(({session})=>session.drain()))
+    await this.options.browserHost?.request('disconnect',{})
     await this.store.close()
   }
 }

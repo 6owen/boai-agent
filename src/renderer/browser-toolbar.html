@@ -1,0 +1,25 @@
+<!--
+[INPUT]: 原独立浏览器 HTML 与本地 UI 入口。
+[OUTPUT]: 不使用远程字体的随包浏览器界面。
+[POS]: src/renderer/browser-toolbar.html。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:5187 ws://127.0.0.1:5187; font-src 'self' data:;">
+  <title>Browser Toolbar</title>
+  <style>
+    /* Prevent any flash of unstyled content */
+    html, body { margin: 0; padding: 0; min-height: 48px; overflow: visible; background: transparent; }
+    /* Interactive elements must not be draggable within the titlebar-drag-region */
+    button, input { -webkit-app-region: no-drag; app-region: no-drag; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./browser-toolbar.tsx"></script>
+</body>
+</html>

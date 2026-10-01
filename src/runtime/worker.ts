@@ -1,6 +1,6 @@
 /*
  * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
- * [OUTPUT]: 仅主进程可访问的通知领取/回执通道；本地运行进程装配、消息处理及仅宿主可指定位置的备份/技能库导出。
+ * [OUTPUT]: 私有浏览器 bridge 和 Main 实际开始反向握手；drain 不以超时释放资源；仅主进程可访问的通知领取/回执通道；本地运行进程装配、消息处理及仅宿主可指定位置的备份/技能库导出。
  * [POS]: src/runtime/worker.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,7 @@ import { AppService } from './service'
 import { MastraEngine } from './adapters/mastra/engine'
 import type { AutomationNoticeReceipt } from '../shared/domain/automations'
 import type { RpcRequest } from '../shared/ipc'
+import type { BrowserHostBridge, BrowserHostMethods } from '../shared/ipc/browser'
 import type { SecretStore } from './contracts'
 
 const port = process.parentPort
@@ -29,9 +30,23 @@ const secrets: SecretStore = {
   set: async (id, value) => { await secret('set', id, value) },
   delete: async (id) => { await secret('delete', id) },
 }
-const service = new AppService({ dataPath, secrets, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
+const pendingBrowser = new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void}>()
+const browserHost:BrowserHostBridge = {
+  request: <K extends keyof BrowserHostMethods>(method:K,input:BrowserHostMethods[K]['input']) => new Promise<BrowserHostMethods[K]['output']>((resolve,reject) => {
+    const id=randomUUID()
+    // Actual CDP exit is authoritative. A timer must not release a browser lease.
+    pendingBrowser.set(id,{resolve:value=>resolve(value as BrowserHostMethods[K]['output']),reject})
+    port.postMessage({type:'browser-host',id,method,input})
+  }),
+}
+const service = new AppService({ dataPath, secrets, browserHost, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
 let shuttingDown = false
 port.on('message', async ({ data }) => {
+  if (data?.type === 'browser-host-result') {
+    const pending=pendingBrowser.get(data.id); pendingBrowser.delete(data.id)
+    if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result)
+    return
+  }
   if (data?.type === 'secret-result') {
     const pending = pendingSecrets.get(data.id)
     pendingSecrets.delete(data.id)
@@ -48,7 +63,9 @@ port.on('message', async ({ data }) => {
   if (data?.type !== 'request' || shuttingDown) return
   const request = data.request as RpcRequest
   try {
-    const result = request.method as string === '__takeAutomationNotice'
+    const result = request.method as string === '__startBrowserAction'
+      ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId:string})
+      : request.method as string === '__takeAutomationNotice'
       ? await service.takeAutomationNotice()
       : request.method as string === '__settleAutomationNotice'
         ? await service.settleAutomationNotice(request.input as AutomationNoticeReceipt)

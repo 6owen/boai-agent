@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
+ * [OUTPUT]: 浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
  * [OUTPUT]: 成果先失效再 hash 安全清理，冲突阻止后续递归删除；修订/采用 cleared 回执与恢复门禁；清空/解散保留核心首发和普通消息最小 cleared 回执；撤销材料及派生记忆后只清理 hash 匹配的私有原件，冲突聊天保持门禁并在恢复时显性返回；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -26,6 +26,7 @@ export class ConversationHistory {
     const conflicts: { conversationId: string; error: string }[] = []
     for (const pending of await this.store.load<Cleanup>('conversationCleanup')) {
       const conversation = (await this.store.load<Conversation>('conversations')).find(item => item.id === pending.id)
+      if ((await this.store.load<{conversationId:string}>('browserCleanups')).some(item=>item.conversationId===pending.id)) { conflicts.push({conversationId:pending.id,error:'浏览器存储尚未实际清理'}); continue }
       if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
         const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
         if (!sourceConflicts) throw error
@@ -106,7 +107,7 @@ export class ConversationHistory {
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes', 'budgetModelCalls']) {
+      for (const collection of ['browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes', 'budgetModelCalls']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       await collect('snapshots', item => item.conversation?.id === id || runIds.has(item.id))
@@ -116,6 +117,9 @@ export class ConversationHistory {
         if (item.messageId && messages.has(item.messageId)) return true
         try { const value = JSON.parse(item.fingerprint ?? '{}'); return value.conversationId === id || runIds.has(value.id) } catch { return false }
       })
+      for (const action of await tx.list<{id:string;argumentHash:string;lease?:{conversationId:string}}>('browserActions')) if (action.lease?.conversationId===id) {
+        await tx.put({collection:'browserActions',id:action.id,value:{id:action.id,argumentHash:action.argumentHash,conversationId:id,status:'cleared'}})
+      }
       for (const receipt of (await tx.list<HistoryRecord>('coreConversationStarts')).filter(owned)) {
         const fingerprint = /^[a-f0-9]{64}$/.test(receipt.fingerprint ?? '') ? receipt.fingerprint : createHash('sha256').update(receipt.fingerprint ?? '').digest('hex')
         await tx.put({ collection: 'coreConversationStarts', id: receipt.id, value: { id: receipt.id, fingerprint, conversationId: id, cleared: true } })
