@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 持久技能收藏、分组操作与当前技能计数。
- * [OUTPUT]: 紧凑无间隔分组列表、删除浮层确认与会话式全局拖拽排序；分组标题原位编辑、新建同行保存/取消与计数。
+ * [OUTPUT]: 分组标题加号随行悬停/键盘聚焦显示、新建期间保留并继承 label 颜色；紧凑无间隔分组列表、删除浮层确认与会话式全局拖拽排序；分组标题原位编辑、新建同行保存/取消与计数。
  * [POS]: library 的 Skills 列表分组管理，不提供重复的上下移动按钮。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,7 +20,7 @@ export function SkillGroups({ value, change, busy }: { value: SkillCollections |
     <Input aria-label="分组名称" autoFocus maxLength={40} value={name} disabled={busy} onChange={event => setName(event.target.value)} placeholder="分组名称" /><Button type="submit" size="sm" aria-label="保存分组" disabled={busy || !name.trim()}>保存</Button><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancel}>取消</Button>
   </form>
   return <Popover onOpenChange={open => { if (!open) { cancel(); setDeleting(null) } }}><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="技能分组" title="技能分组" />}><FolderOpen /></PopoverTrigger><PopoverContent align="start" className="skill-groups-popover w-80 gap-0 p-2">
-    <div className="skill-groups-title"><PopoverTitle>技能分组</PopoverTitle><Button variant="ghost" size="icon-sm" aria-label="新建分组" disabled={busy || !value} onClick={() => { setEditing(''); setName('') }}><Plus /></Button></div>
+    <div className="skill-groups-title" data-editing={editing === '' || undefined}><PopoverTitle>技能分组</PopoverTitle><Button variant="ghost" size="icon-sm" className="skill-groups-add" aria-label="新建分组" disabled={busy || !value} onClick={() => { setEditing(''); setName('') }}><Plus /></Button></div>
     <DragList ids={value?.groups.map(group => group.id) ?? []} disabled={busy || editing !== null || deleting !== null} onMove={({ id, targetId, placement }) => { void change({ kind: 'move-group', groupId: id, targetId, placement }) }}>
       {value?.groups.map(group => <DragListItem key={group.id} id={group.id}>{({ dragging, dragProps }) => <div className={`skill-group-item${dragging ? ' drag-list-dragging' : ''}`} {...dragProps} role="group" tabIndex={editing === group.id ? -1 : 0} aria-label={`分组 ${group.name}`}>
         {editing === group.id ? form : <><span className="skill-group-name">{group.name}</span><small>{value.favoriteResourceIds.filter(id => value.groupByResourceId[id] === group.id).length}</small>

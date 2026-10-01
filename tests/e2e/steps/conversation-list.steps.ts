@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 单聊文本框和群聊真实编辑器保持同一草稿断言；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
+ * [OUTPUT]: 会话行计数/键盘排序排除核心分类导航按钮；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；透明毛绒伙伴图片加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；忽略无限光标动画的稳定截图、原生鼠标排序、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,7 +30,7 @@ Given('三个群聊出现在会话列表且标题只有添加入口', async ({ r
   await runtime.page.evaluate(async () => {
     for (const title of ['协作甲', '资料库项目', '协作乙']) await window.boai.request('createConversation', { title, kind: 'group', agentIds: ['researcher', 'writer'] })
   })
-  await expect(list(runtime).getByRole('button')).toHaveCount(3)
+  await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
   await expect(runtime.page.locator('.conversation-list-panel .list-heading button')).toHaveCount(1)
   await runtime.page.getByRole('button', { name: '新建', exact: true }).click()
   await expect(runtime.page.getByRole('menuitem', { name: '新建员工' })).toBeVisible()
@@ -70,11 +70,16 @@ Then('重启后手动顺序和置顶状态仍然保留', async ({ runtime, listS
     const heading = list(runtime).getByRole('button', { name, exact: true })
     await runtime.page.mouse.move(700, 200)
     await expect(heading).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-    await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '0')
+    await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '0.75')
+    await expect(heading.locator('.app-icon')).toHaveCSS('width', '12px')
+    await expect(heading.locator('.app-icon')).toHaveCSS('height', '12px')
+    const triggerBounds = (await heading.boundingBox())!
+    const sectionBounds = (await heading.locator('..').boundingBox())!
+    expect(Math.abs(triggerBounds.width - sectionBounds.width)).toBeLessThan(2)
     await heading.hover()
     await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '1')
     await expect(heading).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-    await heading.click()
+    await heading.click({ position: { x: triggerBounds.width - 4, y: triggerBounds.height / 2 } })
     await expect(list(runtime).getByRole('group', { name: group })).toBeHidden()
     await runtime.page.getByRole('textbox', { name: '搜索会话' }).fill(group === '置顶会话' ? listScenario.order[0] : '协作')
     await expect(list(runtime).getByRole('group', { name: group })).toBeVisible()
@@ -90,10 +95,10 @@ When('在搜索结果中排序并从右键菜单删除当前会话', async ({ ru
   const page = runtime.page
   await page.getByRole('textbox', { name: '搜索会话' }).fill('协作')
   const filtered = await titles(runtime)
-  await list(runtime).getByRole('button').last().press('Alt+ArrowUp')
+  await list(runtime).locator('.conversation-item').last().press('Alt+ArrowUp')
   await expect.poll(() => titles(runtime)).toEqual([...filtered].reverse())
   await page.getByRole('textbox', { name: '搜索会话' }).fill('')
-  await expect(list(runtime).getByRole('button')).toHaveCount(3)
+  await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
   listScenario.removedTitle = filtered[1]
   listScenario.removedId = (await snapshot(runtime)).conversations.find(c => c.title === filtered[1])!.id
   await list(runtime).getByRole('button', { name: filtered[1], exact: true }).click()
@@ -124,7 +129,7 @@ When('在搜索结果中排序并从右键菜单删除当前会话', async ({ ru
 Then('重启后会话仍隐藏且通讯录恢复的是空会话', async ({ runtime, listScenario }) => {
   await runtime.restart()
   const page = runtime.page
-  await expect(list(runtime).getByRole('button')).toHaveCount(2)
+  await expect(list(runtime).locator('.conversation-item')).toHaveCount(2)
   await expect(list(runtime).getByRole('button', { name: listScenario.removedTitle!, exact: true })).toHaveCount(0)
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录' }).click()
   await page.getByRole('complementary', { name: '通讯录列表' }).getByRole('button', { name: listScenario.removedTitle!, exact: true }).click()
@@ -235,7 +240,16 @@ Then('会话默认未选中并显示伙伴插画', async ({ runtime }) => {
   await expect(list(runtime).locator('[aria-current=page]')).toHaveCount(0)
   const illustration = runtime.page.locator('img.empty-illustration[alt="等你开聊的小伙伴"]:visible')
   await expect(illustration).toBeVisible()
-  await expect(illustration).toHaveJSProperty('naturalWidth', 240)
+  await expect(illustration).toHaveJSProperty('naturalWidth', 600)
+  await expect(illustration).toHaveJSProperty('naturalHeight', 460)
+  expect(await illustration.evaluate((element: HTMLImageElement) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = element.naturalWidth; canvas.height = element.naturalHeight
+    const context = canvas.getContext('2d')!
+    context.drawImage(element, 0, 0)
+    return [[0, 0], [canvas.width - 1, 0], [0, canvas.height - 1], [canvas.width - 1, canvas.height - 1]]
+      .map(([x, y]) => context.getImageData(x, y, 1, 1).data[3])
+  })).toEqual([0, 0, 0, 0])
   await expect(runtime.page.getByRole('textbox', { name: '消息内容' })).toHaveCount(0)
   expect(runtime.errors).toEqual([])
 })

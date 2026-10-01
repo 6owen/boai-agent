@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
- * [OUTPUT]: 员工统一召回和宿主已授权临时事项；逐模型调用开始/实际思考强度和原生技能激活观察；无工具的定时任务草稿模型接口与原始用量回调；明确预算接续与被接替判断的宿主上下文；明确补充对应的原始请求/提问上下文合同；唯一模型请求身份与逐调用用量回执；原生 Trace 保存/观测错误、统一容量/判断时限、工作上下文及结果/副作用和无工具汇报接口。
+ * [OUTPUT]: 核心 Agent 团队工具的宿主授权/唯一工具调用身份与提交回执合同；员工统一召回和宿主已授权临时事项；逐模型调用开始/实际思考强度和原生技能激活观察；无工具的定时任务草稿模型接口与原始用量回调；明确预算接续与被接替判断的宿主上下文；明确补充对应的原始请求/提问上下文合同；唯一模型请求身份与逐调用用量回执；原生 Trace 保存/观测错误、统一容量/判断时限、工作上下文及结果/副作用和无工具汇报接口。
  * [POS]: runtime 内部合同，不向 renderer 暴露凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
+import type { TeamPlannerOutput } from '../shared/domain/team-creation'
 import type { TraceSpan } from '../shared/domain/traces'
 import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait } from '../shared/domain'
 
@@ -47,6 +48,8 @@ export interface EngineContext {
   afterEffect?(): Promise<void>
   delegateWork?(input: WorkDelegation): Promise<WorkItem>
   waitForWork?(input: WorkWait): Promise<void>
+  /** Core-only product tool; the host owns authorization, idempotency and atomic publication. */
+  createTeam?(plan: Extract<TeamPlannerOutput, { kind: 'plan' }>, toolCallId: string): Promise<{ operationId: string; conversationId: string; title: string; members: { id: string; name: string; role: string }[] }>
   triggerMessageId?: string
   turnId?: string
   /** Host-committed answer to this occurrence's previous questions; IDs refer to authorized messages/turns. */

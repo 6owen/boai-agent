@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享领域类型、产品存储与群事件。
- * [OUTPUT]: 自动化来源贯穿轮次并按指定轮次停止；群聊轮次、已回复成员输入合并、独立聊天并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与提交后确认和清理后的投影回收。
+ * [OUTPUT]: 自动化来源贯穿轮次并定向停止执行；删除员工/群时显式终结等待，保留已完成投递；群聊轮次、并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与清理后的投影回收。
  * [POS]: src/runtime/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -437,12 +437,12 @@ export class GroupScheduler {
     for (const contribution of this.contributions.values()) if (contribution.turnId === active.turn.id && ['proposed', 'accepted', 'running'].includes(contribution.status)) { contribution.status = 'cancelled'; rows.push(row('contributions', contribution)) }
     await this.store.write(rows); this.hooks.changed(active.turn.conversationId)
   }
-  async cancelTurns(turnIds: Set<string>, reason: string) {
+  async cancelTurns(turnIds: Set<string>, reason: string, endWaiting = false) {
     for (const active of this.active.values()) if (turnIds.has(active.turn.id)) await this.stop(active, 'cancelled', reason)
-    for (const turn of this.turns.values()) if (turnIds.has(turn.id) && turn.status === 'queued') {
+    for (const turn of this.turns.values()) if (turnIds.has(turn.id) && (turn.status === 'queued' || endWaiting && turn.status === 'waiting_user')) {
       turn.status = 'cancelled'; turn.reason = reason; turn.finishedAt = now(); turn.epoch++
       const deliveries = [...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id)
-      for (const delivery of deliveries) delivery.status = 'cancelled'
+      for (const delivery of deliveries) if (['pending', 'evaluating', 'ready', 'waiting', 'responding'].includes(delivery.status)) delivery.status = 'cancelled'
       await this.store.write([row('turns', turn), ...deliveries.map(delivery => row('deliveries', delivery))])
     }
   }

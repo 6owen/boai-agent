@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Electron、共享领域/IPC 合同、宿主服务与技能库保存请求。
- * [OUTPUT]: T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ * [OUTPUT]: 放行员工删除和真实群解散 IPC；放行核心助手新会话/团队需求受理 IPC；T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
+ *           放行核心首发按请求身份只读核对，响应失联不重发创建。
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -60,6 +61,10 @@ for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resum
 methods.add('setMessageReaction')
 methods.add('updateUserProfile')
 methods.add('getProfileActivity')
+methods.add('startCoreConversation')
+methods.add('getCoreConversationStart')
+methods.add('deleteAgent')
+methods.add('deleteConversation')
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)

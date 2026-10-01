@@ -1,12 +1,15 @@
 /*
  * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、共享 ScrollFade/Markdown/Shiki 与统一 UI 基础组件。
- * [OUTPUT]: 按稳定 user 身份展示当前个人头像，自动化来源独立，引用本人显示你；标题成员资料接入同一资料快照与群配置入口；姓名/消息提及插入实际行内标签，无独立提及栏；头像资料与悬停时间、Prompt Bar @ /、镜像卡片与共享 Soft 输入/渐隐。
+ * [OUTPUT]: 核心会话接入按工作身份隔离的团队交付/显式恢复卡片，隐藏主页面暂停读取；按稳定 user 身份展示当前个人头像，自动化来源独立，引用本人显示你；标题成员资料接入同一资料快照与群配置入口；姓名/消息提及插入实际行内标签，无独立提及栏；头像资料与悬停时间、Prompt Bar @ /、镜像卡片与共享 Soft 输入/渐隐。
  * [POS]: src/renderer/pages/conversations/-components/chat-view.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { UserAvatar } from '@/components/common/user-avatar'
 import { isPersonalMessage, messageDisplayName } from '@shared/domain/profile'
 import { Card, CardContent } from '@/components/ui/card'
+import { isCoreConversation } from '@shared/domain/core-agent'
+import type { DesktopApi } from '@shared/ipc'
+import { CoreTeamResults } from './core-team-results'
 
 import { Button } from '@/components/ui/button'
 import { ScrollFade } from '@/components/ui/scroll-fade'
@@ -27,7 +30,7 @@ import { ArtifactList } from './artifact-list'
 import { MessageCard } from './message-card'
 import { AgentInfoPopover } from './agent-info-popover'
 import { draftContent } from '../inline-mentions'
-export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onStop, onDetails, onChangeConversationList, onClear, onActivity, onTrace, onSettings, onChangeAgent, configurationLocked, onApprove, onOpenPath, focusMessage, scrollPosition, onScrollPosition }: { detail: ConversationDetail; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (stopPrevious?: boolean) => void; onStop: () => void; onDetails: () => void; onChangeConversationList: (change: ConversationListChange) => void; onClear: (id: string, hide: boolean) => Promise<void>; onActivity: () => void; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => void; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; focusMessage?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void }) {
+export function ChatView({ api, pageActive, onTeamGroup, detail, snapshot, draft, setDraft, busy, onSend, onStop, onDetails, onChangeConversationList, onClear, onActivity, onTrace, onSettings, onChangeAgent, configurationLocked, onApprove, onOpenPath, focusMessage, scrollPosition, onScrollPosition }: { api: DesktopApi; pageActive: boolean; onTeamGroup(id: string): void; detail: ConversationDetail; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (stopPrevious?: boolean) => void; onStop: () => void; onDetails: () => void; onChangeConversationList: (change: ConversationListChange) => void; onClear: (id: string, hide: boolean) => Promise<void>; onActivity: () => void; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => void; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; focusMessage?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void }) {
   const conversation = detail.conversation
   const group = conversation.kind === 'group'
   const messages = group ? groupMessages(detail) : detail.messages
@@ -98,6 +101,7 @@ export function ChatView({ detail, snapshot, draft, setDraft, busy, onSend, onSt
           </div>
         </article>
       })}
+      {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {(group ? approvalGroups.pending : approvals).map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
     </ScrollFade>{newMessages && <Button variant="outline" size="sm" className="new-messages" onClick={() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; following.current = true; setNewMessages(false) }}><ArrowDown size={14} />有新消息 · 返回最新</Button>}
     <div className="composer-wrap">

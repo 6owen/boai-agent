@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 旧版数据升级且不重放工作的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 一致性旧格式备份恢复后原技能绑定可用于新任务、知识内容保持且旧工作不重放；旧版数据升级且不重放工作的真实桌面业务步骤与断言。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；一致性旧格式备份恢复后原技能绑定可用于新任务、知识内容保持且旧工作不重放；旧版数据升级且不重放工作的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/upgrade.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
+import { isCoreAgent } from '../../../src/shared/domain/core-agent'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
@@ -129,7 +130,8 @@ async function launchLegacyDesktop(previous: Awaited<ReturnType<typeof prepareLe
 async function verifyMigration(previous: Awaited<ReturnType<typeof launchLegacyDesktop>>) {
   let { root, agent, conversation, page } = previous
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
-  expect(snapshot.agents).toHaveLength(1)
+  expect(snapshot.agents.filter(agent => !isCoreAgent(agent))).toHaveLength(1)
+  expect(snapshot.agents.filter(isCoreAgent)).toHaveLength(1)
   expect(snapshot.agents[0].id).toBe(agent.id)
   expect(snapshot.conversations[0].mode).toBe('natural')
   const detail = await page.evaluate((id) => window.boai.request('getConversation', { id }), conversation.id)

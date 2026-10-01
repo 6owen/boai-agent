@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 生产个人资料/聊天 UI、真实 IPC 与隔离 Desktop。
- * [OUTPUT]: 编辑/联动/重启、未保存/冲突、运行中保存及主题缩放验收。
+ * [OUTPUT]: 通过本人菜单进入资料、损坏旧图片回退到可解码的内置头像；编辑/联动/重启、未保存/冲突、运行中保存及主题缩放验收。
  * [POS]: profile.feature 的业务步骤，协议服务在 support/profile。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,8 +12,13 @@ import type { Desktop } from '../support/desktop'
 
 const states = new WeakMap<Desktop, Awaited<ReturnType<typeof prepareProfile>> & { uploaded?: string }>()
 const { Given, When, Then } = createBdd(test)
-const openProfile = async (runtime: Desktop) => { await runtime.page.getByRole('button', { name: '个人资料', exact: true }).first().click(); await expect(runtime.page.getByRole('heading', { name: '个人资料', exact: true })).toBeVisible() }
-Given('个人资料使用隔离的旧历史桌面', async ({ runtime }) => { states.set(runtime, await prepareProfile(runtime)); await openProfile(runtime); await expect(runtime.page.locator('.profile-identity .user-avatar')).toHaveText('旧资') })
+const openProfile = async (runtime: Desktop) => { await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '个人资料', exact: true }).click(); await expect(runtime.page.getByRole('heading', { name: '个人资料', exact: true })).toBeVisible() }
+Given('个人资料使用隔离的旧历史桌面', async ({ runtime }) => {
+  states.set(runtime, await prepareProfile(runtime)); await openProfile(runtime)
+  const fallback = runtime.page.locator('.profile-identity .user-avatar img')
+  await expect(fallback).toHaveJSProperty('naturalWidth', 320)
+  await fallback.evaluate(image => (image as HTMLImageElement).decode())
+})
 Given('个人资料使用隔离的大历史桌面', async ({ runtime }) => { states.set(runtime, await prepareProfile(runtime, true)); await openProfile(runtime) })
 When('从设置搜索进入资料并保存名称用户名和上传头像', async ({ runtime }) => {
   const page = runtime.page

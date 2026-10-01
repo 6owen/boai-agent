@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本机技能中文场景、真实 Electron IPC 与隔离目录。
- * [OUTPUT]: 同页 Tabs/显式选中/收藏菜单/扫描刷新与受管资源兼容 IPC 分离，保持原文件/独立副本/零自动授权；分组排序按实际虚拟行读取可见分组内容，保持拖拽/键盘/重启断言；图标侧栏/会话式两栏、扫描/外部编辑后刷新详情、搜索/收藏/分组编辑/全局拖拽及可见分组键盘排序/重启和显式导入不授权的业务断言。
+ * [OUTPUT]: 同页 Tabs/显式选中/收藏菜单/扫描刷新与受管资源兼容 IPC 分离，保持原文件/独立副本/零自动授权；分组标题加号悬停同色，小箭头常驻/悬停更清晰，排序按实际虚拟行读取可见分组内容，保持拖拽/键盘/重启断言；图标侧栏/会话式两栏、扫描/外部编辑后刷新详情、搜索/收藏/分组编辑/全局拖拽及可见分组键盘排序/重启和显式导入不授权的业务断言。
  * [POS]: 本机 Skills 桌面步骤。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,13 @@ import { test as base } from '../support/test'
 import { startLocalSkills, selectSkillsSection } from '../support/local-skills'
 export const test = base.extend<{ localSkills: { source?: string; document?: string } }>({ localSkills: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
+async function newGroup(page: Page) {
+  const title = page.locator('.skill-groups-title'), button = page.getByRole('button', { name: '新建分组', exact: true })
+  await title.hover()
+  await expect(button).toHaveCSS('opacity', '1')
+  await expect(button).toHaveCSS('color', await title.evaluate(element => getComputedStyle(element).color))
+  await button.click()
+}
 Given('本机已有全局技能和插件但尚未向 BoAI 导入', async ({ runtime, localSkills }) => {
   const fixture = await startLocalSkills(runtime); localSkills.source = fixture.global; localSkills.document = fixture.document
 })
@@ -71,7 +78,7 @@ When('搜索插件技能并加入自己的分组', async ({ runtime }) => {
   await page.getByRole('menuitem', { name: '加入收藏', exact: true }).click()
   await selectSkillsSection(page, '自己')
   await page.getByRole('button', { name: '技能分组', exact: true }).click()
-  await page.getByRole('button', { name: '新建分组', exact: true }).click()
+  await newGroup(page)
   await page.getByRole('textbox', { name: '分组名称' }).fill('自己开发')
   await page.getByRole('button', { name: '保存分组', exact: true }).click()
   await page.keyboard.press('Escape')
@@ -132,7 +139,7 @@ When('收藏两个技能并在原位置编辑分组', async ({ runtime }) => {
   }
   await selectSkillsSection(page, '自己')
   await page.getByRole('button', { name: '技能分组', exact: true }).click()
-  await page.getByRole('button', { name: '新建分组', exact: true }).click()
+  await newGroup(page)
   const input = page.getByRole('textbox', { name: '分组名称' })
   await input.fill('不保存的分组')
   const boxes = await Promise.all([input, page.getByRole('button', { name: '保存分组' }), page.getByRole('button', { name: '取消', exact: true })].map(item => item.boundingBox()))
@@ -143,7 +150,7 @@ When('收藏两个技能并在原位置编辑分组', async ({ runtime }) => {
   await page.getByRole('button', { name: '取消', exact: true }).click()
   expect((await page.evaluate(() => window.boai.request('getSkillCollections', undefined))).groups).toEqual([])
   for (const name of ['日常', '开发']) {
-    await page.getByRole('button', { name: '新建分组', exact: true }).click()
+    await newGroup(page)
     await input.fill(name); await page.getByRole('button', { name: '保存分组' }).click()
     await expect(page.getByRole('group', { name: `分组 ${name}`, exact: true })).toBeVisible()
   }
@@ -185,7 +192,9 @@ Then('分组与技能使用会话落点提示进行排序和跨组移动', async
   await heading.click(); await expect(heading).toHaveAttribute('aria-expanded', 'false')
   await page.mouse.move(900, 200)
   await expect(heading).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-  await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '0')
+  await expect(heading.locator('.app-icon')).toHaveCSS('width', '12px')
+  await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '0.75')
+  await heading.hover(); await expect(heading.locator('.app-icon')).toHaveCSS('opacity', '1')
   await drag(page.getByRole('button', { name: /agents-sdk Build AI/ }), heading, 'inside')
   const dailyHeading = page.getByRole('button', { name: /日常.*1/ })
   await expect(dailyHeading).toHaveAttribute('aria-expanded', 'false'); await dailyHeading.click()

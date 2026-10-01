@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地配置导入中文场景、Electron fixture 与临时配置文件。
- * [OUTPUT]: 协议选中值独立于装饰图标断言；模型 API 复用添加连接同一弹窗/第二步标题与关闭按钮、ACP 独立扫描与高级设置折叠；二级只读配置字段的值断言适配统一横向表单；品牌整行选择、第二级配置详情/手动目录加载及重扫链接；单一扫描入口及选择/配置两步向导，保留显式授权/保存前无配置与原业务断言；真实 IPC 扫描/导入及预览截图、源文件只读、无密钥预览、补填模型、协议保留、重启去重和原生目录选择、Codex ACP 登录接入/会话测试/执行/重启的验收。
+ * [OUTPUT]: 从本人头像菜单进入设置；协议选中值独立于装饰图标断言；模型 API 复用添加连接同一弹窗/第二步标题与关闭按钮、ACP 独立扫描与高级设置折叠；二级只读配置字段的值断言适配统一横向表单；品牌整行选择、第二级配置详情/手动目录加载及重扫链接；单一扫描入口及选择/配置两步向导，保留显式授权/保存前无配置与原业务断言；真实 IPC 扫描/导入及预览截图、源文件只读、无密钥预览、补填模型、协议保留、重启去重和原生目录选择、Codex ACP 登录接入/会话测试/执行/重启的验收。
  * [POS]: tests/e2e/steps/local-connections.steps.ts；不扫描真实用户目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -28,8 +28,8 @@ async function openModelImport(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: /导入本机配置/ }).click()
 }
 async function settings(runtime: Desktop) {
-  await runtime.page.getByRole('button', { name: '设置', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '模型连接与数据备份' }).click()
+  await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
 }
 
 Given('本地配置导入使用独立的 Codex 和 Claude 配置', async ({ runtime, localConfigState }) => {

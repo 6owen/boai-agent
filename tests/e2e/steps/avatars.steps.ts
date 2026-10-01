@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工头像上传与跨页面持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 员工头像上传与跨页面持久化的真实桌面业务步骤与断言。
+ * [OUTPUT]: 21 款头像顺序、离线加载及背景/孔洞透明、主体保留/浅深色截图、新旧头像与上传图片跨页面持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/avatars.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -49,7 +49,13 @@ async function rejectInvalidAvatar(previous: Awaited<ReturnType<typeof launchAva
   await expect(dialog).not.toContainText('先介绍这位同事')
   await dialog.getByRole('button', { name: '更换员工头像' }).click()
   const presets = page.getByRole('group', { name: '内置头像' })
-  await expect(presets.getByRole('button')).toHaveCount(12)
+  await expect(presets.getByRole('button')).toHaveCount(21)
+  expect(await presets.getByRole('button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')))).toEqual([
+    '小老鼠', '小牛', '小老虎', '小兔子', '小龙', '小蛇',
+    '小马', '小羊', '小猴子', '小鸡', '小狗', '小猪',
+    '帽子团子', '耳机团子', '眼镜星星', '眼镜方块', '小月亮', '小蘑菇',
+    '薄荷圆环', '贝雷团子', '围巾团子',
+  ])
   await expect
     .poll(() =>
       presets
@@ -57,6 +63,30 @@ async function rejectInvalidAvatar(previous: Awaited<ReturnType<typeof launchAva
         .evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)),
     )
     .toBe(true)
+  expect(await presets.locator('img').evaluateAll(images => images.map(element => {
+    const image = element as HTMLImageElement, canvas = document.createElement('canvas')
+    canvas.width = image.naturalWidth; canvas.height = image.naturalHeight
+    const context = canvas.getContext('2d')!
+    context.drawImage(image, 0, 0)
+    const alpha = (x: number, y: number) => context.getImageData(x, y, 1, 1).data[3]
+    const name = image.closest('button')!.getAttribute('aria-label')!
+    const hasOpening = ['小月亮', '薄荷圆环'].includes(name)
+    return {
+      transparentCorners: [[0, 0], [canvas.width - 1, 0], [0, canvas.height - 1], [canvas.width - 1, canvas.height - 1]].every(([x, y]) => alpha(x, y) === 0),
+      opaqueSubject: alpha(Math.floor(canvas.width / (hasOpening ? 4 : 2)), Math.floor(canvas.height / 2)) > 250,
+      transparentOpening: !hasOpening || alpha(Math.floor(canvas.width * (name === '小月亮' ? 3 / 4 : 1 / 2)), Math.floor(canvas.height / 2)) === 0,
+      transparentSurface: getComputedStyle(image.parentElement!).backgroundColor === 'rgba(0, 0, 0, 0)',
+    }
+  }))).toEqual(Array.from({ length: 21 }, () => ({ transparentCorners: true, opaqueSubject: true, transparentOpening: true, transparentSurface: true })))
+  for (const mode of ['light', 'dark'] as const) {
+    await page.evaluate(async mode => {
+      const current = await window.boai.request('getAppearance', undefined)
+      await window.boai.request('updateAppearance', { patch: { mode }, expectedRevision: current.revision })
+    }, mode)
+    if (mode === 'dark') await expect(page.locator('html')).toHaveClass(/dark/)
+    else await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await test.info().attach(`21款透明头像-${mode}`, { body: await page.locator('[data-slot=popover-content]').screenshot({ animations: 'disabled' }), contentType: 'image/png' })
+  }
   await presets.getByRole('button', { name: '小兔子', exact: true }).click()
   const preview = dialog.locator('.creation-avatar img')
   const rabbit = await preview.getAttribute('src')
@@ -189,13 +219,24 @@ async function verifyPersistedAvatar(previous: Awaited<ReturnType<typeof verifyM
   await expect(page!.locator('.contact-profile-heading img')).toHaveAttribute('src', uploaded!)
   await page!.getByRole('button', { name: '编辑配置' }).click()
   await page!.getByRole('button', { name: '更换员工头像' }).click()
-  await page!.getByRole('group', { name: '内置头像' }).getByRole('button', { name: '小狐狸', exact: true }).click()
+  await page!.getByRole('group', { name: '内置头像' }).getByRole('button', { name: '小牛', exact: true }).click()
   await page!.getByRole('button', { name: '保存修改', exact: true }).click()
   await expect(page!.locator('.contact-profile-heading img')).not.toHaveAttribute('src', uploaded!)
   expect((await page!.evaluate(() => window.boai.request('snapshot', undefined))).agents.find((a) => a.id === employee.id)?.avatar).toEqual({
     kind: 'preset',
     id: 'fox',
   })
+  const oldSource = await page!.locator('.contact-profile-heading img').getAttribute('src')
+  await page!.getByRole('button', { name: '编辑配置' }).click()
+  await page!.getByRole('button', { name: '更换员工头像' }).click()
+  await page!.getByRole('group', { name: '内置头像' }).getByRole('button', { name: '围巾团子', exact: true }).click()
+  await page!.getByRole('button', { name: '保存修改', exact: true }).click()
+  await expect(page!.locator('.contact-profile-heading img')).not.toHaveAttribute('src', oldSource!)
+  const newSource = await page!.locator('.contact-profile-heading img').getAttribute('src')
+  expect((await page!.evaluate(() => window.boai.request('snapshot', undefined))).agents.find((a) => a.id === employee.id)?.avatar).toEqual({ kind: 'preset', id: 'purple-scarf' })
+  await runtime.close(); await launch(); page = runtime.page
+  await page!.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
+  await expect(page!.getByLabel('普通会话', { exact: true }).locator('.conversation-item').filter({ hasText: '头像设计师' }).locator('img')).toHaveAttribute('src', newSource!)
   expect(errors).toEqual([])
 }
 

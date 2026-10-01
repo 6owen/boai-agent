@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
+import { isCoreAgent } from '../../../src/shared/domain/core-agent'
 import { createBdd } from 'playwright-bdd'
 import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
@@ -139,7 +140,7 @@ async function prepareCollaboration(runtime: Desktop) {
       }),
     port,
   )
-  for (const agent of initial.agents)
+  for (const agent of initial.agents.filter(agent => !isCoreAgent(agent)))
     await page.evaluate(
       ({ agent, connectionId }) => {
         const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
@@ -177,7 +178,7 @@ async function verifyConversationIsolation(previous: Awaited<ReturnType<typeof p
   expect(privateMemory.entries[0]?.content).toContain('PRIVATE_SENTINEL')
   const group = await page.evaluate(
     (agentIds) => window.boai.request('createConversation', { kind: 'group', title: '方案讨论群', agentIds }),
-    initial.agents.map((a) => a.id),
+    initial.agents.filter(agent => !isCoreAgent(agent)).map((a) => a.id),
   )
   const requestStart = requests.length
   await send(group.id, '你们好', [], 'group-1')
@@ -231,7 +232,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await expect(page.getByText('最近会话', { exact: true })).toHaveCount(0)
   await page.evaluate(
     (agentIds) => window.boai.request('createConversation', { kind: 'group', title: '尚未发消息的群', agentIds }),
-    initial.agents.map((a) => a.id),
+    initial.agents.filter(agent => !isCoreAgent(agent)).map((a) => a.id),
   )
   await expect(page.locator('.conversation-item').first()).toContainText('方案讨论群')
   await expect.poll(() => page.locator('.app-icon').count()).toBeGreaterThan(10)

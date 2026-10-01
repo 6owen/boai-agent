@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 员工统一记忆页委托独立 MemoryPane；下拉字段统一使用 shadcn Select；带持久头像的员工资料、共享 Soft Tabs 与未保存保护、共用 surface 卡片按钮的系统文件、工作区和记忆详情；会话清空后更新只读投影。
+ * [OUTPUT]: 员工身份行不展示启用状态；员工统一记忆页委托独立 MemoryPane；下拉字段统一使用 shadcn Select；带持久头像的员工资料、共享 Soft Tabs 与未保存保护、共用 surface 卡片按钮的系统文件、工作区和记忆详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -42,7 +42,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, refresh, 
     // Switching panels unmounts the old form; keep this tab owner mounted on discard.
     guard.navigate(() => { setTab(next); setFileName(null) }, { resetOnDiscard: false })
   }
-  return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div className="employee-identity"><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><div><strong>{agent.name}</strong><small>{agent.role || '独立数字员工'}</small></div><span className="pill">{agent.active ? '已启用' : '已停用'}</span></div>
+  return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div className="employee-identity"><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><div><strong>{agent.name}</strong><small>{agent.role || '独立数字员工'}</small></div></div>
     <div className="employee-tabs-bar"><TabsList aria-label="员工详情分类">
       <TabsTrigger value="profile">配置</TabsTrigger>
       <TabsTrigger value="files">系统文件</TabsTrigger>

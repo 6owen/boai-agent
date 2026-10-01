@@ -1,6 +1,7 @@
 /*
  * [INPUT]: TanStack 虚拟行占位和更新图标浮层、全局语义 token、共享 Card/ScrollFade、会话标题/列表/分栏样式与 Skills 工作区结构。
- * [OUTPUT]: 导入/导出列表仅文字列分配弹性宽度，复选框沿用共享尺寸；本地/收藏虚拟行定位与可滚动的更新详情浮层，移除正文更新卡片布局；批量更新面板的紧凑结果列表/内嵌差异与标题栏图标配套布局； 右侧未选中内容复用共用 SVG 空态；紧凑分组行与导出检索/选择列表； 技能/商城顶部轻量 Tabs、胶囊搜索工具栏、左列表与右详情/居中空占位；详情悬浮标题/渐隐滚动和元数据布局，卡片与分割线由共享 UI 皮肤负责；保留无图标分组编辑/删除确认、排序 Tabs 与独立滚动；400×420 导入浮层的紧凑留白、统一控件、来源切换、拖入区、扫描列表和无关闭/记录按钮的固定底栏。
+ * [OUTPUT]: 技能导入高级设置summary整行可点击；导入/导出列表仅文字列分配弹性宽度，复选框沿用共享尺寸；本地/收藏虚拟行定位与可滚动的更新详情浮层，移除正文更新卡片布局；批量更新面板的紧凑结果列表/内嵌差异与标题栏图标配套布局； 右侧未选中内容复用共用 SVG 空态；紧凑分组行与导出检索/选择列表； 技能/商城顶部轻量 Tabs、胶囊搜索工具栏、左列表与右详情/居中空占位；详情悬浮标题/渐隐滚动和元数据布局，卡片与分割线由共享 UI 皮肤负责；保留无图标分组编辑/删除确认、排序 Tabs 与独立滚动；400×420 导入浮层的紧凑留白、统一控件、来源切换、拖入区、扫描列表和无关闭/记录按钮的固定底栏。
+ *           技能分组标题加号沿用行悬停/聚焦显示，新建期间保留；隐藏时不响应指针且颜色继承 label。
  * [POS]: renderer/styles 的技能布局，通过 global.css 加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -52,6 +53,8 @@
 .skill-document-card .skill-markdown { padding:0;max-height:none;overflow:visible }
 .skill-groups-popover {max-width:calc(100vw - 24px) }
 .skill-groups-title { display:flex;justify-content:space-between;align-items:center;color:var(--muted-foreground) }
+.skill-groups-title>.skill-groups-add[data-slot=button] { opacity:0;pointer-events:none;color:inherit }
+.skill-groups-title:is(:hover,:focus-within,[data-editing])>.skill-groups-add { opacity:1;pointer-events:auto }
 .skill-group-item { position:relative;cursor:grab;display:flex;align-items:center;gap:9px;min-height:34px;padding:4px 8px }
 .skill-group-name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .skill-group-item>small { color:var(--muted-foreground) }
@@ -87,7 +90,7 @@
 .skill-install-source-row>[data-slot=input] { flex:1;min-width:0 }
 .skill-install-source-row>[data-slot=button] { flex-shrink:0 }
 .skill-install-git-options { margin-top:10px;color:var(--muted-foreground);font-size:12px }
-.skill-install-git-options>summary { display:flex;align-items:center;gap:4px;min-height:22px;width:fit-content;border-radius:4px;list-style:none;cursor:pointer;user-select:none }
+.skill-install-git-options>summary { display:flex;align-items:center;gap:4px;min-height:22px;width:100%;border-radius:4px;list-style:none;cursor:pointer;user-select:none }
 .skill-install-git-options>summary::-webkit-details-marker { display:none }
 .skill-install-git-options>summary:is(:hover,:focus-visible) { color:var(--foreground) }
 .skill-install-git-options>summary>.app-icon { width:12px;height:12px }

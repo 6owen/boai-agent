@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品事务、现存员工/群聊、版本化通讯录操作及团队发布身份和成员。
- * [OUTPUT]: 分类/顺序原子持久化，分类按完整列表的前后落点重排且保留成员归属；团队同事务新建唯一名称分类并归入成员；归类与组内排序分离，过期写入拒绝，删除分类保留员工。
+ * [OUTPUT]: 分类/顺序原子持久化；解散分类保留员工，分类员工批量删除由宿主清理用例处理；团队同事务新建唯一名称分类并归入成员。
  * [POS]: employees 的通讯录展示偏好，不写员工定义或会话列表偏好。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,6 +20,7 @@ export const contactListChangeSchema = z.object({
     z.object({ kind: z.literal('create-category'), name }).strict(),
     z.object({ kind: z.literal('rename-category'), categoryId: id, name }).strict(),
     z.object({ kind: z.literal('delete-category'), categoryId: id }).strict(),
+    z.object({ kind: z.literal('delete-category-agents'), categoryId: id }).strict(),
     z.object({ kind: z.literal('move-category'), categoryId: id, targetId: id, placement: z.enum(['before', 'after']) }).strict(),
     z.object({ kind: z.literal('assign-category'), agentId: id, categoryId: id.optional() }).strict(),
     z.object({ kind: z.literal('move'), itemKind: z.enum(['agent', 'group']), id, targetId: id, placement: z.enum(['before', 'after']) }).strict(),
@@ -51,6 +52,7 @@ export class ContactListRepository {
   constructor(private readonly store: ProductStore) {}
   read() { return this.store.transaction(readPreferences) }
   update(expectedRevision: number, action: ContactListAction) {
+    if (action.kind === 'delete-category-agents') throw new Error('分类员工删除必须经过宿主清理用例')
     return this.store.transaction(async tx => {
       const value = await readPreferences(tx)
       if (value.revision !== expectedRevision) throw new Error('通讯录已在其他窗口修改，请重试')

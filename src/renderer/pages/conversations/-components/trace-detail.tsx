@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 同一轮次的原生 Span、运行记录和员工筛选。
- * [OUTPUT]: 可折叠调用树、相对时间线及锚定节点的浮层输入输出详情；未结束节点保留真实状态。
+ * [OUTPUT]: Trace折叠箭头固定12px并旋转，节点标签保留打开详情职责；可折叠调用树、相对时间线及锚定节点的浮层输入输出详情；未结束节点保留真实状态。
  * [POS]: 会话执行过程视图；不将 Span 完成解释为业务交付。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import type { AgentRun } from '@shared/domain'
 import type { StoredTraceSpan } from '@shared/domain/traces'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { ChevronRight, ChevronDownIcon, X } from '@/components/icons'
+import { ChevronRight, X } from '@/components/icons'
 
 const phaseLabels: Record<string, string> = { decision: '参与判断', execution: '回复与执行', memory: '记忆整理', report: '整理汇报' }
 const typeLabels: Record<string, string> = { agent_run: '员工运行', model_generation: '模型调用', model_step: '模型步骤', model_inference: '模型推理', tool_call: '工具调用', generic: '请求数据' }
@@ -33,7 +33,7 @@ export function TraceDetail({ spans, runs }: { spans: StoredTraceSpan[]; runs: A
     const stopped = run && ['completed', 'failed', 'interrupted', 'cancelled'].includes(run.status)
     return <div key={span.id}>
       <div className="trace-row" data-selected={selectedId === span.id} style={{ paddingLeft: Math.min(depth, 6) * 12 }}>
-        <Button variant="ghost" size="icon-sm" className="trace-toggle" disabled={!nested.length} aria-label={`${collapsed.has(span.id) ? '展开' : '收起'} ${span.name}`} aria-expanded={nested.length ? !collapsed.has(span.id) : undefined} onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(span.id)) next.delete(span.id); else next.add(span.id); return next })}>{nested.length ? collapsed.has(span.id) ? <ChevronRight size={12} /> : <ChevronDownIcon /> : <span className={`status-dot ${span.error ? 'failed' : span.endedAt ? 'completed' : 'running'}`} />}</Button>
+        <Button variant="ghost" size="icon-sm" className="trace-toggle" disabled={!nested.length} aria-label={`${collapsed.has(span.id) ? '展开' : '收起'} ${span.name}`} aria-expanded={nested.length ? !collapsed.has(span.id) : undefined} onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(span.id)) next.delete(span.id); else next.add(span.id); return next })}>{nested.length ? <ChevronRight size={12} className={`transition-transform duration-200 motion-reduce:transition-none${collapsed.has(span.id) ? '' : ' rotate-90'}`} /> : <span className={`status-dot ${span.error ? 'failed' : span.endedAt ? 'completed' : 'running'}`} />}</Button>
         <Popover open={selectedId === span.id} onOpenChange={open => setSelectedId(open ? span.id : undefined)}><PopoverTrigger render={<Button variant="ghost" size="content" className="trace-node" aria-label={`查看节点 ${span.name}`} />}>
           <span className="trace-node-name" title={span.name}>{depth === 0 && run ? `${run.agentName} · ${phaseLabels[run.phase ?? 'execution'] ?? run.phase}` : span.name}<small>{typeLabels[span.spanType] ?? span.spanType}</small></span>
           <span className="trace-bar-track" aria-hidden="true"><span className={`trace-bar${span.error ? ' is-error' : ''}`} style={{ left: `${Math.min(100, Math.max(0, (Date.parse(span.startedAt) - start) / total * 100))}%`, width: `${Math.min(100, Math.max(1, (elapsed ?? 0) / total * 100))}%` }} /></span>

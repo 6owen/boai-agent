@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 持久批量检查、单项检查与更新操作状态、应用变更事件、所属页面标签活跃状态及技能详情导航。
- * [OUTPUT]: Shell 右侧详情标签内的批量检查/停止，隐藏时暂停列表轮询且恢复不重新发起检查、实时结果与图标操作；逐项展开差异并就地升级，已升级状态不沿用旧批次的可更新标记。
+ * [OUTPUT]: 更新详情的收起箭头固定12px；Shell 右侧详情标签内的批量检查/停止，隐藏时暂停列表轮询且恢复不重新发起检查、实时结果与图标操作；逐项展开差异并就地升级，已升级状态不沿用旧批次的可更新标记。
  * [POS]: library 的批量更新区域；由 Shell 常驻标签承载，切换/收起保留状态，兼容旧资料库入口，不创建弹窗。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -65,7 +65,7 @@ export function SkillUpdateBatchView({ api, onResource, onUpdated, autoStart = f
       const loading = item.status === 'checking' || item.status === 'updating'
       const current = item.status === 'current' || item.status === 'updated'
       const label = loading ? statuses[item.status] : item.status === 'available' ? `查看 ${item.name} 更新并升级` : current ? `重新检查 ${item.name}` : `检查 ${item.name} 更新`
-      const heading = (actions: ReactNode) => <div className="skill-update-result-heading"><div><Button variant="ghost" size="content" className="skill-update-name" onClick={() => onResource(item.resourceId)}>{item.name}</Button><span>{statuses[item.status]}{item.localModified ? ' · 有本地修改' : ''}</span></div><div className="button-row">{actions}{expanded && <Button variant="ghost" size="icon-sm" aria-label={`收起 ${item.name} 更新详情`} onClick={() => setSelected(null)}><ChevronRight className="rotate-90" /></Button>}</div></div>
+      const heading = (actions: ReactNode) => <div className="skill-update-result-heading"><div><Button variant="ghost" size="content" className="skill-update-name" onClick={() => onResource(item.resourceId)}>{item.name}</Button><span>{statuses[item.status]}{item.localModified ? ' · 有本地修改' : ''}</span></div><div className="button-row">{actions}{expanded && <Button variant="ghost" size="icon-sm" aria-label={`收起 ${item.name} 更新详情`} onClick={() => setSelected(null)}><ChevronRight size={12} className="rotate-90" /></Button>}</div></div>
       return <div className="skill-update-result" key={item.resourceId}>{expanded ? <SkillUpdate api={api} resourceId={item.resourceId} autoCheck={selected?.autoCheck} onUpdated={updated}>{({ actions, content }) => <>{heading(actions)}{content}</>}</SkillUpdate> : <>
         {heading(<Tooltip><TooltipTrigger delay={500} render={<Button variant={item.status === 'available' ? 'secondary' : 'ghost'} size="icon-sm" aria-label={label} disabled={item.status === 'pending' || item.status === 'checking'} onClick={() => setSelected({ id: item.resourceId, autoCheck: !['available', 'updating'].includes(item.status) })} />}>
           {loading ? <LoaderCircle className="spinner" /> : item.status === 'available' ? <ArrowUp /> : current ? <Check /> : <RefreshCw />}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: sidebar 主页面及其独立详情标签作用域、领域类型、员工思考强度配置、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件。
- * [OUTPUT]: 头像菜单首项展示本人头像/名称，后接分享/设置/帮助；分享直接打开全屏弹窗并恢复头像按钮焦点；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录独立团队创建标签； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格伙伴 SVG 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
+ * [OUTPUT]: 真实群删除清除选中会话、草稿和导航历史，群编辑解散使用独立刷新回调；核心助手空白页重复打开保留输入、首次发送稳定受理才持久化、失败只读核对原请求回执；团队名称与需求弹窗受理后即时会话导航及当前工作团队结果/恢复入口，普通单聊复用排除核心会话；头像菜单首项展示本人头像/名称，后接分享/设置/帮助；分享直接打开全屏弹窗并恢复头像按钮焦点；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录加号菜单团队创建弹窗； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，展示共用头像风格毛绒伙伴 WebP 空态且无描述文字；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 列表和标题下拉菜单共用置顶/清理能力、会话清理缓存及右侧窗口排序。
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,8 +21,10 @@ import { Library, Clock, Home, Contact, CircleHelp, MessageCircle, Plus, Users, 
 import type { ConversationListChange } from '@shared/domain/conversation-list'
 import type { AppEvent } from '@shared/ipc'
 import type { ConversationDetail, DigitalAgent, Conversation, Message, Snapshot } from '@shared/domain'
+import { isCoreAgent, isCoreConversation } from '@shared/domain/core-agent'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { ChatView } from '@/pages/conversations/-components/chat-view'
+import { CoreChatStart } from '@/pages/conversations/-components/core-chat-start'
 import type { ComposerAgentPatch } from '@/pages/conversations/-components/composer-toolbar'
 import { ConversationList } from '@/pages/conversations/-components/conversation-list'
 import type { ChatDraft } from '@/pages/conversations/presentation'
@@ -46,8 +48,8 @@ import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 
 type Page = 'conversations' | 'contacts' | 'schedules' | 'library' | 'skills' | 'settings' | 'help'
-type Creation = { type: 'agent'; template?: number } | { type: 'group' }
-interface Route { page: Page; conversationId: string | null; focusMessage?: { id: string; requestId: string } }
+type Creation = { type: 'agent'; template?: number } | { type: 'group' | 'team' }
+interface Route { page: Page; conversationId: string | null; coreDraft?: true; focusMessage?: { id: string; requestId: string } }
 const EMPTY: Snapshot = { agents: [], conversations: [], connections: [], resources: [], approvals: [], dataPath: '' }
 const DEFAULT_LIST_WIDTH = 312
 const EMPTY_DRAFT: ChatDraft = { text: '', mentionIds: [] }
@@ -101,6 +103,8 @@ export function AppShell() {
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
   const mounted = useRef(true), selectedRef = useRef<string | null>(route.conversationId), snapshotRequest = useRef(0), detailRequest = useRef(0)
+  const coreConversationRequest = useRef<{ requestId: string; content: string } | undefined>(undefined)
+  const coreDraft = useRef<ChatDraft>(EMPTY_DRAFT)
   const eventRevision = useRef(0), messageRevisions = useRef(new Map<string, number>()), incoming = useRef(new Map<string, Message>())
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeTab = detailTabs.tabs.find(tab => tab.key === detailTabs.activeKey)
@@ -146,12 +150,19 @@ export function AppShell() {
       if (event.type === 'automation:navigate') { openAutomationNotice(); return }
       if(event.type==='focus-conversation'){navigate(()=>{selectedRef.current=event.conversationId;setRoute({page:'conversations',conversationId:event.conversationId,focusMessage:event.messageId?{id:event.messageId,requestId:crypto.randomUUID()}:undefined})});return}
       if (event.type === 'runtime-error') { setError(event.error); return }
-      if (event.type === 'conversation:cleared') {
+      if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
         const id = event.conversationId
         for (const [key, message] of incoming.current) if (message.conversationId === id) { incoming.current.delete(key); messageRevisions.current.delete(key) }
         drafts.current.delete(id)
         setPreviews(previous => ({ ...previous, [id]: '' })); setMessageTimes(previous => ({ ...previous, [id]: '' }))
-        if (selectedRef.current === id) { detailRequest.current++; setDetail(null); setDetailLoading(true) }
+        if (selectedRef.current === id) {
+          detailRequest.current++; setDetail(null); setDetailLoading(event.type !== 'conversation:deleted')
+          if (event.type === 'conversation:deleted') {
+            selectedRef.current = null
+            setRoute(previous => ({ ...previous, conversationId: null, focusMessage: undefined }))
+          }
+        }
+        if (event.type === 'conversation:deleted') history.current = history.current.map(entry => entry.conversationId === id ? { ...entry, conversationId: null } : entry)
         schedule(); return
       }
       if (event.type === 'changed') { schedule(); return }
@@ -180,7 +191,7 @@ export function AppShell() {
   }, [menu, sharingProfile, panel, leaving, creation, detailTabs.activeKey])
   const action = async (fn: () => Promise<void>) => { if (busyRef.current) return; busyRef.current = true; setBusy(true); setError(''); try { await fn() } catch (e) { if (mounted.current) setError(errorText(e)) } finally { busyRef.current = false; if (mounted.current) setBusy(false) } }
   const applyRoute = (next: Route, addHistory = true) => {
-    if (addHistory && (next.page !== route.page || next.conversationId !== route.conversationId)) { history.current = history.current.slice(0, historyIndex.current + 1); history.current.push(next); historyIndex.current++ }
+    if (addHistory && (next.page !== route.page || next.conversationId !== route.conversationId || next.coreDraft !== route.coreDraft)) { history.current = history.current.slice(0, historyIndex.current + 1); history.current.push(next); historyIndex.current++ }
     if (next.conversationId !== selectedRef.current) { selectedRef.current = next.conversationId; detailRequest.current++; setDetail(null) }
     if (next.page !== 'skills') setFocusedSkill(undefined)
     setRoute(next); setCreation(null); setError(''); setMenu(null)
@@ -228,22 +239,57 @@ export function AppShell() {
   })
   const openCreation = (next: Creation) => navigate(() => { setCreation(next); setMenu(null) })
   const createdConversation = async (result: Conversation) => { await refreshSnapshot(); saved(() => { setSearch(''); applyRoute({ page: 'conversations', conversationId: result.id }) }) }
+  const coreConversationStarted = (result: Conversation) => {
+    setSnapshot(previous => ({ ...previous, conversations: previous.conversations.some(item => item.id === result.id) ? previous.conversations : [...previous.conversations, result] }))
+    navigate(() => { setSearch(''); applyRoute({ page: 'conversations', conversationId: result.id }) })
+    void refreshSnapshot().catch(failure => setError(errorText(failure)))
+  }
+  const createCoreConversation = () => navigate(() => {
+    setSearch(''); applyRoute({ page: 'conversations', conversationId: null, coreDraft: true })
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.core-chat-start [aria-label="消息内容"]')?.focus())
+  })
   const closeTab = (key: string, scope: string = route.page) => dispatchDetails({ type: 'close', key }, scope)
   const requestCloseTab = (key: string) => {
     if (tabDirty[key]) dispatchDetails({ type: 'select', key })
     tabHandles.current.get(key)?.close()
   }
   const openAgent = (agent: DigitalAgent) => openPanel({ type: 'agent', id: agent.id, conversationId: selectedId ?? undefined })
-  const openDirect = (agent: DigitalAgent) => navigate(() => { if (!api) return; void action(async () => { const existing = snapshot.conversations.find(c => c.kind === 'direct' && c.purpose !== 'automation' && c.agentIds[0] === agent.id); const result = existing ?? await api.request('createConversation', { kind: 'direct', title: agent.name, agentIds: [agent.id], mode: 'natural' }); await api.request('updateConversationList', { id: result.id, action: 'show' }); await refreshSnapshot(); setSearch(''); applyRoute({ page: 'conversations', conversationId: result.id }) }) })
+  const openDirect = (agent: DigitalAgent) => {
+    if (isCoreAgent(agent)) { createCoreConversation(); return }
+    navigate(() => { if (!api) return; void action(async () => { const existing = snapshot.conversations.find(c => c.kind === 'direct' && c.purpose !== 'automation' && !isCoreConversation(c) && c.agentIds[0] === agent.id); const result = existing ?? await api.request('createConversation', { kind: 'direct', title: agent.name, agentIds: [agent.id], mode: 'natural' }); await api.request('updateConversationList', { id: result.id, action: 'show' }); await refreshSnapshot(); setSearch(''); applyRoute({ page: 'conversations', conversationId: result.id }) }) })
+  }
   const messageContact = (selection: ContactSelection) => {
     if (selection.kind === 'agent') { const agent = snapshot.agents.find(item => item.id === selection.id); if (agent) openDirect(agent) }
     else selectConversation(selection.id, true)
   }
-  const draft = selectedId ? drafts.current.get(selectedId) ?? EMPTY_DRAFT : EMPTY_DRAFT
-  const setDraft = (value: ChatDraft) => { if (selectedId) { drafts.current.set(selectedId, value); setDraftVersion(v => v+1) } }
+  const draft = route.coreDraft ? coreDraft.current : selectedId ? drafts.current.get(selectedId) ?? EMPTY_DRAFT : EMPTY_DRAFT
+  const setDraft = (value: ChatDraft) => { if (route.coreDraft) coreDraft.current = value; else if (selectedId) drafts.current.set(selectedId, value); else return; setDraftVersion(v => v+1) }
   const send = (stopPrevious = false) => {
     const text = draftContent(draft)
-    if (!api || !selectedId || !text || busyRef.current) return
+    if (!api || !text || busyRef.current) return
+    if (route.coreDraft) {
+      void action(async () => {
+        // Keep the original request until its receipt is known, including after a lost response.
+        coreConversationRequest.current ??= { requestId: crypto.randomUUID(), content: text }
+        const request = coreConversationRequest.current
+        let result: Conversation
+        try { result = await api.request('startCoreConversation', request) }
+        catch (failure) {
+          let accepted: Conversation | null | undefined
+          try { accepted = await api.request('getCoreConversationStart', { requestId: request.requestId }) } catch { /* Preserve the request when its receipt cannot be checked. */ }
+          if (!accepted) { if (accepted === null) coreConversationRequest.current = undefined; throw failure }
+          result = accepted
+        }
+        if (draftContent(coreDraft.current) !== request.content) drafts.current.set(result.id, coreDraft.current)
+        coreDraft.current = EMPTY_DRAFT; coreConversationRequest.current = undefined
+        setSnapshot(previous => ({ ...previous, conversations: previous.conversations.some(item => item.id === result.id) ? previous.conversations : [...previous.conversations, result] }))
+        history.current = history.current.map(entry => entry.coreDraft ? { ...entry, coreDraft: undefined, conversationId: result.id } : entry)
+        setRoute(previous => previous.coreDraft ? { ...previous, coreDraft: undefined, conversationId: result.id } : previous)
+        setDraftVersion(value => value + 1); await refreshSnapshot()
+      })
+      return
+    }
+    if (!selectedId) return
     const id = selectedId, sent = { ...draft }
     void action(async () => { const external=conversation?.kind==='direct'&&snapshot.agents.find(a=>a.id===conversation.agentIds[0])?.executionBackend?.kind==='acp-local'; if(external){if(stopPrevious)await api.request('cancelRun',{conversationId:id});await api.request('sendExternalTask',{conversationId:id,content:text,requestId:crypto.randomUUID()})}else await api.request('sendMessage', { conversationId: id, content: text, mentionIds: sent.mentionIds, requestId: crypto.randomUUID(), replyToMessageId: sent.replyId, stopPrevious }); const current = drafts.current.get(id); if (current?.text === sent.text && current.replyId === sent.replyId && JSON.stringify(current.mentionIds) === JSON.stringify(sent.mentionIds) && JSON.stringify(current.mentions) === JSON.stringify(sent.mentions)) drafts.current.delete(id); setDraftVersion(v => v+1); if (selectedRef.current === id) await refreshDetail(id); await refreshSnapshot() })
   }
@@ -262,7 +308,7 @@ export function AppShell() {
   const onOpenPath = (path: string) => { if (!api) return; void action(async () => { await api.request('openPath', { path }) }) }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'team-creator' ? '创建团队' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? '群聊详情' : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const title = item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? '群聊详情' : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
     const name = item.type === 'automation-editor' ? item.name : item.type === 'marketplace' ? item.name : item.type === 'trace' ? `执行过程${item.agentId ? ` · ${snapshot.agents.find(a => a.id === item.agentId)?.name ?? '员工'}` : ''}` : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
@@ -305,10 +351,10 @@ export function AppShell() {
     </DropdownMenu></div></nav>
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{error&&<Banner onClose={()=>setError('')}>{error}</Banner>}
-      {<div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}>{effectiveList&&<><aside className="conversation-list-container"><ConversationList snapshot={snapshot} selectedId={selectedId} query={search} onQuery={setSearch} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onSelect={selectConversation} onChange={changeConversationList} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside>{resizer('list')}</>}
-        <div className="conversation-stage">{currentDetail?<ChatView key={currentDetail.conversation.id} detail={currentDetail} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onStop={()=>{if(selectedId)void action(async()=>{await api.request('cancelRun',{conversationId:selectedId});await refreshDetail(selectedId)})}} onDetails={()=>{if(conversation)openPanel(conversation.kind==='group'?{type:'group',id:conversation.id}:{type:'agent',id:conversation.agentIds[0]!,conversationId:conversation.id})}} onChangeConversationList={changeConversationList} onClear={clearConversationHistory} onActivity={()=>{if(selectedId)openPanel({type:'activity',id:selectedId})}} onTrace={message=>{if(selectedId)openPanel({type:'trace',requestId:crypto.randomUUID(),id:selectedId,messageId:message?.id,turnId:message?.turnId,agentId:message?.senderId})}} onSettings={()=>{setSettingsSection('connections');goPage('settings')}} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty} onApprove={(id,approved)=>{void action(async()=>{await api.request('approve',{id,approved});await refreshSnapshot();if(selectedRef.current)await refreshDetail(selectedRef.current)})}} onOpenPath={onOpenPath} focusMessage={route.focusMessage} scrollPosition={scrollPositions.current.get(currentDetail.conversation.id)} onScrollPosition={position=>scrollPositions.current.set(currentDetail.conversation.id,position)}/>:loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" title={hasConversations ? '小伙伴们，随时待命' : '和你的数字同事一起工作'}>{!hasConversations && <><div className="button-row"><Button onClick={()=>openCreation({type:'agent'})}><Plus size={16}/>新建员工</Button><Button variant="secondary" onClick={()=>openCreation({type:'group'})}>创建群聊</Button></div><div className="starter-cards">{templates.map((template,index)=><Button variant="surface" size="content" key={template.name} onClick={()=>openCreation({type:'agent',template:index})}><template.icon size={22}/><strong>{template.name}</strong><small>{template.role}</small></Button>)}</div></>}</IllustratedEmpty>}</div>
+      {<div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}>{effectiveList&&<><aside className="conversation-list-container"><ConversationList snapshot={snapshot} selectedId={selectedId} query={search} onQuery={setSearch} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openAgent(core) }} onSelect={selectConversation} onChange={changeConversationList} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside>{resizer('list')}</>}
+        <div className="conversation-stage">{route.coreDraft?<CoreChatStart snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={()=>{setSettingsSection('connections');goPage('settings')}} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:currentDetail?<ChatView api={api} pageActive={route.page === 'conversations'} onTeamGroup={id => selectConversation(id, true)} key={currentDetail.conversation.id} detail={currentDetail} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onStop={()=>{if(selectedId)void action(async()=>{await api.request('cancelRun',{conversationId:selectedId});await refreshDetail(selectedId)})}} onDetails={()=>{if(conversation)openPanel(conversation.kind==='group'?{type:'group',id:conversation.id}:{type:'agent',id:conversation.agentIds[0]!,conversationId:conversation.id})}} onChangeConversationList={changeConversationList} onClear={clearConversationHistory} onActivity={()=>{if(selectedId)openPanel({type:'activity',id:selectedId})}} onTrace={message=>{if(selectedId)openPanel({type:'trace',requestId:crypto.randomUUID(),id:selectedId,messageId:message?.id,turnId:message?.turnId,agentId:message?.senderId})}} onSettings={()=>{setSettingsSection('connections');goPage('settings')}} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty} onApprove={(id,approved)=>{void action(async()=>{await api.request('approve',{id,approved});await refreshSnapshot();if(selectedRef.current)await refreshDetail(selectedRef.current)})}} onOpenPath={onOpenPath} focusMessage={route.focusMessage} scrollPosition={scrollPositions.current.get(currentDetail.conversation.id)} onScrollPosition={position=>scrollPositions.current.set(currentDetail.conversation.id,position)}/>:loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" title={hasConversations ? '小伙伴们，随时待命' : '和你的数字同事一起工作'}>{!hasConversations && <><div className="button-row"><Button onClick={()=>openCreation({type:'agent'})}><Plus size={16}/>新建员工</Button><Button variant="secondary" onClick={()=>openCreation({type:'group'})}>创建群聊</Button></div><div className="starter-cards">{templates.map((template,index)=><Button variant="surface" size="content" key={template.name} onClick={()=>openCreation({type:'agent',template:index})}><template.icon size={22}/><strong>{template.name}</strong><small>{template.role}</small></Button>)}</div></>}</IllustratedEmpty>}</div>
       </div>}
-      {route.page==='contacts'&&<ContactsPage onCreateTeam={() => openPanel({ type: 'team-creator' }, 'contacts')} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} sidebarShown={effectiveList} divider={resizer('list')} generation={panelGeneration} busy={busy}/>}
+      {route.page==='contacts'&&<ContactsPage onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} sidebarShown={effectiveList} divider={resizer('list')} generation={panelGeneration} busy={busy}/>}
       {route.page==='library'&&<LibraryPage onSkills={section=>{setSkillsSection(section);goPage('skills')}} api={api} snapshot={snapshot} refresh={refreshSnapshot} onMarketplace={item=>openPanel({type:'marketplace',provider:item.provider,id:item.id,name:item.name})} onResource={resource=>openPanel({type:'resource',id:resource.id})} onAgent={agent=>openAgent(agent)}/>}
       {route.page==='skills'&&<SkillsWorkspace api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={resizer('list')} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={resizer('list')} location={scheduleLocation} onLocation={setScheduleLocation} onEdit={(definition,mode)=>openPanel({type:'automation-editor',id:definition?.id,name:definition?.name,mode})} onConversation={(id, messageId)=>selectConversation(id, true, messageId)} onInfo={()=>openPanel({type:'schedule'})}/>
@@ -322,13 +368,12 @@ export function AppShell() {
           const target = tab.target, active = tab.scope === route.page && detailTabs.shown && tab.key === detailTabs.activeKey
           return <DetailTabSession key={tab.key} tabKey={tab.key} active={active} ref={handle => { if (handle) tabHandles.current.set(tab.key, handle); else tabHandles.current.delete(tab.key) }} onClose={() => closeTab(tab.key, tab.scope)} onDirty={onTabDirty}>
             {target.type === 'agent' && (snapshot.agents.find(a => a.id === target.id) ? <EmployeeDetail api={api} snapshot={snapshot} agent={snapshot.agents.find(a => a.id === target.id)!} conversationId={target.conversationId} refresh={refreshSnapshot} onClose={() => closeTab(tab.key, tab.scope)} /> : <p className="empty-note">该员工已不存在。</p>)}
-            {target.type === 'group' && <GroupEditor api={api} snapshot={snapshot} conversation={snapshot.conversations.find(c => c.id === target.id)} onOpenAgent={id => openPanel({ type: 'agent', id, conversationId: target.id }, tab.scope)} onClose={() => closeTab(tab.key, tab.scope)} onSaved={async result => { await refreshSnapshot(); if (selectedRef.current === result.id) await refreshDetail(result.id) }} />}
+            {target.type === 'group' && (snapshot.conversations.some(conversation => conversation.id === target.id) ? <GroupEditor api={api} snapshot={snapshot} conversation={snapshot.conversations.find(c => c.id === target.id)} onOpenAgent={id => openPanel({ type: 'agent', id, conversationId: target.id }, tab.scope)} onClose={() => closeTab(tab.key, tab.scope)} onSaved={async result => { await refreshSnapshot(); if (selectedRef.current === result.id) await refreshDetail(result.id) }} onDeleted={refreshSnapshot} /> : <p className="empty-note">该群聊已解散。</p>)}
             {target.type === 'activity' && <ActivityTab api={api} conversationId={target.id} active={active} currentDetail={currentDetail} snapshot={snapshot} busy={busy} onOpenPath={onOpenPath} onStopWork={workId => { void action(async () => { await api.request('cancelRun', { conversationId: target.id, workId }); if (selectedRef.current === target.id) await refreshDetail(target.id) }) }} />}
             {target.type === 'trace' && <TraceTab key={target.requestId} api={api} conversationId={target.id} messageId={target.messageId} agentId={target.agentId} active={active} snapshot={snapshot} busy={busy} onRetry={id => { void action(async () => { await api.request('retryRun', { id, requestId: crypto.randomUUID() }); if (selectedRef.current === target.id) await refreshDetail(target.id) }) }} />}
             {target.type === 'resource' && (snapshot.resources.find(r => r.id === target.id) ? <ResourceDetail api={api} resource={snapshot.resources.find(r => r.id === target.id)!} snapshot={snapshot} refresh={refreshSnapshot} onRemoved={() => closeTab(tab.key, tab.scope)} onAgent={agent => openPanel({ type: 'agent', id: agent.id }, tab.scope)} /> : <p className="empty-note">该资源已被移除。</p>)}
             {target.type === 'marketplace' && <SkillMarketplaceDetail api={api} provider={target.provider} id={target.id} refresh={refreshSnapshot} onResource={() => { setSkillsSection('all'); goPage('skills') }} />}
             {target.type === 'skill-updates' && <div className="detail-section"><SkillUpdateBatchView api={api} active={active} autoStart localOnly onUpdated={skillUpdated} onResource={openLocalSkill} /></div>}
-            {target.type === 'team-creator' && <TeamCreator onAgent={id => openPanel({ type: 'agent', id }, 'contacts')} onMessage={(kind, id) => messageContact({ kind, id })} onGroup={() => openCreation({ type: 'group' })} api={api} snapshot={snapshot} active={active} onConfigure={() => { setSettingsSection('connections'); goPage('settings') }} />}
             {target.type === 'schedule' && <ScheduleDetail />}
             {target.type === 'automation-editor' && <AutomationEditorTab api={api} snapshot={snapshot} id={target.id} mode={target.mode} onClose={() => closeTab(tab.key, tab.scope)} onSaved={(value, created) => { setScheduleLocation({ kind: 'definition', id: value.id }); if (created) closeTab(tab.key, tab.scope); else dispatchDetails({ type: 'open', target: { type: 'automation-editor', id: value.id, name: value.name } }, tab.scope) }} />}
           </DetailTabSession>
@@ -336,6 +381,7 @@ export function AppShell() {
       </DetailPanel>}
       {creation?.type==='agent'&&<CreateAgentDialog key={`agent-${panelGeneration}`} api={api} snapshot={snapshot} template={creation.template} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
       {creation?.type==='group'&&<CreateGroupDialog key={`group-${panelGeneration}`} api={api} snapshot={snapshot} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
+      <TeamCreator open={creation?.type==='team'} api={api} snapshot={snapshot} onOpenChange={open=>{if(!open)setCreation(null)}} onStarted={coreConversationStarted} onConfigure={()=>{setSettingsSection('connections');goPage('settings')}}/>
       {sharingProfile && <ProfileShare api={api} profile={snapshot.userProfile} onClose={() => setSharingProfile(false)} finalFocus={userMenuButton} />}
       {confirmation}
     </div></div>

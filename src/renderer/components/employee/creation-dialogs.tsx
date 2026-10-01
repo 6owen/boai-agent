@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 员工/连接快照、DesktopApi、创建完成回调和全局未保存守卫。
- * [OUTPUT]: 身份、可选/上传头像与 Prompt 的员工弹窗、搜索选人的群聊弹窗；创建后打开真实会话。
+ * [OUTPUT]: 身份、可选/上传头像与 Prompt 的员工弹窗、搜索选人的群聊弹窗；核心助手不作为群成员候选，创建后打开真实会话。
  * [POS]: employee 的创建入口；后续能力、群名称与共享资料编辑仍由右侧编辑器负责。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useRef, useState, type FormEvent } from 'react'
 import type { Conversation, DigitalAgent, Snapshot } from '@shared/domain'
+import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { Avatar, Banner, colors, Field, GuardContext, useDirty, useMutation } from '@/components/common'
 import { LoaderCircle, Search, Users, X } from '@/components/icons'
@@ -70,7 +71,7 @@ export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) 
   const created = useRef<Conversation | null>(null)
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
   useDirty(ids)
-  const available = snapshot.agents.filter(agent => agent.active && agent.executionBackend?.kind !== 'acp-local')
+  const available = snapshot.agents.filter(agent => !isCoreAgent(agent) && agent.active && agent.executionBackend?.kind !== 'acp-local')
   const selected = ids.map(id => available.find(a => a.id === id)).filter((a): a is DigitalAgent => Boolean(a))
   const matches = available.filter(agent => `${agent.name} ${agent.role}`.toLowerCase().includes(query.trim().toLowerCase()))
   const locked = busy || Boolean(created.current)

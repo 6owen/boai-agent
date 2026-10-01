@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 页面表单校验、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 模型选择使用实际 Base UI 浮层并断言选中标签；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与步骤 SVG/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
+ * [OUTPUT]: 从本人头像菜单进入设置；模型选择使用实际 Base UI 浮层并断言选中标签；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与透明毛绒步骤图片/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
  * [POS]: tests/e2e/steps/pages.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -113,10 +113,11 @@ async function searchEmployee(previous: Awaited<ReturnType<typeof saveDisabledEm
 
 async function submitConnectionAndFilter(previous: Awaited<ReturnType<typeof searchEmployee>>) {
   let { page, errors } = previous
-  await page.getByRole('button', { name: '设置', exact: true }).click()
-  await page.getByRole('menuitem', { name: '外观', exact: true }).click()
-  await page.getByRole('button', { name: '设置', exact: true }).click()
-  await page.getByRole('menuitem', { name: '模型连接与数据备份' }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '外观', exact: true }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
   await page.getByRole('button', { name: '添加连接', exact: true }).click()
   await page.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
   await page.getByLabel('连接名称', { exact: true }).fill('页面组件验证')
@@ -201,8 +202,8 @@ async function prepareConnections(runtime: Desktop) {
     const appearance = await window.boai.request('getAppearance', undefined)
     await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: appearance.revision })
   })
-  await page.getByRole('button', { name: '设置', exact: true }).click()
-  await page.getByRole('menuitem', { name: '模型连接与数据备份' }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
   await expect(page.getByRole('heading', { name: '连接你的第一个模型' })).toBeVisible()
   await page.screenshot({ animations: 'disabled', path: 'test-results/connections-empty.png' })
   return { baseUrl, requests, modelRequests, releaseSlow: () => releaseSlow?.(), releaseProbe: () => releaseProbe?.() }
@@ -245,8 +246,9 @@ Then('配置保持未保存直到主动保存连接', async ({ runtime }) => {
 
 When('从外观切换到模型连接并放弃配置草稿', async ({ runtime }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '设置', exact: true }).click()
-  await page.getByRole('menuitem', { name: '外观', exact: true }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '外观', exact: true }).click()
   await page.getByRole('textbox', { name: '搜索设置' }).fill('模型')
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '模型连接', exact: true }).click()
   await page.getByRole('button', { name: '添加连接', exact: true }).click()
@@ -340,13 +342,15 @@ When('通过服务卡片配置兼容模型并保留未保存草稿', async ({ ru
   await expect(dialog.getByRole('heading', { name: '选择模型服务' })).toBeVisible()
   await expect(dialog.getByRole('textbox')).toHaveCount(0)
   await expect(dialog.locator('.connection-dialog-intro [data-slot="dialog-description"]')).toHaveCount(0)
-  await expect(dialog.locator('svg.connection-illustration')).toBeVisible()
+  await expect(dialog.locator('img.connection-illustration')).toBeVisible()
+  await expect(dialog.locator('img.connection-illustration')).toHaveJSProperty('naturalWidth', 400)
   await expect(dialog.locator('.connection-steps .i-carbon-arrow-right')).toBeVisible()
   await page.screenshot({ animations: 'disabled', path: 'test-results/connections-select-light.png' })
   await dialog.getByRole('button', { name: /^OpenAI 兼容接口/ }).focus()
   await page.keyboard.press('Enter')
   await expect(dialog.locator('.connection-dialog-intro [data-slot="dialog-description"]')).toHaveCount(0)
-  await expect(dialog.locator('svg.connection-illustration')).toBeVisible()
+  await expect(dialog.locator('img.connection-illustration')).toBeVisible()
+  await expect(dialog.locator('img.connection-illustration')).toHaveJSProperty('naturalWidth', 400)
   await expect(dialog.getByLabel('连接名称', { exact: true })).toBeFocused()
   await dialog.getByLabel('连接名称', { exact: true }).fill('本地模型服务')
   await dialog.getByRole('button', { name: '保存连接', exact: true }).click()

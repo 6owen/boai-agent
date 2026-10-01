@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 已提交资料、已有活动快照或独立只读活动请求、离线头像与当前全局主题。
- * [OUTPUT]: 页面/头像菜单共用全屏分享，独立加载/错误重试、统一 SVG 默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
+ * [INPUT]: 已提交资料、已有活动快照或独立只读活动请求、离线头像与当前全局主题/圆角 token。
+ * [OUTPUT]: 页面/头像菜单共用全屏分享，独立加载/错误重试、圆角方形本人头像及统一小老虎默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
  * [POS]: 个人资料分享弹窗；画布既是预览也是导出源，不依赖截图服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -35,8 +35,9 @@ async function paintShareCard(canvas: HTMLCanvasElement, profile: LocalUserProfi
   const foreground = color('--foreground'), muted = color('--muted-foreground'), primary = color('--primary')
   context.clearRect(0, 0, canvas.width, canvas.height)
   box(0, 0, 1280, 660, 0, color('--card'))
-  box(64, 64, 104, 104, 52, color('--accent'))
-  context.save(); context.beginPath(); context.arc(116, 116, 52, 0, Math.PI * 2); context.clip(); context.drawImage(avatar, 64, 64, 104, 104); context.restore()
+  const avatarRadius = Number.parseFloat(color('--radius-control')) / 2
+  box(64, 64, 104, 104, avatarRadius, color('--accent'))
+  context.save(); context.beginPath(); context.roundRect(64, 64, 104, 104, avatarRadius); context.clip(); context.drawImage(avatar, 64, 64, 104, 104); context.restore()
   text(profile.displayName, 198, profile.username ? 110 : 132, 38, foreground, 600, 730)
   if (profile.username) text(`@${profile.username}`, 198, 151, 27, muted, 400, 730)
   context.textAlign = 'right'; text('BoAI', 1216, 129, 38, muted, 600); context.textAlign = 'left'

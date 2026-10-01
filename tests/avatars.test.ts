@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工头像合同、EmployeeService、真实 SQLite 与临时工作区。
- * [OUTPUT]: 头像持久化、旧字段兼容、独立配置保存保留头像和非法来源拒绝回归。
+ * [OUTPUT]: 新旧头像持久化、旧字段兼容、独立配置保存保留头像、非法来源拒绝及菜单换序/追加后默认槽位稳定回归。
  * [POS]: 员工头像数据边界与重启恢复验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,6 +30,9 @@ test('employee avatars survive storage/restart and an older client omitting the 
     expect(employees.get(original.id).avatar).toEqual({ kind: 'preset', id: 'rabbit' })
     await employees.save(agentSchema.parse({ ...input, id: original.id, role: '新职责' }))
     expect(employees.get(original.id).avatar).toEqual({ kind: 'preset', id: 'rabbit' })
+    await employees.save(agentSchema.parse({ ...input, id: original.id, avatar: { kind: 'preset', id: 'purple-scarf' } }))
+    employees = service(); await store.write(await employees.initialize())
+    expect(employees.get(original.id).avatar).toEqual({ kind: 'preset', id: 'purple-scarf' })
     const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='
     await employees.save(agentSchema.parse({ ...input, id: original.id, avatar: { kind: 'image', dataUrl } }))
     employees = service(); await store.write(await employees.initialize())
@@ -40,9 +43,11 @@ test('employee avatars survive storage/restart and an older client omitting the 
       { kind: 'image', dataUrl: `data:image/png;base64,iVBORw0KGgo${'a'.repeat(AVATAR_IMAGE_MAX_LENGTH)}` },
     ]) expect(() => agentSchema.parse({ ...input, avatar })).toThrow()
     expect(employees.get(original.id).avatar).toEqual({ kind: 'image', dataUrl })
-    expect(new Set(avatarPresets.map(item => item.id)).size).toBe(12)
+    expect(new Set(avatarPresets.map(item => item.id)).size).toBe(21)
     expect(defaultAvatar('researcher')).toBe('owl')
     expect(defaultAvatar('writer')).toBe('fox')
     expect(defaultAvatar('reviewer')).toBe('cat')
+    expect(defaultAvatar('bobo')).toBe('hamster')
+    expect(defaultAvatar('design-assistant')).toBe('koala')
   } finally { await store.close(); await rm(root, { recursive: true, force: true }) }
 })

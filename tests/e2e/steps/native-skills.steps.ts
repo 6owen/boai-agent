@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文 Skills 场景、生产 Electron/IPC/worker 与隔离网络 fixture。
- * [OUTPUT]: 现行商城本地安装与旧员工受管副本显式兼容导入分别验证；两份身份/收藏和零隐式绑定保持；下载取消/断流/私网拒绝适配来源 Tabs 与扫描动作且无安装入口；商城会话式两栏与常驻搜索； 商店预览不授权/不执行 HTML 或包脚本/不请求图片、明确更新与本地修改保护、稳定身份/绑定/收藏、取消/断流清理、私网拒绝与重启不重放的断言。
+ * [OUTPUT]: 现行商城本地安装与旧员工受管副本显式兼容导入分别验证；两份身份/收藏和零隐式绑定保持；下载取消后悬停分组标题继续新建，断流/私网拒绝适配来源 Tabs 与扫描动作且无安装入口；商城会话式两栏与常驻搜索； 商店预览不授权/不执行 HTML 或包脚本/不请求图片、明确更新与本地修改保护、稳定身份/绑定/收藏、取消/断流清理、私网拒绝与重启不重放的断言。
  * [POS]: 原生 Skills 桌面业务步骤；不替换页面、IPC 或运行服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -224,6 +224,7 @@ Then('下载实际退出且本地管理仍可用而没有安装资源', async ({
   await expect(dialog).toBeHidden()
   await page.getByRole('tab', { name: '收藏', exact: true }).click()
   await page.getByRole('button', { name: '技能分组', exact: true }).click()
+  await page.locator('.skill-groups-title').hover()
   await page.getByRole('button', { name: '新建分组', exact: true }).click()
   await page.getByRole('textbox', { name: '分组名称' }).fill('取消后仍可整理')
   await page.getByRole('button', { name: '保存分组', exact: true }).click()

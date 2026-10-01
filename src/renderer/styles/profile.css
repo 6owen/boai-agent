@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
- * [OUTPUT]: 头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享及单聊本人头像；资料编辑沿用主题控件高度、共用横向行和 Separator。
+ * [OUTPUT]: 系统本人头像及个人头像编辑按钮统一圆角方形，复用全局小圆角；头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享及单聊本人头像；资料编辑沿用主题控件高度、共用横向行和 Separator。
  * [POS]: global.css 加载的个人资料局部布局，不维护独立主题。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-.user-avatar { border-radius:50%;background:var(--accent);color:var(--foreground);flex-shrink:0;font-weight:600 }
+.user-avatar { border-radius:var(--radius-sm);background:var(--accent);color:var(--foreground);flex-shrink:0;font-weight:600 }
 .user-avatar img { width:100%;height:100%;object-fit:cover;border-radius:inherit }
+.avatar-picker-trigger:has(>.user-avatar),.avatar-picker-trigger>.user-avatar { border-radius:var(--radius-sm) }
 .rail-item>.user-avatar { width:28px;height:28px;font-size:11px }
 .user-menu-profile { gap:12px;min-height:52px }
 .user-menu-profile>.user-avatar { width:32px;height:32px }
@@ -14,7 +15,7 @@
 .user-menu-profile small { color:var(--muted-foreground);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .message-row.user .message-avatar { display:flex;flex:0 0 32px }
 .chat-panel:not(.group-chat) .message-row.user .message-avatar { order:2 }
-.message-row.user .message-avatar>.avatar { width:32px;height:32px;border-radius:50%;font-size:12px }
+.message-row.user .message-avatar>.user-avatar { width:32px;height:32px;border-radius:var(--radius-sm);font-size:12px }
 .profile-document { container-type:inline-size;min-width:0 }
 .profile-document h3 { font-size:16px;font-weight:600;margin:0 }
 .profile-identity { display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0 0 36px }

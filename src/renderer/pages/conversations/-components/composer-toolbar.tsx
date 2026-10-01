@@ -1,11 +1,12 @@
 /*
  * [INPUT]: React 本地状态、当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
- * [OUTPUT]: @ 与 / 入口共用 Prompt Bar 菜单回调；单聊权限/模型/思考强度菜单与配置锁定，以及原有发送/停止语义。
+ * [OUTPUT]: 首发前不展示会话目录操作；@ 与 / 入口共用 Prompt Bar 菜单回调；核心助手隐藏命令权限菜单；单聊模型/思考强度与普通员工权限菜单、配置锁定及发送/停止语义。
  * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理，完全访问预览不写入权限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
+import { isCoreAgent } from '@shared/domain/core-agent'
 import { supportsThinkingControl, type ThinkingLevel } from '@shared/domain/model-preferences'
 import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FolderOpen, LoaderCircle, Plus, ShieldCheck, Square, Terminal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ const thinkingOptions: { value: ThinkingLevel; label: string; description: strin
 ]
 interface Props {
   members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean
+  conversationReady?: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
   commandsVisible: boolean; onCommands(): void
   onOpenWorkspace(): void; onMentions(): void; onSettings(): void
@@ -49,7 +51,7 @@ export function ComposerToolbar(props: Props) {
   }
   return <ChatComposerFooter>
     <ChatComposerActions>
-      <DropdownMenu>
+      {props.conversationReady !== false && <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" round aria-label="添加或更多操作" />}><Plus /></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
           <DropdownMenuGroup>
@@ -57,10 +59,10 @@ export function ComposerToolbar(props: Props) {
             {group && <DropdownMenuItem onClick={props.onMentions}><AtSign />{props.mentionsVisible ? '收起成员点名' : '提及成员'}</DropdownMenuItem>}
           </DropdownMenuGroup>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu>}
       {group && <Button variant="ghost" size="icon-sm" round aria-label="提及群聊成员" aria-expanded={props.mentionsVisible} onClick={props.onMentions}><AtSign /></Button>}
       <Button variant="ghost" size="icon-sm" round aria-label="快捷命令" aria-expanded={props.commandsVisible} onClick={props.onCommands}><span aria-hidden="true">/</span></Button>
-      {!group && <DropdownMenu>
+      {!group && !isCoreAgent(primary) && <DropdownMenu>
         <DropdownMenuTrigger render={<ChatComposerSelect kind="permission" data-permission={previewingFullAccess ? 'full' : undefined} aria-label="权限批准" />}><ShieldCheck /><span>{permissionLabel}</span></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="chat-composer-menu w-[280px] max-w-[calc(100vw-32px)] p-2" aria-label="权限批准">
           {members.map(agent => <DropdownMenuGroup key={agent.id}>

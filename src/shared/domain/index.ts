@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品实体、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
- * [OUTPUT]: 统一记忆合同导出及会话记忆范围；员工/群可选团队来源与群 teamSetup 背景合同； 个人资料快照和独立活动保存错误；消息可选持久表情回应；宿主确认的失败轮次/运行接续关联；仅由宿主保存的任务聊天 purpose/计划/触发关联；宿主写入跨轮次补充关联；自动化来源贯穿轮次与运行； 导出技能集合/预览/操作合同；运行观测错误独立于业务终态；员工独立思考强度及保留本地配置来源、OpenAI 接口协议的模型连接、并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
+ * [OUTPUT]: 预置系统核心员工标识与独立 core 会话类别；统一记忆合同导出及会话记忆范围；员工/群可选团队来源与群 teamSetup 背景合同； 个人资料快照和独立活动保存错误；消息可选持久表情回应；宿主确认的失败轮次/运行接续关联；仅由宿主保存的任务聊天 purpose/计划/触发关联；宿主写入跨轮次补充关联；自动化来源贯穿轮次与运行； 导出技能集合/预览/操作合同；运行观测错误独立于业务终态；员工独立思考强度及保留本地配置来源、OpenAI 接口协议的模型连接、并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
  * [POS]: shared/domain 的产品领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -40,6 +40,7 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  systemRole?: 'core'
   creationSource?: TeamCreationSource
   thinkingLevel?: ThinkingLevel
   avatar?: AgentAvatar
@@ -60,7 +61,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource'> & { id?: string; expectedConfigVersion?: number }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number }
 export interface Resource {
   id: string
   kind: 'skill' | 'knowledge'
@@ -75,7 +76,7 @@ export interface Conversation {
   memoryScope?: 'employee' | 'conversation'
   creationSource?: TeamCreationSource
   teamSetup?: TeamSetup
-  purpose?: 'personal' | 'automation'
+  purpose?: 'personal' | 'automation' | 'core'
   automationId?: string
   occurrenceId?: string
   list?: { hidden?: boolean; pinned?: boolean; order?: number }

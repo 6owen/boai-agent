@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话列表排序和纯更新规则。
- * [OUTPUT]: 手动顺序不随消息跳动、置顶边界及隐藏不删除记录的回归验证。
+ * [OUTPUT]: 手动顺序不随消息跳动、核心/普通分类与置顶边界及隐藏不删除记录的回归验证。
  * [POS]: 会话展示偏好的模块测试；真实 IPC/重启由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -42,5 +42,20 @@ describe('conversation list preferences', () => {
     expect(names(restored)).toEqual(['A'])
     expect(restored[0]).toMatchObject({ ...original, list: { pinned: false, hidden: false } })
     expect(() => change(restored, { id: 'A', action: 'move', targetId: 'missing', placement: 'after' })).toThrow('目标会话不存在')
+  })
+  it('keeps core assistant ordering and pinning independent of ordinary conversations', () => {
+    const regular = { ...conversation('ordinary', '2026-01-01'), list: { pinned: false, order: 7 } }
+    const core = ['core-A', 'core-B'].map(id => ({ ...conversation(id, '2026-01-01'), kind: 'direct' as const, purpose: 'core' as const, agentIds: ['bobo'] }))
+    const original = [regular, ...core]
+    expect(() => change(original, { id: 'core-A', action: 'move', targetId: 'ordinary', placement: 'before' })).toThrow('同一会话分类')
+    const moved = change(original, { id: 'core-B', action: 'move', targetId: 'core-A', placement: 'before' })
+    expect(names(moved).filter(id => id.startsWith('core'))).toEqual(['core-B', 'core-A'])
+    expect(moved[0]).toBe(regular)
+    const pinned = change(moved, { id: 'core-A', action: 'pin', pinned: true })
+    expect(pinned[0]).toBe(regular)
+    const hidden = change(pinned, { id: 'core-A', action: 'hide' })
+    const restored = change(hidden, { id: 'core-A', action: 'show' })
+    expect(restored[0]).toBe(regular)
+    expect(restored.find(item => item.id === 'core-A')?.purpose).toBe('core')
   })
 })

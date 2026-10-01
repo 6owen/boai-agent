@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 会话轮次、运行状态、工作结果与重试操作。
- * [OUTPUT]: 执行过程内可折叠的运行摘要、失败证据和显式重试。
+ * [OUTPUT]: 执行过程折叠摘要整行可点击且使用12px旋转箭头；可折叠的运行摘要、失败证据和显式重试。
  * [POS]: 会话 Trace 的运行诊断补充；不进入任务与产物面板。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Terminal } from '@/components/icons'
+import { ChevronRight, Terminal } from '@/components/icons'
 import type { AgentDelivery, AgentRun, ConversationDetail, Snapshot, WorkItem } from '@shared/domain'
 import { byCreatedAt, roundTime, type ActivityRound } from '../activity'
 import { runLabels, deliveryLabels, turnLabels, liveTurn, latestMemberDeliveries, failureSummary, workDispositionLabels } from '../presentation'
@@ -55,14 +55,14 @@ function RunCard({ run, work, onRetry, busy, historical, newerAttempt, canRetry 
     <div className="run-context"><span>{phase}</span><time dateTime={run.createdAt}>{roundTime(run.createdAt)}</time></div>
     {work && <p className="field-hint">交付目标：{work.deliverable}</p>}
     {run.disposition && <p className="field-hint">本次工作结果：{workDispositionLabels[run.disposition]}</p>}
-    {run.timing && <details className="tool-row soft-divider-top"><summary>耗时与等待</summary><p className="field-hint">模型排队 {(run.timing.queueMs / 1000).toFixed(1)} 秒 · 执行阶段 {(run.timing.executionMs / 1000).toFixed(1)} 秒 · 资源等待 {((run.taskQueueMs ?? 0) / 1000).toFixed(1)} 秒 · 限流等待 {(run.timing.backoffMs / 1000).toFixed(1)} 秒</p></details>}
-    {run.draft?.status === 'withheld' && <details className="tool-row soft-divider-top"><summary>未发布的任务结果</summary><p className="field-hint">{run.draft.reason}</p><pre>{run.draft.text}</pre></details>}
+    {run.timing && <details className="tool-row soft-divider-top"><summary><ChevronRight size={12} />耗时与等待</summary><p className="field-hint">模型排队 {(run.timing.queueMs / 1000).toFixed(1)} 秒 · 执行阶段 {(run.timing.executionMs / 1000).toFixed(1)} 秒 · 资源等待 {((run.taskQueueMs ?? 0) / 1000).toFixed(1)} 秒 · 限流等待 {(run.timing.backoffMs / 1000).toFixed(1)} 秒</p></details>}
+    {run.draft?.status === 'withheld' && <details className="tool-row soft-divider-top"><summary><ChevronRight size={12} />未发布的任务结果</summary><p className="field-hint">{run.draft.reason}</p><pre>{run.draft.text}</pre></details>}
     {failed && work?.requiresReview && <p className="historical-note">已有操作需要核对。请检查结果后，在会话中发送明确的后续要求。</p>}
     {failed && newerAttempt && <p className="historical-note">较早的尝试；此员工之后已有新的{phase}记录。</p>}
     {historical && <p className="historical-note">历史轮次中的运行，不代表当前消息的处理结果。</p>}
     {failed && run.phase === 'memory' && <p className="historical-note">记忆整理{run.status === 'interrupted' ? '中断' : '未完成'}，不会重新执行原任务。</p>}
     {run.error && <><p className="error-copy">{run.phase === 'memory' ? '记忆整理遇到问题，请查看错误详情。' : failureSummary(run.error)}</p><details className="error-details"><summary>错误详情</summary><pre>{run.error}</pre></details></>}
-    {[...run.toolEvents].sort(byCreatedAt).map(tool => <details className="tool-row soft-divider-top" key={tool.id}><summary><Terminal size={12} /><span>{tool.name}</span><small>{tool.status === 'running' ? '运行中' : tool.status === 'failed' ? '失败' : '完成'}</small></summary><pre>{tool.detail}</pre></details>)}
+    {[...run.toolEvents].sort(byCreatedAt).map(tool => <details className="tool-row soft-divider-top" key={tool.id}><summary><ChevronRight size={12} /><Terminal size={12} /><span>{tool.name}</span><small>{tool.status === 'running' ? '运行中' : tool.status === 'failed' ? '失败' : '完成'}</small></summary><pre>{tool.detail}</pre></details>)}
     {failed && canRetry && !work?.requiresReview && run.phase !== 'memory' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRetry(run.id)}>重试本轮{phase}</Button>}
   </CardContent></Card>
 }

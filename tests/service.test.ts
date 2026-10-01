@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
- * [OUTPUT]: 显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -798,7 +798,7 @@ describe('local product service', () => {
   it('seeds only employee definitions, keeps credentials out of snapshots and reopens SQLite data', async () => {
     const { service, root, engine, secrets } = await fixture()
     const initial = await snapshot(service)
-    expect(initial.agents.map(agent => agent.name)).toEqual(['研究员', '写手', '审核员'])
+    expect(initial.agents.map(agent => agent.name)).toEqual(['研究员', '写手', '审核员', 'bobo'])
     expect(initial.conversations).toEqual([]); expect(initial.connections).toEqual([])
     const connection = await service.handle('saveConnection', { name: 'Cloud', provider: 'openai', baseUrl: '', defaultModel: 'test-model', apiKey: 'super-secret-123' }) as Connection
     expect(connection.hasApiKey).toBe(true)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
- * [OUTPUT]: 原生技能名/路径解析到固定资源身份供激活观测；受约束的文件/命令/产物工具、委派/等待及业务结果声明。
+ * [OUTPUT]: 核心身份且宿主授权时提供 create_team，按工具调用身份进入原子发布并复用副作用门禁；原生技能名/路径解析到固定资源身份供激活观测；受约束的文件/命令/产物工具、委派/等待及业务结果声明。
  * [POS]: Mastra 任务工具适配器；副作用前先登记持久核对标记。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,8 @@ import { createTool } from '@mastra/core/tools'
 import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
 import { z } from 'zod'
 import type { EngineContext } from '../../contracts'
+import { isCoreAgent } from '../../../shared/domain/core-agent'
+import { teamModelPlanSchema } from '../../../shared/domain/team-creation'
 import { logicalPath, workspaceTarget, boundedRead, writeWorkspaceFile, publishArtifact, restrictedPath, RESERVED_SYSTEM_FILES, MAX_FILE_BYTES } from '../../modules/workspaces/file-access'
 import { searchKnowledge } from '../../modules/resources/knowledge-search'
 import { BoundSkillSource } from './bound-skill-source'
@@ -42,6 +44,21 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
     const tools = {
+      ...(isCoreAgent(ctx.agent) && ctx.createTeam ? {
+        create_team: createTool({
+          id: 'create_team', description: 'Create the team explicitly requested by the user and its group chat in one product operation. Choose the team name, member names, roles and working instructions from the requirement. Returns the committed group and member identities; only a successful receipt proves creation. New members share the core Agent model connection, with no commands or resource bindings. Do not call for ordinary conversation or repeat an already delivered creation.',
+          inputSchema: teamModelPlanSchema,
+          execute: async (plan, context) => {
+            check(signal)
+            const toolCallId = context?.agent?.toolCallId
+            if (!toolCallId) throw new Error('团队创建缺少模型工具调用身份')
+            await ctx.beforeEffect?.(); check(signal)
+            const result = await ctx.createTeam!(teamModelPlanSchema.parse(plan), toolCallId)
+            await ctx.afterEffect?.()
+            return result
+          },
+        }),
+      } : {}),
       read_file: createTool({
         id: 'read_file', description: 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible.',
         inputSchema: z.object({ path: z.string() }),

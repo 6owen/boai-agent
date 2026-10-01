@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: 已提交员工整批内存安装与完整重载； 版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
+ * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,6 +11,7 @@ import { ProductStore, type StoredRecord } from '../../adapters/storage/product-
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/avatars'
 import { thinkingLevels } from '../../../shared/domain/model-preferences'
+import { CORE_AGENT_ID, CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '../../../shared/domain/core-agent'
 
 export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.literal('acp-local'),profileId:z.string().min(1).max(200)}).strict()])
 const id = z.string().trim().min(1).max(200)
@@ -20,7 +21,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), skillIds: ids, knowledgeIds: ids, allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -64,24 +65,37 @@ export class EmployeeService {
         this.definitions.set(id, agent); updates.push(record('agents', agent))
       }
     }
+    for (const agent of this.definitions.values()) if (agent.id !== CORE_AGENT_ID && agent.systemRole === 'core') { delete agent.systemRole; agent.configVersion++ }
+    const core = this.definitions.get(CORE_AGENT_ID)
+    if (!core) this.definitions.set(CORE_AGENT_ID, {
+      id: CORE_AGENT_ID, name: CORE_AGENT_DEFAULT_NAME, systemRole: 'core', role: '系统核心 Agent',
+      instructions: '你是 BoAI 的系统核心 Agent，协助用户理解需求、创建数字员工团队并接续交流。根据明确授权使用应用提供的工具；没有创建回执时不得声称已创建团队。团队默认包含群聊，群名称与成员职责由团队需求决定。普通对话自然回应，不制造任务。',
+      color: '#638ac5', executionBackend: { kind: 'mastra-model' }, connectionId: '', modelId: '',
+      skillIds: [], knowledgeIds: [], allowCommands: false, active: true, configVersion: 1,
+    })
+    else if (!isCoreAgent(core) || !core.active || core.allowCommands || core.executionBackend?.kind !== 'mastra-model') {
+      core.systemRole = 'core'; core.active = true; core.allowCommands = false; core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
+    }
     for (const agent of this.definitions.values()) { await this.homes.initialize(agent); updates.push(record('agents', agent)) }
     return updates
   }
   private validateResources(ids: string[], kind: Resource['kind']) {
     for (const id of ids) if (this.hooks.resource(id)?.kind !== kind) fail(kind === 'skill' ? 'Skill 不存在或类型不匹配' : '知识资源不存在或类型不匹配')
   }
-  async save(input: AgentInput) {
+  async save(input: AgentInput & { systemRole?: 'core' }) {
     const previous = input.id ? this.get(input.id) : undefined
+    if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
+    if (isCoreAgent(previous) && (!input.active || input.allowCommands || executionBackend.kind !== 'mastra-model')) fail('系统核心 Agent 必须启用模型 API，且不能启用宿主命令或外部任务后端')
     if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定和命令策略；请先取消这些绑定。')
     if (input.connectionId) this.hooks.connection(input.connectionId)
     this.validateResources(input.skillIds, 'skill'); this.validateResources(input.knowledgeIds, 'knowledge')
     const skillNames = input.skillIds.map(id => this.hooks.resource(id)!.name)
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
-    const { expectedConfigVersion: _, ...definition } = input
-    const agent: DigitalAgent = { ...previous, ...definition, executionBackend, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const { expectedConfigVersion: _, systemRole: _systemRole, ...definition } = input
+    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (previous && previous.instructions !== input.instructions) { const source = await this.homes.read(previous, 'AGENTS.md'); await this.homes.save(previous, 'AGENTS.md', input.instructions, source.hash) }
     if (!previous) await this.homes.initialize(agent)
     await this.store.write([record('agents', agent)]); this.install(agent.id, agent); await this.homes.commit(agent)

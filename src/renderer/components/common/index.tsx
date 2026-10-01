@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
- * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交；统一 SVG/上传图片头像、字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
+ * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交；透明 WebP 预设/回退头像不叠加底色，上传图片保留既有底色；字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,7 +30,7 @@ export function useDirty(value: unknown) {
 }
 export function Avatar({ name, color = colors[0], small = false, avatar, seed = name }: { name: string; color?: string; small?: boolean; avatar?: AgentAvatar; seed?: string }) {
   const source = avatarSource(avatar, seed), [failedSource, setFailedSource] = useState<string | null>(null)
-  return <span className={`avatar${small ? ' small' : ''}`} style={{ background: `${color}18`, '--avatar-color': color } as CSSProperties} aria-hidden="true"><img src={failedSource === source ? avatarSource(undefined, seed) : source} alt="" draggable={false} onError={() => setFailedSource(source)} /></span>
+  return <span className={`avatar${small ? ' small' : ''}`} style={{ background: avatar?.kind === 'image' && failedSource !== source ? `${color}18` : 'transparent', '--avatar-color': color } as CSSProperties} aria-hidden="true"><img src={failedSource === source ? avatarSource(undefined, seed) : source} alt="" draggable={false} onError={() => setFailedSource(source)} /></span>
 }
 export function Banner({ children, kind = 'error', onClose }: { children: ReactNode; kind?: 'error' | 'notice'; onClose?: () => void }) {
   return <div className={`banner ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><span>{children}</span>{onClose && <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="关闭提示"><X size={15} /></Button>}</div>

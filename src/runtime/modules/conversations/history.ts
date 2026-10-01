@@ -1,26 +1,27 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 清理日志恢复先建立跨会话记忆来源屏障，再删除文件；清除会话关联的模型调用/技能激活/执行区间，保留个人资料；清除监控私有比较证据与来源检查点；清理通知正文引用，待提交抑制/提交中未知并保留最小身份；清理自动化待回答轮次引用；按会话清理尚无 Work 的 occurrence 预算与调用回执；Trace 随会话历史原子清理；可在重启后继续的会话记录/专属文件清理；保留联系人、群配置及共享资料，清除自动化投递正文/跨工作证据、终结失去上下文的等待并保留去重身份。
+ * [OUTPUT]: 清空/解散保留核心首发最小 cleared 回执、历史指纹去正文且重试不重放；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；先建立跨会话记忆来源屏障，再删除文件；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
 import type { Conversation, MemoryEntry } from '../../../shared/domain'
+import type { ContactListPreferences } from '../../../shared/domain/contact-list'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '../../../shared/domain/automations'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
-interface Cleanup { id: string; hide: boolean }
+interface Cleanup { id: string; hide: boolean; remove?: boolean }
 export class ConversationHistory {
   constructor(private store: ProductStore, private dataPath: string) {}
   async recover() {
     for (const pending of await this.store.load<Cleanup>('conversationCleanup')) {
       const conversation = (await this.store.load<Conversation>('conversations')).find(item => item.id === pending.id)
-      if (conversation) await this.clear(conversation, pending.hide)
+      if (conversation) await this.clear(conversation, pending.hide, pending.remove)
     }
   }
   private async safe(path: string) {
@@ -33,7 +34,8 @@ export class ConversationHistory {
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
     }
   }
-  async clear(conversation: Conversation, hide: boolean) {
+  remove(conversation: Conversation) { return this.clear(conversation, false, true) }
+  async clear(conversation: Conversation, hide: boolean, remove = false) {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
     const runs = (await this.store.load<HistoryRecord>('runs')).filter(item => item.conversationId === id)
@@ -49,7 +51,7 @@ export class ConversationHistory {
     }
     // Validate every parent before deleting anything; never follow recorded artifact/source paths.
     for (const path of paths) await this.safe(path)
-    await this.store.write([{ collection: 'conversationCleanup', id, value: { id, hide } }])
+    await this.store.write([{ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}) } }])
     // The durable source fence precedes file removal and is repeated by recovery.
     const memoryRepository = new MemoryRepository(this.store)
     for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
@@ -68,7 +70,7 @@ export class ConversationHistory {
       const names = await readdir(conflicts).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error })
       for (const name of names) if (name.includes(`-sessions_${id}_`)) await rm(join(conflicts, name), { force: true })
     }
-    await mkdir(join(this.dataPath, 'workspaces', id), { recursive: true })
+    if (!remove) await mkdir(join(this.dataPath, 'workspaces', id), { recursive: true })
     return this.store.transaction(async tx => {
       const removals: { collection: string; id: string }[] = []
       const collect = async (collection: string, match: (item: HistoryRecord) => boolean) => {
@@ -91,6 +93,10 @@ export class ConversationHistory {
         if (item.messageId && messages.has(item.messageId)) return true
         try { const value = JSON.parse(item.fingerprint ?? '{}'); return value.conversationId === id || runIds.has(value.id) } catch { return false }
       })
+      for (const receipt of (await tx.list<HistoryRecord>('coreConversationStarts')).filter(owned)) {
+        const fingerprint = /^[a-f0-9]{64}$/.test(receipt.fingerprint ?? '') ? receipt.fingerprint : createHash('sha256').update(receipt.fingerprint ?? '').digest('hex')
+        await tx.put({ collection: 'coreConversationStarts', id: receipt.id, value: { id: receipt.id, fingerprint, conversationId: id, cleared: true } })
+      }
       const epochs = new Map(agents.map(agent => [`employee:${agent.id}:conversation:${id}`, 0]))
       const memory = (await tx.list<MemoryEntry>('memory')).filter(entry => entry.conversationId === id)
       for (const entry of memory) {
@@ -119,7 +125,15 @@ export class ConversationHistory {
         await tx.put({ collection: 'automationDispatches', id: intent.id, value: { schemaVersion: 1, id: intent.id, requestId: intent.requestId, status: 'cleared' } })
       }
       const cleared = { ...conversation, workspacePath: join(this.dataPath, 'workspaces', id), lastMessageAt: undefined, lastMessagePreview: undefined, activity: 'idle' as const, ...(hide ? { list: { hidden: true, pinned: false } } : {}) }
-      await tx.put({ collection: 'conversations', id, value: cleared })
+      if (remove) {
+        removals.push({ collection: 'conversations', id })
+        const preferences = await tx.get<ContactListPreferences>('contactList', 'contacts')
+        if (preferences?.groupOrder.includes(id)) {
+          preferences.groupOrder = preferences.groupOrder.filter(groupId => groupId !== id)
+          preferences.revision++
+          await tx.put({ collection: 'contactList', id: 'contacts', value: preferences })
+        }
+      } else await tx.put({ collection: 'conversations', id, value: cleared })
       for (const item of removals) await tx.remove(item.collection, item.id)
       await tx.remove('conversationCleanup', id)
       return { conversation: cleared, removals, memoryEpochs, occurrences }

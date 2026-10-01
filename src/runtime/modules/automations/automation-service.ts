@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 产品事务账本、原生日程适配器与宿主许可/消息投递。
- * [OUTPUT]: 稳定创建回执查询/重试与显式恢复；异步监控读取、提交前授权复核、停止待退出与无模型比较；全历史待处理计数与最近结束结果投影；预算追加后的计时器重排与旧期限回调隔离，系统时钟回拨不延长已启动时限；持久通知消费唤醒与预算停止原因；新任务聊天准备/授权、共享规则的纯日程预览和完整分页查询；指定 occurrence 的补充上下文与事务提交入口；原始预算期限与计算槽释放后的接续重查；有界配置同步、事务投递、跨工作结果汇总、停止待退出与重启证据核对；不自动重放业务。
+ * [OUTPUT]: 通讯录删除在宿主临界区暂停关联计划，定向终结关联等待并异步同步原生日程；稳定创建回执查询/重试与显式恢复；异步监控读取、提交前授权复核、停止待退出与无模型比较；全历史待处理计数与最近结束结果投影；预算追加后的计时器重排与旧期限回调隔离，系统时钟回拨不延长已启动时限；持久通知消费唤醒与预算停止原因；新任务聊天准备/授权、共享规则的纯日程预览和完整分页查询；指定 occurrence 的补充上下文与事务提交入口；原始预算期限与计算槽释放后的接续重查；有界配置同步、事务投递、跨工作结果汇总、停止待退出与重启证据核对；不自动重放业务。
  * [POS]: 自动化用例入口，SQLite 为权威，内存仅供活跃状态查询。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -32,7 +32,7 @@ interface Hooks {
   dispatch(d: AutomationDefinition, o: AutomationOccurrence, origin: AutomationOrigin, commit: (message: Message, records: StoredRecord[]) => Promise<void>): Promise<Message>
   readMonitor?(definition: AutomationDefinition, signal: AbortSignal): Promise<AutomationMonitorRead>
   inspect(o: AutomationOccurrence): Partial<AutomationOccurrence> | undefined | Promise<Partial<AutomationOccurrence> | undefined>
-  cancel(o: AutomationOccurrence): Promise<void>
+  cancel(o: AutomationOccurrence, options?: { endWaiting: boolean }): Promise<void>
   changed(): void
   notify(): void
   capacityAvailable?(): void
@@ -184,6 +184,27 @@ export class AutomationService {
       await this.hooks.critical(() => this.repository.pause(id, deleted))
       this.retryCount = 0; await this.synchronize(id); this.hooks.changed()
     })
+  }
+  /** Called inside the host's mutation gate; native synchronization is queued without re-entering it. */
+  async detachContacts(agentIds: string[], conversationIds: string[]) {
+    const view = await this.repository.view()
+    const affected = view.definitions.filter(d => !d.deletedAt && (d.employeeIds?.some(id => agentIds.includes(id)) || conversationIds.includes(d.conversationId ?? '')))
+    const definitionIds = new Set(affected.map(d => d.id))
+    const waiting = view.occurrences.filter(o => pendingOccurrence.has(o.status) && (definitionIds.has(o.automationId) || conversationIds.includes(o.conversationId)))
+    if (waiting.some(o => activeOccurrence.has(o.status) || this.monitors.has(o.id))) throw new Error('关联自动化仍在执行或收尾，请先停止并等待结束后再删除')
+    for (const definition of affected.filter(d => d.enabled)) await this.repository.pause(definition.id)
+    for (const occurrence of waiting) {
+      const saved = await this.repository.updateOccurrence(occurrence.id, occurrence.stateVersion, { status: 'cancelling', cancellationCause: 'user', cancellationRequestedAt: new Date().toISOString(), reason: '关联员工或群聊已删除，等待已终结' })
+      if (!saved) throw new Error('关联自动化状态已变化，请重试删除')
+      this.occurrences.set(saved.id, saved)
+      await this.hooks.cancel(saved, { endWaiting: true })
+      const ended = await this.repository.updateOccurrence(saved.id, saved.stateVersion, { status: 'cancelled', deliveryStatus: 'unknown', finishedAt: new Date().toISOString(), waitingTurnIds: [] })
+      if (ended) this.occurrences.set(ended.id, ended)
+      clearTimeout(this.timers.get(saved.id)); this.timers.delete(saved.id)
+    }
+    if (!affected.length && !waiting.length) return
+    await this.refresh()
+    void this.serialize(async () => { await this.synchronize(); this.hooks.changed() }).catch(error => { this.error = String(error); this.hooks.changed() })
   }
   async view(): Promise<AutomationsView> {
     await this.tail; const { definitions, occurrences } = await this.refresh()

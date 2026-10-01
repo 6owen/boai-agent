@@ -1,22 +1,24 @@
 /*
- * [INPUT]: 已验证草稿、文件准备器、SQLite、通讯录分类事务与宿主生命周期/批量安装回调。
- * [OUTPUT]: 原子受理/冻结 ID，员工/可选群/同名分类和回执同事务发布；明确继续/取消、文件冲突和备份门禁。
- * [POS]: T1 批量创建用例；无成员模型调用、无消息或 Work。
+ * [INPUT]: 已验证兼容方案或核心 Agent 的严格团队方案、文件准备器、SQLite、通讯录分类事务与宿主生命周期/批量安装回调。
+ * [OUTPUT]: 核心 Agent 按稳定请求身份独立受理、默认命名建群；认领和最终发布进入宿主临界区、文件准备允许及时持久停止；原子冻结 ID，员工/群/同名分类和回执同事务发布；实际退出等待、明确恢复/取消、文件冲突和备份门禁。
+ * [POS]: 团队原子发布用例；内部准备记录不承载产品草稿，不调用成员模型、不发送消息或创建 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Connection, Conversation, DigitalAgent } from '../../../shared/domain'
-import { teamId, teamPlanSchema, type TeamCreationOperation, type TeamDraft, type TeamGeneration } from '../../../shared/domain/team-creation'
+import { avatarPresets } from '../../../shared/domain/avatars'
+import { TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamModelPlanSchema, teamPlanSchema, type TeamCreationOperation, type TeamDraft, type TeamGeneration } from '../../../shared/domain/team-creation'
 import { agentSchema } from '../employees/employee-service'
 import { createTeamContactCategory } from '../employees/contact-list'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint } from './team-files'
-import { TeamRepository, editableTeamDraft, readTeamDraft, resolveTeamModel, teamError, teamHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, editableTeamDraft, readTeamDraft, resolveTeamModel, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 const acceptSchema = teamVersionSchema.extend({ planHash: z.string().length(64), requestId: teamId }).strict()
+const agentPlanSchema = z.object({ plan: teamModelPlanSchema, connectionId: teamId, modelId: z.string().trim().max(300), requestId: teamId }).strict()
 const operationSchema = z.object({ operationId: teamId }).strict()
 export class TeamCreationService {
   private running = new Map<string, { controller: AbortController; task: Promise<void> }>()
@@ -48,27 +50,76 @@ export class TeamCreationService {
       if (draft.generationStatus === 'running') teamError('DRAFT_CONFLICT', '请等待方案生成结束')
       validateTeamDraft(draft)
       if (!draft.planHash || draft.planHash !== request.planHash) teamError('DRAFT_CONFLICT', '方案未通过校验或已变化，请保存后确认')
-      const plan = teamPlanSchema.parse(draft.plan), id = randomUUID(), createdAt = teamNow()
-      const memberIds = plan.members.map(member => ({ memberKey: member.memberKey, agentId: randomUUID() }))
-      const agents: DigitalAgent[] = plan.members.map((member, index) => {
-        const agentId = memberIds[index].agentId
-        const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
-        return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource: { kind: 'team-planner', operationId: id, memberKey: member.memberKey, plannerVersion: plan.plannerVersion } }
-      })
-      const conversationId = draft.createGroup ? randomUUID() : undefined
-      const conversation: Conversation | undefined = conversationId ? { id: conversationId, kind: 'group', title: draft.groupTitle, agentIds: agents.map(agent => agent.id), mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource: { kind: 'team-planner', operationId: id, plannerVersion: plan.plannerVersion }, teamSetup: { purpose: plan.purpose, collaborationGuide: plan.collaborationGuide, scenarioKind: plan.scenarioKind } } : undefined
-      const operation: TeamCreationOperation = { id, requestId: request.requestId, requestHash, draftId: draft.id, acceptedDraftVersion: draft.version, payloadHash: draft.planHash!, version: 1, status: 'accepted', createdAt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, connectionFingerprint: draft.connectionFingerprint!, agents, conversation, memberIds, conversationId, files: [], directories: [] }
-      await this.config(tx, operation)
-      Object.assign(operation, teamFileLog(operation, this.homes))
-      draft.creationOperationId = operation.id; draft.version++; draft.updatedAt = teamNow()
-      await tx.put(teamRecord('teamCreations', operation)); await tx.put(teamRecord('teamDrafts', draft)); return { operation, start: true }
+      return { operation: await this.freeze(tx, draft, request.requestId, requestHash), start: true }
     })
     if (result.start) this.start(result.operation.id, result.operation.version)
     this.hooks.changed(); return result.operation
   }
+  async acceptAgentPlan(input: unknown) {
+    const request = agentPlanSchema.parse(input), requestHash = teamHash({ source: 'core-agent', ...request })
+    const result = await this.repo.store.transaction(async tx => {
+      const old = (await tx.list<TeamCreationOperation>('teamCreations')).find(value => value.requestId === request.requestId)
+      if (old) { if (old.requestHash !== requestHash) teamError('REQUEST_CONFLICT', '请求身份已用于不同团队方案'); return { operation: old, start: false } }
+      const connection = await tx.get<Connection>('connections', request.connectionId), model = resolveTeamModel(connection, request.modelId)
+      const now = teamNow(), generationId = randomUUID()
+      const draft: TeamDraft = {
+        id: randomUUID(), schemaVersion: 1, version: 1, createdAt: now, updatedAt: now, status: 'open',
+        prompt: request.plan.purpose, selectedConnectionId: request.connectionId, selectedModelId: request.modelId,
+        resolvedModelId: model.modelId, connectionFingerprint: model.fingerprint, createGroup: true, groupTitle: request.plan.name,
+        generationId, generationStatus: 'succeeded', manuallyEdited: false, validationErrors: [],
+        plan: { ...request.plan, capabilityNotes: teamCapabilityNotes(request.plan.scenarioKind), plannerVersion: TEAM_PLANNER_VERSION, generationId,
+          members: request.plan.members.map((member, index) => ({ ...member, memberKey: randomUUID(), avatarId: avatarPresets[index % avatarPresets.length].id, color: teamColors[index % teamColors.length] })) },
+      }
+      draft.planInputHash = teamInputHash(draft); validateTeamDraft(draft)
+      return { operation: await this.freeze(tx, draft, request.requestId, requestHash), start: true }
+    })
+    if (result.start) this.start(result.operation.id, result.operation.version)
+    this.hooks.changed(); return result.operation
+  }
+  private async freeze(tx: RecordTransaction, draft: TeamDraft, requestId: string, requestHash: string) {
+    const plan = teamPlanSchema.parse(draft.plan), id = randomUUID(), createdAt = teamNow()
+    const memberIds = plan.members.map(member => ({ memberKey: member.memberKey, agentId: randomUUID() }))
+    const agents: DigitalAgent[] = plan.members.map((member, index) => {
+      const agentId = memberIds[index].agentId
+      const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
+      return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource: { kind: 'team-planner', operationId: id, memberKey: member.memberKey, plannerVersion: plan.plannerVersion } }
+    })
+    const conversationId = draft.createGroup ? randomUUID() : undefined
+    const conversation: Conversation | undefined = conversationId ? { id: conversationId, kind: 'group', title: draft.groupTitle, agentIds: agents.map(agent => agent.id), mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource: { kind: 'team-planner', operationId: id, plannerVersion: plan.plannerVersion }, teamSetup: { purpose: plan.purpose, collaborationGuide: plan.collaborationGuide, scenarioKind: plan.scenarioKind } } : undefined
+    const operation: TeamCreationOperation = { id, requestId, requestHash, draftId: draft.id, acceptedDraftVersion: draft.version, payloadHash: draft.planHash!, version: 1, status: 'accepted', createdAt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, connectionFingerprint: draft.connectionFingerprint!, agents, conversation, memberIds, conversationId, files: [], directories: [] }
+    await this.config(tx, operation)
+    Object.assign(operation, teamFileLog(operation, this.homes))
+    draft.creationOperationId = operation.id; draft.version++; draft.updatedAt = teamNow()
+    await tx.put(teamRecord('teamCreations', operation)); await tx.put(teamRecord('teamDrafts', draft)); return operation
+  }
+  async waitForCompletion(operationId: string, signal?: AbortSignal) {
+    const id = teamId.parse(operationId)
+    const running = this.running.get(id)
+    let cancellation: Promise<void> | undefined, cancellationError: unknown
+    const cancel = () => {
+      if (cancellation) return
+      running?.controller.abort()
+      cancellation = (async () => {
+        const operation = await this.get({ operationId: id })
+        if (['committed', 'cancelled'].includes(operation.status)) return
+        const { draft } = await this.repo.get({ draftId: operation.draftId })
+        await this.abandon({ draftId: draft.id, expectedVersion: draft.version })
+      })().catch(error => { cancellationError = error })
+    }
+    signal?.addEventListener('abort', cancel, { once: true })
+    if (signal?.aborted) cancel()
+    try {
+      await running?.task
+      const completed = await this.get({ operationId: id })
+      signal?.removeEventListener('abort', cancel)
+      await cancellation
+      if (cancellationError) throw cancellationError
+      return cancellation ? await this.get({ operationId: id }) : completed
+    } finally { signal?.removeEventListener('abort', cancel) }
+  }
   private start(id: string, version: number) {
     const controller = new AbortController()
-    const task = Promise.resolve().then(() => this.hooks.critical(() => this.execute(id, version, controller.signal)))
+    const task = Promise.resolve().then(() => this.execute(id, version, controller.signal))
       .catch(async error => { await this.fail(id, undefined, error, version) })
       .finally(() => { this.running.delete(id); this.hooks.changed() })
     this.running.set(id, { controller, task })
@@ -90,26 +141,31 @@ export class TeamCreationService {
     })
   }
   private async execute(id: string, version: number, signal: AbortSignal) {
-    const operation = await this.claim(id, version)
+    const operation = await this.hooks.critical(() => this.claim(id, version))
     try {
       await this.files.prepare(operation, signal, () => this.persist(operation))
       operation.status = 'ready_to_commit'; await this.persist(operation)
       await this.hooks.checkpoint?.('before-commit', operation); signal.throwIfAborted()
-      await this.files.inspect(operation, true)
-      await this.repo.store.transaction(async tx => {
-        const current = await this.read(tx, id)
-        if (current.attemptId !== operation.attemptId || current.cancelRequested || current.status !== 'ready_to_commit') teamError('DRAFT_CONFLICT', '创建已停止或执行权已变化')
-        await this.config(tx, current)
-        for (const agent of current.agents) { if (await tx.get('agents', agent.id)) teamError('FILES_CONFLICT', '员工身份已被占用'); await tx.put(teamRecord('agents', agent)) }
-        if (current.conversation) { if (await tx.get('conversations', current.conversation.id)) teamError('FILES_CONFLICT', '群聊身份已被占用'); await tx.put(teamRecord('conversations', current.conversation)) }
-        current.status = 'committed'; current.committedAt = teamNow(); current.version++
-        const draft = await readTeamDraft(tx, current.draftId)
-        await createTeamContactCategory(tx, current.id, draft.plan!.name, current.memberIds.map(member => member.agentId))
-        draft.status = 'committed'; draft.version++; draft.updatedAt = teamNow()
-        await tx.put(teamRecord('teamDrafts', draft)); await tx.put(teamRecord('teamCreations', current))
+      await this.hooks.critical(async () => {
+        signal.throwIfAborted()
+        await this.files.inspect(operation, true)
+        await this.repo.store.transaction(async tx => {
+          signal.throwIfAborted()
+          const current = await this.read(tx, id)
+          if (current.attemptId !== operation.attemptId || current.cancelRequested || current.status !== 'ready_to_commit') teamError('DRAFT_CONFLICT', '创建已停止或执行权已变化')
+          await this.config(tx, current)
+          for (const agent of current.agents) { if (await tx.get('agents', agent.id)) teamError('FILES_CONFLICT', '员工身份已被占用'); await tx.put(teamRecord('agents', agent)) }
+          if (current.conversation) { if (await tx.get('conversations', current.conversation.id)) teamError('FILES_CONFLICT', '群聊身份已被占用'); await tx.put(teamRecord('conversations', current.conversation)) }
+          current.status = 'committed'; current.committedAt = teamNow(); current.version++
+          const draft = await readTeamDraft(tx, current.draftId)
+          await createTeamContactCategory(tx, current.id, draft.plan!.name, current.memberIds.map(member => member.agentId))
+          draft.status = 'committed'; draft.version++; draft.updatedAt = teamNow()
+          await tx.put(teamRecord('teamDrafts', draft)); await tx.put(teamRecord('teamCreations', current))
+          signal.throwIfAborted()
+        })
+        try { await this.hooks.checkpoint?.('after-commit', operation); this.hooks.install(operation.agents, operation.conversation) }
+        catch { await this.hooks.reload() }
       })
-      try { await this.hooks.checkpoint?.('after-commit', operation); this.hooks.install(operation.agents, operation.conversation) }
-      catch { await this.hooks.reload() }
     } catch (error) { await this.fail(id, operation.attemptId, error) }
   }
   private async fail(id: string, attemptId: string | undefined, error: unknown, expectedVersion?: number) {

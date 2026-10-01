@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 历史失败与当前群聊轮次隔离的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 实际悬停工具条与 Base UI 筛选交互；消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；实际悬停工具条与 Base UI 筛选交互；消息图标锚定、员工筛选、真实节点输入输出、任务面板分离与历史重启验证；从会话菜单进入活动详情，验证历史失败与当前群聊轮次隔离的真实桌面断言。
  * [POS]: tests/e2e/steps/history.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
+import { isCoreAgent } from '../../../src/shared/domain/core-agent'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
@@ -74,7 +75,7 @@ async function prepareHistory(runtime: Desktop) {
       }),
     port,
   )
-  for (const agent of initial.agents)
+  for (const agent of initial.agents.filter(agent => !isCoreAgent(agent)))
     await page.evaluate(
       ({ agent, connectionId }) => {
         const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
@@ -84,7 +85,7 @@ async function prepareHistory(runtime: Desktop) {
     )
   const group = await page.evaluate(
     (agentIds) => window.boai.request('createConversation', { kind: 'group', title: '已有历史的群', agentIds }),
-    initial.agents.map((a) => a.id),
+    initial.agents.filter(agent => !isCoreAgent(agent)).map((a) => a.id),
   )
   const detail = () => runtime.page.evaluate((id) => window.boai.request('getConversation', { id }), group.id)
   const send = async (content: string) => {

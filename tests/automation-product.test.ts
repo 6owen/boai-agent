@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 独立产品数据库、真实 AppService、受控模型及固定日历规则。
- * [OUTPUT]: 连接地址变化/删除后拒绝旧授权且重启不补执行；超过摘要上限的待处理分类/稳定分页/解除与旧触发最新结束结果；真实结果入通知账本、宿主回执与业务交付/预算隔离；超过 300 条持久历史的稳定边界/筛选/重启；独立任务聊天/普通单聊复用、原始权限/来源、初始化失败、时间预览与星期规则不变量验证。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；连接地址变化/删除后拒绝旧授权且重启不补执行；超过摘要上限的待处理分类/稳定分页/解除与旧触发最新结束结果；真实结果入通知账本、宿主回执与业务交付/预算隔离；超过 300 条持久历史的稳定边界/筛选/重启；独立任务聊天/普通单聊复用、原始权限/来源、初始化失败、时间预览与星期规则不变量验证。
  * [POS]: 自动化产品目标与任务上下文集成验收；不运行用户真实计划或外部模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -34,6 +34,7 @@ async function setup() {
 }
 it('creates two isolated task chats for one employee and still reuses the ordinary personal chat', async () => {
   const f = await setup()
+  const employeeIds = (await f.service.handle('snapshot', undefined) as Snapshot).agents.map(agent => agent.id)
   const personalInput = { kind: 'direct', title: '人工会话', agentIds: ['researcher'] }
   const personal = await f.service.handle('createConversation', personalInput) as Conversation
   await f.service.handle('sendMessage', { conversationId: personal.id, content: '这段人工历史不属于自动化', mentionIds: [], requestId: 'personal' })
@@ -55,7 +56,7 @@ it('creates two isolated task chats for one employee and still reuses the ordina
     expect(ctx.workspace!.sharedPath).toBe(join(f.root, 'workspaces', id))
   }
   expect(await f.service.handle('createConversation', personalInput)).toMatchObject({ id: personal.id })
-  expect((await f.service.handle('snapshot', undefined) as Snapshot).agents).toHaveLength(3)
+  expect((await f.service.handle('snapshot', undefined) as Snapshot).agents.map(agent => agent.id)).toEqual(employeeIds)
   await f.service.close()
   const restarted = await f.make()
   expect(await restarted.handle('createConversation', personalInput)).toMatchObject({ id: personal.id })

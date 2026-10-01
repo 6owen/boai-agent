@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 相同场景/模型配置、基线或候选 AppService/Mastra 和临时运行目录。
- * [OUTPUT]: 业务素材/任意角色/事件与注入、完整产物hash、共享预算/留出冻结校验、分阶段时间及自动报告。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；业务素材/任意角色/事件与注入、完整产物hash、共享预算/留出冻结校验、分阶段时间及自动报告。
  * [POS]: tests/evaluation/harness.ts，手动供应商评估；不将自动检查替代语义复核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, relative, dirname, isAbsolute } from 'node:path'
 import { createHash } from 'node:crypto'
+import { isCoreAgent } from '../../src/shared/domain/core-agent'
 import type { AppService as Service } from '../../src/runtime/service'
 import type { MastraEngine as Engine } from '../../src/runtime/adapters/mastra/engine'
 import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
@@ -108,7 +109,7 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
           const saved = await service.handle('saveConnection', { name: `Evaluation ${savedConnections.length}`, provider: item.connection.provider, baseUrl: item.connection.baseUrl, defaultModel: item.connection.defaultModel }) as Connection
           keys.set(saved.id, item.apiKey); savedConnections.push(saved)
         }
-        const defaults = (await service.handle('snapshot', undefined) as Snapshot).agents
+        const defaults = (await service.handle('snapshot', undefined) as Snapshot).agents.filter(agent => !isCoreAgent(agent))
         for (let i = 0; i < (settings.team === 'single' ? 1 : scenario.members); i++) {
           const [name, role] = settings.team === 'single' ? ['综合员工', '独立完成资料读取、计算、复核与交付'] : (scenario.roles ?? employees)[i]
           const saved = savedConnections[i % savedConnections.length]

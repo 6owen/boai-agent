@@ -1,6 +1,6 @@
 /*
  * [INPUT]: colors.css 的主题、Soft 表面 token 与基础组件的 data-slot 与语义变体。
- * [OUTPUT]: 全局 DragList 落点/拖动态及会话与通讯录共用无底色折叠标题和悬停箭头；6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
+ * [OUTPUT]: 折叠标题整行可点击、12px 箭头旋转与统一高度展开，适配减少动态效果；分组标题右侧图标仅整行悬停/聚焦/菜单打开时显现、保留占位且与标题共用弱化色；全局 DragList 落点/拖动态及会话与通讯录共用无底色折叠标题和小箭头；6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top 与 Separator 统一行间和页脚分割。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -190,11 +190,31 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
 .drag-list-row { position:relative }
 .drag-list-dragging { opacity:.35 }
-.conversation-section-heading { display:flex;align-items:center;gap:5px;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
+.conversation-section-heading { display:flex;align-items:center;justify-content:flex-start;gap:5px;width:100%;text-align:left;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
 .conversation-section-heading[aria-expanded]:not(:disabled):not([aria-disabled=true]) { background:transparent }
-.conversation-section-heading>.app-icon { opacity:0 }
+.conversation-section-heading>.app-icon { width:12px !important;height:12px !important;opacity:.75;transition:transform .2s ease,opacity .2s ease }
 .conversation-section-heading:is(:hover,:focus-visible)>.app-icon { opacity:1 }
 .conversation-section-heading[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
+.conversation-section-row { display:flex;align-items:center;gap:2px;margin:8px 0 3px }
+.conversation-section-row>.conversation-section-heading { flex:1;min-width:0;width:auto;margin:0 }
+.conversation-section-row>.conversation-section-action { color:var(--muted-foreground);opacity:0;pointer-events:none;transition-property:background-color,box-shadow,transform,color,opacity }
+.conversation-section-row:is(:hover,:focus-within,[data-menu-open=true])>.conversation-section-action { opacity:1;pointer-events:auto }
+[data-slot=collapsible-trigger] { width:100%;text-align:left }
+[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=accordion-trigger-icon] { width:12px !important;height:12px !important;transition:transform .2s ease }
+[data-slot=collapsible-trigger][aria-expanded=true]>.app-icon[class*=chevron-right],details[open]>summary>.app-icon[class*=chevron-right] { transform:rotate(90deg) }
+[data-slot=collapsible-content],[data-slot=accordion-content] { overflow:hidden;opacity:1;transition:height .22s ease,opacity .18s ease }
+[data-slot=collapsible-content] { height:var(--collapsible-panel-height) }
+[data-slot=accordion-content] { height:var(--accordion-panel-height) }
+[data-slot=collapsible-content]:is([data-starting-style],[data-ending-style]),[data-slot=accordion-content]:is([data-starting-style],[data-ending-style]) { height:0;opacity:0 }
+details>summary { width:100%;cursor:pointer }
+details>summary::marker { font-size:12px }
+@supports (interpolate-size:allow-keywords) {
+  details::details-content { interpolate-size:allow-keywords;block-size:0;overflow:clip;transition:block-size .22s ease,content-visibility .22s allow-discrete }
+  details[open]::details-content { block-size:auto }
+}
+@media (prefers-reduced-motion:reduce) {
+  .conversation-section-heading>.app-icon,.conversation-section-action,[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=collapsible-content],[data-slot=accordion-content],details::details-content { transition:none }
+}
 .drag-list-group-target[data-drop=inside] { border-radius:var(--radius-control);box-shadow:inset 0 0 0 1px var(--primary);background:var(--selection) }
 .detail-tab.dragging { opacity:.4 }
 .detail-tab[data-drop]::after { content:"";position:absolute;top:4px;bottom:4px;width:2px;background:var(--primary);pointer-events:none }

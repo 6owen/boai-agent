@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 受控会话草稿、真实成员、发送与已有会话操作、共享 Soft composer/Popover。
- * [OUTPUT]: 真实行内成员节点与系统按钮皮肤、@ / 筛选和光标处插入；编辑器管理选区/删除/IME/历史，单聊保留原生 textarea，不显示额外提及栏。
+ * [OUTPUT]: 未提交首条消息时隐藏依赖会话的目录/产物命令；真实行内成员节点与系统按钮皮肤、@ / 筛选和光标处插入；编辑器管理选区/删除/IME/历史，单聊保留原生 textarea，不显示额外提及栏。
  * [POS]: 会话私有 composer 增强；参考 https://www.beautifului.dev/r/prompt-bar.json，复用本项目组件，不接入演示数据或全局皮肤。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -33,11 +33,12 @@ export interface PromptBarHandle { mention(id: string): void }
 interface Props {
   ref?: Ref<PromptBarHandle>
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
+  conversationReady?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void
   children(openMenu: (kind: Menu) => void, menu: Menu | null): ReactNode
 }
 
-export function PromptBar({ ref, draft, setDraft, members, group, external, placeholder, onSend, onActivity, onOpenWorkspace, children }: Props) {
+export function PromptBar({ ref, draft, setDraft, members, group, external, placeholder, conversationReady = true, onSend, onActivity, onOpenWorkspace, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null), list = useRef<HTMLDivElement>(null)
   const richInput = useRef<MentionInputHandle>(null)
   const mentions = draftMentions(draft)
@@ -52,7 +53,7 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
   const query = manual ? '' : token?.query ?? ''
   const rows = menu === 'at'
     ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: `@${member.name}`, description: member.role || '群聊成员', member }))
-    : commands.filter(command => command.name.slice(1).startsWith(query) || command.description.includes(query)).map(command => ({ ...command, member: undefined }))
+    : commands.filter(command => (conversationReady || command.prompt) && (command.name.slice(1).startsWith(query) || command.description.includes(query))).map(command => ({ ...command, member: undefined }))
   const selected = Math.min(active, Math.max(0, rows.length - 1))
   useLayoutEffect(() => { setActive(0) }, [menu, query])
   useLayoutEffect(() => { list.current?.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest' }) }, [menu, selected])
