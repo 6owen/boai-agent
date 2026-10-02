@@ -1,11 +1,13 @@
 /*
  * [INPUT]: 受控会话草稿、真实成员、发送与已有会话操作、共享 Soft composer/Popover。
- * [OUTPUT]: 未提交首条消息时隐藏依赖会话的目录/产物命令；真实行内成员节点与系统按钮皮肤、@ / 筛选和光标处插入；编辑器管理选区/删除/IME/历史，单聊保留原生 textarea，不显示额外提及栏。
+ * [OUTPUT]: 原问题关联停用点名、未知请求冻结编辑并提供聚焦；未提交首条消息时隐藏依赖会话的目录/产物命令；真实行内成员节点与系统按钮皮肤、@ / 筛选和光标处插入；编辑器管理选区/删除/IME/历史，单聊保留原生 textarea，不显示额外提及栏。
+ * [OUTPUT]: 附件通过独立slot显示在composer内部文本框上方；单聊和群聊粘贴优先收真实File，再处理明确系统文件引用；普通文本/HTML仍纯文本，不把路径文字当文件来源。
  * [POS]: 会话私有 composer 增强；参考 https://www.beautifului.dev/r/prompt-bar.json，复用本项目组件，不接入演示数据或全局皮肤。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useId, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import type { DigitalAgent } from '@shared/domain'
+import { CLIPBOARD_MATERIAL_FILE_FORMATS } from '@shared/ipc'
 import type { ChatDraft } from '../presentation'
 import { draftMentions, insertDraftMention } from '../inline-mentions'
 import { Avatar } from '@/components/common'
@@ -29,16 +31,19 @@ const commands = [
   { id: 'files', name: '/files', description: '打开任务与产物', icon: FileText },
   { id: 'workspace', name: '/workspace', description: '打开会话工作目录', icon: FolderOpen },
 ]
-export interface PromptBarHandle { mention(id: string): void }
+export interface PromptBarHandle { mention(id: string): void; focus(): void }
 interface Props {
   ref?: Ref<PromptBarHandle>
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
   conversationReady?: boolean
+  mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void
+  onPasteMaterials?(files?: File[]): void
+  attachments?: ReactNode
   children(openMenu: (kind: Menu) => void, menu: Menu | null): ReactNode
 }
 
-export function PromptBar({ ref, draft, setDraft, members, group, external, placeholder, conversationReady = true, onSend, onActivity, onOpenWorkspace, children }: Props) {
+export function PromptBar({ ref, draft, setDraft, members, group, external, placeholder, conversationReady = true, mentionsAllowed = true, disabled = false, onSend, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null), list = useRef<HTMLDivElement>(null)
   const richInput = useRef<MentionInputHandle>(null)
   const mentions = draftMentions(draft)
@@ -49,7 +54,7 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
   let searchable = draft.text
   for (const mention of [...mentions].reverse()) searchable = searchable.slice(0, mention.start) + ' '.repeat(mention.end - mention.start) + searchable.slice(mention.end)
   const token = !dismissed && !composing ? tokenAt(searchable, selection.start, selection.end) : null
-  const menu = manual ?? (token?.kind === 'at' && !group ? null : token?.kind ?? null)
+  const menu = disabled ? null : manual === 'at' && !mentionsAllowed ? null : manual ?? (token?.kind === 'at' && (!group || !mentionsAllowed) ? null : token?.kind ?? null)
   const query = manual ? '' : token?.query ?? ''
   const rows = menu === 'at'
     ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: `@${member.name}`, description: member.role || '群聊成员', member }))
@@ -59,12 +64,12 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
   useLayoutEffect(() => { list.current?.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest' }) }, [menu, selected])
   useLayoutEffect(() => {
     // Migrate an already-open draft's old mention row into the editor once.
-    if (group && !draft.mentions && draft.mentionIds.length) {
+    if (group && !disabled && !draft.mentions && draft.mentionIds.length) {
       let next = { ...draft, mentions: [], mentionIds: [] } as ChatDraft
       for (const member of members.filter(member => member.active && draft.mentionIds.includes(member.id)).reverse()) next = insertDraftMention(next, { start: 0, end: 0 }, member).draft
       setDraft(next)
     }
-  }, [draft.text, draft.mentions, draft.mentionIds, group, members, setDraft])
+  }, [draft.text, draft.mentions, draft.mentionIds, group, disabled, members, setDraft])
   useLayoutEffect(() => {
     const element = input.current
     if (!element) return
@@ -73,11 +78,13 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
   }, [draft.text])
   const close = () => { setManual(null); setDismissed(true) }
   const focus = () => group ? richInput.current?.focus() : input.current?.focus({ preventScroll: true })
-  useImperativeHandle(ref, () => ({ mention: id => {
+  useImperativeHandle(ref, () => ({ focus, mention: id => {
+    if (disabled || !mentionsAllowed) return
     const member = members.find(member => member.id === id && member.active)
     if (member && group && richInput.current) { richInput.current.replace(richInput.current.selection(), '', member); close() }
   } }))
   const pick = (id: string) => {
+    if (disabled) return
     const range = token?.kind === menu ? token : selection
     if (menu === 'at') {
       const member = members.find(item => item.id === id && item.active)
@@ -101,10 +108,12 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
     else if (command.id === 'workspace') onOpenWorkspace()
   }
   const openMenu = (kind: Menu) => {
+    if (disabled || kind === 'at' && !mentionsAllowed) return
     if (menu === kind) { close(); focus(); return }
     setManual(kind); setDismissed(false); setActive(0); focus()
   }
   const keyDown = (event: KeyboardEvent) => {
+    if (disabled) return
     if (composing || event.isComposing || event.keyCode === 229) return
     if (menu) {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return }
@@ -123,14 +132,33 @@ export function PromptBar({ ref, draft, setDraft, members, group, external, plac
     }
     if (!external && event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend() }
   }
+  const paste = (event: ClipboardEvent) => {
+    const data = event.clipboardData
+    if (!data || !onPasteMaterials) return false
+    const files = Array.from(data.files)
+    if (!files.length) for (const item of Array.from(data.items)) {
+      if (item.kind !== 'file') continue
+      const file = item.getAsFile()
+      if (file) files.push(file)
+    }
+    const systemFiles = Array.from(data.types).some(type => {
+      if (!CLIPBOARD_MATERIAL_FILE_FORMATS.some(format => format.toLowerCase() === type.toLowerCase())) return false
+      return type.toLowerCase() !== 'text/uri-list' || data.getData(type).split(/\r?\n/).some(line => /^file:/i.test(line.trim()))
+    })
+    if (!files.length && !systemFiles) return false
+    event.preventDefault()
+    if (!disabled) onPasteMaterials(files.length ? files : undefined)
+    return true
+  }
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
     <ChatComposer ref={anchor}>
-      {group ? <MentionInput ref={richInput} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined}
-        onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onComposing={setComposing} /> :
-      <ChatComposerInput ref={input} aria-label="消息内容" aria-autocomplete="list" aria-controls={menu ? listId : undefined} aria-activedescendant={menu && rows.length ? `${listId}-${selected}` : undefined} placeholder={placeholder} value={draft.text}
+      {attachments}
+      {group ? <MentionInput ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined}
+        onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} /> :
+      <ChatComposerInput ref={input} disabled={disabled} aria-label="消息内容" aria-autocomplete="list" aria-controls={menu ? listId : undefined} aria-activedescendant={menu && rows.length ? `${listId}-${selected}` : undefined} placeholder={placeholder} value={draft.text}
         onChange={event => { setDraft({ ...draft, text: event.target.value }); setSelection({ start: event.target.selectionStart, end: event.target.selectionEnd }); setManual(null); setDismissed(false) }}
         onSelect={event => setSelection({ start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd })}
-        onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} onKeyDown={event => keyDown(event.nativeEvent)} />}
+        onPaste={event => { paste(event.nativeEvent) }} onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)} onKeyDown={event => keyDown(event.nativeEvent)} />}
       {children(openMenu, menu)}
     </ChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-(--anchor-width) max-w-[calc(100vw-24px)] gap-1.5 p-2">

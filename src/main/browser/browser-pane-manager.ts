@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；作用域授权回调。
- * [OUTPUT]: 保留原布局/地址栏/遮罩；独立持久 partition、三 View 沙箱、真实工具栏/退出及受管下载/权限/sender 门禁；AX 可操作元素稀疏只作诊断，明确验证证据才触发人工接管。
+ * [OUTPUT]: 固定地址栏布局/正常窗口缩放与网页输入，无员工遮罩或操作权菜单；销毁中不布局，冻结 WebContents 校验来源；navigationHistory/console-message 对象事件、独立持久 partition/沙箱/真实退出与受管下载/权限/sender 门禁。
  * [POS]: src/main/browser/browser-pane-manager.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -19,7 +19,6 @@ import { BrowserView, BrowserWindow, ipcMain, nativeTheme, session, type Session
 import { mainLog } from './logger'
 import { BrowserCDP, type AccessibilitySnapshot, type ElementGeometry } from './browser-cdp'
 import type { BrowserInstanceInfo, BrowserInstanceSnapshot, BrowserManagerOptions } from './types'
-import { getBrowserLiveFxCornerRadii } from '../../shared/ipc/browser-live-fx'
 
 export type { BrowserInstanceInfo }
 
@@ -105,26 +104,11 @@ const TOOLBAR_CHANNELS = {
   GO_FORWARD: 'browser-toolbar:go-forward',
   RELOAD: 'browser-toolbar:reload',
   STOP: 'browser-toolbar:stop',
-  MENU_GEOMETRY: 'browser-toolbar:menu-geometry',
-  FORCE_CLOSE_MENU: 'browser-toolbar:force-close-menu',
-  HIDE: 'browser-toolbar:hide',
   DESTROY: 'browser-toolbar:destroy',
   STATE_UPDATE: 'browser-toolbar:state-update',
   THEME_COLOR: 'browser-toolbar:theme-color',
 } as const
 const UI_SESSION_PARTITION = 'boai:browser-ui'
-
-interface AgentControlState {
-  active: boolean
-  sessionId: string
-  displayName?: string
-  intent?: string
-}
-
-interface AgentControlLockState {
-  active: boolean
-  previousResizable: boolean
-}
 
 interface BrowserInstance {
   id: string
@@ -153,18 +137,11 @@ interface BrowserInstance {
   workspaceId: string | null
   isVisible: boolean
   isHiding: boolean
-  keepAliveOnWindowClose: boolean
   toolbarReady: boolean
-  toolbarMenuOpen: boolean
-  toolbarMenuHeight: number
-  toolbarMenuOverlayActive: boolean
   showOnCreate: boolean
   pendingShowOnReady: boolean
   pendingShowToken: number
   lastAction: LastBrowserAction | null
-  agentControl: AgentControlState | null
-  lockState: AgentControlLockState
-  nativeOverlayReady: boolean
   themeColor: string | null
   inPageThemeTimer: ReturnType<typeof setTimeout> | null
   themeObserverToken: string | null
@@ -459,21 +436,11 @@ export class BrowserPaneManager {
       workspaceId,
       isVisible: false,
       isHiding: false,
-      keepAliveOnWindowClose: true,
       toolbarReady: false,
-      toolbarMenuOpen: false,
-      toolbarMenuHeight: 0,
-      toolbarMenuOverlayActive: false,
       showOnCreate: shouldShow,
       pendingShowOnReady: false,
       pendingShowToken: 0,
       lastAction: null,
-      agentControl: null,
-      lockState: {
-        active: false,
-        previousResizable: this.getWindowResizable(window),
-      },
-      nativeOverlayReady: false,
       themeColor: null,
       inPageThemeTimer: null,
       themeObserverToken: null,
@@ -492,10 +459,12 @@ export class BrowserPaneManager {
     }
 
     window.addBrowserView(pageView)
+    // Retain ownership of the third sandboxed view for actual-exit accounting;
+    // it stays zero-sized and never paints a shield or intercepts page input.
     window.addBrowserView(nativeOverlayView)
+    nativeOverlayView.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     window.addBrowserView(toolbarView)
     window.setTopBrowserView(toolbarView)
-    void this.loadNativeOverlayPage(instance)
 
     this.layoutAllViews(instance)
 
@@ -685,15 +654,15 @@ export class BrowserPaneManager {
 
   async goBack(id: string): Promise<void> {
     const instance = this.requireAliveInstance(id)
-    if (instance.pageView.webContents.canGoBack()) {
-      instance.pageView.webContents.goBack()
+    if (instance.pageView.webContents.navigationHistory.canGoBack()) {
+      instance.pageView.webContents.navigationHistory.goBack()
     }
   }
 
   async goForward(id: string): Promise<void> {
     const instance = this.requireAliveInstance(id)
-    if (instance.pageView.webContents.canGoForward()) {
-      instance.pageView.webContents.goForward()
+    if (instance.pageView.webContents.navigationHistory.canGoForward()) {
+      instance.pageView.webContents.navigationHistory.goForward()
     }
   }
 
@@ -754,7 +723,6 @@ export class BrowserPaneManager {
       instance.pendingShowToken += 1
     }
 
-    this.forceCloseToolbarMenu(instance, 'window-hide')
 
     win.hide()
 
@@ -946,159 +914,137 @@ export class BrowserPaneManager {
     }
   }
 
-  private suspendOverlayForCapture(instance: BrowserInstance): boolean {
-    const shouldSuspend = !!instance.agentControl?.active
-      && instance.nativeOverlayReady
-
-    if (!shouldSuspend) return false
-
-    instance.nativeOverlayView.setBounds({ x: 0, y: 0, width: 0, height: 0 })
-    return true
-  }
-
-  private restoreOverlayAfterCapture(instance: BrowserInstance, suspended: boolean): void {
-    if (!suspended) return
-    this.updateNativeOverlayState(instance)
-  }
-
   async screenshot(id: string, options?: BrowserScreenshotOptions): Promise<BrowserScreenshotResult> {
     const instance = this.requireAliveInstance(id)
 
-    // Hide native agent overlay so it doesn't appear in captures
-    const suspendedOverlay = this.suspendOverlayForCapture(instance)
+    // When annotating, force agent mode and gather refs from accessibility tree
+    const annotate = !!options?.annotate
+    const mode = (annotate || options?.mode === 'agent') ? 'agent' : 'raw'
 
-    try {
-      // When annotating, force agent mode and gather refs from accessibility tree
-      const annotate = !!options?.annotate
-      const mode = (annotate || options?.mode === 'agent') ? 'agent' : 'raw'
+    if (mode === 'raw') {
+      const viewport = await instance.cdp.getViewportMetrics()
+      const captured = await this.capturePageWithRecovery(instance, {
+        mode,
+        errorPrefix: 'screenshot',
+        dpr: viewport.dpr,
+        format: options?.format,
+        jpegQuality: options?.jpegQuality,
+      })
 
-      if (mode === 'raw') {
-        const viewport = await instance.cdp.getViewportMetrics()
-        const captured = await this.capturePageWithRecovery(instance, {
-          mode,
-          errorPrefix: 'screenshot',
-          dpr: viewport.dpr,
-          format: options?.format,
-          jpegQuality: options?.jpegQuality,
-        })
-
-        return {
-          imageBuffer: captured.imageBuffer,
-          imageFormat: captured.imageFormat,
-          metadata: options?.includeMetadata
-            ? {
-              mode: 'raw',
-              warnings: captured.warnings.length > 0 ? captured.warnings : undefined,
-            }
-            : undefined,
-        }
-      }
-
-      const warnings: string[] = []
-      const geometries: ElementGeometry[] = []
-
-      const MAX_ANNOTATED_REFS = 100
-      let refs = options?.refs ?? []
-
-      if (annotate) {
-        try {
-          const snapshot = await instance.cdp.getAccessibilitySnapshot()
-          refs = snapshot.nodes.map((node) => node.ref).slice(0, MAX_ANNOTATED_REFS)
-          if (snapshot.nodes.length > MAX_ANNOTATED_REFS) {
-            warnings.push(`Annotation capped at ${MAX_ANNOTATED_REFS} of ${snapshot.nodes.length} elements`)
+      return {
+        imageBuffer: captured.imageBuffer,
+        imageFormat: captured.imageFormat,
+        metadata: options?.includeMetadata
+          ? {
+            mode: 'raw',
+            warnings: captured.warnings.length > 0 ? captured.warnings : undefined,
           }
-        } catch (error) {
-          warnings.push(`Accessibility snapshot for annotation failed: ${error instanceof Error ? error.message : String(error)}`)
-          refs = []
-        }
+          : undefined,
       }
+    }
 
-      const settled = await Promise.allSettled(
-        refs.map((ref) => instance.cdp.getElementGeometry(ref)),
-      )
+    const warnings: string[] = []
+    const geometries: ElementGeometry[] = []
 
-      for (let i = 0; i < settled.length; i++) {
-        const result = settled[i]!
-        if (result.status === 'fulfilled') {
-          geometries.push(result.value)
-        } else if (!annotate) {
-          const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
-          warnings.push(`Could not resolve ref ${refs[i]}: ${reason}`)
-        }
-      }
+    const MAX_ANNOTATED_REFS = 100
+    let refs = options?.refs ?? []
 
-      if (options?.includeLastAction && instance.lastAction?.geometry) {
-        geometries.push(instance.lastAction.geometry)
-      }
-
-      const metadataText = instance.lastAction
-        ? `${instance.lastAction.tool} • ${instance.lastAction.status} • ${new Date(instance.lastAction.timestamp).toISOString()}`
-        : `browser_screenshot • ${new Date().toISOString()}`
-
-      let annotationPartial = false
-
+    if (annotate) {
       try {
-        if (geometries.length > 0 || options?.includeMetadata) {
-          await instance.cdp.renderTemporaryOverlay({
-            geometries,
-            includeMetadata: !!options?.includeMetadata,
-            metadataText,
-            includeClickPoints: true,
-          })
+        const snapshot = await instance.cdp.getAccessibilitySnapshot()
+        refs = snapshot.nodes.map((node) => node.ref).slice(0, MAX_ANNOTATED_REFS)
+        if (snapshot.nodes.length > MAX_ANNOTATED_REFS) {
+          warnings.push(`Annotation capped at ${MAX_ANNOTATED_REFS} of ${snapshot.nodes.length} elements`)
         }
       } catch (error) {
-        annotationPartial = true
-        warnings.push(`Annotation overlay failed: ${error instanceof Error ? error.message : String(error)}`)
+        warnings.push(`Accessibility snapshot for annotation failed: ${error instanceof Error ? error.message : String(error)}`)
+        refs = []
+      }
+    }
+
+    const settled = await Promise.allSettled(
+      refs.map((ref) => instance.cdp.getElementGeometry(ref)),
+    )
+
+    for (let i = 0; i < settled.length; i++) {
+      const result = settled[i]!
+      if (result.status === 'fulfilled') {
+        geometries.push(result.value)
+      } else if (!annotate) {
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
+        warnings.push(`Could not resolve ref ${refs[i]}: ${reason}`)
+      }
+    }
+
+    if (options?.includeLastAction && instance.lastAction?.geometry) {
+      geometries.push(instance.lastAction.geometry)
+    }
+
+    const metadataText = instance.lastAction
+      ? `${instance.lastAction.tool} • ${instance.lastAction.status} • ${new Date(instance.lastAction.timestamp).toISOString()}`
+      : `browser_screenshot • ${new Date().toISOString()}`
+
+    let annotationPartial = false
+
+    try {
+      if (geometries.length > 0 || options?.includeMetadata) {
+        await instance.cdp.renderTemporaryOverlay({
+          geometries,
+          includeMetadata: !!options?.includeMetadata,
+          metadataText,
+          includeClickPoints: true,
+        })
+      }
+    } catch (error) {
+      annotationPartial = true
+      warnings.push(`Annotation overlay failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    try {
+      const viewport = await instance.cdp.getViewportMetrics()
+      const captured = await this.capturePageWithRecovery(instance, {
+        mode,
+        errorPrefix: 'screenshot',
+        dpr: viewport.dpr,
+        format: options?.format,
+        jpegQuality: options?.jpegQuality,
+      })
+
+      if (captured.warnings.length > 0) {
+        warnings.push(...captured.warnings)
       }
 
-      try {
-        const viewport = await instance.cdp.getViewportMetrics()
-        const captured = await this.capturePageWithRecovery(instance, {
-          mode,
-          errorPrefix: 'screenshot',
-          dpr: viewport.dpr,
-          format: options?.format,
-          jpegQuality: options?.jpegQuality,
-        })
-
-        if (captured.warnings.length > 0) {
-          warnings.push(...captured.warnings)
-        }
-
-        return {
-          imageBuffer: captured.imageBuffer,
-          imageFormat: captured.imageFormat,
-          metadata: {
-            mode: 'agent',
-            viewport,
-            targets: geometries.map((g) => ({
-              ref: g.ref,
-              role: g.role,
-              name: g.name,
-              box: g.box,
-              clickPoint: g.clickPoint,
-            })),
-            action: instance.lastAction
-              ? {
-                tool: instance.lastAction.tool,
-                ref: instance.lastAction.ref,
-                status: instance.lastAction.status,
-                timestamp: instance.lastAction.timestamp,
-              }
-              : undefined,
-            annotationPartial,
-            warnings: warnings.length > 0 ? warnings : undefined,
-          },
-        }
-      } finally {
-        try {
-          await instance.cdp.clearTemporaryOverlay()
-        } catch {
-          // ignore cleanup errors
-        }
+      return {
+        imageBuffer: captured.imageBuffer,
+        imageFormat: captured.imageFormat,
+        metadata: {
+          mode: 'agent',
+          viewport,
+          targets: geometries.map((g) => ({
+            ref: g.ref,
+            role: g.role,
+            name: g.name,
+            box: g.box,
+            clickPoint: g.clickPoint,
+          })),
+          action: instance.lastAction
+            ? {
+              tool: instance.lastAction.tool,
+              ref: instance.lastAction.ref,
+              status: instance.lastAction.status,
+              timestamp: instance.lastAction.timestamp,
+            }
+            : undefined,
+          annotationPartial,
+          warnings: warnings.length > 0 ? warnings : undefined,
+        },
       }
     } finally {
-      this.restoreOverlayAfterCapture(instance, suspendedOverlay)
+      try {
+        await instance.cdp.clearTemporaryOverlay()
+      } catch {
+        // ignore cleanup errors
+      }
     }
   }
 
@@ -1118,79 +1064,73 @@ export class BrowserPaneManager {
       throw new Error('Region screenshot target is ambiguous. Provide only one of coordinates, ref, or selector')
     }
 
-    const suspendedOverlay = this.suspendOverlayForCapture(instance)
+    let box: { x: number; y: number; width: number; height: number }
 
-    try {
-      let box: { x: number; y: number; width: number; height: number }
-
-      if (hasRef) {
-        const geometry = await instance.cdp.getElementGeometry(String(target.ref))
-        box = { ...geometry.box }
-      } else if (hasSelector) {
-        const geometry = await instance.cdp.getElementGeometryBySelector(String(target.selector))
-        box = { ...geometry.box }
-      } else {
-        box = {
-          x: Number(target.x),
-          y: Number(target.y),
-          width: Number(target.width),
-          height: Number(target.height),
-        }
-      }
-
-      const padding = Math.max(0, Number(target.padding ?? 0))
+    if (hasRef) {
+      const geometry = await instance.cdp.getElementGeometry(String(target.ref))
+      box = { ...geometry.box }
+    } else if (hasSelector) {
+      const geometry = await instance.cdp.getElementGeometryBySelector(String(target.selector))
+      box = { ...geometry.box }
+    } else {
       box = {
-        x: box.x - padding,
-        y: box.y - padding,
-        width: box.width + padding * 2,
-        height: box.height + padding * 2,
+        x: Number(target.x),
+        y: Number(target.y),
+        width: Number(target.width),
+        height: Number(target.height),
       }
+    }
 
-      const viewport = await instance.cdp.getViewportMetrics()
+    const padding = Math.max(0, Number(target.padding ?? 0))
+    box = {
+      x: box.x - padding,
+      y: box.y - padding,
+      width: box.width + padding * 2,
+      height: box.height + padding * 2,
+    }
 
-      const clippedX = Math.max(0, Math.floor(box.x))
-      const clippedY = Math.max(0, Math.floor(box.y))
-      const maxWidth = Math.max(0, Math.floor(viewport.width - clippedX))
-      const maxHeight = Math.max(0, Math.floor(viewport.height - clippedY))
-      const clippedWidth = Math.min(Math.max(1, Math.floor(box.width)), maxWidth)
-      const clippedHeight = Math.min(Math.max(1, Math.floor(box.height)), maxHeight)
+    const viewport = await instance.cdp.getViewportMetrics()
 
-      if (maxWidth <= 0 || maxHeight <= 0 || clippedWidth <= 0 || clippedHeight <= 0) {
-        throw new Error('Resolved screenshot region is outside the current viewport')
-      }
+    const clippedX = Math.max(0, Math.floor(box.x))
+    const clippedY = Math.max(0, Math.floor(box.y))
+    const maxWidth = Math.max(0, Math.floor(viewport.width - clippedX))
+    const maxHeight = Math.max(0, Math.floor(viewport.height - clippedY))
+    const clippedWidth = Math.min(Math.max(1, Math.floor(box.width)), maxWidth)
+    const clippedHeight = Math.min(Math.max(1, Math.floor(box.height)), maxHeight)
 
-      const captured = await this.capturePageWithRecovery(instance, {
-        mode: 'region',
-        errorPrefix: 'region screenshot',
-        rect: {
+    if (maxWidth <= 0 || maxHeight <= 0 || clippedWidth <= 0 || clippedHeight <= 0) {
+      throw new Error('Resolved screenshot region is outside the current viewport')
+    }
+
+    const captured = await this.capturePageWithRecovery(instance, {
+      mode: 'region',
+      errorPrefix: 'region screenshot',
+      rect: {
+        x: clippedX,
+        y: clippedY,
+        width: clippedWidth,
+        height: clippedHeight,
+      },
+      dpr: viewport.dpr,
+      format: target.format,
+      jpegQuality: target.jpegQuality,
+    })
+
+    return {
+      imageBuffer: captured.imageBuffer,
+      imageFormat: captured.imageFormat,
+      metadata: {
+        mode: 'raw',
+        viewport,
+        region: {
           x: clippedX,
           y: clippedY,
           width: clippedWidth,
           height: clippedHeight,
         },
-        dpr: viewport.dpr,
-        format: target.format,
-        jpegQuality: target.jpegQuality,
-      })
-
-      return {
-        imageBuffer: captured.imageBuffer,
-        imageFormat: captured.imageFormat,
-        metadata: {
-          mode: 'raw',
-          viewport,
-          region: {
-            x: clippedX,
-            y: clippedY,
-            width: clippedWidth,
-            height: clippedHeight,
-          },
-          targetMode: hasRef ? 'ref' : hasSelector ? 'selector' : 'coords',
-          warnings: captured.warnings.length > 0 ? captured.warnings : undefined,
-        },
-      }
-    } finally {
-      this.restoreOverlayAfterCapture(instance, suspendedOverlay)
+        targetMode: hasRef ? 'ref' : hasSelector ? 'selector' : 'coords',
+        warnings: captured.warnings.length > 0 ? captured.warnings : undefined,
+      },
     }
   }
 
@@ -1781,211 +1721,16 @@ export class BrowserPaneManager {
     }
   }
 
-  async clearVisualsForSession(sessionId: string): Promise<void> {
-    for (const instance of this.instances.values()) {
-      if (instance.boundSessionId === sessionId) {
-        instance.agentControl = null
-        this.applyAgentControlLock(instance, false)
-        this.updateNativeOverlayState(instance)
-        this.emitStateChange(instance)
-      }
-    }
-  }
-
-  private getAgentControlLabel(agentControl: Pick<AgentControlState, 'displayName' | 'intent'> | null | undefined): string {
-    if (agentControl?.intent) {
-      return `${agentControl.displayName ?? 'Agent'} — ${agentControl.intent}`
-    }
-
-    return agentControl?.displayName ?? 'Agent is working…'
-  }
-
-  private reapplyAgentControlVisual(instance: BrowserInstance): void {
-    const active = !!instance.agentControl?.active
-    this.applyAgentControlLock(instance, active)
-    this.updateNativeOverlayState(instance)
-  }
-
-  /** Resolve the app's current accent color as a concrete CSS value (not a var reference). */
-  private getResolvedAccentColor(): string {
-    const isDark = nativeTheme.shouldUseDarkColors
-    return this.options.accentColor?.(isDark) ?? (isDark ? '#93c5fd' : '#3b82f6')
-  }
-
-  private async loadNativeOverlayPage(instance: BrowserInstance): Promise<void> {
-    const liveFxPlatform: Parameters<typeof getBrowserLiveFxCornerRadii>[0] =
-      process.platform === 'darwin' || process.platform === 'win32' || process.platform === 'linux'
-        ? process.platform
-        : 'other'
-    const cornerRadii = getBrowserLiveFxCornerRadii(liveFxPlatform)
-
-    const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      html, body {
-        margin: 0;
-        width: 100%;
-        height: 100%;
-        background: transparent;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      }
-      #overlay {
-        position: fixed;
-        inset: 0;
-        border: 2px solid transparent;
-        border-top-left-radius: ${cornerRadii.topLeft};
-        border-top-right-radius: ${cornerRadii.topRight};
-        border-bottom-left-radius: ${cornerRadii.bottomLeft};
-        border-bottom-right-radius: ${cornerRadii.bottomRight};
-        box-sizing: border-box;
-        pointer-events: none;
-      }
-      #chip {
-        position: fixed;
-        top: 8px;
-        right: 8px;
-        padding: 4px 8px;
-        border-radius: 7px;
-        background: rgba(2, 6, 23, 0.82);
-        color: rgba(236, 254, 255, 0.95);
-        font-size: 11px;
-        line-height: 1.2;
-        backdrop-filter: blur(4px);
-        max-width: calc(100vw - 16px);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      #shield {
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        cursor: default;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="overlay">
-      <div id="shield"></div>
-      <div id="chip">Agent is working…</div>
-    </div>
-  </body>
-</html>`
-
-    try {
-      await instance.nativeOverlayView.webContents.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`)
-      instance.nativeOverlayReady = true
-      mainLog.info(`[browser-pane] native overlay ready id=${instance.id} platform=${liveFxPlatform} corners=${cornerRadii.bottomLeft}/${cornerRadii.bottomRight}`)
-      this.updateNativeOverlayState(instance)
-    } catch (error) {
-      instance.nativeOverlayReady = false
-      mainLog.warn(`[browser-pane] native overlay load failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  private getToolbarEffectiveHeight(instance: BrowserInstance): number {
-    if (!instance.toolbarMenuOpen) return TOOLBAR_HEIGHT
-
-    const [, contentHeight] = instance.window.getContentSize()
-    return Math.max(TOOLBAR_HEIGHT, contentHeight)
+  private canLayoutViews(instance: BrowserInstance): boolean {
+    // Instances remain registered until all retained WebContents actually exit.
+    return !this.destroyingIds.has(instance.id) && !instance.window.isDestroyed()
+      && instance.ownedWebContents.every(contents => !contents.isDestroyed())
   }
 
   private layoutToolbarView(instance: BrowserInstance): void {
     const [width] = instance.window.getContentSize()
-    const toolbarHeight = this.getToolbarEffectiveHeight(instance)
-
-    instance.toolbarView.setBounds({ x: 0, y: 0, width, height: toolbarHeight })
+    instance.toolbarView.setBounds({ x: 0, y: 0, width, height: TOOLBAR_HEIGHT })
     instance.toolbarView.setAutoResize({ width: true, height: false })
-  }
-
-  private updateNativeOverlayState(instance: BrowserInstance): void {
-    if (instance.window.isDestroyed() || instance.ownedWebContents[2]!.isDestroyed()) return
-    const control = instance.agentControl
-    const agentActive = !!control?.active
-    const menuActive = !!instance.toolbarMenuOverlayActive
-    const shouldShow = agentActive || menuActive
-
-    if (!shouldShow || !instance.nativeOverlayReady || instance.window.isDestroyed()) {
-      instance.nativeOverlayView.setBounds({ x: 0, y: 0, width: 0, height: 0 })
-      if (!instance.window.isDestroyed()) {
-        instance.window.setTopBrowserView(instance.toolbarView)
-      }
-      return
-    }
-
-    const [width, height] = instance.window.getContentSize()
-    const overlayHeight = Math.max(100, height - TOOLBAR_HEIGHT)
-    instance.nativeOverlayView.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: overlayHeight })
-    instance.nativeOverlayView.setAutoResize({ width: true, height: true })
-    instance.window.setTopBrowserView(instance.toolbarView)
-
-    if (agentActive) {
-      const label = this.getAgentControlLabel(control)
-      const accent = this.getResolvedAccentColor()
-
-      void instance.nativeOverlayView.webContents.executeJavaScript(`(() => {
-        const overlay = document.getElementById('overlay');
-        const chip = document.getElementById('chip');
-        const shield = document.getElementById('shield');
-        if (!overlay || !chip || !shield) return;
-
-        overlay.style.borderColor = ${JSON.stringify(accent)};
-        overlay.style.boxShadow = 'inset 0 0 0 1px rgba(102,117,164,0.45), inset 0 0 24px rgba(102,117,164,0.28)';
-        chip.textContent = ${JSON.stringify(label)};
-        chip.style.display = 'inline-flex';
-        shield.style.pointerEvents = 'auto';
-        shield.style.cursor = 'not-allowed';
-        shield.style.background = 'rgba(2, 6, 23, 0.03)';
-      })()`).catch(() => {})
-      return
-    }
-
-    // Menu mode: transparent full-page tap-catcher, no visuals
-    void instance.nativeOverlayView.webContents.executeJavaScript(`(() => {
-      const overlay = document.getElementById('overlay');
-      const chip = document.getElementById('chip');
-      const shield = document.getElementById('shield');
-      if (!overlay || !chip || !shield) return;
-
-      overlay.style.borderColor = 'transparent';
-      overlay.style.boxShadow = 'none';
-      chip.style.display = 'none';
-      shield.style.pointerEvents = 'auto';
-      shield.style.cursor = 'default';
-      shield.style.background = 'rgba(0, 0, 0, 0.001)';
-    })()`).catch(() => {})
-  }
-
-  private getWindowResizable(window: BrowserWindow): boolean {
-    return typeof window.isResizable === 'function' ? window.isResizable() : true
-  }
-
-  private setWindowResizable(window: BrowserWindow, value: boolean): void {
-    if (!window.isDestroyed() && typeof window.setResizable === 'function') {
-      window.setResizable(value)
-    }
-  }
-
-  private applyAgentControlLock(instance: BrowserInstance, active: boolean): void {
-    const wantsLock = active && !!instance.agentControl?.active
-
-    if (wantsLock && !instance.lockState.active) {
-      instance.lockState.previousResizable = this.getWindowResizable(instance.window)
-      this.setWindowResizable(instance.window, false)
-      instance.lockState.active = true
-      mainLog.info(`[browser-pane] interaction lock enabled id=${instance.id}`)
-      return
-    }
-
-    if (!wantsLock && instance.lockState.active) {
-      this.setWindowResizable(instance.window, instance.lockState.previousResizable)
-      instance.lockState.active = false
-      mainLog.info(`[browser-pane] interaction lock released id=${instance.id}`)
-    }
   }
 
   async destroyAll(): Promise<void> {
@@ -1997,8 +1742,6 @@ export class BrowserPaneManager {
 
     this.destroyingIds.delete(instance.id)
     this.closePopupsForParent(instance.id, 'parent_destroy')
-    instance.agentControl = null
-    instance.lockState.active = false
     instance.cdp.detach()
     this.instances.delete(instance.id)
     this.removedCallback?.(instance.id)
@@ -2009,29 +1752,14 @@ export class BrowserPaneManager {
     const [width, height] = instance.window.getContentSize()
     instance.pageView.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: Math.max(100, height - TOOLBAR_HEIGHT) })
     instance.pageView.setAutoResize({ width: true, height: true })
-    this.updateNativeOverlayState(instance)
   }
 
   private layoutAllViews(instance: BrowserInstance): void {
+    if (!this.canLayoutViews(instance)) return
     this.layoutToolbarView(instance)
     this.layoutPageView(instance)
     if (!instance.window.isDestroyed()) {
       instance.window.setTopBrowserView(instance.toolbarView)
-    }
-  }
-
-  private forceCloseToolbarMenu(instance: BrowserInstance, reason: string): void {
-    if (!instance.toolbarMenuOpen && instance.toolbarMenuHeight === 0 && !instance.toolbarMenuOverlayActive) {
-      return
-    }
-
-    instance.toolbarMenuOpen = false
-    instance.toolbarMenuHeight = 0
-    instance.toolbarMenuOverlayActive = false
-    this.layoutAllViews(instance)
-
-    if (!instance.window.isDestroyed() && !instance.toolbarView.webContents.isDestroyed()) {
-      instance.toolbarView.webContents.send(TOOLBAR_CHANNELS.FORCE_CLOSE_MENU, { reason })
     }
   }
 
@@ -2156,34 +1884,51 @@ export class BrowserPaneManager {
     instance.toolbarView.webContents.send(TOOLBAR_CHANNELS.STATE_UPDATE, state)
   }
 
+  private async navigateFromToolbar(id: string, action: 'navigate' | 'back' | 'forward' | 'reload', url?: string): Promise<void> {
+    const instance = this.requireAliveInstance(id)
+    if (action === 'navigate') { await this.navigate(id, url!); return }
+    const contents = instance.pageView.webContents
+    if (action === 'back' && !contents.navigationHistory.canGoBack() || action === 'forward' && !contents.navigationHistory.canGoForward()) return
+    let finish!: () => void
+    let fail!: () => void
+    const loaded = new Promise<void>((resolve, reject) => { finish = resolve; fail = () => reject(new Error('浏览器页面已关闭')) })
+    void loaded.catch(() => undefined)
+    contents.once('did-stop-loading', finish)
+    contents.once('destroyed', fail)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      if (action === 'back') contents.navigationHistory.goBack()
+      else if (action === 'forward') contents.navigationHistory.goForward()
+      else contents.reload()
+      await Promise.race([loaded, new Promise<never>((_, reject) => {
+        timer = setTimeout(() => { if (!contents.isDestroyed()) contents.stop(); reject(new Error('网页加载超时，已停止加载')) }, 30_000)
+      })])
+    } finally {
+      if (timer) clearTimeout(timer)
+      contents.removeListener('did-stop-loading', finish)
+      contents.removeListener('destroyed', fail)
+      await this.waitForLoads(id)
+    }
+  }
+
   /** Register IPC handlers for toolbar actions. Call once at app startup. */
   registerToolbarIpc(): void {
     const findInstance = (event: IpcMainInvokeEvent, instanceId: string): BrowserInstance => {
       const instance = this.instances.get(instanceId)
-      if (!instance || event.sender !== instance.toolbarView.webContents || event.senderFrame !== event.sender.mainFrame || !this.isToolbarUiDocumentUrl(event.sender.getURL())) throw new Error('无效的浏览器工具栏来源')
+      if (!instance || event.sender !== instance.ownedWebContents[0] || event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame || !this.isToolbarUiDocumentUrl(event.sender.getURL())) throw new Error('无效的浏览器工具栏来源')
       return instance
     }
-    const manual = (event: IpcMainInvokeEvent, id: string) => {
+    const manual = (event: IpcMainInvokeEvent, id: string, action: 'navigate' | 'back' | 'forward' | 'reload', url?: string) => {
       const instance = findInstance(event, id)
-      if (instance.agentControl?.active || !this.options.allowUserNavigation?.(id)) throw new Error('员工正在操作，请先接管')
-      return instance
+      if (!this.options.allowUserNavigation(id) || !this.options.userNavigation) throw new Error('浏览器已关闭或正在清理')
+      return this.options.userNavigation(instance.id, () => this.navigateFromToolbar(instance.id, action, url))
     }
-    ipcMain.handle(TOOLBAR_CHANNELS.NAVIGATE, async (event, id: string, url: string) => { await this.navigate(manual(event, id).id, url) })
-    ipcMain.handle(TOOLBAR_CHANNELS.GO_BACK, async (event, id: string) => { await this.goBack(manual(event, id).id) })
-    ipcMain.handle(TOOLBAR_CHANNELS.GO_FORWARD, async (event, id: string) => { await this.goForward(manual(event, id).id) })
-    ipcMain.handle(TOOLBAR_CHANNELS.RELOAD, async (event, id: string) => { this.reload(manual(event, id).id) })
+    ipcMain.handle(TOOLBAR_CHANNELS.NAVIGATE, async (event, id: string, url: string) => { await manual(event, id, 'navigate', url) })
+    ipcMain.handle(TOOLBAR_CHANNELS.GO_BACK, async (event, id: string) => { await manual(event, id, 'back') })
+    ipcMain.handle(TOOLBAR_CHANNELS.GO_FORWARD, async (event, id: string) => { await manual(event, id, 'forward') })
+    ipcMain.handle(TOOLBAR_CHANNELS.RELOAD, async (event, id: string) => { await manual(event, id, 'reload') })
     ipcMain.handle(TOOLBAR_CHANNELS.STOP, async (event, id: string) => { this.stop(findInstance(event, id).id) })
-    ipcMain.handle(TOOLBAR_CHANNELS.MENU_GEOMETRY, async (event, id: string, open: boolean, height?: number) => {
-      const instance = findInstance(event, id)
-      if (!open) { this.forceCloseToolbarMenu(instance, 'renderer-close'); return }
-      instance.toolbarMenuOpen = true; instance.toolbarMenuHeight = Math.max(0, Math.min(600, Math.ceil(Number(height) || 0))); instance.toolbarMenuOverlayActive = true; this.layoutAllViews(instance)
-    })
-    ipcMain.handle(TOOLBAR_CHANNELS.HIDE, async (event, id: string) => { await this.options.userControl?.(findInstance(event, id).id, 'hide') })
     ipcMain.handle(TOOLBAR_CHANNELS.DESTROY, async (event, id: string) => { await this.options.userControl?.(findInstance(event, id).id, 'close') })
-    ipcMain.handle('browser-toolbar:control', async (event, id: string, action: string) => {
-      if (!['take', 'resume', 'stop', 'clear'].includes(action)) throw new Error('无效的浏览器操作')
-      await this.options.userControl?.(findInstance(event, id).id, action as 'take' | 'resume' | 'stop' | 'clear')
-    })
     ipcMain.handle('browser-toolbar:get-state', async (event, id: string) => { const instance = findInstance(event, id); this.pushToolbarState(instance) })
   }
 
@@ -2207,90 +1952,6 @@ export class BrowserPaneManager {
     instance.isVisible = true
     this.emitStateChange(instance)
 
-  }
-
-  // ---------------------------------------------------------------------------
-  // Agent Control — persistent overlay while agent is using the browser
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Activate or update the agent control overlay on the browser instance
-   * bound to the given session. Called from sessions.ts on browser_* tool_start events.
-   */
-  setAgentControl(
-    sessionId: string,
-    meta: { displayName?: string; intent?: string },
-    options?: { workspaceId?: string | null },
-  ): void {
-    for (const instance of this.instances.values()) {
-      if (instance.boundSessionId === sessionId) {
-        instance.agentControl = {
-          active: true,
-          sessionId,
-          displayName: meta.displayName,
-          intent: meta.intent,
-        }
-
-        // Backfill workspaceId for instances that were created before the
-        // workspace was known (legacy callers / pre-workspaceId code paths).
-        if (options?.workspaceId !== undefined && instance.workspaceId === null) {
-          instance.workspaceId = options.workspaceId
-        }
-
-        const label = this.getAgentControlLabel(instance.agentControl)
-
-        this.reapplyAgentControlVisual(instance)
-        this.emitStateChange(instance)
-
-        mainLog.info(`[browser-pane] agent control activated session=${sessionId} label=${label}`)
-        return
-      }
-    }
-  }
-
-  /**
-   * Clear the agent control overlay for the given session.
-   * Called on explicit browser_tool release and session/window teardown.
-   */
-  clearAgentControl(sessionId: string): void {
-    for (const instance of this.instances.values()) {
-      if (instance.boundSessionId === sessionId && instance.agentControl?.active) {
-        instance.agentControl = null
-        this.applyAgentControlLock(instance, false)
-        this.updateNativeOverlayState(instance)
-        this.emitStateChange(instance)
-        mainLog.info(`[browser-pane] agent control released session=${sessionId}`)
-      }
-    }
-  }
-
-  clearAgentControlForInstance(instanceId: string, sessionId?: string): { released: boolean; reason?: string } {
-    const instance = this.instances.get(instanceId)
-    if (!instance) {
-      return { released: false, reason: `Browser window "${instanceId}" not found.` }
-    }
-
-    if (sessionId) {
-      if (instance.boundSessionId && instance.boundSessionId !== sessionId) {
-        return { released: false, reason: `Browser window "${instanceId}" is locked to session ${instance.boundSessionId}.` }
-      }
-
-      if (!instance.boundSessionId && instance.ownerSessionId && instance.ownerSessionId !== sessionId) {
-        return { released: false, reason: `Browser window "${instanceId}" is currently owned by session ${instance.ownerSessionId}.` }
-      }
-    }
-
-    if (!instance.agentControl?.active) {
-      return { released: false, reason: 'No active agent overlay on the target window.' }
-    }
-
-    instance.agentControl = null
-    this.applyAgentControlLock(instance, false)
-    this.updateNativeOverlayState(instance)
-    this.emitStateChange(instance)
-    mainLog.info(`[browser-pane] agent control released instance=${instanceId}${sessionId ? ` session=${sessionId}` : ''}`)
-
-    return { released: true }
   }
 
   /**
@@ -2481,7 +2142,6 @@ export class BrowserPaneManager {
     popupWindow.webContents.on('will-navigate', (event, url) => { if (!this.options.allowNavigation?.(parentInstance.id, url)) event.preventDefault() })
     popupWindow.webContents.on('will-redirect', (event, url) => { if (!this.options.allowNavigation?.(parentInstance.id, url)) event.preventDefault() })
     popupWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    popupWindow.webContents.on('before-input-event', event => { if (parentInstance.lockState.active) event.preventDefault() })
 
 
     const initialUrl = sourceUrl || popupWindow.webContents.getURL?.() || 'about:blank'
@@ -2723,22 +2383,13 @@ export class BrowserPaneManager {
   private setupWindowListeners(instance: BrowserInstance): void {
     const pageWc = instance.pageView.webContents
     const toolbarWc = instance.toolbarView.webContents
-    const overlayWc = instance.nativeOverlayView.webContents
 
     instance.window.on('close', (event) => {
-      const explicitDestroy = this.destroyingIds.has(instance.id)
-      const interceptToHide = !explicitDestroy && instance.keepAliveOnWindowClose
-      mainLog.info(`[browser-pane] window close requested id=${instance.id} explicitDestroy=${explicitDestroy} keepAlive=${instance.keepAliveOnWindowClose} interceptToHide=${interceptToHide}`)
-
-      if (interceptToHide) {
-        event.preventDefault()
-        // Skip if a hide is already in flight — hide() guards against re-entry
-        // itself, but bailing here also avoids redundant log noise during the
-        // teardown race that triggered issue #695.
-        if (!instance.isHiding) {
-          this.hide(instance.id)
-        }
-      }
+      if (this.destroyingIds.has(instance.id)) return
+      event.preventDefault()
+      void this.options.userControl(instance.id, 'close').catch(error => {
+        mainLog.warn(`[browser-pane] window close failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
+      })
     })
 
     instance.window.on('resize', () => {
@@ -2772,37 +2423,19 @@ export class BrowserPaneManager {
     pageWc.on('did-stop-loading', () => {
       instance.resolveLoadDone?.(); instance.loadDone = null; instance.resolveLoadDone = null
       instance.isLoading = false
-      instance.canGoBack = pageWc.canGoBack()
-      instance.canGoForward = pageWc.canGoForward()
+      instance.canGoBack = pageWc.navigationHistory.canGoBack()
+      instance.canGoForward = pageWc.navigationHistory.canGoForward()
       // Drain in-flight count — all pending requests are settled once loading stops
       this.inFlightRequestsByWebContentsId.set(pageWc.id, 0)
       this.lastNetworkActivityByWebContentsId.set(pageWc.id, Date.now())
       this.emitStateChange(instance)
       void this.pushToolbarState(instance)
       void this.extractThemeColor(instance)
-      this.reapplyAgentControlVisual(instance)
     })
 
     pageWc.on('dom-ready', () => {
       this.installThemeObserver(instance)
       void this.extractThemeColor(instance)
-    })
-
-    pageWc.on('before-input-event', (_event, _input) => {
-      if (instance.lockState.active) {
-        _event.preventDefault()
-      }
-    })
-
-
-    overlayWc.on('before-input-event', (event, input) => {
-      if (!instance.toolbarMenuOverlayActive) return
-
-      const inputType = input.type || ''
-      if (inputType === 'mouseDown' || inputType === 'touchStart' || inputType === 'pointerDown') {
-        event.preventDefault()
-        this.forceCloseToolbarMenu(instance, 'overlay-tap')
-      }
     })
 
     pageWc.on('did-navigate', (_event, urlFromEvent) => {
@@ -2819,15 +2452,14 @@ export class BrowserPaneManager {
       instance.currentUrl = normalized.url
       instance.title = normalized.title
       mainLog.info(`[browser-pane] did-navigate id=${instance.id} from=${previousUrl} to=${instance.currentUrl}`)
-      instance.canGoBack = pageWc.canGoBack()
-      instance.canGoForward = pageWc.canGoForward()
+      instance.canGoBack = pageWc.navigationHistory.canGoBack()
+      instance.canGoForward = pageWc.navigationHistory.canGoForward()
       // Drain in-flight count — prior page's requests are cancelled on navigation
       this.inFlightRequestsByWebContentsId.set(pageWc.id, 0)
       this.lastNetworkActivityByWebContentsId.set(pageWc.id, Date.now())
       this.emitStateChange(instance)
       void this.pushToolbarState(instance)
       this.scheduleEarlyThemeExtraction(instance, url)
-      this.reapplyAgentControlVisual(instance)
     })
 
     pageWc.on('did-redirect-navigation', (_event, url, isInPlace, isMainFrame) => {
@@ -2840,8 +2472,8 @@ export class BrowserPaneManager {
       const normalized = this.normalizePageState(url, instance.title)
       instance.currentUrl = normalized.url
       instance.title = normalized.title
-      instance.canGoBack = pageWc.canGoBack()
-      instance.canGoForward = pageWc.canGoForward()
+      instance.canGoBack = pageWc.navigationHistory.canGoBack()
+      instance.canGoForward = pageWc.navigationHistory.canGoForward()
 
       void this.maybeHandleEmptyStateLaunch(instance, url).then((handled) => {
         if (handled) {
@@ -2858,7 +2490,6 @@ export class BrowserPaneManager {
         void this.pushToolbarState(instance)
         this.installThemeObserver(instance)
         instance.inPageThemeTimer = setTimeout(() => { void this.extractThemeColor(instance) }, 300)
-        this.reapplyAgentControlVisual(instance)
       }).catch((error) => {
         mainLog.warn(`[browser-pane] empty-state launch handling failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
       })
@@ -2884,7 +2515,7 @@ export class BrowserPaneManager {
       mainLog.warn(`[browser-pane] did-fail-load id=${instance.id} code=${errorCode} url=${validatedURL} error=${errorDescription}`)
     })
 
-    pageWc.on('console-message', (_event, level, message) => {
+    pageWc.on('console-message', ({ level, message }) => {
       if (message.startsWith(THEME_COLOR_SIGNAL_PREFIX)) {
         const payload = message.slice(THEME_COLOR_SIGNAL_PREFIX.length)
         const delimiterIdx = payload.indexOf(':')
@@ -2902,7 +2533,7 @@ export class BrowserPaneManager {
         return
       }
 
-      const mappedLevel: BrowserConsoleEntry['level'] = level >= 3 ? 'error' : level === 2 ? 'warn' : level === 1 ? 'info' : 'log'
+      const mappedLevel: BrowserConsoleEntry['level'] = level === 'error' ? 'error' : level === 'warning' ? 'warn' : level === 'info' ? 'info' : 'log'
       instance.consoleLogs.push({
         timestamp: Date.now(),
         level: mappedLevel,
@@ -2912,7 +2543,7 @@ export class BrowserPaneManager {
         instance.consoleLogs.splice(0, instance.consoleLogs.length - MAX_CONSOLE_LOG_ENTRIES)
       }
 
-      if (level >= 2) {
+      if (level === 'warning' || level === 'error') {
         mainLog.warn(`[browser-pane] console id=${instance.id} level=${level}: ${message}`)
       }
     })
@@ -2981,9 +2612,7 @@ export class BrowserPaneManager {
     instance.window.on('show', () => {
       instance.isVisible = true
       this.emitStateChange(instance)
-      this.reapplyAgentControlVisual(instance)
       this.pushToolbarState(instance)
-      this.updateNativeOverlayState(instance)
       if (!instance.themeColor) {
         void this.extractThemeColor(instance)
       }
@@ -2992,7 +2621,6 @@ export class BrowserPaneManager {
     instance.window.on('hide', () => {
       instance.isVisible = false
       this.emitStateChange(instance)
-      this.updateNativeOverlayState(instance)
     })
 
     instance.window.on('closed', () => {
@@ -3013,7 +2641,6 @@ export class BrowserPaneManager {
       ownerType: instance.ownerType,
       ownerSessionId: instance.ownerSessionId,
       isVisible: instance.isVisible,
-      agentControlActive: !!instance.agentControl?.active,
       themeColor: instance.themeColor,
       workspaceId: instance.workspaceId,
     }

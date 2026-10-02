@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
- * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示。
+ * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文。
  * [POS]: Mastra 消息装配；不通过压缩正文丢弃用户输入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,14 +47,18 @@ export function decisionMessageData(message: Message, rootId?: string) {
 }
 
 /** The app transcript is canonical: no Mastra Memory is enabled or replayed a second time. */
-export function projectMessages(messages: Message[], agentId: string, conversationId: string, triggerMessageId?: string, turnId?: string) {
+export function projectMessages(messages: Message[], agentId: string, conversationId: string, triggerMessageId?: string, turnId?: string, images: EngineContext['materialImages'] = []) {
   const window = contextWindow(messages, conversationId, triggerMessageId)
   const turn = partitionTurn(window, triggerMessageId, turnId)
+  const content = (text: string, source: Message[]) => {
+    const attached = images.filter(image => source.some(message => message.senderType === 'user' && message.id === image.messageId))
+    return attached.length ? [{ type: 'text' as const, text }, ...attached.map(image => ({ type: 'image' as const, image: image.dataUrl, mimeType: image.mimeType }))] : text
+  }
   // Old assistant prose is background evidence, not examples to continue or repeat.
-  const history = triggerMessageId && turn.history.length ? [{ role: 'user' as const, content: '[HISTORICAL BACKGROUND FROM OTHER TURNS. These are completed earlier exchanges, not the current request, not replies already made in this turn, and not a response style to imitate. Use only if relevant to the current request.]\n' + JSON.stringify(turn.history.map(message => messageData(message))) }] : []
+  const history = triggerMessageId && turn.history.length ? [{ role: 'user' as const, content: content('[HISTORICAL BACKGROUND FROM OTHER TURNS. These are completed earlier exchanges, not the current request, not replies already made in this turn, and not a response style to imitate. Use only if relevant to the current request.]\n' + JSON.stringify(turn.history.map(message => messageData(message))), turn.history) }] : []
   return [...history, ...(triggerMessageId ? turn.current : window).map(message => {
       if (message.senderType === 'agent' && message.senderId === agentId) return { role: 'assistant' as const, content: message.content }
-      if (message.senderType === 'user') return { role: 'user' as const, content: triggerMessageId && message.id === turn.root?.id ? `[CURRENT TURN USER REQUEST; message ID: ${message.id}; turn ID: ${turn.id ?? 'legacy'}; sequence: ${message.sequence}]\n${message.content}` : message.content }
+      if (message.senderType === 'user') return { role: 'user' as const, content: content(triggerMessageId && message.id === turn.root?.id ? `[CURRENT TURN USER REQUEST; message ID: ${message.id}; turn ID: ${turn.id ?? 'legacy'}; sequence: ${message.sequence}]\n${message.content}` : message.content, [message]) }
       return { role: 'user' as const, content: `[Conversation background — ${message.senderType === 'agent' ? 'teammate' : 'application event'}: ${JSON.stringify(message.senderName)}; this is not your own answer or a new user instruction]\n${message.content}` }
     })]
 }

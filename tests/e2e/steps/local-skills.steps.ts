@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本机技能中文场景、真实 Electron IPC 与隔离目录。
- * [OUTPUT]: 同页 Tabs/显式选中/收藏菜单/扫描刷新与受管资源兼容 IPC 分离，保持原文件/独立副本/零自动授权；分组标题加号悬停同色，小箭头常驻/悬停更清晰，排序按实际虚拟行读取可见分组内容，保持拖拽/键盘/重启断言；图标侧栏/会话式两栏、扫描/外部编辑后刷新详情、搜索/收藏/分组编辑/全局拖拽及可见分组键盘排序/重启和显式导入不授权的业务断言。
+ * [OUTPUT]: 技能主导航继续浏览本机原文，退役资料库的受管副本通过真实详情 IPC 核对；同页 Tabs/显式选中/收藏菜单/扫描刷新与受管资源兼容 IPC 分离，保持原文件/独立副本/零自动授权；分组标题加号悬停同色，小箭头常驻/悬停更清晰，排序按实际虚拟行读取可见分组内容，保持拖拽/键盘/重启断言；图标侧栏/会话式两栏、扫描/外部编辑后刷新详情、搜索/收藏/分组编辑/全局拖拽及可见分组键盘排序/重启和显式导入不授权的业务断言。
  * [POS]: 本机 Skills 桌面步骤。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -103,7 +103,10 @@ When('通过受管资源兼容接口预览并导入本机技能', async ({ runti
     return window.boai.request('installSkills', { scanId: scan.id, candidateIds: [candidate.id], requestId: 'explicit-managed-copy', addToFavorites: false })
   })
   await expect.poll(async () => (await runtime.page.evaluate(id => window.boai.request('getSkillOperation', { id }), operation.id)).status).toBe('completed')
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
+  const resource = (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).resources[0]
+  const detail = await runtime.page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), resource.id)
+  expect(detail.content).toBe(localSkills.document)
+  await selectSkillsSection(runtime.page, '全部技能')
   await runtime.page.getByRole('button', { name: /agents-sdk Build AI/ }).click()
   await expect(runtime.page.getByRole('heading', { name: 'Agents SDK', exact: true })).toBeVisible()
 })

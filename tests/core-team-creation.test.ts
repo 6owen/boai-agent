@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 核心 Agent 严格方案、真实 SQLite/文件系统与精确发布/退出断点。
- * [OUTPUT]: 默认命名群、宿主能力/身份、独立请求幂等/冲突、受理及整套发布原子性、取消等待实际退出和提交后回执保留验收。
+ * [OUTPUT]: 默认命名群及浏览器可用的独立 Mastra 员工、宿主能力/身份、独立请求幂等/冲突、受理及整套发布原子性、取消等待实际退出和提交后回执保留验收。
  * [POS]: 核心 Agent 团队工具的宿主发布边界测试；不调用收费模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,7 +50,7 @@ test('core tool always creates the named group and host-owned identities without
   expect(new Set(operation.memberIds.map(member => member.memberKey)).size).toBe(4)
   expect(installed).toHaveLength(1)
   for (const agent of await store.load<DigitalAgent>('agents')) {
-    expect(agent.allowCommands).toBe(false); expect(agent.skillIds).toEqual([]); expect(agent.knowledgeIds).toEqual([])
+    expect(agent.allowBrowser).toBe(true); expect(agent.allowCommands).toBe(false); expect(agent.skillIds).toEqual([]); expect(agent.knowledgeIds).toEqual([])
     expect(agent.memoryNamespace).toBe(`employee:${agent.id}`)
     expect(await readFile(join(dataPath, agent.workspaceRef!, 'AGENTS.md'), 'utf8')).toBe(agent.instructions)
   }

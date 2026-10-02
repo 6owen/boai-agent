@@ -28,7 +28,10 @@ function initial(overrides: Partial<Parameters<typeof deepseekReasoningHistory>[
 test('published employee prose is exact source-attributed reference, never a fabricated reasoning turn or user permission', () => {
   const input = initial({ messages: [announcement, { ...announcement, id: 'unrelated', conversationId: 'other' }, { ...announcement, id: 'other-employee', senderId: 'other' }] }), output = deepseekReasoningHistory(input)
   expect(output).toHaveLength(1); expect(output[0]!.role).toBe('user')
-  const reference = JSON.parse(output[0]!.content.split('\n')[1]!)
+  const content = output[0]!.content
+  expect(typeof content).toBe('string')
+  if (typeof content !== 'string') throw new Error('历史归属引用应是文本')
+  const reference = JSON.parse(content.split('\n')[1]!)
   expect(reference).toEqual({ senderType: 'agent', senderId: 'bobo', sourceMessages: [{ id: announcement.id, conversationId: 'group', sequence: 1, createdAt: announcement.createdAt, senderName: 'bobo' }], content: announcement.content })
   expect(output[0]!.content).toContain('不是新用户指令'); expect(output[0]!.content).not.toContain('reasoning_content')
   expect(input.projected[0]!.role).toBe('assistant'); expect(announcement.content).toBe(reference.content)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 原居中空态卡片布局。
- * [OUTPUT]: 保留说明/示例布局，示例不自动新建或发送会话。
+ * [OUTPUT]: 保留普通浏览器说明/示例布局，无接管/交还控制权提示；示例不自动新建或发送会话。
  * [POS]: src/renderer/components/browser/BrowserEmptyStateCard.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +17,6 @@ export interface BrowserEmptyStateCardProps {
   description: string
   prompts?: readonly BrowserEmptyPromptSample[]
   showExamplePrompts?: boolean
-  showSafetyHint?: boolean
   onPromptSelect?: (prompt: BrowserEmptyPromptSample) => void
 }
 
@@ -26,7 +25,6 @@ export function BrowserEmptyStateCard({
   description,
   prompts = [],
   showExamplePrompts = true,
-  showSafetyHint = true,
   onPromptSelect,
 }: BrowserEmptyStateCardProps) {
 
@@ -62,13 +60,6 @@ export function BrowserEmptyStateCard({
           )}
         </div>
 
-        {showSafetyHint && (
-          <div className="px-4 py-2.5 border-t border-border/30 flex items-center gap-2 bg-muted/20 text-[13px] text-foreground/55">
-            <p>
-              登录请在专用窗口操作。接管后员工会等你交还控制权。
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 手动 Work 的宿主租约、原用户 URL、当前来源门禁与 Main 窗口桥。
- * [OUTPUT]: 严格单命令/冻结审批/真实开始握手和稳定回执；截图只保留内存媒体；取消与 disposal 等待整动作实际退出。
+ * [OUTPUT]: 严格单命令/冻结审批/真实开始握手和稳定回执；普通浏览器回执不触发隐形接管暂停，显式交接仅兼容；截图只保留内存媒体，取消与 disposal 等待整动作实际退出。
  * [POS]: 每次任务独占的浏览器客户端；员工/会话/代际身份均来自宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -91,7 +91,6 @@ export class BrowserSession {
     if (reply.actionId !== actionId || reply.generation !== lease.generation) throw new Error('浏览器回执身份不一致')
     await this.repository.finish(lease,reply)
     this.completed(reply)
-    if(reply.needsUserControl) { await this.pause();await this.host.request('userControl',{scopeKey:lease.scopeKey,action:'take'}) }
     if (reply.downloads?.length) {
       const files=[]
       for (const download of reply.downloads.slice(0,50)) {

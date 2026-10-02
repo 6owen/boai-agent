@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: 浏览器仅已保存员工显式启用，旧/新默认关闭、省略字段保留现权且 ACP 拒绝；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
+ * [OUTPUT]: Mastra 员工及 bobo 默认具备浏览器能力，旧关闭/缺省字段在启动与 registry 正规化且不额外提升配置版本，ACP 仅正规化为不支持；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
  * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -43,11 +43,11 @@ export class EmployeeService {
   find(id: string): DigitalAgent | undefined { const value = this.definitions.get(id); return value && clone(value) }
   values(): DigitalAgent[] { return [...this.definitions.values()].map(clone) }
   /** Install only a successfully persisted definition; callers never retain the registry object. */
-  install(id: string, agent: DigitalAgent) { this.definitions.set(id, clone(agent)) }
+  install(id: string, agent: DigitalAgent) { this.definitions.set(id, { ...clone(agent), allowBrowser: agent.executionBackend?.kind !== 'acp-local' }) }
   /** Clone the entire batch before one registry swap; no partially installed snapshot. */
   installBatch(agents: DigitalAgent[], replace = false) {
     const next = replace ? new Map<string, DigitalAgent>() : new Map(this.definitions)
-    for (const agent of agents) next.set(agent.id, clone(agent))
+    for (const agent of agents) next.set(agent.id, { ...clone(agent), allowBrowser: agent.executionBackend?.kind !== 'acp-local' })
     this.definitions = next
   }
   async initialize(): Promise<StoredRecord[]> {
@@ -62,7 +62,7 @@ export class EmployeeService {
         ['reviewer', '审核员', '检查事实与论证', '你是一名审核员。检查事实、逻辑、遗漏与表达，给出具体的修订意见。', '#79719a'],
       ]
       for (const [id, name, role, instructions, color] of defaults) {
-        const agent: DigitalAgent = { id, name, role, instructions, color, executionBackend:{kind:'mastra-model'}, connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true, configVersion: 1 }
+        const agent: DigitalAgent = { id, name, role, instructions, color, executionBackend:{kind:'mastra-model'}, connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true, configVersion: 1 }
         this.definitions.set(id, agent); updates.push(record('agents', agent))
       }
     }
@@ -72,12 +72,12 @@ export class EmployeeService {
       id: CORE_AGENT_ID, name: CORE_AGENT_DEFAULT_NAME, systemRole: 'core', role: '系统核心 Agent',
       instructions: '你是 BoAI 的系统核心 Agent，协助用户理解需求、创建数字员工团队并接续交流。根据明确授权使用应用提供的工具；没有创建回执时不得声称已创建团队。团队默认包含群聊，群名称与成员职责由团队需求决定。普通对话自然回应，不制造任务。',
       color: '#638ac5', executionBackend: { kind: 'mastra-model' }, connectionId: '', modelId: '',
-      skillIds: [], knowledgeIds: [], allowCommands: false, active: true, configVersion: 1,
+      skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true, configVersion: 1,
     })
     else if (!isCoreAgent(core) || !core.active || core.allowCommands || core.executionBackend?.kind !== 'mastra-model') {
       core.systemRole = 'core'; core.active = true; core.allowCommands = false; core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
     }
-    for (const agent of this.definitions.values()) { await this.homes.initialize(agent); updates.push(record('agents', agent)) }
+    for (const agent of this.definitions.values()) { agent.allowBrowser = agent.executionBackend?.kind !== 'acp-local'; await this.homes.initialize(agent); updates.push(record('agents', agent)) }
     return updates
   }
   private validateResources(ids: string[], kind: Resource['kind']) {
@@ -118,9 +118,8 @@ export class EmployeeService {
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
     if (isCoreAgent(previous) && (!input.active || input.allowCommands || executionBackend.kind !== 'mastra-model')) fail('系统核心 Agent 必须启用模型 API，且不能启用宿主命令或外部任务后端')
-    if (!previous && input.allowBrowser) fail('请先保存员工，再明确启用浏览器能力')
-    const allowBrowser = input.allowBrowser ?? previous?.allowBrowser ?? false
-    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands||allowBrowser))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定、命令策略和浏览器能力；请先取消这些绑定。')
+    const allowBrowser = executionBackend.kind !== 'acp-local'
+    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定和命令策略；请先取消这些绑定。')
     if (input.connectionId) this.hooks.connection(input.connectionId)
     this.validateResources(input.skillIds, 'skill'); this.validateResources(input.knowledgeIds, 'knowledge')
     const skillNames = input.skillIds.map(id => this.hooks.resource(id)!.name)

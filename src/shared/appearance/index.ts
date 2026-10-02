@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Base46 色板、显示模式与外观偏好。
- * [OUTPUT]: 外观偏好合同与语义 token；Soft 主操作跟随强调色并选择可读前景。
+ * [OUTPUT]: 外观偏好合同与语义 token；状态背景复用12%颜色混合为不透明表面，供提示卡片/堆叠/关闭按钮共用；Soft 主操作跟随强调色并选择可读前景。
  * [POS]: shared/appearance，主进程与 Renderer 共用的外观真源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -68,6 +68,8 @@ export function themeTokens(theme: Theme): Record<string,string> {
   const dark = mode === 'dark'
   const hover = blend(fg, surface, dark ? 0.07 : 0.04)
   const selected = blend(fg, surface, dark ? 0.12 : 0.092)
+  const destructive = dark ? '#ffb4ac' : '#a52826', success = dark ? '#b0dba2' : '#326a2b', warning = dark ? '#efce8b' : '#805817'
+  const statusBackgroundOpacity = 0.12
   return {
     background: bg, foreground: fg,
     card: surface, 'card-foreground': fg, popover: surface, 'popover-foreground': fg,
@@ -75,8 +77,11 @@ export function themeTokens(theme: Theme): Record<string,string> {
     secondary: hover, 'secondary-foreground': fg,
     muted: hover, 'muted-foreground': muted,
     accent: hover, 'accent-foreground': fg, border, input: border, ring: accent,
-    destructive: dark ? '#ffb4ac' : '#a52826', 'destructive-foreground': dark ? '#111111' : '#ffffff',
-    success: dark ? '#b0dba2' : '#326a2b', warning: dark ? '#efce8b' : '#805817',
+    destructive, 'destructive-foreground': dark ? '#111111' : '#ffffff', success, warning,
+    'destructive-background': blend(destructive, surface, statusBackgroundOpacity),
+    'success-background': blend(success, surface, statusBackgroundOpacity),
+    'warning-background': blend(warning, surface, statusBackgroundOpacity),
+    'info-background': blend(accent, surface, statusBackgroundOpacity),
     'status-background': blend(accent, surface, 0.08),
     'surface-app': bg, 'surface-list': dark ? bg : blend(fg, surface, 0.016), 'surface-content': surface, 'surface-detail': surface,
     'surface-composer': dark ? hover : surface, 'surface-user-message': hover,

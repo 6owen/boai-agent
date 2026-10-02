@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主已有受管根、获准源文件、受管材料身份与取消信号。
- * [OUTPUT]: 受管根系统别名规范化但源路径和根内链接仍拒绝、严格 UTF-8 的有界文本/行号/hash、排他原件写入与保留外部修改的安全清理。
+ * [OUTPUT]: 受管根系统别名规范化但源路径和根内链接仍拒绝、有界原件字节/hash、显式严格文本解码、安全栅格图片字节识别、排他写入与保留外改的清理。
  * [POS]: materials 的确定性文件边界，路径不进入持久材料或模型上下文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,7 +12,8 @@ import { MATERIAL_LIMITS } from '../../../shared/domain/materials'
 
 export type MaterialFileCheckpoint = 'source-opened' | 'source-read' | 'before-write' | 'after-write' | 'before-ready' | 'before-cleanup'
 export type MaterialCheckpoint = (stage: MaterialFileCheckpoint, id: string) => Promise<void>
-export interface MaterialText { bytes: Buffer; text: string; contentHash: string; size: number; characterCount: number; lineCount: number }
+export interface MaterialBytes { bytes: Buffer; contentHash: string; size: number }
+export interface MaterialText extends MaterialBytes { text: string; characterCount: number; lineCount: number }
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 const check = (signal?: AbortSignal) => signal?.throwIfAborted()
 const safeId = (id: string) => { if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效材料标识'); return id }
@@ -37,7 +38,8 @@ export async function checkMaterialPath(file: string, allowMissing = false) {
   }
 }
 
-function decode(bytes: Buffer): Omit<MaterialText, 'bytes' | 'contentHash' | 'size'> {
+export function decodeMaterialText(bytes: Buffer): Omit<MaterialText, keyof MaterialBytes> {
+  if (bytes.length > MATERIAL_LIMITS.bytes) throw new Error('材料最多 128 KiB，请拆分文件')
   let text: string
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/\r\n?/g, '\n') }
   catch { throw new Error('材料必须是有效 UTF-8 文本') }
@@ -45,6 +47,28 @@ function decode(bytes: Buffer): Omit<MaterialText, 'bytes' | 'contentHash' | 'si
   if (!text.trim()) throw new Error('材料没有可供处理的文本')
   if (text.length > MATERIAL_LIMITS.characters) throw new Error(`材料最多 ${MATERIAL_LIMITS.characters} 个字符，请拆分文件`)
   return { text, characterCount: text.length, lineCount: text.split('\n').length }
+}
+
+/** Only byte signatures select an inert raster MIME; names and caller-provided MIME never do. */
+export function materialImageMimeType(bytes: Buffer): string | undefined {
+  if (bytes.length >= 33 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) && bytes.readUInt32BE(8) === 13 && bytes.toString('latin1', 12, 16) === 'IHDR' && bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0) return 'image/png'
+  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff && bytes[3] >= 0xc0 && bytes[3] !== 0xff) return 'image/jpeg'
+  if (bytes.length >= 13 && ['GIF87a', 'GIF89a'].includes(bytes.toString('latin1', 0, 6)) && bytes.readUInt16LE(6) > 0 && bytes.readUInt16LE(8) > 0) return 'image/gif'
+  if (bytes.length >= 20 && bytes.toString('latin1', 0, 4) === 'RIFF' && bytes.toString('latin1', 8, 12) === 'WEBP' && ['VP8 ', 'VP8L', 'VP8X'].includes(bytes.toString('latin1', 12, 16)) && bytes.readUInt32LE(4) + 8 <= bytes.length) return 'image/webp'
+  if (bytes.length >= 26 && bytes.toString('latin1', 0, 2) === 'BM' && bytes.readUInt32LE(2) === bytes.length && bytes.readUInt32LE(10) < bytes.length) {
+    const headerSize = bytes.readUInt32LE(14)
+    if (headerSize === 12 && bytes.readUInt16LE(18) > 0 && bytes.readUInt16LE(20) > 0) return 'image/bmp'
+    if (headerSize >= 40 && bytes.length >= 54 && bytes.readInt32LE(18) > 0 && bytes.readInt32LE(22) !== 0) return 'image/bmp'
+  }
+  if (bytes.length >= 16 && bytes.toString('latin1', 4, 8) === 'ftyp') {
+    const boxSize = bytes.readUInt32BE(0)
+    if (boxSize >= 16 && boxSize <= bytes.length && boxSize % 4 === 0) {
+      const brands = [bytes.toString('latin1', 8, 12)]
+      for (let offset = 16; offset < boxSize; offset += 4) brands.push(bytes.toString('latin1', offset, offset + 4))
+      if (brands.some(brand => brand === 'avif' || brand === 'avis')) return 'image/avif'
+    }
+  }
+  return undefined
 }
 
 async function readBytes(file: string, signal?: AbortSignal, checkpoint?: () => Promise<void>) {
@@ -55,16 +79,16 @@ async function readBytes(file: string, signal?: AbortSignal, checkpoint?: () => 
   try {
     const before = await handle.stat()
     if (!before.isFile() || before.nlink > 1 || before.ino !== beforePath.ino || before.dev !== beforePath.dev) throw new Error('材料文件身份已改变，请重新选择')
-    if (before.size > MATERIAL_LIMITS.bytes) throw new Error('材料最多 128 KiB，请拆分文件')
+    if (before.size > MATERIAL_LIMITS.attachmentBytes) throw new Error('附件最多 20 MiB，请拆分文件')
     check(signal)
     await checkpoint?.(); check(signal)
-    const buffer = Buffer.alloc(MATERIAL_LIMITS.bytes + 1)
+    const buffer = Buffer.alloc(Math.min(before.size + 1, MATERIAL_LIMITS.attachmentBytes + 1))
     let size = 0
     for (;;) {
       check(signal)
       const { bytesRead } = await handle.read(buffer, size, buffer.length - size, null)
       size += bytesRead
-      if (size > MATERIAL_LIMITS.bytes) throw new Error('材料最多 128 KiB，请拆分文件')
+      if (size > MATERIAL_LIMITS.attachmentBytes) throw new Error('附件最多 20 MiB，请拆分文件')
       if (!bytesRead) break
     }
     return { bytes: buffer.subarray(0, size), before, handle, verify: async () => {
@@ -75,11 +99,11 @@ async function readBytes(file: string, signal?: AbortSignal, checkpoint?: () => 
   } catch (error) { await handle.close(); throw error }
 }
 
-export async function readMaterialSource(file: string, signal: AbortSignal, id: string, checkpoint?: MaterialCheckpoint): Promise<MaterialText> {
+export async function readMaterialSource(file: string, signal: AbortSignal, id: string, checkpoint?: MaterialCheckpoint): Promise<MaterialBytes> {
   const source = await readBytes(file, signal, () => checkpoint?.('source-opened', id) ?? Promise.resolve())
   try {
     await checkpoint?.('source-read', id); await source.verify()
-    return { bytes: source.bytes, size: source.bytes.length, contentHash: hash(source.bytes), ...decode(source.bytes) }
+    return { bytes: source.bytes, size: source.bytes.length, contentHash: hash(source.bytes) }
   } finally { await source.handle.close() }
 }
 
@@ -95,13 +119,13 @@ export async function writeMaterialOriginal(dataPath: string, conversationId: st
   await checkpoint?.('after-write', id); check(signal)
 }
 
-export async function readMaterialOriginal(dataPath: string, conversationId: string, id: string, expectedHash: string): Promise<MaterialText> {
+export async function readMaterialOriginal(dataPath: string, conversationId: string, id: string, expectedHash: string): Promise<MaterialBytes> {
   const source = await readBytes(join(await managedDirectory(dataPath, conversationId, id), 'original'))
   try {
     await source.verify()
     const contentHash = hash(source.bytes)
     if (contentHash !== expectedHash) throw new Error('受管材料已被外部修改，已保留文件')
-    return { bytes: source.bytes, size: source.bytes.length, contentHash, ...decode(source.bytes) }
+    return { bytes: source.bytes, size: source.bytes.length, contentHash }
   } finally { await source.handle.close() }
 }
 

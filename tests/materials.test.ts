@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 ProductStore、宿主私有材料文件和可控文件执行断点。
- * [OUTPUT]: 材料准备幂等/事务回滚/授权隔离/严格文本/取消实际退出/外改保留；未发送草稿重启先撤权/hash 清理、稳定失败/冲突与旧请求不重造；受管根系统别名兼容及仅已发送材料备份与重启核对验证。
+ * [OUTPUT]: 普通附件当前成员动态可见/退出撤权、离线不挡消息、旧名单不扩权和稳定范围回执；准备幂等/事务回滚/严格文本/实际图片/二进制容量/原名/取消退出；hash 外改保留、草稿重启清理和仅已发原件备份核对。
  * [POS]: tests/materials.test.ts；离线模块回归，不调用模型或使用假事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,12 +10,13 @@ import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Conversation, DigitalAgent } from '../src/shared/domain'
-import { MATERIAL_LIMITS, type ConversationMaterial } from '../src/shared/domain/materials'
+import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial } from '../src/shared/domain/materials'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
-import { materialDirectory, type MaterialCheckpoint } from '../src/runtime/modules/materials/material-files'
+import { materialDirectory, materialImageMimeType, readMaterialOriginal, type MaterialCheckpoint } from '../src/runtime/modules/materials/material-files'
 
 const roots: string[] = [], stores: ProductStore[] = []
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6GNAAAAAASUVORK5CYII=', 'base64')
 afterEach(async () => {
   await Promise.all(stores.splice(0).map(store => store.close()))
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
@@ -76,12 +77,97 @@ describe('durable conversation materials', () => {
   })
 
   it.each([
+    ['report.md', Buffer.from('普通聊天附件正文')],
+    ['photo.png', png],
+    ['opaque.bin', Buffer.from([0xff, 0, 1])],
+  ])('lets current chat members read %s after joining and rejects departed members without widening legacy grants', async (name, bytes) => {
+    const setup = await fixture(), source = join(setup.root, name); await writeFile(source, bytes)
+    const input = { conversationId: 'chat', path: source, requestId: 'ordinary-attachment', deliveryScope: 'conversation' as const }
+    const material = await setup.repository.prepare(input)
+    expect(material).toMatchObject({ status: 'ready', deliveryScope: 'conversation', authorizedAgentIds: ['alice', 'bob'] })
+    expect(await setup.store.load('messages')).toEqual([]); expect(await setup.store.load('workItems')).toEqual([])
+    await setup.attach(material)
+    const read = await setup.repository.read(material.id, 'alice', 'chat')
+    expect((await setup.repository.read(material.id, 'bob', 'chat')).ref).toEqual(read.ref)
+    await expect(setup.repository.read(material.id, 'outsider', 'chat')).rejects.toThrow('不属于')
+
+    const joined = conversation('chat', ['alice', 'bob', 'outsider'])
+    await setup.store.write([{ collection: 'conversations', id: joined.id, value: joined }])
+    expect(isConversationMaterialVisible(material, joined, 'outsider')).toBe(true)
+    expect(material.authorizedAgentIds).not.toContain('outsider')
+    expect((await setup.repository.read(material.id, 'outsider', 'chat')).ref).toEqual(read.ref)
+    await setup.repository.validateRefs([read.ref], 'outsider', 'chat')
+    await setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [read.ref], 'outsider', 'chat'))
+    await rm(source)
+    expect(await setup.repository.prepare(input)).toEqual({ ...material, messageId: 'message' })
+    expect(await setup.store.load('materials')).toHaveLength(1)
+
+    const departed = conversation('chat', ['bob', 'outsider'])
+    await setup.store.write([{ collection: 'conversations', id: departed.id, value: departed }])
+    expect(isConversationMaterialVisible(material, departed, 'alice')).toBe(false)
+    await expect(setup.repository.read(material.id, 'alice', 'chat')).rejects.toThrow('不属于')
+    await expect(setup.repository.validateRefs([read.ref], 'alice', 'chat')).rejects.toThrow('不属于')
+    await expect(setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [read.ref], 'alice', 'chat'))).rejects.toThrow('不属于')
+    expect((await setup.repository.read(material.id, 'outsider', 'chat')).material.revision).toBe(material.revision)
+    await new MaterialRepository(setup.store, setup.root).recover()
+    expect((await setup.repository.read(material.id, 'outsider', 'chat')).ref).toEqual(read.ref)
+  })
+
+  it('accepts ordinary attachments when an existing chat member is offline without requiring a sharing selection', async () => {
+    const setup = await fixture()
+    await setup.store.write([{ collection: 'agents', id: 'bob', value: { ...employee('bob'), active: false } }])
+    const material = await setup.repository.prepare({ conversationId: 'chat', path: setup.source, requestId: 'ordinary', deliveryScope: 'conversation' })
+    expect(material.status).toBe('ready')
+    await setup.attach(material)
+    expect((await setup.repository.read(material.id, 'alice', 'chat')).text).toBe('第一行\n第二行\n')
+    expect(await setup.store.load('messages')).toEqual([expect.objectContaining({ id: 'message' })])
+    expect(await setup.store.load('workItems')).toEqual([])
+    await expect(setup.repository.prepare({ conversationId: 'chat', path: setup.source, requestId: 'legacy-offline', authorizedAgentIds: ['alice', 'bob'] })).rejects.toThrow('停用')
+  })
+
+  it('preserves old explicit grants and prevents converting a conversation attachment into personal sharing', async () => {
+    const setup = await fixture(), legacy = await setup.prepare('legacy'); await setup.attach(legacy)
+    const expanded = conversation('chat', ['alice', 'bob', 'outsider'])
+    await setup.store.write([{ collection: 'conversations', id: expanded.id, value: expanded }])
+    expect(legacy.deliveryScope).toBeUndefined()
+    for (const agentId of ['bob', 'outsider']) {
+      expect(isConversationMaterialVisible(legacy, expanded, agentId)).toBe(false)
+      await expect(setup.repository.read(legacy.id, agentId, 'chat')).rejects.toThrow('未获准')
+    }
+    expect((await setup.repository.read(legacy.id, 'alice', 'chat')).text).toBe('第一行\n第二行\n')
+    await expect(setup.repository.prepare({ conversationId: 'chat', path: setup.source, requestId: 'legacy', deliveryScope: 'conversation' })).rejects.toThrow('requestId')
+    const input = { conversationId: 'chat', path: setup.source, requestId: 'ordinary', deliveryScope: 'conversation' as const }
+    const ordinary = await setup.repository.prepare(input)
+    await expect(setup.repository.authorize(ordinary.id, ordinary.revision, ['alice'])).rejects.toThrow('不能单独设置')
+    await expect(setup.repository.prepare({ ...input, requestId: 'client-selected', authorizedAgentIds: ['alice'] })).rejects.toThrow('不接受指定')
+    expect(await setup.repository.preparation('ordinary')).toEqual(ordinary)
+    expect(await setup.repository.preparation('client-selected')).toBeNull()
+    await setup.store.write([{ collection: 'conversations', id: expanded.id, value: conversation('chat', ['bob']) }])
+    await setup.attach(ordinary, 'ordinary-message')
+    expect((await setup.repository.read(ordinary.id, 'bob', 'chat')).text).toBe('第一行\n第二行\n')
+  })
+
+  it('validates the actual chat and attachment ownership inside the message transaction for ordinary attachments', async () => {
+    const setup = await fixture()
+    const material = await setup.repository.prepare({ conversationId: 'chat', path: setup.source, requestId: 'ordinary', deliveryScope: 'conversation' })
+    await expect(setup.store.transaction(async tx => {
+      await tx.put({ collection: 'messages', id: 'foreign', value: { id: 'foreign', conversationId: 'other' } })
+      await setup.repository.attach(tx, 'other', 'foreign', [material])
+    })).rejects.toThrow('不属于')
+    expect(await setup.store.load('messages')).toEqual([])
+    await setup.store.transaction(tx => tx.remove('conversations', 'chat'))
+    await expect(setup.attach(material)).rejects.toThrow('聊天已不存在')
+    expect(await setup.store.load('messages')).toEqual([])
+    expect(await setup.repository.preparation('ordinary')).toEqual(material)
+  })
+
+  it.each([
     ['empty.txt', Buffer.from(' \r\n\t'), '没有可供处理'],
     ['invalid.txt', Buffer.from([0xc3, 0x28]), 'UTF-8'],
     ['binary.txt', Buffer.from([0, 1, 2]), '二进制'],
     ['huge.txt', Buffer.alloc(MATERIAL_LIMITS.bytes + 1, 65), '128 KiB'],
     ['long.md', Buffer.from('字'.repeat(MATERIAL_LIMITS.characters + 1)), '16000'],
-    ['unsupported.pdf', Buffer.from('PDF'), 'TXT'],
+    ['huge.bin', Buffer.alloc(MATERIAL_LIMITS.attachmentBytes + 1), '20 MiB'],
   ])('shows deterministic failure for %s and never makes it readable', async (name, bytes, reason) => {
     const { root, repository, prepare } = await fixture()
     const source = join(root, name); await writeFile(source, bytes)
@@ -89,6 +175,105 @@ describe('durable conversation materials', () => {
     expect(material.status).toBe('failed'); expect(material.error).toContain(reason)
     expect(await repository.preparation('bad')).toEqual(material)
     await expect(repository.preview(material.id)).rejects.toThrow()
+  })
+
+  it.each(['clipboard-upload', 'report.txt', 'photo.png'])('identifies a real raster from bytes for %s and never persists its preview payload', async name => {
+    const setup = await fixture(), source = join(setup.root, name)
+    await writeFile(source, png)
+    const material = await setup.prepare('image', ['alice'], source)
+    expect(material).toMatchObject({ status: 'ready', format: 'image', mimeType: 'image/png', parseVersion: BINARY_MATERIAL_PARSE_VERSION, size: png.length })
+    expect(material.characterCount).toBeUndefined(); expect(material.lineCount).toBeUndefined()
+    const preview = await setup.repository.preview(material.id, material.revision)
+    expect(preview.text).toBe('')
+    expect(preview.imageUrl).toBe(`data:image/png;base64,${png.toString('base64')}`)
+    expect(await readFile(join(materialDirectory(setup.root, 'chat', material.id), 'original'))).toEqual(png)
+    expect(JSON.stringify(await setup.store.load('materials'))).not.toContain('data:')
+    expect(JSON.stringify(await setup.store.load('materials'))).not.toContain(png.toString('base64'))
+  })
+
+  it.each([
+    ['photo.png', Buffer.from('<html><script>throw new Error("active")</script></html>')],
+    ['photo.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')],
+    ['report.pdf', Buffer.from([0x25, 0x50, 0x44, 0x46, 0xff, 0x00])],
+    ['empty.file', Buffer.alloc(0)],
+  ])('stores %s as an opaque attachment without guessing text or active-image previews', async (name, bytes) => {
+    const setup = await fixture(), source = join(setup.root, name); await writeFile(source, bytes)
+    const material = await setup.prepare('file', ['alice'], source)
+    expect(material).toMatchObject({ status: 'ready', format: 'file', mimeType: 'application/octet-stream', parseVersion: BINARY_MATERIAL_PARSE_VERSION, size: bytes.length })
+    expect(material.characterCount).toBeUndefined(); expect(material.lineCount).toBeUndefined()
+    const original = await readMaterialOriginal(setup.root, 'chat', material.id, material.contentHash!)
+    expect(original.bytes).toEqual(bytes); expect(original).not.toHaveProperty('text')
+    expect(await setup.repository.preview(material.id)).toEqual({ material, text: '' })
+    await setup.attach(material)
+    expect(await setup.repository.read(material.id, 'alice', 'chat')).toMatchObject({ text: '', ref: { parseVersion: BINARY_MATERIAL_PARSE_VERSION } })
+  })
+
+  it('preserves clipboard file names and binds the original name to the preparation identity', async () => {
+    const setup = await fixture(), source = join(setup.root, 'host-upload'); await writeFile(source, '原名决定文本格式\r\n')
+    const input = { conversationId: 'chat', path: source, name: '原始材料.md', requestId: 'clipboard', authorizedAgentIds: ['alice'] }
+    const material = await setup.repository.prepare(input)
+    expect(material).toMatchObject({ status: 'ready', name: input.name, format: 'markdown', parseVersion: MATERIAL_PARSE_VERSION })
+    expect((await setup.repository.preview(material.id)).text).toBe('原名决定文本格式\n')
+    await rm(source)
+    expect(await setup.repository.prepare(input)).toEqual(material)
+    await expect(setup.repository.prepare({ ...input, name: '另一个名字.pdf' })).rejects.toThrow('requestId')
+    await expect(setup.repository.prepare({ ...input, requestId: 'invalid-name', name: 'unsafe\u0000.png' })).rejects.toThrow('附件名称')
+    expect(await setup.store.load('materials')).toHaveLength(1)
+  })
+
+  it('lets opaque attachments exceed the text byte limit without consuming the text character allowance', async () => {
+    const setup = await fixture(), source = join(setup.root, 'archive.zip')
+    const bytes = Buffer.alloc(MATERIAL_LIMITS.bytes + 1, 0xff); await writeFile(source, bytes)
+    const first = await setup.prepare('binary-a', ['alice'], source), second = await setup.prepare('binary-b', ['alice'], source)
+    await writeFile(setup.source, '字'.repeat(MATERIAL_LIMITS.characters))
+    const text = await setup.prepare('text')
+    await setup.store.transaction(tx => setup.repository.attach(tx, 'chat', 'mixed-message', [first, second, text]))
+    expect((await setup.repository.read(text.id, 'alice', 'chat')).text).toHaveLength(MATERIAL_LIMITS.characters)
+    for (const material of [first, second]) expect(await setup.repository.read(material.id, 'alice', 'chat')).toMatchObject({ material: { messageId: 'mixed-message' }, text: '' })
+    await expect(setup.store.transaction(tx => setup.repository.attach(tx, 'chat', 'too-many', [first, second, text, { id: 'fourth', revision: 1 }]))).rejects.toThrow('三份')
+  })
+
+  it('keeps binary refs subject to exact parse versions, revisions and explicit employee authorization', async () => {
+    const setup = await fixture(), source = join(setup.root, 'attachment.bin'); await writeFile(source, Buffer.from([0xff, 0, 1]))
+    const material = await setup.prepare('binary', ['alice'], source); await setup.attach(material)
+    const read = await setup.repository.read(material.id, 'alice', 'chat')
+    await setup.repository.validateRefs([read.ref], 'alice', 'chat')
+    await setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [read.ref], 'alice', 'chat'))
+    const wrongParser = { ...read.ref, parseVersion: MATERIAL_PARSE_VERSION }
+    await expect(setup.repository.validateRefs([wrongParser], 'alice', 'chat')).rejects.toThrow('失效')
+    await expect(setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [wrongParser], 'alice', 'chat'))).rejects.toThrow('失效')
+    await expect(setup.repository.read(material.id, 'bob', 'chat')).rejects.toThrow('未获准')
+    await expect(setup.store.transaction(tx => setup.repository.attach(tx, 'other', 'other-message', [material]))).rejects.toThrow('不属于')
+    await setup.repository.authorize(material.id, material.revision, ['bob'])
+    await expect(setup.repository.validateRefs([read.ref], 'alice', 'chat')).rejects.toThrow()
+    expect((await setup.repository.read(material.id, 'bob', 'chat')).text).toBe('')
+  })
+
+  it('rejects a stored active MIME or mismatched text parser even when the original hash is unchanged', async () => {
+    const setup = await fixture(), source = join(setup.root, 'photo.png'); await writeFile(source, png)
+    const image = await setup.prepare('image', ['alice'], source)
+    await setup.store.write([{ collection: 'materials', id: image.id, value: { ...image, mimeType: 'image/svg+xml' } }])
+    await expect(setup.repository.preview(image.id)).rejects.toThrow('格式')
+    expect(await setup.repository.preparation('image')).toMatchObject({ status: 'unavailable' })
+    const binarySource = join(setup.root, 'binary.dat'); await writeFile(binarySource, Buffer.from([0xff, 0]))
+    const binary = await setup.prepare('binary', ['alice'], binarySource)
+    await setup.store.write([{ collection: 'materials', id: binary.id, value: { ...binary, format: 'txt' } }])
+    await expect(setup.repository.preview(binary.id)).rejects.toThrow('不可用')
+    expect(await readFile(join(materialDirectory(setup.root, 'chat', binary.id), 'original'))).toEqual(Buffer.from([0xff, 0]))
+  })
+
+  it('recognizes safe raster signatures while excluding SVG, arbitrary RIFF and misleading prefixes', () => {
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
+    const webp = Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA', 'base64')
+    const bmp = Buffer.alloc(58); bmp.write('BM'); bmp.writeUInt32LE(58, 2); bmp.writeUInt32LE(54, 10); bmp.writeUInt32LE(40, 14); bmp.writeInt32LE(1, 18); bmp.writeInt32LE(1, 22); bmp.writeUInt16LE(1, 26); bmp.writeUInt16LE(24, 28); bmp.writeUInt32LE(4, 34)
+    const avif = Buffer.alloc(24); avif.writeUInt32BE(24); avif.write('ftypavif', 4); avif.write('mif1avif', 16)
+    expect(materialImageMimeType(png)).toBe('image/png')
+    expect(materialImageMimeType(gif)).toBe('image/gif')
+    expect(materialImageMimeType(webp)).toBe('image/webp')
+    expect(materialImageMimeType(bmp)).toBe('image/bmp')
+    expect(materialImageMimeType(avif)).toBe('image/avif')
+    expect(materialImageMimeType(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16]))).toBe('image/jpeg')
+    for (const bytes of [Buffer.from('<svg/>'), Buffer.from('RIFF0000WAVE'), png.subarray(0, 8), Buffer.from('fake.png')]) expect(materialImageMimeType(bytes)).toBeUndefined()
   })
 
   it('rejects symlink and hardlink inputs even when the target is valid text', async () => {
@@ -212,6 +397,25 @@ describe('durable conversation materials', () => {
     expect(await store.load('materialCleanups')).toMatchObject([{ status: 'conflict' }])
     await new MaterialRepository(store, root).recover()
     expect(await readFile(original, 'utf8')).toBe('用户外部修改')
+  })
+
+  it('preserves changed binary originals during cleanup and removes hash-matching binary drafts after restart', async () => {
+    const setup = await fixture(), source = join(setup.root, 'file.dat'), bytes = Buffer.from([0xff, 0, 2])
+    await writeFile(source, bytes)
+    const changed = await setup.prepare('changed', ['alice'], source), draft = await setup.prepare('draft', ['alice'], source)
+    const changedOriginal = join(materialDirectory(setup.root, 'chat', changed.id), 'original'), draftOriginal = join(materialDirectory(setup.root, 'chat', draft.id), 'original')
+    const edited = Buffer.from([0xff, 0, 3]); await writeFile(changedOriginal, edited)
+    await expect(setup.repository.discard(changed.id, changed.revision)).rejects.toThrow('外部修改')
+    expect(await readFile(changedOriginal)).toEqual(edited)
+    await rm(source)
+    const restored = new MaterialRepository(setup.store, setup.root); await restored.recover()
+    expect(await readFile(changedOriginal)).toEqual(edited)
+    expect(await restored.preparation('changed')).toMatchObject({ status: 'unavailable', authorizedAgentIds: [] })
+    const fenced = await restored.preparation('draft')
+    expect(fenced).toMatchObject({ status: 'removed', authorizedAgentIds: [], error: expect.stringContaining('未发送材料草稿') })
+    await expect(readFile(draftOriginal)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await restored.prepare({ conversationId: 'chat', path: source, requestId: 'draft', authorizedAgentIds: ['alice'] })).toEqual(fenced)
+    expect(await setup.store.load('materialCleanups')).toEqual([expect.objectContaining({ id: changed.id, status: 'conflict' })])
   })
 
   it('invalidates access before file cleanup, rolls back the fence with its caller, and cleans via durable logs without metadata', async () => {
@@ -356,6 +560,35 @@ describe('durable conversation materials', () => {
     expect(await restored.preparation('draft')).toBeNull()
     await expect(restored.prepare({ conversationId: 'chat', path: setup.source, requestId: 'draft', authorizedAgentIds: ['alice'] })).rejects.toThrow('已清理')
     expect((await restored.list('chat')).find(material => material.id === unavailable.id)).toMatchObject({ status: 'unavailable' })
+  })
+
+  it('backs up sent image and opaque binary originals and restores them without rereading vanished sources', async () => {
+    let sourceReads = 0
+    const setup = await fixture(async stage => { if (stage === 'source-opened') sourceReads++ })
+    const imageSource = join(setup.root, 'photo.png'), fileSource = join(setup.root, 'archive.zip'), bytes = Buffer.from([0x50, 0x4b, 0xff, 0, 1])
+    await writeFile(imageSource, png); await writeFile(fileSource, bytes)
+    const image = await setup.prepare('image', ['alice'], imageSource), file = await setup.prepare('file', ['alice'], fileSource), draft = await setup.prepare('draft', ['alice'], fileSource)
+    await setup.attach(image, 'image-message'); await setup.attach(file, 'file-message')
+    await rm(imageSource); await rm(fileSource); sourceReads = 0
+    const backupRoot = await realpath(await mkdtemp(join(tmpdir(), 'boai-attachment-backup-'))); roots.push(backupRoot)
+    const database = join(backupRoot, 'boai.sqlite'); await setup.store.backup(database)
+    await setup.repository.exportSnapshot(backupRoot); await setup.repository.pruneBackup(database)
+    expect(sourceReads).toBe(0)
+    expect(await readFile(join(materialDirectory(backupRoot, 'chat', image.id), 'original'))).toEqual(png)
+    expect(await readFile(join(materialDirectory(backupRoot, 'chat', file.id), 'original'))).toEqual(bytes)
+    await expect(readFile(join(materialDirectory(backupRoot, 'chat', draft.id), 'original'))).rejects.toMatchObject({ code: 'ENOENT' })
+    const backup = new ProductStore(database); stores.push(backup); await backup.init()
+    const restored = new MaterialRepository(backup, backupRoot, { checkpoint: async stage => { if (stage === 'source-opened') throw new Error('恢复不能读取源文件') } }); await restored.recover()
+    expect(await restored.read(image.id, 'alice', 'chat')).toMatchObject({ ref: { contentHash: image.contentHash, parseVersion: BINARY_MATERIAL_PARSE_VERSION }, text: '', imageUrl: `data:image/png;base64,${png.toString('base64')}` })
+    expect(await restored.read(file.id, 'alice', 'chat')).toMatchObject({ ref: { contentHash: file.contentHash, parseVersion: BINARY_MATERIAL_PARSE_VERSION }, text: '' })
+    await expect(restored.read(file.id, 'bob', 'chat')).rejects.toThrow('未获准')
+    expect(await restored.preparation('draft')).toBeNull()
+    await expect(restored.prepare({ conversationId: 'chat', path: fileSource, requestId: 'draft', authorizedAgentIds: ['alice'] })).rejects.toThrow('已清理')
+    await writeFile(join(materialDirectory(backupRoot, 'chat', image.id), 'original'), Buffer.from('<svg/>'))
+    await restored.recover()
+    expect(await restored.preparation('image')).toMatchObject({ status: 'unavailable', error: expect.stringContaining('外部修改') })
+    await expect(restored.preview(image.id)).rejects.toThrow('外部修改')
+    expect(JSON.stringify(await backup.load('materials'))).not.toContain('data:')
   })
 
   it('does not report a successful snapshot for a changed original or follow a replacement link', async () => {

@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 受控草稿、候选键盘回调与共享 Button 皮肤/class 合并、Tiptap 编辑模型。
- * [OUTPUT]: 实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；外部提及恢复编辑器实际选区，恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
+ * [OUTPUT]: 原补充请求待核对时冻结编辑，锁定变化不触发正文更新；实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；外部提及恢复编辑器实际选区，恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
+ * [OUTPUT]: 文件/图片粘贴先交附件入口，不被旧纯文本handlePaste吞掉；普通文本保持当前选区替换与IME边界。
  * [POS]: 群聊私有输入控件；单聊继续使用 ChatComposerInput。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,7 +21,8 @@ export interface MentionInputHandle {
 interface Props {
   ref?: Ref<MentionInputHandle>; draft: ChatDraft; onChange(draft: ChatDraft): void; placeholder: string
   onSelection(range: TextRange): void; onKeyDown(event: KeyboardEvent): void; onComposing(value: boolean): void
-  listId?: string; activeId?: string
+  onPaste?(event: ClipboardEvent): boolean
+  listId?: string; activeId?: string; disabled?: boolean
 }
 
 export function MentionInput(props: Props) {
@@ -35,7 +37,7 @@ export function MentionInput(props: Props) {
     selection,
     replace: (range, text, member) => {
       const instance = editor.current
-      if (!instance) return
+      if (!instance || latest.current.disabled) return
       const { doc } = instance.state
       const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name } }] : textNodes(text)
       const positions = { from: documentPosition(doc, range.start), to: documentPosition(doc, range.end) }
@@ -55,6 +57,7 @@ export function MentionInput(props: Props) {
         attributes: { class: 'chat-composer-input mention-editor-input', role: 'textbox', 'aria-label': '消息内容', 'aria-multiline': 'true', 'aria-autocomplete': 'list' },
         handleKeyDown: (_view, event) => { latest.current.onKeyDown(event); return event.defaultPrevented },
         handlePaste: (view, event) => {
+          if (latest.current.onPaste?.(event)) return true
           const text = event.clipboardData?.getData('text/plain')
           if (text === undefined) return false
           event.preventDefault()
@@ -77,6 +80,7 @@ export function MentionInput(props: Props) {
   useLayoutEffect(() => {
     const instance = editor.current
     if (!instance) return
+    if (instance.isEditable !== !props.disabled) instance.setEditable(!props.disabled, false)
     const current = documentDraft(instance.state.doc, props.draft)
     if (current.text !== props.draft.text || JSON.stringify(current.mentions) !== JSON.stringify(props.draft.mentions ?? [])) instance.commands.setContent(mentionDocument(props.draft), { emitUpdate: false })
     const dom = instance.view.dom
@@ -86,6 +90,6 @@ export function MentionInput(props: Props) {
       if (value) dom.setAttribute(key!, value)
       else dom.removeAttribute(key!)
     }
-  }, [props.draft, props.placeholder, props.listId, props.activeId])
+  }, [props.draft, props.placeholder, props.listId, props.activeId, props.disabled])
   return <div ref={host} className="mention-editor" />
 }

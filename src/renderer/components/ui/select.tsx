@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语、共享 buttonVariants 与全局语义样式。
- * [OUTPUT]: select 基础组件；触发器复用 Button outline 的无阴影表面、字体和圆角，保留36px默认/32px紧凑高度与长标签省略；面板最多20rem且受可用视口高度约束，选项列表独立滚动，选项文字单行超宽省略并为勾选标记预留空间。
+ * [OUTPUT]: select 基础组件；触发器复用 Button secondary 表面、字体和圆角，聚焦/展开保持中性边缘，校验错误由全局 skin 控制；默认36px/小号28px及对应16px/14px图标复用 Button 尺寸，长标签省略；面板最多20rem且受可用视口高度约束，选项列表独立滚动，选项文字单行超宽省略并为勾选标记预留空间。
  * [POS]: components/ui 的 select 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,8 +47,8 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        buttonVariants({ variant: "outline", size: size === "sm" ? "default" : "lg" }),
-        "w-fit justify-between px-3 focus-visible:border-ring aria-invalid:border-destructive data-placeholder:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5",
+        buttonVariants({ variant: "secondary", size: size === "sm" ? "sm" : "lg" }),
+        "w-fit justify-between px-3 data-placeholder:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5",
         className
       )}
       {...props}
@@ -56,7 +56,7 @@ function SelectTrigger({
       {children}
       <SelectPrimitive.Icon
         render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
+          <ChevronDownIcon className="pointer-events-none text-muted-foreground" />
         }
       />
     </SelectPrimitive.Trigger>

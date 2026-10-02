@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已发布补充问题、实时命令审批、失败来源与显式成果验收资格。
- * [OUTPUT]: 权威来源的稳定游标/精确导航、原成果文件名与固定版、定向问题补充和本人消息回执关系；无独立待办完成状态。
+ * [OUTPUT]: 权威来源的稳定游标/精确导航、原成果文件名与固定版、普通问题及明确自动化问题补充的本人消息回执关系，保留所见版本与原问题消息；无独立待办完成状态。
  * [POS]: D5 跨聊天待处理领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,7 @@ export interface InboxCursor { time: string; id: string }
 export interface InboxQuery { kind?: InboxKind; search?: string; before?: InboxCursor; limit?: number }
 export interface PublishedUserQuestion { id: string; messageId: string; content: string; revision: number; answeredMessageId?: string }
 export interface InboxQuestionReply { questionId: string; expectedRevision: number; content: string; requestId: string }
-/** Stored only by the host on the actual committed user message. */
+/** Stored by the host on the committed reply; occurrence questions also retain the viewed version and message. */
 export interface InboxReplyRelation { questionId: string; questionRevision: number; questionMessageId: string; workId?: string }
 export interface InboxItem {
   id: string

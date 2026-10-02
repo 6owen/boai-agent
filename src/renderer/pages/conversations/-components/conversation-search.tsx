@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 普通搜索 Dialog 的活跃状态、可选类型/可见会话/员工与shadcn Calendar日期范围、稳定 SQL/索引代际游标、正文命中与覆盖回执和点击来源复核。
- * [OUTPUT]: 顶部统一关键词、单行可选筛选和混合结果；正文摘录/位置、多词原词高亮、索引覆盖与有界失败可见，明确继续回填不调用模型；范围与会话列表可见配置一致，日期按本地起止日筛选；查询刷新不注销有效导航，关闭/条件改变/来源清理隔离迟到响应，所选来源移除时拒绝控件自动回退全部范围。
+ * [OUTPUT]: 顶部统一关键词、单行 sm 同款 secondary 类型/会话/员工/时间筛选和混合结果，时间未选占位与其他筛选同色、选中后显示正文色；正文摘录/位置、多词原词高亮、索引覆盖与有界失败可见，明确继续回填不调用模型；范围与会话列表可见配置一致，日期按本地起止日筛选；查询刷新不注销有效导航，关闭/条件改变/来源清理隔离迟到响应，所选来源移除时拒绝控件自动回退全部范围。
  * [POS]: 会话列表搜索图标打开的普通 Dialog 内容；复用宿主检索，不使用 CommandDialog，不读取任意路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -97,10 +97,10 @@ export function ConversationSearch({ api, active, snapshot, selectedId, request,
       <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="关闭搜索" />}><X /></DialogClose>
     </div>
     <FieldGroup className="flex-row flex-wrap items-center gap-2 px-4 pb-4" aria-label="搜索筛选">
-      <Field className="w-auto"><FieldLabel className="sr-only">检索类型</FieldLabel><SelectField className="w-28" value={type} aria-label="检索类型" onValueChange={value => setType(value as SearchType)} options={searchTypes} /></Field>
-      <Field className="w-auto"><FieldLabel className="sr-only">所在会话</FieldLabel><SelectField className="w-48" value={conversationId} aria-label="所在会话" onValueChange={(value, details) => { if (removedConversation && !value && details.reason === 'none') { details.cancel(); return } setConversationId(value) }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title + (item.id === selectedId ? ' · 当前会话' : '') }))]} /></Field>
-      <Field className="w-auto"><FieldLabel className="sr-only">发言员工</FieldLabel><SelectField className="w-36" value={agentId} aria-label="发言员工" onValueChange={setAgentId} options={[{ value: '', label: '全部员工' }, ...snapshot.agents.map(agent => ({ value: agent.id, label: agent.name }))]} /></Field>
-      <Popover><PopoverTrigger render={<Button variant="outline" size="lg" aria-label="时间筛选" />}><CalendarClock data-icon="inline-start" />{timeLabel}</PopoverTrigger>
+      <Field className="w-auto"><FieldLabel className="sr-only">检索类型</FieldLabel><SelectField size="sm" className="w-28" value={type} aria-label="检索类型" onValueChange={value => setType(value as SearchType)} options={searchTypes} /></Field>
+      <Field className="w-auto"><FieldLabel className="sr-only">所在会话</FieldLabel><SelectField size="sm" className="w-48" value={conversationId} aria-label="所在会话" onValueChange={(value, details) => { if (removedConversation && !value && details.reason === 'none') { details.cancel(); return } setConversationId(value) }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title + (item.id === selectedId ? ' · 当前会话' : '') }))]} /></Field>
+      <Field className="w-auto"><FieldLabel className="sr-only">发言员工</FieldLabel><SelectField size="sm" className="w-36" value={agentId} aria-label="发言员工" onValueChange={setAgentId} options={[{ value: '', label: '全部员工' }, ...snapshot.agents.map(agent => ({ value: agent.id, label: agent.name }))]} /></Field>
+      <Popover><PopoverTrigger data-slot="date-range-trigger" data-placeholder={!from && !to ? '' : undefined} render={<Button variant="secondary" size="sm" data-slot="date-range-trigger" aria-label="时间筛选" />}><CalendarClock data-icon="inline-start" />{timeLabel}</PopoverTrigger>
         <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] max-h-(--available-height) overflow-auto p-0">
           <PopoverHeader className="px-3 pt-3"><PopoverTitle>选择时间范围</PopoverTitle><PopoverDescription>选择开始和结束日期，可再次选择或清除。</PopoverDescription></PopoverHeader>
           <Calendar mode="range" selected={dateRange} onSelect={chooseDates} defaultMonth={dateRange?.from} numberOfMonths={2} locale={zhCN} aria-label="检索时间范围" />

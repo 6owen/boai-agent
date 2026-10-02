@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
  * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本与个人浏览 API。
- * [OUTPUT]: Select 与同 variant Button 无额外阴影、长选项限高及真实排列末项滚动/选中；日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代标题图标入口/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
+ * [OUTPUT]: 四项检索筛选均为 sm、28px 等高/全局 text-xs 字号/14px图标，明暗同款 secondary 的 card/渐变/控制阴影/零边框并留真实顶栏截图，默认四筛选文字/图标同为muted、时间选中正文色/图标仍muted及清除恢复占位，时间聚焦/展开保持中性边缘；长选项限高及真实排列末项滚动/选中、日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代标题图标入口/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
  * [POS]: D6 Electron 步骤；仅 support 控制历史/HTTP 和传输观测，业务与 SQLite 事务保持真实。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -146,17 +147,50 @@ Then('同一弹窗同时返回会话消息材料和成果而保持各自身份',
   expect(readingState.files!.endpoint.requests).toHaveLength(readingState.calls!)
   await runtime.page.screenshot({ path: '.local/search-dialog-20261001.png', animations: 'disabled' })
 })
-Then('筛选下拉与按钮样式一致且长会话选项限高可滚动', async ({ runtime, readingState }) => {
+Then('筛选均为 sm 同款且长会话选项限高可滚动', async ({ runtime, readingState }) => {
   const dialog = searchDialog(runtime), trigger = dialog.getByRole('combobox', { name: '所在会话', exact: true })
   await dialog.getByRole('textbox', { name: '搜索关键词', exact: true }).click(); await runtime.page.mouse.move(0, 0)
-  const appearance = await dialog.evaluate(element => {
+  const original = await runtime.page.evaluate(() => window.boai.request('getAppearance', undefined)), originalTheme = await runtime.page.locator('html').getAttribute('data-theme')
+  for (const name of ['检索类型', '所在会话', '发言员工']) await expect(dialog.getByRole('combobox', { name, exact: true })).toHaveAttribute('data-size', 'sm')
+  await expect(dialog.getByRole('button', { name: '时间筛选', exact: true })).toHaveAttribute('data-size', 'sm')
+  await expect(dialog.getByRole('button', { name: '时间筛选', exact: true })).toHaveAttribute('data-slot', 'date-range-trigger')
+  await expect(dialog.getByRole('button', { name: '时间筛选', exact: true })).toHaveAttribute('data-placeholder', '')
+  const readAppearance = () => dialog.evaluate(element => {
     const style = (selector: string) => {
       const target = element.querySelector(selector)!, value = getComputedStyle(target)
-      return { shadow: value.boxShadow, background: value.backgroundColor, radius: value.borderRadius, font: value.fontFamily }
+      const icon = target.querySelector(':is(svg,.app-icon)')!, iconBounds = icon.getBoundingClientRect()
+      return { shadow: value.boxShadow, background: value.backgroundColor, gradient: value.backgroundImage, border: value.borderWidth, radius: value.borderRadius, color: value.color, iconColor: getComputedStyle(icon).color, font: value.fontFamily, fontSize: value.fontSize, height: target.getBoundingClientRect().height, iconWidth: iconBounds.width, iconHeight: iconBounds.height }
     }
-    return { select: style('[aria-label="所在会话"]'), button: style('[aria-label="时间筛选"]') }
+    const sample = document.createElement('div')
+    sample.className = 'text-xs'
+    element.appendChild(sample)
+    Object.assign(sample.style, { backgroundColor: 'var(--card)', backgroundImage: 'linear-gradient(transparent,transparent),linear-gradient(to bottom,transparent,var(--soft-shade))', boxShadow: 'var(--shadow-control)', border: '0', borderRadius: 'var(--radius-control)', color: 'var(--muted-foreground)' })
+    const value = getComputedStyle(sample)
+    const secondary = { shadow: value.boxShadow, background: value.backgroundColor, gradient: value.backgroundImage, border: value.borderWidth, radius: value.borderRadius, color: value.color, iconColor: value.color, fontSize: value.fontSize }
+    sample.remove()
+    return { controls: ['检索类型', '所在会话', '发言员工', '时间筛选'].map(name => style(`[aria-label="${name}"]`)), secondary }
   })
-  expect(appearance.select).toEqual(appearance.button); expect(appearance.select.shadow).toBe('none')
+  try {
+    for (const mode of ['light', 'dark'] as const) {
+      await runtime.page.evaluate(async mode => {
+        const appearance = await window.boai.request('getAppearance', undefined)
+        await window.boai.request('updateAppearance', { patch: { mode }, expectedRevision: appearance.revision })
+      }, mode)
+      await expect(runtime.page.locator('html')).toHaveAttribute('data-theme', mode)
+      const appearance = await readAppearance(), reference = { ...appearance.secondary, font: appearance.controls[3].font, height: 28, iconWidth: 14, iconHeight: 14 }
+      await expect.poll(async () => (await readAppearance()).controls).toEqual(Array.from({ length: 4 }, () => reference))
+      const bounds = await dialog.boundingBox(), filters = await dialog.locator('[aria-label="搜索筛选"]').boundingBox()
+      const screenshot = test.info().outputPath(`search-filters-${mode}.png`)
+      await runtime.page.screenshot({ path: screenshot, clip: { x: bounds!.x, y: bounds!.y, width: bounds!.width, height: filters!.y + filters!.height - bounds!.y + 1 }, animations: 'disabled' })
+      await test.info().attach(`search-filters-${mode}`, { path: screenshot, contentType: 'image/png' })
+    }
+  } finally {
+    await runtime.page.evaluate(async mode => {
+      const appearance = await window.boai.request('getAppearance', undefined)
+      await window.boai.request('updateAppearance', { patch: { mode }, expectedRevision: appearance.revision })
+    }, original.preferences.mode)
+    await expect(runtime.page.locator('html')).toHaveAttribute('data-theme', originalTheme!)
+  }
   await trigger.click()
   const popup = runtime.page.locator('[data-slot="select-content"]:visible'), list = popup.locator('[data-slot="select-list"]')
   await expect(list).toBeVisible()
@@ -174,6 +208,7 @@ Then('筛选下拉与按钮样式一致且长会话选项限高可滚动', async
   await runtime.page.screenshot({ path: '.local/search-dialog-select-20261001.png', animations: 'disabled' })
   await option.click(); await expect(trigger).toContainText(emptyConversation!.title)
   await expect(dialog.getByText('没有找到相关内容', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '清除筛选', exact: true })).toHaveAttribute('data-size', 'sm')
   await dialog.getByRole('button', { name: '清除筛选', exact: true }).click()
   await expect(dialog.locator('[data-search-kind="material"]')).toHaveCount(1)
 })
@@ -188,7 +223,22 @@ When('用户按类型会话员工和日期筛选后清除条件', async ({ runti
   await expect(dialog.locator('[data-search-kind="material"]')).toHaveCount(1)
   await chooseFilter(runtime, '发言员工', '成果作者')
   await expect(dialog.locator('[data-search-kind="artifact"]')).toHaveCount(1)
-  await dialog.getByRole('button', { name: '时间筛选', exact: true }).click()
+  const time = dialog.getByRole('button', { name: '时间筛选', exact: true })
+  await time.hover(); await runtime.page.mouse.down(); await expect(time).toHaveCSS('transform', 'none'); await runtime.page.mouse.up()
+  await runtime.page.mouse.move(0, 0)
+  const theme = await time.evaluate(element => {
+    const sample = document.createElement('div'); element.appendChild(sample)
+    sample.style.boxShadow = 'var(--shadow-control)'
+    sample.style.color = 'var(--muted-foreground)'
+    const style = getComputedStyle(sample), shadow = style.boxShadow, muted = style.color
+    sample.style.color = 'var(--foreground)'
+    const foreground = getComputedStyle(sample).color; sample.remove(); return { shadow, muted, foreground }
+  })
+  await expect(time).toHaveAttribute('data-popup-open', '')
+  await expect(time).toHaveCSS('box-shadow', theme.shadow)
+  await expect(time).toHaveCSS('outline-width', '0px')
+  await expect(time).toHaveCSS('color', theme.muted)
+  await expect(time.locator('.app-icon')).toHaveCSS('color', theme.muted)
   const calendar = runtime.page.locator('[aria-label="检索时间范围"]'), dates = await runtime.page.evaluate(() => {
     const now = new Date(), start = new Date(now.getFullYear(), now.getMonth() - 1, 1), end = new Date(now.getFullYear(), now.getMonth() - 1, 2)
     const label = (date: Date) => `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
@@ -196,16 +246,23 @@ When('用户按类型会话员工和日期筛选后清除条件', async ({ runti
   })
   await expect(runtime.page.getByText('选择时间范围', { exact: true })).toBeVisible()
   await expect(calendar).toBeVisible(); await expect(calendar.locator('.rdp-month')).toHaveCount(2)
+  await expect(runtime.page.getByRole('button', { name: '清除时间', exact: true })).toHaveAttribute('data-size', 'sm')
   await calendar.locator('.rdp-button_previous').click()
   const start = calendar.locator(`[data-day="${dates.start}"]`).first(), end = calendar.locator(`[data-day="${dates.end}"]`).first()
   await start.click(); await end.click()
   await expect(start).toHaveAttribute('data-range-start', 'true'); await expect(end).toHaveAttribute('data-range-end', 'true')
   await expect(dialog.getByRole('button', { name: '时间筛选', exact: true })).toHaveText(dates.label)
+  await expect.poll(() => time.getAttribute('data-placeholder')).toBeNull()
+  await expect(time).toHaveCSS('color', theme.foreground)
+  await expect(time.locator('.app-icon')).toHaveCSS('color', theme.muted)
   await runtime.page.screenshot({ path: '.local/search-dialog-calendar-20261001.png', animations: 'disabled' })
   await runtime.page.keyboard.press('Escape')
   await expect(dialog.getByText('没有找到相关内容', { exact: true })).toBeVisible()
   expect((await readingState.probe!()).filter(item => item.method === 'searchConversations').at(-1)!.input).toMatchObject({ from: dates.from, to: dates.to })
   await dialog.getByRole('button', { name: '清除筛选', exact: true }).click()
+  await expect(time).toHaveAttribute('data-placeholder', '')
+  await expect(time).toHaveCSS('color', theme.muted)
+  await expect(time.locator('.app-icon')).toHaveCSS('color', theme.muted)
 })
 Then('清除筛选保留关键词并恢复全部范围的混合结果', async ({ runtime, readingState }) => {
   const dialog = searchDialog(runtime)
@@ -362,7 +419,7 @@ Then('个人浏览只载入有界历史并明确旧阅读未知', async ({ runti
   const current = await view(runtime, fixture.group.id)
   expect(current.messages.length).toBeLessThanOrEqual(80); expect(current.messagePage.items.length).toBeLessThanOrEqual(80)
   expect(current.messagePage.beforeCursor).toBeDefined(); expect(current.reading).toMatchObject({ legacyCompletedUnknown: true, unreadCount: 0, completionCount: 0, boundary: 0, sparseSeen: [] })
-  await expect(runtime.page.getByText('旧历史阅读状态未知，仅统计启用后的完成回复。', { exact: true })).toBeVisible()
+  await expect(runtime.page.getByText('旧历史阅读状态未知，仅统计启用后的完成回复。', { exact: true })).toHaveCount(0)
   expect((await readingState.probe!()).some(request => request.method === 'getConversation')).toBe(false)
   expect(await readingRecords(fixture.dataPath)).toMatchObject({ completions: [], works: [], runs: [], acceptances: [] })
 })
@@ -516,20 +573,31 @@ Then('完成身份按乙甲次序计数且隐藏聊天没有标已读', async ({
   expect(current).toMatchObject({ boundary: 0, sparseSeen: [], unreadCount: 2, firstUnreadMessageId: readingState.b })
   expect(records.works).toEqual([]); expect(records.acceptances).toEqual([]); expect(fixture.errors).toEqual([])
 })
-When('用户恢复旧阅读位置并明确返回未读', async ({ runtime, readingState }) => {
+When('用户恢复旧阅读位置并滚动阅读新回复', async ({ runtime, readingState }) => {
   const fixture = readingState.streams!; await openConversation(runtime, fixture.group.title)
   await expect(message(runtime, readingState.anchor!.anchor!.messageId)).toBeVisible()
   await expect(message(runtime, readingState.a!)).toHaveCount(0); await expect(message(runtime, readingState.b!)).toHaveCount(0)
-  await expect(runtime.page.locator('[data-unread-count="2"]:visible')).toBeVisible()
+  await expect(runtime.page.locator('.chat-header [data-unread-count]')).toHaveCount(0)
+  await expect(runtime.page.locator('.chat-header').getByRole('button', { name: /返回未读|查看最新消息/ })).toHaveCount(0)
   expect((await readState(runtime, fixture.group.id)).unreadCount).toBe(2)
-  await runtime.page.getByRole('button', { name: '返回未读', exact: true }).click()
+  const container = runtime.page.locator('.messages:visible')
+  for (let page = 0; page < 8; page++) {
+    if (await message(runtime, readingState.a!).count() && await message(runtime, readingState.b!).count()) break
+    const lastId = await container.locator('[data-reading-message-id]').last().getAttribute('data-reading-message-id')
+    await container.evaluate(element => { element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event('scroll')) })
+    await expect.poll(() => container.locator('[data-reading-message-id]').last().getAttribute('data-reading-message-id')).not.toBe(lastId)
+    await expect(container).toHaveAttribute('aria-busy', 'false')
+    expect(await container.locator('[data-reading-message-id]').count()).toBeLessThanOrEqual(80)
+  }
+  await message(runtime, readingState.b!).scrollIntoViewIfNeeded()
   await expect(message(runtime, readingState.b!)).toBeVisible()
   await expect.poll(async () => (await readState(runtime, fixture.group.id)).unreadCount).toBeLessThan(2)
-  if ((await readState(runtime, fixture.group.id)).unreadCount) await runtime.page.getByRole('button', { name: '返回未读', exact: true }).click()
+  await message(runtime, readingState.a!).scrollIntoViewIfNeeded()
+  await expect(message(runtime, readingState.a!)).toBeVisible()
   await expect.poll(async () => (await readState(runtime, fixture.group.id)).unreadCount).toBe(0)
 })
 Then('实际可见完成被阅读且独立锚点在重启后保留', async ({ runtime, readingState }) => {
-  await expect(runtime.page.locator('[data-unread-count="0"]:visible')).toBeVisible()
+  await expect(runtime.page.locator('.chat-header [data-unread-count]')).toHaveCount(0)
   const fixture = readingState.streams!, previous = await savedAnchor(runtime, fixture.group.id, readingState.anchor!.anchor!.revision)
   expect(previous).toMatchObject({ completionCount: 2, boundary: 2, sparseSeen: [], unreadCount: 0 })
   expect(fixture.endpoint.requests).toHaveLength(readingState.calls!); expect((await readingRecords(fixture.dataPath)).works).toEqual([])

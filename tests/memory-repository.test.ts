@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite 多连接、MemoryRepository 与范围/生命周期策略。
- * [OUTPUT]: 旧数据保守迁移、原子并发/回滚/回执、纠正与忘记屏障、来源失效和维护验证。
+ * [OUTPUT]: 无关清空不取消精确召回、条目/获知指纹/原文与派生回复的相关失效；旧快照和提取仍保守，纠正/忘记/期限不可绕过。
  * [POS]: tests/memory-repository.test.ts；T2 存储与不变量验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,8 @@ import { join } from 'node:path'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { MemoryRepository, type ExtractionPolicy } from '../src/runtime/modules/memory/memory-repository'
 import { memoryAllowed, memoryStatus } from '../src/runtime/modules/memory/memory-policy'
-import type { MemoryEntry, MemoryQuery } from '../src/shared/domain'
+import { recallMemory } from '../src/runtime/modules/memory/memory-recall'
+import type { MemoryEntry, MemoryQuery, MemoryView, Message } from '../src/shared/domain'
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function fixture() {
@@ -143,4 +144,103 @@ it('UM11 work completion blocks an already assembled temporary recall without a 
   expect(await repository.recallValid(projected)).toBe(false)
   expect((await repository.get({ ...employee, status: 'active' })).entries).toHaveLength(0)
   expect((await repository.get({ ...employee, status: 'history' })).entries[0].status).toBe('expired')
+})
+
+function selectedRecall(view: MemoryView) {
+  return recallMemory({ view, request: '蓝鲸核对', observations: [], messages: new Map(), access: { agentId: 'a', conversationId: 'live', contextRefs: [{ kind: 'conversation', id: 'live' }], sourceAllowed: () => true, conversationRestricted: () => false } })
+}
+it('a tracked active task retains its used memory when an unrelated source is cleared', async () => {
+  const { repository } = await fixture()
+  const first = await repository.save({ ...employee, content: '蓝鲸核对来源', kind: 'experience', sourceConversationIds: ['kept'], expectedEpoch: 0 })
+  const latest = await repository.save({ ...employee, content: '遥远岩石尺寸', kind: 'experience', sourceConversationIds: ['unrelated'], expectedEpoch: first.epoch })
+  const projected = selectedRecall(latest)
+  expect(projected.entries.map(entry => entry.content)).toEqual(['蓝鲸核对来源'])
+  await repository.invalidateConversation('a', 'unrelated')
+  expect(await repository.recallValid(projected)).toBe(true)
+  await repository.invalidateConversation('a', 'kept')
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('clearing a scope with no source does not revoke every employee namespace', async () => {
+  const { repository } = await fixture()
+  const before = await repository.get(employee)
+  await repository.invalidateConversation('a', 'unrelated')
+  expect(await repository.get(employee)).toEqual(before)
+})
+it('tracked raw evidence detects scope changes even when its observation identity stays the same', async () => {
+  const { repository, store } = await fixture()
+  const message: Message = { id: 'raw', conversationId: 'kept', sequence: 1, senderType: 'user', senderId: 'user', senderName: '本人', content: '蓝鲸核对来源', status: 'completed', createdAt: new Date().toISOString() }
+  const observation = { id: 'observed', ownerAgentId: 'a', conversationId: 'kept', sourceMessageIds: ['raw'], sourceResourceIds: [], sourceMemoryIds: [], useScope: 'employee' as const, createdAt: message.createdAt }
+  await store.write([repository.observation(observation)])
+  const projected = recallMemory({ view: await repository.get(employee), request: '蓝鲸核对', observations: [observation], messages: new Map([[message.id, message]]), access: { agentId: 'a', conversationId: 'live', sourceAllowed: () => true, conversationRestricted: () => false } })
+  expect(await repository.recallValid(projected)).toBe(true)
+  await store.write([repository.observation({ ...observation, useScope: 'conversation' })])
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('explicit tracked input messages stop on forgetting or actual source removal without relying on a global epoch', async () => {
+  const { repository, store } = await fixture()
+  const message = { id: 'input', conversationId: 'live', status: 'completed' }
+  await store.write([{ collection: 'messages', id: message.id, value: message }])
+  const projected = selectedRecall(await repository.get(employee))
+  Object.assign(projected.recall!, { inputMessageIds: ['input'] })
+  expect(await repository.recallValid(projected)).toBe(true)
+  await store.write([{ collection: 'memoryForgets', id: 'forgotten', value: { id: 'forgotten', ownerAgentId: 'a', sourceMessageIds: ['input'], sourceMemoryIds: [], createdAt: new Date().toISOString() } }])
+  expect(await repository.recallValid(projected)).toBe(false)
+  await store.write([], [{ collection: 'memoryForgets', id: 'forgotten' }, { collection: 'messages', id: 'input' }])
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('legacy recalls remain conservative when an employee authority epoch changed', async () => {
+  const { repository } = await fixture()
+  const first = await repository.save({ ...employee, content: '蓝鲸核对来源', kind: 'experience', sourceConversationIds: ['kept'], expectedEpoch: 0 })
+  const latest = await repository.save({ ...employee, content: '岩石尺寸', kind: 'experience', sourceConversationIds: ['unrelated'], expectedEpoch: first.epoch })
+  const projected = selectedRecall(latest)
+  delete projected.recall!.authorityVersion
+  delete projected.recall!.observationVersions
+  await repository.invalidateConversation('a', 'unrelated')
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('new source restrictions fence a previously selected raw observation without changing its metadata', async () => {
+  const { repository, store } = await fixture()
+  const message: Message = { id: 'raw', conversationId: 'kept', sequence: 1, senderType: 'user', senderId: 'user', senderName: '本人', content: '蓝鲸核对来源', status: 'completed', createdAt: new Date().toISOString() }
+  const observation = { id: 'observed', ownerAgentId: 'a', conversationId: 'kept', sourceMessageIds: ['raw'], sourceResourceIds: [], sourceMemoryIds: [], useScope: 'employee' as const, createdAt: message.createdAt }
+  await store.write([repository.observation(observation)])
+  const projected = recallMemory({ view: await repository.get(employee), request: '蓝鲸核对', observations: [observation], messages: new Map([[message.id, message]]), access: { agentId: 'a', conversationId: 'live', sourceAllowed: () => true, conversationRestricted: () => false } })
+  await repository.save({ ...employee, content: '仅用于原聊天', conversationId: 'kept', useScope: 'conversation', sourceMessageIds: ['raw'], expectedEpoch: 0 })
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('tracked entry versions reject corrections, expiry and owner replacement but permit the explicitly corrected new version', async () => {
+  const { repository, store } = await fixture()
+  const first = await repository.save({ ...employee, content: '蓝鲸核对旧值', sourceMessageIds: ['source'], expectedEpoch: 0 })
+  const old = selectedRecall(first)
+  const corrected = await repository.save({ ...employee, id: first.entries[0].id, content: '蓝鲸核对新值', expectedEpoch: first.epoch })
+  expect(await repository.recallValid(old)).toBe(false)
+  const current = selectedRecall(corrected)
+  expect(await repository.recallValid(current)).toBe(true)
+  await store.write([{ collection: 'memory', id: corrected.entries[0].id, value: { ...corrected.entries[0], ownerAgentId: 'b' } }])
+  expect(await repository.recallValid(current)).toBe(false)
+  await store.write([{ collection: 'memory', id: corrected.entries[0].id, value: { ...corrected.entries[0], expiresAt: '2000-01-01T00:00:00Z' } }])
+  expect(await repository.recallValid(current)).toBe(false)
+})
+it('tracked raw observations also retain the parent lifecycle after selection', async () => {
+  const { repository, store } = await fixture()
+  const first = await repository.save({ ...employee, content: '原始判断', kind: 'experience', expectedEpoch: 0 })
+  const parent = first.entries[0]
+  const message: Message = { id: 'raw', conversationId: 'kept', sequence: 1, senderType: 'user', senderId: 'user', senderName: '本人', content: '蓝鲸核对来源', status: 'completed', createdAt: new Date().toISOString() }
+  const observation = { id: 'observed', ownerAgentId: 'a', conversationId: 'kept', sourceMessageIds: ['raw'], sourceResourceIds: [], sourceMemoryIds: [parent.id], useScope: 'employee' as const, createdAt: message.createdAt }
+  await store.write([repository.observation(observation)])
+  const projected = recallMemory({ view: first, request: '蓝鲸核对', observations: [observation], messages: new Map([[message.id, message]]), access: { agentId: 'a', conversationId: 'live', sourceAllowed: () => true, conversationRestricted: () => false } })
+  expect(await repository.recallValid(projected)).toBe(true)
+  await store.write([{ collection: 'memory', id: parent.id, value: { ...parent, expiresAt: '2000-01-01T00:00:00Z' } }])
+  expect(await repository.recallValid(projected)).toBe(false)
+})
+it('tracked inputs reject an invalidated source reply even when the published message is retained', async () => {
+  const { repository, store } = await fixture()
+  await store.write([{ collection: 'messages', id: 'reply', value: { id: 'reply', status: 'completed', runId: 'source-run' } }, { collection: 'snapshots', id: 'source-run', value: { id: 'source-run', invalidated: false } }])
+  const projected = selectedRecall(await repository.get(employee))
+  Object.assign(projected.recall!, { inputMessageIds: ['reply'] })
+  expect(await repository.recallValid(projected)).toBe(true)
+  await store.write([{ collection: 'snapshots', id: 'source-run', value: { id: 'source-run', invalidated: true } }])
+  expect(await repository.recallValid(projected)).toBe(false)
+  expect(await store.load('messages')).toHaveLength(1)
+  await store.write([], [{ collection: 'snapshots', id: 'source-run' }])
+  expect(await repository.recallValid(projected)).toBe(false)
 })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、原生 select、共享 buttonVariants 与全局语义样式。
- * [OUTPUT]: native-select 基础组件；复用 Button outline 的无阴影表面、字体和圆角，保留统一高度及聚焦/校验状态。
+ * [OUTPUT]: native-select 基础组件；复用 Button secondary 表面、字体和圆角，中性聚焦/错误校验边缘由全局 skin 控制，保留统一高度与原生选择行为。
  * [POS]: components/ui 的 native-select 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,7 +30,7 @@ function NativeSelect({
       <select
         data-slot="native-select"
         data-size={size}
-        className={cn(buttonVariants({ variant: "outline", size: "default" }), "w-full min-w-0 appearance-none py-1 pr-8 pl-2.5 selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring disabled:pointer-events-none aria-invalid:border-destructive data-[size=sm]:h-7 data-[size=sm]:py-0.5")}
+        className={cn(buttonVariants({ variant: "secondary", size: "default" }), "w-full min-w-0 appearance-none py-1 pr-8 pl-2.5 selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none data-[size=sm]:h-7 data-[size=sm]:py-0.5")}
         {...props}
       />
       <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground select-none" aria-hidden="true" data-slot="native-select-icon" />

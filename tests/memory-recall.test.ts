@@ -1,11 +1,11 @@
 /*
  * [INPUT]: 统一记忆策略、获知回执和合成来源/中文请求。
- * [OUTPUT]: 员工隔离、硬范围、事项/到期/历史、来源撤权、中文排序和完整证据预算验收。
+ * [OUTPUT]: 员工隔离与有界证据预算、实际获知授权指纹/父条目版本；硬范围、期限与来源撤权不能从raw证据逃逸。
  * [POS]: T2.3 纯召回合同；实际 AppService 装配由 unified-memory.test.ts 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, test } from 'vitest'
-import { recallMemory } from '../src/runtime/modules/memory/memory-recall'
+import { observationAuthorityFingerprint, recallMemory } from '../src/runtime/modules/memory/memory-recall'
 import { memoryText, memoryTokenEstimate, type MemoryAccess } from '../src/runtime/modules/memory/memory-policy'
 import type { MemoryEntry, MemoryObservation, MemoryView, Message } from '../src/shared/domain'
 const access: MemoryAccess = { agentId: 'a', conversationId: 'group', sourceAllowed: () => true, conversationRestricted: () => false, contextRefs: [{ kind: 'conversation', id: 'group' }] }
@@ -56,4 +56,17 @@ test('UM04/09 raw evidence cannot bypass saved limits, supersession, archive, ex
   for (const status of ['superseded', 'archived', 'expired'] as const) expect(recall([entry('known', { sourceMessageIds: ['m'], status })], {}, '海报提纲', raw()).entries).toEqual([])
   expect(recall([], {}, '海报提纲', raw({ useScope: 'conversation' })).entries).toEqual([])
   expect(recall([], {}, '海报提纲', raw({ sourceMemoryIds: ['missing'] })).entries).toEqual([])
+})
+test('complete recall tracks actual observation authority and its parent versions without adding unrelated rows', () => {
+  const source = raw({ sourceMemoryIds: ['parent'] })
+  const parent = entry('parent', { content: '相关来源的原始决定' })
+  const result = recall([parent, entry('unused', { content: '岩石尺寸' })], {}, '海报提纲', source)
+  expect(result.entries.map(entry => entry.id)).toEqual(['observation:run:m'])
+  expect(result.recall).toMatchObject({ authorityVersion: 1, agentId: 'a', versions: [{ id: 'parent', version: 1 }], observationVersions: [{ id: 'run', fingerprint: observationAuthorityFingerprint(source.observations[0]), sourceMessageIds: ['m'] }] })
+  expect(result.recall?.inputMessageIds).toBeUndefined()
+})
+test('observation fingerprint preserves authority independent of property order while scope changes invalidate it', () => {
+  const observation = raw().observations[0]
+  expect(observationAuthorityFingerprint(Object.fromEntries(Object.entries(observation).reverse()) as unknown as MemoryObservation)).toBe(observationAuthorityFingerprint(observation))
+  for (const change of [{ useScope: 'conversation' as const }, { ownerAgentId: 'b' }, { sourceResourceIds: ['new'] }, { contextRef: { kind: 'work' as const, id: 'new-work' } }]) expect(observationAuthorityFingerprint({ ...observation, ...change })).not.toBe(observationAuthorityFingerprint(observation))
 })

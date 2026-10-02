@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 公开消息、当前个人资料、共享表情目录、真实引用/Trace 回调和桌面请求封装。
- * [OUTPUT]: 本人操作与表情回应统一显示当前配置名称，不重写历史名称；共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好；表情浮层开关不控制工具条显示。
+ * [INPUT]: 公开消息、当前个人资料、共享表情目录、真实引用/Trace 回调、桌面请求封装与 Sonner 错误反馈。
+ * [OUTPUT]: 复制/表情失败使用 Sonner，已知剪贴板权限错误使用简短中文，未知错误保留真实信息，复制标记仅在本次写入成功后显示；本人操作与表情回应统一显示当前配置名称，不重写历史名称；共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好；表情浮层开关不控制工具条显示。
  * [POS]: 单聊与群聊共用的消息交互；不改变模型上下文、轮次或工作状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,7 +9,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '@shared/domain'
 import { reactionEmojis, type ReactionEmoji } from '@shared/domain/message-reactions'
 import { Check, Copy, Reply, ThumbsUp, Workflow } from '@/components/icons'
-import { Banner, useMutation } from '@/components/common'
+import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { getDesktopClient } from '@/services/request/desktop-client'
@@ -34,7 +34,7 @@ export function MessageCard({ message, profile = defaultUserProfile, children, o
   const reactionTrigger = useRef<HTMLButtonElement>(null)
   const [placement, setPlacement] = useState<'beside' | 'corner'>('corner')
   const [open, setOpen] = useState(false), [usage, setUsage] = useState<Record<string, number>>({}), [copied, setCopied] = useState(false)
-  const { busy, error, run } = useMutation()
+  const { busy, run } = useMutation({ errorFeedback: 'toast' })
   useLayoutEffect(() => {
     const measure = () => {
       const available = space.current?.clientWidth ?? 0, width = content.current?.offsetWidth ?? 0, tools = toolbar.current?.offsetWidth ?? 0
@@ -60,7 +60,16 @@ export function MessageCard({ message, profile = defaultUserProfile, children, o
     if (!active && !open && focused === document.activeElement && focused?.classList.contains('message-reaction')) reactionTrigger.current?.focus({ preventScroll: true })
     setOpen(false)
   })
-  const copy = () => void run(async () => { await navigator.clipboard.writeText(message.content); setCopied(true) })
+  const copy = () => void run(async () => {
+    setCopied(false)
+    if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('复制失败：当前无法使用剪贴板。')
+    try { await navigator.clipboard.writeText(message.content) }
+    catch (failure) {
+      if ((failure instanceof DOMException || failure instanceof Error) && failure.name === 'NotAllowedError') throw new Error('复制失败：未获得剪贴板权限。')
+      throw failure
+    }
+    setCopied(true)
+  })
   const pick = ([emoji, label]: typeof reactionEmojis[number]) => <Button key={emoji} variant="ghost" size="icon" className="reaction-choice" aria-label={`回应：${label}`} title={label} aria-pressed={reactions.some(item => item.emoji === emoji && item.senderId === 'user')} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span></Button>
   return <div className="message-content-space" ref={space}>
     <div className="message-content" ref={content} data-toolbar-placement={placement}>
@@ -82,6 +91,5 @@ export function MessageCard({ message, profile = defaultUserProfile, children, o
         {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${sender} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
       </div>
     </div>
-    {error && <Banner>{error}</Banner>}
   </div>
 }

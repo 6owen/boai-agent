@@ -1,11 +1,15 @@
 /*
- * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
+ * [INPUT]: Mastra 适配器、消息投影、执行合同、真实附件图片与本地协议服务。
+ * [OUTPUT]: 用户图片穿透实际SDK到原生image_url，历史获准图可用于后续交流；外会话/非用户图不投影，Trace只保留实际字节hash摘要。
+ * [OUTPUT]: 实际 SDK 判断与 bobo 工具任务不依赖旧 allowBrowser；停用/ACP/自动化/组织/普通 chat/无 Work 仍不提供 task 浏览器。
+ * [OUTPUT]: 同轮实际 SDK 多工具写入/发布按受理次序等待退出，真实成果字节/hash 和零重试；新根无修订字段，真实修订仅宿主原请求 literal。
  * [OUTPUT]: 实际 SDK 判断仅核心本人来源展示组织枚举，业务/组织汇报区分真实登记 ID，已声明等待不能被 userQuestion/非法证据覆盖；组织阶段仅三个获准工具、真实调用身份、普通群管理隔离及未知发布不确认副作用。
  * [OUTPUT]: 明确 task ask 的 JSON 判断合同与原有 ask/handoff 无工具实际 SDK 验证；官方 DeepSeek Chat 判断原生 JSON mode 的真实 HTTP 参数、协议拒绝、一次修复/预算和唯一调用用量回执；内建文件工具的真实来源授权、隐藏列举/猜路径拒绝、当前 run 写入和双端产物发布门禁及取消回归；记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createServer, type ServerResponse } from 'node:http'
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -19,9 +23,10 @@ import { projectMessages, messageData, decisionMessageData } from '../src/runtim
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent, WorkItem } from '../src/shared/domain'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import type { EngineContext } from '../src/runtime/contracts'
+import type { BrowserSession } from '../src/runtime/modules/browser/session'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
 
-type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; response_format?: { type: string }; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string } }[] }
+type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; response_format?: { type: string }; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string; parameters?: { properties: Record<string, unknown> } } }[] }
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close() })
 
@@ -108,6 +113,49 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('uses current host browser capability for a retry after an obsolete no-browser reply, without granting tools to the decision', async () => {
+    const server = await endpoint([JSON.stringify({ action: 'reply', responseKind: 'task', work: { key: 'main', scope: '读取原请求中的 IANA 页面', deliverable: '实际页面标题、域名和来源' } }), JSON.stringify({ action: 'reply', responseKind: 'chat' })])
+    const run = await context(server.url, { agent: employee({ allowBrowser: true }), browserAvailable: true, triggerMessageId: 'message-3', turnId: 'retry-turn', messages: [message('请实际使用浏览器打开 https://www.iana.org/help/example-domains'), message('我现在没有浏览器能力。', 2, { senderType: 'agent', senderId: 'agent-a' }), message('再试一下', 3, { turnId: 'retry-turn' })] })
+    await new MastraEngine().decide(run.ctx)
+    const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
+    expect(payload.data.currentTaskCapabilities).toEqual({ browser: true })
+    expect(payload.data.historicalBackground).toHaveLength(2)
+    expect(payload.data.currentTurnMessages[0].content).toBe('再试一下')
+    expect(server.requests[0]!.tools).toBeUndefined()
+    expect(allMessageText(server.requests[0]!)).toContain('currentTaskCapabilities')
+    await new MastraEngine().decide({ ...run.ctx, agent: { ...run.ctx.agent, allowBrowser: false } })
+    const legacy = JSON.parse(server.requests[1]!.messages.find(message => message.role === 'user')!.content as string)
+    expect(legacy.data.currentTaskCapabilities).toEqual({ browser: true })
+  })
+
+  it.each(['disconnected', 'inactive', 'acp', 'automation', 'organization'] as const)('does not advertise an executable browser for %s contexts', async kind => {
+    const server = await endpoint([JSON.stringify({ action: 'pass' })])
+    const run = await context(server.url, { agent: employee({ allowBrowser: true, active: kind !== 'inactive' }), browserAvailable: !['disconnected', 'automation'].includes(kind), ...(kind === 'acp' ? { agent: employee({ allowBrowser: true, executionBackend: { kind: 'acp-local', profileId: 'external' } }) } : {}), ...(kind === 'organization' ? { work: { organization: { mode: 'organize_only' } } as WorkItem } : {}) })
+    await new MastraEngine().decide(run.ctx)
+    const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
+    expect(payload.data.currentTaskCapabilities).toEqual({ browser: false })
+    expect(server.requests[0]!.tools).toBeUndefined()
+  })
+
+  it.each([false,undefined])('supplies the real SDK task browser without opt-in when legacy allowBrowser is %s, including bobo',async allowBrowser=>{
+    const server=await endpoint([{name:'browser_tool',args:{command:'snapshot'}},'读取完成。'])
+    const execute=vi.fn(async()=>({result:{output:'真实本轮页面',appendReleaseHint:false}})),drain=vi.fn(async()=>{})
+    const run=await context(server.url,{agent:employee({id:'bobo',name:'bobo',systemRole:'core',allowBrowser}),browserSession:{execute,drain} as unknown as BrowserSession})
+    run.ctx.work={id:'claimed-browser-task',sourceMessageId:'message-1',conversationId:run.ctx.conversation.id,ownerAgentId:'bobo',key:'main',scope:'读取本轮页面',deliverable:'真实页面内容',status:'running'} as WorkItem
+    await new MastraEngine().run(run.ctx)
+    expect(server.requests[0]!.tools?.some(tool=>tool.function.name==='browser_tool')).toBe(true)
+    expect(execute).toHaveBeenCalledExactlyOnceWith('snapshot','call-0');expect(drain).toHaveBeenCalledOnce()
+    expect(toolResultText(server.requests[1]!)).toContain('真实本轮页面')
+  })
+
+  it.each(['inactive','acp','automation','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
+    const execute=vi.fn(async()=>undefined),drain=vi.fn(async()=>{})
+    const work={id:'original-work',sourceMessageId:'message-1',conversationId:'conversation',ownerAgentId:'agent-a',scope:'原目标',deliverable:'原交付',status:'running',...(kind==='automation'?{origin:{automationId:'automatic',occurrenceId:'occurrence',authorizedFingerprint:'fingerprint'}}:{}),...(kind==='organization'?{organization:{requestId:'original-organization',mode:'organize_only',goal:'只组织群'}}:{})} as WorkItem
+    const f=await nativeTask({agent:employee({allowBrowser:true,active:kind!=='inactive',...(kind==='acp'?{executionBackend:{kind:'acp-local',profileId:'external'}}:{})}),work:kind==='no-work'?undefined:work,responseKind:kind==='chat'?'chat':'task',browserSession:{execute,drain} as unknown as BrowserSession})
+    expect(f.runtime.tools).not.toHaveProperty('browser_tool');expect(execute).not.toHaveBeenCalled()
+    await f.runtime.dispose()
+  })
+
   it.each(['off', 'low', 'high', 'max'] as const)('sends the employee thinking level %s through the real SDK for chat and tasks', async thinkingLevel => {
     const server = await endpoint(['聊天回答', '任务回答'])
     redirectDeepSeekTo(server.url)
@@ -1385,4 +1433,101 @@ describe('phase-specific model work contracts', () => {
     expect(await new MastraEngine().report(fixture.ctx, draft)).toMatchObject({ outcome: { evidence: [{ kind: 'collaboration', reference: 'host-committed-operation' }] } })
     const schema = JSON.stringify(protocolSchema(mock.requests[0])); expect(schema).toContain('host-committed-operation'); expect(schema).not.toContain('"artifact"'); expect(schema).not.toContain('"answer"')
   })
+})
+
+describe('real SDK file publication ordering and authority', () => {
+  it('serializes write then publish from one real SDK tool_calls batch until the actual write exits, with no retry', async () => {
+    let entered!: () => void, release!: () => void
+    const writing = new Promise<void>(resolve => { entered = resolve }), exited = new Promise<void>(resolve => { release = resolve })
+    let effects = 0
+    const mock = await endpoint((_body, response, index) => {
+      if (index) { send(response, '本轮真实文件已发布。', index); return }
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const chunk = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: 'same-round-files', object: 'chat.completion.chunk', created: 1700000000, model: 'test-model', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
+      chunk({ role: 'assistant', tool_calls: [
+        { index: 0, id: 'write-real-file', type: 'function', function: { name: 'write_file', arguments: JSON.stringify({ path: 'self:/runs/run-1/ordered.md', content: '新内容：真实写入完成后才允许发布。' }) } },
+        { index: 1, id: 'publish-real-file', type: 'function', function: { name: 'publish_artifact', arguments: JSON.stringify({ path: 'self:/runs/run-1/ordered.md' }) } },
+      ] })
+      chunk({}, 'tool_calls'); response.end('data: [DONE]\n\n')
+    })
+    const fixture = await context(mock.url, { beforeEffect: async () => { effects++; if (effects === 1) { entered(); await exited } } })
+    await mkdir(fixture.ctx.workspace!.runPath, { recursive: true })
+    await writeFile(path.join(fixture.ctx.workspace!.runPath, 'ordered.md'), '原内容不能被提前发布。')
+    const running = new MastraEngine().run(fixture.ctx)
+    await writing
+    try {
+      await new Promise(resolve => setTimeout(resolve, 30))
+      expect(effects).toBe(1)
+      expect(fixture.artifacts).toEqual([])
+    } finally { release(); await running }
+    expect(mock.requests).toHaveLength(2)
+    expect(effects).toBe(2); expect(fixture.artifacts).toHaveLength(1)
+    const bytes = await readFile(fixture.artifacts[0]!.path)
+    expect(bytes.toString()).toBe('新内容：真实写入完成后才允许发布。')
+    expect(fixture.artifacts[0]!.contentHash).toBe(createHash('sha256').update(bytes).digest('hex'))
+    expect(fixture.tools.filter(tool => ['write_file', 'publish_artifact'].includes(tool.name) && tool.status !== 'running').map(tool => ({ id: tool.id, name: tool.name, status: tool.status }))).toEqual([
+      { id: 'write-real-file', name: 'write_file', status: 'completed' },
+      { id: 'publish-real-file', name: 'publish_artifact', status: 'completed' },
+    ])
+  })
+  it('advertises no revision field for a new result, and only the host exact request literal for a real revision', async () => {
+    const mock = await endpoint(['已完成普通任务。', '已完成明确修订。'])
+    const fixture = await context(mock.url), engine = new MastraEngine()
+    await engine.run(fixture.ctx)
+    const ordinary = mock.requests[0]!.tools!.find(tool => tool.function.name === 'publish_artifact')!.function.parameters!
+    expect(ordinary.properties).not.toHaveProperty('revisionRequestId')
+    fixture.ctx.artifactRevision = { id: 'host-exact-revision-request', fingerprint: 'host-fingerprint', conversationId: fixture.ctx.conversation.id, artifactId: 'actual-original', contentHash: 'a'.repeat(64), logicalArtifactId: 'actual-family', targetAgentId: fixture.ctx.agent.id, content: '修改指定原件', messageId: 'actual-user-revision-message', createdAt: new Date().toISOString() }
+    await engine.run(fixture.ctx)
+    const revision = mock.requests[1]!.tools!.find(tool => tool.function.name === 'publish_artifact')!.function.parameters!
+    expect(revision.properties.revisionRequestId).toEqual({ anyOf: [{ type: 'string', const: fixture.ctx.artifactRevision.id }, { type: 'null' }] })
+    const runtime = await createTaskRuntime(fixture.ctx)
+    try {
+      const validate = runtime.tools.publish_artifact.inputSchema!['~standard'].validate
+      expect((await validate({ path: 'self:/runs/run-1/file.md', revisionRequestId: 'null' })).issues).toBeDefined()
+      expect((await validate({ path: 'self:/runs/run-1/support.md' })).issues).toBeUndefined()
+    } finally { await runtime.dispose() }
+  })
+})
+
+
+it('sends a real user image through the SDK without a model capability gate and keeps raw bytes out of Trace', async () => {
+  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64')
+  const dataUrl = `data:image/png;base64,${bytes.toString('base64')}`
+  const mock = await endpoint(['我收到图片了。'])
+  const spans: TraceSpan[] = []
+  const { ctx, deltas } = await context(mock.url, {
+    responseKind: 'chat', messages: [message('看一下这张图片')],
+    materialImages: [{ messageId: 'message-1', materialId: 'image-1', dataUrl, mimeType: 'image/png' }],
+    onTrace: async span => { spans.push(span) },
+  })
+  await new MastraEngine().run(ctx)
+  expect(mock.requests).toHaveLength(1)
+  const input = mock.requests[0].messages.find(item => item.role === 'user')
+  expect(input?.content).toEqual(expect.arrayContaining([
+    { type: 'text', text: '看一下这张图片' },
+    { type: 'image_url', image_url: { url: dataUrl } },
+  ]))
+  expect(deltas.join('')).toBe('我收到图片了。')
+  const trace = JSON.stringify(spans)
+  expect(spans.length).toBeGreaterThan(0)
+  expect(trace).not.toContain(dataUrl)
+  expect(trace).not.toContain(bytes.toString('base64'))
+  expect(trace).toContain(createHash('sha256').update(bytes).digest('hex'))
+  expect(trace).toContain(`"sizeBytes":${bytes.length}`)
+  expect(ctx.messages[0].content).toBe('看一下这张图片')
+})
+
+it('projects only selected user images and retains an authorized historical image for a follow-up', () => {
+  const stored = [message('上一张图', 1, { turnId: 'old' }), message('请继续看图', 3, { turnId: 'new' }), message('同事的说明', 4, { senderType: 'agent', senderId: 'agent-b', turnId: 'new' }), message('外部', 5, { conversationId: 'other', turnId: 'new' })]
+  const image = (messageId: string, dataUrl: string) => ({ messageId, materialId: `image-${messageId}`, dataUrl, mimeType: 'image/png' })
+  const images = [image('message-1', 'data:image/png;base64,OLD'), image('message-3', 'data:image/png;base64,CURRENT'), image('message-4', 'data:image/png;base64,TEAMMATE'), image('message-5', 'data:image/png;base64,FOREIGN'), image('missing', 'data:image/png;base64,MISSING')]
+  const projected = projectMessages(stored, 'agent-a', 'conversation', 'message-3', 'new', images)
+  const serialized = JSON.stringify(projected)
+  expect(serialized).toContain('data:image/png;base64,OLD')
+  expect(serialized).toContain('data:image/png;base64,CURRENT')
+  expect(serialized).not.toContain('data:image/png;base64,TEAMMATE')
+  expect(serialized).not.toContain('data:image/png;base64,FOREIGN')
+  expect(serialized).not.toContain('data:image/png;base64,MISSING')
+  expect(projected[0].content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'image', image: images[0].dataUrl })]))
+  expect(stored.map(item => item.content)).toEqual(['上一张图', '请继续看图', '同事的说明', '外部'])
 })

@@ -1,11 +1,12 @@
 /*
- * [INPUT]: SQLite 权威已发送材料/已登记成果、可见会话、固定筛选及派生正文状态。
+ * [INPUT]: SQLite 权威已发送材料/接收范围、已登记成果、可见会话/当前成员、固定筛选及派生正文状态。
+ * [OUTPUT]: 索引候选/覆盖/失败的员工筛选复用分页查询的当前成员附件范围，旧名单不随新增成员扩权。
  * [OUTPUT]: 稳定有界待核读队列、限定同一来源快照的覆盖/失败统计；所有资格在 LIMIT 前检查，未发草稿与隐藏/清理内容不入队。
  * [POS]: R1 正文索引固定 SQL；队列只指向权威对象，不扫描目录或读取任意路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { SEARCH_INDEX_LIMITS, type ConversationSearchQuery } from '../../../shared/domain/reading'
-import { conversationSearchSourcesSql, searchableConversationSql } from './reading-sql'
+import { conversationSearchSourcesSql, searchableConversationSql, materialAgentVisibleSql } from './reading-sql'
 
 export interface SearchBodyCandidate { id: string; kind: 'material' | 'artifact'; conversationId: string; source: string; conversation: string }
 export interface SearchBodyRecord { id: string; sourceId: string; kind: 'material' | 'artifact'; conversationId: string; sourceValue: string; formatVersion: number; status: 'pending' | 'indexed' | 'failed' | 'skipped'; text?: string; reason?: string; checkedAt: string }
@@ -16,7 +17,7 @@ export const SEARCH_INDEX_CLOCK_ID = 'personal'
 function sources(query: Pick<ConversationSearchQuery, 'scope' | 'conversationId' | 'agentId' | 'from' | 'to' | 'kinds'>) {
   const where = [searchableConversationSql, "i.kind IN ('material','artifact')"], args: (string | number)[] = []
   if (query.scope === 'current' || query.conversationId) { where.push('i.conversationId=?'); args.push(query.conversationId ?? '') }
-  if (query.agentId) { where.push("((i.kind='material' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.authorizedAgentIds')) member WHERE member.value=?)) OR (i.kind='artifact' AND json_extract(i.source,'$.ownerAgentId')=?))"); args.push(query.agentId, query.agentId) }
+  if (query.agentId) { where.push(`((i.kind='material' AND ${materialAgentVisibleSql}) OR (i.kind='artifact' AND json_extract(i.source,'$.ownerAgentId')=?))`); args.push(query.agentId, query.agentId) }
   if (query.from) { where.push('i.time>=?'); args.push(query.from) }
   if (query.to) { where.push('i.time<=?'); args.push(query.to) }
   if (query.kinds) { const kinds = query.kinds.filter(kind => kind === 'material' || kind === 'artifact'); where.push(kinds.length ? `i.kind IN (${kinds.map(() => '?').join(',')})` : '0'); args.push(...kinds) }

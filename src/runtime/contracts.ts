@@ -1,7 +1,9 @@
 /*
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
+ * [OUTPUT]: 图片附件仅在当前获准上下文以内存媒体交给模型，不进入持久消息或运行快照。
  * [OUTPUT]: 核心组织阶段的有界员工摘要、宿主原工作授权及已提交真实组织回执 ID；群中 bobo 不持管理工具。
- * [OUTPUT]: 手动已认领工作独占的浏览器租约；同一验证读取字节的宿主文件读取回调；宿主提交的成果修订身份；材料读取证据和宿主文件访问授权回调；核心 Agent 团队工具的宿主授权/唯一工具调用身份与提交回执合同；员工统一召回和宿主已授权临时事项；逐模型调用开始/实际思考强度和原生技能激活观察；无工具的定时任务草稿模型接口与原始用量回调；明确预算接续与被接替判断的宿主上下文；明确补充对应的原始请求/提问上下文合同；唯一模型请求身份与逐调用用量回执；原生 Trace 保存/观测错误、统一容量/判断时限、工作上下文及结果/副作用和无工具汇报接口。
+ * [OUTPUT]: 宿主即时核验的依赖成果 ID/hash/逻辑路径；读取仍核对来源，不将同伴文字或元信息当作本人交付。
+ * [OUTPUT]: 判断阶段的当前宿主浏览器可用性与手动已认领工作独占的浏览器租约；同一验证读取字节的宿主文件读取回调；宿主提交的成果修订身份；材料读取证据和宿主文件访问授权回调；核心 Agent 团队工具的宿主授权/唯一工具调用身份与提交回执合同；员工统一召回和宿主已授权临时事项；逐模型调用开始/实际思考强度和原生技能激活观察；无工具的定时任务草稿模型接口与原始用量回调；明确预算接续与被接替判断的宿主上下文；明确补充对应的原始请求/提问上下文合同；唯一模型请求身份与逐调用用量回执；原生 Trace 保存/观测错误、统一容量/判断时限、工作上下文及结果/副作用和无工具汇报接口。
  * [POS]: runtime 内部合同，不向 renderer 暴露凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -28,9 +30,12 @@ export interface EngineContext {
   organizeCollaboration?(plan: import('../shared/domain/bobo-collaboration').BoboCollaborationPlan, toolCallId: string): Promise<import('../shared/domain/bobo-collaboration').BoboCollaborationReceipt>
   /** Host grants this only after a manual task owns its original Work. */
   browserSession?: import('./modules/browser/session').BrowserSession
+  /** Current host availability for choosing a task; this does not grant a lease or tools. */
+  browserAvailable?: boolean
   /** A host-committed revision request; file versions never reuse Work resultVersion. */
   artifactRevision?: import('../shared/domain/artifacts').ArtifactRevisionRequest
   materialRefs?: import('../shared/domain/materials').MaterialReadRef[]
+  materialImages?: { messageId: string; materialId: string; dataUrl: string; mimeType: string }[]
   /** Host checks source grants before file reads, lists, writes and publication. */
   canAccessTaskPath?(path: string, operation: 'read' | 'list' | 'write' | 'publish'): Promise<boolean>
   /** Registered shared artifacts return the same bytes that the host validated, with no second filesystem read. */
@@ -55,6 +60,8 @@ export interface EngineContext {
   contributions?: Contribution[]
   workItems?: WorkItem[]
   work?: WorkItem
+  /** Exact logical files of delivered, currently authorized dependency results; reads still recheck sources. */
+  dependencyArtifacts?: { artifactId: string; name: string; logicalPath: string; contentHash: string; workId: string; resultVersion: number }[]
   /** Host-verified committed organization receipts; model outcome references are not proof. */
   committedCollaborationIds?: string[]
   /** Waiting declared by this execution, retained when its private report is revised. */

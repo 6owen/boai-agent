@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 场景独立 Desktop、实际问答/工具协议、原主进程处理器与真实 SQLite。
- * [OUTPUT]: D5 原问题、原 Work/预算及提交后丢回复的留证；不替代模型工具、业务事务或权威来源。
- * [POS]: 全局待处理 Electron 支撑；每个场景沿原目录重启且不使用商业模型。
+ * [OUTPUT]: D5 原聊天/问题卡片、原 Work/预算及提交后丢回复的留证；不替代模型工具、业务事务或权威来源。
+ * [POS]: 聊天问题关联 Electron 支撑；保留底层 Inbox 核对，每个场景沿原目录重启且不使用商业模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { join } from 'node:path'
@@ -11,16 +11,15 @@ import type { Message, WorkItem, WorkBudget } from '../../../src/shared/domain'
 import type { InboxItem, InboxQuestionReply } from '../../../src/shared/domain/inbox'
 import type { ArtifactAcceptance } from '../../../src/shared/domain/artifacts'
 
-export async function openInbox(runtime: Desktop, kind?: '待补充' | '待批准' | '待验收' | '需处理') {
-  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '待处理', exact: true }).click()
-  const view = runtime.page.getByRole('main', { name: '待处理事项', exact: true })
-  if (kind) await view.getByRole('button', { name: kind, exact: true }).click()
-  return view
+export async function openSourceChat(runtime: Desktop, conversationId: string) {
+  const detail = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), conversationId)
+  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
+  const title = detail.conversation.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${title}`) }).click()
 }
-export async function openInboxItem(runtime: Desktop, item: InboxItem) {
-  const view = await openInbox(runtime)
-  await view.locator(`button[data-inbox-id="${item.id}"]`).click()
-  return runtime.page.locator(`div.detail-section[data-inbox-id="${item.id}"]:visible`)
+export async function openQuestionMessage(runtime: Desktop, item: InboxItem) {
+  await openSourceChat(runtime, item.conversationId)
+  return runtime.page.locator(`#message-${item.messageId}`).locator(`[data-question-id="${item.question!.id}"]`)
 }
 export async function inboxRecords(dataPath: string) {
   const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()

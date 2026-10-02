@@ -1,6 +1,6 @@
 /*
  * [INPUT]: BrowserService 与私有租约/动作、实际文件、可控制退出的驱动 fixture。
- * [OUTPUT]: 单 scope 排他/零执行批准、交接等待、未知不重放、跨重启清理与有界正文/密码 AX 隔离意图；短普通页/空AX不会假接管，实际验证证据仍触发。
+ * [OUTPUT]: 人工窗口无伪造租约/真实清理、单scope/审批/unknown不重放；普通release只聚焦且原租约/source继续可核对，旧显式交接仅兼容；真实退出/正文密码AX边界；本轮合同更新未运行。
  * [POS]: BRM1/BRM3 宿主模块验收；不替代真实 Electron profile/UI 证据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -25,10 +25,10 @@ function driver() {
  const manager:any={
   onStateChange:vi.fn(),onRemoved:vi.fn(),registerToolbarIpc:vi.fn(),
   createInstance:vi.fn((id:string,options:any)=>{if(instances.has(id))return id;const page={url:'about:blank',title:'Test',html:'<main>fixture</main>',forms:[]};pages.set(id,page);instances.set(id,{id,currentUrl:page.url,title:page.title,toolbarReady:true,toolbarError:null,canGoBack:false,canGoForward:false,themeColor:null,partition:options.partition,downloadDirectory:options.downloadDirectory,window:{isDestroyed:()=>false,setTitle:vi.fn()},toolbarView:{webContents:{isDestroyed:()=>false,send:vi.fn()}},pageView:{webContents:{executeJavaScript:vi.fn(async()=>page)}},cdp:{invalidateRefs:vi.fn(),drain:vi.fn(async()=>{})}});return id}),
-  getInstance:vi.fn((id:string)=>instances.get(id)),ready:vi.fn(async()=>{}),setAgentControl:vi.fn(),clearAgentControl:vi.fn(),
+  getInstance:vi.fn((id:string)=>instances.get(id)),ready:vi.fn(async()=>{}),
   getAccessibilitySnapshot:vi.fn(async(id:string)=>({url:pages.get(id).url,title:'Test',nodes:[{ref:'@e1',role:'button',name:'Save'}]})),
   navigate:vi.fn(async(id:string,url:string)=>{const page=pages.get(id);page.url=url;page.html='<main>actual-page</main>';const instance=instances.get(id);instance.currentUrl=url;return {url,title:page.title}}),
-  listInstances:vi.fn(()=>[...instances.values()].map(instance=>({id:instance.id,url:instance.currentUrl,title:instance.title,isVisible:true,ownerType:'session',ownerSessionId:'scope',boundSessionId:'scope',agentControlActive:true}))),
+  listInstances:vi.fn(()=>[...instances.values()].map(instance=>({id:instance.id,url:instance.currentUrl,title:instance.title,isVisible:true,ownerType:'session',ownerSessionId:'scope',boundSessionId:'scope',agentControlActive:false}))),
   detectSecurityChallenge:vi.fn(async()=>({detected:false,provider:'none',signals:[]})),
   evaluate:vi.fn(async(id:string)=>({url:pages.get(id).url,title:'Test',viewportWidth:1000,viewportHeight:800,documentWidth:1000,documentHeight:800,scrollX:0,scrollY:0,maxScrollX:0,maxScrollY:0})),
   clickElement:vi.fn(async()=>{}),fillElement:vi.fn(async()=>{}),focus:vi.fn(),hide:vi.fn(),stop:vi.fn(),
@@ -51,7 +51,7 @@ describe('实际窗口验证检测',()=>{
  it.each([
   {name:'只有一个链接的普通文章',nodes:[{role:'link'},...Array.from({length:499},()=>({role:'StaticText'}))],dom:[],title:'Example Domain',detected:false,provider:'none'},
   {name:'导航暂态空AX',nodes:[],dom:[],title:'Loading article',detected:false,provider:'none'},
-  {name:'实际验证表单仍需本人接管',nodes:[{role:'button'}],dom:['dom:challenge-form'],title:'Just a moment...',detected:true,provider:'cloudflare'},
+  {name:'实际验证表单仍需本人人工完成',nodes:[{role:'button'}],dom:['dom:challenge-form'],title:'Just a moment...',detected:true,provider:'cloudflare'},
  ])('$name',async ({nodes,dom,title,detected,provider})=>{
   const instance={window:{isDestroyed:()=>false},title,currentUrl:'https://example.com/',pageView:{webContents:{executeJavaScript:async()=>dom}},cdp:{getAccessibilitySnapshot:async()=>({nodes})}}
   const manager={instances:new Map([['real-detection',instance]])} as unknown as BrowserPaneManager
@@ -65,6 +65,90 @@ async function envelope(service:BrowserService,lease:BrowserLease,command:string
  return {lease,actionId:`action-${++actionSequence}`,toolCallId:`tool-${actionSequence}`,command,argumentHash,approvedOrigins:['https://example.com'],expectedPageVersion:page?.pageVersion,...(approve&&page?{approval:{url:page.url,pageVersion:page.pageVersion,commandHash:argumentHash}}:{})}
 }
 describe('BrowserService 原工作私有作用域',()=>{
+ it('无任务人工打开只有真实员工会话归属，不制造运行或下载目录；重复点击复用原窗口',async()=>{
+  const {service,lease,fake}=await fixture()
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  const first=await service.manualOpen(owner),second=await service.manualOpen(owner)
+  expect(first.control).toBe('user-controlled');expect(first.url).toBe('about:blank')
+  expect(first.workId).toBeUndefined();expect(first.runId).toBeUndefined();expect(first.generation).toBe('')
+  expect(second.instanceId).toBe(first.instanceId);expect(fake.mocks.createInstance).toHaveBeenCalledTimes(1)
+  expect(fake.mocks.createInstance.mock.calls[0][1].downloadDirectory).toBeUndefined()
+  expect(fake.mocks.navigate).not.toHaveBeenCalled();expect(fake.mocks.setAgentControl).not.toHaveBeenCalled()
+ })
+ it('人工打开已有员工任务窗口只显示，不抢控制或改写真实任务身份',async()=>{
+  const {service,lease,fake}=await fixture();await service.acquire(lease)
+  const before=service.list()[0]!
+  const opened=await service.manualOpen({scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle})
+  expect(opened.control).toBe('agent-controlled');expect(opened.workId).toBe(lease.workId);expect(opened.generation).toBe(lease.generation);expect(opened.instanceId).toBe(before.instanceId)
+  expect(fake.mocks.stop).not.toHaveBeenCalled();expect(fake.mocks.focus).toHaveBeenCalledOnce()
+ })
+ it('新明确员工任务用真实租约复用人工原窗口与profile；人工窗口不能恢复不存在的原任务',async()=>{
+  const {service,lease,fake}=await fixture()
+  const manual=await service.manualOpen({scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle})
+  await expect(service.userControl({scopeKey:lease.scopeKey,action:'resume'})).rejects.toThrow('尚无可继续的员工任务')
+  await expect(service.inspect(lease)).rejects.toThrow('租约')
+  await service.acquire(lease)
+  expect(service.list()[0]?.instanceId).toBe(manual.instanceId);expect(service.list()[0]?.control).toBe('agent-controlled');expect(service.list()[0]?.runId).toBe(lease.runId)
+  expect(fake.mocks.createInstance).toHaveBeenCalledTimes(2);expect(fake.instances.size).toBe(1)
+  expect(fake.instances.values().next().value!.downloadDirectory).toBe(await realpath(lease.downloadDirectory))
+ })
+ it('人工scope也持久登记和实际清理；重启清除原profile不制造旧任务',async()=>{
+  const {service,lease,options,clearPartition}=await fixture()
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  await service.manualOpen(owner);await service.clearScope({scopeKey:lease.scopeKey})
+  expect(service.list()[0]?.control).toBe('closed');expect(clearPartition).toHaveBeenCalledOnce()
+  const restarted=new BrowserService({...options,manager:driver().manager});await restarted.manualOpen(owner)
+  expect(restarted.list()[0]?.runId).toBeUndefined();expect(restarted.list()[0]?.url).toBe('about:blank')
+  await restarted.clearScope({scopeKey:lease.scopeKey});expect(clearPartition).toHaveBeenCalledTimes(2)
+ })
+ it('人工打开同scope不能替换员工或会话归属；关闭和重开仍等真实窗口退出',async()=>{
+  const {service,lease,fake}=await fixture()
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  await service.manualOpen(owner)
+  await expect(service.manualOpen({...owner,agentId:'other'})).rejects.toThrow('归属不匹配')
+  const entered=deferred<void>(),exited=deferred<void>()
+  fake.mocks.destroyInstance.mockImplementation(async(id:string)=>{entered.resolve();await exited.promise;fake.instances.delete(id);fake.pages.delete(id)})
+  const close=service.userControl({scopeKey:lease.scopeKey,action:'close'});await entered.promise
+  let reopened=false;const opening=service.manualOpen(owner).then(()=>{reopened=true})
+  await Promise.resolve();expect(reopened).toBe(false);expect(service.list()[0]?.control).toBe('closing')
+  exited.resolve();await close;await opening;expect(reopened).toBe(true);expect(fake.instances.size).toBe(1);expect(service.list()[0]?.control).toBe('user-controlled')
+ })
+ it('同时人工打开同员工会话只有一个真实窗口，其他员工和聊天不共享登录分区',async()=>{
+  const {service,lease,fake}=await fixture()
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  const [first,second]=await Promise.all([service.manualOpen(owner),service.manualOpen(owner)])
+  expect(first.instanceId).toBe(second.instanceId);expect(fake.mocks.createInstance).toHaveBeenCalledOnce()
+  await service.manualOpen({...owner,scopeKey:'b|chat|0',agentId:'b'})
+  await service.manualOpen({...owner,scopeKey:'a|other|0',conversationId:'other'})
+  expect(new Set([...fake.instances.values()].map(instance=>instance.partition)).size).toBe(3)
+  expect(service.list().every(state=>!state.workId&&!state.runId)).toBe(true)
+ })
+ it('人工工具栏准备失败保持实际错误，不伪造ready；关闭后新窗口可重新准备',async()=>{
+  const {service,lease,fake}=await fixture()
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  fake.mocks.ready.mockRejectedValueOnce(new Error('manual toolbar failed'))
+  await expect(service.manualOpen(owner)).rejects.toThrow('manual toolbar failed')
+  expect(service.list()[0]?.toolbarReady).toBe(false);expect(service.list()[0]?.error).toBe('manual toolbar failed');expect(fake.mocks.focus).not.toHaveBeenCalled()
+  await service.userControl({scopeKey:lease.scopeKey,action:'close'});await service.manualOpen(owner)
+  expect(service.list()[0]?.toolbarReady).toBe(true);expect(service.list()[0]?.error).toBeUndefined()
+ })
+ it('旧任务退出回执不能关闭之后新建的人工窗口，重启也不自动重开窗口',async()=>{
+  const {service,lease,fake,options}=await fixture();await service.acquire(lease);await service.clearScope({scopeKey:lease.scopeKey})
+  const owner={scopeKey:lease.scopeKey,scopeEpoch:lease.scopeEpoch,agentId:lease.agentId,conversationId:lease.conversationId,configVersion:lease.configVersion,agentName:lease.agentName,conversationTitle:lease.conversationTitle}
+  await service.manualOpen(owner);const stopCount=fake.mocks.stop.mock.calls.length
+  await service.drain(lease);expect(service.list()[0]?.control).toBe('user-controlled');expect(fake.mocks.stop).toHaveBeenCalledTimes(stopCount)
+  const restarted=new BrowserService({...options,manager:driver().manager});expect(restarted.list()).toHaveLength(0)
+ })
+ it('宿主drain没有工具inFlight时也等真实页面退出，新员工代际不能提前认领',async()=>{
+  const {service,lease,fake}=await fixture();await service.acquire(lease)
+  const entered=deferred<void>(),exited=deferred<void>()
+  fake.mocks.waitForLoads.mockImplementationOnce(async()=>{entered.resolve();await exited.promise})
+  const draining=service.drain(lease);await entered.promise
+  await expect(service.acquire({...lease,generation:'g2'})).rejects.toThrow('尚未实际退出')
+  expect(service.list()[0]?.control).toBe('draining')
+  exited.resolve();await draining;await service.acquire({...lease,generation:'g2'})
+  expect(service.list()[0]?.generation).toBe('g2');expect(service.list()[0]?.control).toBe('agent-controlled')
+ })
  it('同scope同租约可核对，其他work不能借焦点或覆盖；员工/聊天各自partition',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease);await service.acquire(lease)
   expect(fake.mocks.createInstance).toHaveBeenCalledTimes(1)
@@ -106,22 +190,22 @@ describe('BrowserService 原工作私有作用域',()=>{
   expect(result.status).toBe('unknown');expect(service.lookup({lease,actionId:request.actionId})?.status).toBe('unknown')
   await service.executeSingle(request);expect(fake.mocks.clickElement).toHaveBeenCalledTimes(1)
  })
- it('接管先关门并等待实际慢动作退出，再进入人工控制',async()=>{
+ it('旧显式接管兼容入口仍等待实际慢动作退出',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease);const entered=deferred<void>(),exited=deferred<void>()
   fake.mocks.clickElement.mockImplementation(async()=>{entered.resolve();await exited.promise})
   const action=service.executeSingle(await envelope(service,lease,'click @e1'));await entered.promise
   let handed=false;const take=service.userControl({scopeKey:lease.scopeKey,action:'take'}).then(()=>{handed=true})
-  await Promise.resolve();expect(service.list()[0]?.control).toBe('draining');expect(handed).toBe(false);expect(fake.mocks.clearAgentControl).not.toHaveBeenCalled()
+  await Promise.resolve();expect(service.list()[0]?.control).toBe('draining');expect(handed).toBe(false)
   await expect(service.executeSingle(await envelopeDuringOldPage(lease,'snapshot'))).rejects.toThrow('租约')
   exited.resolve();await action;await take;expect(handed).toBe(true);expect(service.list()[0]?.control).toBe('user-controlled')
  })
- it('新代际交还后旧finally/drain不能解除新员工控制权或复活旧refs',async()=>{
+ it('旧交接兼容产生新代际后旧drain不能停止新运行或复活旧refs',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease);await service.userControl({scopeKey:lease.scopeKey,action:'take'})
-  const next={...lease,generation:'g2'};await service.acquire(next);const calls=fake.mocks.clearAgentControl.mock.calls.length
-  await service.drain(lease);expect(service.list()[0]?.control).toBe('agent-controlled');expect(fake.mocks.clearAgentControl.mock.calls.length).toBe(calls)
+  const next={...lease,generation:'g2'};await service.acquire(next);const calls=fake.mocks.stop.mock.calls.length
+  await service.drain(lease);expect(service.list()[0]?.control).toBe('agent-controlled');expect(fake.mocks.stop.mock.calls.length).toBe(calls)
   await expect(service.acquire(lease)).rejects.toThrow('旧浏览器')
  })
- it('接管关门期间已实际完成的只读wait仍保留completed，新代际不得越过退出',async()=>{
+ it('旧接管兼容关门期间已完成wait保留事实，新代际不得越过退出',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease);const entered=deferred<void>(),exited=deferred<void>()
   fake.mocks.waitFor=vi.fn(async()=>{entered.resolve();await exited.promise;fake.pages.values().next().value!.html='<p>READY</p>';return {ok:true,kind:'text',elapsedMs:50,detail:'text found: READY'}})
   const action=service.executeSingle(await envelope(service,lease,'wait text READY 5000'));await entered.promise
@@ -130,11 +214,13 @@ describe('BrowserService 原工作私有作用域',()=>{
   exited.resolve();const reply=await action;await take
   expect(reply.status).toBe('completed');expect(reply.result?.output).toContain('READY');expect(reply.source?.pageVersion).toBe(service.list()[0]?.pageVersion)
  })
- it('工具内release不等待自身queue；窗口保留而租约不能继续执行',async()=>{
+ it('普通release只显示聚焦，不切控制权或阻塞原租约的新页面核对',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease)
   const reply=await service.executeSingle(await envelope(service,lease,'release'))
-  expect(reply.status).toBe('completed');expect(reply.needsUserControl).toBe(true);expect(fake.mocks.focus).toHaveBeenCalled();expect(fake.mocks.destroyInstance).not.toHaveBeenCalled();expect(service.list()[0]?.control).toBe('user-controlled')
-  await expect(service.inspect(lease)).rejects.toThrow('租约')
+  expect(reply.status).toBe('completed');expect(reply.needsUserControl).toBeUndefined();expect(fake.mocks.focus).toHaveBeenCalled();expect(fake.mocks.destroyInstance).not.toHaveBeenCalled();expect(fake.mocks.stop).not.toHaveBeenCalled()
+  expect(service.list()[0]).toMatchObject({control:'agent-controlled',workId:lease.workId,runId:lease.runId,generation:lease.generation})
+  const source=await service.inspect(lease);expect(source).toMatchObject({scopeKey:lease.scopeKey,generation:lease.generation,pageVersion:reply.source!.pageVersion})
+  const next=await service.executeSingle(await envelope(service,lease,'snapshot'));expect(next.status).toBe('completed');expect(next.source).toMatchObject({scopeKey:lease.scopeKey,generation:lease.generation,pageVersion:source!.pageVersion})
  })
  it('真实关闭失败保留窗口/closing，不能乐观移除徽标',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease);fake.mocks.destroyInstance.mockRejectedValue(new Error('not actually destroyed'))

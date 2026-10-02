@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文商店业务场景、生产组件与受控商店服务。
- * [OUTPUT]: 当前排序 Tabs 的能力与禁用断言；搜索/跨提供方迟到响应、分页/详情/来源切换以及本地资料隔离的可访问交互断言。
+ * [OUTPUT]: 实际 SkillsWorkspace 的商城/本地 Tabs、详情区域与隔离目录空态；当前排序 Tabs 的能力与禁用断言；搜索/跨提供方迟到响应、分页/详情/来源切换以及本地资料隔离的可访问交互断言。
  * [POS]: Skills 商店 Electron 步骤；不联网、不安装真实技能。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,7 +14,7 @@ const { Given, When, Then } = createBdd(test)
 Given('商店使用隔离桌面与受控提供方', async ({ runtime, marketplace }) => {
   test.skip(Boolean(process.env.BOAI_TEST_PACKAGED_PATH), 'Component fixture uses a local test server; installed app behavior has separate coverage.')
   marketplace.fixture = await startMarketplaceFixture(runtime)
-  await runtime.page.getByRole('tab', { name: '技能商店', exact: true }).click()
+  await runtime.page.getByRole('tab', { name: '商城', exact: true }).click()
   await expect(runtime.page.getByRole('button', { name: /alpha owner/ })).toBeVisible()
 })
 When('下一页暂时失败后重试', async ({ runtime }) => {
@@ -54,14 +54,14 @@ Then('各商店保留搜索条件并显示各自的能力', async ({ runtime }) 
 })
 Then('商店详情如实显示缺失正文和未知统计', async ({ runtime }) => {
   await runtime.page.getByRole('button', { name: /fast owner/ }).click()
-  const detail = runtime.page.getByRole('complementary', { name: '商店详情' })
+  const detail = runtime.page.getByRole('main', { name: '商店技能详情' }).locator('.detail-section')
   await expect(detail.getByRole('heading', { name: 'fast', exact: true })).toBeVisible()
   await expect(detail.getByText('提供方未提供正文，安装前需要检查实际技能包。')).toBeVisible()
   await expect(detail.getByText('下载：未知 · 安装：未知 · 星标：未知')).toBeVisible()
 })
-Then('本地资料库仍能独立使用', async ({ runtime }) => {
-  await runtime.page.getByRole('tab', { name: '本地技能', exact: true }).click()
-  await expect(runtime.page.getByRole('heading', { name: '暂无匹配资源' })).toBeVisible()
+Then('本地技能仍能独立使用', async ({ runtime }) => {
+  await runtime.page.getByRole('tab', { name: '本地', exact: true }).click()
+  await expect(runtime.page.getByRole('heading', { name: '未发现本机技能' })).toBeVisible()
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).resources).toEqual([])
   expect(runtime.errors).toEqual([])
 })

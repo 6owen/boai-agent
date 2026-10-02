@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 持久批量检查、单项检查与更新操作状态、应用变更事件、所属页面标签活跃状态及技能详情导航。
  * [OUTPUT]: 更新详情的收起箭头固定12px；Shell 右侧详情标签内的批量检查/停止，隐藏时暂停列表轮询且恢复不重新发起检查、实时结果与图标操作；逐项展开差异并就地升级，已升级状态不沿用旧批次的可更新标记。
- * [POS]: library 的批量更新区域；由 Shell 常驻标签承载，切换/收起保留状态，兼容旧资料库入口，不创建弹窗。
+ * [POS]: library 的批量更新区域；由 Shell 常驻标签承载，切换/收起保留状态，不创建弹窗。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'

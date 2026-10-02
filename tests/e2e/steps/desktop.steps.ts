@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及跨页面的右侧窗口草稿。
+ * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及会话/技能跨页面的右侧窗口草稿；本地 Solar/Carbon 图标及实际离线 mask/尺寸核对。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -246,7 +246,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
       }),
   )
   expect(icons.length).toBeGreaterThan(0)
-  expect(icons.every((icon) => icon.className.includes('i-carbon-'))).toBe(true)
+  expect(icons.every((icon) => /\bi-(?:carbon|solar)-/.test(icon.className))).toBe(true)
   expect(icons.every((icon) => icon.mask.includes('data:image/svg+xml') && icon.width > 0 && icon.height > 0)).toBe(true)
   await page.getByRole('button', { name: /^方案讨论群/ }).click()
   await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
@@ -269,7 +269,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await separator.press('ArrowLeft')
   await expect(separator).toHaveAttribute('aria-valuenow', String(previousWidth + 10))
   await panel.getByRole('textbox', { name: '群聊名称', exact: true }).fill('未保存的群名')
-  await page.getByRole('button', { name: '资料库', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await expect(panel).toBeHidden()
   await page.getByRole('button', { name: '会话', exact: true }).click()

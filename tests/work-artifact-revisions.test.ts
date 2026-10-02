@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite 中的成果修订请求、本人消息、员工与现有工作/预算。
- * [OUTPUT]: 新根预算与原交付隔离、认领竞争/回滚、目标与来源门禁、重试/子工作/唤醒身份和重启不重放验证。
+ * [OUTPUT]: 新根预算与原交付隔离、认领竞争/回滚、目标与来源门禁、聊天附件的新成员子工作/退出阻断与旧显式材料不扩权、重试/子工作/唤醒身份和重启不重放验证。
  * [POS]: tests/work-artifact-revisions.test.ts，直接约束 WorkRepository 的持久修订边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -111,6 +111,28 @@ describe('artifact revision work identity', () => {
     await store.write([{ collection: 'materials', id: ref.id, value: { ...material, revision: 4 } }])
     await expect(works.reserveCall('material-parent')).rejects.toThrow('材料来源')
     expect((await works.view('group')).workBudgets.find(budget => budget.id === parent.budgetId)).toMatchObject({ runs: 1, modelCalls: 1, workItems: 1 })
+  })
+
+  it('lets a newly joined member revise conversation attachments under the original root budget and blocks that member after leaving', async () => {
+    const { store, works, artifact, claim } = await fixture()
+    const ref = { id: 'conversation-material', conversationId: 'group', revision: 3, contentHash: 'd'.repeat(64), parseVersion: 'text-v1' as const }
+    const material = { id: ref.id, conversationId: 'group', status: 'ready', messageId: 'material-message', revision: ref.revision, contentHash: ref.contentHash, parseVersion: ref.parseVersion, deliveryScope: 'conversation', authorizedAgentIds: ['author'] }
+    await store.write([
+      { collection: 'conversations', id: 'group', value: { id: 'group', agentIds: ['author'] } },
+      { collection: 'artifacts', id: artifact.id, value: { ...artifact, materialSources: [ref] } },
+      { collection: 'materials', id: ref.id, value: material },
+    ])
+    const parent = await works.claim({ ...claim('conversation-parent'), materialSources: [ref] })
+    await store.write([{ collection: 'conversations', id: 'group', value: { id: 'group', agentIds: ['author', 'helper'] } }])
+    const child = await works.delegate('conversation-parent', { key: 'joined-helper', ownerAgentId: 'helper', scope: '检查修订文案', deliverable: '检查结果' })
+    expect(child).toMatchObject({ parentWorkId: parent.id, rootWorkId: parent.id, budgetId: parent.budgetId, materialSources: [ref] })
+    const budgetBefore = (await works.view('group')).workBudgets.find(budget => budget.id === parent.budgetId)!
+    expect(budgetBefore).toMatchObject({ workItems: 2, runs: 1, modelCalls: 1 })
+    await works.scheduleWake(child.wakeId!, 'joined-helper-turn', [])
+    await store.write([{ collection: 'conversations', id: 'group', value: { id: 'group', agentIds: ['author'] } }])
+    await expect(works.claim({ conversationId: 'group', sourceMessageId: child.sourceMessageId, agentId: 'helper', runId: 'removed-helper', wakeId: child.wakeId, revisionRequestId: child.revisionRequestId, intent: { ...intent, workId: child.id, expectedVersion: child.version } })).rejects.toThrow('当前有效')
+    expect((await works.view('group')).workBudgets.find(budget => budget.id === parent.budgetId)).toEqual(budgetBefore)
+    expect(await store.load('workBudgets')).toHaveLength(2)
   })
 
   it('rolls the root link back with execution and budget records when commit fails', async () => {

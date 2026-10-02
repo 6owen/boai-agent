@@ -1,6 +1,6 @@
 # language: zh-CN
 # [INPUT]: 自主群聊隔离取消与重启与隔离的 Electron 环境。
-# [OUTPUT]: 可执行的行为验收。
+# [OUTPUT]: 会话/技能跨页面保留右侧草稿与关闭保护；自主群聊隔离取消及重启行为验收。
 # [POS]: tests/e2e/features/desktop.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 @electron @desktop

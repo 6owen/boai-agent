@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 成果修订/采用/显式待验收 DTO、实际员工/连接、详情页面与逻辑家族身份、持久未决请求和只读回执结果。
- * [OUTPUT]: 明确修订员工可执行状态与核心空配置默认连接；按主页面隔离的稳定未决身份与白名单恢复，重启统一 unknown；待验收冻结明确版本/hash，未知只能核对，确认未提交后才原载荷重试或放弃。
+ * [OUTPUT]: 明确修订员工可执行状态与核心空配置默认连接；按主页面隔离的稳定未决身份与白名单恢复，重启统一 unknown；聊天可核对旧待处理页的原未决请求，不覆盖同成果的另一请求；待验收冻结明确版本/hash，未知只能核对，确认未提交后才原载荷重试或放弃。
  * [POS]: 成果详情的纯请求状态；不存正文预览、不读文件、不提交 IPC 或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,6 +20,11 @@ export interface ArtifactPending {
 export type ArtifactPendingMap = Record<string, ArtifactPending>
 export const ARTIFACT_PENDING_KEY = 'boai:artifacts:pending-requests'
 export function artifactPendingKey(scope: string, conversationId: string, logicalArtifactId: string) { return JSON.stringify([scope, conversationId, logicalArtifactId]) }
+/** Retired-page requests keep their original identity and become reachable from the source chat. */
+export function artifactPendingScope(values: ArtifactPendingMap, scope: string, conversationId: string, logicalArtifactId: string) {
+  if (scope === 'conversations' && !values[artifactPendingKey(scope, conversationId, logicalArtifactId)] && values[artifactPendingKey('inbox', conversationId, logicalArtifactId)]) return 'inbox'
+  return scope
+}
 export function updateArtifactPending(previous: ArtifactPendingMap, key: string, value?: ArtifactPending): ArtifactPendingMap {
   const next = { ...previous }; if (value?.revision || value?.adoption || value?.acceptance) next[key] = value; else delete next[key]
   return next

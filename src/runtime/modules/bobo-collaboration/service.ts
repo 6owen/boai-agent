@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 原 Work 持有者、真实用户消息、冻结员工方案、既有 TeamFiles 与 SQLite 发布钩子。
- * [OUTPUT]: 复用联系人/仅缺员准备、原请求幂等、员工/独立群/真实 bobo 公告/共享预算启动意图同事务发布；实际退出、保守清理和只读恢复。
+ * [OUTPUT]: 复用联系人/仅缺员准备默认浏览器可用的 Mastra 员工、原请求幂等、员工/独立群/真实 bobo 公告/共享预算启动意图同事务发布；实际退出、保守清理和只读恢复。
  * [POS]: bobo 发起群协作的组织模块；不调用成员模型、不复制私人聊天或材料、不负责群执行调度。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -124,7 +124,7 @@ export class BoboCollaborationService {
       }
       const creationSource: BoboCollaborationSource = { kind: 'bobo-collaboration', operationId: id, requestId: organization.requestId }
       const agents: DigitalAgent[] = plan.newEmployees.map((member, index) => {
-        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: { kind: 'mastra-model' }, connectionId: core!.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: false, allowCommands: false, active: true })
+        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: { kind: 'mastra-model' }, connectionId: core!.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true })
         return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource }
       })
       const groupConversationId = organization.mode === 'employee_creation' ? undefined : randomUUID()

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 页面表单校验、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 从本人头像菜单进入设置；模型选择使用实际 Base UI 浮层并断言选中标签；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护未保存修改、页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与透明毛绒步骤图片/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
+ * [INPUT]: 页面表单校验、固定启用员工的职责草稿保存、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
+ * [OUTPUT]: 从本人头像菜单进入设置；模型选择使用实际 Base UI 浮层并断言选中标签；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护职责草稿，继续编辑未写入、保存真实职责且员工固定启用/无开关，保存后通过技能主导航核对实际分类，页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与透明毛绒步骤图片/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
  * [POS]: tests/e2e/steps/pages.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,7 +14,7 @@ type Scenario = {
   connections?: Awaited<ReturnType<typeof prepareConnections>>
   launchPageControls?: Awaited<ReturnType<typeof launchPageControls>>
   createWithValidation?: Awaited<ReturnType<typeof createWithValidation>>
-  saveDisabledEmployee?: Awaited<ReturnType<typeof saveDisabledEmployee>>
+  saveEmployeeConfiguration?: Awaited<ReturnType<typeof saveEmployeeConfiguration>>
   searchEmployee?: Awaited<ReturnType<typeof searchEmployee>>
 }
 
@@ -71,29 +71,36 @@ async function createWithValidation(previous: Awaited<ReturnType<typeof launchPa
   return { page, errors, dialog, leave }
 }
 
-async function saveDisabledEmployee(previous: Awaited<ReturnType<typeof createWithValidation>>) {
+async function saveEmployeeConfiguration(previous: Awaited<ReturnType<typeof createWithValidation>>) {
   let { page, errors, dialog, leave } = previous
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
-  const enabled = page.getByRole('checkbox', { name: /启用员工/ })
-  await expect(enabled).toBeChecked()
-  await enabled.uncheck()
-  await expect(enabled).not.toBeChecked()
+  await expect(page.getByRole('checkbox', { name: /启用员工/ })).toHaveCount(0)
+  const role = page.getByRole('textbox', { name: '职责简介', exact: true })
+  const originalRole = await role.inputValue(), revisedRole = '核对表单保存与页面切换'
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.name === '组件联调员工')).toMatchObject({ active: true, role: originalRole })
+  await role.fill(revisedRole)
+  await expect(role).toHaveValue(revisedRole)
   await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(leave).toBeVisible()
   await leave.getByRole('button', { name: '继续编辑' }).click()
-  await expect(enabled).not.toBeChecked()
+  await expect(role).toHaveValue(revisedRole)
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.name === '组件联调员工')).toMatchObject({ active: true, role: originalRole })
   await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(leave).toBeVisible()
   await leave.getByRole('button', { name: '保存并退出' }).click()
-  await page.getByRole('button', { name: '资料库', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '资料库', exact: true })).toBeVisible()
-  await expect
-    .poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find((a) => a.name === '组件联调员工')?.active)
-    .toBe(false)
-  return { page, errors, dialog }
+  await expect(role).toBeHidden()
+  await expect.poll(async () => {
+    const saved = (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.name === '组件联调员工')
+    return saved && { active: saved.active, role: saved.role }
+  }).toEqual({ active: true, role: revisedRole })
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '技能', exact: true }).click()
+  await expect(page.getByRole('tablist', { name: '技能分类', exact: true })).toBeVisible()
+  return { page, errors, dialog, revisedRole }
 }
 
-async function searchEmployee(previous: Awaited<ReturnType<typeof saveDisabledEmployee>>) {
-  let { page, errors, dialog } = previous
+async function searchEmployee(previous: Awaited<ReturnType<typeof saveEmployeeConfiguration>>) {
+  let { page, errors, dialog, revisedRole } = previous
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录', exact: true }).click()
   const search = page.getByRole('textbox', { name: '搜索通讯录' })
   await search.focus()
@@ -101,7 +108,8 @@ async function searchEmployee(previous: Awaited<ReturnType<typeof saveDisabledEm
   await search.fill('组件联调员工')
   const list = page.getByRole('complementary', { name: '通讯录列表' })
   await expect(list.getByRole('group', { name: '联系人', exact: true })).toContainText('组件联调员工')
-  await expect(list.getByRole('group', { name: '联系人', exact: true })).toContainText('已停用')
+  await expect(list.getByRole('group', { name: '联系人', exact: true })).toContainText(revisedRole)
+  await expect(list.getByRole('group', { name: '联系人', exact: true })).not.toContainText('已停用')
   const create = list.getByRole('button', { name: '新建', exact: true })
   await create.click()
   await expect(page.getByRole('menuitem', { name: '新建员工' })).toBeVisible()
@@ -149,12 +157,12 @@ When('键盘打开创建菜单并校验未保存员工表单', async ({ scenario
   scenario.createWithValidation = await createWithValidation(scenario.launchPageControls!)
 })
 
-Then('切换页面前保存员工启用状态', async ({ scenario }) => {
-  scenario.saveDisabledEmployee = await saveDisabledEmployee(scenario.createWithValidation!)
+Then('切换页面前保护并保存员工职责且始终启用', async ({ scenario }) => {
+  scenario.saveEmployeeConfiguration = await saveEmployeeConfiguration(scenario.createWithValidation!)
 })
 
 When('通讯录搜索保留结果且添加菜单关闭后恢复焦点', async ({ scenario }) => {
-  scenario.searchEmployee = await searchEmployee(scenario.saveDisabledEmployee!)
+  scenario.searchEmployee = await searchEmployee(scenario.saveEmployeeConfiguration!)
 })
 
 Then('模型连接支持回车提交并且任务筛选保留选中项', async ({ scenario }) => {

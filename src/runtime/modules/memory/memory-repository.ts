@@ -1,6 +1,6 @@
 /*
  * [INPUT]: SQLite 原子记录事务、统一记忆合同及确定性范围/生命周期策略。
- * [OUTPUT]: 召回有效性复用同一 SQLite 事务，组织最终发布核对版本/来源/忘记屏障和有效期。
+ * [OUTPUT]: 召回同事务精确核对实际条目/获知授权/输入来源，旧快照保守代际门禁；无关清空不取消任务，相关忘记/纠正/范围/到期仍失效。
  * [OUTPUT]: 兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
  * [POS]: runtime/modules/memory/memory-repository.ts；SQLite 唯一权威，无私有文本缓存。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -9,7 +9,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { MemoryCandidate, MemoryEntry, MemoryForget, MemoryInput, MemoryObservation, MemoryQuery, MemoryView } from '../../../shared/domain'
 import { MEMORY_ARCHIVE_DAYS, MEMORY_MAX_CANDIDATES, MEMORY_MAX_CONTENT, MEMORY_PAGE_SIZE } from '../../../shared/domain/memory'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { memoryStatus, memoryUseScope } from './memory-policy'
+import { memoryAllowed, memoryStatus, memoryUseScope } from './memory-policy'
+import { observationAuthorityFingerprint } from './memory-recall'
 
 const stamp = () => new Date().toISOString()
 const hash = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -251,30 +252,59 @@ export class MemoryRepository {
   recallValid(view: MemoryView) { return this.store.transaction(tx => this.recallValidInTransaction(tx, view)) }
   async recallValidInTransaction(tx: RecordTransaction, view: MemoryView) {
     if (!view.recall) return true
+    const recall = view.recall
     const epoch = await tx.get<Epoch>('memoryEpochs', view.namespace)
-    if ((epoch?.invalidationEpoch ?? 0) !== (view.invalidationEpoch ?? 0)) return false
-    for (const version of view.recall!.versions) {
+    const tracked = recall.authorityVersion === 1
+    if (recall.authorityVersion !== undefined && !tracked) return false
+    if (tracked && (!recall.agentId || !Array.isArray(recall.observationVersions) || recall.observationIds.length !== recall.observationVersions.length || recall.observationIds.some(id => !recall.observationVersions!.some(version => version.id === id)) || !(view.namespace === `employee:${recall.agentId}` || view.namespace.startsWith(`employee:${recall.agentId}:`)))) return false
+    // Legacy snapshots did not record enough actual authority to prove an unrelated change safe.
+    if (!tracked && (epoch?.invalidationEpoch ?? 0) !== (view.invalidationEpoch ?? 0)) return false
+    const allowed = (entry: MemoryEntry) => memoryAllowed(entry, { agentId: recall.agentId!, conversationId: recall.conversationId, contextRefs: recall.contextRefs, sourceAllowed: () => true, conversationRestricted: () => false })
+    const messageValid = async (id: string, required = false) => {
+      const message = await tx.get<{ status: string; runId?: string }>('messages', id)
+      if (!message) return !required
+      if (message.status !== 'completed') return false
+      if (!message.runId) return true
+      const snapshot = await tx.get<{ invalidated?: boolean }>('snapshots', message.runId)
+      return !!snapshot && !snapshot.invalidated
+    }
+    for (const version of recall.versions) {
       const entry = await tx.get<MemoryEntry>('memory', version.id)
       if (!entry || entry.version !== version.version || memoryStatus(entry) !== 'active') return false
+      if (tracked && (!allowed(entry) || await this.blocked(tx, entry.ownerAgentId, entry.origin === 'user' ? [] : entry.sourceMessageIds, entry.sourceMemoryIds ?? [], entry.origin === 'user' ? undefined : entry.content))) return false
+      if (tracked) for (const id of entry.sourceMessageIds) if (!await messageValid(id)) return false
       if (entry.contextRef?.kind === 'work') {
         const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', entry.contextRef.id)
         if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
       }
     }
-    for (const id of view.recall!.observationIds) {
+    const retainedEntries = tracked && recall.observationIds.length ? await tx.list<MemoryEntry>('memory') : []
+    for (const id of recall.observationIds) {
       const observation = await tx.get<MemoryObservation>('memoryObservations', id)
       if (!observation || await this.blocked(tx, observation.ownerAgentId, observation.sourceMessageIds, observation.sourceMemoryIds)) return false
+      if (tracked) {
+        const version = recall.observationVersions!.find(version => version.id === id)!
+        if (observation.ownerAgentId !== recall.agentId || version.fingerprint !== observationAuthorityFingerprint(observation) || !Array.isArray(version.sourceMessageIds) || version.sourceMessageIds.some(id => !observation.sourceMessageIds.includes(id)) || observation.sourceMemoryIds.some(id => !recall.versions.some(version => version.id === id))) return false
+        for (const messageId of version.sourceMessageIds) if (!await messageValid(messageId)) return false
+        // A newly saved limit/correction must also fence raw evidence selected before it existed.
+        for (const entry of retainedEntries) if (entry.ownerAgentId === recall.agentId && entry.sourceMessageIds.some(id => version.sourceMessageIds.includes(id)) && !allowed(entry)) return false
+      }
       if (observation.contextRef?.kind === 'work') {
         const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', observation.contextRef.id)
         if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
       }
+    }
+    if (tracked && recall.inputMessageIds !== undefined) {
+      if (!Array.isArray(recall.inputMessageIds)) return false
+      if (await this.blocked(tx, recall.agentId!, recall.inputMessageIds, [])) return false
+      for (const id of recall.inputMessageIds) if (!await messageValid(id, true)) return false
     }
     return true
   }
   invalidateResources(ids: string[]) { return this.invalidate(entry => entry.sourceResourceIds.some(id => ids.includes(id)), observation => observation.sourceResourceIds.some(id => ids.includes(id))) }
   invalidateMessages(ids: string[]) { return this.invalidate(entry => entry.sourceMessageIds.some(id => ids.includes(id)), observation => observation.sourceMessageIds.some(id => ids.includes(id))) }
   invalidateConversation(agentId: string, conversationId: string) {
-    return this.invalidate(entry => entry.ownerAgentId === agentId && sourceConversations(entry).includes(conversationId), item => item.ownerAgentId === agentId && (item.sourceConversationIds ?? [item.conversationId]).includes(conversationId), [agentId])
+    return this.invalidate(entry => entry.ownerAgentId === agentId && sourceConversations(entry).includes(conversationId), item => item.ownerAgentId === agentId && (item.sourceConversationIds ?? [item.conversationId]).includes(conversationId))
   }
   restrictConversation(agentId: string, conversationId: string) {
     return this.store.transaction(async tx => {
@@ -289,11 +319,11 @@ export class MemoryRepository {
       if (changed) await this.bump(tx, agentId, updated, true)
     })
   }
-  private invalidate(matches: (entry: MemoryEntry) => boolean, observationMatches: (item: MemoryObservation) => boolean, affected: string[] = []) {
+  private invalidate(matches: (entry: MemoryEntry) => boolean, observationMatches: (item: MemoryObservation) => boolean) {
     return this.store.transaction(async tx => {
       const all = await tx.list<MemoryEntry>('memory'), ids = new Set(all.filter(matches).map(entry => entry.id))
       for (let changed = true; changed;) { changed = false; for (const item of all) if (!ids.has(item.id) && item.sourceMemoryIds?.some(id => ids.has(id))) { ids.add(item.id); changed = true } }
-      const byAgent = new Map<string, MemoryEntry[]>(affected.map(id => [id, []]))
+      const byAgent = new Map<string, MemoryEntry[]>()
       for (const entry of all) if (ids.has(entry.id) && !entry.deletedAt) {
         const updated: MemoryEntry = { ...entry, content: '', status: 'deleted', deletedAt: stamp(), updatedAt: stamp(), version: entry.version + 1 }
         await this.rememberForget(tx, entry); await tx.put({ collection: 'memory', id: entry.id, value: updated })

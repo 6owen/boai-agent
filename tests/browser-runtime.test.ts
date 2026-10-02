@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 原浏览器 single parser、真实 SQLite Work/动作回执、宿主桥替身及真实 Mastra/本地模型 HTTP 协议。
+ * [OUTPUT]: SQLite 浏览器动作默认接受有效内置员工的旧 false/缺字段；停用/ACP、配置版本和清理代际撤权保持。
  * [OUTPUT]: 首调用前拒绝批处理/越界、冻结审批、未知不重放、同工具身份幂等、取消后原事实与退出、实际 SDK PNG 媒体运输/持久脱敏合同。
  * [POS]: tests/browser-runtime.test.ts；Electron 真实页面由 browser-migration BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -104,6 +105,20 @@ describe('strict original browser command entry',()=>{
   })
 })
 describe('browser receipt authority shares the original SQLite Work transaction',()=>{
+  it.each([false,undefined])('accepts the current supported employee identity when legacy allowBrowser is %s',async allowBrowser=>{
+    const {repository,envelope,store,lease,agent}=await fixture()
+    const legacy={...agent,allowBrowser};if(allowBrowser===undefined)delete legacy.allowBrowser
+    await store.write([{collection:'agents',id:agent.id,value:legacy}])
+    await repository.prepare(envelope(),false)
+    await repository.start({actionId:'action',generation:lease.generation,runId:lease.runId,workId:lease.workId})
+    expect((await repository.get('action'))?.status).toBe('started')
+  })
+  it.each(['inactive','acp'] as const)('rejects %s identities despite an old enabled browser flag',async kind=>{
+    const {repository,envelope,store,agent}=await fixture()
+    await store.write([{collection:'agents',id:agent.id,value:{...agent,...(kind==='inactive'?{active:false}:{executionBackend:{kind:'acp-local',profileId:'external'}})}}])
+    await expect(repository.prepare(envelope(),false)).rejects.toThrow('授权已变化')
+    expect(await store.load('browserActions')).toEqual([])
+  })
   it('prepares without effects, starts and confirms the same original effect atomically',async()=>{
     const {repository,envelope,store,lease}=await fixture()
     await repository.prepare(envelope(),true)
@@ -147,7 +162,7 @@ describe('browser receipt authority shares the original SQLite Work transaction'
   })
   it('rejects revoked configuration and stale clearing epoch before the real start',async()=>{
     const {repository,envelope,store,lease,agent}=await fixture();await repository.prepare(envelope(),true)
-    await store.write([{collection:'agents',id:agent.id,value:{...agent,allowBrowser:false,configVersion:2}}])
+    await store.write([{collection:'agents',id:agent.id,value:{...agent,configVersion:2}}])
     await expect(repository.start({actionId:'action',generation:lease.generation,runId:lease.runId,workId:lease.workId})).rejects.toThrow('授权已变化')
     expect((await repository.get('action'))?.status).toBe('prepared')
     await store.write([{collection:'agents',id:agent.id,value:agent},{collection:'conversationCompletionClocks',id:'chat',value:{id:'chat',epoch:2}}])

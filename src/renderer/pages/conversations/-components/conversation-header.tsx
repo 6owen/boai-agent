@@ -1,10 +1,10 @@
 /*
- * [INPUT]: 最新会话/成员/资料快照、可选个人阅读说明/导航、群组/员工配置与任务入口、列表更新与清理回调、统一 DropdownMenu 与成员资料浮层。
- * [OUTPUT]: 核心聊天菜单以编辑标题替代置顶，普通会话保留置顶；固定标题区承载个人阅读说明与紧凑导航，不挤移消息渐隐；明确搜索本会话入口；群聊名称区仅显示群名，重叠头像打开指定员工配置，保留任务产物入口与详情关闭焦点。
+ * [INPUT]: 最新会话/成员/资料快照、群组/员工配置与任务入口、列表更新与清理回调、统一 DropdownMenu 与成员资料浮层。
+ * [OUTPUT]: 标题栏无已读/未读状态、阅读说明或上下跳转按钮；核心菜单编辑标题、普通会话置顶、成员资料/任务产物/原操作菜单保持。
  * [POS]: 会话标题交互；清空确认复用 ConversationHistoryDialog，持久操作交给宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import type { Conversation, DigitalAgent, Resource } from '@shared/domain'
 import type { ConversationListChange } from '@shared/domain/conversation-list'
 import { isCoreConversation } from '@shared/domain/core-agent'
@@ -17,22 +17,20 @@ import { AgentInfoPopover } from './agent-info-popover'
 interface Props {
   conversation: Conversation; busy: boolean
   members: DigitalAgent[]; resources: Resource[]
-  readingStatus?: ReactNode; readingActions?: ReactNode
   onDetails(): void; onActivity(): void; onTrace(): void; onSearch(): void; onChange(change: ConversationListChange): void
   onConfigureAgent(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onClear(id: string, hide: boolean): Promise<void>
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, readingStatus, readingActions, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear }: Props) {
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear }: Props) {
   const [clearing, setClearing] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const openDetails = (open: () => void) => { trigger.current?.focus(); open() }
   return <>
     <header className="chat-header">
-      <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{conversation.title}</h2></div>{readingStatus}</div>
+      <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{conversation.title}</h2></div></div>
       <div className="chat-header-actions">
-        {readingActions}
         {conversation.kind === 'group' && <>
           <div className="chat-members" aria-label="群聊成员">
             {members.slice(0, 3).map(member => <AgentInfoPopover key={member.id} agent={member} resources={resources} placement="header" onConfigure={() => onConfigureAgent(member)} />)}

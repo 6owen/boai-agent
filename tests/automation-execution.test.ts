@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
- * [OUTPUT]: 实际受管发布原件/复制 hash 与未知/缺失交付证据；到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
+ * [OUTPUT]: 聊天明确补充按 occurrence 版本/当前原问题原子核对，旧版本/旧等待问题零消息工作/预算写入、原关系回执重启核对与同 key 禁止换目标；实际受管发布原件/复制 hash 与未知/缺失交付证据；到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
  * [POS]: 自动化执行意图回归；不调用外部模型或真实用户计划。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -146,6 +146,52 @@ it('records each clarification cycle explicitly instead of leaving an old questi
   expect(detail.turns!.find(turn => turn.id === secondReply.turnId)?.replyToTurnIds).toEqual([firstReply.turnId])
   expect(detail.workBudgets).toHaveLength(1)
   expect(detail.workItems).toHaveLength(1)
+})
+it('fences a chat clarification to the exact occurrence version and current waiting question while retaining its original budget and receipt', async () => {
+  const engine = clarificationEngine(), contexts: EngineContext[] = [], originalDecide = engine.decide!, originalRun = engine.run
+  engine.decide = async context => { contexts.push(context); return originalDecide(context) }
+  engine.run = async context => { contexts.push(context); await originalRun(context) }
+  const f = await setup(engine), initial = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'chat-clarification' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
+  const firstWaiting = (await f.view()).occurrences[0], firstDetail = await f.detail(), originalBudget = firstDetail.workBudgets![0]
+  const firstQuestion = firstDetail.messages.find(message => message.senderType === 'agent' && message.status === 'completed' && firstWaiting.waitingTurnIds?.includes(message.turnId!))!
+  expect(firstQuestion).toBeDefined(); expect(firstDetail.workItems).toEqual([])
+  expect(firstDetail.turns!.find(turn => turn.id === firstQuestion.turnId)?.origin).toMatchObject({ occurrenceId: initial.id, automationId: f.plan.id })
+  const firstInput = { occurrenceId: initial.id, content: '需要再次确认', requestId: 'chat-first-supplement', question: { expectedVersion: firstWaiting.stateVersion, questionMessageId: firstQuestion.id } }
+  const firstReply = await f.service.handle('replyAutomation', firstInput) as Message
+  expect(firstReply.inboxReply).toMatchObject({ questionId: `occurrence:${initial.id}`, questionRevision: firstWaiting.stateVersion, questionMessageId: firstQuestion.id })
+  await until(async () => (await f.view()).occurrences[0]?.waitingTurnIds?.includes(firstReply.turnId!) === true)
+  const current = (await f.view()).occurrences[0], before = await f.detail(), callsBefore = contexts.length
+  const currentQuestion = before.messages.find(message => message.senderType === 'agent' && message.status === 'completed' && current.waitingTurnIds?.includes(message.turnId!))!
+  expect(currentQuestion.id).not.toBe(firstQuestion.id); expect(current.stateVersion).toBeGreaterThan(firstWaiting.stateVersion)
+  const input = { occurrenceId: initial.id, content: '42', requestId: 'chat-current-supplement', question: { expectedVersion: current.stateVersion, questionMessageId: currentQuestion.id } }
+  for (const question of [{ ...input.question, expectedVersion: firstWaiting.stateVersion }, { ...input.question, questionMessageId: firstQuestion.id }, { ...input.question, questionMessageId: firstReply.id }, { ...input.question, questionMessageId: 'missing-question' }]) {
+    await expect(f.service.handle('replyAutomation', { ...input, question })).rejects.toThrow()
+    expect(await f.service.handle('getMessageReceipt', { requestId: input.requestId })).toBeNull()
+  }
+  const rejected = await f.detail()
+  expect(rejected.messages).toEqual(before.messages); expect(rejected.turns).toEqual(before.turns)
+  expect(rejected.workItems).toEqual([]); expect(rejected.workBudgets).toEqual(before.workBudgets)
+  expect((await f.view()).occurrences[0]).toEqual(current); expect(contexts).toHaveLength(callsBefore)
+  const reply = await f.service.handle('replyAutomation', input) as Message
+  expect(reply).toMatchObject({ senderType: 'user', senderId: 'user', origin: { occurrenceId: initial.id, automationId: f.plan.id }, inboxReply: { questionId: `occurrence:${initial.id}`, questionRevision: current.stateVersion, questionMessageId: currentQuestion.id } })
+  await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
+  expect(await f.service.handle('getMessageReceipt', { requestId: input.requestId })).toEqual(reply)
+  expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
+  for (const question of [{ ...input.question, expectedVersion: firstWaiting.stateVersion }, { ...input.question, questionMessageId: firstQuestion.id }]) await expect(f.service.handle('replyAutomation', { ...input, question })).rejects.toThrow('requestId')
+  const after = await f.detail(), occurrence = (await f.view()).occurrences[0], budget = after.workBudgets![0]
+  expect(after.messages.filter(message => message.id === reply.id)).toHaveLength(1)
+  expect(after.workBudgets).toHaveLength(1); expect(after.workItems).toHaveLength(1)
+  expect(budget).toMatchObject({ id: originalBudget.id, deadlineAt: originalBudget.deadlineAt, maxModelCalls: originalBudget.maxModelCalls, maxRuns: originalBudget.maxRuns, maxOutputTokens: originalBudget.maxOutputTokens })
+  expect(budget.modelCalls).toBeGreaterThan(originalBudget.modelCalls)
+  expect(after.workItems![0]).toMatchObject({ budgetId: originalBudget.id, sourceMessageId: initial.messageId, origin: { occurrenceId: initial.id } })
+  expect(after.turns!.find(turn => turn.id === reply.turnId)?.replyToTurnIds).toEqual([firstReply.turnId])
+  expect(occurrence).toMatchObject({ id: initial.id, budgetId: initial.budgetId, status: 'completed', deliveryStatus: 'delivered', waitingTurnIds: [] })
+  const completedCalls = contexts.length
+  await f.service.close(); const restarted = await f.make()
+  expect(await restarted.handle('getMessageReceipt', { requestId: input.requestId })).toEqual(reply)
+  expect(await restarted.handle('replyAutomation', input)).toEqual(reply)
+  expect(contexts).toHaveLength(completedCalls)
 })
 it.each(['deadline', 'capacity', 'permission', 'commit'] as const)('rejects a clarification without a partial message or budget reset when %s blocks admission', async blocker => {
   const f = await setup(clarificationEngine())

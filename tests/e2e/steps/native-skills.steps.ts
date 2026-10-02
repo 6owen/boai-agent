@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文 Skills 场景、生产 Electron/IPC/worker 与隔离网络 fixture。
- * [OUTPUT]: 现行商城本地安装与旧员工受管副本显式兼容导入分别验证；两份身份/收藏和零隐式绑定保持；下载取消后悬停分组标题继续新建，断流/私网拒绝适配来源 Tabs 与扫描动作且无安装入口；商城会话式两栏与常驻搜索； 商店预览不授权/不执行 HTML 或包脚本/不请求图片、明确更新与本地修改保护、稳定身份/绑定/收藏、取消/断流清理、私网拒绝与重启不重放的断言。
+ * [OUTPUT]: 资料库主页面退役后，现行技能商城安装/浏览继续真实 UI 验收，旧员工受管副本的正文/文件/更新/保留及确认替换通过真实兼容 IPC 核对；两份身份/收藏和零隐式绑定保持；下载取消后悬停分组标题继续新建，断流/私网拒绝适配来源 Tabs 与扫描动作且无安装入口；商城会话式两栏与常驻搜索；商店预览不授权/不执行 HTML 或包脚本/不请求图片、稳定身份/绑定/收藏、取消/断流清理、私网拒绝与重启不重放的断言。
  * [POS]: 原生 Skills 桌面业务步骤；不替换页面、IPC 或运行服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,7 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { appendFile, readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { selectSkillStore } from '../support/local-skills'
+import { selectSkillsSection, selectSkillStore } from '../support/local-skills'
 import { test as base } from '../support/test'
 import { startNativeSkills } from '../support/native-skills'
 
@@ -26,12 +26,11 @@ const { Given, When, Then } = createBdd(test)
 Given('原生桌面连接隔离商店与可更新的技能包', async ({ runtime, nativeSkills }) => {
   test.skip(Boolean(process.env.BOAI_TEST_PACKAGED_PATH), 'This scenario launches the built main and worker with a test-only network bootstrap; it does not validate a packaged executable.')
   nativeSkills.fixture = await startNativeSkills(runtime)
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
+  await selectSkillsSection(runtime.page, '全部技能')
 })
 
 When('我从商店预览实际内容并安装技能', async ({ runtime, nativeSkills }) => {
   const page = runtime.page
-  await page.getByRole('tab', { name: '技能商店', exact: true }).click()
   await selectSkillStore(page, 'ClawHub')
   await page.getByRole('button', { name: /原生商店助手.*fixture/ }).click()
   await expect(page.locator('.skills-list-pane .skills-browser-header').filter({ has: page.getByRole('tablist', { name: '技能分类', exact: true }) })).toBeVisible()
@@ -113,24 +112,25 @@ When('我明确绑定员工后检查并确认上游更新', async ({ runtime, na
     return window.boai.request('saveAgent', { ...input, skillIds: [resourceId], expectedConfigVersion: configVersion })
   }, nativeSkills.resourceId!)
   nativeSkills.boundVersion = bound.configVersion
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
-  await page.getByRole('button', { name: /native-helper 原生商店技能验收/ }).click()
   nativeSkills.fixture!.version(2)
-  await page.getByRole('button', { name: '检查技能更新', exact: true }).click()
-  await expect(page.getByLabel('更新文件变化')).toContainText('新增 1 · 修改 2 · 删除 0')
-  await expect(page.getByText(/受影响员工：/)).toContainText('研究员')
-  await page.getByText('查看更新后的技能内容', { exact: true }).click()
-  await expect(page.getByRole('heading', { name: '原生上游版本 2', exact: true })).toBeVisible()
+  const check = await page.evaluate(id => window.boai.request('checkSkillUpdate', { id }), nativeSkills.resourceId!)
+  expect(check.status).toBe('available')
+  expect(check.fileChanges).toMatchObject({ added: ['references/new.md'], modified: expect.arrayContaining(['SKILL.md', 'references/guide.md']), removed: [] })
+  expect(check.fileChanges!.modified).toHaveLength(2)
+  expect(check.affectedEmployees).toEqual([expect.objectContaining({ id: 'researcher', name: '研究员' })])
+  const preview = await page.evaluate(input => window.boai.request('getSkillPreview', input), { scanId: check.planId!, candidateId: check.candidateId! })
+  expect(preview.content).toContain('# 原生上游版本 2')
   expect(await readFile(join(nativeSkills.resourcePath!, 'SKILL.md'), 'utf8')).toContain('原生上游版本 1')
-  await page.getByRole('button', { name: '升级技能', exact: true }).click()
+  await page.evaluate(input => window.boai.request('updateSkill', input), { requestId: 'managed-update-v2', planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash! })
 })
 
 Then('原生更新保留资源身份收藏和员工绑定', async ({ runtime, nativeSkills }) => {
   const page = runtime.page
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('listSkillOperations', undefined))).filter(operation => operation.status === 'completed' && operation.items[0]?.status === 'updated').length).toBe(1)
   expect((await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), nativeSkills.resourceId!)).installation?.revision).toBe(2)
-  await expect(page.getByRole('heading', { name: '原生上游版本 2', exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '原生上游版本 1', exact: true })).toHaveCount(0)
+  const detail = await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), nativeSkills.resourceId!)
+  expect(detail.content).toContain('# 原生上游版本 2')
+  expect(detail.content).not.toContain('# 原生上游版本 1')
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
   expect(snapshot.resources.map(resource => resource.id)).toEqual([nativeSkills.resourceId])
   expect(snapshot.agents.find(agent => agent.id === 'researcher')).toMatchObject({ skillIds: [nativeSkills.resourceId], configVersion: nativeSkills.boundVersion! + 1, allowCommands: false })
@@ -142,19 +142,19 @@ When('本地技能有修改时我先保留再明确替换', async ({ runtime, na
   const page = runtime.page, file = join(nativeSkills.resourcePath!, 'SKILL.md')
   await appendFile(file, '\n用户保留的本地修改。')
   nativeSkills.fixture!.version(3)
-  await page.getByRole('button', { name: '检查技能更新', exact: true }).click()
-  const consent = page.getByRole('checkbox', { name: '我已保留需要的内容，确认替换当前文件', exact: true })
-  await expect(consent).not.toBeChecked()
-  await expect(page.getByRole('button', { name: '请先确认替换当前文件', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: '保留当前内容', exact: true }).click()
+  const retained = await page.evaluate(id => window.boai.request('checkSkillUpdate', { id }), nativeSkills.resourceId!)
+  expect(retained.status).toBe('available')
+  expect(retained.localModified).toBe(true)
+  await expect(page.evaluate(input => window.boai.request('updateSkill', input), { requestId: 'managed-update-unconfirmed', planId: retained.planId!, expectedRevision: retained.expectedRevision!, expectedHash: retained.expectedHash! })).rejects.toThrow('请明确确认替换')
+  await page.evaluate(id => window.boai.request('discardSkillScan', { id }), retained.planId!)
   expect(await readFile(file, 'utf8')).toContain('用户保留的本地修改。')
-  await expect(page.getByRole('button', { name: '升级技能', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: '检查技能更新', exact: true }).click()
-  await consent.check()
-  await page.getByRole('button', { name: '升级技能', exact: true }).click()
+  expect((await page.evaluate(() => window.boai.request('listSkillOperations', undefined))).filter(operation => operation.kind === 'update')).toHaveLength(1)
+  const replacement = await page.evaluate(id => window.boai.request('checkSkillUpdate', { id }), nativeSkills.resourceId!)
+  expect(replacement.localModified).toBe(true)
+  await page.evaluate(input => window.boai.request('updateSkill', input), { requestId: 'managed-update-v3', planId: replacement.planId!, expectedRevision: replacement.expectedRevision!, expectedHash: replacement.expectedHash!, replaceLocalChanges: true })
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('listSkillOperations', undefined))).filter(operation => operation.status === 'completed' && operation.items[0]?.status === 'updated').length).toBe(2)
   expect((await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), nativeSkills.resourceId!)).installation?.revision).toBe(3)
-  await expect(page.getByRole('heading', { name: '原生上游版本 3', exact: true })).toBeVisible()
+  expect((await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), nativeSkills.resourceId!)).content).toContain('# 原生上游版本 3')
 })
 
 Then('新内容可读且离线检查失败不会被显示成最新', async ({ runtime, nativeSkills }) => {
@@ -164,13 +164,12 @@ Then('新内容可读且离线检查失败不会被显示成最新', async ({ ru
   expect(detail.installation?.contentHash).toBe(detail.contentHash)
   nativeSkills.finalHash = detail.contentHash
   nativeSkills.fixture!.offline(true)
-  await page.getByRole('button', { name: '检查技能更新', exact: true }).click()
-  await expect(page.getByText(/检查更新失败 ·/)).toBeVisible()
-  await expect(page.getByText(/内容已是最新/)).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: '文件 · 5', exact: true })).toBeVisible()
-  await page.getByRole('tab', { name: '文件 · 5', exact: true }).click()
-  await page.getByRole('button', { name: /references\/new.md/ }).click()
-  await expect(page.getByLabel('文件内容 references/new.md')).toHaveText('新增依据 3')
+  const check = await page.evaluate(id => window.boai.request('checkSkillUpdate', { id }), nativeSkills.resourceId!)
+  expect(check.status).toBe('failed')
+  expect(check.error).toBeTruthy()
+  expect(detail.files).toHaveLength(5)
+  const reference = await page.evaluate(resourceId => window.boai.request('readSkillFile', { resourceId, path: 'references/new.md' }), nativeSkills.resourceId!)
+  expect(reference.content).toBe('新增依据 3')
   expect((await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), nativeSkills.resourceId!)).contentHash).toBe(nativeSkills.finalHash)
 })
 
@@ -189,9 +188,8 @@ Then('重启后已更新内容与授权保留且不自动重新下载', async ({
   expect(operations).toHaveLength(4)
   expect(operations.every(operation => operation.status === 'completed')).toBe(true)
   expect(operations.flatMap(operation => operation.items.map(item => item.status)).sort()).toEqual(['installed', 'installed', 'updated', 'updated'])
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
-  await page.getByRole('button', { name: /native-helper 原生商店技能验收/ }).click()
-  await expect(page.getByRole('heading', { name: '原生上游版本 3', exact: true })).toBeVisible()
+  expect(detail.content).toContain('# 原生上游版本 3')
+  await selectSkillsSection(page, '全部技能')
   expect(nativeSkills.fixture!.requests).toHaveLength(requests)
   await expect(readFile(nativeSkills.fixture!.executionMarker)).rejects.toMatchObject({ code: 'ENOENT' })
   expect(nativeSkills.fixture!.imageRequests()).toBe(0)
@@ -202,7 +200,8 @@ Then('重启后已更新内容与授权保留且不自动重新下载', async ({
 When('远程包仍在下载时我取消预览', async ({ runtime, nativeSkills }) => {
   nativeSkills.fixture!.stall(true)
   const page = runtime.page
-  await page.getByRole('button', { name: '导入 Skill', exact: true }).click()
+  await page.getByRole('button', { name: '技能操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '导入文件夹、ZIP 或链接', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '导入技能', exact: true })
   await dialog.getByRole('tab', { name: '链接', exact: true }).click()
   await dialog.getByLabel('链接', { exact: true }).fill('https://native-fixture.example/stall.zip')
@@ -257,7 +256,8 @@ Then('来源被拒绝且没有发出下载请求', async ({ runtime, nativeSkill
 })
 When('下载返回部分内容后连接中断', async ({ runtime, nativeSkills }) => {
   nativeSkills.fixture!.partial()
-  await runtime.page.getByRole('button', { name: '导入 Skill', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '技能操作', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '导入文件夹、ZIP 或链接', exact: true }).click()
   const dialog = runtime.page.getByRole('dialog', { name: '导入技能', exact: true })
   await dialog.getByRole('tab', { name: '链接', exact: true }).click()
   await dialog.getByLabel('链接', { exact: true }).fill('https://native-fixture.example/truncated.zip')

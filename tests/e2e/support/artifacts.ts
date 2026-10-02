@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
- * [OUTPUT]: 真实 write_file/publish_artifact/report_work 往返、可选D5 task ask无工具提问与原工作补充、宿主授权修订身份、材料来源及丢回执核对。
+ * [OUTPUT]: 真实 write_file/publish_artifact/report_work 往返、可选D5 task ask无工具提问与原工作补充、明确普通聊天不接续等待、宿主授权修订身份、材料来源及丢回执核对。
  * [POS]: D2 成果 Electron 支撑；仅控制模型输出/传输故障，不替代工具、文件或事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -38,6 +38,8 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
       const messages = body.messages as ModelMessage[], system = messages.filter(value => value.role === 'system').map(value => contentText(value.content)).join('\n')
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
+        const current = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)
+        if (current?.content === '这条是日常问候，请不要作为文件任务补充。') { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
         sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: options.askForSupplement ? 'ask' : 'reply', responseKind: 'task', work: { key: `artifact-${data.originalUserRequestId}`, scope: '按明确请求发布可检查报告', deliverable: 'Markdown 报告和真实来源' } }); return
       }
       if (system.includes('Private memory maintenance')) { sendTeamOutput(response, { candidates: [] }); return }
@@ -45,6 +47,8 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
         const input = JSON.parse(contentText(messages.at(-1)!.content)); sendTeamOutput(response, { action: 'publish', text: input.data.draft.text }); return
       }
       const tools = body.tools as ModelTool[] | undefined, writer = tools?.find(value => value.function.name === 'write_file')
+      const currentRequest = [...messages].reverse().find(value => value.role === 'user' && contentText(value.content).includes('[CURRENT TURN USER REQUEST;'))
+      if (!tools?.length && currentRequest && contentText(currentRequest.content).includes('这条是日常问候，请不要作为文件任务补充。')) { sendTeamOutput(response, '收到问候，原文件任务仍等待明确关联的补充。'); return }
       if (options.askForSupplement && !tools?.length) { sendTeamOutput(response, '请明确报告交付给谁？'); return }
       if (!writer) throw new Error('成果任务没有获得真实 write_file 工具')
       const runId = writer.function.description?.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]

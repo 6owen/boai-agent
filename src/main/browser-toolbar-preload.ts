@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron contextBridge 与专用工具栏最小 API。
- * [OUTPUT]: 只给本地工具栏导航/接管/关闭状态桥；query instanceId 由 Main 真实 sender 复核。
+ * [OUTPUT]: 只给本地工具栏普通导航/停止加载/关闭状态桥；query instanceId 由 Main 真实 sender 复核，无操作权菜单。
  * [POS]: src/main/browser-toolbar-preload.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,9 +20,6 @@ const CHANNELS = {
   GO_FORWARD: 'browser-toolbar:go-forward',
   RELOAD: 'browser-toolbar:reload',
   STOP: 'browser-toolbar:stop',
-  MENU_GEOMETRY: 'browser-toolbar:menu-geometry',
-  FORCE_CLOSE_MENU: 'browser-toolbar:force-close-menu',
-  HIDE: 'browser-toolbar:hide',
   DESTROY: 'browser-toolbar:destroy',
   STATE_UPDATE: 'browser-toolbar:state-update',
   THEME_COLOR: 'browser-toolbar:theme-color',
@@ -34,14 +31,11 @@ const instanceId = new URLSearchParams(location.search).get('instanceId') || ''
 contextBridge.exposeInMainWorld('browserToolbar', {
   instanceId,
   getState: () => ipcRenderer.invoke('browser-toolbar:get-state', instanceId),
-  control: (action: 'take' | 'resume' | 'stop' | 'clear') => ipcRenderer.invoke('browser-toolbar:control', instanceId, action),
   navigate: (url: string) => ipcRenderer.invoke(CHANNELS.NAVIGATE, instanceId, url),
   goBack: () => ipcRenderer.invoke(CHANNELS.GO_BACK, instanceId),
   goForward: () => ipcRenderer.invoke(CHANNELS.GO_FORWARD, instanceId),
   reload: () => ipcRenderer.invoke(CHANNELS.RELOAD, instanceId),
   stop: () => ipcRenderer.invoke(CHANNELS.STOP, instanceId),
-  setMenuGeometry: (open: boolean, height = 0) => ipcRenderer.invoke(CHANNELS.MENU_GEOMETRY, instanceId, open, height),
-  hideWindow: () => ipcRenderer.invoke(CHANNELS.HIDE, instanceId),
   closeWindowEntirely: () => ipcRenderer.invoke(CHANNELS.DESTROY, instanceId),
   onStateUpdate: (callback: (state: unknown) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state)
@@ -52,10 +46,5 @@ contextBridge.exposeInMainWorld('browserToolbar', {
     const handler = (_event: Electron.IpcRendererEvent, color: string | null) => callback(color)
     ipcRenderer.on(CHANNELS.THEME_COLOR, handler)
     return () => { ipcRenderer.removeListener(CHANNELS.THEME_COLOR, handler) }
-  },
-  onForceCloseMenu: (callback: (payload: { reason?: string }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, payload: { reason?: string }) => callback(payload)
-    ipcRenderer.on(CHANNELS.FORCE_CLOSE_MENU, handler)
-    return () => { ipcRenderer.removeListener(CHANNELS.FORCE_CLOSE_MENU, handler) }
   },
 })

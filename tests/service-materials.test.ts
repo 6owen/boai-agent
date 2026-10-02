@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 真实 AppService/SQLite/材料原件、可控 FakeEngine 与原生任务文件工具。
- * [OUTPUT]: 准备零消息/工作、发送事务回滚与未知回执核对、数量/版本/范围、原文/派生回复/Work 元数据/成果授权与动态来源继承、撤权取消、跨聊天记忆/根投影、hash 清理/外改冲突重启修复及仅已发材料备份迁移回归。
+ * [OUTPUT]: 准备零消息/工作/模型、图片与任意二进制的真实原件/授权媒体及仅文件元信息、零持久 dataURL；发送事务回滚与未知回执核对、数量/版本/范围、原文/派生回复/Work 元数据/成果授权与动态来源继承、撤权取消、跨聊天记忆/根投影、hash 清理/外改冲突重启修复及仅已发材料备份迁移回归。
+ * [OUTPUT]: 新缺省聊天附件随当前成员可读，@仅选择响应者；新成员实际模型上下文拿到历史文本/图片，移出后原件读取拒绝，私聊提交/读取与上下文不跨聊天；旧显式名单继续限定授权。
  * [POS]: D1 材料宿主集成验收；不调用真实模型，不替代 renderer 文件选择或 Electron BDD。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +15,7 @@ import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { materialDirectory } from '../src/runtime/modules/materials/material-files'
+import type { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { Connection, Conversation, ConversationDetail, MemoryView, Message, ParticipationDecision, Snapshot } from '../src/shared/domain'
 import { MATERIAL_LIMITS, type ConversationMaterial } from '../src/shared/domain/materials'
@@ -59,9 +61,9 @@ async function fixture() {
   const group = await current.service.handle('createConversation', { kind: 'group', title: '材料群聊', agentIds: ['researcher', 'writer'], mode: 'mention' }) as Conversation
   return { root, dataPath, direct, group, ...current }
 }
-async function prepare(service: AppService, root: string, conversation: Conversation, content = '材料原文 MATERIAL_CANARY', authorizedAgentIds = ['researcher']) {
+async function prepare(service: AppService, root: string, conversation: Conversation, content = '材料原文 MATERIAL_CANARY', authorizedAgentIds: string[] | null = ['researcher']) {
   const requestId = crypto.randomUUID(), source = join(root, `${requestId}.md`); await writeFile(source, content)
-  const material = await service.handle('prepareMaterial', { conversationId: conversation.id, path: source, requestId, authorizedAgentIds }) as ConversationMaterial
+  const material = await service.handle('prepareMaterial', { conversationId: conversation.id, path: source, requestId, ...(authorizedAgentIds === null ? {} : { authorizedAgentIds }) }) as ConversationMaterial
   expect(material.status).toBe('ready')
   return { material, requestId, source }
 }
@@ -83,6 +85,86 @@ async function send(service: AppService, conversation: Conversation, input: Retu
 }
 
 describe('service material delivery boundaries', () => {
+  it('delivers default attachments to current chat members independently of mentions and lets new members read sent history', async () => {
+    const { service, engine, root, group } = await fixture()
+    const text = await prepare(service, root, group, '群聊天附件 CURRENT_MEMBERS_TEXT_CANARY', null)
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6GNAAAAAASUVORK5CYII=', 'base64')
+    const imageSource = join(root, 'current-members.png'); await writeFile(imageSource, png)
+    const image = await service.handle('prepareMaterial', { conversationId: group.id, path: imageSource, requestId: crypto.randomUUID() }) as ConversationMaterial
+    for (const material of [text.material, image]) expect(material).toMatchObject({ status: 'ready', deliveryScope: 'conversation' })
+    const prepared = await detail(service, group)
+    expect(prepared.messages).toEqual([]); expect(prepared.runs).toEqual([]); expect(prepared.turns).toEqual([]); expect(prepared.workItems).toEqual([])
+    expect(engine.contexts).toEqual([]); expect(engine.decisions).toEqual([])
+    for (const collection of ['messages', 'messageReceipts', 'turns', 'runs', 'workItems', 'snapshots']) expect(await storeOf(service).load(collection)).toEqual([])
+
+    // The fixture chooses to respond only when mentioned; source access still belongs to every current member.
+    const decide = engine.decide.bind(engine)
+    engine.decide = async context => {
+      const decision = await decide(context), trigger = context.messages.find(message => message.id === context.triggerMessageId)
+      return trigger?.mentionIds?.length && !trigger.mentionIds.includes(context.agent.id) ? { action: 'pass', observedThroughSequence: decision.observedThroughSequence } : decision
+    }
+    const first = await send(service, group, request(group, undefined, { content: '', mentionIds: ['researcher'], materialSelections: [text.material, image].map(material => ({ id: material.id, revision: material.revision })) }))
+    const refs = [text.material, image].map(material => expect.objectContaining({ id: material.id, conversationId: group.id, revision: material.revision, contentHash: material.contentHash, parseVersion: material.parseVersion }))
+    const media = [{ messageId: first.id, materialId: image.id, dataUrl: `data:image/png;base64,${png.toString('base64')}`, mimeType: 'image/png' }]
+    for (const agentId of group.agentIds) {
+      const context = engine.decisions.find(context => context.triggerMessageId === first.id && context.agent.id === agentId)!
+      expect(context).toBeDefined(); expect(body(context)).toContain('CURRENT_MEMBERS_TEXT_CANARY')
+      expect(context.materialRefs).toEqual(refs); expect(context.materialImages).toEqual(media)
+    }
+    expect(engine.contexts.filter(context => context.triggerMessageId === first.id).map(context => context.agent.id)).toEqual(['researcher'])
+    const second = await send(service, group, request(group, undefined, { content: '请核对上一条附件。', mentionIds: ['writer'] }))
+    const writer = engine.contexts.find(context => context.triggerMessageId === second.id && context.agent.id === 'writer')!
+    expect(writer).toBeDefined(); expect(body(writer)).toContain('CURRENT_MEMBERS_TEXT_CANARY'); expect(writer.materialRefs).toEqual(refs); expect(writer.materialImages).toEqual(media)
+
+    const current = await snapshot(service), reviewer = current.agents.find(agent => agent.id === 'reviewer')!
+    const { configVersion: _v, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...definition } = reviewer
+    await service.handle('saveAgent', { ...definition, active: true, connectionId: current.agents.find(agent => agent.id === 'researcher')!.connectionId, modelId: 'test-model' })
+    const calls = engine.contexts.length, decisions = engine.decisions.length
+    const expanded = await service.handle('createConversation', { id: group.id, kind: 'group', title: group.title, agentIds: [...group.agentIds, 'reviewer'], mode: 'mention', expectedConfigVersion: group.configVersion }) as Conversation
+    expect(engine.contexts).toHaveLength(calls); expect(engine.decisions).toHaveLength(decisions)
+    const third = await send(service, expanded, request(expanded, undefined, { content: '新成员请核对群里已有附件。', mentionIds: ['reviewer'] }))
+    const newcomer = engine.contexts.find(context => context.triggerMessageId === third.id && context.agent.id === 'reviewer')!
+    expect(newcomer).toBeDefined(); expect(body(newcomer)).toContain('CURRENT_MEMBERS_TEXT_CANARY')
+    expect(newcomer.messages.find(message => message.id === first.id)?.materialIds).toEqual([text.material.id, image.id])
+    expect(newcomer.materialRefs).toEqual(refs); expect(newcomer.materialImages).toEqual(media)
+    const persisted = await storeOf(service).load('materials')
+    expect(persisted).toHaveLength(2)
+    expect(persisted).toEqual(expect.arrayContaining([expect.objectContaining({ id: text.material.id, messageId: first.id, revision: text.material.revision }), expect.objectContaining({ id: image.id, messageId: first.id, revision: image.revision })]))
+
+    const reduced = await service.handle('createConversation', { id: group.id, kind: 'group', title: group.title, agentIds: ['researcher', 'reviewer'], mode: 'mention', expectedConfigVersion: expanded.configVersion }) as Conversation
+    const materials = (service as unknown as { materials: MaterialRepository }).materials
+    for (const material of [text.material, image]) await expect(materials.read(material.id, 'writer', group.id)).rejects.toThrow('不属于当前聊天')
+    await expect(materials.validateRefs(writer.materialRefs!, 'writer', group.id)).rejects.toThrow('不属于当前聊天')
+    const formerCalls = engine.contexts.filter(context => context.agent.id === 'writer').length
+    const fourth = await send(service, reduced, request(reduced, undefined, { content: '当前成员继续核对原附件。', mentionIds: ['reviewer'] }))
+    const remaining = engine.contexts.find(context => context.triggerMessageId === fourth.id && context.agent.id === 'reviewer')!
+    expect(remaining).toBeDefined(); expect(body(remaining)).toContain('CURRENT_MEMBERS_TEXT_CANARY'); expect(remaining.materialImages).toEqual(media)
+    expect(engine.contexts.filter(context => context.agent.id === 'writer')).toHaveLength(formerCalls)
+    expect((await detail(service, reduced)).workItems).toEqual([])
+  })
+
+  it('keeps default direct attachments in their original chat for the same employee and other employees', async () => {
+    const { service, engine, root, direct, group } = await fixture()
+    const { material } = await prepare(service, root, direct, '私聊新附件 DEFAULT_DIRECT_ATTACHMENT_CANARY', null)
+    expect(material).toMatchObject({ status: 'ready', deliveryScope: 'conversation', conversationId: direct.id })
+    const first = await send(service, direct, request(direct, material))
+    const own = engine.contexts.find(context => context.triggerMessageId === first.id && context.agent.id === 'researcher')!
+    expect(own).toBeDefined(); expect(body(own)).toContain('DEFAULT_DIRECT_ATTACHMENT_CANARY')
+    expect(own.materialRefs).toEqual([expect.objectContaining({ id: material.id, conversationId: direct.id })])
+    const calls = engine.contexts.length, decisions = engine.decisions.length
+    await expect(service.handle('sendMessage', request(group, material))).rejects.toThrow('材料不属于当前聊天')
+    const materials = (service as unknown as { materials: MaterialRepository }).materials
+    await expect(materials.read(material.id, 'researcher', group.id)).rejects.toThrow('未获准读取此聊天材料')
+    await expect(materials.read(material.id, 'writer', direct.id)).rejects.toThrow('不属于当前聊天')
+    expect(engine.contexts).toHaveLength(calls); expect(engine.decisions).toHaveLength(decisions)
+    const second = await send(service, group, request(group, undefined, { content: '继续之前文件的结论。' }))
+    expect(engine.contexts.filter(context => context.triggerMessageId === second.id).map(context => context.agent.id)).toEqual(expect.arrayContaining(['researcher', 'writer']))
+    for (const context of [...engine.decisions, ...engine.contexts].filter(context => context.triggerMessageId === second.id)) {
+      expect(body(context)).not.toContain('DEFAULT_DIRECT_ATTACHMENT_CANARY'); expect(context.materialRefs).toEqual([]); expect(context.materialImages).toEqual([])
+    }
+    expect((await detail(service, direct)).workItems).toEqual([]); expect((await detail(service, group)).workItems).toEqual([])
+  })
+
   it('prepares one private material idempotently without messages, work or model calls', async () => {
     const { service, engine, root, dataPath, group } = await fixture()
     const { material, requestId, source } = await prepare(service, root, group)
@@ -96,6 +178,55 @@ describe('service material delivery boundaries', () => {
     expect(engine.contexts).toEqual([]); expect(engine.decisions).toEqual([])
     expect(await storeOf(service).load('materials')).toHaveLength(1)
     expect(JSON.stringify(await storeOf(service).load('materials'))).not.toContain(source)
+  })
+
+  it('sends real image bytes only to authorized model contexts and keeps opaque files as metadata without persisting media payloads', async () => {
+    const { service, engine, root, dataPath, group } = await fixture()
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6GNAAAAAASUVORK5CYII=', 'base64')
+    const binaryCanary = 'BINARY_ATTACHMENT_CONTENT_CANARY', binary = Buffer.concat([Buffer.from(binaryCanary), Buffer.from([0xff, 0])])
+    const prepared: ConversationMaterial[] = []
+    for (const [name, bytes] of [['photo.png', png], ['opaque.pdf', binary]] as const) {
+      const source = join(root, name); await writeFile(source, bytes)
+      const material = await service.handle('prepareMaterial', { conversationId: group.id, path: source, requestId: crypto.randomUUID(), authorizedAgentIds: ['researcher'] }) as ConversationMaterial
+      expect(material.status).toBe('ready')
+      expect(await readFile(join(materialDirectory(dataPath, group.id, material.id), 'original'))).toEqual(bytes)
+      prepared.push(material)
+    }
+    const [image, file] = prepared
+    expect(image).toMatchObject({ format: 'image', mimeType: 'image/png', parseVersion: 'binary-v1' })
+    expect(file).toMatchObject({ format: 'file', mimeType: 'application/octet-stream', parseVersion: 'binary-v1' })
+    const draft = await detail(service, group)
+    expect(draft.messages).toEqual([]); expect(draft.runs).toEqual([]); expect(draft.turns).toEqual([]); expect(draft.workItems).toEqual([])
+    expect(engine.contexts).toEqual([]); expect(engine.decisions).toEqual([])
+    for (const collection of ['messages', 'messageReceipts', 'turns', 'runs', 'workItems', 'snapshots']) expect(await storeOf(service).load(collection)).toEqual([])
+
+    const message = await send(service, group, request(group, undefined, { content: '', materialSelections: prepared.map(material => ({ id: material.id, revision: material.revision })) }))
+    expect(message).toMatchObject({ content: '', materialIds: [image.id, file.id] })
+    const allowed = engine.contexts.find(context => context.triggerMessageId === message.id && context.agent.id === 'researcher')!
+    const denied = engine.contexts.find(context => context.triggerMessageId === message.id && context.agent.id === 'writer')!
+    expect(allowed).toBeDefined(); expect(denied).toBeDefined()
+    const dataUrl = `data:image/png;base64,${png.toString('base64')}`
+    expect(allowed.materialImages).toEqual([{ messageId: message.id, materialId: image.id, dataUrl, mimeType: 'image/png' }])
+    expect(allowed.materialRefs).toEqual(prepared.map(material => expect.objectContaining({ id: material.id, revision: material.revision, contentHash: material.contentHash, parseVersion: 'binary-v1' })))
+    expect(body(allowed)).not.toContain(png.toString('base64')); expect(body(allowed)).not.toContain(binaryCanary); expect(body(allowed)).not.toContain(binary.toString('base64'))
+    const metadata = allowed.messages.find(item => item.id === message.id)!.content.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line) as Record<string, unknown>)
+    const opaqueMetadata = metadata.find(item => item.materialId === file.id)!
+    expect(opaqueMetadata).toMatchObject({ referenceData: true, filename: 'opaque.pdf', format: 'file', mimeType: 'application/octet-stream', size: binary.length, contentHash: file.contentHash })
+    expect(opaqueMetadata.instruction).toContain('no text has been extracted'); expect(opaqueMetadata.instruction).toContain('Do not claim to have read its contents')
+    expect(opaqueMetadata).not.toHaveProperty('lineCount'); expect(opaqueMetadata).not.toHaveProperty('citation')
+    for (const context of [...engine.decisions, ...engine.contexts].filter(context => context.triggerMessageId === message.id && context.agent.id === 'writer')) {
+      expect(context.materialImages).toEqual([]); expect(context.materialRefs).toEqual([])
+      expect(context.messages.find(item => item.id === message.id)?.materialIds).toEqual([])
+      expect(body(context)).not.toContain(png.toString('base64')); expect(body(context)).not.toContain(binaryCanary)
+    }
+    const durable = await detail(service, group)
+    expect(durable.workItems).toEqual([])
+    expect(durable.messages.find(item => item.id === message.id)).toMatchObject({ content: '', materialIds: [image.id, file.id] })
+    const persisted = [await snapshot(service), durable, ...await Promise.all(['messages', 'materials', 'snapshots'].map(collection => storeOf(service).load(collection)))]
+    for (const value of persisted) {
+      const serialized = JSON.stringify(value)
+      expect(serialized).not.toContain(dataUrl); expect(serialized).not.toContain(png.toString('base64')); expect(serialized).not.toContain(binaryCanary)
+    }
   })
 
   it('rolls back message, receipt and material attachment together and permits an explicit same-key retry', async () => {

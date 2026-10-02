@@ -1,9 +1,10 @@
 /*
  * [INPUT]: SQLite 员工记忆/获知回执、宿主来源授权、已发布消息及当前请求。
- * [OUTPUT]: 各阶段共用的有界召回快照；短期证据继承记忆限制，管理列表不进入模型。
+ * [OUTPUT]: 有界召回携带实际条目/父条目版本及获知授权指纹；短期证据继承范围和期限，管理列表不进入模型。
  * [POS]: runtime/modules/memory/memory-recall.ts；不调用模型或读取其他员工目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { createHash } from 'node:crypto'
 import type { MemoryEntry, MemoryObservation, MemoryView, Message } from '../../../shared/domain'
 import { MEMORY_CONTEXT_TOKENS, MEMORY_RECENT_OBSERVATIONS } from '../../../shared/domain/memory'
 import { memoryAllowed, memoryRelevance, memoryStatus, memoryText, memoryTokenEstimate, type MemoryAccess } from './memory-policy'
@@ -14,6 +15,15 @@ export interface MemoryRecallInput {
   request: string
   messages: Map<string, Message>
   tokenBudget?: number
+}
+/** Authorization identity excludes text and is independent of object property insertion order. */
+export function observationAuthorityFingerprint(observation: MemoryObservation) {
+  return createHash('sha256').update(JSON.stringify({
+    id: observation.id, ownerAgentId: observation.ownerAgentId, conversationId: observation.conversationId,
+    sourceMessageIds: observation.sourceMessageIds, sourceResourceIds: observation.sourceResourceIds,
+    sourceMemoryIds: observation.sourceMemoryIds, sourceConversationIds: observation.sourceConversationIds ?? [observation.conversationId],
+    useScope: observation.useScope, contextRef: observation.contextRef ?? null, disclosure: observation.disclosure ?? 'private', createdAt: observation.createdAt,
+  })).digest('hex')
 }
 export function recallMemory(input: MemoryRecallInput): MemoryView {
   const { view, access } = input
@@ -54,8 +64,17 @@ export function recallMemory(input: MemoryRecallInput): MemoryView {
     selected.push(entry); seen.add(entry.content); tokenEstimate += size
     const observation = observationIds.get(entry.id); if (observation) selectedObservations.add(observation)
   }
+  const versions = new Map(selected.filter(entry => !observationIds.has(entry.id)).map(entry => [entry.id, { id: entry.id, version: entry.version }]))
+  const observationVersions = [...selectedObservations].map(id => {
+    const observation = input.observations.find(item => item.id === id)!
+    for (const parentId of observation.sourceMemoryIds) {
+      const parent = view.entries.find(entry => entry.id === parentId)!
+      versions.set(parent.id, { id: parent.id, version: parent.version })
+    }
+    return { id, fingerprint: observationAuthorityFingerprint(observation), sourceMessageIds: [...new Set(selected.filter(entry => observationIds.get(entry.id) === id).flatMap(entry => entry.sourceMessageIds))] }
+  })
   return { ...view, entries: selected, nextCursor: undefined, total: undefined,
-    recall: { conversationId: access.conversationId, versions: selected.filter(entry => !observationIds.has(entry.id)).map(entry => ({ id: entry.id, version: entry.version })), observationIds: [...selectedObservations], tokenEstimate } }
+    recall: { authorityVersion: 1, agentId: access.agentId, conversationId: access.conversationId, contextRefs: access.contextRefs ?? [], versions: [...versions.values()], observationIds: [...selectedObservations], observationVersions, tokenEstimate } }
 }
 export function validRecallProjection(view: MemoryView, agentId: string, conversationId: string) {
   return !!view.recall && view.recall.conversationId === conversationId && view.entries.every(entry => entry.ownerAgentId === agentId && memoryStatus(entry) === 'active')

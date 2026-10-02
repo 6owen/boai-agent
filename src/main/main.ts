@@ -1,7 +1,9 @@
 /*
- * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入与宿主服务及技能库保存请求。
+ * [OUTPUT]: 聊天附件准备缺省按当前聊天发送，短期来源失效仅核对原发送范围与稳定回执；旧显式名单只保留兼容。
+ * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入/真实粘贴与宿主服务及技能库保存请求。
+ * [OUTPUT]: 有界截图/文件来源 token、Finder 多文件复制引用；临时副本等实际准备退出后清理，来源过期先只读核对原回执。
  * [OUTPUT]: bobo 组织结果/明确恢复 IPC 沿既有私有窗口白名单。
- * [OUTPUT]: 单一 runtime 浏览器桥、实际动作开始回执、旧连接退出门禁、窗口局部事件与实际 Chromium 退出后应用退出。
+ * [OUTPUT]: 单一 runtime 浏览器桥、人工空白窗口可信归属、实际动作开始回执、旧连接退出门禁、窗口局部事件与实际 Chromium 退出后应用退出。
  * [OUTPUT]: D6 无正文会话元信息白名单；D6 有界个人历史/搜索/精确来源复核、阅读观测及独立锚点白名单，沿唯一类型化请求通道。
  * [OUTPUT]: 放行只读待处理分页/来源、原问题补充和显式本人固定版成果验收资格/回执；放行本机发现 ID 的单技能准备、原子员工绑定和只读请求回执；不暴露任意路径绑定。
  * [OUTPUT]: 放行固定 hash 成果预览、独立修订/采用及只读采用回执 IPC；仅原生选取的材料来源 token、严格 prepareMaterial 公共输入及材料/消息核对接口；放行员工删除和真实群解散 IPC；放行核心助手新会话/团队需求受理 IPC；T1.3 批量创建/原子安装与显式恢复； 放行个人资料保存与只读活动查询；放行日程草稿提取、创建回执和显式恢复 IPC；T1.2 生成/取消与可编辑方案； 放行团队草稿 IPC； 放行持久消息表情回应 IPC；扫描来源 API 草稿测试复用宿主密钥重读/校验，不先保存连接；放行通讯录分类与排序偏好 IPC；ACP 扫描候选只读预填、保存/测试前重核扫描来源与草稿测试 IPC；本机技能目录/详情/预览 IPC 与精确 SKILL.md 编辑/定位；真实拖入目录/ZIP 的来源授权；持久通知串行领取/提交/失败回执及窗口重载后精确导航；放行纯日程预览与分页历史 IPC；放行按 occurrence 明确补充信息的 IPC；原生选择并授权技能目录/ZIP，自动化通知区分运行结束与交付，放行 Skills 管理/更新/清理重试和只读会话 Trace 查询；本地配置扫描/目录选择/宿主密钥导入及 Codex 登录的 ACP 启动项导入、桌面窗口、持久化界面缩放、编辑时读取密钥/模型目录/草稿连接测试、区分未知方法的 IPC 路由与运行进程生命周期。
@@ -16,11 +18,11 @@ import type { AutomationNotice } from '../shared/domain/automations'
 import { z } from 'zod'
 import { LocalConfigDiscovery } from './local-configs/discovery'
 import { decodeImage } from './decode-image'
-import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu, clipboard } from 'electron'
 import type { UtilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { mkdir, realpath, stat, lstat, rm, readFile, writeFile } from 'node:fs/promises'
-import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
+import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises'
+import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { resolveTheme, zoomFactors } from '../shared/appearance'
@@ -29,6 +31,9 @@ import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
 import type { Method, RpcResponse } from '../shared/ipc'
 import type { Snapshot } from '../shared/domain'
+import { MATERIAL_LIMITS } from '../shared/domain/materials'
+import { MaterialSources } from './material-sources'
+import { readClipboardMaterialPaths } from './clipboard-material-files'
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
@@ -54,8 +59,8 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
 }, decodeImage)
 const localConfigs = new LocalConfigDiscovery()
 const selectedPaths = new Set<string>()
-const materialSelections = new Map<string, string>()
-const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
+const materialSources = new MaterialSources(join(dataPath, 'material-sources'), error => sendEvent({ type: 'runtime-error', error: `临时附件清理失败：${String(error)}` }))
+const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>()
 let browserConnectionDrain: Promise<void> = Promise.resolve()
 const browsers = new BrowserService({
   rendererDirectory: join(__dirname, '../renderer'),
@@ -64,10 +69,12 @@ const browsers = new BrowserService({
   profileRegistryPath: join(legacyDataPath, 'browser', 'profile-scopes.json'),
   managedDataDirectory: dataPath,
   onStateChanged: state => sendEvent({ type: 'browser:changed', conversationId: state.conversationId }),
-  onUserControl: async ({ action, lease }) => {
+  onUserControl: async ({ action, owner, lease }) => {
     if (quitting || !runtime) throw new Error('任务运行服务已退出，浏览器不会自动续行。')
-    if (action === 'stop') await requestRuntime('cancelRun', { conversationId: lease.conversationId, workId: lease.workId })
-    else await requestRuntime('browserControl', { agentId: lease.agentId, conversationId: lease.conversationId, action })
+    if (action === 'stop') {
+      if (!lease) throw new Error('当前浏览器没有正在执行的员工任务。')
+      await requestRuntime('cancelRun', { conversationId: lease.conversationId, workId: lease.workId })
+    } else await requestRuntime('browserControl', { agentId: owner.agentId, conversationId: owner.conversationId, action })
   },
 })
 const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
@@ -89,23 +96,13 @@ methods.add('getCoreConversationStart')
 methods.add('deleteAgent')
 methods.add('deleteConversation')
 methods.add('getBrowserWindows')
+methods.add('openBrowser')
 methods.add('browserControl')
 for (const method of ['chooseMaterialSource', 'prepareMaterial', 'getMaterialPreparation', 'getMaterialPreview', 'discardMaterial', 'setMaterialAuthorization', 'getMessageReceipt'] as const) methods.add(method)
 for (const method of ['getArtifactPreview', 'reviseArtifact', 'adoptArtifact', 'getArtifactAdoptionReceipt'] as const) methods.add(method)
 for (const method of ['prepareLocalSkillBinding', 'bindLocalSkill', 'getSkillBindingReceipt'] as const) methods.add(method)
 for (const method of ['listInbox', 'getInboxItem', 'replyInboxQuestion', 'requestArtifactAcceptance', 'getArtifactAcceptanceReceipt'] as const) methods.add(method)
 for (const method of ['listConversationMessages', 'searchConversations', 'resolveConversationSearchTarget', 'getConversationReading', 'observeConversationReading', 'saveConversationAnchor', 'getConversationView', 'getConversationMetadata'] as const) methods.add(method)
-
-async function selectMaterial(path: string) {
-  if (!isAbsolute(path)) throw new Error('无法读取所选文件')
-  if ((await lstat(path)).isSymbolicLink()) throw new Error('不支持作为材料导入的符号链接')
-  const selected = await realpath(path)
-  if (!(await stat(selected)).isFile()) throw new Error('请选择普通文本文件')
-  // The importer reports unsupported types without silently dropping them from the draft.
-  const id = randomUUID()
-  materialSelections.set(id, resolve(path))
-  return { id, name: basename(selected) }
-}
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
@@ -201,6 +198,7 @@ async function handleBrowserHostRequest(child: UtilityProcess, method: keyof Bro
   await browserConnectionDrain
   if (runtime !== child) throw new Error('浏览器原运行连接已失效。')
   switch (method) {
+    case 'manualOpen': return browsers.manualOpen(input as BrowserHostMethods['manualOpen']['input'])
     case 'acquire': return browsers.acquire(input as BrowserLease)
     case 'inspect': return browsers.inspect(input as BrowserLease)
     case 'resumeSnapshot': return browsers.resumeSnapshot(input as BrowserLease)
@@ -221,13 +219,15 @@ async function handleBrowserHostRequest(child: UtilityProcess, method: keyof Bro
   }
 }
 
-async function requestRuntime(method: string, input?: unknown) {
+async function requestRuntime(method: string, input?: unknown, waitForCompletion = false) {
   await startRuntime()
   return new Promise<unknown>((resolveRequest, reject) => {
     const id = randomUUID()
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
+    // Temporary input files must remain until the importer responds or its worker really exits.
+    const timer = waitForCompletion ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
     pending.set(id, { resolve: resolveRequest, reject, timer })
-    runtime!.postMessage({ type: 'request', request: { id, method, input } })
+    try { runtime!.postMessage({ type: 'request', request: { id, method, input } }) }
+    catch (error) { clearTimeout(timer); pending.delete(id); reject(error) }
   })
 }
 
@@ -257,8 +257,16 @@ function registerIpc() {
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
   ipcMain.handle('boai:material-file', async (event, input: unknown) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
-    const value = z.object({ path: z.string().min(1).max(8000) }).strict().parse(input)
-    return selectMaterial(value.path)
+    const value = z.union([
+      z.object({ path: z.string().min(1).max(8000) }).strict(),
+      z.object({ name: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array).refine(bytes => bytes.byteLength <= MATERIAL_LIMITS.attachmentBytes, '附件大小不能超过 20 MiB') }).strict(),
+    ]).parse(input)
+    return 'path' in value ? materialSources.selectPath(value.path) : materialSources.selectBytes(value.name, value.bytes)
+  })
+  ipcMain.handle('boai:clipboard-material-files', async (event) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
+    const paths = await readClipboardMaterialPaths(clipboard)
+    return Promise.all(paths.map(path => materialSources.selectPath(path)))
   })
   ipcMain.handle('boai:skill-file', async (event, input: unknown) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
@@ -276,15 +284,20 @@ function registerIpc() {
     const { method, input } = payload
     if (method === 'chooseMaterialSource') {
       z.undefined().parse(input)
-      const selection = await dialog.showOpenDialog(window, { title: '添加聊天材料', properties: ['openFile'], filters: [{ name: 'UTF-8 文本材料', extensions: ['txt', 'md', 'markdown'] }] })
-      return selection.canceled || !selection.filePaths[0] ? null : selectMaterial(selection.filePaths[0])
+      const selection = await dialog.showOpenDialog(window, { title: '添加聊天材料', properties: ['openFile'] })
+      return selection.canceled || !selection.filePaths[0] ? null : materialSources.selectPath(selection.filePaths[0])
     }
     if (method === 'prepareMaterial') {
-      const value = z.object({ conversationId: z.string().min(1).max(200), selectionId: z.string().uuid(), requestId: z.string().min(1).max(200), authorizedAgentIds: z.array(z.string().min(1).max(200)).max(12) }).strict().parse(input)
-      const path = materialSelections.get(value.selectionId)
-      if (!path) throw new Error('请重新选择文件；原准备结果可先按请求核对')
+      const value = z.object({ conversationId: z.string().min(1).max(200), selectionId: z.string().uuid(), requestId: z.string().min(1).max(200), authorizedAgentIds: z.array(z.string().min(1).max(200)).max(12).optional() }).strict().parse(input)
       const { selectionId: _, ...request } = value
-      return requestRuntime('prepareMaterial', { ...request, path })
+      if (!materialSources.has(value.selectionId)) {
+        const prior = await requestRuntime('getMaterialPreparation', { requestId: value.requestId }) as Methods['getMaterialPreparation']['output']
+        if (!prior) throw new Error('原请求尚未受理，请重新选择文件')
+        const sameDelivery = value.authorizedAgentIds === undefined ? prior.deliveryScope === 'conversation' : prior.deliveryScope === undefined && JSON.stringify([...prior.authorizedAgentIds].sort()) === JSON.stringify([...new Set(value.authorizedAgentIds)].sort())
+        if (prior.conversationId !== value.conversationId || !sameDelivery) throw new Error('原准备请求的聊天或发送范围不一致')
+        return prior
+      }
+      return materialSources.prepare(value.selectionId, (source, temporary) => requestRuntime('prepareMaterial', { ...request, ...source }, temporary))
     }
     if (method === 'getPendingAutomationNavigation') { z.undefined().parse(input); const target = pendingAutomationNavigation; pendingAutomationNavigation = null; return target }
     if (method === 'scanLocalConnections') {
@@ -474,7 +487,7 @@ else {
       child.postMessage({ type: 'shutdown' })
     }) : Promise.resolve()
     // A timeout may terminate the worker, but never counts as Chromium action exit.
-    void Promise.all([runtimeExit, browsers.shutdown()]).then(() => { quitApproved = true; app.quit() }).catch(error => {
+    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close()]).then(() => { quitApproved = true; app.quit() }).catch(error => {
       quitting = false
       dialog.showErrorBox('浏览器尚未退出', error instanceof Error ? error.message : String(error))
     })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已验证兼容方案或核心 Agent 的严格团队方案、文件准备器、SQLite、通讯录分类事务与宿主生命周期/批量安装回调。
- * [OUTPUT]: 核心 Agent 按稳定请求身份独立受理、默认命名建群；认领和最终发布进入宿主临界区、文件准备允许及时持久停止；原子冻结 ID，员工/群/同名分类和回执同事务发布；实际退出等待、明确恢复/取消、文件冲突和备份门禁。
+ * [OUTPUT]: 核心 Agent 按稳定请求身份独立受理、默认命名建群与浏览器可用的 Mastra 员工；认领和最终发布进入宿主临界区、文件准备允许及时持久停止；原子冻结 ID，员工/群/同名分类和回执同事务发布；实际退出等待、明确恢复/取消、文件冲突和备份门禁。
  * [POS]: 团队原子发布用例；内部准备记录不承载产品草稿，不调用成员模型、不发送消息或创建 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -81,7 +81,7 @@ export class TeamCreationService {
     const memberIds = plan.members.map(member => ({ memberKey: member.memberKey, agentId: randomUUID() }))
     const agents: DigitalAgent[] = plan.members.map((member, index) => {
       const agentId = memberIds[index].agentId
-      const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
+      const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true })
       return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource: { kind: 'team-planner', operationId: id, memberKey: member.memberKey, plannerVersion: plan.plannerVersion } }
     })
     const conversationId = draft.createGroup ? randomUUID() : undefined

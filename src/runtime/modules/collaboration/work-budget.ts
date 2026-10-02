@@ -1,19 +1,20 @@
 /*
  * [INPUT]: 工作/自动化预算、唯一模型请求身份、供应商逐调用用量和 SQLite 事务。
+ * [OUTPUT]: 唯一初始工厂仅新完整组织协作固定48次，其余24；不接受模型额度或提升原存储值，16000输出与5分钟绝对期限及其他上限保留。
  * [OUTPUT]: 自动化或真实协作请求的唯一共用账本、执行前幂等预留、逐调用幂等结算/未知用量与已清理请求拒绝；普通交流不创建预算。
  * [POS]: WorkRepository 与自动化受理复用的预算规则；不创建工作、不执行模型或重试。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { AutomationOrigin, BudgetModelCall, ClearedBudgetModelCall, ModelUsage, WorkBudget } from '../../../shared/domain'
-import { WORK_BUDGET_ALLOWANCE as allowance } from '../../../shared/domain/work'
+import type { AutomationOrigin, BudgetModelCall, ClearedBudgetModelCall, ModelUsage, WorkBudget, WorkOrganization } from '../../../shared/domain'
+import { WORK_BUDGET_ALLOWANCE as allowance, BOBO_COLLABORATION_INITIAL_MODEL_CALLS } from '../../../shared/domain/work'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 export const workLimits = { workItems: 0, retries: 0, reportRefreshes: 0, noProgress: 0, maxWorkItems: allowance.workItems, maxRetries: allowance.retries, maxReportRefreshes: allowance.reportRefreshes, maxNoProgress: allowance.noProgress }
 export const WORK_DURATION_MS = allowance.durationMs
 export class WorkUnavailableError extends Error {}
 const row = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
-export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; conversationId: string } | { collaborationRequestId: string; conversationId: string }) : WorkBudget {
-  return { ...workLimits, id, schemaVersion: 1, modelCalls: 0, runs: 0, maxModelCalls: allowance.modelCalls, maxRuns: allowance.runs, maxOutputTokens: allowance.outputTokens,
+export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; conversationId: string } | { collaborationRequestId: string; conversationId: string }, organizationMode?: WorkOrganization['mode']) : WorkBudget {
+  return { ...workLimits, id, schemaVersion: 1, modelCalls: 0, runs: 0, maxModelCalls: source && 'collaborationRequestId' in source && organizationMode === 'organize_and_execute' ? BOBO_COLLABORATION_INITIAL_MODEL_CALLS : allowance.modelCalls, maxRuns: allowance.runs, maxOutputTokens: allowance.outputTokens,
     deadlineAt: new Date(Date.now() + WORK_DURATION_MS).toISOString(), usage: {}, usageIncomplete: false,
     ...(source ? { ...source, accounting: 'model-calls-v1', unknownCalls: 0 } : {}) }
 }

@@ -1,13 +1,15 @@
 /*
  * [INPUT]: 真实 SDK 工具调用、当前 Work 持有者与 Main 实际动作回执。
- * [OUTPUT]: prepared→started→terminal/unknown 的稳定持久回执；同 ID 不同参数拒绝，未知写入冻结原工作，重启不重放。
+ * [OUTPUT]: 当前有效内置模型员工默认浏览器权限，不读旧 allowBrowser；ACP/停用、原成员/配置/清理代际与事务身份严格核对。
+ * [OUTPUT]: 人工空白窗口只登记员工/会话清理归属、不制造工作；prepared→started→terminal/unknown 的稳定持久回执；同 ID 不同参数拒绝，未知写入冻结原工作，重启不重放。
  * [POS]: 浏览器业务事实，不保存 Cookie/截图正文；所有状态和 effect 变化沿 WorkRepository 原 SQLite 事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash } from 'node:crypto'
 import type { DigitalAgent,Conversation } from '../../../shared/domain'
+import { isBrowserCapableAgent } from '../../../shared/domain'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease } from '../../../shared/ipc/browser'
+import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserScopeOwner } from '../../../shared/ipc/browser'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { WorkRepository } from '../collaboration/work-repository'
 import { summarizeMedia } from './media'
@@ -26,10 +28,17 @@ export class BrowserRepository {
       }
     })
   }
-  private async identity(tx:RecordTransaction,lease:BrowserLease) {
+  private async identity(tx:RecordTransaction,lease:BrowserScopeOwner) {
     const agent=await tx.get<DigitalAgent>('agents',lease.agentId),conversation=await tx.get<Conversation>('conversations',lease.conversationId)
     const clock=await tx.get<{epoch:number}>('conversationCompletionClocks',lease.conversationId)
-    if (!agent?.active || !agent.allowBrowser || agent.executionBackend?.kind==='acp-local' || agent.configVersion!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || browserScopeKey(agent.id,conversation.id,lease.scopeEpoch)!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.scopeKey)) throw new Error('浏览器员工/会话/清理代际授权已变化')
+    if (!agent || !isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || browserScopeKey(agent.id,conversation.id,lease.scopeEpoch)!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.scopeKey)) throw new Error('浏览器员工/会话/清理代际授权已变化')
+  }
+  registerManualScope(owner:BrowserScopeOwner) {
+    return this.store.transaction(async tx => {
+      await this.identity(tx,owner)
+      // Showing an existing window must not erase the current real execution's lease.
+      if (!await tx.get('browserScopes',owner.scopeKey)) await tx.put({collection:'browserScopes',id:owner.scopeKey,value:{id:owner.scopeKey,...owner}})
+    })
   }
   registerScope(lease:BrowserLease) {
     return this.works.browserTransaction(lease.runId,'prepare',async (tx,{work,execution}) => {
@@ -86,5 +95,5 @@ export class BrowserRepository {
     })
   }
   sourcesForRun(runId:string) { return this.store.browserSourcesForRun(runId) }
-  scopes() { return this.store.load<BrowserLease & {id:string}>('browserScopes') }
+  scopes() { return this.store.load<BrowserScopeOwner & Partial<BrowserLease> & {id:string}>('browserScopes') }
 }

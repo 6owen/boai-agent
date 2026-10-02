@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 权威聊天/员工、SQLite 事务、宿主已有受管根/选取文件与明确请求/revision。
- * [OUTPUT]: 可组合于调用方 SQLite 事务的材料来源/原件校验，避免嵌套写锁；准备日志和幂等回执、仅当前授权内容、原子消息关联、取消实际退出；重启先撤销未发送草稿再按 hash 清理，保留外改和不可重放回执；支持宿主私有数据库准备目录的已发送材料备份及恢复核对。
+ * [INPUT]: 权威聊天/员工、SQLite 事务、宿主受管根/选取或临时文件、普通会话投递范围或旧明确授权、原名称与请求/revision。
+ * [OUTPUT]: 普通附件随当前聊天成员可见、离线成员不挡发送，旧名单不扩权；可组合事务原件/hash 校验、解析版本、原名回执、非持久栅格预览、消息关联与取消退出；草稿重启/hash 清理、外改保留和已发原件备份核对。
  * [POS]: materials 的唯一业务权威；原件仅存在宿主私有 materials/，不创建 Work 或调用模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,19 +8,25 @@ import { createHash, randomUUID } from 'node:crypto'
 import { lstat, realpath } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { Conversation, DigitalAgent } from '../../../shared/domain'
-import { MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial, type MaterialPreview, type MaterialReadRef, type MaterialSelection } from '../../../shared/domain/materials'
+import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial, type MaterialPreview, type MaterialReadRef, type MaterialSelection } from '../../../shared/domain/materials'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { contained } from '../workspaces/file-access'
-import { checkMaterialPath, cleanupMaterialOriginal, materialFileError, readMaterialOriginal, readMaterialSource, writeMaterialOriginal, type MaterialCheckpoint } from './material-files'
+import { checkMaterialPath, cleanupMaterialOriginal, decodeMaterialText, materialFileError, materialImageMimeType, readMaterialOriginal, readMaterialSource, writeMaterialOriginal, type MaterialCheckpoint } from './material-files'
 
 interface Preparation { id: string; conversationId: string; fingerprint: string; materialId: string }
 interface Cleanup { id: string; conversationId: string; contentHash?: string; status: 'pending' | 'conflict'; error?: string }
-export interface PrepareMaterialInput { conversationId: string; path: string; requestId: string; authorizedAgentIds: string[] }
+export interface PrepareMaterialInput { conversationId: string; path: string; name?: string; requestId: string; deliveryScope?: 'conversation'; authorizedAgentIds?: string[] }
 const RESTART_DRAFT_REMOVED = '未发送材料草稿已在重启时清理，请重新选择'
 const clone = <T>(value: T) => structuredClone(value)
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const id = (value: string) => { if (!/^[a-zA-Z0-9_-]{1,200}$/.test(value)) throw new Error('无效材料或会话标识'); return value }
 const revision = (value: number) => { if (!Number.isSafeInteger(value) || value < 1) throw new Error('无效材料版本'); return value }
+const textFormat = (format: ConversationMaterial['format']) => format === 'txt' || format === 'markdown'
+const parseVersion = (format: ConversationMaterial['format']) => textFormat(format) ? MATERIAL_PARSE_VERSION : BINARY_MATERIAL_PARSE_VERSION
+function namedFormat(name: string): ConversationMaterial['format'] {
+  const extension = extname(name).toLowerCase()
+  return ['.md', '.markdown'].includes(extension) ? 'markdown' : extension === '.txt' ? 'txt' : 'file'
+}
 function agents(values: string[]) {
   if (!Array.isArray(values) || values.length > 12 || new Set(values).size !== values.length) throw new Error('材料授权员工列表无效')
   return values.map(id).sort()
@@ -50,6 +56,15 @@ export class MaterialRepository {
     }
     return conversation
   }
+  private async deliveryScope(tx: RecordTransaction, material: ConversationMaterial) {
+    return material.deliveryScope === 'conversation' ? this.conversation(tx, material.conversationId) : this.scope(tx, material.conversationId, material.authorizedAgentIds)
+  }
+  private async readScope(tx: RecordTransaction, material: ConversationMaterial, agentId: string, conversationId: string) {
+    const conversation = await this.conversation(tx, conversationId)
+    if (!conversation.agentIds.includes(agentId)) throw new Error('员工不属于当前聊天，不能读取材料')
+    if (!isConversationMaterialVisible(material, conversation, agentId)) throw new Error('员工未获准读取此聊天材料')
+    if (material.deliveryScope !== 'conversation') await this.scope(tx, conversationId, [agentId])
+  }
   private async material(tx: RecordTransaction, materialId: string) {
     const material = await tx.get<ConversationMaterial>('materials', materialId)
     if (!material) throw new Error('材料已清理或不存在')
@@ -57,7 +72,7 @@ export class MaterialRepository {
   }
   private ready(material: ConversationMaterial, expectedRevision?: number) {
     if (expectedRevision !== undefined && material.revision !== expectedRevision) throw new Error('材料版本已更新，请刷新后重试')
-    if (material.status !== 'ready' || !material.contentHash || material.parseVersion !== MATERIAL_PARSE_VERSION) throw new Error(material.error ?? '材料尚未就绪或已不可用')
+    if (material.status !== 'ready' || !material.contentHash || (material.deliveryScope !== undefined && material.deliveryScope !== 'conversation') || !['txt', 'markdown', 'image', 'file'].includes(material.format) || material.parseVersion !== parseVersion(material.format)) throw new Error(material.error ?? '材料尚未就绪或已不可用')
     return material.contentHash
   }
   private async logCleanup(tx: RecordTransaction, material: ConversationMaterial) {
@@ -87,19 +102,23 @@ export class MaterialRepository {
   private async prepareInput(input: PrepareMaterialInput): Promise<ConversationMaterial> {
     if (this.closing) throw new Error('材料服务正在退出')
     id(input.conversationId); id(input.requestId)
-    const authorizedAgentIds = agents(input.authorizedAgentIds)
-    if (!authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')
+    if (input.deliveryScope !== undefined && input.deliveryScope !== 'conversation') throw new Error('无效附件投递范围')
+    if (input.deliveryScope === 'conversation' && input.authorizedAgentIds !== undefined) throw new Error('聊天附件不接受指定共享员工')
+    const authorizedAgentIds = input.deliveryScope === 'conversation' ? [] : agents(input.authorizedAgentIds ?? [])
+    if (input.deliveryScope !== 'conversation' && !authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')
     if (typeof input.path !== 'string' || input.path.length > 8000) throw new Error('无效材料选择')
-    const fingerprint = createHash('sha256').update(JSON.stringify({ conversationId: input.conversationId, source: resolve(input.path), authorizedAgentIds })).digest('hex')
+    if (input.name !== undefined && (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 8000 || /[\u0000-\u001f\u007f]/.test(input.name))) throw new Error('无效附件名称')
+    // Omitting name preserves the fingerprint of already accepted native-file requests.
+    const fingerprint = createHash('sha256').update(JSON.stringify({ conversationId: input.conversationId, source: resolve(input.path), ...(input.deliveryScope === 'conversation' ? { deliveryScope: input.deliveryScope } : { authorizedAgentIds }), ...(input.name !== undefined ? { name: input.name } : {}) })).digest('hex')
     const prepared = await this.store.transaction(async tx => {
       const previous = await tx.get<Preparation>('materialPreparations', input.requestId)
       if (previous) {
         if (previous.fingerprint !== fingerprint) throw new Error('准备 requestId 已用于不同材料请求')
         return { fresh: false, material: await this.material(tx, previous.materialId) }
       }
-      await this.scope(tx, input.conversationId, authorizedAgentIds)
-      const extension = extname(input.path).toLowerCase()
-      const material: ConversationMaterial = { id: randomUUID(), conversationId: input.conversationId, name: basename(input.path).slice(0, 200) || '未命名材料', format: ['.md', '.markdown'].includes(extension) ? 'markdown' : 'txt', size: 0, status: 'preparing', authorizedAgentIds, revision: 1, parseVersion: MATERIAL_PARSE_VERSION, createdAt: new Date().toISOString() }
+      const conversation = input.deliveryScope === 'conversation' ? await this.conversation(tx, input.conversationId) : await this.scope(tx, input.conversationId, authorizedAgentIds)
+      const originalName = basename(input.name ?? input.path), name = originalName.slice(0, 200) || '未命名材料', format = namedFormat(originalName)
+      const material: ConversationMaterial = { id: randomUUID(), conversationId: input.conversationId, name, format, size: 0, status: 'preparing', ...(input.deliveryScope === 'conversation' ? { deliveryScope: input.deliveryScope } : {}), authorizedAgentIds: input.deliveryScope === 'conversation' ? [...conversation.agentIds].sort() : authorizedAgentIds, revision: 1, parseVersion: parseVersion(format), createdAt: new Date().toISOString() }
       const receipt: Preparation = { id: input.requestId, conversationId: input.conversationId, materialId: material.id, fingerprint }
       await tx.put(record('materials', material)); await tx.put(record('materialPreparations', receipt))
       return { fresh: true, material }
@@ -126,14 +145,15 @@ export class MaterialRepository {
     signal.addEventListener('abort', cancelled, { once: true })
     if (signal.aborted) cancelled()
     try {
-      if (!['.txt', '.md', '.markdown'].includes(extname(source).toLowerCase())) throw new Error('首批材料仅支持 TXT 和 Markdown')
       const parsed = await readMaterialSource(source, signal, material.id, this.options.checkpoint)
+      const imageMimeType = materialImageMimeType(parsed.bytes), format = imageMimeType ? 'image' : material.format
+      const text = textFormat(format) ? decodeMaterialText(parsed.bytes) : undefined
       const staged = await this.store.transaction(async tx => {
         signal.throwIfAborted()
         const current = await this.material(tx, material.id)
         if (current.status !== 'preparing') throw new Error('材料准备已取消或失效')
-        await this.scope(tx, current.conversationId, current.authorizedAgentIds)
-        Object.assign(current, { size: parsed.size, contentHash: parsed.contentHash, characterCount: parsed.characterCount, lineCount: parsed.lineCount, revision: current.revision + 1 })
+        await this.deliveryScope(tx, current)
+        Object.assign(current, { size: parsed.size, contentHash: parsed.contentHash, format, parseVersion: parseVersion(format), mimeType: imageMimeType ?? (format === 'markdown' ? 'text/markdown' : format === 'txt' ? 'text/plain' : 'application/octet-stream'), ...(text ? { characterCount: text.characterCount, lineCount: text.lineCount } : {}), revision: current.revision + 1 })
         await tx.put(record('materials', current)); return current
       })
       await writeMaterialOriginal(this.dataPath, staged.conversationId, staged.id, parsed.bytes, signal, this.options.checkpoint)
@@ -143,7 +163,7 @@ export class MaterialRepository {
         signal.throwIfAborted()
         const current = await this.material(tx, staged.id)
         if (current.status !== 'preparing' || current.revision !== staged.revision || current.contentHash !== staged.contentHash) throw new Error('材料准备已取消或版本已变化')
-        await this.scope(tx, current.conversationId, current.authorizedAgentIds)
+        await this.deliveryScope(tx, current)
         signal.throwIfAborted()
         current.status = 'ready'; current.revision++; delete current.error
         await tx.put(record('materials', current)); return clone(current)
@@ -174,11 +194,18 @@ export class MaterialRepository {
   private async readContent(material: ConversationMaterial): Promise<MaterialPreview> {
     try {
       const parsed = await readMaterialOriginal(this.dataPath, material.conversationId, material.id, this.ready(material))
+      const text = textFormat(material.format) ? decodeMaterialText(parsed.bytes).text : ''
+      let imageUrl: string | undefined
+      if (material.format === 'image') {
+        const mimeType = materialImageMimeType(parsed.bytes)
+        if (!mimeType || mimeType !== material.mimeType) throw new Error('材料图片格式与原件不一致')
+        imageUrl = `data:${mimeType};base64,${parsed.bytes.toString('base64')}`
+      }
       return this.store.transaction(async tx => {
         const current = await this.material(tx, material.id)
         await this.conversation(tx, current.conversationId); this.ready(current, material.revision)
-        if (current.contentHash !== material.contentHash) throw new Error('材料内容版本已改变')
-        return { material: clone(current), text: parsed.text }
+        if (current.contentHash !== material.contentHash || current.format !== material.format || current.parseVersion !== material.parseVersion || current.mimeType !== material.mimeType || current.deliveryScope !== material.deliveryScope) throw new Error('材料内容版本已改变')
+        return { material: clone(current), text, ...(imageUrl ? { imageUrl } : {}) }
       })
     } catch (error) {
       await this.store.transaction(async tx => {
@@ -197,6 +224,7 @@ export class MaterialRepository {
     id(materialId); revision(expectedRevision); const selected = agents(authorizedAgentIds)
     return this.store.transaction(async tx => {
       const material = await this.material(tx, materialId); this.ready(material, expectedRevision)
+      if (material.deliveryScope === 'conversation') throw new Error('聊天附件随会话成员可见，不能单独设置共享员工')
       await this.scope(tx, material.conversationId, selected)
       if (JSON.stringify(material.authorizedAgentIds) === JSON.stringify(selected)) return clone(material)
       material.authorizedAgentIds = selected; material.revision++
@@ -215,10 +243,11 @@ export class MaterialRepository {
       const material = await this.material(tx, selection.id); this.ready(material, selection.revision)
       if (material.conversationId !== conversationId) throw new Error('材料不属于当前聊天')
       if (material.messageId && material.messageId !== messageId) throw new Error('材料已关联另一条消息')
-      if (!material.authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')
-      await this.scope(tx, conversationId, material.authorizedAgentIds)
+      if (material.deliveryScope !== 'conversation' && !material.authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')
+      await this.deliveryScope(tx, material)
       const content = await readMaterialOriginal(this.dataPath, conversationId, material.id, material.contentHash!)
-      characters += content.characterCount
+      if (textFormat(material.format)) characters += decodeMaterialText(content.bytes).characterCount
+      else if (material.format === 'image' && materialImageMimeType(content.bytes) !== material.mimeType) throw new Error('材料图片格式与原件不一致')
       if (characters > MATERIAL_LIMITS.messageCharacters) throw new Error('每条消息材料最多 32000 个字符，请拆分发送')
       material.messageId = messageId; await tx.put(record('materials', material))
     }
@@ -228,14 +257,14 @@ export class MaterialRepository {
     id(materialId); id(agentId); id(conversationId)
     const material = await this.store.transaction(async tx => {
       const material = await this.material(tx, materialId); this.ready(material)
-      if (material.conversationId !== conversationId || !material.messageId || !material.authorizedAgentIds.includes(agentId)) throw new Error('员工未获准读取此聊天材料')
-      await this.scope(tx, conversationId, [agentId]); return material
+      if (material.conversationId !== conversationId || !material.messageId) throw new Error('员工未获准读取此聊天材料')
+      await this.readScope(tx, material, agentId, conversationId); return material
     })
     const preview = await this.readContent(material)
     await this.store.transaction(async tx => {
       const current = await this.material(tx, materialId); this.ready(current, material.revision)
-      if (!current.authorizedAgentIds.includes(agentId) || current.messageId !== material.messageId) throw new Error('材料授权已变化')
-      await this.scope(tx, conversationId, [agentId])
+      if (current.messageId !== material.messageId || current.deliveryScope !== material.deliveryScope) throw new Error('材料授权已变化')
+      await this.readScope(tx, current, agentId, conversationId)
     })
     return { ...preview, ref: { id: material.id, conversationId, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion } }
   }
@@ -243,9 +272,9 @@ export class MaterialRepository {
   async validateRefs(refs: MaterialReadRef[], agentId: string, conversationId: string): Promise<void> {
     if (!Array.isArray(refs)) throw new Error('无效材料读取证据')
     for (const ref of refs) {
-      if (ref.conversationId !== conversationId || ref.parseVersion !== MATERIAL_PARSE_VERSION) throw new Error('材料来源不属于当前聊天或解析版本已失效')
+      if (ref.conversationId !== conversationId || ![MATERIAL_PARSE_VERSION, BINARY_MATERIAL_PARSE_VERSION].includes(ref.parseVersion)) throw new Error('材料来源不属于当前聊天或解析版本已失效')
       const current = await this.read(ref.id, agentId, conversationId)
-      if (current.ref.revision !== ref.revision || current.ref.contentHash !== ref.contentHash) throw new Error('材料读取快照已失效')
+      if (current.ref.revision !== ref.revision || current.ref.contentHash !== ref.contentHash || current.ref.parseVersion !== ref.parseVersion) throw new Error('材料读取快照已失效')
     }
   }
 
@@ -254,16 +283,17 @@ export class MaterialRepository {
     if (!Array.isArray(refs)) throw new Error('无效材料读取证据')
     for (const ref of refs) {
       id(ref.id); revision(ref.revision)
-      if (ref.conversationId !== conversationId || ref.parseVersion !== MATERIAL_PARSE_VERSION) throw new Error('材料来源不属于当前聊天或解析版本已失效')
+      if (ref.conversationId !== conversationId || ![MATERIAL_PARSE_VERSION, BINARY_MATERIAL_PARSE_VERSION].includes(ref.parseVersion)) throw new Error('材料来源不属于当前聊天或解析版本已失效')
       const current = await this.material(tx, ref.id)
       this.ready(current, ref.revision)
       await this.conversation(tx, conversationId)
-      if (current.conversationId !== conversationId || !current.messageId || current.contentHash !== ref.contentHash) throw new Error('材料读取快照已失效')
+      if (current.conversationId !== conversationId || !current.messageId || current.contentHash !== ref.contentHash || current.parseVersion !== ref.parseVersion) throw new Error('材料读取快照已失效')
       if (agentId) {
-        if (!current.authorizedAgentIds.includes(agentId)) throw new Error('员工未获准读取此聊天材料')
-        await this.scope(tx, conversationId, [agentId])
+        await this.readScope(tx, current, agentId, conversationId)
       }
-      await readMaterialOriginal(this.dataPath, conversationId, current.id, ref.contentHash)
+      const original = await readMaterialOriginal(this.dataPath, conversationId, current.id, ref.contentHash)
+      if (textFormat(current.format)) decodeMaterialText(original.bytes)
+      else if (current.format === 'image' && materialImageMimeType(original.bytes) !== current.mimeType) throw new Error('材料图片格式与原件不一致')
     }
   }
 
@@ -335,9 +365,9 @@ export class MaterialRepository {
         current.status = 'failed'; current.revision++; current.authorizedAgentIds = []; current.error = '材料准备被重启中断，请重新选择；未重新读取外部文件'
         await tx.put(record('materials', current)); await this.logCleanup(tx, current)
       })
-      else if (!material.messageId && (material.status === 'ready' || (material.status === 'unavailable' && material.authorizedAgentIds.length))) await this.store.transaction(async tx => {
+      else if (!material.messageId && (material.status === 'ready' || (material.status === 'unavailable' && (material.deliveryScope === 'conversation' || material.authorizedAgentIds.length)))) await this.store.transaction(async tx => {
         const current = await this.material(tx, material.id)
-        if (current.messageId || !(current.status === 'ready' || (current.status === 'unavailable' && current.authorizedAgentIds.length))) return
+        if (current.messageId || !(current.status === 'ready' || (current.status === 'unavailable' && (current.deliveryScope === 'conversation' || current.authorizedAgentIds.length)))) return
         current.status = 'removed'; current.revision++; current.authorizedAgentIds = []; current.error = RESTART_DRAFT_REMOVED
         await tx.put(record('materials', current)); await this.logCleanup(tx, current)
       })
@@ -399,7 +429,7 @@ export class MaterialRepository {
           await this.store.transaction(async tx => {
             const current = await this.material(tx, material.id)
             await this.conversation(tx, current.conversationId); this.ready(current, material.revision)
-            if (current.messageId !== material.messageId || current.contentHash !== material.contentHash || JSON.stringify(current.authorizedAgentIds) !== JSON.stringify(material.authorizedAgentIds)) throw new Error('材料授权或内容在备份期间已改变，请重新备份')
+            if (current.messageId !== material.messageId || current.contentHash !== material.contentHash || current.deliveryScope !== material.deliveryScope || JSON.stringify(current.authorizedAgentIds) !== JSON.stringify(material.authorizedAgentIds)) throw new Error('材料授权或内容在备份期间已改变，请重新备份')
           })
         }
       } finally { await backup.close() }

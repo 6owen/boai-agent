@@ -1,17 +1,20 @@
 /*
- * [INPUT]: 跨进程产品实体、材料授权/版本、桌面请求与宿主事件。
+ * [OUTPUT]: 新 prepareMaterial 不携收件人名单，附件随当前聊天消息发送；旧显式名单/撤权方法只供历史兼容。
+ * [INPUT]: 跨进程产品实体、材料授权/版本、真实 File 的有界字节、明确系统剪贴板文件格式、桌面请求与宿主事件。
+ * [OUTPUT]: 无本地路径 File 通过有界 name/bytes 产生私有来源身份；真实 paste 可读取系统文件引用，Renderer 不获得路径读取接口。
  * [OUTPUT]: 原核心会话组织回执的明确读取/继续/放弃与已发布群首发显式接续；无任意员工创建或身份授权 IPC。
- * [OUTPUT]: 本会话浏览器窗口读取/明确员工控制与 browser:changed 局部事件；原始浏览器桥仅 runtime/Main 内部使用。
+ * [OUTPUT]: openBrowser 仅接受明确员工/已有会话身份，无任务人工开窗零模型/工作；本会话窗口读取/明确员工控制与 browser:changed 局部事件；原始浏览器桥仅 runtime/Main 内部使用。
  * [OUTPUT]: getConversationMetadata 显式选择有界来源摘要；D6 无正文会话元信息与即时工作证据检查；D6 有界会话视图/消息页、确定性个人检索/正文位置与有界覆盖回执/索引代际游标及点击复核、真实完成快照阅读 CAS 与独立锚点 IPC；输入只携明确对象身份，不暴露路径读取。
  * [OUTPUT]: 四来源待处理稳定分页/精确读取、原问题定向补充及显式成果验收资格/只读回执；已保存员工的本机单技能准备/原子绑定与按原请求只读核对；输入仅发现 ID、所见 hash 和员工配置版本。
  * [OUTPUT]: 固定成果 ID/hash 预览、明确新请求修订及幂等采用/只读回执；原生材料来源身份、准备/回执/预览/移除/授权与消息稳定受理核对；通讯录标签/顺序专属局部变更事件，员工删除/群解散请求与会话删除事件；核心助手非空首发与具名团队请求的互斥受理合同；员工级记忆查询/管理和稳定请求身份；T1.3 批量创建/原子安装与显式恢复； 本机个人资料版本化保存与只读活动聚合接口；T1.2 生成/取消与可编辑方案； 定时任务草稿提取、持久创建回执查询及显式恢复计划；团队草稿打开/版本保存/恢复/放弃 IPC； 按会话/消息设置本地用户表情回应的幂等接口；扫描来源的 API 草稿测试合同，凭据不返回渲染端；通讯录分类/独立排序读取与版本化更新合同；本机 Agent 扫描预填与未保存配置测试合同；本机技能目录默认命中缓存，refresh 明确重新扫描； 本地安装目标与原生 File 拖入授权、本机技能发现/详情/明确预览导入/编辑定位合同；带预期状态版本的明确预算追加合同；单次执行/通知回执读取与主进程待消费导航；纯日程预览与完整历史分页查询；按 occurrence 提交补充信息的独立入口；商店、技能管理/便携库预览导出/收藏恢复/删除清理及持久操作合同；会话 Trace、本地连接导入、类型化 DesktopApi、连接编辑/测试和会话控制；快照不包含凭据。
  *           核心首发回执按稳定请求 ID 只读核对，未受理返回 null，历史已清理或权威提交未安装明确拒绝。
+ * [OUTPUT]: replyAutomation 可选所见问题版本/消息身份；聊天问题卡明确补充使用原关系，旧运行详情补充入口保持兼容。
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
 import type { StartCoreConversationInput } from '../domain/core-agent'
-import type { BrowserControlInput, BrowserWindowState } from './browser'
+import type { BrowserControlInput, BrowserWindowState, BrowserManualOpenInput } from './browser'
 import type { ConversationMaterial, MaterialSelection, MaterialPreview } from '../domain/materials'
 import type { SkillMarketplaceListRequest, SkillMarketplaceDetailRequest, SkillMarketplaceListResult, SkillMarketplaceItem, SkillMarketplaceProvider, MarketplaceResult } from '../domain/skill-marketplace'
 import type { AutomationDraftRequest, AutomationDraftResult, AutomationBudgetRenewalInput, AutomationHistoryPage, AutomationHistoryQuery, AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
@@ -25,6 +28,8 @@ import type { LocalSkillCatalog, LocalSkillDetail, ScanSkillSourceInput, SkillIn
 import type { AgentInput, AgentHome, AgentFileContent, Connection, ConnectionInput, DigitalAgent, Conversation, ConversationInput, ConversationDetail, Resource, Message, Snapshot, MemoryQuery, MemoryView, MemoryInput } from '../domain'
 
 export const unsupportedRequestMessage = '当前运行版本尚未加载此功能，请重启应用后重试。'
+export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-special/gnome-copied-files', 'public.file-url', 'NSFilenamesPboardType', 'CF_HDROP', 'FileNameW', 'FileName'] as const
+export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
   | { type: 'appearance:flush' }
@@ -47,6 +52,7 @@ export interface Methods {
   abandonBoboCollaboration: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
   resumeBoboCollaborationStart: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
   getBrowserWindows: { input: { conversationId: string }; output: BrowserWindowState[] }
+  openBrowser: { input: BrowserManualOpenInput; output: BrowserWindowState }
   browserControl: { input: BrowserControlInput; output: void }
   listConversationMessages: { input: import('../domain/reading').ConversationMessagePageQuery; output: import('../domain/reading').ConversationMessagePage }
   searchConversations: { input: import('../domain/reading').ConversationSearchQuery; output: import('../domain/reading').ConversationSearchPage }
@@ -132,7 +138,7 @@ export interface Methods {
   deleteAutomation: { input: {id:string}; output: void }
   runAutomation: { input: {id:string;requestId:string}; output: AutomationOccurrence }
   stopAutomation: { input: {id:string}; output: void }
-  replyAutomation: { input: {occurrenceId:string;content:string;requestId:string;renewBudget?:AutomationBudgetRenewalInput}; output: Message }
+  replyAutomation: { input: {occurrenceId:string;content:string;requestId:string;question?:{expectedVersion:number;questionMessageId:string};renewBudget?:AutomationBudgetRenewalInput}; output: Message }
   previewAutomation: { input: Pick<AutomationInput, 'frequency' | 'time' | 'weekday' | 'daysOfWeek' | 'timezone'>; output: {nextTimes:string[]} }
   listLaunchProfiles: { input: undefined; output: LaunchProfile[] }
   saveLaunchProfile: { input: LaunchProfileInput; output: LaunchProfile }
@@ -165,7 +171,7 @@ export interface Methods {
   getConversation: { input: { id: string }; output: ConversationDetail }
   getConversationTrace: { input: { conversationId: string; messageId: string; turnId?: string }; output: StoredTraceSpan[] }
   chooseMaterialSource: { input: undefined; output: { id: string; name: string } | null }
-  prepareMaterial: { input: { conversationId: string; selectionId: string; requestId: string; authorizedAgentIds: string[] }; output: ConversationMaterial }
+  prepareMaterial: { input: { conversationId: string; selectionId: string; requestId: string; authorizedAgentIds?: string[] }; output: ConversationMaterial }
   getMaterialPreparation: { input: { requestId: string }; output: ConversationMaterial | null }
   getMaterialPreview: { input: { id: string; expectedRevision?: number }; output: MaterialPreview }
   discardMaterial: { input: { id: string; expectedRevision: number }; output: void }
@@ -197,6 +203,7 @@ export interface DesktopApi {
   initialAppearance?: AppearanceSnapshot
   selectSkillFile?(file: File, kind: 'folder' | 'zip'): Promise<string>
   selectMaterialFile?(file: File): Promise<{ id: string; name: string }>
+  selectClipboardMaterialFiles?(): Promise<{ id: string; name: string }[]>
   request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>
   subscribe(listener: (event: AppEvent) => void): () => void
 }

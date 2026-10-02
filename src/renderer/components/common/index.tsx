@@ -1,6 +1,6 @@
 /*
- * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件。
- * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交；透明 WebP 预设/回退头像不叠加底色，上传图片保留既有底色；字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
+ * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件与 Sonner 操作提示。
+ * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交，允许瞬时错误显式使用 Sonner；透明 WebP 预设/回退头像不叠加底色，上传图片保留既有底色；字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,6 +12,7 @@ import { LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
 import type { AgentAvatar } from '@shared/domain/avatars'
 import { avatarSource } from '@/assets/avatars'
+import { toast } from 'sonner'
 
 export const colors = ['#6675a4', '#438b80', '#ad8054', '#638ac5', '#a76c90', '#777b8d']
 export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+':\s*(?:Error:)?\s*/, '').replace(/^Error:\s*/, '')
@@ -53,13 +54,14 @@ export function ResourcePicker({ resources, selected, onChange, empty }: { resou
   if (!resources.length) return <p className="empty-note">{empty}</p>
   return <div className="resource-picker">{resources.map(resource => <label className="resource-option" key={resource.id}><Checkbox checked={selected.includes(resource.id)} onCheckedChange={checked => onChange(checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>)}</div>
 }
-export function useMutation() {
+export function useMutation({ errorFeedback = 'inline' }: { errorFeedback?: 'inline' | 'toast' } = {}) {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const inFlight = useRef(false)
+  const inFlight = useRef(false), errorFeedbackRef = useRef(errorFeedback)
+  errorFeedbackRef.current = errorFeedback
   const run = useCallback(async (fn: () => Promise<void>) => {
     if (inFlight.current) return
     inFlight.current = true; setBusy(true); setError('')
-    try { await fn() } catch (e) { setError(errorText(e)) } finally { inFlight.current = false; setBusy(false) }
+    try { await fn() } catch (e) { const message = errorText(e); setError(message); if (errorFeedbackRef.current === 'toast') toast.error(message) } finally { inFlight.current = false; setBusy(false) }
   }, [])
   return { busy, error, run, setError }
 }

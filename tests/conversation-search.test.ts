@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 真实 ProductStore/SQLite 中万条中文历史、材料/成果受管原件与来源校验、发布事务完成身份和类型化分页过滤。
+ * [OUTPUT]: 普通聊天附件按当前成员在SQL分页/正文候选/覆盖/失败前过滤，旧分享材料不扩权；成员与deliveryScope变更同事务使旧检索游标失效。
  * [OUTPUT]: R1 相关性/多词游标保持历史与来源不变量；隐藏会话及四类来源在 SQL 分页前和点击拒绝、隐藏后游标继续可见来源/显式恢复才可搜、校验竞态不泄漏旧名称正文；固定窗口跨会话目标、已删除目标及校验前后删除均只返回原身份无游标空页、不报提示或回退旧正文；隐藏不撤销内部明确历史核读授权，材料撤权仍拒绝正文；四类统一检索与原会话只读定位；会话名称按真实成员及 lastMessageAt/createdAt 在 LIMIT 前筛选、同名会话不合并；同文/同名不合并、稳定搜索/消息游标、候选读取后删除的有界补页与目标不猜测、清理/来源撤权/原件外改门禁、当前完成 epoch/事务内按完成顺序返回首条未读、浏览限额与跨筛选游标拒绝的意图验证。
  * [POS]: tests/conversation-search.test.ts；D6 固定 SQL 离线持久化验收，不调用模型或 Electron。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -184,6 +185,56 @@ describe('D6 complete-history fixed SQL search', () => {
     expect(identity(await store.conversationSearchRows(query({ agentId: 'alice', kinds: ['message'] })))[0]).toBe('message:other-alice')
     expect(await store.conversationSearchRows(query({ agentId: 'missing' }))).toEqual([])
     expect(await store.conversationSearchRows(query({ scope: 'current' }))).toEqual([])
+  })
+
+  it('uses current conversation members for attachment pages, index candidates and failure coverage without expanding legacy grants', async () => {
+    const store = await database()
+    const shared = material('conversation-attachment', { deliveryScope: 'conversation', authorizedAgentIds: ['alice'] })
+    const legacy = material('legacy-grant', { authorizedAgentIds: ['alice'], createdAt: time(10) })
+    const wrongConversation = material('other-attachment', { conversationId: 'other', deliveryScope: 'conversation', authorizedAgentIds: ['bob'], createdAt: time(20) })
+    const unknown = { ...material('unknown-delivery', { authorizedAgentIds: ['bob'], createdAt: time(30) }), deliveryScope: 'unsupported' }
+    await store.write([
+      record('conversations', { ...conversation(), agentIds: ['alice'] }), record('conversations', { ...conversation('other'), agentIds: ['alice'] }),
+      record('materials', shared), record('materials', legacy), record('materials', wrongConversation), record('materials', unknown),
+    ])
+    const filters = query({ agentId: 'bob', kinds: ['material'], limit: 1 })
+    expect(await store.conversationSearchRows(filters)).toEqual([])
+    expect(await store.searchBodyCoverage(filters)).toMatchObject({ total: 0, pending: 0 })
+    await store.write([record('conversations', { ...conversation(), agentIds: ['alice', 'bob'] })])
+    // Denied legacy/other/malformed rows rank ahead, but must not consume this one-row page or backfill slot.
+    expect(identity(await store.conversationSearchRows(filters))).toEqual(['material:conversation-attachment'])
+    expect((await store.searchBodyCandidates(filters, 1)).map(value => value.id)).toEqual([shared.id])
+    expect(await store.searchBodyCoverage(filters)).toMatchObject({ total: 1, pending: 1 })
+    await store.write([shared, legacy, wrongConversation, unknown].map(value => record(SEARCH_INDEX_COLLECTION, {
+      id: `material:${value.id}`, sourceId: value.id, kind: 'material', conversationId: value.conversationId, sourceValue: JSON.stringify(value), formatVersion: SEARCH_INDEX_LIMITS.formatVersion, status: 'failed', reason: '本地核读失败', checkedAt: time(),
+    })))
+    const coverage = await store.searchBodyCoverage(filters)
+    expect(coverage).toMatchObject({ total: 1, failed: 1, pending: 0 })
+    expect(coverage.failures?.map(value => value.id)).toEqual([shared.id])
+    await store.write([record('conversations', { ...conversation(), agentIds: ['alice'] })])
+    expect(await store.conversationSearchRows(filters)).toEqual([])
+    expect(await store.searchBodyCandidates(filters, 1)).toEqual([])
+    expect(await store.searchBodyCoverage(filters)).toMatchObject({ total: 0, failed: 0, pending: 0 })
+  })
+
+  it('advances attachment scope generations even without cached bodies and rejects continuation after a member change', async () => {
+    const store = await database()
+    const firstMaterial = material('scope-a', { deliveryScope: 'conversation' }), secondMaterial = material('scope-b', { deliveryScope: 'conversation', createdAt: time(2) })
+    await store.write([record('materials', firstMaterial), record('materials', secondMaterial)])
+    const filters = query({ agentId: 'alice', kinds: ['material'], limit: 1 })
+    const before = (await store.searchBodyCoverage(filters)).indexRevision!
+    expect(await store.load(SEARCH_INDEX_COLLECTION)).toEqual([])
+    await store.transaction(async tx => { await tx.put(record('materials', { ...firstMaterial, deliveryScope: undefined })) })
+    expect((await store.searchBodyCoverage(filters)).indexRevision).toBeGreaterThan(before)
+    expect(await store.load(SEARCH_INDEX_COLLECTION)).toEqual([])
+    const search = new ConversationSearchRepository(store, noSources), page = await search.search(filters)
+    expect(page.nextCursor).toBeDefined()
+    await store.transaction(async tx => {
+      const current = await tx.get<Conversation>('conversations', 'chat')
+      await tx.put(record('conversations', { ...current!, agentIds: ['alice'] }))
+    })
+    await expect(search.search({ ...filters, before: page.nextCursor })).rejects.toThrow('索引已更新')
+    expect((await search.search(filters)).results).toHaveLength(1)
   })
 
   it('intersects kind, current conversation and inclusive time filters before taking even one result', async () => {

@@ -1,14 +1,17 @@
 /*
  * [INPUT]: 真实 AppService/SQLite/组织发布和工作接续，带明确开始/实际退出屏障的内部模型协议。
+ * [OUTPUT]: 无关历史清理后组织继续并真实交付；依赖成果经宿主来源/hash 核对后提供确切路径，依赖引用不变成本人产物。
+ * [OUTPUT]: 新完整组织的原共享额度固定48次，真实定向执行仍验证24次内完成和零未知账本；原存储预算不提升。
  * [OUTPUT]: 已分工员工的真实广播更新在模型计数前跳过，合并邀请/普通聊天/用户/未分工及来源本人问题/待核对仍保持判断；同请求定向工作在慢开场结束前交付、未拥有工作/普通 peer 无权抢 wake、同员工取消后实际退出再接续；普通用户群仍单 lane、原预算与一次认领保持。
  * [POS]: BC 群工作调度业务意图；内部确定性模型不计为真实供应商或人工质量验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppService } from '../src/runtime/service'
+import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { AgentDelivery, AgentRun, Connection, Conversation, ConversationDetail, ConversationEvent, DiscussionTurn, Message, ParticipationDecision, Snapshot, WorkItem } from '../src/shared/domain'
 import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
@@ -26,7 +29,7 @@ async function account(context: EngineContext, phase: 'decision' | 'task' | 'cha
   await context.onModelCallStarted!(context.modelCallId!, phase)
   await context.onModelCallUsage!(context.modelCallId!, { inputTokens: 10, outputTokens: 5, totalTokens: 15 })
 }
-async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<typeof barrier>; chatOwner?: 'researcher' | 'writer'; chatWait?: ReturnType<typeof barrier>; childWait?: ReturnType<typeof barrier>; secondChild?: boolean; dependentWriter?: boolean; delegateAfterChat?: boolean } = {}) {
+async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<typeof barrier>; chatOwner?: 'researcher' | 'writer'; chatWait?: ReturnType<typeof barrier>; childWait?: ReturnType<typeof barrier>; secondChild?: boolean; dependentWriter?: boolean; delegateAfterChat?: boolean; clearUnrelatedDuringOrganization?: boolean; publishChildArtifact?: boolean } = {}) {
   const path = await mkdtemp(join(tmpdir(), 'boai-bobo-scheduling-')); cleanup.push(() => rm(path, { recursive: true, force: true }))
   const state = { receipt: undefined as BoboCollaborationReceipt | undefined, group: undefined as Conversation | undefined, children: [] as WorkItem[], rootEntered: false, chatEntered: false, childRuns: [] as EngineContext[], tasklessResponses: [] as string[], decisions: [] as EngineContext[], illegalDecision: undefined as WorkItem | 'no-work' | undefined }
   const chatStarted = barrier()
@@ -51,6 +54,11 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
       await account(context, context.responseKind === 'task' ? 'task' : 'chat')
       if (context.work?.organization) {
         const candidates = await context.findEmployees!({ search: '', limit: 20 })
+        if (options.clearUnrelatedDuringOrganization) {
+          const unrelated = await service.handle('createConversation', { kind: 'direct', title: '无关旧会话', agentIds: ['writer'] }) as Conversation
+          await service.handle('clearConversationHistory', { id: unrelated.id, hide: false })
+          expect(context.signal.aborted).toBe(false)
+        }
         await context.beforeEffect!()
         const receipt = await context.organizeCollaboration!({ existingMembers: candidates.employees.filter(employee => ['researcher', 'writer'].includes(employee.agentId)).map(employee => ({ agentId: employee.agentId, configVersion: employee.configVersion })), newEmployees: [], groupTitle: '实际调度协作群', announcement: '研究员核查数据，写作员讨论表达方式。bobo汇总真实结果。' }, 'actual-organize-scheduling-call')
         state.receipt = receipt; state.group = (await service.handle('snapshot', undefined) as Snapshot).conversations.find(group => group.id === receipt.groupConversationId)!
@@ -64,6 +72,15 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
       if (context.work.parentWorkId) {
         state.childRuns.push(context)
         if (context.work.key === 'check') await options.childWait?.promise
+        if (options.publishChildArtifact && context.work.key === 'check') {
+          await mkdir(context.workspace!.runPath, { recursive: true })
+          await writeFile(join(context.workspace!.runPath, '事实.md'), '# 实际研究原件\n合计79。')
+          await context.beforeEffect!()
+          const result = await publishArtifact(context, context.workspace!, `self:/runs/${context.runId}/事实.md`)
+          await context.afterEffect!()
+          await context.onWorkOutcome!({ disposition: 'delivered', summary: '研究原件已实际发布', evidence: [{ kind: 'artifact', reference: result.artifact.id! }] })
+          await context.onDelta('核查结果为79'); return
+        }
         await context.onWorkOutcome!({ disposition: 'delivered', summary: '实际核查完成', evidence: [{ kind: 'answer', reference: '核查结果为79' }] }); await context.onDelta('核查结果为79'); return
       }
       state.rootEntered = true
@@ -104,6 +121,25 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
 }
 
 describe('bobo opening and real directed work scheduling', () => {
+  it('keeps the actual bobo organization and independent group work alive when an unrelated old conversation is cleared', async () => {
+    const f = await fixture({ clearUnrelatedDuringOrganization: true })
+    await f.settled()
+    const core = await f.service.handle('getConversation', { id: f.core!.id }) as ConversationDetail
+    expect(core.runs.find(run => run.phase === 'execution')?.status).toBe('completed')
+    expect(f.state.receipt?.status).toBe('committed')
+    expect((await f.detail()).workItems!.find(work => work.ownerAgentId === 'bobo')?.status).toBe('delivered')
+  })
+
+  it('supplies the dependent employee exact verified logical artifact identities without inventing paths or replacing file reads', async () => {
+    const f = await fixture({ dependentWriter: true, publishChildArtifact: true })
+    await f.settled()
+    const view = await f.detail(), artifact = view.artifacts[0]!
+    const writer = f.state.childRuns.find(context => context.work!.key === 'writer')!
+    expect(writer.dependencyArtifacts).toEqual([{ artifactId: artifact.id, name: artifact.name, logicalPath: `shared:/${artifact.managedRelativePath}`, contentHash: artifact.contentHash, workId: artifact.sourceWorkId, resultVersion: 1 }])
+    expect(writer.dependencyArtifacts![0]!.logicalPath).toMatch(/^shared:\/artifacts\//)
+    expect(writer.work!.artifactIds).toEqual([])
+  })
+
   it('keeps a published work status as context for an assigned waiting employee without spending another decision or stealing its ready wake', async () => {
     const childWait = barrier(), f = await fixture({ childWait, dependentWriter: true })
     await vi.waitFor(async () => {
@@ -125,7 +161,7 @@ describe('bobo opening and real directed work scheduling', () => {
     expect(final.workItems!.every(work => work.status === 'delivered')).toBe(true)
     expect(f.state.childRuns.filter(context => context.agent.id === 'writer')).toHaveLength(1)
     expect(final.workWakes!.every(wake => wake.status === 'consumed')).toBe(true)
-    expect(final.workBudgets![0]).toMatchObject({ maxModelCalls: 24, usageIncomplete: false, unknownCalls: 0 })
+    expect(final.workBudgets![0]).toMatchObject({ maxModelCalls: 48, usageIncomplete: false, unknownCalls: 0 })
   })
   it('preserves genuine invitations, ordinary conversation and uncertain work instead of treating them as redundant business broadcasts', async () => {
     const childWait = barrier(), f = await fixture({ childWait, dependentWriter: true })
@@ -173,7 +209,7 @@ describe('bobo opening and real directed work scheduling', () => {
     rootWait.release(); chatWait.release(); await f.settled()
     const final = await f.detail()
     expect(final.workItems!.every(work => work.status === 'delivered')).toBe(true); expect(final.workBudgets).toHaveLength(1)
-    expect(final.workBudgets![0]).toMatchObject({ id: root.budgetId, maxModelCalls: 24, usageIncomplete: false, unknownCalls: 0 })
+    expect(final.workBudgets![0]).toMatchObject({ id: root.budgetId, maxModelCalls: 48, usageIncomplete: false, unknownCalls: 0 })
     expect(final.workBudgets![0]!.modelCalls).toBeLessThanOrEqual(24)
     expect(final.workWakes!.every(wake => wake.status === 'consumed')).toBe(true)
     expect((await f.service.handle('getConversation', { id: f.core!.id }) as ConversationDetail).conversation).toMatchObject({ id: f.core!.id, purpose: 'core', agentIds: ['bobo'] })

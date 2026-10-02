@@ -1,7 +1,8 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 已发布 bobo 协作群编辑保留现有核心成员，普通手动建群不能新添 bobo。
- * [OUTPUT]: 已保存模型员工的显式浏览器开关，新员工先保存、ACP不显示、不执行网页或自动建聊天； 已保存员工的明确本机技能绑定、草稿先保存、未决请求门禁及真实回执配置/版本同步；员工配置固定启用且不展示开关；核心助手可改名及设置默认模型，隐藏外部后端/命令开关，并排除群候选；既有群配置可确认解散及清理记录/群空间，刷新后丢弃编辑草稿并关闭；新交流记忆范围和可选事项关联；既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: Mastra 员工/bobo 默认浏览器可用，表单不展示开关或要求先保存再启用；ACP支持边界由共享能力判断；已保存员工的明确本机技能绑定、草稿先保存、未决请求门禁及真实回执配置/版本同步；员工配置固定启用且不展示开关；核心助手可改名及设置默认模型，隐藏外部后端/命令开关，并排除群候选；既有群配置可确认解散及清理记录/群空间，刷新后丢弃编辑草稿并关闭；新交流记忆范围和可选事项关联；既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；独立表单 ID 支持多个详情标签同时挂载。
+ * [OUTPUT]: 知识空态不再引导进入已删除的资料库页面，既有知识绑定保持。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -28,7 +29,7 @@ export const templates = [
   { name: '方案写手', role: '把想法写成清晰方案', instructions: '你是一位方案写手。理解目标与受众，基于获准资料撰写清楚自然的内容。', icon: FileText, color: colors[1] },
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
-function savedAgentForm(agent: DigitalAgent): AgentInput { return { avatar: agent.avatar, executionBackend: agent.executionBackend, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowBrowser: agent.allowBrowser ?? false, allowCommands: agent.allowCommands, active: true } }
+function savedAgentForm(agent: DigitalAgent): AgentInput { return { avatar: agent.avatar, executionBackend: agent.executionBackend, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
 export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation' }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string }) {
   const core = isCoreAgent(agent)
   const formId = useId()
@@ -39,7 +40,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const preset = template === undefined ? undefined : templates[template]
   const [form, setForm] = useState<AgentInput>(() => {
     if (agent) return savedAgentForm(agent)
-    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: snapshot.connections[0]?.id ?? '', modelId: '', skillIds: [], knowledgeIds: [], allowBrowser: false, allowCommands: false, active: true }
+    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: snapshot.connections[0]?.id ?? '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
   })
   const { busy, error, run } = useMutation()
   const guard = useContext(GuardContext)
@@ -72,7 +73,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       <Field label={core ? '助手名称' : '员工名称'}><Input required maxLength={80} value={form.name} onChange={e => set('name', e.target.value)} placeholder={core ? '例如：bobo' : '例如：资料研究员'} /></Field>
       <Field label="职责简介"><Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="一句话描述擅长的工作" /></Field>
       {!agent && <Field label="初始工作规则" full hint="创建后保存在员工 AGENTS.md，可在系统文件中修改。"><Textarea rows={5} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……" /></Field>}
-      {!core && <Field label="执行后端" full><SelectField value={form.executionBackend?.kind??'mastra-model'} onValueChange={selectedValue => setForm(current=>({...current,executionBackend:selectedValue==='mastra-model'?{kind:'mastra-model'}:{kind:'acp-local',profileId:profiles[0]?.id??''},...(selectedValue==='acp-local'?{connectionId:'',modelId:'',skillIds:[],knowledgeIds:[],allowCommands:false,allowBrowser:false}:{})}))} options={[{ value: 'mastra-model', label: '模型 API · 聊天与协作' }, { value: 'acp-local', label: '外部 ACP · 仅显式任务' }]} /></Field>}
+      {!core && <Field label="执行后端" full><SelectField value={form.executionBackend?.kind??'mastra-model'} onValueChange={selectedValue => setForm(current=>({...current,executionBackend:selectedValue==='mastra-model'?{kind:'mastra-model'}:{kind:'acp-local',profileId:profiles[0]?.id??''},...(selectedValue==='acp-local'?{connectionId:'',modelId:'',skillIds:[],knowledgeIds:[],allowCommands:false}:{})}))} options={[{ value: 'mastra-model', label: '模型 API · 聊天与协作' }, { value: 'acp-local', label: '外部 ACP · 仅显式任务' }]} /></Field>}
       {form.executionBackend?.kind==='acp-local'?<Field label="外部启动项" full hint="先在设置 → 模型连接 → 本地 Agent 中接入并测试。BoAI 的模型、Skills、知识和记忆不会自动传给外部程序。"><SelectField required value={form.executionBackend.profileId} onValueChange={selectedValue => set('executionBackend',{kind:'acp-local',profileId:selectedValue})} options={[{ value: '', label: '请选择' }, ...profiles.map(p=>({ value: p.id, label: `${p.name}${p.verified?'':' · 未测试'}` }))]} /></Field>:<>
       <Field label="模型连接"><SelectField value={form.connectionId} onValueChange={selectedValue => set('connectionId', selectedValue)} options={[{ value: '', label: '暂未配置' }, ...snapshot.connections.map(item => ({ value: item.id, label: item.name }))]} /></Field>
       <Field label="模型 ID" hint={connection ? `留空使用连接默认模型：${connection.defaultModel}` : '创建模型连接后即可开始对话。'}><Input value={form.modelId} onChange={e => set('modelId', e.target.value)} placeholder="使用连接默认模型" /></Field>
@@ -80,8 +81,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       </fieldset>
       {form.executionBackend?.kind!=='acp-local'&&<><div className="field full"><span className="field-label">启用的 Skills</span><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationDirty={dirty} configurationBusy={busy || uploading} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div>
       <fieldset className="contents" disabled={locked}>
-      <div className="field full"><span className="field-label">可访问的知识库</span><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} empty="还没有知识资料。可在资料库中导入文件。" /></div>
-      <label className="toggle-row full"><span><strong>浏览器能力</strong><small>{agent ? '明确任务中可查看网页；网页操作沿任务授权，登录资料按员工和会话隔离。' : '请先保存员工，再启用浏览器能力。'}</small></span><Checkbox disabled={!agent} checked={form.allowBrowser ?? false} onCheckedChange={checked => set('allowBrowser', checked)} /></label>
+      <div className="field full"><span className="field-label">可访问的知识库</span><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} empty="还没有知识资料。" /></div>
       {!core && <label className="toggle-row full"><span><strong>允许申请运行命令</strong><small>脚本执行前仍会向你展示命令并请求授权。</small></span><Checkbox checked={form.allowCommands} onCheckedChange={checked => set('allowCommands', checked)} /></label>}
       </fieldset>
       </>}

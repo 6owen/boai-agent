@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite/受管文件、原用户请求与 Work 持有者，以及故障注入。
- * [OUTPUT]: 员工一等身份、仅缺员准备、三种组织模式/原预算原子发布、幂等/只读恢复和取消实际退出及 hash 清理不变量。
+ * [OUTPUT]: 员工一等身份、仅缺员准备与新旧 Mastra 默认浏览器能力摘要、三种组织模式/原预算原子发布、幂等/只读恢复和取消实际退出及 hash 清理不变量。
  * [POS]: bobo 组织模块验收；不使用模型或伪造群运行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -61,7 +61,7 @@ test.each(['employee_creation', 'organize_only', 'organize_and_execute'] as cons
   expect(existing.instructions).toBe('PRIVATE_EMPLOYEE_RULES'); expect(existing.allowCommands).toBe(true); expect(existing.allowBrowser).toBe(true)
   expect(await readFile(join(f.dataPath, f.writer.workspaceRef!, 'private/personal.txt'), 'utf8')).toBe(before)
   const created = agents.find(agent => agent.id === receipt.agents[0].id)!
-  expect(created).toMatchObject({ allowCommands: false, allowBrowser: false, skillIds: [], knowledgeIds: [], creationSource: { kind: 'bobo-collaboration', operationId: receipt.id } })
+  expect(created).toMatchObject({ allowCommands: false, allowBrowser: true, skillIds: [], knowledgeIds: [], creationSource: { kind: 'bobo-collaboration', operationId: receipt.id } })
   expect(await readFile(join(f.dataPath, created.workspaceRef!, 'AGENTS.md'), 'utf8')).toBe(plan.newEmployees[0].instructions)
   const groups = (await f.store.load<Conversation>('conversations')).filter(item => item.kind === 'group'), messages = await f.store.load<Message>('messages')
   expect(messages.find(message => message.id === 'source')).toEqual(f.source)
@@ -90,7 +90,7 @@ test('same source freezes one request and altered plan cannot duplicate employee
 
 test('employee discovery filters in SQL, bounds capabilities and never reads rules/history/credentials', async () => {
   const f = await fixture(), all: {collection:string;id:string;value:unknown}[] = []
-  for (let index = 0; index < 25; index++) { const id = `candidate-${String(index).padStart(2, '0')}`; all.push({ collection: 'agents', id, value: { ...f.writer, id, name: `员工${index}`, instructions: `PRIVATE_${index}` } }) }
+  for (let index = 0; index < 25; index++) { const id = `candidate-${String(index).padStart(2, '0')}`; all.push({ collection: 'agents', id, value: { ...f.writer, id, name: `员工${index}`, allowBrowser: index % 2 ? undefined : false, instructions: `PRIVATE_${index}` } }) }
   all.push({ collection: 'agents', id: 'inactive', value: { ...f.writer, id: 'inactive', active: false } }, { collection: 'agents', id: 'acp', value: { ...f.writer, id: 'acp', executionBackend: { kind: 'acp-local', profileId: 'private' } } }, { collection: 'agents', id: 'missing-model', value: { ...f.writer, id: 'missing-model', connectionId: 'missing' } }, { collection: 'contactDeletions', id: 'deletion', value: { id: 'deletion', agentIds: ['candidate-00'] } })
   await f.store.write(all)
   const page = await f.service.findEmployees({ limit: 3 }); expect(page.employees).toHaveLength(3); expect(page.revision).toBe(2); expect(page.cursor).toBeTruthy()

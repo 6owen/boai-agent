@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 真实 SQLite、bobo 核心来源/组织工作、群启动 CAS、原调用回执和会话清理。
+ * [OUTPUT]: 新完整协作48/其他24首次事务、根子同ID共原期限；人为旧24重启/明确重认领/群根/子工作保持24，模型无法指定额度，输出等原限制不变。
  * [OUTPUT]: 固定组织权限/真实证据、两会话无父子共预算、逐调用已知/未知记账、原子发布/启动回滚、子工作/成员边界与重启不自动开工。
  * [POS]: BC3 模块合同；真实模型/桌面群协作由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -11,7 +12,7 @@ import { join } from 'node:path'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
 import { collaborationMessageHash } from '../src/runtime/modules/collaboration/work-collaboration'
-import { reserveBudgetCall } from '../src/runtime/modules/collaboration/work-budget'
+import { newWorkBudget, reserveBudgetCall } from '../src/runtime/modules/collaboration/work-budget'
 import { workIntentSchema } from '../src/runtime/modules/collaboration/work-protocol'
 import { GroupScheduler, type SchedulerHooks } from '../src/runtime/group-scheduler'
 import { ConversationHistory } from '../src/runtime/modules/conversations/history'
@@ -69,6 +70,36 @@ async function claimRoot(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe('bobo fixed organization authority and genuine delivery', () => {
+  it.each(['organize_and_execute', 'organize_only', 'employee_creation'] as const)('sets only the first host-authorized %s budget to its fixed call allowance', async mode => {
+    const f = await fixture(mode, false), budget = (await f.works.view(f.core.id)).workBudgets[0]!
+    expect(budget).toMatchObject({ maxModelCalls: mode === 'organize_and_execute' ? 48 : 24, maxRuns: 8, maxOutputTokens: 16000, maxWorkItems: 8, maxRetries: 3, maxReportRefreshes: 4, maxNoProgress: 3 })
+    expect(Date.parse(budget.deadlineAt) - Date.parse(f.work.createdAt)).toBeGreaterThanOrEqual(299_950)
+    expect(Date.parse(budget.deadlineAt) - Date.parse(f.work.createdAt)).toBeLessThanOrEqual(300_050)
+    await f.works.claim(f.claim)
+    expect((await f.works.view(f.core.id)).workBudgets[0]).toEqual(budget)
+    expect(() => workIntentSchema.parse({ ...f.claim.intent, organization: { mode, goal: '合作', maxModelCalls: 48 } })).toThrow()
+  })
+  it('keeps ordinary and automation initial budgets at twenty-four without importing a collaboration allowance', async () => {
+    const f = await fixture('organize_only', false)
+    const ordinary = await f.works.claim({ ...f.claim, sourceMessageId: 'ordinary-user', runId: 'ordinary-run', organization: undefined })
+    expect((await f.works.view(f.core.id)).workBudgets.find(budget => budget.id === ordinary.budgetId)).toMatchObject({ maxModelCalls: 24, maxOutputTokens: 16000, maxRuns: 8 })
+    const automation = newWorkBudget('automation-budget', { conversationId: f.core.id, origin: { kind: 'automation', automationId: 'automation', occurrenceId: 'occurrence', name: '定时任务', authorizedFingerprint: 'explicit-source' } }, 'organize_and_execute')
+    expect(automation).toMatchObject({ maxModelCalls: 24, maxOutputTokens: 16000, maxRuns: 8 })
+  })
+  it('retains a stored old twenty-four-call full organization through restart and explicit reclaim', async () => {
+    const f = await fixture('organize_and_execute', false)
+    const budget = { ...(await f.works.view(f.core.id)).workBudgets[0]!, maxModelCalls: 24 }
+    await f.store.write([row('workBudgets', budget)])
+    await f.works.release(f.organizationRun.id, 'failed')
+    const restarted = new WorkRepository(f.store); await restarted.init()
+    expect((await restarted.view(f.core.id)).workBudgets[0]).toEqual(budget)
+    await restarted.authorizeRetry(f.work.id, 'bobo')
+    const retry = f.run('explicit-organization-retry', { workId: f.work.id })
+    await f.store.write([row('runs', retry)])
+    await restarted.claim({ ...f.claim, runId: retry.id })
+    const retained = (await restarted.view(f.core.id)).workBudgets[0]!
+    expect(retained).toMatchObject({ id: budget.id, maxModelCalls: 24, deadlineAt: budget.deadlineAt, maxOutputTokens: 16000, maxRuns: 8, retries: 1, runs: 2 })
+  })
   it('keeps model intent limited to judgment and refuses caller-owned request identity', () => {
     expect(workIntentSchema.parse({ key: 'main', scope: '组织', deliverable: '真实组织回执', organization: { mode: 'organize_only', goal: '合作讨论' } }).organization?.mode).toBe('organize_only')
     expect(() => workIntentSchema.parse({ key: 'main', scope: '组织', deliverable: '回执', organization: { mode: 'organize_only', goal: '讨论', requestId: 'model-owned' } })).toThrow()
@@ -113,6 +144,19 @@ describe('bobo fixed organization authority and genuine delivery', () => {
 })
 
 describe('independent group root and original shared budget', () => {
+  it.each([false, true])('new group and children share the original full-work allowance, retaining an old budget=%s', async old => {
+    const f = await fixture('organize_and_execute', false)
+    const initial = (await f.works.view(f.core.id)).workBudgets[0]!
+    const original = old ? { ...initial, maxModelCalls: 24 } : initial
+    if (old) await f.store.write([row('workBudgets', original)])
+    const { root, run } = await claimRoot(f)
+    const child = await f.works.delegate(run.id, { key: 'facts', scope: '核对数据', deliverable: '真实事实文件', ownerAgentId: 'researcher' })
+    expect(root.budgetId).toBe(f.work.budgetId); expect(child.budgetId).toBe(root.budgetId)
+    expect(root.parentWorkId).toBeUndefined(); expect(child.parentWorkId).toBe(root.id)
+    const budgets = await f.store.load<WorkBudget>('workBudgets')
+    expect(budgets).toHaveLength(1)
+    expect(budgets[0]).toMatchObject({ id: original.id, maxModelCalls: old ? 24 : 48, deadlineAt: original.deadlineAt, maxOutputTokens: 16000, maxRuns: 8, maxWorkItems: 8, maxReportRefreshes: 4 })
+  })
   it('binds one bobo root and one startup intent in the publication transaction, without a cross-conversation parent', async () => {
     const f = await fixture(), published = await f.publish(), root = (await f.works.view(f.group.id)).workItems[0]!
     expect(root).toMatchObject({ ownerAgentId: 'bobo', rootWorkId: root.id, budgetId: f.work.budgetId, collaborationRequestId: f.organization.requestId, sourceMessageId: f.announcement.id, status: 'ready' }); expect(root.parentWorkId).toBeUndefined()

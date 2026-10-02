@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 旧版数据升级且不重放工作的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；一致性旧格式备份恢复后原技能绑定可用于新任务、知识内容保持且旧工作不重放；旧版数据升级且不重放工作的真实桌面业务步骤与断言。
+ * [OUTPUT]: 资料库主页面退役后，旧受管技能正文和文件通过真实 IPC 核读，现行技能主导航仍可用；核心预置身份与普通员工场景隔离，保留原业务断言；一致性旧格式备份恢复后原技能绑定可用于新任务、知识内容保持且旧工作不重放；旧版数据升级且不重放工作的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/upgrade.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -156,9 +156,12 @@ async function verifyMigration(previous: Awaited<ReturnType<typeof launchLegacyD
   const knowledge = snapshot.resources.find(r => r.id === 'legacy-knowledge')!
   expect(await readFile(knowledge.path, 'utf8')).toBe(await readFile(join(root, 'knowledge/legacy-knowledge/facts.md'), 'utf8'))
   expect(await page.evaluate(() => window.boai.request('getSkillCollections', undefined))).toMatchObject({ favoriteResourceIds: [], groups: [] })
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
-  await page.getByRole('button', { name: /legacy-reader 旧版技能/ }).click()
-  await expect(page.getByRole('heading', { name: '原有技能说明' })).toBeVisible()
+  const file = await page.evaluate(() => window.boai.request('readSkillFile', { resourceId: 'legacy-skill', path: 'SKILL.md' }))
+  expect(file.content).toBe(skill.content)
+  const nav = page.getByRole('navigation', { name: '主导航' })
+  await expect(nav.getByRole('button', { name: '资料库', exact: true })).toHaveCount(0)
+  await nav.getByRole('button', { name: '技能', exact: true }).click()
+  for (const name of ['本地', '收藏', '商城']) await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
 }
 
 Given('旧版数据保留员工历史产物和未完成运行', async ({ runtime, scenario }) => {

@@ -1,5 +1,6 @@
 /*
- * [INPUT]: 本地 SQLite 连接与产品记录。
+ * [INPUT]: 本地 SQLite 连接、当前聊天成员/附件接收范围与产品记录。
+ * [OUTPUT]: 成员增删及材料deliveryScope变更同事务提升检索代际，旧员工筛选游标不能混入新接收范围。
  * [OUTPUT]: bobo 员工发现与组织回执 SQL 有界投影、同事务配置时钟；浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -22,9 +23,9 @@ import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLL
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
 const advanceSearchClockSql = `INSERT INTO records(collection,id,value) SELECT '${SEARCH_INDEX_CLOCK_COLLECTION}','${SEARCH_INDEX_CLOCK_ID}',json_object('id','${SEARCH_INDEX_CLOCK_ID}','revision',1) WHERE changes()>0 ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1)`
 const rankingFields: Record<string, string[]> = {
-  conversations: ['title', 'lastMessageAt', 'createdAt'],
+  conversations: ['title', 'lastMessageAt', 'createdAt', 'agentIds'],
   messages: ['content', 'status', 'senderType', 'senderId', 'createdAt', 'conversationId'],
-  materials: ['name', 'messageId', 'conversationId', 'createdAt', 'revision', 'contentHash', 'authorizedAgentIds', 'status'],
+  materials: ['name', 'messageId', 'conversationId', 'createdAt', 'revision', 'contentHash', 'deliveryScope', 'authorizedAgentIds', 'status'],
   artifacts: ['name', 'conversationId', 'publishedAt', 'registrationSource', 'contentHash', 'contentVersion', 'logicalArtifactId', 'ownerAgentId', 'contentStatus', 'materialSources'],
 }
 function advanceRankingClock(collection: string, id: string, value?: string) {

@@ -1,5 +1,6 @@
 /*
- * [INPUT]: records 中真实会话、消息、已发送材料、登记成果及本周期完成身份；类型化筛选与游标。
+ * [INPUT]: records 中真实会话/当前成员、消息、已发送材料接收范围、登记成果及本周期完成身份；类型化筛选与游标。
+ * [OUTPUT]: 员工材料筛选在分页前按当前聊天成员及conversation接收范围检查；缺省保留旧显式名单，未知范围不扩权。
  * [OUTPUT]: LIMIT 前名称/正文多词 AND、确定性字段相关性与分数/时间/身份游标；只关联相同来源版本的正文索引，隐藏/清理门禁与点击保留；内部明确历史窗口和完成 ordinal/epoch 查询独立。
  * [POS]: D6 宿主固定只读 SQL；不接受外部查询片段，不推断目标，不创建阅读或业务状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -22,6 +23,8 @@ UNION ALL
 SELECT s.id,'conversation' AS kind,s.id,COALESCE(NULLIF(json_extract(s.value,'$.lastMessageAt'),''),json_extract(s.value,'$.createdAt')),s.value,json_extract(s.value,'$.title'),NULL FROM records s WHERE s.collection='conversations' AND json_extract(s.value,'$.id')=s.id`
 const availableConversation = "NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=i.conversationId)"
 export const searchableConversationSql = `${availableConversation} AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0`
+/** One bound employee identity; current members are authoritative for both new attachments and legacy grants. */
+export const materialAgentVisibleSql = "EXISTS(SELECT 1 FROM json_each(json_extract(c.value,'$.agentIds')) currentMember WHERE currentMember.value=? AND (json_extract(i.source,'$.deliveryScope')='conversation' OR (json_type(i.source,'$.deliveryScope') IS NULL AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.authorizedAgentIds')) granted WHERE granted.value=currentMember.value))))"
 const completionJoin = `LEFT JOIN records clock ON clock.collection='conversationCompletionClocks' AND clock.id=i.conversationId LEFT JOIN records completion ON completion.collection='conversationCompletions' AND completion.id=i.messageId AND json_extract(completion.value,'$.messageId')=i.messageId AND json_extract(completion.value,'$.conversationId')=i.conversationId AND json_extract(completion.value,'$.epoch')=json_extract(clock.value,'$.epoch')`
 const searchSelect = (score = '0') => `WITH originals AS (${conversationSearchSourcesSql}), sources AS (SELECT original.*,CASE WHEN json_extract(body.value,'$.status')='indexed' AND json_extract(body.value,'$.formatVersion')=1 AND json_extract(body.value,'$.sourceValue')=original.source THEN json_extract(body.value,'$.text') ELSE NULL END AS body FROM originals original LEFT JOIN records body ON body.collection='conversationSearchBodies' AND body.id=original.kind||':'||original.id) SELECT i.id,i.kind,i.time,c.value AS conversation,i.source,i.body,${score} AS score,completion.value AS completion FROM sources i JOIN records c ON c.collection='conversations' AND c.id=i.conversationId ${completionJoin}`
 
@@ -31,7 +34,7 @@ export function conversationSearchSql(query: ConversationSearchQuery & { limit: 
   for (const term of ranking.terms) { predicates.push("(instr(lower(COALESCE(i.text,'')),?)>0 OR instr(lower(COALESCE(i.body,'')),?)>0)"); args.push(term, term) }
   if (query.scope === 'current' || query.conversationId) { predicates.push('i.conversationId=?'); args.push(query.conversationId ?? '') }
   if (query.agentId) {
-    predicates.push("((i.kind='conversation' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.agentIds')) member WHERE member.value=?)) OR (i.kind='message' AND json_extract(i.source,'$.senderType')='agent' AND json_extract(i.source,'$.senderId')=?) OR (i.kind='material' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.authorizedAgentIds')) member WHERE member.value=?)) OR (i.kind='artifact' AND json_extract(i.source,'$.ownerAgentId')=?))")
+    predicates.push(`((i.kind='conversation' AND EXISTS(SELECT 1 FROM json_each(json_extract(i.source,'$.agentIds')) member WHERE member.value=?)) OR (i.kind='message' AND json_extract(i.source,'$.senderType')='agent' AND json_extract(i.source,'$.senderId')=?) OR (i.kind='material' AND ${materialAgentVisibleSql}) OR (i.kind='artifact' AND json_extract(i.source,'$.ownerAgentId')=?))`)
     args.push(query.agentId, query.agentId, query.agentId, query.agentId)
   }
   if (query.from) { predicates.push('i.time>=?'); args.push(query.from) }

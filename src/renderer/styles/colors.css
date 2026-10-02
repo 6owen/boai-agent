@@ -1,6 +1,6 @@
 /*
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
- * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角、shadcn 语义别名与背景图层。
+ * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；composer 阴影复用 control 的细边缘/高光；shadcn 语义别名与背景图层。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -77,7 +77,7 @@
   --shadow-field:inset 0 1px 2px #00000006,0 1px 0 var(--soft-surface-highlight);
   --shadow-card:inset 0 1px 0 var(--soft-surface-highlight),0 2px 4px -2px #0000000a;
   --shadow-popover:0 0 0 1px var(--soft-outer-highlight),0 1px 2px #3333331a,0 10px 24px -8px #33333347,0 28px 48px -20px #33333338;
-  --shadow-composer:inset 0 1px 0 var(--soft-surface-highlight),0 0 0 1px var(--border),var(--shadow-popover);
+  --shadow-composer:var(--shadow-control);
   --app:var(--surface-app);
   --list:var(--surface-list);
   --content:var(--surface-content);

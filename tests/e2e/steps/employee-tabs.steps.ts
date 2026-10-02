@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 员工共享标签页中文场景、Electron fixture 与产品 API。
- * [OUTPUT]: 选择员工采用现有 Base UI option；会话菜单入口、分类面板语义、草稿保护、键盘切换、资料库筛选及跨页面/主题/窄窗的视觉验收。
+ * [INPUT]: 员工共享标签页中文场景、旧资料库启动偏好、Electron fixture 与产品 API。
+ * [OUTPUT]: 会话菜单入口、分类面板语义、草稿保护、键盘切换及跨页面/主题/窄窗视觉验收；资料库无主导航和页面，旧偏好重载回会话，技能入口的本地/收藏/商城分类保留。
  * [POS]: tests/e2e/steps/employee-tabs.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -110,21 +110,24 @@ Then('会话侧栏使用相同标签样式且深色窄窗口完整显示', async
   expect(runtime.errors).toEqual([])
 })
 
-Then('资料库分类共用标签样式并保留筛选内容', async ({ runtime }) => {
+Then('资料库入口已移除且旧页面偏好回到会话并保留技能分类', async ({ runtime }) => {
   const page = runtime.page
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资料库', exact: true }).click()
-  const tabs = page.getByRole('tablist', { name: '资料库分类' })
-  await expect(tabs).toHaveCSS('height', '32px')
-  await page.getByRole('textbox', { name: '搜索资源', exact: true }).fill('保留筛选')
-  await tabs.getByRole('tab', { name: '员工已绑定', exact: true }).click()
-  await expect(page.getByRole('tabpanel', { name: '员工已绑定', exact: true })).toContainText('选择一位员工')
-  await page.getByRole('combobox', { name: '选择员工', exact: true }).click()
-  await page.getByRole('option', { name: '研究员', exact: true }).click()
-  await expect(page.getByRole('button', { name: /研究员 的资源配置/ })).toBeVisible()
-  await tabs.getByRole('tab', { name: '公共资源', exact: true }).click()
-  await expect(page.getByRole('tabpanel', { name: '公共资源', exact: true })).toContainText('公共资源表示可供绑定')
-  await expect(page.getByRole('textbox', { name: '搜索资源', exact: true })).toHaveValue('保留筛选')
-  await expect(page.getByRole('tabpanel')).toHaveCount(1)
+  const navigation = page.getByRole('navigation', { name: '主导航', exact: true })
+  await expect(navigation.getByRole('button', { name: '资料库', exact: true })).toHaveCount(0)
+  await page.evaluate(() => localStorage.setItem('boai.v2.page', 'library'))
+  await page.reload()
+  await expect(navigation.getByRole('button', { name: '会话', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('navigation', { name: '会话列表', exact: true })).toBeVisible()
+  await expect(navigation.getByRole('button', { name: '资料库', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '资料库', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tablist', { name: '资料库分类', exact: true })).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('boai.v2.page'))).toBe('conversations')
+  await navigation.getByRole('button', { name: '技能', exact: true }).click()
+  await expect(navigation.getByRole('button', { name: '技能', exact: true })).toHaveAttribute('aria-current', 'page')
+  const tabs = page.getByRole('tablist', { name: '技能分类', exact: true })
+  await expect(tabs).toBeVisible()
+  for (const name of ['本地', '收藏', '商城']) await expect(tabs.getByRole('tab', { name, exact: true })).toBeVisible()
+  await expect(tabs.getByRole('tab', { name: '本地', exact: true })).toHaveAttribute('aria-selected', 'true')
   expect(runtime.errors).toEqual([])
 })

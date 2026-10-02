@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工、会话和消息的稳定身份。
- * [OUTPUT]: 统一记忆、来源/范围/生命周期、版本化管理与有界召回合同；兼容旧会话记忆。
+ * [OUTPUT]: 统一记忆及版本化实际来源召回：条目版本、获知授权指纹和宿主输入消息；旧快照保守失效。
  * [POS]: shared/domain/memory.ts；纯跨进程合同，不含存储或模型执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -64,7 +64,19 @@ export interface MemoryView {
   nextCursor?: MemoryCursor
   total?: number
   /** Host-selected snapshot. Management views must never be passed as a recall view. */
-  recall?: { conversationId: string; versions: { id: string; version: number }[]; observationIds: string[]; tokenEstimate: number }
+  recall?: {
+    conversationId: string
+    versions: { id: string; version: number }[]
+    observationIds: string[]
+    tokenEstimate: number
+    /** Complete host tracking permits changes to unrelated memory without revoking used sources. */
+    authorityVersion?: 1
+    agentId?: string
+    contextRefs?: MemoryContextRef[]
+    observationVersions?: { id: string; fingerprint: string; sourceMessageIds: string[] }[]
+    /** Only the host supplies actual model input IDs; pure memory projections need not have them. */
+    inputMessageIds?: string[]
+  }
 }
 export interface MemoryCandidate {
   content: string
