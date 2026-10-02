@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 真实宿主/SQLite/文件系统、确定方案与精确初始化断点。
+ * [OUTPUT]: 旧 team-planner 来源显式判别后保留原 plannerVersion 断言，与独立 bobo 协作来源区分。
  * [OUTPUT]: 员工/群/分类同事务发布，分类重名避让与用户后续整理不重放；有界等待及原重复受理、事务失败、取消清理、目录缺失/外改和备份恢复断言。
  * [POS]: T1.3 一致性测试；不使用真实收费模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -256,5 +257,5 @@ test('an older planner version remains editable and publishable without allowing
   await expect(a.api('saveTeamDraft', { draftId: original.id, expectedVersion: original.version, editableFields: { ...fields, plan: { ...fields.plan, plannerVersion: 'forged' } } })).rejects.toThrow('身份不属于本草稿')
   const saved = await a.api('saveTeamDraft', { draftId: original.id, expectedVersion: original.version, editableFields: fields })
   const operation = await a.api('acceptTeamCreation', { ...a.request, expectedVersion: saved.version, planHash: saved.planHash! }); await a.settle(operation.id, 'committed')
-  expect((await a.api('snapshot', undefined)).agents.filter(agent => agent.creationSource).every(agent => agent.creationSource?.plannerVersion === 'team-planner-v1')).toBe(true)
+  expect((await a.api('snapshot', undefined)).agents.filter(agent => agent.creationSource).every(agent => agent.creationSource?.kind === 'team-planner' && agent.creationSource.plannerVersion === 'team-planner-v1')).toBe(true)
 })

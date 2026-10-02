@@ -1,5 +1,6 @@
 /*
  * [INPUT]: SQLite 原子记录事务、统一记忆合同及确定性范围/生命周期策略。
+ * [OUTPUT]: 召回有效性复用同一 SQLite 事务，组织最终发布核对版本/来源/忘记屏障和有效期。
  * [OUTPUT]: 兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
  * [POS]: runtime/modules/memory/memory-repository.ts；SQLite 唯一权威，无私有文本缓存。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -247,29 +248,28 @@ export class MemoryRepository {
   forgottenMessageIds(agentId: string) {
     return this.store.transaction(async tx => new Set((await tx.list<MemoryForget>('memoryForgets')).filter(item => item.ownerAgentId === agentId).flatMap(item => item.sourceMessageIds)))
   }
-  async recallValid(view: MemoryView) {
+  recallValid(view: MemoryView) { return this.store.transaction(tx => this.recallValidInTransaction(tx, view)) }
+  async recallValidInTransaction(tx: RecordTransaction, view: MemoryView) {
     if (!view.recall) return true
-    return this.store.transaction(async tx => {
-      const epoch = await tx.get<Epoch>('memoryEpochs', view.namespace)
-      if ((epoch?.invalidationEpoch ?? 0) !== (view.invalidationEpoch ?? 0)) return false
-      for (const version of view.recall!.versions) {
-        const entry = await tx.get<MemoryEntry>('memory', version.id)
-        if (!entry || entry.version !== version.version || memoryStatus(entry) !== 'active') return false
-        if (entry.contextRef?.kind === 'work') {
-          const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', entry.contextRef.id)
-          if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
-        }
+    const epoch = await tx.get<Epoch>('memoryEpochs', view.namespace)
+    if ((epoch?.invalidationEpoch ?? 0) !== (view.invalidationEpoch ?? 0)) return false
+    for (const version of view.recall!.versions) {
+      const entry = await tx.get<MemoryEntry>('memory', version.id)
+      if (!entry || entry.version !== version.version || memoryStatus(entry) !== 'active') return false
+      if (entry.contextRef?.kind === 'work') {
+        const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', entry.contextRef.id)
+        if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
       }
-      for (const id of view.recall!.observationIds) {
-        const observation = await tx.get<MemoryObservation>('memoryObservations', id)
-        if (!observation || await this.blocked(tx, observation.ownerAgentId, observation.sourceMessageIds, observation.sourceMemoryIds)) return false
-        if (observation.contextRef?.kind === 'work') {
-          const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', observation.contextRef.id)
-          if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
-        }
+    }
+    for (const id of view.recall!.observationIds) {
+      const observation = await tx.get<MemoryObservation>('memoryObservations', id)
+      if (!observation || await this.blocked(tx, observation.ownerAgentId, observation.sourceMessageIds, observation.sourceMemoryIds)) return false
+      if (observation.contextRef?.kind === 'work') {
+        const work = await tx.get<import('../../../shared/domain').WorkItem>('workItems', observation.contextRef.id)
+        if (!work || ['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)) return false
       }
-      return true
-    })
+    }
+    return true
   }
   invalidateResources(ids: string[]) { return this.invalidate(entry => entry.sourceResourceIds.some(id => ids.includes(id)), observation => observation.sourceResourceIds.some(id => ids.includes(id))) }
   invalidateMessages(ids: string[]) { return this.invalidate(entry => entry.sourceMessageIds.some(id => ids.includes(id)), observation => observation.sourceMessageIds.some(id => ids.includes(id))) }

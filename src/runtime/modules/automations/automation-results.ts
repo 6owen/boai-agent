@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 同一次自动化的持久来源、轮次/工作/正文、已核查文件与实际执行器占用。
+ * [OUTPUT]: 自动化交付拒绝将 bobo 组织回执作为自身业务证据。
  * [OUTPUT]: 明确接续后的失败归并、累计额度/追加回执与旧证据保留；仅宿主明确补充解除对应提问的等待；新预算用量作为唯一统计来源、旧记录保持未知；跨接续的运行和交付分离汇总；独立依赖不获得归属，缺失证据不算交付。
  * [POS]: 自动化结果的纯投影；不调用模型、不执行或恢复工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -54,7 +55,8 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
     if (!message || !run) continue
     const artifacts = input.artifacts.filter(artifact => artifact.id && artifact.runId === run.id && work.artifactIds.includes(artifact.id) && input.verifiedArtifactIds.has(artifact.id))
     if (workEvidenceError(work.outcome, { content: message.content, artifactIds: artifacts.map(artifact => artifact.id!) }, work.status === 'waiting')) continue
-    for (const item of work.outcome.evidence ?? []) evidence.push({ ...item, workId: work.id, resultVersion: work.resultVersion, ...(item.kind === 'answer' ? { messageId: message.id } : { artifactId: item.reference }) })
+    if (work.outcome.evidence?.some(item => item.kind === 'collaboration')) continue
+    for (const item of work.outcome.evidence ?? []) if (item.kind !== 'collaboration') evidence.push({ kind: item.kind, reference: item.reference, workId: work.id, resultVersion: work.resultVersion, ...(item.kind === 'answer' ? { messageId: message.id } : { artifactId: item.reference }) })
     if (work.status === 'delivered' && work.outcome.disposition === 'delivered' && work.outcome.evidence?.length) delivered.add(work.id)
   }
   const live = runs.some(run => !endedRun.has(run.status) || input.activeRunIds.has(run.id)) || turns.some(turn => !endedTurn.has(turn.status) || input.activeTurnIds.has(turn.id))

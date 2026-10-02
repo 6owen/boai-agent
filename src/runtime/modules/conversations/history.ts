@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
- * [OUTPUT]: 浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
+ * [OUTPUT]: 另一会话仍引用的协作预算保留累计计数/期限，已清理调用只保留 hash 去重；不删另一群或员工。浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
  * [OUTPUT]: 成果先失效再 hash 安全清理，冲突阻止后续递归删除；修订/采用 cleared 回执与恢复门禁；清空/解散保留核心首发和普通消息最小 cleared 回执；撤销材料及派生记忆后只清理 hash 匹配的私有原件，冲突聊天保持门禁并在恢复时显性返回；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -8,7 +8,7 @@
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
-import type { Conversation, MemoryEntry } from '../../../shared/domain'
+import type { BudgetModelCall, ClearedBudgetModelCall, Conversation, MemoryEntry, WorkBudget, WorkItem } from '../../../shared/domain'
 import type { ContactListPreferences } from '../../../shared/domain/contact-list'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '../../../shared/domain/automations'
 import { ProductStore } from '../../adapters/storage/product-store'
@@ -106,13 +106,22 @@ export class ConversationHistory {
       await collect('materials', owned)
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))
+      const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
+      const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes', 'budgetModelCalls']) {
+      for (const collection of ['browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
+      }
+      for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {
+        if ('status' in call || !(call.conversationId === id || turns.has(call.turnId) || runIds.has(call.runId))) continue
+        if (sharedBudgets.has(call.budgetId)) {
+          const cleared: ClearedBudgetModelCall = { id: call.id, budgetId: call.budgetId, status: 'cleared', requestHash: createHash('sha256').update(JSON.stringify([call.budgetId, call.conversationId, call.runId, call.turnId, call.phase, call.collaborationRequestId])).digest('hex') }
+          await tx.put({ collection: 'budgetModelCalls', id: call.id, value: cleared })
+        } else removals.push({ collection: 'budgetModelCalls', id: call.id })
       }
       await collect('snapshots', item => item.conversation?.id === id || runIds.has(item.id))
       await collect('workExecutions', item => Boolean(item.workId && workIds.has(item.workId)))
-      await collect('workBudgets', item => budgets.has(item.id) || owned(item))
+      await collect('workBudgets', item => (budgets.has(item.id) || owned(item)) && !retainedBudgets.has(item.id))
       await collect('requests', item => {
         if (item.messageId && messages.has(item.messageId)) return true
         try { const value = JSON.parse(item.fingerprint ?? '{}'); return value.conversationId === id || runIds.has(value.id) } catch { return false }

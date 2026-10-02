@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；作用域授权回调。
- * [OUTPUT]: 保留原布局/地址栏/遮罩；独立持久 partition、三 View 沙箱、真实工具栏/退出及受管下载/权限/sender 门禁。
+ * [OUTPUT]: 保留原布局/地址栏/遮罩；独立持久 partition、三 View 沙箱、真实工具栏/退出及受管下载/权限/sender 门禁；AX 可操作元素稀疏只作诊断，明确验证证据才触发人工接管。
  * [POS]: src/main/browser/browser-pane-manager.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -1601,7 +1601,9 @@ export class BrowserPaneManager {
       // AX snapshot can fail transiently during navigation; ignore
     }
 
-    const detected = signals.length > 0
+    // A normal article or short page can have very few actionable elements.
+    // AX sparsity alone is not evidence of a verification challenge.
+    const detected = signals.some(signal => !signal.startsWith('ax:near-empty('))
     const isCloudflare = signals.some(s =>
       s.includes('cf-') || s.includes('challenge') || s.includes('turnstile') || s === 'title:just-a-moment'
     )

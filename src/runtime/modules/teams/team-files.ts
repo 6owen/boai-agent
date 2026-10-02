@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 冻结创建操作、宿主生成路径、工作区格式与每文件日志提交回调。
- * [OUTPUT]: 归属/hash 与写入前内容复核、提交前目录完整性、暂存移动和仅清理本操作未发布文件。
+ * [INPUT]: 冻结创建操作的文件子集、宿主生成路径、工作区格式与每文件日志提交回调。
+ * [OUTPUT]: 团队与 bobo 组织复用同一归属/hash、写入前内容复核、提交前目录完整性、暂存移动和仅清理本操作未发布文件。
  * [POS]: 团队文件一致性边界；调用者提供宿主生命周期互斥，不声称跨介质事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,8 +12,9 @@ import { WorkspaceService } from '../workspaces/workspace-service'
 import { teamError } from './team-repository'
 
 const hash = (content: string | Buffer) => createHash('sha256').update(content).digest('hex')
-export type TeamFileCheckpoint = (phase: 'before-write' | 'after-write' | 'after-move' | 'before-commit' | 'after-commit', operation: TeamCreationOperation, path?: string) => Promise<void>
-export function teamFileContents(operation: TeamCreationOperation, homes: WorkspaceService) {
+export type TeamFileOperation = Pick<TeamCreationOperation, 'id' | 'payloadHash' | 'createdAt' | 'agents' | 'conversationId' | 'files' | 'directories'>
+export type TeamFileCheckpoint<T extends TeamFileOperation = TeamCreationOperation> = (phase: 'before-write' | 'after-write' | 'after-move' | 'before-commit' | 'after-commit', operation: T, path?: string) => Promise<void>
+export function teamFileContents(operation: TeamFileOperation, homes: WorkspaceService) {
   const files: Record<string, string> = {}, directories: string[] = []
   const owner = JSON.stringify({ operationId: operation.id, payloadHash: operation.payloadHash })
   for (const agent of operation.agents) {
@@ -25,14 +26,14 @@ export function teamFileContents(operation: TeamCreationOperation, homes: Worksp
   if (operation.conversationId) { const root = `workspaces/${operation.conversationId}`; directories.push(root); files[`${root}/.team-creation.json`] = owner }
   return { files, directories }
 }
-export function teamFileLog(operation: TeamCreationOperation, homes: WorkspaceService) {
+export function teamFileLog(operation: TeamFileOperation, homes: WorkspaceService) {
   const { files, directories } = teamFileContents(operation, homes)
   return { directories, files: Object.entries(files).map(([path, content]) => ({ path, hash: hash(content), status: 'pending' as const })) }
 }
-export class TeamFiles {
-  constructor(private readonly dataPath: string, private readonly homes: WorkspaceService, private readonly checkpoint?: TeamFileCheckpoint) {}
-  private roots(operation: TeamCreationOperation) { return [...operation.agents.map(agent => `agents/${agent.id}`), ...(operation.conversationId ? [`workspaces/${operation.conversationId}`] : [])] }
-  private staging(operation: TeamCreationOperation) { return join(this.dataPath, 'team-creation', operation.id) }
+export class TeamFiles<T extends TeamFileOperation = TeamCreationOperation> {
+  constructor(private readonly dataPath: string, private readonly homes: WorkspaceService, private readonly checkpoint?: TeamFileCheckpoint<T>) {}
+  private roots(operation: T) { return [...operation.agents.map(agent => `agents/${agent.id}`), ...(operation.conversationId ? [`workspaces/${operation.conversationId}`] : [])] }
+  private staging(operation: T) { return join(this.dataPath, 'team-creation', operation.id) }
   private async safe(path: string) {
     const parts = relative(this.dataPath, path).split(sep)
     if (parts.some(part => part === '..')) teamError('FILES_CONFLICT', '路径超出受管目录')
@@ -44,7 +45,7 @@ export class TeamFiles {
     }
   }
   private async exists(path: string) { await this.safe(path); try { await lstat(path); return true } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error } }
-  private async inspectTree(operation: TeamCreationOperation, root: string, base: string, partial: boolean) {
+  private async inspectTree(operation: T, root: string, base: string, partial: boolean) {
     const target = join(base, root), contents = teamFileContents(operation, this.homes).files
     if (!await this.exists(target)) return false
     const owner = join(target, '.team-creation.json')
@@ -70,14 +71,14 @@ export class TeamFiles {
     return true
   }
   /** Read-only audit on restart. Nothing is rewritten or moved here. */
-  async inspect(operation: TeamCreationOperation, requirePrepared = false) {
+  async inspect(operation: T, requirePrepared = false) {
     for (const root of this.roots(operation)) {
       const prepared = await this.inspectTree(operation, root, this.dataPath, false)
       if (requirePrepared && !prepared) teamError('FILES_CONFLICT', `已准备目录被移除：${root}`)
       await this.inspectTree(operation, root, this.staging(operation), true)
     }
   }
-  async prepare(operation: TeamCreationOperation, signal: AbortSignal, persist: () => Promise<void>) {
+  async prepare(operation: T, signal: AbortSignal, persist: () => Promise<void>) {
     const stage = this.staging(operation), contents = teamFileContents(operation, this.homes).files
     for (const root of this.roots(operation)) {
       signal.throwIfAborted()
@@ -112,7 +113,7 @@ export class TeamFiles {
     }
     for (const root of this.roots(operation)) if (!await this.inspectTree(operation, root, this.dataPath, false)) teamError('INITIALIZATION_FAILED', '文件未全部准备完成')
   }
-  async cleanup(operation: TeamCreationOperation) {
+  async cleanup(operation: T) {
     // Audit every tree before deleting any tree. User modifications remain untouched.
     await this.inspect(operation)
     for (const root of this.roots(operation)) {

@@ -1,10 +1,10 @@
 /*
  * [INPUT]: 工作/自动化预算、唯一模型请求身份、供应商逐调用用量和 SQLite 事务。
- * [OUTPUT]: 共用预算限制/耗尽判断、执行前幂等预留、逐调用幂等结算及未知用量标记。
+ * [OUTPUT]: 自动化或真实协作请求的唯一共用账本、执行前幂等预留、逐调用幂等结算/未知用量与已清理请求拒绝；普通交流不创建预算。
  * [POS]: WorkRepository 与自动化受理复用的预算规则；不创建工作、不执行模型或重试。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { AutomationOrigin, BudgetModelCall, ModelUsage, WorkBudget } from '../../../shared/domain'
+import type { AutomationOrigin, BudgetModelCall, ClearedBudgetModelCall, ModelUsage, WorkBudget } from '../../../shared/domain'
 import { WORK_BUDGET_ALLOWANCE as allowance } from '../../../shared/domain/work'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
@@ -12,10 +12,10 @@ export const workLimits = { workItems: 0, retries: 0, reportRefreshes: 0, noProg
 export const WORK_DURATION_MS = allowance.durationMs
 export class WorkUnavailableError extends Error {}
 const row = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
-export function newWorkBudget(id: string, automation?: { origin: AutomationOrigin; conversationId: string }) : WorkBudget {
+export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; conversationId: string } | { collaborationRequestId: string; conversationId: string }) : WorkBudget {
   return { ...workLimits, id, schemaVersion: 1, modelCalls: 0, runs: 0, maxModelCalls: allowance.modelCalls, maxRuns: allowance.runs, maxOutputTokens: allowance.outputTokens,
     deadlineAt: new Date(Date.now() + WORK_DURATION_MS).toISOString(), usage: {}, usageIncomplete: false,
-    ...(automation ? { ...automation, accounting: 'model-calls-v1', unknownCalls: 0 } : {}) }
+    ...(source ? { ...source, accounting: 'model-calls-v1', unknownCalls: 0 } : {}) }
 }
 export function workBudgetExhausted(budget: WorkBudget) {
   return Date.now() >= Date.parse(budget.deadlineAt) || budget.modelCalls >= budget.maxModelCalls || budget.runs >= budget.maxRuns || (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens || budget.workItems >= budget.maxWorkItems || budget.retries >= budget.maxRetries || budget.reportRefreshes >= budget.maxReportRefreshes || budget.noProgress >= budget.maxNoProgress
@@ -25,10 +25,14 @@ export function checkWorkBudget(budget: WorkBudget) {
   if (budget.modelCalls >= budget.maxModelCalls || (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens || Date.now() >= Date.parse(budget.deadlineAt)) throw new WorkUnavailableError('达到原始工作的调用、用量或时间上限')
 }
 export async function reserveBudgetCall(tx: RecordTransaction, budget: WorkBudget, input: Omit<BudgetModelCall, 'budgetId' | 'usage' | 'usageComplete' | 'reservedAt'>) {
-  if (budget.accounting !== 'model-calls-v1' || budget.origin?.occurrenceId !== input.origin.occurrenceId || budget.conversationId !== input.conversationId) throw new Error('模型请求没有匹配的自动化预算')
-  const previous = await tx.get<BudgetModelCall>('budgetModelCalls', input.id)
+  const authorized = budget.origin
+    ? budget.origin.occurrenceId === input.origin?.occurrenceId && budget.conversationId === input.conversationId && !input.collaborationRequestId
+    : !!budget.collaborationRequestId && budget.collaborationRequestId === input.collaborationRequestId && !input.origin
+  if (budget.accounting !== 'model-calls-v1' || !authorized) throw new Error('模型请求没有匹配的原始预算')
+  const previous = await tx.get<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls', input.id)
   if (previous) {
-    if (previous.budgetId !== budget.id || previous.runId !== input.runId || previous.turnId !== input.turnId || previous.phase !== input.phase) throw new Error('模型调用标识已用于另一请求')
+    if ('status' in previous) throw new Error('模型调用记录已经清理，不能再次预留或执行')
+    if (previous.budgetId !== budget.id || previous.runId !== input.runId || previous.turnId !== input.turnId || previous.phase !== input.phase || previous.conversationId !== input.conversationId || previous.collaborationRequestId !== input.collaborationRequestId || previous.workId !== input.workId || previous.agentId !== input.agentId) throw new Error('模型调用标识已用于另一请求')
     return previous
   }
   checkWorkBudget(budget)
@@ -38,8 +42,9 @@ export async function reserveBudgetCall(tx: RecordTransaction, budget: WorkBudge
 }
 /** A repeated receipt updates only positive deltas. Missing fields stay unknown, including after stop/restart. */
 export async function settleBudgetCall(tx: RecordTransaction, id: string, runId: string, usage: ModelUsage) {
-  const call = await tx.get<BudgetModelCall>('budgetModelCalls', id)
+  const call = await tx.get<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls', id)
   if (!call) return // History cleanup removed this receipt; never recreate its private references.
+  if ('status' in call) return // Shared counters are retained, but cleared private sources never reappear.
   if (call.runId !== runId) throw new Error('模型用量不属于该运行')
   const budget = await tx.get<WorkBudget>('workBudgets', call.budgetId)
   if (!budget) throw new Error('模型调用预算缺失')

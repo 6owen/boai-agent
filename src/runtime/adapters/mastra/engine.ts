@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
+ * [OUTPUT]: 判断模型仅在核心本人请求 context 看见组织字段；私有汇报使用当前真实登记 ID/组织回执及已声明等待的阶段 schema；权威结果和 WorkRepo 门禁不放宽。官方 DeepSeek 工具任务初始公开历史作为明确原消息参考，真实 SDK 工具轮完整保留思考。
  * [OUTPUT]: 工具媒体观测只保留 MIME/字节数/hash； 明确 task ask 可保留工作意图且始终无工具，handoff 仍不可开启 task；官方 DeepSeek Chat 判断及一次有预算修复使用同调用原生 JSON mode，原文/结构/语义违例仍拒绝；员工统一记忆的有证据分类/纠正候选与获准召回；实际模型步骤开始/回执和已解析技能成功激活观测，已收到的用量在取消后仍可记账；无工具的结构化日程草稿提取及原始用量记录；判断输入传递宿主确认的补充关联；各阶段与多步骤绑定唯一调用身份，白名单提取单次原始用量并保留未知；员工思考强度覆盖各阶段；自动模式降低 DeepSeek 日常聊天/判断/记忆推理开销，任务和汇报保持服务默认；判断/记忆阶段结束或失败后同样刷新并释放 Trace；使用宿主统一时限的独立判断及有界截断修复、步骤预算、保留等待声明的私有重述与结构化模型错误。
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -13,8 +14,9 @@ import type { AgentEngine, EngineContext, AutomationDraftContext } from '../../c
 import { PARTICIPATION_TIMEOUT_MS } from '../../contracts'
 import { thinkingProviderOptions, decisionProviderOptions, modelConfig } from './model-config'
 import { supportsThinkingControl } from '../../../shared/domain/model-preferences'
-import { createStageAgent, bootstrapInstructions, type StageInstance } from './agent-factory'
+import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
 import { projectMessages, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
+import { deepseekReasoningHistory } from './deepseek-reasoning-model'
 const MAX_STEPS = 12
 const MEMORY_OUTPUT_TOKENS = 6000
 
@@ -64,7 +66,7 @@ export interface MastraEngineOptions {
   commandTimeoutMs?: number
 }
 
-import { workIntentSchema, workReportSchema } from '../../modules/collaboration/work-protocol'
+import { workIntentSchema, modelWorkReportSchema } from '../../modules/collaboration/work-protocol'
 const decisionSchema = z.object({
   work: workIntentSchema.optional(),
   action: z.enum(['reply', 'pass', 'wait', 'ask', 'request_handoff']),
@@ -107,7 +109,7 @@ export class MastraEngine implements AgentEngine {
     let stage: StageInstance | undefined
     try {
       check(signal)
-      const messages = projectMessages(ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId)
+      const messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, task, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: projectMessages(ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId) })
       if (!messages.length) throw new Error('No completed messages in this conversation')
       stage = await createStageAgent(task ? 'task' : 'chat', ctx, this.options.commandTimeoutMs)
       const agent = stage.agent
@@ -199,13 +201,14 @@ export class MastraEngine implements AgentEngine {
   }
 
   async report(context: EngineContext, draft: WorkDraft): Promise<WorkReport> {
+    const schema = modelWorkReportSchema({ organization: !!context.work?.organization, waiting: !!context.pendingWorkWait, artifactIds: context.work?.artifactIds ?? [], collaborationIds: context.committedCollaborationIds ?? [] })
     const stage = await createStageAgent('report', context)
     try {
-      const input = JSON.stringify({ protocol: 'private-work-report-v1', jsonSchema: z.toJSONSchema(workReportSchema),
+      const input = JSON.stringify({ protocol: 'private-work-report-v1', jsonSchema: z.toJSONSchema(schema),
         data: { work: context.work, pendingWait: context.pendingWorkWait, draft, messages: visibleMessages(context).map(message => decisionMessageData(message)), instruction: 'Update only the report; completed operations cannot be rerun.' } })
       if (context.modelCallId) await this.observeCall(context, context.modelCallId, 'report')
       const output = await stage.agent.stream([{ role: 'user', content: input }], { abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens: 8192 }, providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, context.agent.thinkingLevel, 'report') })
-      const result = workReportSchema.parse(parseJson(await this.consumeText(output, context.signal, context.onUsage, new UsageRecorder(), context.modelCallId, context.onModelCallUsage)))
+      const result = schema.parse(parseJson(await this.consumeText(output, context.signal, context.onUsage, new UsageRecorder(), context.modelCallId, context.onModelCallUsage)))
       if (result.action === 'publish' && !result.text) throw new Error('重新汇报缺少可发布正文')
       return result
     } finally { await stage.dispose() }
@@ -222,6 +225,8 @@ export class MastraEngine implements AgentEngine {
     const messageIds = new Set(messages.map(message => message.id))
     const turn = partitionTurn(messages, context.triggerMessageId, context.turnId)
     const source = turn.root!
+    const modelSchema = organizationDecisionAllowed(context) ? decisionModelSchema : decisionModelSchema.extend({ work: workIntentSchema.omit({ organization: true }).optional() })
+    const promptSchema = organizationDecisionAllowed(context) ? decisionPromptSchema : decisionPromptSchema.extend({ work: workIntentSchema.omit({ organization: true }).optional() })
     const { agent, dispose } = await createStageAgent('decision', { ...context, signal })
     const data = {
       task: 'Choose your participation action; do not write the public reply.',
@@ -238,7 +243,7 @@ export class MastraEngine implements AgentEngine {
       historicalBackground: turn.history.map(message => decisionMessageData(message)),
       currentTurnMessages: turn.current.map(message => decisionMessageData(message, source.id)),
     }
-    const schema = z.toJSONSchema(decisionPromptSchema)
+    const schema = z.toJSONSchema(promptSchema)
     const usage = new UsageRecorder()
     let repair: { invalidOutput: string; validationError: string } | undefined
     try {
@@ -267,7 +272,7 @@ export class MastraEngine implements AgentEngine {
           const raw = parseJson(text)
           // Ignore legacy model-supplied transport metadata; it never overrides the host snapshot.
           if (raw && typeof raw === 'object' && !Array.isArray(raw)) delete (raw as Record<string, unknown>).observedThroughSequence
-          const result: ParticipationDecision = { ...decisionModelSchema.parse(raw), observedThroughSequence: sequence }
+          const result: ParticipationDecision = { ...modelSchema.parse(raw), observedThroughSequence: sequence }
           if (result.replyToMessageId && !messageIds.has(result.replyToMessageId)) throw new Error('成员判断引用了不存在的消息')
           if (result.dependencyMessageIds?.some(id => !messageIds.has(id))) throw new Error('依赖不能引用尚不存在的结果消息')
           if (result.recipientAgentIds?.some(id => !ids.has(id) || id === context.agent.id)) throw new Error('成员判断的接续对象无效')

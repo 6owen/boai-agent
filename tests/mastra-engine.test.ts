@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Mastra 适配器、消息投影、执行合同与本地协议服务。
+ * [OUTPUT]: 实际 SDK 判断仅核心本人来源展示组织枚举，业务/组织汇报区分真实登记 ID，已声明等待不能被 userQuestion/非法证据覆盖；组织阶段仅三个获准工具、真实调用身份、普通群管理隔离及未知发布不确认副作用。
  * [OUTPUT]: 明确 task ask 的 JSON 判断合同与原有 ask/handoff 无工具实际 SDK 验证；官方 DeepSeek Chat 判断原生 JSON mode 的真实 HTTP 参数、协议拒绝、一次修复/预算和唯一调用用量回执；内建文件工具的真实来源授权、隐藏列举/猜路径拒绝、当前 run 写入和双端产物发布门禁及取消回归；记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -15,7 +16,7 @@ import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { thinkingProviderOptions, decisionProviderOptions } from '../src/runtime/adapters/mastra/model-config'
 import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
-import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent } from '../src/shared/domain'
+import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent, WorkItem } from '../src/shared/domain'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import type { EngineContext } from '../src/runtime/contracts'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
@@ -1232,4 +1233,156 @@ it('maps each real SDK request to its own usage receipt across tool steps, repai
   expect(started).toEqual(receipts.map(receipt => receipt.id))
   expect(receipts[1].usage).toEqual({})
   expect(receipts.filter(receipt => receipt.id !== 'task-1').every(receipt => JSON.stringify(receipt.usage) === JSON.stringify({ inputTokens: 20, outputTokens: 7, totalTokens: 27 }))).toBe(true)
+})
+
+// Organization is a product operation. The real SDK must never expose employee business tools in the core stage.
+describe('bobo organization capability boundary', () => {
+  async function organizationContext(url: string) {
+    const fixture = await context(url)
+    const { ctx } = fixture
+    ctx.agent = employee({ id: 'bobo', name: 'bobo', systemRole: 'core', allowCommands: true, allowBrowser: true })
+    ctx.conversation = { ...ctx.conversation, kind: 'direct', purpose: 'core', agentIds: ['bobo'] }
+    ctx.work = { schemaVersion: 2, id: 'organization-work', conversationId: ctx.conversation.id, sourceMessageId: ctx.messages[0].id, key: 'bobo-organization', scope: '组织报告员工', deliverable: '真实组织回执', ownerAgentId: 'bobo', activeRunId: ctx.runId, version: 2, status: 'running', budgetId: 'original-budget', rootWorkId: 'organization-work', dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, resultMessageIds: [], artifactIds: [], resultVersion: 0, requiresReview: false, createdAt: '', updatedAt: '', organization: { requestId: 'bobo-collaboration:message-1', mode: 'organize_only', goal: '只组织报告群，先不执行' } }
+    ctx.findEmployees = async () => ({ employees: [], revision: 1 })
+    return fixture
+  }
+
+  it('uses actual SDK tool identity and exposes only discovery, publication and honest reporting', async () => {
+    const mock = await endpoint([
+      { name: 'find_employees', args: { limit: 20 } },
+      { name: 'organize_collaboration', args: { existingMembers: [], newEmployees: [{ name: '写作员', role: '写作', instructions: '在自己的工作区执行明确请求' }], groupTitle: '报告讨论群', announcement: '写作员负责整理报告。先不执行。' } },
+      { name: 'report_work', args: { disposition: 'delivered', summary: '群已组织', evidence: [{ kind: 'collaboration', reference: 'actual-operation' }] } },
+      '协作群已组织，尚未执行报告任务。',
+    ])
+    const fixture = await organizationContext(mock.url), before = vi.fn(async () => {}), after = vi.fn(async () => {})
+    fixture.ctx.beforeEffect = before; fixture.ctx.afterEffect = after
+    fixture.ctx.organizeCollaboration = vi.fn(async (_plan, toolCallId) => {
+      expect(toolCallId).toBe('call-1')
+      return { id: 'actual-operation', requestId: 'bobo-collaboration:message-1', version: 3, sourceConversationId: 'conversation', mode: 'organize_only' as const, goal: '只组织报告群，先不执行', status: 'committed' as const, createdAt: '', existingMembers: [], agents: [], groupConversationId: 'actual-group' }
+    })
+    fixture.ctx.onWorkOutcome = vi.fn(async () => {})
+    await new MastraEngine().run(fixture.ctx)
+    expect(mock.requests).toHaveLength(4)
+    for (const request of mock.requests) expect(request.tools?.map(tool => tool.function.name).sort()).toEqual(['find_employees', 'organize_collaboration', 'report_work'])
+    expect(before).toHaveBeenCalledTimes(1); expect(after).toHaveBeenCalledTimes(1)
+    expect(fixture.ctx.organizeCollaboration).toHaveBeenCalledTimes(1)
+    expect(fixture.artifacts).toHaveLength(0); expect(fixture.approvals).toHaveLength(0)
+  })
+
+  it('never grants contact management just because bobo is a member of a normal group', async () => {
+    const fixture = await organizationContext('http://127.0.0.1:1/v1')
+    fixture.ctx.conversation = { ...fixture.ctx.conversation, kind: 'group', purpose: undefined, agentIds: ['bobo', 'agent-b'] }
+    fixture.ctx.organizeCollaboration = vi.fn()
+    await expect(createTaskRuntime(fixture.ctx)).rejects.toThrow('不是获准的 bobo 组织工作')
+    expect(fixture.ctx.organizeCollaboration).not.toHaveBeenCalled()
+  })
+
+  it('keeps a noncommitted publication uncertain rather than confirming a business effect', async () => {
+    const mock = await endpoint([{ name: 'organize_collaboration', args: { existingMembers: [], newEmployees: [{ name: '编辑', role: '编辑', instructions: '按明确请求工作' }], groupTitle: '讨论群', announcement: '请编辑参加讨论，先不执行。' } }, '组织尚未完成，请核对原操作。'])
+    const fixture = await organizationContext(mock.url), after = vi.fn(async () => {})
+    fixture.ctx.beforeEffect = vi.fn(async () => {}); fixture.ctx.afterEffect = after
+    fixture.ctx.organizeCollaboration = async () => ({ id: 'original-operation', requestId: 'bobo-collaboration:message-1', version: 2, sourceConversationId: 'conversation', mode: 'organize_only', goal: '只组织报告群，先不执行', status: 'needs_attention', createdAt: '', existingMembers: [], agents: [], error: '文件准备待核对' })
+    fixture.ctx.onWorkOutcome = async () => {}
+    await new MastraEngine().run(fixture.ctx)
+    expect(after).not.toHaveBeenCalled(); expect(mock.requests).toHaveLength(2)
+    expect(toolResultText(mock.requests[1])).toContain('original-operation')
+  })
+})
+
+describe('phase-specific model work contracts', () => {
+  const claimedWork = (ctx: EngineContext, artifactIds: string[] = []): WorkItem => ({ schemaVersion: 2, id: 'actual-work', conversationId: ctx.conversation.id, sourceMessageId: ctx.messages[0]!.id, key: 'main', scope: '完成本次实际任务', deliverable: '真实结果', ownerAgentId: ctx.agent.id, activeRunId: ctx.runId, version: 2, status: 'running', budgetId: 'original-budget', rootWorkId: 'actual-work', dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, resultMessageIds: [], artifactIds, resultVersion: 0, requiresReview: false, createdAt: '', updatedAt: '' })
+  const protocolSchema = (request: RequestBody) => JSON.parse(request.messages.at(-1)!.content as string).jsonSchema
+  const draft = { text: '实际草稿', observedThroughSequence: 1, revisions: 0, status: 'private' as const }
+  it('shows organization in the real decision protocol only for the fixed core and actual user source', async () => {
+    const mock = await endpoint(['{"action":"reply","responseKind":"task"}', '{"action":"reply","responseKind":"task","work":{"key":"organization","scope":"组织员工","deliverable":"组织回执","organization":{"mode":"organize_only","goal":"只组织群"}}}', '{"action":"reply","responseKind":"task"}'])
+    const fixture = await context(mock.url), engine = new MastraEngine()
+    await engine.decide(fixture.ctx)
+    expect(protocolSchema(mock.requests[0]).properties.work.properties).not.toHaveProperty('organization')
+    fixture.ctx.agent = employee({ id: 'bobo', name: 'bobo', systemRole: 'core' }); fixture.ctx.conversation = { ...fixture.ctx.conversation, kind: 'direct', purpose: 'core', agentIds: ['bobo'] }
+    fixture.ctx.messages = [message('请组织群，不执行', 1, { senderId: 'user' })]; fixture.ctx.triggerMessageId = 'message-1'
+    expect((await engine.decide(fixture.ctx)).work?.organization?.mode).toBe('organize_only')
+    expect(protocolSchema(mock.requests[1]).properties.work.properties).toHaveProperty('organization')
+    fixture.ctx.conversation = { ...fixture.ctx.conversation, kind: 'group', purpose: undefined, agentIds: ['bobo', 'agent-b'] }
+    await engine.decide(fixture.ctx)
+    expect(protocolSchema(mock.requests[2]).properties.work.properties).not.toHaveProperty('organization')
+  })
+  it('repairs an ordinary employee organization attempt within the original one-repair budget instead of granting it', async () => {
+    const mock = await endpoint(['{"action":"reply","responseKind":"task","work":{"key":"main","scope":"网页读取","deliverable":"网页结果","organization":{"mode":"organize_only","goal":"错误组织"}}}', '{"action":"reply","responseKind":"task","work":{"key":"main","scope":"网页读取","deliverable":"网页结果"}}'])
+    const fixture = await context(mock.url)
+    const decision = await new MastraEngine().decide(fixture.ctx)
+    expect(decision).toMatchObject({ action: 'reply', responseKind: 'task', work: { scope: '网页读取' } }); expect(decision.work).not.toHaveProperty('organization')
+    expect(fixture.additionalCalls).toHaveLength(1); expect(mock.requests).toHaveLength(2)
+    for (const request of mock.requests) expect(protocolSchema(request).properties.work.properties).not.toHaveProperty('organization')
+  })
+  it('rejects organization evidence and historical artifact IDs before the actual business outcome callback', async () => {
+    const mock = await endpoint([{ name: 'report_work', args: { disposition: 'delivered', summary: '错误组织证据', evidence: [{ kind: 'collaboration', reference: 'peer-operation' }] } }, { name: 'report_work', args: { disposition: 'delivered', summary: '旧run原件', evidence: [{ kind: 'artifact', reference: 'historical-artifact' }] } }, '已有声明均被拒绝，尚未交付。'])
+    const outcomes: unknown[] = [], fixture = await context(mock.url, { onWorkOutcome: async value => { outcomes.push(value) } })
+    fixture.ctx.work = claimedWork(fixture.ctx, ['historical-artifact'])
+    await new MastraEngine().run(fixture.ctx)
+    expect(outcomes).toEqual([])
+    // The SDK rejects collaboration at input validation; the runtime rejects the old run ID before the host callback.
+    expect(mock.requests).toHaveLength(3)
+    expect(mock.requests[1]!.messages.filter(message => message.role === 'tool').at(-1)?.tool_call_id).toBe('call-0')
+    expect(mock.requests[2]!.messages.filter(message => message.role === 'tool').at(-1)?.tool_call_id).toBe('call-1')
+    expect(fixture.tools.filter(tool => tool.name === 'report_work' && tool.status === 'failed')).toHaveLength(1)
+  })
+  it('accepts only the ID from this run’s real SDK file publication, never its shared path', async () => {
+    const outcomes: unknown[] = [], artifacts: Artifact[] = []
+    const mock = await endpoint((_body, response, index) => {
+      const replies = [
+        { name: 'write_file', args: { path: 'self:/runs/run-1/stage.md', content: '真实本轮成果' } },
+        { name: 'publish_artifact', args: { path: 'self:/runs/run-1/stage.md' } },
+        { name: 'report_work', args: { disposition: 'delivered', summary: '错误路径', evidence: [{ kind: 'artifact', reference: `shared:/artifacts/${artifacts[0]?.id}-stage.md` }] } },
+        { name: 'report_work', args: { disposition: 'delivered', summary: '真实登记文件', evidence: [{ kind: 'artifact', reference: artifacts[0]?.id }] } },
+        '真实本轮成果已发布。',
+      ]
+      send(response, replies[index]!, index)
+    })
+    const fixture = await context(mock.url, { onWorkOutcome: async value => { outcomes.push(value) }, onArtifact: async artifact => { artifacts.push(artifact) } })
+    fixture.ctx.work = claimedWork(fixture.ctx)
+    await new MastraEngine().run(fixture.ctx)
+    expect(artifacts).toHaveLength(1); expect(await readFile(artifacts[0]!.path, 'utf8')).toBe('真实本轮成果')
+    expect(outcomes).toEqual([{ disposition: 'delivered', summary: '真实登记文件', evidence: [{ kind: 'artifact', reference: artifacts[0]!.id }] }])
+    expect(fixture.tools.filter(tool => tool.name === 'report_work' && tool.status !== 'running').map(tool => tool.status)).toEqual(['failed', 'completed'])
+  })
+  it('keeps the real declared wait intact when a later tool attempts delivery or a user question', async () => {
+    const wait = { dependencies: [{ workId: 'actual-child', resultVersion: 1 }], nextStep: '读取真实结果后接续' }, waits: unknown[] = [], outcomes: unknown[] = []
+    const mock = await endpoint([{ name: 'wait_for_work', args: wait }, { name: 'report_work', args: { disposition: 'delivered', summary: '错误解除等待', evidence: [{ kind: 'answer', reference: '完成' }] } }, { name: 'report_work', args: { disposition: 'waiting', summary: '错误用户问题', userQuestion: '原任务范围' } }, '等待真实结果。'])
+    const fixture = await context(mock.url, { waitForWork: async value => { waits.push(value) }, onWorkOutcome: async value => { outcomes.push(value) } })
+    fixture.ctx.work = claimedWork(fixture.ctx)
+    await new MastraEngine().run(fixture.ctx)
+    expect(waits).toEqual([wait]); expect(outcomes).toEqual([]); expect(fixture.tools.filter(tool => tool.name === 'report_work' && tool.status === 'failed')).toHaveLength(2)
+    expect(toolResultText(mock.requests[1])).toContain('report_work is not needed')
+  })
+  it.each(['shared:/artifacts/peer.md', 'peer-artifact'])('rejects private report evidence %s outside the current host registered IDs', async reference => {
+    const mock = await endpoint([JSON.stringify({ action: 'publish', text: '真实结果', outcome: { disposition: 'delivered', summary: '错误同伴文件', evidence: [{ kind: 'artifact', reference }] } })])
+    const fixture = await context(mock.url); fixture.ctx.work = claimedWork(fixture.ctx, ['current-run-artifact'])
+    await expect(new MastraEngine().report(fixture.ctx, draft)).rejects.toThrow()
+    const schema = protocolSchema(mock.requests[0])
+    expect(JSON.stringify(schema)).toContain('current-run-artifact'); expect(JSON.stringify(schema)).not.toContain('collaboration')
+    expect(schema.properties.outcome.properties).toHaveProperty('userQuestion'); expect(mock.requests[0].tools ?? []).toEqual([])
+  })
+  it('reports a dependency wait through the actual SDK with no evidence or manufactured user question', async () => {
+    const mock = await endpoint(['{"action":"publish","text":"研究员已交付，原等待继续由独立接续处理。","outcome":{"disposition":"waiting","summary":"等待原接续"}}'])
+    const fixture = await context(mock.url); fixture.ctx.work = claimedWork(fixture.ctx)
+    fixture.ctx.pendingWorkWait = { dependencies: [{ workId: 'actual-child', resultVersion: 1 }], nextStep: '继续安排写作员' }
+    expect(await new MastraEngine().report(fixture.ctx, draft)).toMatchObject({ outcome: { disposition: 'waiting' } })
+    const properties = protocolSchema(mock.requests[0]).properties.outcome.properties
+    expect(properties.disposition).toMatchObject({ const: 'waiting' }); expect(properties).not.toHaveProperty('userQuestion'); expect(properties).not.toHaveProperty('evidence')
+    expect(fixture.additionalCalls).toEqual([]); expect(mock.requests).toHaveLength(1)
+  })
+  it('keeps an actual published user question available in an ordinary private report with no dependency wait', async () => {
+    const mock = await endpoint(['{"action":"publish","text":"请提供需要使用的产品名称？","outcome":{"disposition":"waiting","summary":"等待产品名称","userQuestion":"请提供需要使用的产品名称？"}}'])
+    const fixture = await context(mock.url); fixture.ctx.work = claimedWork(fixture.ctx)
+    expect(await new MastraEngine().report(fixture.ctx, draft)).toMatchObject({ outcome: { disposition: 'waiting', userQuestion: '请提供需要使用的产品名称？' } })
+    expect(protocolSchema(mock.requests[0]).properties.outcome.properties).toHaveProperty('userQuestion')
+    expect(fixture.additionalCalls).toEqual([]); expect(mock.requests).toHaveLength(1)
+  })
+  it('permits a private organization report only with the host’s committed receipt identity', async () => {
+    const mock = await endpoint(['{"action":"publish","text":"群已组织。","outcome":{"disposition":"delivered","summary":"真实组织","evidence":[{"kind":"collaboration","reference":"host-committed-operation"}]}}'])
+    const fixture = await context(mock.url); fixture.ctx.work = { ...claimedWork(fixture.ctx), organization: { requestId: 'original-organization', mode: 'organize_only', goal: '只组织群' } }
+    fixture.ctx.committedCollaborationIds = ['host-committed-operation']
+    expect(await new MastraEngine().report(fixture.ctx, draft)).toMatchObject({ outcome: { evidence: [{ kind: 'collaboration', reference: 'host-committed-operation' }] } })
+    const schema = JSON.stringify(protocolSchema(mock.requests[0])); expect(schema).toContain('host-committed-operation'); expect(schema).not.toContain('"artifact"'); expect(schema).not.toContain('"answer"')
+  })
 })

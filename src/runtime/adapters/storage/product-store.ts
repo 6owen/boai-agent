@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地 SQLite 连接与产品记录。
- * [OUTPUT]: 浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
+ * [OUTPUT]: bobo 员工发现与组织回执 SQL 有界投影、同事务配置时钟；浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,8 @@ import { createClient, type Client } from '@libsql/client'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { advanceCandidateClock, candidateCursor, employeeCandidatesSql, readCandidateCursor } from '../../modules/bobo-collaboration/candidate-sql'
+import type { BoboCollaborationReceipt, EmployeeCandidate, EmployeeCandidatePage, EmployeeCandidateQuery } from '../../../shared/domain/bobo-collaboration'
 import type { BrowserArtifactSource } from '../../../shared/domain/artifacts'
 import type { AutomationHistoryPage, AutomationHistoryQuery } from '../../../shared/domain/automations'
 import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '../../../shared/domain/automations'
@@ -75,6 +77,24 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
       return result.rows.map(row => JSON.parse(String(row.value)) as T)
+    })
+  }
+  findBoboEmployeeCandidates(query: EmployeeCandidateQuery): Promise<EmployeeCandidatePage> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(employeeCandidatesSql(query))
+      const metadata = JSON.parse(String(result.rows[0].value)) as {revision:number;clock:number}
+      const previous = readCandidateCursor(query)
+      if (previous && previous.clock !== metadata.clock) throw new Error('STALE_CURSOR: 员工配置已变化，请重新查找')
+      const all = result.rows.slice(1).map(row => JSON.parse(String(row.value)) as EmployeeCandidate), limit = query.limit ?? 20
+      const employees = all.slice(0, limit)
+      return { employees, revision: metadata.revision, ...(all.length > limit ? { cursor: candidateCursor(query, metadata.clock, employees.at(-1)!.agentId) } : {}) }
+    })
+  }
+  /** No private employee instructions or workspace paths are parsed for the core result list. */
+  listBoboOperations(conversationId:string):Promise<BoboCollaborationReceipt[]> {
+    return this.enqueue(async () => {
+      const result=await this.client.execute({sql:`SELECT json_object('id',o.id,'requestId',json_extract(o.value,'$.requestId'),'version',json_extract(o.value,'$.version'),'sourceConversationId',json_extract(o.value,'$.sourceConversationId'),'mode',json_extract(o.value,'$.mode'),'goal',json_extract(o.value,'$.goal'),'status',json_extract(o.value,'$.status'),'createdAt',json_extract(o.value,'$.createdAt'),'committedAt',json_extract(o.value,'$.committedAt'),'error',json_extract(o.value,'$.error'),'existingMembers',json(COALESCE(json_extract(o.value,'$.existingMembers'),'[]')),'agents',json(COALESCE((SELECT json_group_array(json_object('id',json_extract(member.value,'$.id'),'name',json_extract(member.value,'$.name'),'role',json_extract(member.value,'$.role'),'color',json_extract(member.value,'$.color'),'configVersion',json_extract(member.value,'$.configVersion'))) FROM json_each(json_extract(o.value,'$.agents')) member),'[]')),'groupConversationId',json_extract(o.value,'$.groupConversationId'),'groupTitle',json_extract(o.value,'$.conversation.title'),'announcementMessageId',json_extract(o.value,'$.announcement.id'),'groupRootWorkId',json_extract(o.value,'$.groupRootWorkId'),'startIntentId',json_extract(o.value,'$.startIntentId'),'startStatus',(SELECT json_extract(value,'$.status') FROM records WHERE collection='collaborationStarts' AND id=json_extract(o.value,'$.startIntentId')),'sourceCleared',json_extract(o.value,'$.sourceCleared'),'groupCleared',json_extract(o.value,'$.groupCleared')) AS value FROM records o WHERE o.collection='boboCollaborations' AND json_extract(o.value,'$.sourceConversationId')=? AND COALESCE(json_extract(o.value,'$.sourceCleared'),0)<>1 ORDER BY o.rowid DESC LIMIT 30`,args:[conversationId]})
+      return result.rows.map(row=>JSON.parse(String(row.value)) as BoboCollaborationReceipt)
     })
   }
   /** Source projection is bounded in SQLite before parsing any private historical rows. */
@@ -156,8 +176,8 @@ export class ProductStore {
   }
   write(records: StoredRecord[], removals: { collection: string; id: string }[] = []): Promise<void> {
     // Serialize now so a later in-memory change cannot alter this transaction.
-    const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
-    statements.push(...removals.flatMap(record => [...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
+    const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
+    statements.push(...removals.flatMap(record => [...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
     return this.enqueue(async () => { if (statements.length) await this.client.batch(statements, 'write') })
   }
   /** BEGIN IMMEDIATE protects the read/check/write sequence, including other writers. */
@@ -180,11 +200,13 @@ export class ProductStore {
           },
           put: async record => {
             const value = JSON.stringify(record.value)
+            for (const statement of advanceCandidateClock(record.collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(record.collection, record.id, value)) await transaction.execute(statement)
             for (const statement of invalidateSearchBodies(record.collection, record.id, value)) await transaction.execute(statement)
             await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] })
           },
           remove: async (collection, id) => {
+            for (const statement of advanceCandidateClock(collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(collection, id)) await transaction.execute(statement)
             for (const statement of invalidateSearchBodies(collection, id)) await transaction.execute(statement)
             await transaction.execute({ sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [collection, id] })

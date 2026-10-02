@@ -1,6 +1,6 @@
 /*
  * [INPUT]: BrowserService 与私有租约/动作、实际文件、可控制退出的驱动 fixture。
- * [OUTPUT]: 单 scope 排他/零执行批准、交接等待、未知不重放、跨重启清理与有界正文/密码 AX 隔离意图。
+ * [OUTPUT]: 单 scope 排他/零执行批准、交接等待、未知不重放、跨重启清理与有界正文/密码 AX 隔离意图；短普通页/空AX不会假接管，实际验证证据仍触发。
  * [POS]: BRM1/BRM3 宿主模块验收；不替代真实 Electron profile/UI 证据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,6 +47,19 @@ async function fixture() {
  return {root,service,lease,options,fake,clearPartition}
 }
 let actionSequence=0
+describe('实际窗口验证检测',()=>{
+ it.each([
+  {name:'只有一个链接的普通文章',nodes:[{role:'link'},...Array.from({length:499},()=>({role:'StaticText'}))],dom:[],title:'Example Domain',detected:false,provider:'none'},
+  {name:'导航暂态空AX',nodes:[],dom:[],title:'Loading article',detected:false,provider:'none'},
+  {name:'实际验证表单仍需本人接管',nodes:[{role:'button'}],dom:['dom:challenge-form'],title:'Just a moment...',detected:true,provider:'cloudflare'},
+ ])('$name',async ({nodes,dom,title,detected,provider})=>{
+  const instance={window:{isDestroyed:()=>false},title,currentUrl:'https://example.com/',pageView:{webContents:{executeJavaScript:async()=>dom}},cdp:{getAccessibilitySnapshot:async()=>({nodes})}}
+  const manager={instances:new Map([['real-detection',instance]])} as unknown as BrowserPaneManager
+  const result=await BrowserPaneManager.prototype.detectSecurityChallenge.call(manager,'real-detection')
+  expect(result.detected).toBe(detected);expect(result.provider).toBe(provider)
+  if(detected)expect(result.signals).toContain('dom:challenge-form')
+ })
+})
 async function envelope(service:BrowserService,lease:BrowserLease,command:string,approve=true):Promise<BrowserActionEnvelope>{
  const page=await service.inspect(lease),argumentHash=createHash('sha256').update(JSON.stringify(parseBrowserSingleCommand(command).parts)).digest('hex')
  return {lease,actionId:`action-${++actionSequence}`,toolCallId:`tool-${actionSequence}`,command,argumentHash,approvedOrigins:['https://example.com'],expectedPageVersion:page?.pageVersion,...(approve&&page?{approval:{url:page.url,pageVersion:page.pageVersion,commandHash:argumentHash}}:{})}

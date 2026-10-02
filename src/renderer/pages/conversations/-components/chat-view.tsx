@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 会话领域类型、草稿、活动投影、会话标题菜单、共享 ScrollFade/Markdown/Shiki 与统一 UI 基础组件。
+ * [OUTPUT]: core 原讨论展示真实群协作/独立员工入口，显式恢复只核对原操作，不自动导航或续行。
  * [OUTPUT]: 按真实 Approval.kind 展示网页审批目标/页面变化说明，主机命令仍显示工作目录和权限。
  * [OUTPUT]: 标题区读取本会话的真实浏览器窗口徽标，查看/接管/关闭沿 typed IPC，隐藏停止读取。
  * [OUTPUT]: 核心会话标题菜单传递明确会话编辑入口、普通会话保留置顶；缺失固定消息窗口保持空态，不展示定位诊断提示；消息成果接入固定版本应用内预览，打开不采用；材料草稿/原生drop/真实消息材料与共享对象、未知发送核对和仅可检查来源行引用；单聊与群聊共用消息卡片、无状态标签并可跳转对应员工配置的头像资料浮层、工具条、引用预览及按明确归属展示的文件/审批/连续发言；滚动边界自动有界加载、同游标单次请求和失败不循环，滚动同步本机锚点、补页保持当前位置且旧页底部不误跟随最新，空更早页保留原最新资格并仅在仍贴底时恢复跟随；保留手动滚动/自动跟随，局部有符号锚点保留顶部留白，宿主持久锚点仍使用非负偏移；固定标题区提供紧凑返回未读/最新与可展开的完整阅读说明，不挤移消息渐隐；真实完成可见观测和独立稳定锚点；旧历史未知显性展示；核心会话接入按工作身份隔离的团队交付/显式恢复卡片，隐藏主页面暂停读取；按稳定 user 身份展示当前配置姓名和可点击圆角方形个人头像，自动化来源独立，引用和工具条共用当前姓名；群聊姓名/消息提及插入实际行内标签，单聊保留模型/权限与输入边界。
@@ -12,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { isCoreConversation } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { CoreTeamResults } from './core-team-results'
+import { CoreCollaborationResults } from './core-collaboration-results'
 import { ConversationBrowser } from './conversation-browser'
 
 import { Button } from '@/components/ui/button'
@@ -182,6 +184,7 @@ export function ChatView({ api, pageActive, onTeamGroup, detail, snapshot, draft
         </article>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
+      {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
       {approvalGroups.pending.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy} onApprove={onApprove} />)}
     </ScrollFade>
     <div className="composer-wrap" onDragEnter={event => { if (materialsAllowed && event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDraggingFiles(true) } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingFiles(false) }} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = materialsAllowed && !busy && !draft.submission ? 'copy' : 'none' } }} onDrop={event => { if (!event.dataTransfer.types.includes('Files')) return; event.preventDefault(); event.stopPropagation(); setDraggingFiles(false); if (materialsAllowed && !busy && !draft.submission) onDropMaterials(Array.from(event.dataTransfer.files)) }}>

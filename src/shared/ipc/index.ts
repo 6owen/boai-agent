@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 跨进程产品实体、材料授权/版本、桌面请求与宿主事件。
+ * [OUTPUT]: 原核心会话组织回执的明确读取/继续/放弃与已发布群首发显式接续；无任意员工创建或身份授权 IPC。
  * [OUTPUT]: 本会话浏览器窗口读取/明确员工控制与 browser:changed 局部事件；原始浏览器桥仅 runtime/Main 内部使用。
  * [OUTPUT]: getConversationMetadata 显式选择有界来源摘要；D6 无正文会话元信息与即时工作证据检查；D6 有界会话视图/消息页、确定性个人检索/正文位置与有界覆盖回执/索引代际游标及点击复核、真实完成快照阅读 CAS 与独立锚点 IPC；输入只携明确对象身份，不暴露路径读取。
  * [OUTPUT]: 四来源待处理稳定分页/精确读取、原问题定向补充及显式成果验收资格/只读回执；已保存员工的本机单技能准备/原子绑定与按原请求只读核对；输入仅发现 ID、所见 hash 和员工配置版本。
@@ -40,6 +41,11 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listBoboCollaborationOperations: { input: { conversationId: string }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt[] }
+  getBoboCollaborationOperation: { input: { operationId: string }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
+  resumeBoboCollaboration: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
+  abandonBoboCollaboration: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
+  resumeBoboCollaborationStart: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
   getBrowserWindows: { input: { conversationId: string }; output: BrowserWindowState[] }
   browserControl: { input: BrowserControlInput; output: void }
   listConversationMessages: { input: import('../domain/reading').ConversationMessagePageQuery; output: import('../domain/reading').ConversationMessagePage }

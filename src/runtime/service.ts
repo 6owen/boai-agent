@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
+ * [OUTPUT]: bobo 原讨论到独立群组织接线、共享原预算/唯一首次启动、受管文件显式恢复与真实回执证据与只读已提交组织身份的私有汇报；单事务核对全部来源的真实工作广播，来源与目标均排除本人问题/待核对；对本请求未完成员工仅更新上下文、不另开判断或计费；未拥有工作或定向 wake 的业务判断明确 pass，分工提交后及时排入原接续，不伪造用户或模型消息。
  * [OUTPUT]: 手动已认领 task 独占浏览器租约、Main 实际开始回执与定向控制/清理； R1 材料/成果正文沿同次 hash 核验文本接线，本地多词相关性/有界覆盖与索引版本游标严格校验，不创建 Work/模型；仅 Trace 明确请求才返回有界核源摘要；D6 元信息/即时结果证据、独立个人历史/固定目标与发布完成身份/阅读锚点，清空保留 epoch，重启/备份零重放。
  * [OUTPUT]: 只读待处理四来源投影、实际公开问题/回答消息同事务和稳定未知回执；安全补充定向沿原 task/budget，初次 task ask 无工具；这两种 task 路径跳过已释放持有者后的额外自动记忆模型维护，保留授权召回；显式本人固定成果版本的待验收请求及只读回执，不代表质量批准；已保存员工的本机单技能准备与来源/hash/版本冻结，受管副本和员工授权同事务绑定，原请求只读核对与安全恢复。
  * [OUTPUT]: 真实成果内容 hash/不可变版本、修订消息原子关系/新根预算、逐阶段来源复核、采用与回执、启动历史独立登记/活动列表不推断发布、实际文件交付与 Markdown 预览分离/直接返回验证字节、监控选定来源复核和无 WAL 备份快照及 hash 清理门禁；私有材料准备/原子消息关联与持久受理回执，每阶段来源授权、回复/成果来源和限定聊天记忆，hash 清理冲突及仅已发送材料备份；通讯录员工/整类删除与空群解散、群记录保留及运行退出门禁、定时计划暂停和删除投影回收；核心会话非空首条消息/具名团队请求与受理回执同事务、用户团队名按原消息强制绑定、默认模型绑定和核心专属团队工具/原工作去重；员工统一召回、即时获知回执与增量记忆的原始预算/发布门禁；团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；兼容旧分类的多标签/普通员工统一排序、原子批量标签与选中员工删除、版本检查，标签/排序仅广播通讯录局部通知，删除保持关联全局失效；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
@@ -46,7 +47,7 @@ import { randomUUID } from 'node:crypto'
 import { cp, lstat, mkdir, readdir, rm, rmdir, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
-import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
+import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
 import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
 import { PARTICIPATION_TIMEOUT_MS } from './contracts'
@@ -81,11 +82,14 @@ import type { BrowserHostBridge, BrowserLease, BrowserControlInput } from '../sh
 import { BrowserRepository, browserScopeKey } from './modules/browser/repository'
 import { BrowserSession } from './modules/browser/session'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
+import { BoboCollaborationService, type BoboCollaborationHooks } from './modules/bobo-collaboration/service'
+import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../shared/domain/bobo-collaboration'
 import { Inbox, inboxQuerySchema, inboxReplySchema } from './modules/inbox/inbox'
 import { questionSource, validateQuestionReply, answerQuestion, type QuestionSource } from './modules/inbox/user-question'
 import type { InboxQuestionReply } from '../shared/domain/inbox'
 import { TaskAdmission } from './modules/collaboration/task-admission'
 import { workOutcomeSchema, workDelegationSchema, workWaitSchema, workEvidenceError } from './modules/collaboration/work-protocol'
+import { assertCollaborationEvidence } from './modules/collaboration/work-collaboration'
 import type { WorkOutcome, ModelUsage } from '../shared/domain'
 
 const id = z.string().trim().min(1).max(200)
@@ -132,6 +136,8 @@ export class AppService {
   private readonly materials: MaterialRepository
   private readonly artifactRepository: ArtifactRepository
   private readonly materialImports = new Set<Promise<ConversationMaterial>>()
+  private readonly boboCollaboration: BoboCollaborationService
+  private readonly organizationModelCalls = new Map<string, string>()
   private readonly teamCreation: TeamCreationService
   private readonly teamGeneration: TeamGenerationService
   private readonly teams: TeamRepository
@@ -185,7 +191,7 @@ export class AppService {
   private initialized = false
   readonly dataPath: string
 
-  constructor(private readonly options: { browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.materials = new MaterialRepository(this.store, this.dataPath)
@@ -265,13 +271,39 @@ export class AppService {
       cancel: (id, reason) => this.cancelEmployee(id, reason),
       invalidateMemory: (id, matches) => this.invalidateEmployeeMemory(id, matches), changed: () => this.changed(),
     })
+    this.boboCollaboration = new BoboCollaborationService(this.store, this.dataPath, this.homes, {
+      checkpoint: options.boboFileCheckpoint,
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
+      assertOrganizationHolder: (tx, authority) => this.works.assertOrganizationHolder(tx, authority),
+      validateSource: async (tx, operation) => {
+        const snapshot = await tx.get<RunSnapshot>('snapshots', operation.announcementSource.runId)
+        const sourceRun = await tx.get<AgentRun>('runs', operation.announcementSource.runId)
+        if (!snapshot || snapshot.invalidated || snapshot.agent.id !== CORE_AGENT_ID || snapshot.agent.systemRole !== 'core' || snapshot.conversation.id !== operation.sourceConversationId || snapshot.materialRefs?.length || !sourceRun || sourceRun.agentId !== CORE_AGENT_ID || sourceRun.conversationId !== operation.sourceConversationId || sourceRun.triggerMessageId !== operation.sourceMessageId || sourceRun.workId !== operation.organizationWorkId) fail('原组织方案的实际来源已经失效')
+        if (snapshot!.memoryRecall && !await this.memory.recallValidInTransaction(tx, { ...snapshot!.memoryRecall, entries: [] })) fail('原组织方案使用的记忆已失效或过期')
+      },
+      bindGroupStart: (tx, operation, announcement) => this.works.bindGroupStart(tx, operation, announcement),
+      commitReading: (tx, message) => this.reading.recordCompletion(tx, message).then(() => {}),
+      install: (agents, conversation, announcement) => {
+        this.employees.installBatch(agents)
+        if (conversation) this.conversations.set(conversation.id, clone(conversation))
+        if (announcement) { this.messages.set(announcement.id, clone(announcement)); this.emit({ type: 'message', message: announcement }) }
+      },
+      reload: async () => {
+        const [agents, conversations, messages] = await Promise.all([this.store.load<DigitalAgent>('agents'), this.store.load<Conversation>('conversations'), this.store.load<Message>('messages')])
+        this.employees.installBatch(agents, true); this.conversations = new Map(conversations.map(value => [value.id, value])); this.messages = new Map(messages.map(value => [value.id, value]))
+      },
+      changed: () => { this.emit({ type: 'contact-list:changed' }); this.changed() },
+    })
     this.scheduler = new GroupScheduler(this.store, {
       commitReply: (message, records) => this.store.transaction(async tx => { for (const value of records) await tx.put(value); await this.reading.recordCompletion(tx, message) }),
       critical: operation => this.serialize(operation),
       conversation: id => this.getConversation(id), agent: id => this.getAgent(id), message: id => this.messages.get(id),
+      contextOnly: (turn, event, delivery) => this.contextOnlyPeerDelivery(turn, event, delivery),
       decide: (turn, event, delivery, signal) => this.executeDecision(turn, event, delivery, signal),
       speak: (turn, event, decision, signal, publish) => this.executeResponse(turn, event, decision, signal, publish),
-      settled: (turn, participants, signal) => turn.wakeId ? Promise.resolve() : this.updateMemories(turn, participants, signal), idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
+      settled: (turn, participants, signal) => turn.wakeId ? Promise.resolve() : this.updateMemories(turn, participants, signal),
+      executionBusy: (conversationId, agentId) => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && run.agentId === agentId && run.phase === 'execution' }),
+      idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
@@ -367,7 +399,7 @@ export class AppService {
     this.approvals.clear()
     updates.push(...await this.employees.initialize())
     await this.store.write(updates, removed)
-    this.memoryActivatedAt = await this.memory.init(); await this.works.init(); await this.browser.recover(); await this.scheduler.init()
+    this.memoryActivatedAt = await this.memory.init(); await this.works.init(); await this.browser.recover(); await this.scheduler.init(); await this.boboCollaboration.recover()
     for (const conversation of this.conversations.values()) if (conversation.memoryScope === 'conversation') for (const member of conversation.agentIds) await this.memory.restrictConversation(member, conversation.id)
     await this.memory.maintain()
     await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
@@ -417,6 +449,22 @@ export class AppService {
         return { preparation }
       })
       try { return await preparation } finally { this.materialImports.delete(preparation); if (this.conversations.has(value.conversationId)) this.changed(value.conversationId) }
+    }
+    if (method === 'listBoboCollaborationOperations') {
+      const value = z.object({ conversationId: id }).strict().parse(input)
+      const conversation = this.getConversation(value.conversationId)
+      if (conversation.purpose !== 'core') fail('组织回执只在原核心讨论会话读取')
+      return this.boboCollaboration.list(value)
+    }
+    if (method === 'getBoboCollaborationOperation') return this.boboCollaboration.get(z.object({ operationId: id }).strict().parse(input))
+    if (method === 'resumeBoboCollaboration' || method === 'abandonBoboCollaboration') {
+      const value = z.object({ operationId: id, expectedVersion: z.number().int().positive() }).strict().parse(input)
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      return method === 'resumeBoboCollaboration' ? this.resumeBoboOrganization(value) : this.boboCollaboration.abandon(value)
+    }
+    if (method === 'resumeBoboCollaborationStart') {
+      const value = z.object({ operationId: id, expectedVersion: z.number().int().positive() }).strict().parse(input)
+      return this.startBoboCollaboration(value.operationId, value.expectedVersion, true)
     }
     if (method === 'acceptTeamCreation') return this.serialize(() => { if (this.backingUp || this.closing) fail('服务正在退出或备份'); return this.teamCreation.accept(input) })
     if (method === 'getTeamCreation') return this.teamCreation.get(input)
@@ -700,7 +748,10 @@ export class AppService {
         if (!current || current.version !== work.version || current.conversationId !== id || current.status !== 'delivered' || current.requiresReview || current.outcome?.disposition !== 'delivered' || !current.outcome.evidence?.length) continue
         let verified = true
         for (const evidence of current.outcome.evidence) {
-          if (evidence.kind === 'artifact') {
+          if (evidence.kind === 'collaboration') {
+            try { await assertCollaborationEvidence(tx, current, current.outcome) }
+            catch { verified = false; break }
+          } else if (evidence.kind === 'artifact') {
             const artifact = detail.artifacts.find(value => value.id === evidence.reference && (!value.ownerAgentId || value.ownerAgentId === current.ownerAgentId))
             if (!current.artifactIds.includes(evidence.reference) || !artifact?.contentHash) { verified = false; break }
             try { await this.artifactRepository.validateCurrentArtifact(tx, evidence.reference, artifact.contentHash, undefined, false) }
@@ -737,9 +788,16 @@ export class AppService {
     return detail
   }
   private async validateReadingMessage(tx: RecordTransaction, message: Message) {
-    this.getConversation(message.conversationId)
+    if (message.collaborationSource) {
+      const conversation = await tx.get<Conversation>('conversations', message.conversationId)
+      if (!conversation || conversation.kind !== 'group' || conversation.list?.hidden || this.clearingConversations.has(conversation.id)) fail('群开场所属聊天已不存在或不可读')
+    } else this.getConversation(message.conversationId)
     const actual = await tx.get<Message>('messages', message.id)
     if (!actual || actual.conversationId !== message.conversationId || await tx.get('conversationCleanup', message.conversationId)) fail('原消息已清理或正在清理')
+    if (actual!.collaborationSource) {
+      const operation = await tx.get<BoboCollaborationOperation>('boboCollaborations', actual!.collaborationSource.operationId)
+      if (!operation || operation.status !== 'committed' || operation.groupCleared || operation.groupConversationId !== actual!.conversationId || operation.announcement?.id !== actual!.id || operation.announcement.content !== actual!.content || actual!.senderType !== 'agent' || actual!.senderId !== 'bobo' || actual!.runId || actual!.collaborationSource.sourceRunId !== operation.announcementSource.runId || actual!.collaborationSource.toolCallId !== operation.announcementSource.toolCallId) fail('群开场消息的真实组织来源已经失效')
+    }
     const snapshot = message.runId ? await tx.get<{ materialRefs?: import('../shared/domain').MaterialReadRef[] }>('snapshots', message.runId) : undefined
     const refs = [...(message.materialSources ?? snapshot?.materialRefs ?? [])]
     for (const materialId of message.materialIds ?? []) {
@@ -952,7 +1010,7 @@ export class AppService {
   private async deleteEmployees(agentIds: string[], category?: { id: string; expectedRevision: number }) {
     await this.contactDeletion.prepare({ agentIds, category })
     if (this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy) fail('技能管理操作尚未结束，请完成后再删除员工')
-    try { await this.teamCreation.assertBackup() } catch { fail('请先完成或放弃未结束的团队创建，再删除员工') }
+    try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { fail('请先完成或放弃未结束的团队创建，再删除员工') }
     const affected = [...this.conversations.values()].filter(conversation => conversation.agentIds.some(id => agentIds.includes(id)))
     for (const conversation of affected) this.assertConversationIdle(conversation.id)
     if ([...this.runs.values()].some(run => agentIds.includes(run.agentId) && (this.runControllers.has(run.id) || this.activeAdapters.has(run.id)))) fail('员工仍有任务执行或收尾，请停止并等待结束后再删除')
@@ -994,6 +1052,8 @@ export class AppService {
     for (const agent of this.employees.values()) await this.memory.invalidateConversation(agent.id, id)
     await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
     await this.clearBrowserScopes(scope => scope.conversationId === id)
+    if (conversation.purpose === 'core') await this.boboCollaboration.clearSource(id, { criticalHeld: true })
+    if (conversation.kind === 'group') await this.boboCollaboration.clearGroup(id, { criticalHeld: true })
     const result = remove ? await this.history.remove(conversation) : await this.history.clear(conversation, hide)
     for (const item of result.removals) {
       switch (item.collection) {
@@ -1076,12 +1136,90 @@ export class AppService {
     return clone(conversation)
   }
 
+  private async resumeBoboOrganization(input: { operationId: string; expectedVersion: number }) {
+    const receipt = await this.boboCollaboration.get({ operationId: input.operationId })
+    if (receipt.version !== input.expectedVersion) fail('原组织版本已变化，请读取最新状态')
+    if (receipt.status === 'committed' || receipt.status === 'cancelled') return receipt
+    const operation = await this.boboCollaboration.auditOperation(input)
+    const controller = new AbortController()
+    const release = await this.taskAdmission.acquire(false, controller.signal, `${operation.sourceConversationId}:${CORE_AGENT_ID}`)
+    let run: AgentRun | undefined, turn: DiscussionTurn | undefined, deadline: ReturnType<typeof setTimeout> | undefined
+    try {
+      const accepted = await this.serialize(async () => {
+        if (this.closing || this.backingUp) fail('服务正在退出或备份')
+        const conversation = this.getConversation(operation.sourceConversationId)
+        const createdAt = now()
+        const recoveryTurn: DiscussionTurn = { id: randomUUID(), conversationId: conversation.id, triggerMessageId: operation.sourceMessageId, collaborationRequestId: operation.requestId, workId: operation.organizationWorkId, status: 'executing', generation: 0, createdAt, modelCalls: 0, publicMessages: 0 }
+        const recoveryRun: AgentRun = { ...this.newRun(conversation, CORE_AGENT_ID, operation.sourceMessageId, recoveryTurn.id), collaborationRequestId: operation.requestId, workId: operation.organizationWorkId, messageId: '', responseKind: 'task', status: 'running' }
+        const work = await this.store.transaction(async tx => {
+          await tx.put(record('turns', recoveryTurn)); await tx.put(record('runs', recoveryRun))
+          const claimed = await this.works.claimOrganizationRecovery(tx, operation, recoveryRun.id, recoveryTurn.id)
+          recoveryRun.workVersion = claimed.version; await tx.put(record('runs', recoveryRun))
+          return claimed
+        })
+        this.runs.set(recoveryRun.id, recoveryRun); this.scheduler.turns.set(recoveryTurn.id, { ...recoveryTurn, epoch: 1 })
+        this.runControllers.set(recoveryRun.id, controller)
+        return { run: recoveryRun, turn: recoveryTurn, work }
+      })
+      run = accepted.run; turn = accepted.turn
+      const budget = (await this.works.view(run.conversationId)).workBudgets.find(value => value.id === accepted.work.budgetId) ?? fail('原组织预算已不存在')
+      deadline = setTimeout(() => controller.abort(new Error('达到原组织工作的时间上限')), Math.max(0, Date.parse(budget.deadlineAt) - Date.now())); deadline.unref()
+      const authority: BoboOrganizationAuthority = { workId: accepted.work.id, runId: run.id, workVersion: accepted.work.version, sourceConversationId: operation.sourceConversationId, sourceMessageId: operation.sourceMessageId, agentConfigVersion: this.getAgent(CORE_AGENT_ID).configVersion }
+      const result = await this.boboCollaboration.resume(input, authority, controller.signal)
+      if (result.status !== 'committed') fail(result.error || '原组织仍未完成，请核对原结果')
+      const execution = await this.store.transaction(tx => tx.get<import('../shared/domain').WorkExecution>('workExecutions', run!.id))
+      if (execution?.pendingEffects) await this.works.confirmEffect(run.id)
+      await this.works.finishOrganizationRecovery(run.id, result.id)
+      await this.finishRun(run, 'completed')
+      turn.status = 'completed'; turn.finishedAt = now(); await this.store.write([record('turns', turn)]); Object.assign(this.scheduler.turns.get(turn.id)!, turn)
+      if (result.startIntentId && !controller.signal.aborted) {
+        try { return await this.startBoboCollaboration(result.id) } catch { return this.boboCollaboration.get({ operationId: result.id }) }
+      }
+      return result
+    } catch (error) {
+      if (run && !terminal.has(run.status)) await this.finishRun(run, controller.signal.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.errorMessage(error))
+      if (turn) { turn.status = controller.signal.aborted ? 'cancelled' : 'failed'; turn.finishedAt = now(); turn.reason = this.errorMessage(error); await this.store.write([record('turns', turn)]); Object.assign(this.scheduler.turns.get(turn.id)!, turn) }
+      throw error
+    } finally { clearTimeout(deadline); if (run) this.runControllers.delete(run.id); release(); this.changed(operation.sourceConversationId) }
+  }
+
+  private async startBoboCollaboration(operationId: string, expectedVersion?: number, explicitResume = false) {
+    const receipt = await this.boboCollaboration.get({ operationId })
+    if (expectedVersion !== undefined && receipt.version !== expectedVersion) fail('组织结果已变化，请读取最新状态')
+    if (receipt.status !== 'committed' || receipt.mode !== 'organize_and_execute' || !receipt.startIntentId || !receipt.groupConversationId || receipt.groupCleared) fail('本次组织没有可启动的真实群工作')
+    const groupId = receipt.groupConversationId!
+    const prepared = await this.serialize(async () => {
+      if (this.closing || this.backingUp || this.clearingConversations.has(groupId)) fail('群工作正在停止或清理，不能开工')
+      this.getConversation(groupId)
+      return this.store.transaction(async tx => {
+        const operation = await tx.get<BoboCollaborationOperation>('boboCollaborations', operationId)
+        if (!operation || operation.status !== 'committed' || operation.version !== receipt.version || operation.startIntentId !== receipt.startIntentId || operation.groupCleared) fail('组织结果已变化，不能启动')
+        if (explicitResume) await this.works.resumeCollaborationStart(tx, receipt.startIntentId!)
+        return this.scheduler.prepareCollaborationStart(tx, receipt.startIntentId!)
+      })
+    })
+    if (prepared) {
+      const message = await this.store.transaction(tx => tx.get<Message>('messages', prepared.event.messageId!))
+      if (message) this.messages.set(message.id, message)
+      this.scheduler.accept(prepared); this.changed(groupId)
+    }
+    return this.boboCollaboration.get({ operationId })
+  }
+
   private async saveConversation(input: z.infer<typeof conversationSchema>) {
+    const previous = input.id ? this.getConversation(input.id) : undefined
     if (input.kind !== 'group' && input.teamSetup !== undefined) fail('团队背景仅用于群聊')
     if (input.kind === 'direct' && input.agentIds.length !== 1) fail('单聊只能选择一名员工')
-    for (const id of input.agentIds) {const a=this.getAgent(id);if(input.kind==='group'&&isCoreAgent(a))fail('系统核心助手使用独立会话，不加入员工群聊');if(input.kind==='group'&&a.executionBackend?.kind==='acp-local')fail('外部任务员工暂不支持自主群聊，请使用单聊任务入口')}
+    for (const id of input.agentIds) {
+      const agent = this.getAgent(id)
+      if (input.kind === 'group' && isCoreAgent(agent)) {
+        const source = previous?.creationSource
+        const operation = source?.kind === 'bobo-collaboration' ? await this.boboCollaboration.get({ operationId: source.operationId }) : undefined
+        if (!previous?.agentIds.includes(agent.id) || operation?.status !== 'committed' || operation.groupConversationId !== previous.id || operation.groupCleared) fail('请由 bobo 发起群协作；普通建群不能添加核心助手')
+      }
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'acp-local') fail('外部任务员工暂不支持自主群聊，请使用单聊任务入口')
+    }
     this.validateResources(input.sharedKnowledgeIds ?? [], 'knowledge')
-    const previous = input.id ? this.getConversation(input.id) : undefined
     if (previous && input.expectedConfigVersion !== undefined && (previous.configVersion ?? 1) !== input.expectedConfigVersion) fail('群设置已更新，请刷新后保存')
     if (previous && previous.kind !== input.kind) fail('不能修改会话类型')
     if (previous?.purpose === 'core' && (input.agentIds.length !== 1 || input.agentIds[0] !== CORE_AGENT_ID)) fail('核心会话不能改绑其他员工')
@@ -1119,7 +1257,8 @@ export class AppService {
   private newRun(conversation: Conversation, agentId: string, triggerMessageId: string, turnId?: string, phase: AgentRun['phase'] = 'execution'): AgentRun {
     const agent = this.getAgent(agentId)
     const origin = turnId ? this.scheduler.turns.get(turnId)?.origin : this.messages.get(triggerMessageId)?.origin
-    return { ...(origin ? { origin } : {}), id: randomUUID(), conversationId: conversation.id, phase, turnId, agentId, agentName: agent.name, triggerMessageId, messageId: phase === 'execution' ? randomUUID() : '', status: 'queued', createdAt: now(), toolEvents: [] }
+    const collaborationRequestId = turnId ? this.scheduler.turns.get(turnId)?.collaborationRequestId : this.messages.get(triggerMessageId)?.collaborationRequestId
+    return { ...(origin ? { origin } : {}), ...(collaborationRequestId ? { collaborationRequestId } : {}), id: randomUUID(), conversationId: conversation.id, phase, turnId, agentId, agentName: agent.name, triggerMessageId, messageId: phase === 'execution' ? randomUUID() : '', status: 'queued', createdAt: now(), toolEvents: [] }
   }
   private async messageReceipt(requestId: string): Promise<Message | null> {
     return this.store.transaction(async tx => {
@@ -1461,6 +1600,7 @@ export class AppService {
     await this.cancelWhere(run => ids.has(run.id) && !terminal.has(run.status), '聊天材料授权或版本已更新，旧运行已停止')
   }
   private async taskMaterialAccess(context: EngineContext, path: string, operation: 'read' | 'list' | 'write' | 'publish') {
+    if (context.work?.organization) return false
     await this.assertMaterialRefs(context)
     const workspace = context.workspace!, candidate = resolve(path)
     let inherited: MaterialReadRef[] = []
@@ -1627,6 +1767,7 @@ export class AppService {
         if (!await this.memory.recallValid(combined)) fail('记忆已失效，请重新发起')
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
         await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
+        if (run.collaborationRequestId) return this.works.reserveCollaborationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.origin) return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.workId) await this.works.reserveCall(run.id)
         signal.throwIfAborted()
@@ -1636,11 +1777,13 @@ export class AppService {
         signal.throwIfAborted(); await this.assertMaterialRefs(context)
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能开始模型调用')
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，不能开始模型调用')
-        await this.observeActivity(run, () => this.userProfile.start({ id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin), thinking }))
+        if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
+        await this.observeActivity(run, () => this.userProfile.start({ id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId), thinking }))
       }),
       onSkillActivated: (toolCallId, skill) => this.observeActivity(run, () => this.userProfile.skill({ id: `${run.id}:${toolCallId}`, runId: run.id, conversationId: run.conversationId, skillId: skill.id, name: skill.name, createdAt: now() })),
       onModelCallUsage: async (callId, usage) => {
         if (this.closing) return
+        if (run.collaborationRequestId) { await this.works.settleCollaborationCall(run.id, callId, usage); return }
         if (!run.origin) { await this.observeActivity(run, () => this.userProfile.settle(callId, usage)); return }
         const budget = await this.works.settleAutomationCall(run.id, callId, usage)
         if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限')
@@ -1654,9 +1797,36 @@ export class AppService {
         if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta)
       },
     }
+    if (isCoreAgent(agent) && conversation.purpose === 'core' && !origin && run.phase !== 'memory') {
+      context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
+      context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
+    }
     return context
     })
   }
+  private async contextOnlyPeerDelivery(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery) {
+    if (!turn.collaborationRequestId || event.type !== 'agent_message' || delivery.conversationId !== turn.conversationId || delivery.turnId !== turn.id) return
+    return this.serialize(() => this.store.transaction(async tx => {
+      const conversation = await tx.get<Conversation>('conversations', turn.conversationId)
+      const storedTurn = await tx.get<DiscussionTurn>('turns', turn.id), stored = await tx.get<AgentDelivery>('deliveries', delivery.id)
+      if (!conversation || conversation.kind !== 'group' || !conversation.agentIds.includes(delivery.agentId) || await tx.get('conversationCleanup', conversation.id) || storedTurn?.collaborationRequestId !== turn.collaborationRequestId || !stored || stored.conversationId !== conversation.id || stored.turnId !== turn.id || stored.eventId !== delivery.eventId || stored.agentId !== delivery.agentId) return
+      const sourceIds = stored.eventIds ?? [stored.eventId]
+      if (!sourceIds.length || !sourceIds.includes(stored.eventId)) return
+      for (const id of sourceIds) {
+        const source = await tx.get<ConversationEvent>('events', id)
+        if (!source || source.type !== 'agent_message' || source.turnId !== turn.id || source.conversationId !== conversation.id || source.collaborationRequestId !== turn.collaborationRequestId || source.recipientAgentIds?.length || !source.messageId) return
+        const message = await tx.get<Message>('messages', source.messageId)
+        if (!message || message.status !== 'completed' || message.senderType !== 'agent' || message.senderId !== source.agentId || message.conversationId !== conversation.id || (message.collaborationRequestId && message.collaborationRequestId !== turn.collaborationRequestId) || message.mentionIds?.length || !message.runId) return
+        const run = await tx.get<AgentRun>('runs', message.runId)
+        if (!run || run.status !== 'completed' || run.phase !== 'execution' || run.responseKind !== 'task' || run.messageId !== message.id || run.agentId !== message.senderId || run.conversationId !== conversation.id || run.collaborationRequestId !== turn.collaborationRequestId || !run.workId) return
+        const work = await tx.get<WorkItem>('workItems', run.workId)
+        if (!work || work.conversationId !== conversation.id || work.collaborationRequestId !== turn.collaborationRequestId || work.ownerAgentId !== run.agentId || !work.resultMessageIds.includes(message.id) || work.requiresReview || work.userQuestion || work.outcome?.userQuestion) return
+      }
+      const owned = (await tx.list<WorkItem>('workItems')).some(work => work.conversationId === conversation.id && work.collaborationRequestId === turn.collaborationRequestId && work.ownerAgentId === delivery.agentId && ['ready', 'running', 'waiting'].includes(work.status) && !work.cancellationCause && !work.requiresReview && !work.userQuestion && !work.outcome?.userQuestion)
+      return owned ? '本次真实工作更新已保留为上下文，员工沿原工作和定向接续继续处理，不重复判断' : undefined
+    }))
+  }
+
   private async executeDecision(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery, signal: AbortSignal) {
     if (turn.workId && this.messages.get(turn.triggerMessageId)?.inboxReply?.workId === turn.workId) {
       signal.throwIfAborted()
@@ -1679,12 +1849,20 @@ export class AppService {
         decision.responseKind = 'task'
         decision.work = { key: 'artifact-revision', scope: context.artifactRevision.content.slice(0, 2000), deliverable: '根据本次明确修改要求发布指定原版的新版本' }
       }
+      if (decision.work?.organization && (!isCoreAgent(context.agent) || context.conversation.purpose !== 'core' || run.origin || context.legacyTeamName || decision.action !== 'reply' || decision.responseKind !== 'task')) fail('组织意图只适用于本人明确要求 bobo 发起组织的核心讨论')
+      // An ordinary peer decision cannot mint a root or consume a directed continuation.
+      if (turn.collaborationRequestId && decision.responseKind === 'task') {
+        const work = context.workItems?.find(work => work.id === decision.work?.workId)
+        if (!work || work.ownerAgentId !== delivery.agentId || work.collaborationRequestId !== turn.collaborationRequestId || work.status !== 'ready' || work.activeRunId || work.requiresReview || (work.wakeId && work.wakeId !== turn.wakeId)) {
+          decision.action = 'pass'; delete decision.responseKind; delete decision.work
+        }
+      }
       effective.throwIfAborted()
-      await this.finishRun(run, 'completed'); return decision
+      await this.finishRun(run, 'completed'); return { ...decision, sourceDecisionRunId: run.id }
     } catch (error) {
       if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key))
       throw new Error(this.redact(this.errorMessage(error), key))
-    } finally { this.runControllers.delete(run.id) }
+    } finally { this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id) }
   }
   private async executeResponse(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: PublishReply): Promise<void | 'deferred'> {
     const conversation = this.getConversation(turn.conversationId), run = this.newRun(conversation, decision.agentId, turn.triggerMessageId, turn.id)
@@ -1707,7 +1885,8 @@ export class AppService {
       if (turn.wakeId) await this.serialize(async () => {
         effective.throwIfAborted()
         const messages = this.conversationMessages(conversation.id).filter(message => message.status === 'completed')
-        const latestUser = [...messages].reverse().find(message => message.senderType === 'user')!
+        const wakeWork = turn.workId ? (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) : undefined
+        const latestUser = [...messages].reverse().find(message => message.senderType === 'user') ?? this.messages.get(wakeWork?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
         turn.triggerMessageId = latestUser.id; run.triggerMessageId = latestUser.id
         decision = { ...decision, observedThroughSequence: messages.at(-1)!.sequence, replyToMessageId: latestUser.id }
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
@@ -1722,14 +1901,22 @@ export class AppService {
             if (context.artifactRevision && !turn.workId) intent = { key: 'artifact-revision', scope: context.artifactRevision.content.slice(0, 2000), deliverable: '根据本次明确修改要求发布指定原版的新版本' }
             if (turn.workId) {
               const retryWork = (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) ?? fail('重试的原工作不存在')
-              intent = { key: retryWork.key, scope: retryWork.scope, deliverable: retryWork.deliverable, workId: retryWork.id, expectedVersion: retryWork.version }
+              if (retryWork.ownerAgentId === run.agentId) intent = { key: retryWork.key, scope: retryWork.scope, deliverable: retryWork.deliverable, workId: retryWork.id, expectedVersion: retryWork.version, ...(retryWork.organization ? { organization: { mode: retryWork.organization.mode, goal: retryWork.organization.goal } } : {}) }
             }
             if (intent.workId) {
               const visible = new Set(context.messages.map(message => message.id))
               const existing = (await this.authorizedWorkItems(context.conversation, run.agentId, visible)).find(work => work.id === intent.workId)
               if (!existing || !visible.has(existing.sourceMessageId) || !existing.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该工作')
             }
-            return this.works.claim({ conversationId: conversation.id, sourceMessageId: turn.triggerMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs })
+            const referenced = intent.workId ? (await this.works.view(conversation.id)).workItems.find(work => work.id === intent.workId) : undefined
+            const sourceMessageId = referenced?.collaborationRequestId ? referenced.sourceMessageId : turn.triggerMessageId
+            const organization = intent.organization ? { ...intent.organization, requestId: `bobo-collaboration:${sourceMessageId}` } : undefined
+            if (organization) {
+              if (!isCoreAgent(context.agent) || conversation.purpose !== 'core' || context.legacyTeamName || run.origin || context.artifactRevision || context.materialRefs?.length) fail('组织请求须来自 bobo 核心讨论；带私有材料的业务请在新群明确提供获准材料')
+              intent = { ...intent, key: 'bobo-organization', scope: `发起组织：${organization.goal}`, deliverable: organization.mode === 'employee_creation' ? '发布独立员工并返回真实员工身份' : '发布独立员工群及真实 bobo 目标和分工说明', organization: { mode: organization.mode, goal: organization.goal } }
+            }
+            const callIds = decision.sourceDecisionRunId && !run.collaborationRequestId ? (await this.store.load<{ id: string; runId: string }>('profileModelCalls')).filter(call => call.runId === decision.sourceDecisionRunId).map(call => call.id) : []
+            return this.works.claim({ conversationId: conversation.id, sourceMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs, ...(organization ? { organization } : {}), ...(organization && decision.sourceDecisionRunId && callIds.length ? { priorDecision: { runId: decision.sourceDecisionRunId, callIds } } : {}) })
           })
         } catch (error) {
           if (!(error instanceof WorkUnavailableError)) throw error
@@ -1737,6 +1924,11 @@ export class AppService {
           return 'deferred'
         }
         run.workId = context.work.id; run.workVersion = context.work.version
+        if (context.work.collaborationRequestId) {
+          run.collaborationRequestId = context.work.collaborationRequestId
+          turn.collaborationRequestId = context.work.collaborationRequestId
+          await this.store.write([record('runs', run), record('turns', turn)])
+        }
         const budget = (await this.works.view(conversation.id)).workBudgets.find(budget => budget.id === context.work!.budgetId)!
         workDeadline = setTimeout(() => { void this.serialize(async () => { controller.abort(new Error('达到原始工作的时间上限')) }) }, Math.max(0, Date.parse(budget.deadlineAt) - Date.now()))
         workDeadline.unref()
@@ -1754,7 +1946,7 @@ export class AppService {
             if (!work || !visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该依赖')
           }
         }
-        if (this.options.browserHost && context.agent.allowBrowser && !run.origin && decision.action === 'reply') {
+        if (this.options.browserHost && context.agent.allowBrowser && !run.origin && !context.work.organization && decision.action === 'reply') {
           const epoch=(await this.reading.readState(conversation.id)).epoch
           const lease:BrowserLease={scopeKey:browserScopeKey(run.agentId,conversation.id,epoch),scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work.id,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:this.runDirectories.get(run.id)!}
           const validate=async () => {
@@ -1770,7 +1962,26 @@ export class AppService {
         }
         context.beforeEffect = () => this.serialize(async () => { effective.throwIfAborted(); await this.assertMaterialRefs(context); if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本工具执行'); await this.works.markEffect(run.id) })
         context.afterEffect = async () => { effective.throwIfAborted(); await this.works.confirmEffect(run.id) }
-        if (isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin) context.createTeam = async plan => {
+        if (context.work.organization && isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin) {
+          const authority: BoboOrganizationAuthority = { workId: context.work.id, runId: run.id, workVersion: context.work.version, sourceConversationId: conversation.id, sourceMessageId: context.work.sourceMessageId, agentConfigVersion: context.agent.configVersion }
+          const validate = () => this.serialize(async () => {
+            effective.throwIfAborted()
+            if (this.backingUp || this.closing || terminal.has(run.status)) fail('组织工作已停止，不能继续发布')
+            await this.assertMaterialRefs(context)
+            if (!await this.memory.recallValid(context.memory!)) fail('组织使用的记忆来源已失效')
+            await this.store.transaction(tx => this.works.assertOrganizationHolder(tx, authority))
+          })
+          context.findEmployees = async query => { await validate(); return this.boboCollaboration.findEmployees(query) }
+          context.organizeCollaboration = async (plan, toolCallId) => {
+            await validate()
+            const receipt = await this.boboCollaboration.organize(plan, authority, { modelCallId: this.organizationModelCalls.get(run.id), toolCallId }, effective)
+            if (receipt.status === 'committed' && receipt.startIntentId && !effective.aborted) {
+              try { return await this.startBoboCollaboration(receipt.id) } catch { return this.boboCollaboration.get({ operationId: receipt.id }) }
+            }
+            return receipt
+          }
+        }
+        if (isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin && !context.work.organization && context.legacyTeamName) context.createTeam = async plan => {
           const accepted = await this.serialize(async () => {
             effective.throwIfAborted()
             if (this.backingUp || this.closing || terminal.has(run.status)) fail('服务或工作已停止，不能创建团队')
@@ -1787,17 +1998,22 @@ export class AppService {
           const group = this.getConversation(operation.conversationId!)
           return { operationId: operation.id, conversationId: group.id, title: group.title, members: operation.memberIds.map(({ agentId }) => { const member = this.getAgent(agentId); return { id: member.id, name: member.name, role: member.role } }) }
         }
-        context.delegateWork = input => this.serialize(async () => {
-          effective.throwIfAborted()
-          const proposal = workDelegationSchema.parse(input), owner = this.getAgent(proposal.ownerAgentId)
-          if (!owner.active || !this.getConversation(conversation.id).agentIds.includes(owner.id) || owner.executionBackend?.kind === 'acp-local') fail('委派对象不是当前有效的内置成员')
-          await this.assertMaterialRefs(context)
-          await this.materials.validateRefs(context.materialRefs ?? [], owner.id, conversation.id)
-          await validateDependencies(proposal.dependencies ?? [])
-          const child = await this.works.delegate(run.id, proposal)
-          this.changed(conversation.id); return child
-        })
+        context.delegateWork = async input => {
+          const child = await this.serialize(async () => {
+            if (context.work?.organization) fail('组织工作不能在原讨论中安排业务子工作，请在群内分工')
+            effective.throwIfAborted()
+            const proposal = workDelegationSchema.parse(input), owner = this.getAgent(proposal.ownerAgentId)
+            if (!owner.active || !this.getConversation(conversation.id).agentIds.includes(owner.id) || owner.executionBackend?.kind === 'acp-local') fail('委派对象不是当前有效的内置成员')
+            await this.assertMaterialRefs(context)
+            await this.materials.validateRefs(context.materialRefs ?? [], owner.id, conversation.id)
+            await validateDependencies(proposal.dependencies ?? [])
+            const child = await this.works.delegate(run.id, proposal)
+            this.changed(conversation.id); return child
+          })
+          this.scheduleWork(conversation.id); return child
+        }
         context.waitForWork = input => this.serialize(async () => {
+          if (context.work?.organization) fail('组织工作不能在原讨论中等待群业务，组织与业务分别拥有工作状态')
           effective.throwIfAborted(); const wait = workWaitSchema.parse(input)
           await validateDependencies(wait.dependencies); await this.works.waitFor(run.id, wait)
           context.pendingWorkWait = wait
@@ -1838,11 +2054,13 @@ export class AppService {
         await this.store.write([record('runs', run)]); if (alive()) this.changed(conversation.id)
       }
       context.approveCommand = async (command, cwd) => {
+        if (context.work?.organization) return false
         await this.observeActivity(run, () => this.userProfile.execution(run, 'pause'))
         try { return await this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !run.origin) }
         finally { if (!effective.aborted) await this.observeActivity(run, () => this.userProfile.execution(run, 'start')) }
       }
       context.onArtifact = artifact => this.serialize(async () => {
+        if (context.work?.organization) fail('核心组织工作只能交付组织回执，业务成果须在群中发布')
         if (!alive()) throw new Error('任务已停止，不能发布产物')
         await this.assertMaterialRefs(context)
         if (!await this.memory.recallValid(context.memory!)) fail('记忆已失效，不能发布旧版本产物')
@@ -1855,7 +2073,7 @@ export class AppService {
       })
       if (decision.action === 'ask') {
         context.resources = []; context.workspace = undefined; context.environment = undefined
-        context.browserSession = undefined; context.createTeam = undefined; context.delegateWork = undefined; context.waitForWork = undefined; context.onWorkOutcome = undefined
+        context.browserSession = undefined; context.createTeam = undefined; context.organizeCollaboration = undefined; context.findEmployees = undefined; context.delegateWork = undefined; context.waitForWork = undefined; context.onWorkOutcome = undefined
         context.onTool = async () => { fail('补充提问不允许执行工具') }
         context.beforeEffect = async () => { fail('补充提问不允许执行副作用') }
         context.onArtifact = async () => { fail('补充提问不允许发布成果') }
@@ -1911,7 +2129,7 @@ export class AppService {
         for (;;) {
           const stale = await this.serialize(async () => {
             effective.throwIfAborted()
-            const latestUser = [...this.conversationMessages(conversation.id)].reverse().find(message => message.senderType === 'user' && message.status === 'completed')!
+            const latestUser = [...this.conversationMessages(conversation.id)].reverse().find(message => message.senderType === 'user' && message.status === 'completed') ?? this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
             const current = (await this.materialMessages(this.getConversation(conversation.id), latestUser.id, run.agentId)).messages
             const latest = current.at(-1)?.sequence ?? 0
             const { workItems } = await this.works.view(conversation.id)
@@ -1949,8 +2167,10 @@ export class AppService {
           await this.works.reserveReport(run.id)
           const reportCall = await context.onAdditionalModelCall!('report')
           const baseline = { ...run.usage }
-          const reportContext: EngineContext = { ...context, ...stale, materialRefs: context.materialRefs, modelCallId: typeof reportCall === 'string' ? reportCall : undefined, resources: [], responseKind: 'chat',
-            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, browserSession: undefined, createTeam: undefined, delegateWork: undefined, waitForWork: undefined,
+          const organizationReceipt = context.work?.organization ? await this.boboCollaboration.lookup({ requestId: context.work.organization.requestId }) : null
+          const committedCollaborationIds = organizationReceipt?.status === 'committed' && !organizationReceipt.sourceCleared ? [organizationReceipt.id] : []
+          const reportContext: EngineContext = { ...context, ...stale, committedCollaborationIds, materialRefs: context.materialRefs, modelCallId: typeof reportCall === 'string' ? reportCall : undefined, resources: [], responseKind: 'chat',
+            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, browserSession: undefined, createTeam: undefined, organizeCollaboration: undefined, findEmployees: undefined, delegateWork: undefined, waitForWork: undefined,
             work: { ...context.work!, outcome, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) },
             onDelta: async () => {}, onTool: async () => { throw new Error('重新汇报不允许执行工具') }, approveCommand: async () => false,
             onUsage: async usage => {
@@ -1977,7 +2197,7 @@ export class AppService {
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
       await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id)
-      releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); await this.clearApprovals(run.id) }
+      releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id) }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
     if (!this.options.engine.extractMemory || this.closing) return
@@ -2046,6 +2266,10 @@ export class AppService {
       if (started) for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (attemptUsage[field] !== undefined) earlierAttempts[field] = (earlierAttempts[field] ?? 0) + attemptUsage[field]!
       if (context.memory && !await this.memory.recallValid(context.memory)) fail('记忆已失效，旧模型请求被阻止')
       started = true; attemptUsage = {}
+      if (run.collaborationRequestId && !reservedCallId) reservedCallId = await this.serialize(async () => {
+        signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
+        return this.works.reserveCollaborationCall(run, randomUUID(), run.phase ?? 'execution')
+      })
       if (run.origin && !reservedCallId) reservedCallId = await this.serialize(async () => {
         signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
         await this.automations.assertExecutable(run.origin!, run.conversationId)
@@ -2064,7 +2288,12 @@ export class AppService {
         const cumulative = { ...earlierAttempts }
         for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (earlierAttempts[field] ?? 0) + usage[field]!
         await context.onUsage!(cumulative)
-      } : undefined }) } finally { await this.observeActivity(run, () => this.userProfile.execution(run, 'finish')); this.activeAdapters.delete(run.id); if (timer) clearTimeout(timer); if (run.origin) this.changed(run.conversationId) }
+      } : undefined }) } finally {
+        await this.observeActivity(run, () => this.userProfile.execution(run, 'finish')); this.activeAdapters.delete(run.id)
+        if (timer) clearTimeout(timer)
+        if (run.origin) this.changed(run.conversationId)
+        if (run.phase === 'execution') this.scheduler.executionFinished(run.conversationId)
+      }
     }, {
       retryRateLimit: readOnly,
       reserveRetry: async () => {
@@ -2221,7 +2450,7 @@ export class AppService {
           catch { await this.works.cancelTree(work.id, '材料来源或负责人授权已失效，接续已停止'); continue }
         }
         const latest = this.conversationMessages(conversationId).filter(message => message.status === 'completed')
-        const trigger = [...latest].reverse().find(message => message.senderType === 'user')
+        const trigger = [...latest].reverse().find(message => message.senderType === 'user') ?? (work.collaborationRequestId ? this.messages.get(work.sourceMessageId) : undefined)
         const visible = trigger && owner?.active ? new Set((await this.materialMessages(conversation, trigger.id, owner.id)).messages.map(message => message.id)) : undefined
         if (!owner?.active || !conversation.agentIds.includes(owner.id) || !trigger || !visible?.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) {
           await this.works.cancelTree(work.id, '接续的负责人或原始上下文权限已失效'); continue
@@ -2325,7 +2554,7 @@ export class AppService {
     this.backingUp = true
     try {
       await this.mutations
-      await this.teamCreation.assertBackup()
+      await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup()
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materials.busy) fail('有任务、材料准备或技能管理操作正在执行或等待修复，请先停止或完成后备份')
@@ -2362,6 +2591,7 @@ export class AppService {
     if (this.memoryTimer) clearInterval(this.memoryTimer)
     for (const timer of this.workTimers.values()) clearTimeout(timer)
     this.workTimers.clear()
+    await this.boboCollaboration.close()
     await this.teamCreation.close()
     await this.teamGeneration.close()
     await this.materials.close()

@@ -1,12 +1,14 @@
 /*
  * [INPUT]: 显式工作意图、运行身份、当前权限校验后的上下文与 SQLite 事务。
- * [OUTPUT]: 浏览器 prepared/start/terminal 与原持有者和副作用标记同事务；取消后只确认原执行事实、不释放新运行；settle 可组合原事务消息完成 hook；工作结果/消息/完成身份任一失败同事务回滚，不按运行结束推断公开完成。
+ * [OUTPUT]: bobo 原组织合同/真实调用采用和独立群根沿唯一预算；实际组织证据同提交事务核验；浏览器 prepared/start/terminal 与原持有者和副作用标记同事务；取消后只确认原执行事实、不释放新运行；settle 可组合原事务消息完成 hook；工作结果/消息/完成身份任一失败同事务回滚，不按运行结束推断公开完成。
  * [OUTPUT]: 公开 task 用户问题同结果事务保存；补充原工作版本/执行/副作用/预算/依赖门禁同回答消息复核，不新建预算；用户修订请求/目标员工与唯一新根预算同事务绑定，重试/唤醒/子工作保留修订身份但不继承原成果工作或 occurrence；材料来源随认领/父子继承及持有者条件事务追加；显式额度追加/工作接续/消息/容量同事务；原工作身份与已交付结果保留；共享预算、执行权、父子/依赖和停止门禁。
  * [POS]: collaboration 的持久工作控制；不选举发言人、不重放工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash } from 'node:crypto'
-import type { AgentRun, AutomationBudgetRenewalInput, BudgetModelCall, ModelUsage, WorkBudget, WorkExecution, WorkIntent, WorkItem, WorkOutcome, WorkDelegation, WorkWait, WorkWake, Message, AutomationOrigin, MaterialReadRef, Conversation, DigitalAgent, ConversationMaterial } from '../../../shared/domain'
+import type { AgentRun, AutomationBudgetRenewalInput, BudgetModelCall, ModelUsage, WorkBudget, WorkExecution, WorkIntent, WorkItem, WorkOutcome, WorkDelegation, WorkWait, WorkWake, WorkOrganization, Message, AutomationOrigin, MaterialReadRef, Conversation, DigitalAgent, ConversationMaterial, CollaborationStartIntent } from '../../../shared/domain'
+import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../../../shared/domain/bobo-collaboration'
+import type { ProfileModelCall } from '../profile/profile-activity'
 import type { ArtifactRevisionRequest, ArtifactVersion } from '../../../shared/domain/artifacts'
 import { renewAutomationWork } from './work-renewal'
 import { assertAutomationExecution, activateAutomationExecution, resumeAutomationExecution } from '../automations/automation-repository'
@@ -17,13 +19,16 @@ import { checkWorkBudget, newWorkBudget, reserveBudgetCall, settleBudgetCall, wo
 export { WorkUnavailableError } from './work-budget'
 
 import { workDelegationSchema, workWaitSchema, workEvidenceError } from './work-protocol'
+import { assertOrganizationSource, assertOrganizationHolder as organizationHolder, bindGroupStart as bindCollaborationGroup, resumeCollaborationStart as resumeGroupStart, claimOrganizationRecovery as claimOrganizationFiles, confirmOrganizationRecovery, collaborationCallAuthority, assertCollaborationEvidence } from './work-collaboration'
 
 const row = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const timestamp = () => new Date().toISOString()
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
-interface WorkClaimInput {
+export interface WorkClaimInput {
   conversationId: string; sourceMessageId: string; agentId: string; runId: string; intent: WorkIntent
   wakeId?: string; origin?: AutomationOrigin; materialSources?: MaterialReadRef[]; revisionRequestId?: string
+  organization?: WorkOrganization
+  priorDecision?: { runId: string; callIds: string[] }
 }
 
 export class WorkRepository {
@@ -89,7 +94,8 @@ export class WorkRepository {
       for (const budget of await tx.list<WorkBudget>('workBudgets')) {
         if (budget.schemaVersion !== 1) throw new Error('不能读取未知版本的工作预算')
         const migrated = { ...workLimits, ...budget }
-        migrated.workItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id).length
+        const retainedItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id).length
+        migrated.workItems = budget.collaborationRequestId ? Math.max(budget.workItems, retainedItems) : retainedItems
         await tx.put(row('workBudgets', migrated))
       }
       for (const wake of await tx.list<WorkWake>('workWakes')) {
@@ -97,6 +103,9 @@ export class WorkRepository {
         if (work?.origin && !wake.origin) { wake.origin = work.origin; await tx.put(row('workWakes', wake)) }
         if (!['pending', 'scheduled'].includes(wake.status)) continue
         wake.status = 'interrupted'; wake.reason = '应用重启，接续需要明确恢复'; await tx.put(row('workWakes', wake))
+      }
+      for (const intent of await tx.list<CollaborationStartIntent>('collaborationStarts')) if (intent.status === 'pending') {
+        intent.status = 'interrupted'; intent.reason = '应用重启，群协作未自动开工'; await tx.put(row('collaborationStarts', intent))
       }
       // Historical Contribution records intentionally retain their original meaning.
       await tx.put(row('collaborationSchema', { id: 'work', version: 2 }))
@@ -144,6 +153,15 @@ export class WorkRepository {
     return this.store.transaction(async tx => {
       const referenced = input.intent.workId ? await tx.get<WorkItem>('workItems', input.intent.workId) : undefined
       if (input.intent.workId && !referenced) throw new WorkUnavailableError('工作不存在，不能认领未知 ID')
+      if (input.intent.organization && !input.organization) throw new WorkUnavailableError('模型组织意图没有宿主授权，不能直接认领')
+      if (input.organization) {
+        await assertOrganizationSource(tx, input)
+        if (input.origin || input.wakeId || input.revisionRequestId || (referenced && !referenced.organization)) throw new WorkUnavailableError('完整业务工作不能隐式转换为组织工作')
+        if (input.organization.requestId !== `bobo-collaboration:${input.sourceMessageId}` || !input.organization.goal.trim() || input.organization.goal.length > 12000 || !['employee_creation', 'organize_only', 'organize_and_execute'].includes(input.organization.mode)) throw new WorkUnavailableError('组织请求身份或合同无效')
+        if (referenced && JSON.stringify(referenced.organization) !== JSON.stringify(input.organization)) throw new WorkUnavailableError('已有组织工作不能改变原合同')
+      }
+      const actualSource = await tx.get<Message>('messages', input.sourceMessageId)
+      if (actualSource?.collaborationRequestId && actualSource.senderType === 'agent' && !referenced) throw new WorkUnavailableError('群开场只能认领固定 bobo 根或已明确分工的子工作')
       const sourceRevision = !input.revisionRequestId && !referenced?.revisionRequestId && !input.wakeId
         ? (await tx.list<ArtifactRevisionRequest>('artifactRevisionRequests')).find(request => request.messageId === input.sourceMessageId)
         : undefined
@@ -159,9 +177,10 @@ export class WorkRepository {
       const sourceOrigin = revision ? undefined : (await tx.get<Message>('messages', input.sourceMessageId))?.origin
       const sourceOccurrence = sourceOrigin ? await assertAutomationExecution(tx, sourceOrigin, input.conversationId) : undefined
       const sourceMessageId = revision?.messageId ?? sourceOccurrence?.messageId ?? input.sourceMessageId
-      const key = revision ? 'artifact-revision' : input.intent.key
+      const key = input.organization ? 'bobo-organization' : revision ? 'artifact-revision' : input.intent.key
       const id = input.intent.workId ?? revision?.rootWorkId ?? `work-${identity(input.conversationId, sourceMessageId, key)}`
       let work = referenced ?? await tx.get<WorkItem>('workItems', id)
+      if (work?.organization && (!input.organization || JSON.stringify(work.organization) !== JSON.stringify(input.organization))) throw new WorkUnavailableError('组织工作必须保留原宿主合同')
       if (revision?.rootWorkId && !work) throw new WorkUnavailableError('修订根工作已清理，不能重新建立预算')
       if (revision && work) {
         if (work.revisionRequestId !== revision.id) throw new WorkUnavailableError('修订不能复用已有的其他工作')
@@ -175,6 +194,7 @@ export class WorkRepository {
       const isNew = !work
       if (!work) {
         work = { schemaVersion: 2, id, conversationId: input.conversationId, sourceMessageId, ...(origin ? { origin } : {}),
+          ...(input.organization ? { organization: structuredClone(input.organization), collaborationRequestId: input.organization.requestId } : {}),
           ...(revision ? { revisionRequestId: revision.id } : {}),
           key, scope: input.intent.scope, deliverable: input.intent.deliverable, ownerAgentId: input.agentId,
           version: 1, status: 'ready', budgetId: automation?.budgetId ?? `budget-${identity(input.conversationId, revision?.messageId ?? input.sourceMessageId)}`,
@@ -182,6 +202,12 @@ export class WorkRepository {
           resultMessageIds: [], artifactIds: [], resultVersion: 0, requiresReview: false, createdAt: timestamp(), updatedAt: timestamp() }
       }
       if (work.conversationId !== input.conversationId) throw new WorkUnavailableError('工作不属于当前会话')
+      if (work.collaborationRequestId && !work.organization) {
+        const group = await tx.get<Conversation>('conversations', work.conversationId), agent = await tx.get<DigitalAgent>('agents', input.agentId)
+        if (!group || group.kind !== 'group' || !group.agentIds.includes(input.agentId) || !agent?.active || agent.executionBackend?.kind === 'acp-local' || await tx.get('conversationCleanup', group.id) || actualSource?.collaborationRequestId !== work.collaborationRequestId || actualSource.senderType !== 'agent' || actualSource.senderId !== 'bobo') throw new WorkUnavailableError('群任务来源或当前成员授权已经失效')
+        const root = await tx.get<WorkItem>('workItems', work.rootWorkId)
+        if (!root || root.ownerAgentId !== 'bobo' || root.parentWorkId || root.collaborationRequestId !== work.collaborationRequestId || (!work.parentWorkId && work.id !== root.id)) throw new WorkUnavailableError('群任务必须沿本群唯一 bobo 业务根')
+      }
       if (work.ownerAgentId !== input.agentId) throw new WorkUnavailableError('工作已有负责人，请等待结果或提出独立工作')
       if (work.activeRunId === input.runId) return work
       if (work.activeRunId) throw new WorkUnavailableError('工作已有运行持有执行权')
@@ -194,7 +220,13 @@ export class WorkRepository {
       if (work.requiresReview) throw new WorkUnavailableError('已有操作需要核对，不能自动重放')
       if (await tx.get<WorkExecution>('workExecutions', input.runId)) throw new WorkUnavailableError('该运行已释放执行权，不能再次执行')
       let budget = await tx.get<WorkBudget>('workBudgets', work.budgetId)
-      budget ??= newWorkBudget(work.budgetId)
+      if (!budget && work.collaborationRequestId && !isNew) throw new WorkUnavailableError('原协作预算缺失，不能重建默认额度')
+      budget ??= newWorkBudget(work.budgetId, input.organization ? { collaborationRequestId: input.organization.requestId, conversationId: input.conversationId } : undefined)
+      if (work.collaborationRequestId && (budget.accounting !== 'model-calls-v1' || budget.collaborationRequestId !== work.collaborationRequestId || budget.origin)) throw new WorkUnavailableError('不能改绑或复用另一工作的预算')
+      if (input.priorDecision) {
+        if (!input.organization) throw new WorkUnavailableError('普通工作不能采用组织判断调用')
+        await this.adoptOrganizationDecision(tx, work, budget, input.priorDecision)
+      }
       checkWorkBudget(budget)
       if (budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
       if (isNew) {
@@ -209,6 +241,42 @@ export class WorkRepository {
       const execution: WorkExecution = { ...(work.origin ? { origin: work.origin } : {}), id: input.runId, workId: work.id, budgetId: work.budgetId, agentId: input.agentId, claimVersion: work.version, modelCalls: budget.accounting ? 0 : 1, usage: {}, status: 'active' }
       if (revision && !revision.rootWorkId) { revision.rootWorkId = work.id; await tx.put(row('artifactRevisionRequests', revision)) }
       await tx.put(row('workItems', work)); await tx.put(row('workBudgets', budget)); await tx.put(row('workExecutions', execution))
+      return work
+    })
+  }
+
+  private async adoptOrganizationDecision(tx: RecordTransaction, work: WorkItem, budget: WorkBudget, prior: { runId: string; callIds: string[] }) {
+    const run = await tx.get<AgentRun>('runs', prior.runId)
+    if (!run || run.status !== 'completed' || run.phase !== 'decision' || run.agentId !== 'bobo' || run.conversationId !== work.conversationId || run.triggerMessageId !== work.sourceMessageId || run.origin || !run.turnId || !prior.callIds.length || prior.callIds.length > 8 || new Set(prior.callIds).size !== prior.callIds.length) throw new WorkUnavailableError('组织判断调用没有匹配的真实完成来源')
+    for (const id of prior.callIds) {
+      const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
+      if (!call || call.runId !== run.id || call.conversationId !== work.conversationId || call.phase !== 'decision' || !Number.isFinite(Date.parse(call.startedAt))) throw new WorkUnavailableError('组织判断缺少真实唯一模型调用回执')
+      const previous = await tx.get<BudgetModelCall>('budgetModelCalls', id)
+      if (call.budgetOwned && (!previous || previous.budgetId !== budget.id)) throw new WorkUnavailableError('组织判断调用已经属于另一预算')
+      await reserveBudgetCall(tx, budget, { id, conversationId: work.conversationId, runId: run.id, turnId: run.turnId, phase: 'decision', agentId: 'bobo', workId: work.id, collaborationRequestId: work.organization!.requestId })
+      if (call.usage) await settleBudgetCall(tx, id, run.id, call.usage)
+      Object.assign(budget, (await tx.get<WorkBudget>('workBudgets', budget.id))!)
+      await tx.put(row('profileModelCalls', { ...call, budgetOwned: true }))
+    }
+  }
+
+  assertOrganizationHolder(tx: RecordTransaction, authority: BoboOrganizationAuthority) { return organizationHolder(tx, authority) }
+  bindGroupStart(tx: RecordTransaction, operation: BoboCollaborationOperation, announcement?: Message) { return bindCollaborationGroup(tx, operation, announcement) }
+  resumeCollaborationStart(tx: RecordTransaction, intentId: string) { return resumeGroupStart(tx, intentId) }
+  claimOrganizationRecovery(tx: RecordTransaction, operation: BoboCollaborationOperation, runId: string, turnId: string) { return claimOrganizationFiles(tx, operation, runId, turnId) }
+
+  /** A deterministic managed-file continuation delivers its real receipt without inventing a chat reply. */
+  finishOrganizationRecovery(runId: string, operationId: string) {
+    return this.store.transaction(async tx => {
+      const { work, execution } = await this.holder(tx, runId)
+      const operation = await tx.get<BoboCollaborationOperation>('boboCollaborations', operationId)
+      if (!execution.organizationRecoveryFrom || execution.pendingEffects || !operation || operation.status !== 'committed' || operation.authority.runId !== runId || operation.authority.workVersion !== work.version || operation.announcementSource.runId !== execution.organizationRecoveryFrom) throw new WorkUnavailableError('原组织恢复尚未真实交付或仍有待核对操作')
+      const outcome: WorkOutcome = { disposition: 'delivered', summary: '已完成原组织发布', evidence: [{ kind: 'collaboration', reference: operation.id }] }
+      await assertCollaborationEvidence(tx, work, outcome)
+      work.outcome = outcome; work.status = 'delivered'; work.requiresReview = false; work.resultVersion++; work.version++; work.updatedAt = timestamp(); delete work.activeRunId
+      execution.status = 'released'
+      await tx.put(row('workItems', work)); await tx.put(row('workExecutions', execution))
+      await refreshWaiters(tx, work.conversationId, { runId, agentId: execution.agentId })
       return work
     })
   }
@@ -274,10 +342,24 @@ export class WorkRepository {
       return call ? tx.get<WorkBudget>('workBudgets', call.budgetId) : undefined
     })
   }
+  reserveCollaborationCall(run: AgentRun, callId: string, phase: BudgetModelCall['phase']) {
+    return this.store.transaction(async tx => {
+      const authority = await collaborationCallAuthority(tx, run, phase)
+      const previous = await tx.get('budgetModelCalls', callId)
+      await reserveBudgetCall(tx, authority.budget, { id: callId, runId: run.id, turnId: run.turnId!, conversationId: run.conversationId, phase, collaborationRequestId: authority.requestId, agentId: run.agentId, ...(run.workId ? { workId: run.workId } : {}) })
+      if (!previous && run.workId) {
+        const execution = await tx.get<WorkExecution>('workExecutions', run.id)
+        if (execution) { execution.modelCalls++; await tx.put(row('workExecutions', execution)) }
+      }
+      return callId
+    })
+  }
+  settleCollaborationCall(runId: string, callId: string, usage: ModelUsage) { return this.settleAutomationCall(runId, callId, usage) }
   reserveCall(runId: string) {
     return this.store.transaction(async tx => {
       const { execution } = await this.holder(tx, runId)
       const budget = (await tx.get<WorkBudget>('workBudgets', execution.budgetId))!
+      if (budget.collaborationRequestId) throw new WorkUnavailableError('协作模型调用必须使用唯一请求账本')
       checkWorkBudget(budget); budget.modelCalls++; execution.modelCalls++
       await tx.put(row('workExecutions', execution)); await tx.put(row('workBudgets', budget))
     })
@@ -286,6 +368,7 @@ export class WorkRepository {
     return this.store.transaction(async tx => {
       const { execution } = await this.holder(tx, runId)
       const budget = (await tx.get<WorkBudget>('workBudgets', execution.budgetId))!
+      if (budget.collaborationRequestId) return // Raw per-call receipts own this budget; cumulative SDK usage must not double-charge.
       for (const key of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[key] !== undefined) {
         if (!Number.isFinite(usage[key]) || usage[key]! < 0) throw new Error('工作用量必须是已知的非负数')
         const next = Math.max(execution.usage[key] ?? 0, usage[key]!)
@@ -309,6 +392,7 @@ export class WorkRepository {
       const { work, execution } = await this.holder(tx, runId)
       const evidenceError = workEvidenceError(outcome, receipt, !!execution.pendingWait)
       if (evidenceError) throw new Error(evidenceError)
+      await assertCollaborationEvidence(tx, work, outcome)
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
       const newResult = outcome.disposition === 'delivered' || receipt.artifactIds.some(id => !work.artifactIds.includes(id))
       const wait = execution.pendingWait
@@ -359,8 +443,9 @@ export class WorkRepository {
   }
   confirmEffect(runId: string) {
     return this.store.transaction(async tx => {
-      const { execution } = await this.holder(tx, runId)
+      const { execution, work } = await this.holder(tx, runId)
       if (!execution.pendingEffects) throw new Error('没有可确认的工具操作')
+      await confirmOrganizationRecovery(tx, work, execution)
       execution.pendingEffects--; await tx.put(row('workExecutions', execution))
     })
   }
@@ -377,6 +462,11 @@ export class WorkRepository {
     const proposal = workDelegationSchema.parse(input)
     return this.store.transaction(async tx => {
       const { work: parent, execution } = await this.holder(tx, runId)
+      if (parent.organization) throw new WorkUnavailableError('核心组织阶段不能在后台给员工分工，请在已发布群内协作')
+      if (parent.collaborationRequestId) {
+        const group = await tx.get<Conversation>('conversations', parent.conversationId), member = await tx.get<DigitalAgent>('agents', proposal.ownerAgentId)
+        if (!group?.agentIds.includes(proposal.ownerAgentId) || !member?.active || member.executionBackend?.kind === 'acp-local') throw new WorkUnavailableError('分工目标不是本群当前有效员工')
+      }
       if (parent.revisionRequestId) await this.revisionScope(tx, parent.revisionRequestId, parent.conversationId, proposal.ownerAgentId)
       const id = `work-${identity(parent.id, proposal.key)}`
       const previous = await tx.get<WorkItem>('workItems', id)
@@ -390,6 +480,7 @@ export class WorkRepository {
       const dependencies = proposal.dependencies ?? []
       const work: WorkItem = { schemaVersion: 2, id, conversationId: parent.conversationId, sourceMessageId: parent.sourceMessageId, ...(parent.origin ? { origin: parent.origin } : {}),
         ...(parent.revisionRequestId ? { revisionRequestId: parent.revisionRequestId } : {}),
+        ...(parent.collaborationRequestId ? { collaborationRequestId: parent.collaborationRequestId } : {}),
         ...(parent.materialSources?.length ? { materialSources: structuredClone(parent.materialSources) } : {}),
         key: proposal.key, scope: proposal.scope, deliverable: proposal.deliverable, ownerAgentId: proposal.ownerAgentId,
         rootWorkId: parent.rootWorkId, parentWorkId: parent.id, budgetId: parent.budgetId, version: 1,

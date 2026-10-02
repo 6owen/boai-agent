@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入与宿主服务及技能库保存请求。
+ * [OUTPUT]: bobo 组织结果/明确恢复 IPC 沿既有私有窗口白名单。
  * [OUTPUT]: 单一 runtime 浏览器桥、实际动作开始回执、旧连接退出门禁、窗口局部事件与实际 Chromium 退出后应用退出。
  * [OUTPUT]: D6 无正文会话元信息白名单；D6 有界个人历史/搜索/精确来源复核、阅读观测及独立锚点白名单，沿唯一类型化请求通道。
  * [OUTPUT]: 放行只读待处理分页/来源、原问题补充和显式本人固定版成果验收资格/回执；放行本机发现 ID 的单技能准备、原子员工绑定和只读请求回执；不暴露任意路径绑定。
@@ -70,6 +71,7 @@ const browsers = new BrowserService({
   },
 })
 const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
 for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
 for (const method of ['checkAllSkillUpdates', 'getSkillUpdateBatch', 'cancelSkillUpdateBatch'] as const) methods.add(method)

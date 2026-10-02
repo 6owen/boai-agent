@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
+ * [OUTPUT]: 已发布 bobo 协作群编辑保留现有核心成员，普通手动建群不能新添 bobo。
  * [OUTPUT]: 已保存模型员工的显式浏览器开关，新员工先保存、ACP不显示、不执行网页或自动建聊天； 已保存员工的明确本机技能绑定、草稿先保存、未决请求门禁及真实回执配置/版本同步；员工配置固定启用且不展示开关；核心助手可改名及设置默认模型，隐藏外部后端/命令开关，并排除群候选；既有群配置可确认解散及清理记录/群空间，刷新后丢弃编辑草稿并关闭；新交流记忆范围和可选事项关联；既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；独立表单 ID 支持多个详情标签同时挂载。
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -113,7 +114,7 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onD
     })
   }
   const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
-  return <><EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<>{conversation && <Button variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
+  return <><EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<>{conversation && <Button variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
     <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>

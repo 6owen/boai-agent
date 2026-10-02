@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本地资源目录、SKILL.md YAML 与受管数据根。
- * [OUTPUT]: 本机展示兼容名称与受管导入严格名称规则分离；有界普通文件树/hash、统一技能元数据解析、复制导入和产物列表。
+ * [OUTPUT]: 历史/活动成果枚举排除宿主团队文件归属标记，不进入用户列表或启动历史登记；本机展示兼容名称与受管导入严格名称规则分离；有界普通文件树/hash、统一技能元数据解析、复制导入和产物列表。
  * [POS]: resources 的文件校验与复制边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -109,7 +109,7 @@ export async function listArtifacts(workspace: string): Promise<Artifact[]> {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (artifacts.length >= 2000) return
       const path = join(directory, entry.name)
-      if (entry.isSymbolicLink()) continue
+      if (entry.isSymbolicLink() || entry.name === '.team-creation.json') continue
       const resolved = await realpath(path)
       if (!isWithin(root, resolved)) continue
       if (entry.isDirectory()) await walk(path)
