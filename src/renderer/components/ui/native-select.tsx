@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、原生 select、共享 buttonVariants 与全局语义样式。
- * [OUTPUT]: native-select 基础组件；复用 Button secondary 表面、字体和圆角，中性聚焦/错误校验边缘由全局 skin 控制，保留统一高度与原生选择行为。
+ * [OUTPUT]: native-select 基础组件；复用 Button secondary 表面、字体和圆角，全局 skin 提供无底部外侧阴影的内侧细边缘及中性聚焦/错误校验状态，保留统一高度与原生选择行为。
  * [POS]: components/ui 的 native-select 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */

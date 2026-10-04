@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 标题添加/检索入口同行，加号仅员工/群聊，常驻名称输入与唯一核心头像/名称分组标题与右侧新会话图标；名称筛选暂时展开且禁止子集重排、清除恢复原折叠；Dialog 搜索折叠会话不改变原折叠选择、定位后键盘换序保留非匹配会话；会话行计数/键盘排序排除核心分类导航按钮；无核心历史时仍保留分组标题；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；空态仅保留透明毛绒伙伴图片并验证加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；原生鼠标排序先等待分组实际展开且高度过渡结束，避免自动悬停滚动改变取点；忽略无限光标动画的稳定截图、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、清理后旧请求不可重放且新请求仍可交流、重启保留删除结果、通讯录创建与头像布局验证。
+ * [OUTPUT]: 侧栏标题只保留添加入口，检索位于全局顶栏浏览器右侧，侧栏收起及跨页仍能检索并回到确切会话，加号仅员工/群聊，常驻名称输入与唯一核心头像/名称分组标题与右侧新会话图标；名称筛选暂时展开且禁止子集重排、清除恢复原折叠；Dialog 搜索折叠会话不改变原折叠选择、定位后键盘换序保留非匹配会话；会话行计数/键盘排序排除核心分类导航按钮；无核心历史时仍保留分组标题；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；空态仅保留透明毛绒伙伴图片并验证加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；原生鼠标排序先等待分组实际展开且高度过渡结束，避免自动悬停滚动改变取点；忽略无限光标动画的稳定截图、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、清理后旧请求不可重放且新请求仍可交流、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -33,16 +33,38 @@ const context = async (runtime: Desktop, title: string, action: string) => {
   await runtime.page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
-Given('三个群聊出现在会话列表且标题提供添加与检索入口', async ({ runtime }) => {
+Given('三个群聊出现在会话列表且全局顶栏提供检索入口', async ({ runtime }) => {
   await runtime.start()
   await expect(runtime.page.locator('.app-shell')).toBeVisible()
   await runtime.page.evaluate(async () => {
     for (const title of ['协作甲', '资料库项目', '协作乙']) await window.boai.request('createConversation', { title, kind: 'group', agentIds: ['researcher', 'writer'] })
   })
   await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
-  await expect(runtime.page.locator('.conversation-list-panel .list-heading button')).toHaveCount(2)
-  const search = (await runtime.page.getByRole('button', { name: '搜索会话内容', exact: true }).boundingBox())!, add = (await runtime.page.getByRole('button', { name: '新建', exact: true }).boundingBox())!
-  expect(Math.abs(search.y - add.y)).toBeLessThan(2); expect(Math.min(Math.abs(search.x + search.width - add.x), Math.abs(add.x + add.width - search.x))).toBeLessThan(16)
+  await expect(runtime.page.locator('.conversation-list-panel .list-heading button')).toHaveCount(1)
+  const toolbar = runtime.page.locator('.global-toolbar'), searchButton = toolbar.getByRole('button', { name: '搜索会话内容', exact: true })
+  const search = (await searchButton.boundingBox())!, browser = (await toolbar.getByRole('button', { name: '打开内置浏览器', exact: true }).boundingBox())!
+  expect(Math.abs(search.y - browser.y)).toBeLessThan(2); expect(search.x).toBeGreaterThanOrEqual(browser.x + browser.width); expect(search.x - browser.x - browser.width).toBeLessThan(16)
+  await toolbar.getByRole('button', { name: '显示或隐藏会话列表', exact: true }).click()
+  await expect(runtime.page.locator('.conversation-list-panel')).toHaveCount(0)
+  await searchButton.click()
+  await expect(searchDialog(runtime)).toBeVisible()
+  await expect(searchDialog(runtime).locator('[data-slot=input-group]')).toHaveCSS('height', '32px')
+  await expect(runtime.page.locator('.conversation-list-panel')).toHaveCount(0)
+  await runtime.reviewCheckpoint('侧栏收起时从浏览器右侧打开紧凑检索弹窗')
+  await runtime.page.keyboard.press('Escape')
+  await expect(searchDialog(runtime)).toBeHidden()
+  await expect(searchButton).toBeFocused()
+  await toolbar.getByRole('button', { name: '显示或隐藏会话列表', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
+  await searchButton.click()
+  const dialog = searchDialog(runtime)
+  await dialog.getByRole('textbox', { name: '搜索关键词', exact: true }).fill('协作乙')
+  await dialog.locator('[data-search-kind=conversation]').filter({ hasText: '协作乙' }).click()
+  await expect(runtime.page.locator('.app-shell')).toHaveAttribute('data-page', 'conversations')
+  await expect(runtime.page.locator('.chat-title')).toHaveText('协作乙')
+  await expect(dialog).toBeHidden()
+  await runtime.page.reload()
+  await expect(list(runtime).locator('.conversation-item')).toHaveCount(3)
   await runtime.page.getByRole('button', { name: '新建', exact: true }).click()
   await expect(runtime.page.getByRole('menuitem')).toHaveCount(2)
   await expect(runtime.page.getByRole('menuitem', { name: '新建员工' })).toBeVisible()

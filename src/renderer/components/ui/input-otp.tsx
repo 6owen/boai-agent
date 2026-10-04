@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: input-otp 基础组件及其可组合的样式/变体。
+ * [OUTPUT]: input-otp 基础组件及其可组合的样式/变体；保留边框与焦点/错误状态，无底部外侧阴影。
  * [POS]: components/ui 的 input-otp 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */

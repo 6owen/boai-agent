@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
- * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本与个人浏览 API。
- * [OUTPUT]: 四项检索筛选均为 sm、28px 等高/全局 text-xs 字号/14px图标，明暗同款 secondary 的 card/渐变/控制阴影/零边框并留真实顶栏截图，默认四筛选文字/图标同为muted、时间选中正文色/图标仍muted及清除恢复占位，时间聚焦/展开保持中性边缘；长选项限高及真实排列末项滚动/选中、日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代标题图标入口/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
+ * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本、跨页面全局检索及当前详情作用域与个人浏览 API。
+ * [OUTPUT]: 四项检索筛选均为 sm、28px 等高/全局 text-xs 字号/14px图标，明暗同款 secondary 的 card/渐变/无外侧阴影输入边缘/零边框并留真实顶栏截图，默认四筛选文字/图标同为muted、时间选中正文色/图标仍muted及清除恢复占位，时间聚焦/展开保持中性边缘；长选项限高及真实排列末项滚动/选中、日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代全局顶栏图标入口和32px关键词输入/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
  * [POS]: D6 Electron 步骤；仅 support 控制历史/HTTP 和传输观测，业务与 SQLite 事务保持真实。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -126,13 +126,14 @@ Given('不同会话已保存同词名称正文和同名材料成果', async ({ r
   readingState.artifacts = current.artifacts as ArtifactVersion[]; readingState.calls = fixture.endpoint.requests.length
   readingState.probe = await readingBrowserProbe(runtime); expect(fixture.errors).toEqual([])
 })
-When('用户从标题检索图标输入关键词而不选择筛选', async ({ runtime }) => {
+When('用户从全局顶栏检索图标输入关键词而不选择筛选', async ({ runtime }) => {
   await expect(runtime.page.locator('[aria-label="会话搜索类型"]')).toHaveCount(0)
   await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
   await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toHaveValue('')
   const dialog = await search(runtime, '全部类型', '交付报告')
   await expect(dialog.getByRole('textbox')).toHaveCount(1)
   await expect(dialog.getByRole('textbox', { name: '搜索关键词', exact: true })).toHaveAttribute('placeholder', '搜索会话、消息或文件')
+  await expect(dialog.locator('[data-slot=input-group]')).toHaveCSS('height', '32px')
   await expect(dialog.getByRole('combobox', { name: '检索类型', exact: true })).toContainText('全部类型')
   await expect(dialog.getByRole('combobox', { name: '所在会话', exact: true })).toContainText('全部会话')
   await expect(dialog.getByRole('combobox', { name: '发言员工', exact: true })).toContainText('全部员工')
@@ -146,6 +147,7 @@ Then('同一弹窗同时返回会话消息材料和成果而保持各自身份',
   expect(material.id).not.toBe(first.id); expect((await readingRecords(readingState.files!.dataPath)).acceptances).toEqual([])
   expect(readingState.files!.endpoint.requests).toHaveLength(readingState.calls!)
   await runtime.page.screenshot({ path: '.local/search-dialog-20261001.png', animations: 'disabled' })
+  await runtime.reviewCheckpoint('全局顶栏检索与32px关键词输入及混合来源结果')
 })
 Then('筛选均为 sm 同款且长会话选项限高可滚动', async ({ runtime, readingState }) => {
   const dialog = searchDialog(runtime), trigger = dialog.getByRole('combobox', { name: '所在会话', exact: true })
@@ -164,7 +166,7 @@ Then('筛选均为 sm 同款且长会话选项限高可滚动', async ({ runtime
     const sample = document.createElement('div')
     sample.className = 'text-xs'
     element.appendChild(sample)
-    Object.assign(sample.style, { backgroundColor: 'var(--card)', backgroundImage: 'linear-gradient(transparent,transparent),linear-gradient(to bottom,transparent,var(--soft-shade))', boxShadow: 'var(--shadow-control)', border: '0', borderRadius: 'var(--radius-control)', color: 'var(--muted-foreground)' })
+    Object.assign(sample.style, { backgroundColor: 'var(--card)', backgroundImage: 'linear-gradient(transparent,transparent),linear-gradient(to bottom,transparent,var(--soft-shade))', boxShadow: 'var(--shadow-input)', border: '0', borderRadius: 'var(--radius-control)', color: 'var(--muted-foreground)' })
     const value = getComputedStyle(sample)
     const secondary = { shadow: value.boxShadow, background: value.backgroundColor, gradient: value.backgroundImage, border: value.borderWidth, radius: value.borderRadius, color: value.color, iconColor: value.color, fontSize: value.fontSize }
     sample.remove()
@@ -228,7 +230,7 @@ When('用户按类型会话员工和日期筛选后清除条件', async ({ runti
   await runtime.page.mouse.move(0, 0)
   const theme = await time.evaluate(element => {
     const sample = document.createElement('div'); element.appendChild(sample)
-    sample.style.boxShadow = 'var(--shadow-control)'
+    sample.style.boxShadow = 'var(--shadow-input)'
     sample.style.color = 'var(--muted-foreground)'
     const style = getComputedStyle(sample), shadow = style.boxShadow, muted = style.color
     sample.style.color = 'var(--foreground)'
@@ -285,6 +287,19 @@ When('用户选择会话和同名材料结果后关闭检索', async ({ runtime,
   await expect(searchDialog(runtime)).toHaveCount(0)
   await expect(runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)).toContainText('READING_SEARCH_MATERIAL')
   await search(runtime, '全部类型', '交付报告'); await runtime.page.keyboard.press('Escape'); await expect(searchDialog(runtime)).toHaveCount(0)
+})
+Then('全局检索在其他页面打开材料且详情留在当前页面', async ({ runtime, readingState }) => {
+  const page = runtime.page, material = readingState.searchMaterial!
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'contacts')
+  const dialog = await search(runtime, '全部类型', '交付报告')
+  await dialog.locator(`[data-search-kind="material"][data-search-result-id="${material.id}"]`).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'contacts')
+  await expect(page.locator(`[data-material-preview-id="${material.id}"]:visible`)).toContainText('READING_SEARCH_MATERIAL')
+  await runtime.reviewCheckpoint('通讯录页全局检索的原材料预览保持当前详情工作区')
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'conversations')
 })
 Then('关闭的检索不再读取且会话列表仍可正常选中', async ({ runtime, readingState }) => {
   const count = async () => (await readingState.probe!()).filter(request => request.method === 'searchConversations').length

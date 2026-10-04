@@ -1,6 +1,6 @@
 /*
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
- * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；composer 阴影复用 control 的细边缘/高光；shadcn 语义别名与背景图层。
+ * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；input/composer 仅保留 control 的内侧细边缘/高光，Button/Card 保留外侧阴影；shadcn 语义别名与背景图层。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -70,14 +70,15 @@
   --soft-emphasis-edge:#00000026;
   --soft-thumb:#ffffff;
   --shadow-small:0 2px 2px -1px #0000000a,0 4px 4px -2px #00000005;
-  --shadow-control:inset 0 0 0 .5px var(--soft-hairline),inset 0 .5px 0 var(--soft-edge-top),inset 0 -.5px 0 var(--soft-edge-bottom),inset 0 2px 0 -1px var(--soft-highlight),inset 0 -2px 0 -1px var(--soft-highlight-bottom),var(--shadow-small);
+  --shadow-input:inset 0 0 0 .5px var(--soft-hairline),inset 0 .5px 0 var(--soft-edge-top),inset 0 -.5px 0 var(--soft-edge-bottom),inset 0 2px 0 -1px var(--soft-highlight),inset 0 -2px 0 -1px var(--soft-highlight-bottom);
+  --shadow-control:var(--shadow-input),var(--shadow-small);
   --shadow-divider:inset 0 .5px 0 var(--soft-hairline),inset 0 1px 0 var(--soft-highlight-bottom);
   --shadow-divider-vertical:inset .5px 0 0 var(--soft-hairline),inset 1px 0 0 var(--soft-highlight-bottom);
   --shadow-emphasis:inset 0 0 0 1px var(--soft-emphasis-edge),inset 0 2px 0 -1px var(--soft-emphasis-highlight),var(--shadow-small);
   --shadow-field:inset 0 1px 2px #00000006,0 1px 0 var(--soft-surface-highlight);
   --shadow-card:inset 0 1px 0 var(--soft-surface-highlight),0 2px 4px -2px #0000000a;
   --shadow-popover:0 0 0 1px var(--soft-outer-highlight),0 1px 2px #3333331a,0 10px 24px -8px #33333347,0 28px 48px -20px #33333338;
-  --shadow-composer:var(--shadow-control);
+  --shadow-composer:var(--shadow-input);
   --app:var(--surface-app);
   --list:var(--surface-list);
   --content:var(--surface-content);

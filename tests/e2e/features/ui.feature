@@ -1,6 +1,6 @@
 # language: zh-CN
 # [INPUT]: 基础组件/生产消息卡片实际渲染、Sonner 和隔离的 Electron 环境。
-# [OUTPUT]: 六种表单控件共用 secondary 表面、聚焦/展开保持中性边缘、校验保留红边及组合无双框比较；ChatComposer 文本/按钮聚焦保持正常 control 阴影、32px圆角/独立背景及禁用发送按钮和截图；可访问交互、复制短错误、Sonner 四状态混色/紧凑/真实折叠/固定左右控件/状态同色纯 X，12%悬停色跟随明暗主题/字体及干净截图。
+# [OUTPUT]: 六种表单控件共用 secondary 表面但仅保留内侧边缘、无底部外侧阴影，普通 Button 保留外侧阴影；聚焦/展开保持中性边缘、校验保留红边及组合无双框比较；ChatComposer 文本/按钮聚焦保持无外侧阴影的中性边缘、32px圆角/独立背景及禁用发送按钮和截图；可访问交互、复制短错误、Sonner 四状态混色/紧凑/真实折叠/固定左右控件/状态同色纯 X，12%悬停色跟随明暗主题/字体及干净截图。
 # [POS]: tests/e2e/features/ui.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 @electron @ui @development

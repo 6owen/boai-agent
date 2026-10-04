@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 基础组件/生产 MessageCard/Sonner 的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 六种表单控件共用 secondary 表面，聚焦/展开保持中性 control 阴影、校验仍单层红边及组合无双框；ChatComposer 文本/按钮聚焦保持正常中性边缘和32px圆角/独立背景，禁用发送按钮不抑制文本焦点；透明内层只接受 none 或透明零尺寸阴影及比较截图；复制短错误和 Sonner 四状态/紧凑/真实折叠/固定左右控件/状态同色纯 X与悬停明暗截图。
+ * [OUTPUT]: 六种表单控件共用 secondary 表面但仅保留内侧边缘、无底部外侧阴影，普通 Button 保留外侧阴影；聚焦/展开保持中性、校验仍单层红边及组合无双框；ChatComposer 文本/按钮聚焦保持无外侧阴影的中性边缘和32px圆角/独立背景，禁用发送按钮不抑制文本焦点；透明内层只接受 none 或透明零尺寸阴影及比较截图；明暗表单/聊天输入截图后保存清理前审阅检查点；复制短错误和 Sonner 四状态/紧凑/真实折叠/固定左右控件/状态同色纯 X与悬停明暗截图。
  * [POS]: tests/e2e/steps/ui.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -117,7 +117,7 @@ async function formSurface(element: Locator) {
   })
 }
 
-async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadComponentFixture>>) {
+async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadComponentFixture>>, runtime: Desktop) {
   const { page, errors } = previous
   const section = page.locator('#form-surfaces'), reference = section.locator('#surface-reference')
   const controls = [
@@ -141,6 +141,11 @@ async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadCompon
     await expect(inner).toHaveCSS('border-width', '0px')
     await expect(inner).toHaveCSS('outline-width', '0px')
   }
+  const verifyInputShadow = async (control: Locator) => {
+    const { shadow } = await formSurface(control)
+    // Split between shadow layers, preserving commas inside rgb()/rgba().
+    for (const layer of shadow.split(/,(?![^()]*\))/)) expect(layer).toMatch(/\binset\b/)
+  }
   for (const mode of ['light', 'dark'] as const) {
     await page.evaluate(async mode => {
       const state = await window.boai.request('getAppearance', undefined)
@@ -158,26 +163,33 @@ async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadCompon
         return { background: style.backgroundColor, gradient: style.backgroundImage, shadow: style.boxShadow, border: style.borderWidth, radius: style.borderRadius, color: style.color }
       }
       sample.style.backgroundImage = 'linear-gradient(transparent,transparent),linear-gradient(to bottom,transparent,var(--soft-shade))'
-      const normal = read()
+      const buttonNormal = read()
       sample.style.backgroundImage = 'linear-gradient(var(--soft-hover),var(--soft-hover)),linear-gradient(to bottom,transparent,var(--soft-shade))'
+      const buttonHover = read()
+      sample.style.boxShadow = 'var(--shadow-input)'
       const hover = read()
       sample.style.backgroundImage = 'linear-gradient(transparent,transparent),linear-gradient(to bottom,transparent,var(--soft-shade))'
-      sample.style.boxShadow = 'inset 0 0 0 1px var(--destructive),var(--shadow-control)'
+      const normal = read()
+      sample.style.boxShadow = 'inset 0 0 0 1px var(--destructive),var(--shadow-input)'
       const invalid = read()
-      Object.assign(sample.style, { backgroundColor: 'var(--surface-composer)', backgroundImage: 'linear-gradient(to bottom,var(--soft-surface-tint),transparent)', borderRadius: 'var(--radius-composer)', boxShadow: 'var(--shadow-control)' })
+      Object.assign(sample.style, { backgroundColor: 'var(--surface-composer)', backgroundImage: 'linear-gradient(to bottom,var(--soft-surface-tint),transparent)', borderRadius: 'var(--radius-composer)', boxShadow: 'var(--shadow-input)' })
       const composer = read()
       sample.remove()
-      return { normal, hover, invalid, composer }
+      return { normal, hover, invalid, composer, buttonNormal, buttonHover }
     })
-    await expect.poll(() => formSurface(reference)).toEqual(expected.normal)
+    await expect.poll(() => formSurface(reference)).toEqual(expected.buttonNormal)
+    const buttonShadow = (await formSurface(reference)).shadow
+    expect(buttonShadow).not.toBe('none')
+    expect(buttonShadow.split(/,(?![^()]*\))/).some(layer => !/\binset\b/.test(layer))).toBe(true)
     await reference.hover()
-    await expect.poll(() => formSurface(reference)).toEqual(expected.hover)
+    await expect.poll(() => formSurface(reference)).toEqual(expected.buttonHover)
     expect(expected.hover.gradient).not.toBe(expected.normal.gradient)
     expect(expected.invalid.shadow).not.toBe(expected.normal.shadow)
     await blur()
     for (const control of controls) {
       const outer = section.locator(`#${control.outer}`), input = section.locator(`#${control.focus}`)
       await expect.poll(() => formSurface(outer)).toEqual(expected.normal)
+      await verifyInputShadow(outer)
       await outer.hover()
       await expect.poll(() => formSurface(outer)).toEqual(expected.hover)
       await page.mouse.move(0, 0)
@@ -220,9 +232,11 @@ async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadCompon
     const screenshot = test.info().outputPath(`form-controls-${mode}.png`)
     await section.screenshot({ path: screenshot, animations: 'disabled' })
     await test.info().attach(`form-controls-${mode}`, { path: screenshot, contentType: 'image/png' })
+    await runtime.reviewCheckpoint(`${mode} 表单输入仅保留内侧边缘，普通按钮保留外侧阴影`)
     const composer = page.locator('#surface-composer'), composerInput = composer.locator('.chat-composer-input')
     await composer.scrollIntoViewIfNeeded()
     await expect.poll(() => formSurface(composer)).toEqual(expected.composer)
+    await verifyInputShadow(composer)
     await expect(composer).toHaveCSS('border-radius', '32px')
     await expect(composer.getByRole('button', { name: '发送验收消息', exact: true })).toBeDisabled()
     await verifyInner(composerInput)
@@ -238,6 +252,7 @@ async function verifyFormSurfaces(previous: Awaited<ReturnType<typeof loadCompon
     const composerScreenshot = test.info().outputPath(`composer-${mode}.png`)
     await composer.screenshot({ path: composerScreenshot, animations: 'disabled' })
     await test.info().attach(`composer-${mode}`, { path: composerScreenshot, contentType: 'image/png' })
+    await runtime.reviewCheckpoint(`${mode} 聊天输入保持大圆角与独立背景，无底部外侧阴影`)
     await section.scrollIntoViewIfNeeded()
   }
   expect(errors).toEqual([])
@@ -540,6 +555,6 @@ Then('Sonner 提示长短正文保持左右固定控件且折叠堆叠保持主�
   await verifyReactiveToasts(scenario.exerciseMessageCopyError!)
 })
 
-Then('六种表单控件在明暗主题共用按钮表面并保留校验与组合边界', async ({ scenario }) => {
-  await verifyFormSurfaces(scenario.loadComponentFixture!)
+Then('六种表单控件在明暗主题共用按钮表面并保留校验与组合边界', async ({ scenario, runtime }) => {
+  await verifyFormSurfaces(scenario.loadComponentFixture!, runtime)
 })

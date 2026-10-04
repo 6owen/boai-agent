@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: input-group 基础组件；默认组由全局 skin 统一 Button secondary 表面/边缘和中性聚焦/错误校验状态，内层透明无框，聊天输入框保留独立变体。
+ * [OUTPUT]: input-group 基础组件；默认组由全局 skin 统一 Button secondary 表面/内侧细边缘，无底部外侧阴影并保留中性聚焦/错误校验状态，内层透明无框，聊天输入框保留独立变体。
  * [POS]: components/ui 的 input-group 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */

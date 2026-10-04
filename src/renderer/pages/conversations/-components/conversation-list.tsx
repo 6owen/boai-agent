@@ -1,13 +1,12 @@
 /*
  * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
- * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右侧设置/新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；加号旁全局搜索图标和普通 Dialog，默认全范围及可选筛选、关闭停读和稳定身份导航。
+ * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右侧设置/新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { DragList, DragListItem } from '@/components/common/drag-list'
 import { cn } from 'cn'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Empty, EmptyHeader, EmptyMedia, EmptyDescription } from '@/components/ui/empty'
@@ -24,14 +23,8 @@ import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { type ChatDraft } from '../presentation'
 import { ConversationHistoryDialog } from './conversation-history-dialog'
-import type { DesktopApi } from '@shared/ipc'
-import type { ConversationSearchResult, ConversationSearchTarget } from '@shared/domain/reading'
-import { ConversationSearch, type ConversationSearchRequest } from './conversation-search'
 
 interface Props {
-  api: DesktopApi; active: boolean; searchRequest?: ConversationSearchRequest; onSearchResult(result: ConversationSearchResult, current: () => boolean, navigated: () => void): Promise<void>
-  onSearchUnavailable(target: ConversationSearchTarget): void
-  onSearchOpenChange(open: boolean): void
   snapshot: Snapshot; selectedId: string | null
   previews: Record<string, string>; messageTimes: Record<string, string>; drafts: Map<string, ChatDraft>
   onSelect(id: string): void; onCreate(kind: 'agent' | 'group'): void
@@ -40,12 +33,8 @@ interface Props {
   onEditTitle(conversation: Conversation): void
   onChange(change: ConversationListChange): void; onClear(id: string, hide: boolean): Promise<void>; busy: boolean
 }
-export function ConversationList({ api, active, searchRequest, onSearchResult, onSearchUnavailable, onSearchOpenChange, snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy }: Props) {
+export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy }: Props) {
   const [query, setQuery] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false), [dialogRequest, setDialogRequest] = useState<ConversationSearchRequest>()
-  useEffect(() => { if (searchRequest) { setDialogRequest(searchRequest); setSearchOpen(true) } }, [searchRequest?.requestId])
-  useEffect(() => { if (!active) setSearchOpen(false) }, [active])
-  useEffect(() => { onSearchOpenChange(active && searchOpen); return () => onSearchOpenChange(false) }, [active, searchOpen, onSearchOpenChange])
   const [coreOpen, setCoreOpen] = useState(true)
   const [coreMenuOpen, setCoreMenuOpen] = useState(false)
   const [coreHistoryMenuId, setCoreHistoryMenuId] = useState<string | null>(null)
@@ -98,10 +87,7 @@ export function ConversationList({ api, active, searchRequest, onSearchResult, o
   const ordinary = conversations.filter(item => !isCoreConversation(item))
   const pinned = ordinary.filter(item => item.list?.pinned), regular = ordinary.filter(item => !item.list?.pinned)
   return <div className="conversation-list-panel">
-    <div className="list-heading"><h2>会话</h2><div className="list-heading-actions"><Dialog open={active && searchOpen} onOpenChange={setSearchOpen}>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={() => setDialogRequest({ requestId: crypto.randomUUID() })}><Search /></DialogTrigger>
-      <ConversationSearch api={api} active={active && searchOpen} snapshot={snapshot} selectedId={selectedId} request={dialogRequest} onOpen={(result, current) => onSearchResult(result, current, () => setSearchOpen(false))} onUnavailable={onSearchUnavailable} />
-    </Dialog><AddContactMenu onCreate={onCreate} /></div></div>
+    <div className="list-heading"><h2>会话</h2><div className="list-heading-actions"><AddContactMenu onCreate={onCreate} /></div></div>
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
       <div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined}>

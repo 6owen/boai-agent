@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 普通搜索 Dialog 的活跃状态、可选类型/可见会话/员工与shadcn Calendar日期范围、稳定 SQL/索引代际游标、正文命中与覆盖回执和点击来源复核。
  * [OUTPUT]: 顶部统一关键词、单行 sm 同款 secondary 类型/会话/员工/时间筛选和混合结果，时间未选占位与其他筛选同色、选中后显示正文色；正文摘录/位置、多词原词高亮、索引覆盖与有界失败可见，明确继续回填不调用模型；范围与会话列表可见配置一致，日期按本地起止日筛选；查询刷新不注销有效导航，关闭/条件改变/来源清理隔离迟到响应，所选来源移除时拒绝控件自动回退全部范围。
- * [POS]: 会话列表搜索图标打开的普通 Dialog 内容；复用宿主检索，不使用 CommandDialog，不读取任意路径。
+ * [POS]: 全局顶栏搜索图标与本会话搜索共用的普通 Dialog 内容，关键词输入沿用32px公共高度；复用宿主检索，不使用 CommandDialog，不读取任意路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState } from 'react'
@@ -93,7 +93,7 @@ export function ConversationSearch({ api, active, snapshot, selectedId, request,
     <DialogTitle className="sr-only">搜索会话内容</DialogTitle>
     <DialogDescription className="sr-only">搜索会话名称、消息正文和已发送材料或已发布文本成果的名称与正文。多个词同时匹配，优先显示相关结果。筛选均可不选，默认搜索当前可见的全部获准会话。</DialogDescription>
     <div className="flex items-center gap-2 p-4">
-      <InputGroup className="h-12"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput ref={inputRef} aria-label="搜索关键词" placeholder="搜索会话、消息或文件" maxLength={READING_LIMITS.keywordCharacters} value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
+      <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput ref={inputRef} aria-label="搜索关键词" placeholder="搜索会话、消息或文件" maxLength={READING_LIMITS.keywordCharacters} value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
       <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="关闭搜索" />}><X /></DialogClose>
     </div>
     <FieldGroup className="flex-row flex-wrap items-center gap-2 px-4 pb-4" aria-label="搜索筛选">
