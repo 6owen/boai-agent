@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Q1/Q2 中文场景、生产 Electron 搜索 Dialog/IPC、原生材料选择与真实成果修订。
- * [OUTPUT]: 正文独有关键词的有界命中/覆盖、材料与旧版固定导航，外改失败无旧摘录、重启与清理零业务重放和关闭迟到隔离。
+ * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 正文独有关键词的有界命中/覆盖、材料与旧版固定导航，外改失败无旧摘录、重启与清理零业务重放和关闭迟到隔离。
  * [POS]: 搜索升级业务步骤；支撑层只控制协议/文件/回执传输，检索和事务均走真实实现。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -61,10 +61,9 @@ Given('原生发送材料和真实工具已发布两版同名成果且关键词�
   state.material = detail.materials![0]; state.artifact = detail.artifacts[0] as ArtifactVersion
   expect(state.material.messageId).toBeTruthy()
   await runtime.page.locator(`#message-${state.artifact.sourceMessageId}:visible`).getByRole('button', { name: `打开 ${state.artifact.name}`, exact: true }).click()
-  const first = panel(runtime, state.artifact.id)
-  await first.getByRole('button', { name: '要求修改', exact: true }).click()
-  await first.getByRole('textbox', { name: '修改要求', exact: true }).fill('保留原报告并补充说明，发布修订版。')
-  await first.getByRole('button', { name: '提交修改要求', exact: true }).click()
+  await runtime.page.locator(`.messages [data-chat-artifact-id="${state.artifact.id}"]`).getByRole('button', { name: '要求修改', exact: true }).click()
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('保留原报告并补充说明，发布修订版。')
+  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
   const updated = await settled(runtime, fixture.group.id, 2)
   expect(updated.artifacts.find(item => item.contentVersion === 2)?.previousArtifactId).toBe(state.artifact.id)
   expect(updated.messages.some(item => item.content.includes(SEARCH_ARTIFACT_BODY) || item.content.includes(SEARCH_MATERIAL_BODY))).toBe(false)

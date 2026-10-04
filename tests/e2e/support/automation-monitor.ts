@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 场景独立数据目录、来源聊天与结构化观测值。
  * [OUTPUT]: 持久已发布的 JSON 来源和检查点只读查询；不替代监控 IPC、比较器或运行账本。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: Electron 监控场景数据支撑；文件与记录均限于测试目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -20,7 +21,7 @@ export async function publishMonitorSample(root: string, conversationId: string,
   return id
 }
 export async function monitorCheckpoint(root: string, id: string) {
-  const store = new ProductStore(join(root, 'v2', 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(root, 'v2', 'boai.sqlite'))
   try { return (await store.load<AutomationMonitorCheckpoint>('automationMonitorCheckpoints')).find(c => c.id === id) }
   finally { await store.close() }
 }

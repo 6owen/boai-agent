@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Playwright Electron、场景独立数据目录、可选打包入口与组件测试服务。
- * [OUTPUT]: 可选场景引导入口、可重启的真实桌面生命周期、资源回收和逐次启动的失败证据。
+ * [INPUT]: Playwright Electron、场景独立数据目录、可选打包入口与组件测试服务、显式 BOAI_REVIEW_RUN_DIR。
+ * [OUTPUT]: 可重启的真实桌面生命周期与资源回收；可选关键画面/明确原件/白名单数据归档、每次关闭前画面和逐次 trace 索引。
  * [POS]: Electron BDD 场景共享宿主；启动由 Given 控制，允许先准备旧数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Server } from 'node:http'
+import { FeatureReview } from './feature-review'
 
 export class Desktop {
   readonly errors: string[] = []
@@ -21,10 +22,12 @@ export class Desktop {
   private constructor(
     readonly root: string,
     private readonly info: TestInfo,
+    private readonly review?: FeatureReview,
   ) {}
 
   static async create(info: TestInfo) {
-    return new Desktop(await mkdtemp(join(tmpdir(), 'boai-bdd-')), info)
+    const root = await mkdtemp(join(tmpdir(), 'boai-bdd-'))
+    return new Desktop(root, info, await FeatureReview.create(root, info))
   }
 
   get app() {
@@ -39,6 +42,18 @@ export class Desktop {
 
   defer(cleanup: () => Promise<unknown>) {
     this.cleanup.push(cleanup)
+  }
+
+  async reviewCheckpoint(label: string): Promise<void> {
+    await this.review?.checkpoint(label, this.window)
+  }
+
+  async reviewFile(label: string, path: string): Promise<void> {
+    await this.review?.file(label, path)
+  }
+
+  async reviewData(label: string, value: unknown): Promise<void> {
+    await this.review?.data(label, value)
   }
 
   trackServer(server: Server) {
@@ -61,6 +76,7 @@ export class Desktop {
       env,
     })
     this.launchCount++
+    this.review?.launched(this.launchCount)
     await this.application.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
     this.window = await this.application.firstWindow()
     this.window.on('pageerror', (error) => this.errors.push(error.message))
@@ -77,9 +93,11 @@ export class Desktop {
     const app = this.application,
       page = this.window
     if (!app) return
+    if (this.review) await this.reviewCheckpoint(`第 ${this.launchCount} 次启动结束画面`)
     const path = this.info.outputPath(`desktop-${this.launchCount}.zip`)
     try {
       await app.context().tracing.stop({ path })
+      await this.review?.trace(path, this.launchCount)
       await this.info.attach(`桌面启动 ${this.launchCount}`, { path, contentType: 'application/zip' })
     } finally {
       try {
@@ -118,6 +136,7 @@ export class Desktop {
     } catch (error) {
       failures.push(error)
     }
+    await this.review?.finish(failures)
     if (failures.length) throw new AggregateError(failures, '桌面测试资源清理失败')
   }
 }

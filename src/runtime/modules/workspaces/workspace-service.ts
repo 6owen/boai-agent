@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 员工配置、受管文件和范围内记忆。
+ * [OUTPUT]: 根记忆投影同时过滤失效来源链，不能仅依active状态保留历史派生正文。
  * [OUTPUT]: 宿主统一召回的完整预算条目与受控记忆文件投影；员工根投影排除限定会话/事项来源；现有初始化/投影与系统文件访问；团队未发布文件的确定性准备清单。
  * [POS]: 工作区文件格式唯一来源，初始人格及记忆行为保持不变。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -172,7 +173,12 @@ export class WorkspaceService {
     return { agentId: agent.id, workspacePath: this.root(agent.id), ...(conversationId ? { sessionPath: this.session(agent.id, conversationId) } : {}), memoryNamespace: agent.memoryNamespace ?? `employee:${agent.id}`, configVersion: agent.configVersion, files }
   }
   async regenerate(agent: DigitalAgent, memory: MemoryView, conversationId?: string, force = false) {
-    memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && (conversationId || memoryUseScope(entry) === 'employee')) }
+    const unavailable = new Set(memory.entries.filter(entry => memoryStatus(entry) !== 'active').map(entry => entry.id))
+    for (let changed = true; changed;) {
+      changed = false
+      for (const entry of memory.entries) if (!unavailable.has(entry.id) && entry.sourceMemoryIds?.some(id => unavailable.has(id))) { unavailable.add(entry.id); changed = true }
+    }
+    memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && !unavailable.has(entry.id) && (conversationId || memoryUseScope(entry) === 'employee')) }
     const manifest = await this.manifest(agent.id), root = conversationId ? this.session(agent.id, conversationId) : this.root(agent.id)
     const projected: string[] = []
     let projectedBytes = 0

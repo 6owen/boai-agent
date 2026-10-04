@@ -1,6 +1,7 @@
 /*
  * [INPUT]: BRM4 中文意图、原生产窗口/工具/授权/SQLite、真实本地网页和离线模型协议。
- * [OUTPUT]: 默认开窗/真实toolbarReady/原生可见与双成员零新工作；普通导航保留原Work/预算并核对新snapshot，X关闭实际退出，无控制权菜单/页面锁；正文媒体/来源/R1/Cookie/审批/清理重启不变量；本轮未运行。
+ * [OUTPUT]: 内置浏览器固定开窗/真实toolbarReady/原生可见与零新工作；普通导航保留原Work/预算并核对新snapshot，X关闭实际退出，无控制权菜单/页面锁；真实非零网页布局、正文媒体/来源/持久登录/审批/清理重启不变量。
+ * [OUTPUT]: 统一窗口与登录跨页面、业务清理和任务调用保留，任务审计仅从SQLite读取。
  * [POS]: 浏览器迁移 Electron 步骤；不替代宿主 BrowserPaneFns/CDP 或动作事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -45,34 +46,14 @@ async function ordinaryBrowserSurface(runtime: Desktop, instanceId: string) {
   const native = (await nativeBrowserViews(runtime)).find(window => window.views.some(view => view.url.includes(`instanceId=${instanceId}`)))!
   expect(native.views).toHaveLength(3)
   expect(native.views.filter(view => view.bounds.width === 0 && view.bounds.height === 0)).toHaveLength(1)
+  expect(native.views.filter(view => view.bounds.width > 0 && view.bounds.height > 0)).toHaveLength(2)
 }
-Given('一个无需浏览器配置的新模型员工有两个独立会话', async ({ runtime, browserMigrationState: state }) => { state.fixture = await prepareBrowserDesktop(runtime); expect(state.fixture.agent.allowBrowser).toBe(true) })
-Given('一个浏览器字段为 {string} 的旧员工有两个独立会话', async ({ runtime, browserMigrationState: state }, legacy: string) => {
-  expect(['关闭', '缺失']).toContain(legacy)
-  state.fixture = await prepareBrowserDesktop(runtime, { legacy: legacy === '关闭' ? 'false' : 'missing', kind: 'direct' })
-})
-Given('两个无需浏览器配置的新模型员工在同一群', async ({ runtime, browserMigrationState: state }) => { state.fixture = await prepareBrowserDesktop(runtime, { groupPeer: true }); expect(state.fixture.first.agentIds).toHaveLength(2) })
-Given('bobo已有普通讨论且无需配置浏览器', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture = await prepareBrowserDesktop(runtime)
-  f.agent = await runtime.page.evaluate(async connectionId => {
-    const core = (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'bobo' && agent.systemRole === 'core')!
-    const { configVersion, workspaceRef: _workspace, memoryNamespace: _memory, policyVersion: _policy, creationSource: _source, systemRole: _systemRole, allowBrowser: _browser, ...input } = core
-    return window.boai.request('saveAgent', { ...input, expectedConfigVersion: configVersion, connectionId, modelId: 'browser-fixture' })
-  }, f.connection.id)
-  f.plans.set('core-chat', { kind: 'chat', commands: [] })
-  f.first = await runtime.page.evaluate(() => window.boai.request('startCoreConversation', { requestId: 'browser-core-start', content: 'BROWSER_CASE:core-chat\n你好，只讨论，不创建任务。' }))
-  const detail = await settled(runtime, f.first, 1)
-  f.first = detail.conversation
-  expect(detail.conversation).toMatchObject({ purpose: 'core', kind: 'direct', agentIds: ['bobo'] })
-  expect(detail.messages.some(message => message.senderId === 'bobo' && message.status === 'completed')).toBe(true)
-  expect(f.errors).toEqual([])
-  state.calls = f.endpoint.requests.length; state.originalMessages = detail.messages
-})
+Given('内置浏览器离线任务与本地网页已准备好', async ({ runtime, browserMigrationState: state }) => { state.fixture = await prepareBrowserDesktop(runtime); expect(state.fixture.agent.allowBrowser).toBe(true) })
 When('员工进行普通聊天', async ({ runtime, browserMigrationState: state }) => {
   const fixture = state.fixture!; await fixture.send(fixture.first, 'default-chat', { kind: 'chat', commands: [] }); await settled(runtime, fixture.first, 1)
 })
 Then('普通聊天没有浏览器工具或动作', async ({ runtime, browserMigrationState: state }) => {
-  expect(await browserWindows(runtime, state.fixture!.first.id)).toEqual([]); expect(await nativeBrowserViews(runtime)).toEqual([]); expect(state.fixture!.site.hits).toEqual([])
+  expect(await browserWindows(runtime)).toEqual([]); expect(await nativeBrowserViews(runtime)).toEqual([]); expect(state.fixture!.site.hits).toEqual([])
   expect((await browserRecords(state.fixture!.dataPath)).actions).toEqual([]); expect(state.fixture!.observedTools.every(call => !call.names.includes('browser_tool'))).toBe(true)
 })
 When('用户让默认员工核读网页截图和发布成果', async ({ runtime, browserMigrationState: state }) => {
@@ -82,13 +63,13 @@ When('用户让默认员工核读网页截图和发布成果', async ({ runtime,
   state.artifact = detail.artifacts[0] as ArtifactVersion; expect(fixture.errors).toEqual([]); expect(state.artifact,JSON.stringify((await browserRecords(fixture.dataPath)).actions)).toBeDefined()
 })
 Then('原窗口三视图隔离网页且模型收到真实正文媒体和来源', async ({ runtime, browserMigrationState: state }) => {
-  const fixture = state.fixture!, windows = await browserWindows(runtime, fixture.first.id), native = await nativeBrowserViews(runtime)
-  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ agentId: fixture.agent.id, conversationId: fixture.first.id, control: 'idle', toolbarReady: true, url: `${fixture.site.origin}/landing` })
-  expect(native).toHaveLength(1); expect(native[0].title).toContain(`${fixture.agent.name} · ${fixture.first.title}`); expect(native[0].views).toHaveLength(3)
+  const fixture = state.fixture!, windows = await browserWindows(runtime), native = await nativeBrowserViews(runtime)
+  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ control: 'idle', toolbarReady: true, url: `${fixture.site.origin}/landing` })
+  expect(native).toHaveLength(1); expect(native[0].title).toBe('内置浏览器'); expect(native[0].views).toHaveLength(3)
   expect(native[0].views.filter(view => view.url.includes('browser-toolbar.html'))).toHaveLength(1); expect(native[0].views.filter(view => view.url.startsWith(fixture.site.origin))).toHaveLength(1)
   expect(native[0].views.every(view => view.preferences.sandbox && view.preferences.contextIsolation && !view.preferences.nodeIntegration)).toBe(true)
   expect(await webpageIsolation(runtime, fixture.site.origin)).toMatchObject({ boai: 'undefined', toolbar: 'undefined', require: 'undefined' })
-  await runtime.page.evaluate(input=>window.boai.request('browserControl',input),{agentId:fixture.agent.id,conversationId:fixture.first.id,action:'show' as const})
+  await runtime.page.evaluate(input=>window.boai.request('browserControl',input),{action:'show' as const})
   const nativeImage=await runtime.app.evaluate(async({BrowserWindow})=>{const browser=BrowserWindow.getAllWindows().find(window=>window.getBrowserViews().length===3)!;return (await browser.capturePage()).toPNG().toString('base64')})
   if(nativeImage)await state.attach!('原生浏览器三视图',Buffer.from(nativeImage,'base64'),'image/png')
   else if(process.platform==='darwin'){
@@ -123,27 +104,41 @@ Then('成果固定版本仍可检索且没有浏览器或模型重放', async ({
   expect(page.results[0]).toMatchObject({ id: state.artifact!.id, target: { contentVersion: 1, contentHash: state.artifact!.contentHash } }); expect(state.fixture!.endpoint.requests).toHaveLength(state.calls!)
   expect((await browserRecords(state.fixture!.dataPath)).actions).toHaveLength(state.actions!); expect(await nativeBrowserViews(runtime)).toEqual([]); expect(runtime.errors).toEqual([])
 })
-When('员工在两会话分别建立甲乙登录资料并再次读取甲会话', async ({ runtime, browserMigrationState: state }) => {
+When('不同任务依次使用内置浏览器并更新网站登录', async ({ runtime, browserMigrationState: state }) => {
   const f=state.fixture!
   await f.send(f.first,'cookie-alpha',{kind:'task',commands:[`navigate ${f.site.origin}/account?set=alpha`,'snapshot']}); await settled(runtime,f.first,1)
-  await f.send(f.second,'cookie-empty',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']}); const empty=await settled(runtime,f.second,1); expect(empty.messages.at(-1)!.content).toContain('COOKIE_SCOPE:none')
+  state.generation=(await browserWindows(runtime))[0].instanceId
+  await f.send(f.second,'cookie-shared',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']}); const shared=await settled(runtime,f.second,1); expect(shared.messages.at(-1)!.content).toContain('COOKIE_SCOPE:alpha')
   await f.send(f.second,'cookie-beta',{kind:'task',commands:[`navigate ${f.site.origin}/account?set=beta`,'snapshot']}); await settled(runtime,f.second,2)
-  await f.send(f.first,'cookie-recheck',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']}); const alpha=await settled(runtime,f.first,2); expect(alpha.messages.at(-1)!.content).toContain('COOKIE_SCOPE:alpha')
+  await f.send(f.first,'cookie-recheck',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']}); const current=await settled(runtime,f.first,2); expect(current.messages.at(-1)!.content).toContain('COOKIE_SCOPE:beta')
 })
-Then('两个浏览器窗口与实际网络 Cookie 始终按会话隔离', async ({ runtime,browserMigrationState:state })=>{
-  const f=state.fixture!,a=(await browserWindows(runtime,f.first.id))[0],b=(await browserWindows(runtime,f.second.id))[0]
-  expect(a.scopeKey).not.toBe(b.scopeKey);expect(a.instanceId).not.toBe(b.instanceId);expect(await nativeBrowserViews(runtime)).toHaveLength(2)
-  expect(f.site.hits.filter(hit=>hit.path==='/account'&&hit.method==='GET').map(hit=>hit.cookie)).toEqual(['','','','alpha'])
+Then('实际网页始终复用内置浏览器同一窗口和登录', async ({ runtime,browserMigrationState:state })=>{
+  const f=state.fixture!,windows=await browserWindows(runtime)
+  expect(windows).toHaveLength(1);expect(windows[0].instanceId).toBe(state.generation);expect(await nativeBrowserViews(runtime)).toHaveLength(1)
+  for(const property of ['agentId','conversationId','workId','runId','generation'])expect(windows[0]).not.toHaveProperty(property)
+  expect(f.site.hits.filter(hit=>hit.path==='/account'&&hit.method==='GET').map(hit=>hit.cookie)).toEqual(['','alpha','alpha','beta'])
   expect(f.errors).toEqual([])
 })
-When('用户清除甲会话登录资料后让两个会话再次读取',async({runtime,browserMigrationState:state})=>{
-  const f=state.fixture!;await runtime.page.evaluate(input=>window.boai.request('browserControl',input),{agentId:f.agent.id,conversationId:f.first.id,action:'clear' as const})
-  await f.send(f.first,'cookie-cleared',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']});await settled(runtime,f.first,3)
-  await f.send(f.second,'cookie-kept',{kind:'task',commands:[`navigate ${f.site.origin}/account`,'snapshot']});await settled(runtime,f.second,3)
+When('用户清理聊天删除业务对象后继续使用内置浏览器',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!;state.calls=f.endpoint.requests.length
+  await runtime.page.evaluate(async({first,second,agent})=>{
+    await window.boai.request('clearConversationHistory',{id:first,hide:false})
+    await window.boai.request('deleteConversation',{id:second})
+    await window.boai.request('deleteAgent',{id:agent})
+  },{first:f.first.id,second:f.second.id,agent:f.agent.id})
+  expect((await browserWindows(runtime))[0].instanceId).toBe(state.generation)
+  expect(await nativeBrowserViews(runtime)).toHaveLength(1)
+  await browserToolbarAction(runtime,state.generation!,'navigate',`${f.site.origin}/account`)
+  await expect.poll(()=>f.site.hits.filter(hit=>hit.path==='/account').at(-1)?.cookie).toBe('beta')
+  await browserToolbarAction(runtime,state.generation!,'close');await runtime.restart()
+  await runtime.page.locator('.global-toolbar').getByRole('button',{name:'打开内置浏览器',exact:true}).click()
+  await expect.poll(async()=>(await browserWindows(runtime))[0]?.toolbarReady).toBe(true)
+  await browserToolbarAction(runtime,(await browserWindows(runtime))[0].instanceId,'navigate',`${f.site.origin}/account`)
 })
-Then('甲会话重新打开为空登录且乙会话仍保留原登录',async({runtime,browserMigrationState:state})=>{
-  const f=state.fixture!;expect((await browserDetail(runtime,f.first.id)).messages.at(-1)!.content).toContain('COOKIE_SCOPE:none');expect((await browserDetail(runtime,f.second.id)).messages.at(-1)!.content).toContain('COOKIE_SCOPE:beta')
-  expect(f.site.hits.filter(hit=>hit.path==='/account'&&hit.method==='GET').slice(-2).map(hit=>hit.cookie)).toEqual(['','beta']);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
+Then('内置浏览器保留网站登录且不会重新执行任务',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!;await expect.poll(()=>f.site.hits.filter(hit=>hit.path==='/account').at(-1)?.cookie).toBe('beta')
+  expect(f.endpoint.requests).toHaveLength(state.calls!);expect(await nativeBrowserViews(runtime)).toHaveLength(1)
+  expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
 })
 When('模型提出批量脚本跨窗口与本机读取命令',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!,commands=[`navigate ${f.site.origin}/landing; click @e1`,'["open","snapshot"]','evaluate "fetch(\'/mutate\')"','focus forged-window','release all','upload @e1 /tmp/private.txt','get-clipboard','navigate file:///etc/hosts']
@@ -154,8 +149,8 @@ Then('所有命令均被拒绝且没有网页窗口网络或动作副作用',asy
 })
 When('正常任务打开网页后网页冒用工具栏和主界面身份',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;await f.send(f.second,'valid-sender',{kind:'task',commands:[`navigate ${f.site.origin}/landing`,'snapshot']});await settled(runtime,f.second,1)
-  const window=(await browserWindows(runtime,f.second.id))[0],before=JSON.stringify(window),spoof=await spoofBrowserSender(runtime,window.instanceId,f.site.origin)
-  expect(spoof.toolbar).toContain('无效的浏览器工具栏来源');expect(spoof.renderer).toContain('不允许的请求来源');expect(JSON.stringify((await browserWindows(runtime,f.second.id))[0])).toBe(before)
+  const window=(await browserWindows(runtime))[0],before=JSON.stringify(window),spoof=await spoofBrowserSender(runtime,window.instanceId,f.site.origin)
+  expect(spoof.toolbar).toContain('无效的浏览器工具栏来源');expect(spoof.renderer).toContain('不允许的请求来源');expect(JSON.stringify((await browserWindows(runtime))[0])).toBe(before)
 })
 Then('真实网页无宿主桥且伪造来源不能清理或改变窗口',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;expect(await webpageIsolation(runtime,f.site.origin)).toMatchObject({boai:'undefined',toolbar:'undefined',require:'undefined'});expect(await nativeBrowserViews(runtime)).toHaveLength(1);expect(f.site.mutations()).toBe(0);expect(runtime.errors).toEqual([])
@@ -177,17 +172,17 @@ When('用户在员工真实页面等待期间直接从工具栏访问新页面',
   // Hold only the next offline model command until the real manual navigation exits.
   await f.send(f.first,'manual-navigation',{kind:'task',commands:[`navigate ${f.site.origin}/landing?wait=1`,'wait text WAIT_READY 5000',async()=>{await navigated;return 'snapshot'}]})
   await expect.poll(async()=> (await browserRecords(f.dataPath)).actions.some(action=>action.command==='"wait" "text" "WAIT_READY" "5000"'&&action.status==='started')).toBe(true)
-  const window=(await browserWindows(runtime,f.first.id))[0],records=await browserRecords(f.dataPath)
-  state.generation=window.generation;state.navigationWork=records.works.find(work=>work.id===window.workId)!;state.navigationBudget=records.budgets.find(budget=>budget.id===state.navigationWork!.budgetId)!
+  const window=(await browserWindows(runtime))[0],records=await browserRecords(f.dataPath)
+  const currentAction=records.actions.find(action=>action.command==='"wait" "text" "WAIT_READY" "5000"'&&action.status==='started')!,lease=currentAction.lease as {generation:string;workId:string};state.generation=lease.generation;state.navigationWork=records.works.find(work=>work.id===lease.workId)!;state.navigationBudget=records.budgets.find(budget=>budget.id===state.navigationWork!.budgetId)!
   expect(state.navigationWork).toBeDefined();expect(state.navigationBudget).toBeDefined()
   try { await browserToolbarAction(runtime,window.instanceId,'navigate',`${f.site.origin}/manual-review`) }
   finally { navigationReady() }
 })
 Then('没有控制权菜单或页面锁且原任务沿原预算核读新页面',async({runtime,browserMigrationState:state})=>{
-  const f=state.fixture!,completed=await settled(runtime,f.first,2),browser=(await browserWindows(runtime,f.first.id))[0],records=await browserRecords(f.dataPath)
-  expect(browser).toMatchObject({agentId:f.agent.id,conversationId:f.first.id,workId:state.navigationWork!.id,generation:state.generation,url:`${f.site.origin}/manual-review`,control:'idle'})
+  const f=state.fixture!,completed=await settled(runtime,f.first,2),browser=(await browserWindows(runtime))[0],records=await browserRecords(f.dataPath)
+  expect(browser).toMatchObject({url:`${f.site.origin}/manual-review`,control:'idle'})
   await ordinaryBrowserSurface(runtime,browser.instanceId)
-  expect(completed.runs.some(run=>run.id===browser.runId&&run.status==='completed')).toBe(true)
+  expect(completed.runs.some(run=>run.workId===state.navigationWork!.id&&run.status==='completed')).toBe(true)
   expect(records.works).toHaveLength(2);expect(records.works.find(work=>work.id===state.navigationWork!.id)).toMatchObject({budgetId:state.navigationBudget!.id,status:'delivered'})
   expect(records.budgets).toHaveLength(2)
   const budget=records.budgets.find(value=>value.id===state.navigationBudget!.id)!
@@ -206,13 +201,13 @@ Then('没有控制权菜单或页面锁且原任务沿原预算核读新页面',
 When('用户发起新浏览任务后点击工具栏X并清空会话重启',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;await f.send(f.first,'new-lease',{kind:'task',commands:[`navigate ${f.site.origin}/landing?wait=1`,'wait text WAIT_READY 5000','snapshot']})
   await expect.poll(async()=> (await browserRecords(f.dataPath)).actions.filter(action=>action.command==='"wait" "text" "WAIT_READY" "5000"'&&action.status==='started').length).toBe(1)
-  const browser=(await browserWindows(runtime,f.first.id))[0];expect(browser.generation).not.toBe(state.generation)
+  const browser=(await browserWindows(runtime))[0],current=(await browserRecords(f.dataPath)).actions.find(action=>action.command==='"wait" "text" "WAIT_READY" "5000"'&&action.status==='started')!;expect((current.lease as {generation:string}).generation).not.toBe(state.generation)
   await browserToolbarAction(runtime,browser.instanceId,'close')
-  await expect.poll(async()=> (await browserWindows(runtime,f.first.id))[0]?.control).toBe('closed')
+  await expect.poll(async()=> (await browserWindows(runtime))[0]?.control).toBe('closed')
   expect(await nativeBrowserViews(runtime)).toEqual([]);await settled(runtime,f.first,3)
   await runtime.page.evaluate(id=>window.boai.request('clearConversationHistory',{id,hide:false}),f.first.id);state.calls=f.endpoint.requests.length;await runtime.restart()
 })
-Then('新任务使用新代际且清理后无登录窗口或业务重放',async({runtime,browserMigrationState:state})=>{
+Then('新任务使用新调用代际且重启不自动重开窗口或重放业务',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!,records=await browserRecords(f.dataPath);expect(await nativeBrowserViews(runtime)).toEqual([]);expect(records.scopes).toEqual([]);expect(records.actions.every(action=>!action.command&&!action.reply)).toBe(true);expect(records.works).toEqual([]);expect(f.endpoint.requests).toHaveLength(state.calls!);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
 })
 When('用户逐次批准真实导航和网页下载',async({runtime,browserMigrationState:state})=>{
@@ -235,96 +230,44 @@ Then('返回前进刷新已实际执行且下载原件发布后可按确切正�
   expect(artifact.browserSources?.some(source=>source.url===`${f.site.origin}/second`)).toBe(true);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
 })
 
-async function chooseHeaderBrowser(runtime: Desktop, agentName: string) {
-  await runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开浏览器', exact: true }).click()
-  const dialog = runtime.page.getByRole('dialog', { name: '打开员工浏览器', exact: true })
-  await expect(dialog.getByRole('button', { name: '打开浏览器', exact: true })).toBeDisabled()
-  await dialog.getByRole('combobox', { name: '浏览器所属员工', exact: true }).click()
-  await runtime.page.getByRole('option', { name: agentName, exact: true }).click()
-  return dialog
+async function openBuiltInBrowser(runtime: Desktop) {
+  await runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开内置浏览器', exact: true }).click()
+  await expect.poll(async () => (await browserWindows(runtime))[0]?.toolbarReady).toBe(true)
+  await expect(runtime.page.getByRole('dialog')).toHaveCount(0)
+  await expect(runtime.page.getByRole('button',{name:'浏览器登录资料',exact:true})).toHaveCount(0)
 }
-When('用户在未发送消息的群聊从顶部选择员工打开浏览器', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!
-  await expect(runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开浏览器', exact: true })).toBeDisabled()
-  await selectGroup(runtime, f.first.title)
-  const dialog = await chooseHeaderBrowser(runtime, f.agent.name)
-  await dialog.getByRole('button', { name: '打开浏览器', exact: true }).click()
-  await expect(dialog).toBeHidden()
-  await expect.poll(async () => (await browserWindows(runtime, f.first.id))[0]?.control).toBe('user-controlled')
-})
-Then('浏览器由用户操作且没有模型工作消息或工具动作', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!, windows = await browserWindows(runtime, f.first.id), records = await browserRecords(f.dataPath)
-  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ agentId: state.manualAgentId ?? f.agent.id, conversationId: f.first.id, control: 'user-controlled', isVisible: true })
-  expect(windows[0].workId).toBeUndefined(); expect(windows[0].runId).toBeUndefined()
+When('用户从顶部打开内置浏览器', async ({ runtime }) => { await openBuiltInBrowser(runtime) })
+Then('内置浏览器只打开固定窗口且没有模型工作消息或工具动作', async ({ runtime, browserMigrationState: state }) => {
+  const f = state.fixture!, windows = await browserWindows(runtime), records = await browserRecords(f.dataPath)
+  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ control: 'user-controlled', isVisible: true })
+  for(const property of ['agentId','conversationId','workId','runId','generation'])expect(windows[0]).not.toHaveProperty(property)
   await ordinaryBrowserSurface(runtime,windows[0].instanceId)
   expect(await nativeBrowserViews(runtime)).toHaveLength(1); expect(records.works).toEqual([]); expect(records.budgets).toEqual([]); expect(records.messages).toEqual([]); expect(records.actions).toEqual([])
-  expect(f.endpoint.requests).toEqual([]); expect(f.site.hits).toEqual([])
+  expect(records.scopes).toEqual([]);expect(f.endpoint.requests).toEqual([]); expect(f.site.hits).toEqual([])
   state.generation = windows[0].instanceId
 })
 When('用户在原空白窗口访问网页并从顶部再次查看', async ({ runtime, browserMigrationState: state }) => {
   const f = state.fixture!, instanceId = state.generation!
   await browserToolbarAction(runtime,instanceId,'navigate',`${f.site.origin}/landing`)
-  await expect.poll(async () => (await browserWindows(runtime, f.first.id))[0]?.url).toBe(`${f.site.origin}/landing`)
-  await runtime.page.evaluate(input => window.boai.request('browserControl', input), { agentId: f.agent.id, conversationId: f.first.id, action: 'hide' as const })
-  const dialog = await chooseHeaderBrowser(runtime, f.agent.name)
-  await dialog.getByRole('button', { name: '打开浏览器', exact: true }).click(); await expect(dialog).toBeHidden()
+  await expect.poll(async () => (await browserWindows(runtime))[0]?.url).toBe(`${f.site.origin}/landing`)
+  await runtime.page.evaluate(() => window.boai.request('browserControl', { action: 'hide' }))
+  await openBuiltInBrowser(runtime)
 })
-Then('仍然是原员工原会话同一窗口且其他主页面不能打开它', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!, windows = await browserWindows(runtime, f.first.id)
-  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ instanceId: state.generation!, agentId: f.agent.id, conversationId: f.first.id, control: 'user-controlled', url: `${f.site.origin}/landing`, isVisible: true })
-  expect(await browserWindows(runtime, f.second.id)).toEqual([]); expect(await nativeBrowserViews(runtime)).toHaveLength(1)
+Then('切换主页面仍直接复用内置浏览器同一窗口', async ({ runtime, browserMigrationState: state }) => {
+  const f = state.fixture!, windows = await browserWindows(runtime)
+  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ instanceId: state.generation!, control: 'user-controlled', url: `${f.site.origin}/landing`, isVisible: true })
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
-  await expect(runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开浏览器', exact: true })).toBeDisabled()
+  await openBuiltInBrowser(runtime)
+  expect((await browserWindows(runtime))[0].instanceId).toBe(state.generation);expect(await nativeBrowserViews(runtime)).toHaveLength(1)
   expect((await browserRecords(f.dataPath)).works).toEqual([]); expect(f.endpoint.requests).toEqual([]); expect(f.site.hits.filter(hit => hit.path === '/landing')).toHaveLength(1); expect(runtime.errors).toEqual([])
 })
-When('用户给原员工明确网页任务', async ({ runtime, browserMigrationState: state }) => {
+When('用户发起明确网页任务', async ({ runtime, browserMigrationState: state }) => {
   const f = state.fixture!; await selectGroup(runtime, f.first.title)
   await f.send(f.first, 'manual-adopt', { kind: 'task', commands: ['snapshot'] }); await settled(runtime, f.first, 1)
 })
-Then('员工用新运行租约核读原页面且未重放人工操作', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!, windows = await browserWindows(runtime, f.first.id), records = await browserRecords(f.dataPath), detail = await browserDetail(runtime, f.first.id)
-  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ instanceId: state.generation!, agentId: f.agent.id, conversationId: f.first.id, url: `${f.site.origin}/landing` })
-  expect(windows[0].workId).toBeTruthy(); expect(windows[0].runId).toBeTruthy(); expect(windows[0].generation).toBeTruthy()
+Then('工具按原任务授权核读当前页面且未重放人工操作', async ({ runtime, browserMigrationState: state }) => {
+  const f = state.fixture!, windows = await browserWindows(runtime), records = await browserRecords(f.dataPath), detail = await browserDetail(runtime, f.first.id)
+  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ instanceId: state.generation!, url: `${f.site.origin}/landing` })
   expect(records.works).toHaveLength(1); expect(records.works[0].status).toBe('delivered'); expect(records.actions).toHaveLength(1); expect(records.actions[0]).toMatchObject({ command: '"snapshot"', status: 'completed' })
   expect(JSON.stringify(records.actions[0].reply)).toContain(BROWSER_PAGE_MARKER); expect(detail.messages.at(-1)!.content).toContain('真实网页已核读。COOKIE_SCOPE:none'); expect(f.site.hits.filter(hit => hit.path === '/landing')).toHaveLength(1); expect(f.errors).toEqual([]); expect(runtime.errors).toEqual([])
-})
-When('用户在员工私聊直接点击顶部浏览器', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!; await selectGroup(runtime, f.first.title)
-  expect(f.first.kind).toBe('direct')
-  await runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开浏览器', exact: true }).click()
-  await expect.poll(async () => { const window = (await browserWindows(runtime, f.first.id))[0]; return window && [window.agentId, window.conversationId, window.control, window.toolbarReady, window.isVisible] }).toEqual([f.agent.id, f.first.id, 'user-controlled', true, true])
-  const native = await nativeBrowserViews(runtime); expect(native).toHaveLength(1); expect(native[0].visible).toBe(true)
-  await expect(runtime.page.getByRole('dialog', { name: '打开员工浏览器', exact: true })).toHaveCount(0)
-})
-Then('旧员工配置版本未变化且没有启用提示', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!, snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
-  expect(snapshot.agents.find(agent => agent.id === f.agent.id)).toMatchObject({ configVersion: f.agent.configVersion, allowBrowser: true })
-  await expect(runtime.page.getByText('请先在员工设置中开启并保存“浏览器能力”。', { exact: true })).toHaveCount(0)
-  await expect(runtime.page.getByRole('dialog', { name: '浏览器暂不可用', exact: true })).toHaveCount(0)
-  expect(runtime.errors).toEqual([])
-})
-When('用户从群顶部明确选择另一名员工打开浏览器', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!; await selectGroup(runtime, f.first.title)
-  expect(f.first.agentIds[0]).not.toBe(f.peer!.id)
-  const dialog = await chooseHeaderBrowser(runtime, f.peer!.name)
-  await dialog.getByRole('button', { name: '打开浏览器', exact: true }).click(); await expect(dialog).toBeHidden()
-  state.manualAgentId = f.peer!.id
-  await expect.poll(async () => (await browserWindows(runtime, f.first.id))[0]?.agentId).toBe(f.peer!.id)
-})
-When('用户在bobo核心会话直接点击顶部浏览器', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!
-  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await runtime.page.getByRole('group', { name: `${f.agent.name} 的会话`, exact: true }).getByRole('button', { name: f.first.title, exact: true }).click()
-  await runtime.page.locator('.global-toolbar').getByRole('button', { name: '打开浏览器', exact: true }).click()
-  await expect.poll(async () => { const window = (await browserWindows(runtime, f.first.id))[0]; return window && [window.agentId, window.conversationId, window.control, window.toolbarReady, window.isVisible] }).toEqual([f.agent.id, f.first.id, 'user-controlled', true, true])
-  const native = await nativeBrowserViews(runtime); expect(native).toHaveLength(1); expect(native[0].visible).toBe(true)
-  await expect(runtime.page.getByRole('dialog', { name: '打开员工浏览器', exact: true })).toHaveCount(0)
-})
-Then('bobo原讨论保留且开窗没有新模型工作或消息', async ({ runtime, browserMigrationState: state }) => {
-  const f = state.fixture!, detail = await browserDetail(runtime, f.first.id), records = await browserRecords(f.dataPath), windows = await browserWindows(runtime, f.first.id)
-  expect(detail.conversation).toEqual(f.first); expect(detail.messages).toEqual(state.originalMessages)
-  expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ agentId: 'bobo', conversationId: f.first.id, control: 'user-controlled', isVisible: true })
-  expect(windows[0].workId).toBeUndefined(); expect(windows[0].runId).toBeUndefined()
-  expect(await nativeBrowserViews(runtime)).toHaveLength(1); expect(records.works).toEqual([]); expect(records.budgets).toEqual([]); expect(records.actions).toEqual([])
-  expect(f.endpoint.requests).toHaveLength(state.calls!); expect(f.site.hits).toEqual([]); expect(f.errors).toEqual([]); expect(runtime.errors).toEqual([])
 })

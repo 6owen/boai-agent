@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 自动化分页历史、会话结果、DesktopApi 与共享控件。
- * [OUTPUT]: 单次结果仅按 occurrence 明确消息 ID 分批有界核读，活跃/清理/来源变化与迟到守卫隔离正文；数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
+ * [OUTPUT]: 普通补充核对所见等待版本后定位原问题，复用聊天唯一回复入口；详情只保留明确预算追加表单。单次结果仅按 occurrence 明确消息 ID 分批有界核读，活跃/清理/来源变化与迟到守卫隔离正文；数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
  * [POS]: schedules 阅读区；历史分页与编辑草稿独立，刷新不扩大单次查询上限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -131,7 +131,7 @@ function AutomationOccurrenceCard({ api, active, occurrence: o, expanded, onRefr
       <div className="button-row">{onOccurrence && <Button variant="ghost" size="sm" onClick={() => onOccurrence(o.id)}>查看本次结果</Button>}{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>
       {o.monitor && <MonitorResult occurrence={o} expanded={expanded} />}
       {o.messageId && <AutomationResult expanded={expanded} api={api} active={active} occurrence={o} onConversation={onConversation} />}
-      {o.taskKind !== 'monitor' && (o.status === 'waiting_user' || exhausted(o) && o.deliveryStatus !== 'delivered' && (['failed', 'completed', 'waiting_work'].includes(o.status) || o.status === 'cancelled' && o.cancellationCause === 'budget')) && <AutomationReply api={api} occurrence={o} onSent={onRefresh} />}
+      {o.taskKind !== 'monitor' && (o.status === 'waiting_user' || exhausted(o) && o.deliveryStatus !== 'delivered' && (['failed', 'completed', 'waiting_work'].includes(o.status) || o.status === 'cancelled' && o.cancellationCause === 'budget')) && <AutomationReply api={api} occurrence={o} onSent={onRefresh} onConversation={onConversation} />}
     </CardContent></Card></>
 }
 function MonitorResult({ occurrence, expanded }: { occurrence: AutomationOccurrence; expanded: boolean }) {
@@ -177,7 +177,7 @@ function AutomationResult({ api, active, occurrence, onConversation, expanded = 
     </>}
   </details>
 }
-function AutomationReply({ api, occurrence, onSent }: { api: DesktopApi; occurrence: AutomationOccurrence; onSent: () => Promise<void> }) {
+function AutomationReply({ api, occurrence, onSent, onConversation }: { api: DesktopApi; occurrence: AutomationOccurrence; onSent: () => Promise<void>; onConversation(id: string, messageId?: string): void }) {
   const [content, setContent] = useState(''), [open, setOpen] = useState(false)
   const [version, setVersion] = useState(occurrence.stateVersion)
   const request = useRef<{ fingerprint: string; id: string } | undefined>(undefined)
@@ -185,9 +185,14 @@ function AutomationReply({ api, occurrence, onSent }: { api: DesktopApi; occurre
   const budget = occurrence.budget
   if (!budget) return <p className="field-hint">本次缺少可信预算，请核对已有结果后明确发起新一轮。</p>
   const renew = !!exhausted(occurrence)
-  if (!open) return <Button variant="secondary" size="sm" onClick={() => { setVersion(occurrence.stateVersion); setOpen(true) }}>{renew ? '追加预算并继续' : '补充信息'}</Button>
+  if (!renew) return <>{error && <Banner>{error}</Banner>}<Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => {
+    const item = await api.request('getInboxItem', { id: `question:occurrence:${occurrence.id}` })
+    if (item?.conversationId !== occurrence.conversationId || item.occurrenceId !== occurrence.id || !item.question?.content || item.question.revision !== occurrence.stateVersion) throw new Error('原问题已变化或无法继续，请刷新本次记录后核对。')
+    onConversation(occurrence.conversationId, item.question.messageId)
+  })}>补充信息</Button></>
+  if (!open) return <Button variant="secondary" size="sm" onClick={() => { setVersion(occurrence.stateVersion); setOpen(true) }}>追加预算并继续</Button>
   return <form className="form-grid" onSubmit={event => { event.preventDefault(); void run(async () => {
-    const input = { occurrenceId: occurrence.id, content: content.trim(), ...(renew ? { renewBudget: { expectedVersion: version, allowance: 'standard-v1' as const } } : {}) }
+    const input = { occurrenceId: occurrence.id, content: content.trim(), renewBudget: { expectedVersion: version, allowance: 'standard-v1' as const } }
     const fingerprint = JSON.stringify(input)
     if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, id: crypto.randomUUID() }
     await api.request('replyAutomation', { ...input, requestId: request.current.id })

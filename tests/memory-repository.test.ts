@@ -1,25 +1,27 @@
 /*
  * [INPUT]: 真实 SQLite 多连接、MemoryRepository 与范围/生命周期策略。
+ * [OUTPUT]: 自动纠正多级派生失效、原来源修复及无关记忆隔离。
  * [OUTPUT]: 无关清空不取消精确召回、条目/获知指纹/原文与派生回复的相关失效；旧快照和提取仍保守，纠正/忘记/期限不可绕过。
  * [POS]: tests/memory-repository.test.ts；T2 存储与不变量验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
 import { MemoryRepository, type ExtractionPolicy } from '../src/runtime/modules/memory/memory-repository'
 import { memoryAllowed, memoryStatus } from '../src/runtime/modules/memory/memory-policy'
 import { recallMemory } from '../src/runtime/modules/memory/memory-recall'
-import type { MemoryEntry, MemoryQuery, MemoryView, Message } from '../src/shared/domain'
+import type { DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Message } from '../src/shared/domain'
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'boai-memory-')); roots.push(root)
   const store = new ProductStore(join(root, 'memory.sqlite')); stores.push(store); await store.init()
   const repository = new MemoryRepository(store); await repository.init()
-  return { store, repository }
+  return { root, store, repository }
 }
 const employee: MemoryQuery = { agentId: 'a', scope: 'employee' }
 const direct: MemoryQuery = { agentId: 'a', scope: 'conversation', conversationId: 'dm' }
@@ -243,4 +245,28 @@ it('tracked inputs reject an invalidated source reply even when the published me
   expect(await store.load('messages')).toHaveLength(1)
   await store.write([], [{ collection: 'snapshots', id: 'source-run' }])
   expect(await repository.recallValid(projected)).toBe(false)
+})
+
+it('expires every descendant of an automatically corrected fact while preserving unrelated active entries and the new evidence', async () => {
+  const { root:directory,repository,store }=await fixture()
+  const first=await repository.extract(employee,[{content:'原始偏好',sourceMessageIds:['old'],kind:'long_term'}],0,['old'],[],policy('root'))
+  const root=first.entries[0]!
+  const child={...root,id:'child',content:'旧偏好摘要',sourceMemoryIds:[root.id]}
+  const descendant={...root,id:'descendant',content:'旧偏好二级摘要',sourceMemoryIds:[child.id]}
+  const unrelated={...root,id:'unrelated',content:'无关事实',sourceMessageIds:['independent']}
+  await store.write([child,descendant,unrelated].map(value=>({collection:'memory',id:value.id,value})))
+  const current=await repository.get(employee)
+  const next=await repository.extract(employee,[{content:'纠正后的偏好',sourceMessageIds:['new'],supersedes:[{id:root.id,version:root.version}]}],current.epoch,['new'],[],{...policy('correct',current.invalidationEpoch),sourceMemoryIds:[root.id,child.id,descendant.id]})
+  expect(next.entries.find(entry=>entry.id===root.id)?.status).toBe('superseded')
+  for(const id of [child.id,descendant.id]) expect(next.entries.find(entry=>entry.id===id)?.status).toBe('expired')
+  expect(next.entries.find(entry=>entry.content==='纠正后的偏好')).toMatchObject({status:'active',sourceMemoryIds:[],sourceMessageIds:['new']})
+  expect((await repository.get({...employee,status:'active'})).entries.map(entry=>entry.content).sort()).toEqual(['无关事实','纠正后的偏好'].sort())
+  const agent:DigitalAgent={id:'a',name:'A',role:'test',instructions:'test',color:'#000000',connectionId:'',modelId:'',skillIds:[],knowledgeIds:[],allowCommands:false,active:true,configVersion:1}
+  const homes=new WorkspaceService(directory);await homes.initialize(agent);await homes.regenerate(agent,next)
+  const projected=await readFile(join(directory,'agents','a','workspace','MEMORY.md'),'utf8')
+  expect(projected).toContain('纠正后的偏好');expect(projected).toContain('无关事实');expect(projected).not.toContain('旧偏好')
+  const repaired={...child,status:'active' as const}
+  await store.write([{collection:'memory',id:child.id,value:repaired}]); await repository.init()
+  expect((await repository.get(employee)).entries.find(entry=>entry.id===child.id)?.status).toBe('expired')
+  expect((await repository.get(employee)).entries.find(entry=>entry.id===unrelated.id)?.status).toBe('active')
 })

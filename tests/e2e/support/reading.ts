@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 隔离桌面、真实 SQLite 旧历史、同名材料原件与可控制结束顺序的离线 Mastra HTTP 流。
  * [OUTPUT]: 万条同文不同身份历史、混合搜索真实同名材料、可指定历史数量/追加正文的实际员工并行流和一次分页快照延迟；固定目标读取可等待真实删除事务后执行原 IPC 并恢复 handler，验证迟到异常隔离；完成顺序与浏览请求观测，不替代发布或阅读事务；隐藏会话由真实获准查询拒绝，不提供检索恢复显示旁路。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: D6 Electron 支撑；仅场景模型协议与私有历史种子，不调用商业模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,7 +22,7 @@ export async function prepareReadingSearchSource(source: string) {
   return { path, text }
 }
 export async function readingRecords(dataPath: string) {
-  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
   try { return { messages: await store.load<Message>('messages'), completions: await store.load<ConversationCompletion>('conversationCompletions'), reading: await store.load<ConversationReadingState>('conversationReadingStates'), works: await store.load('workItems'), runs: await store.load('runs'), acceptances: await store.load('artifactAcceptances') } }
   finally { await store.close() }
 }

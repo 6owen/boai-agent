@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 场景独立 Desktop、实际本机技能目录、原应用包与生产发现路径、真实 Mastra 技能协议及主进程 IPC。
  * [OUTPUT]: 开发目录隔离或应用包唯一受控测试技能/按字节清理，不改 HOME/CODEX_HOME；显式授权/真实读取与丢回执故障、模型和脚本副作用核对。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: D4 员工技能绑定 Electron 支撑；不替换导入、绑定或文件事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -87,7 +88,7 @@ export async function loseBindingReply(runtime: Desktop) {
 }
 
 export async function bindingRecords(dataPath: string) {
-  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
   try { return { resources: await store.load<Resource>('resources'), agents: await store.load<DigitalAgent>('agents'), operations: await store.load<{ id: string; kind?: string; status: string }>('skillOperations'), messages: await store.load('messages'), works: await store.load('workItems') } }
   finally { await store.close() }
 }

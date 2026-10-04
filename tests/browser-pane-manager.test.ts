@@ -1,0 +1,99 @@
+/*
+ * [INPUT]: 内置浏览器下载策略、真实临时目录与可控 Electron 下载事件。
+ * [OUTPUT]: 人工原生保存不复用旧工作目录；受管下载固定策略，取消等待真实退出且不取消人工下载；同ID重开后旧回调不能改状态或移除新窗口。
+ * [POS]: tests/browser-pane-manager.test.ts。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import { EventEmitter } from 'node:events'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { BrowserPaneManager } from '../src/main/browser/browser-pane-manager'
+import type { BrowserManagerOptions } from '../src/main/browser/types'
+
+const directories: string[] = []
+afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))) })
+function fixture(policy: BrowserManagerOptions['downloadPolicy']) {
+  const manager = new BrowserPaneManager({ rendererDirectory: '/renderer', preloadPath: '/preload', allowNavigation: () => true, allowNetwork: () => true, downloadPolicy: policy, allowUserNavigation: () => true, toolbarState: () => ({}), userControl: async () => {} })
+  const ses = Object.assign(new EventEmitter(), { webRequest: { onBeforeRequest: vi.fn(), onCompleted: vi.fn(), onErrorOccurred: vi.fn() } })
+  const wc = { id: 42, isDestroyed: () => false }
+  const instance = { id: 'built-in', ownedWebContents: [null, wc], downloads: [] as Array<{ savePath?: string; state: string }>, downloadDirectory: '/old-work-directory', activeDownloads: new Map() }
+  // Exercise the actual observer with controlled Electron events, without opening native windows.
+  const internals = manager as unknown as { instances: Map<string, unknown>; setupSessionObservers(session: unknown): void }
+  internals.instances.set(instance.id, instance)
+  internals.setupSessionObservers(ses)
+  const start = () => {
+    let path = ''
+    const item = Object.assign(new EventEmitter(), { getURL: () => 'https://example.com/file', getFilename: () => '../report.txt', getReceivedBytes: () => 4, getTotalBytes: () => 8, getMimeType: () => 'text/plain', getSavePath: () => path, setSavePath: vi.fn((value: string) => { path = value }), cancel: vi.fn() })
+    const event = { preventDefault: vi.fn() }
+    ses.emit('will-download', event, item, wc)
+    return { item, event, finish: (state = 'completed', chosenPath?: string) => { if (chosenPath) path = chosenPath; item.emit('done', {}, state) } }
+  }
+  return { manager, instance, start }
+}
+describe('内置浏览器下载', () => {
+  it('人工下载使用原生保存结果，不继承上次工具目录', () => {
+    const { instance, start } = fixture(() => ({ kind: 'native' }))
+    const download = start()
+    expect(download.item.setSavePath).not.toHaveBeenCalled()
+    expect(instance.downloads[0]?.savePath).toBeUndefined()
+    download.finish('completed', '/chosen/report.txt')
+    expect(instance.downloads[0]).toMatchObject({ state: 'completed', savePath: '/chosen/report.txt' })
+  })
+  it('受管下载固定创建时的目录，实际退出前保持等待，普通下载继续', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'boai-browser-download-')); directories.push(directory)
+    let policy: ReturnType<BrowserManagerOptions['downloadPolicy']> = { kind: 'managed', directory }
+    const { manager, instance, start } = fixture(() => policy)
+    const managed = start()
+    expect(managed.item.setSavePath).toHaveBeenCalledWith(join(directory, 'report.txt'))
+    policy = { kind: 'native' }
+    const native = start()
+    let exited = false
+    const pending = manager.cancelDownloads(instance.id, { managedOnly: true }).then(() => { exited = true })
+    await Promise.resolve()
+    expect(managed.item.cancel).toHaveBeenCalledOnce()
+    expect(native.item.cancel).not.toHaveBeenCalled()
+    expect(exited).toBe(false)
+    managed.finish('cancelled')
+    await pending
+    expect(exited).toBe(true)
+    expect(instance.activeDownloads.size).toBe(1)
+    const closing = manager.cancelDownloads(instance.id)
+    expect(native.item.cancel).toHaveBeenCalledOnce()
+    native.finish('cancelled')
+    await closing
+    expect(instance.activeDownloads.size).toBe(0)
+  })
+  it('拒绝的下载不会选择保存位置或留下进行中回执', () => {
+    const { instance, start } = fixture(() => null)
+    const download = start()
+    expect(download.event.preventDefault).toHaveBeenCalledOnce()
+    expect(download.item.setSavePath).not.toHaveBeenCalled()
+    expect(instance.activeDownloads.size).toBe(0)
+    expect(instance.downloads).toHaveLength(0)
+  })
+})
+
+describe('内置浏览器窗口重开', () => {
+  it('同ID旧窗口的状态和销毁回调不能覆盖或移除新窗口', () => {
+    const { manager } = fixture(() => null)
+    const changed = vi.fn(), removed = vi.fn()
+    manager.onStateChange(changed)
+    manager.onRemoved(removed)
+    const internals = manager as unknown as { instances: Map<string, unknown>; destroyingIds: Set<string>; emitStateChange(instance: unknown): void; finalizeDestroyedInstance(instance: unknown, source: 'closed'): void }
+    const retired = { id: 'built-in', currentUrl: 'https://old.example', window: { isDestroyed: () => true }, ownedWebContents: [{ isDestroyed: () => true }], cdp: { detach: vi.fn() } }
+    const current = { id: 'built-in', currentUrl: 'https://current.example', title: '当前页面' }
+    internals.instances.set(current.id, current)
+    internals.destroyingIds.add(current.id)
+    internals.emitStateChange(retired)
+    internals.finalizeDestroyedInstance(retired, 'closed')
+    expect(changed).not.toHaveBeenCalled()
+    expect(removed).not.toHaveBeenCalled()
+    expect(retired.cdp.detach).not.toHaveBeenCalled()
+    expect(internals.instances.get(current.id)).toBe(current)
+    expect(internals.destroyingIds.has(current.id)).toBe(true)
+    internals.emitStateChange(current)
+    expect(changed).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://current.example', title: '当前页面' }))
+  })
+})

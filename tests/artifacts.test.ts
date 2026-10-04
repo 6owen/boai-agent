@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 真实 ProductStore 事务、受管成果原件与明确本人修订/采用请求。
- * [OUTPUT]: 成果复制到登记的外改拒绝、独立内容身份/版本、严格原文预览、修订消息原子绑定/负责人边界、跨连接幂等采用与真实回执写失败整体回滚、来源撤权、hash 清理和迁移恢复仅核对验证。
+ * [OUTPUT]: 受控群bobo未选模型的修订目标复用有效默认；显式失效选择拒绝、不影响普通员工。
+ * [OUTPUT]: 成果复制到登记的外改拒绝、独立内容身份/版本、Markdown/代码/纯文本原文预览与二进制/编码/容量隔离、修订消息原子绑定/负责人边界、跨连接幂等采用与真实回执写失败整体回滚、来源撤权、hash 清理和迁移恢复仅核对验证。
  * [POS]: tests/artifacts.test.ts；离线持久化回归，不调用模型，不使用假事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +15,7 @@ import { createClient } from '@libsql/client'
 import type { Conversation, DigitalAgent, Message, WorkItem } from '../src/shared/domain'
 import { ARTIFACT_LIMITS, type ArtifactAdoptionInput, type ArtifactPublication, type ArtifactRegistration, type ArtifactRevisionInput, type ArtifactRevisionRequest, type ArtifactVersion } from '../src/shared/domain/artifacts'
 import type { MaterialReadRef } from '../src/shared/domain/materials'
+import { FILE_PREVIEW_LIMITS } from '../src/shared/domain/file-preview'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
 
@@ -111,23 +113,50 @@ describe('durable artifact identity and explicit user decisions', () => {
   it.each([
     ['invalid UTF-8', Buffer.from([0xc3, 0x28]), 'UTF-8'],
     ['binary controls', Buffer.from([0, 1, 2]), '二进制'],
-    ['empty body', Buffer.from(' \r\n\t'), '正文'],
     ['byte limit', Buffer.alloc(ARTIFACT_LIMITS.previewBytes + 1, 65), '1 MiB'],
     ['character limit', Buffer.from('字'.repeat(ARTIFACT_LIMITS.previewCharacters + 1)), '200000'],
-  ])('retains %s as an explicitly unavailable original rather than a usable preview', async (_name, bytes, reason) => {
+    ['line limit', Buffer.from('\n'.repeat(FILE_PREVIEW_LIMITS.lines)), '10000 行'],
+  ])('retains %s as a checked original with an explicit unsupported preview and no adoption', async (_name, bytes, reason) => {
     const { repository, register, adoption } = await fixture(), artifact = await register('invalid', bytes)
-    expect(artifact).toMatchObject({ contentStatus: 'unavailable', contentError: expect.stringContaining(reason), contentHash: hash(bytes) })
-    await expect(repository.preview(artifact.id)).rejects.toThrow(reason)
+    expect(artifact).toMatchObject({ contentStatus: 'unsupported', contentError: expect.stringContaining(reason), contentHash: hash(bytes) })
+    expect(await repository.preview(artifact.id)).toMatchObject({ text: '', filePreview: { kind: 'unsupported', text: '', reason: expect.stringContaining(reason) } })
     await expect(repository.adopt(adoption(artifact))).rejects.toThrow(reason)
-    expect((await repository.list('chat'))[0].contentStatus).toBe('unavailable')
+    expect((await repository.list('chat'))[0].contentStatus).toBe('unsupported')
   })
 
   it('records a hash for other formats but requires external opening and refuses adoption', async () => {
     const { repository, register, adoption } = await fixture(), artifact = await register('pdf', '%PDF fixture', '报告.pdf')
     expect(artifact).toMatchObject({ contentStatus: 'unsupported', contentHash: hash('%PDF fixture') })
-    await expect(repository.preview(artifact.id)).rejects.toThrow('外部打开')
+    expect(await repository.preview(artifact.id)).toMatchObject({ text: '', filePreview: { kind: 'unsupported', text: '', reason: expect.stringContaining('外部打开') } })
     await expect(repository.adopt(adoption(artifact))).rejects.toThrow('外部打开')
     expect((await repository.list('chat'))[0].contentStatus).toBe('unsupported')
+  })
+
+  it.each([
+    ['module.tsx', 'export const Page = () => <h1>你好</h1>\r\n', 'code', 'tsx'],
+    ['page.html', '<script>globalThis.unsafe = true</script>', 'code', 'html'],
+    ['image.svg', '<svg onload="alert(1)"></svg>', 'code', 'xml'],
+    ['notes.unknown', '原文\r\n第二行\n', 'text', undefined],
+    ['empty.txt', '', 'text', undefined],
+  ])('previews and adopts checked %s without expanding body search formats', async (name, text, kind, language) => {
+    const { repository, register, adoption, store } = await fixture(), artifact = await register('text-file', text, name)
+    expect(artifact.contentStatus).toBe('ready')
+    expect(await repository.preview(artifact.id, artifact.contentHash)).toMatchObject({ artifact: { contentHash: hash(text) }, text, filePreview: { kind, text, ...(language ? { language } : {}) } })
+    const receipt = await repository.adopt(adoption(artifact))
+    expect(receipt.contentHash).toBe(hash(text))
+    expect((await repository.preview(artifact.id)).adoption.current?.artifactId).toBe(artifact.id)
+    if (!name.endsWith('.txt')) await expect(store.transaction(tx => repository.readSearchText(tx, artifact.id, artifact.contentHash))).rejects.toThrow('仅支持 TXT 和 Markdown')
+  })
+
+  it('restores preview support for a legacy code artifact but still checks its immutable hash', async () => {
+    const { repository, register, store } = await fixture(), artifact = await register('legacy-code', 'export const x = 1', 'module.ts')
+    await store.write([{ collection: 'artifacts', id: artifact.id, value: { ...artifact, contentStatus: 'unsupported', contentError: '首批仅支持 Markdown 预览和采用' } }])
+    const preview = await repository.preview(artifact.id, artifact.contentHash)
+    expect(preview.artifact).toMatchObject({ contentStatus: 'ready', contentHash: artifact.contentHash })
+    expect(preview.artifact.contentError).toBeUndefined()
+    await writeFile(artifact.path, 'export const x = 2')
+    await expect(repository.preview(artifact.id, artifact.contentHash)).rejects.toThrow('外部修改')
+    expect((await repository.list('chat'))[0].contentStatus).toBe('unavailable')
   })
 
   it('rejects escaped, linked-parent, final-link and hardlinked publication files without records', async () => {
@@ -244,7 +273,7 @@ describe('durable artifact identity and explicit user decisions', () => {
     await expect(repository.validateRevision(revision.request.id, 'bob', 'chat')).rejects.toThrow('获准负责人')
   })
 
-  it('uses the supplied same-transaction material authority for all stages and does not invent grants', async () => {
+  it.each(['report.md', 'report.ts'])('uses the supplied same-transaction material authority for all %s stages and does not invent grants', async name => {
     const refs: MaterialReadRef[] = [{ id: 'material', revision: 1, contentHash: 'a'.repeat(64), parseVersion: 'text-v1', conversationId: 'chat' }]
     const { store, root, publication } = await fixture()
     await store.write([{ collection: 'materials', id: 'material', value: { id: 'material', conversationId: 'chat', revision: 1, contentHash: refs[0].contentHash, authorizedAgentIds: ['alice'] } }])
@@ -252,12 +281,14 @@ describe('durable artifact identity and explicit user decisions', () => {
       calls.push(agentId ?? 'user')
       for (const ref of sources) { const current = await tx.get<{ revision: number; contentHash: string; authorizedAgentIds: string[]; conversationId: string }>('materials', ref.id); if (!current || current.conversationId !== conversationId || current.revision !== ref.revision || current.contentHash !== ref.contentHash || agentId && !current.authorizedAgentIds.includes(agentId)) throw new Error('材料来源当前未授权') }
     } })
-    const input = { ...await publication(), materialSources: refs }, original = await store.transaction(tx => repository.register(tx, input, binding()))
+    const input = { ...await publication('original', '# 原版\n', name), materialSources: refs }, original = await store.transaction(tx => repository.register(tx, input, binding()))
     await expect(new ArtifactRepository(store, root).preview(original.id)).rejects.toThrow('尚未接入')
     await expect(repository.preview(original.id, original.contentHash, 'bob')).rejects.toThrow('未授权')
     expect((await repository.preview(original.id, original.contentHash, 'alice')).text).toContain('原版')
     const revisionInput: ArtifactRevisionInput = { conversationId: 'chat', artifactId: original.id, contentHash: original.contentHash, targetAgentId: 'alice', content: '请补充对比', requestId: 'rev' }, committed = message('revision')
     await store.transaction(async tx => { await tx.put({ collection: 'messages', id: committed.id, value: committed }); await repository.commitRevision(tx, revisionInput, committed) })
+    expect((await repository.validateRevision('rev', 'alice', 'chat')).text).toBe('# 原版\n')
+    await expect(repository.validateRevision('rev', 'bob', 'chat')).rejects.toThrow('获准负责人')
     await store.write([{ collection: 'materials', id: 'material', value: { id: 'material', conversationId: 'chat', revision: 2, contentHash: refs[0].contentHash, authorizedAgentIds: [] } }])
     await expect(repository.preview(original.id)).rejects.toThrow('未授权')
     await expect(repository.validateRevision('rev', 'alice', 'chat')).rejects.toThrow('未授权')
@@ -367,4 +398,14 @@ describe('durable artifact identity and explicit user decisions', () => {
     expect(await restoredStore.load('workItems')).toHaveLength(0); expect(await restoredStore.load('runs')).toHaveLength(0)
     expect(await restoredStore.load('artifactAdoptionEvents')).toHaveLength(1)
   })
+})
+
+it('resolves an unselected core revision target through the valid default connection without masking an invalid explicit choice',async()=>{
+ const f=await fixture(),artifact=await f.register(),core={...employee('bobo'),systemRole:'core' as const,connectionId:'',modelId:''}
+ await f.store.write([{collection:'agents',id:core.id,value:core},{collection:'conversations',id:'chat',value:{...chat('chat'),agentIds:['alice','bobo']}}])
+ expect((await f.revise(artifact,'core-default','core-message','bobo')).request.targetAgentId).toBe('bobo')
+ await f.store.write([{collection:'agents',id:core.id,value:{...core,connectionId:'missing-explicit'}}])
+ await expect(f.revise(artifact,'invalid-explicit','invalid-message','bobo')).rejects.toThrow('模型连接')
+ await f.store.write([{collection:'agents',id:core.id,value:{...core,systemRole:undefined}}])
+ await expect(f.revise(artifact,'fake-core','fake-message','bobo')).rejects.toThrow('模型连接')
 })

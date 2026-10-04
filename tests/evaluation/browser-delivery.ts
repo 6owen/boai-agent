@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 只读已保存连接/系统 vault、生产 Electron、BRM-v1 合成公开网页与外部 example.com 真实来源。
+ * [OUTPUT]: 窗口取证使用内置浏览器全局只读接口，任务来源仍沿真实run记录。
  * [OUTPUT]: 一员工实际任务/正文+真实截图媒体+来源成果+R1 证据；复用只读凭据桥的内存IPC，仅内部产品Main获得密钥，Renderer/证据不保存；启动/退出及请求/用量有界，供应商元信息即时留证，人工质量明确 pending。
  * [POS]: 手动真实浏览器模型验收；不改冻结留出题或用户数据库，不替换原 BrowserViews/CDP。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -69,7 +70,7 @@ try{
   let detail=await page.evaluate(id=>window.boai.request('getConversation',{id}),setup.conversationId)
   while(Date.now()-started<settings.deadlineMs){detail=await page.evaluate(id=>window.boai.request('getConversation',{id}),setup.conversationId);if(detail.runs.length&&detail.runs.every(run=>['completed','failed','cancelled','interrupted'].includes(run.status))&&detail.turns?.every(turn=>['completed','failed','cancelled','interrupted'].includes(turn.status))){completed=true;break}await new Promise(resolve=>setTimeout(resolve,250))}
   if(!completed)await page.evaluate(id=>window.boai.request('cancelRun',{conversationId:id}),setup.conversationId)
-  const windows:BrowserWindowState[]=await page.evaluate(id=>window.boai.request('getBrowserWindows',{conversationId:id}),setup.conversationId)
+  const windows:BrowserWindowState[]=await page.evaluate(()=>window.boai.request('getBrowserWindows',{}))
   const search=await page.evaluate(keyword=>window.boai.request('searchConversations',{keyword,scope:'all'}),'BRM_REAL_BROWSER_REPORT')
   const db=new DatabaseSync(join(setup.dataPath,'boai.sqlite'),{readOnly:true}),load=(collection:string)=>db.prepare('SELECT value FROM records WHERE collection=?').all(collection).map(row=>JSON.parse(String(row.value)))
   try{records={actions:load('browserActions'),evidence:load('browserEvidence'),works:load('workItems'),budgets:load('workBudgets'),artifacts:load('artifacts'),runs:load('runs'),messages:load('messages')}}finally{db.close()}

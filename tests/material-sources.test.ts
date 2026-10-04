@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际私有来源副本、有界 File 字节、可控真实准备退出与系统文件格式。
- * [OUTPUT]: 旧path无name指纹、准备并行/失败/退出后清理和外改保留；普通文本路径/网页URL不成为附件，平台URI与Unicode文件列表边界。
+ * [OUTPUT]: 旧path无name指纹、准备并行/失败/真实退出后清理；持久来源重启按hash回收、未知归属/外改保留；普通文本路径/网页URL不成为附件，平台URI与Unicode文件列表边界。
  * [POS]: tests 的附件宿主来源模块验收，不启动Electron/模型或读取真实剪贴板。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -86,6 +86,31 @@ describe('private attachment source lifetime', () => {
   it('rejects over-limit File bytes before creating a source', async () => {
     const { sources } = await setup()
     await expect(sources.selectBytes('large.bin', new Uint8Array(MATERIAL_LIMITS.attachmentBytes + 1))).rejects.toThrow('20 MiB')
+  })
+
+  it('recovers a previous process source by persisted hash without restoring its import token', async () => {
+    const { root, sources } = await setup()
+    const selected = await sources.selectBytes('private.json', Buffer.from('private attachment'))
+    const errors: unknown[] = [], restarted = new MaterialSources(join(root, 'sources'), error => errors.push(error)); registries.push(restarted)
+    await restarted.recover()
+    expect(restarted.has(selected.id)).toBe(false)
+    await expect(readFile(join(root, 'sources', selected.id, 'source.json'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(restarted.prepare(selected.id, async () => undefined)).rejects.toThrow('过期')
+    expect(errors).toEqual([])
+  })
+
+  it.each(['changed bytes', 'missing ownership'])('preserves and reports a previous source with %s while new imports remain usable', async conflict => {
+    const { root, sources } = await setup(), selected = await sources.selectBytes('private.png', Buffer.from('private attachment'))
+    const directory = join(root, 'sources', selected.id), path = join(directory, 'source.png')
+    if (conflict === 'changed bytes') await writeFile(path, 'external edit')
+    else await rm(join(directory, '.source.json'))
+    const errors: unknown[] = [], restarted = new MaterialSources(join(root, 'sources'), error => errors.push(error)); registries.push(restarted)
+    await restarted.recover()
+    expect(await readFile(path, 'utf8')).toBe(conflict === 'changed bytes' ? 'external edit' : 'private attachment')
+    expect(errors).toHaveLength(1)
+    const fresh = await restarted.selectBytes('new.txt', Buffer.from('new attachment'))
+    await restarted.prepare(fresh.id, async source => { expect(await readFile(source.path, 'utf8')).toBe('new attachment') })
+    expect(await readFile(path, 'utf8')).toBe(conflict === 'changed bytes' ? 'external edit' : 'private attachment')
   })
 })
 

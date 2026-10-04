@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 场景独立 Desktop、实际问答/工具协议、原主进程处理器与真实 SQLite。
  * [OUTPUT]: D5 原聊天/问题卡片、原 Work/预算及提交后丢回复的留证；不替代模型工具、业务事务或权威来源。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: 聊天问题关联 Electron 支撑；保留底层 Inbox 核对，每个场景沿原目录重启且不使用商业模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -22,7 +23,7 @@ export async function openQuestionMessage(runtime: Desktop, item: InboxItem) {
   return runtime.page.locator(`#message-${item.messageId}`).locator(`[data-question-id="${item.question!.id}"]`)
 }
 export async function inboxRecords(dataPath: string) {
-  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
   try { return { messages: await store.load<Message>('messages'), works: await store.load<WorkItem>('workItems'), budgets: await store.load<WorkBudget>('workBudgets'), acceptances: await store.load<ArtifactAcceptance>('artifactAcceptances'), events: await store.load('artifactAdoptionEvents') } }
   finally { await store.close() }
 }

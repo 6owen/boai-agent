@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 草稿条目、已发送附件回执、页面活跃状态及宿主预览/移除/重试回调。
- * [OUTPUT]: 附件随当前聊天消息发送；未发送附件的真实导入状态、显性失败/未知回执核对与局部忙碌锁定；已发送附件身份和受管原文预览入口，无单独收件人设置。
+ * [OUTPUT]: 附件随当前聊天消息发送；未发送附件的真实导入状态、显性失败/未知回执核对与局部忙碌锁定；已发送文件整行可打开右侧预览，无单独收件人设置。
  * [OUTPUT]: 图片准备期即固定为composer内部缩略图，不先挂通用文件卡或等待文字，准备完成保持同一节点/尺寸；hover/focus右上角可删除，点击和已发图片打开全屏Dialog，图片不显示常驻文件名/预览横条；图片使用宿主核对的data URI缩略图；当前版本/清理/授权变化隔离旧图片和迟到读取，文件保持真实卡片，不持久化二进制正文或创建object URL，流式消息仅后台复核而不反复清空缩略图。
  * [POS]: 会话私有材料草稿条与消息内材料列表；不访问本机文件或自行宣布员工已读。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -77,14 +77,16 @@ export function SentMaterialList({ api, pageActive = true, materials, onPreview 
         <MaterialImageTile api={api} material={material} active={pageActive} onOpen={() => setImage(material)} error={failed ? materialErrorText(material.error) : undefined} />
       </div>
       return <div key={material.id} className="w-full min-w-0 rounded-xl bg-card p-2 text-card-foreground soft-card" data-material-id={material.id} data-material-status={material.status}>
+        <Button variant="ghost" size="content" className="w-full min-w-0 text-left" disabled={!ready} aria-label={`预览材料 ${name}`} onClick={() => onPreview(material)}>
         <Attachment className="w-full border-0 bg-transparent" size="sm" state={material.status === 'preparing' ? 'processing' : failed ? 'error' : 'done'}>
           <MaterialMedia preparing={material.status === 'preparing'} />
           <AttachmentContent>
             <AttachmentTitle>{name}</AttachmentTitle>
             <AttachmentDescription>{materialFormatLabel(material.format)} · {sizeText(material.size)} · {materialStatusLabels[material.status]}</AttachmentDescription>
           </AttachmentContent>
-          <AttachmentActions><Button variant="ghost" size="xs" disabled={!ready} aria-label={`预览材料 ${name}`} onClick={() => onPreview(material)}>{material.format === 'file' ? '查看文件' : '查看原文'}</Button></AttachmentActions>
+          <span className="shrink-0 text-xs text-muted-foreground">预览</span>
         </Attachment>
+        </Button>
         {failed && <p role="status" className="mt-1 break-words text-xs text-destructive">{materialErrorText(material.error)}</p>}
       </div>
     })}

@@ -1,12 +1,13 @@
 /*
  * [INPUT]: 代码文本、语言标识与 Shiki 的本地语言/主题模块。
- * [OUTPUT]: 单例 JavaScript 引擎、按需加载语言与明暗双色 tokens；未知语言/超长代码保留纯文本。
+ * [OUTPUT]: 单例 JavaScript 引擎、聊天围栏与文件预览常用语言按需加载、明暗双色 tokens；未知语言/超长代码保留纯文本。
  * [POS]: UI CodeBlock 的延迟加载高亮实现，不读取业务状态、不请求 CDN。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHighlighterCore } from 'shiki/core'
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 import type { HighlighterCore, DynamicImportLanguageRegistration } from 'shiki/types'
+import { FILE_PREVIEW_LIMITS } from '@shared/domain/file-preview'
 
 const languages: { id: string; aliases?: string[]; load: DynamicImportLanguageRegistration }[] = [
   { id: 'javascript', aliases: ['js', 'mjs', 'cjs'], load: () => import('shiki/langs/javascript.mjs') },
@@ -40,6 +41,20 @@ const languages: { id: string; aliases?: string[]; load: DynamicImportLanguageRe
   { id: 'diff', aliases: ['patch'], load: () => import('shiki/langs/diff.mjs') },
   { id: 'markdown', aliases: ['md'], load: () => import('shiki/langs/markdown.mjs') },
   { id: 'xml', load: () => import('shiki/langs/xml.mjs') },
+  { id: 'less', load: () => import('shiki/langs/less.mjs') },
+  { id: 'ini', load: () => import('shiki/langs/ini.mjs') },
+  { id: 'fish', load: () => import('shiki/langs/fish.mjs') },
+  { id: 'kotlin', aliases: ['kt', 'kts'], load: () => import('shiki/langs/kotlin.mjs') },
+  { id: 'r', load: () => import('shiki/langs/r.mjs') },
+  { id: 'lua', load: () => import('shiki/langs/lua.mjs') },
+  { id: 'perl', aliases: ['pl'], load: () => import('shiki/langs/perl.mjs') },
+  { id: 'dart', load: () => import('shiki/langs/dart.mjs') },
+  { id: 'makefile', load: () => import('shiki/langs/makefile.mjs') },
+  { id: 'cmake', load: () => import('shiki/langs/cmake.mjs') },
+  { id: 'latex', aliases: ['tex'], load: () => import('shiki/langs/latex.mjs') },
+  { id: 'log', load: () => import('shiki/langs/log.mjs') },
+  { id: 'csv', load: () => import('shiki/langs/csv.mjs') },
+  { id: 'dotenv', load: () => import('shiki/langs/dotenv.mjs') },
 ]
 const languageByName = new Map(languages.flatMap(language => [language.id, ...(language.aliases ?? [])].map(name => [name, language] as const)))
 const languageLoads = new Map<string, Promise<void>>()
@@ -56,7 +71,7 @@ function getHighlighter() {
 
 export async function highlightCode(code: string, language: string) {
   const grammar = languageByName.get(language.toLowerCase())
-  if (!grammar || code.length > MAX_HIGHLIGHT_LENGTH) return null
+  if (!grammar || code.length > MAX_HIGHLIGHT_LENGTH || code.split(/\r\n?|\n/, FILE_PREVIEW_LIMITS.lines + 1).length > FILE_PREVIEW_LIMITS.lines) return null
   const instance = await getHighlighter()
   let loading = languageLoads.get(grammar.id)
   if (!loading) {

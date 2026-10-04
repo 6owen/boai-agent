@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 权威聊天/员工、SQLite 事务、宿主受管根/选取或临时文件、普通会话投递范围或旧明确授权、原名称与请求/revision。
- * [OUTPUT]: 普通附件随当前聊天成员可见、离线成员不挡发送，旧名单不扩权；可组合事务原件/hash 校验、解析版本、原名回执、非持久栅格预览、消息关联与取消退出；草稿重启/hash 清理、外改保留和已发原件备份核对。
+ * [OUTPUT]: 普通附件按当前成员可见、旧名单不扩权；原件核验后的有界代码/文本预览独立于模型解析和搜索；同hash已发原件显式恢复及未撤权历史引用，草稿/清理冲突不恢复；可组合事务原件/解析版本校验、非持久预览、实际退出、草稿重启清理和已发备份核对。
  * [POS]: materials 的唯一业务权威；原件仅存在宿主私有 materials/，不创建 Work 或调用模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { lstat, realpath } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { Conversation, DigitalAgent } from '../../../shared/domain'
-import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial, type MaterialPreview, type MaterialReadRef, type MaterialSelection } from '../../../shared/domain/materials'
+import { previewFile } from '../../../shared/domain/file-preview'
+import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, isMaterialReadRevisionValid, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial, type MaterialPreview, type MaterialReadRef, type MaterialSelection } from '../../../shared/domain/materials'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { contained } from '../workspaces/file-access'
 import { checkMaterialPath, cleanupMaterialOriginal, decodeMaterialText, materialFileError, materialImageMimeType, readMaterialOriginal, readMaterialSource, writeMaterialOriginal, type MaterialCheckpoint } from './material-files'
@@ -74,6 +75,10 @@ export class MaterialRepository {
     if (expectedRevision !== undefined && material.revision !== expectedRevision) throw new Error('材料版本已更新，请刷新后重试')
     if (material.status !== 'ready' || !material.contentHash || (material.deliveryScope !== undefined && material.deliveryScope !== 'conversation') || !['txt', 'markdown', 'image', 'file'].includes(material.format) || material.parseVersion !== parseVersion(material.format)) throw new Error(material.error ?? '材料尚未就绪或已不可用')
     return material.contentHash
+  }
+  private referenceReady(material: ConversationMaterial, expectedRevision: number) {
+    revision(expectedRevision); this.ready(material)
+    if (!isMaterialReadRevisionValid(material, expectedRevision)) throw new Error('材料版本变化，读取快照已失效')
   }
   private async logCleanup(tx: RecordTransaction, material: ConversationMaterial) {
     await tx.put(record('materialCleanups', { id: material.id, conversationId: material.conversationId, contentHash: material.contentHash, status: 'pending' } satisfies Cleanup))
@@ -189,9 +194,36 @@ export class MaterialRepository {
       const material = await this.material(tx, materialId); await this.conversation(tx, material.conversationId)
       this.ready(material, expectedRevision); return material
     })
-    return this.readContent(material)
+    return this.readContent(material, true)
   }
-  private async readContent(material: ConversationMaterial): Promise<MaterialPreview> {
+  /** Explicitly repair only the original sent identity and bytes; never reopen a cleared grant. */
+  async recheck(materialId: string, expectedRevision: number): Promise<MaterialPreview> {
+    if (this.closing || this.backingUp) throw new Error('材料服务正在退出或备份')
+    id(materialId); revision(expectedRevision)
+    return this.store.transaction(async tx => {
+      const material = await this.material(tx, materialId)
+      await this.conversation(tx, material.conversationId)
+      if (material.revision !== expectedRevision) throw new Error('材料版本已更新，请刷新后重试')
+      if (!material.messageId || !['ready', 'unavailable'].includes(material.status) || await tx.get('materialCleanups', material.id) || material.deliveryScope !== 'conversation' && !material.authorizedAgentIds.length) throw new Error('材料未发送、已撤权或正在清理，不能恢复')
+      await this.deliveryScope(tx, material)
+      const contentHash = this.ready({ ...material, status: 'ready' })
+      const original = await readMaterialOriginal(this.dataPath, material.conversationId, material.id, contentHash)
+      const text = textFormat(material.format) ? decodeMaterialText(original.bytes).text : ''
+      let imageUrl: string | undefined
+      if (material.format === 'image') {
+        const mimeType = materialImageMimeType(original.bytes)
+        if (!mimeType || mimeType !== material.mimeType) throw new Error('材料图片格式与原件不一致')
+        imageUrl = `data:${mimeType};base64,${original.bytes.toString('base64')}`
+      }
+      if (material.status === 'unavailable') {
+        material.readableRevisionFrom ??= Math.max(1, material.revision - 1)
+        material.status = 'ready'; material.revision++; delete material.error
+        await tx.put(record('materials', material))
+      }
+      return { material: clone(material), text, ...(imageUrl ? { imageUrl } : { filePreview: previewFile(material.name, original.bytes) }) }
+    })
+  }
+  private async readContent(material: ConversationMaterial, includeFilePreview = false): Promise<MaterialPreview> {
     try {
       const parsed = await readMaterialOriginal(this.dataPath, material.conversationId, material.id, this.ready(material))
       const text = textFormat(material.format) ? decodeMaterialText(parsed.bytes).text : ''
@@ -205,12 +237,13 @@ export class MaterialRepository {
         const current = await this.material(tx, material.id)
         await this.conversation(tx, current.conversationId); this.ready(current, material.revision)
         if (current.contentHash !== material.contentHash || current.format !== material.format || current.parseVersion !== material.parseVersion || current.mimeType !== material.mimeType || current.deliveryScope !== material.deliveryScope) throw new Error('材料内容版本已改变')
-        return { material: clone(current), text, ...(imageUrl ? { imageUrl } : {}) }
+        return { material: clone(current), text, ...(imageUrl ? { imageUrl } : includeFilePreview ? { filePreview: previewFile(material.name, parsed.bytes) } : {}) }
       })
     } catch (error) {
       await this.store.transaction(async tx => {
         const current = await tx.get<ConversationMaterial>('materials', material.id)
         if (current?.status === 'ready' && current.revision === material.revision) {
+          current.readableRevisionFrom ??= current.revision
           current.status = 'unavailable'; current.revision++; current.error = materialFileError(error)
           await tx.put(record('materials', current))
         }
@@ -227,7 +260,7 @@ export class MaterialRepository {
       if (material.deliveryScope === 'conversation') throw new Error('聊天附件随会话成员可见，不能单独设置共享员工')
       await this.scope(tx, material.conversationId, selected)
       if (JSON.stringify(material.authorizedAgentIds) === JSON.stringify(selected)) return clone(material)
-      material.authorizedAgentIds = selected; material.revision++
+      material.authorizedAgentIds = selected; material.revision++; delete material.readableRevisionFrom
       await tx.put(record('materials', material)); return clone(material)
     })
   }
@@ -274,7 +307,8 @@ export class MaterialRepository {
     for (const ref of refs) {
       if (ref.conversationId !== conversationId || ![MATERIAL_PARSE_VERSION, BINARY_MATERIAL_PARSE_VERSION].includes(ref.parseVersion)) throw new Error('材料来源不属于当前聊天或解析版本已失效')
       const current = await this.read(ref.id, agentId, conversationId)
-      if (current.ref.revision !== ref.revision || current.ref.contentHash !== ref.contentHash || current.ref.parseVersion !== ref.parseVersion) throw new Error('材料读取快照已失效')
+      this.referenceReady(current.material, ref.revision)
+      if (current.ref.contentHash !== ref.contentHash || current.ref.parseVersion !== ref.parseVersion) throw new Error('材料读取快照已失效')
     }
   }
 
@@ -285,7 +319,7 @@ export class MaterialRepository {
       id(ref.id); revision(ref.revision)
       if (ref.conversationId !== conversationId || ![MATERIAL_PARSE_VERSION, BINARY_MATERIAL_PARSE_VERSION].includes(ref.parseVersion)) throw new Error('材料来源不属于当前聊天或解析版本已失效')
       const current = await this.material(tx, ref.id)
-      this.ready(current, ref.revision)
+      this.referenceReady(current, ref.revision)
       await this.conversation(tx, conversationId)
       if (current.conversationId !== conversationId || !current.messageId || current.contentHash !== ref.contentHash || current.parseVersion !== ref.parseVersion) throw new Error('材料读取快照已失效')
       if (agentId) {
@@ -383,6 +417,7 @@ export class MaterialRepository {
           await this.store.transaction(async tx => {
             const current = await tx.get<ConversationMaterial>('materials', material.id)
             if (current?.status !== 'ready' || current.revision !== material.revision) return
+            current.readableRevisionFrom ??= current.revision
             current.status = 'unavailable'; current.revision++; current.error = materialFileError(error)
             await tx.put(record('materials', current))
           })

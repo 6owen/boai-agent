@@ -1,15 +1,15 @@
 /*
  * [INPUT]: 全局语义 token、单聊/群聊共享消息/审批/引用结构与群聊工作详情。
- * [OUTPUT]: 单聊与群聊共用悬浮标题/渐隐、消息卡片/工具条、头像资料、悬停时间、镜像布局与窄窗适配；标题栏不展示阅读状态、说明或上下跳转按钮，保留16px消息渐隐衔接；群标题保留重叠头像与紧邻人数文字，浮层焦点辅助节点不影响位置；消息/工具条共用 Soft Card 边缘、工具条仅随消息悬停显示，两侧按钮顺序一致，用户气泡靠右且正文左对齐；composer 由 prompt-bar.css 管理。
+ * [OUTPUT]: 单聊与群聊共用52px标题栏与14px悬浮标题/渐隐、消息卡片/工具条、头像资料、悬停时间、镜像布局与窄窗适配；标题栏不展示阅读状态、说明或上下跳转按钮，保留16px消息渐隐衔接；群标题保留重叠头像与紧邻人数文字，浮层焦点辅助节点不影响位置；消息/工具条共用 Soft Card 边缘、工具条仅随消息悬停显示，两侧按钮顺序一致，用户气泡靠右且正文左对齐；composer 由 prompt-bar.css 管理。
  * [POS]: 共享聊天阅读交互、群聊任务详情与门户中的员工资料/表情浮层；global.css 在基础皮肤之后加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 .chat-heading { min-width:0 }
 .chat-panel { container-type:inline-size }
-.chat-panel .chat-header { height:64px;padding:0 24px }
+.chat-panel .chat-header { height:52px;padding:0 24px }
 .chat-header-main { flex:1;min-width:0 }
 .chat-panel .chat-heading { pointer-events:auto }
-.chat-panel .chat-title { font-size:16px;font-weight:600 }
+.chat-panel .chat-title { font-size:14px;font-weight:600 }
 .chat-members { display:flex;align-items:center;margin-right:8px }
 /* Popover inserts focus guards between triggers while open. */
 .chat-members .chat-member-avatar~.chat-member-avatar { margin-left:-6px }
@@ -17,7 +17,7 @@
 .chat-members-more.soft-button { margin-left:2px;padding:0;color:var(--muted-foreground) }
 .chat-members-more.soft-button:is(:hover,:focus-visible) { color:var(--link);text-decoration:none }
 /* Keep the shared 16px overlap so messages fade beneath the floating heading. */
-.chat-panel .messages { margin-top:48px;padding:40px 28px 16px }
+.chat-panel .messages { margin-top:36px;padding:40px 28px 16px }
 .chat-panel .message-row { max-width:var(--content-width);gap:12px;margin-bottom:24px;justify-content:flex-start }
 .chat-panel .message-row .message-avatar { display:block;flex:none;padding-top:2px }
 .chat-panel .message-row .avatar { width:32px;height:32px;border-radius:50%;box-shadow:none }

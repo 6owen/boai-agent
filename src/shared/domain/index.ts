@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 产品实体、成果内容版本/修订与采用合同、受管材料/来源、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
+ * [OUTPUT]: 运行保留浏览器下载新隔离/旧临时目录备份边界标识。
  * [OUTPUT]: 真实协作请求贯穿群消息/轮次/运行；原组织判断来源与群开场事件不伪造 user 或 group run。
  * [OUTPUT]: 网页操作审批显式 kind 与命令审批区分，旧记录默认命令；启用中的 Mastra 员工默认具备浏览器能力，旧 allowBrowser 不控制权限，ACP 不支持。
  * [OUTPUT]: allowBrowser 仅保留旧输入兼容，统一后端能力 helper 导出且不授予普通聊天工具； Trace 可选有界当前来源 trigger 摘要投影；D6 无正文详情的即时来源证据布尔投影，不作为持久交付或人工质量批准；导出只读待处理合同、已发布普通/自动化问题关系及宿主定向补充的所见版本/原问题消息身份；明确成果内容版本/修订和采用导出、用户修订消息身份；可选消息材料关联、消息/成果派生材料来源和会话材料列表；预置系统核心员工标识与独立 core 会话类别；统一记忆合同导出及会话记忆范围；员工/群可选团队来源与群 teamSetup 背景合同； 个人资料快照和独立活动保存错误；消息可选持久表情回应；宿主确认的失败轮次/运行接续关联；仅由宿主保存的任务聊天 purpose/计划/触发关联；宿主写入跨轮次补充关联；自动化来源贯穿轮次与运行； 导出技能集合/预览/操作合同；运行观测错误独立于业务终态；员工独立思考强度及保留本地配置来源、OpenAI 接口协议的模型连接、并行发布的投递观察事件与跨进程领域类型、兼容旧记录的会话列表偏好；版本化工作/依赖/定向通知与可选运行关联兼容已有记录。
@@ -151,6 +152,8 @@ export interface ToolEvent {
   createdAt: string
 }
 export interface AgentRun {
+  /** Browser bytes are staged outside workspaces; legacy run directories have unknown completion state. */
+  browserDownloadIsolation?: 'isolated' | 'legacy'
   collaborationRequestId?: string
   origin?: AutomationOrigin
   traceError?: string

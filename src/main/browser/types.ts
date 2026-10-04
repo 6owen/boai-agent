@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 浏览器原窗口投影与本地宿主授权回调。
- * [OUTPUT]: 普通窗口导航与关闭生命周期合同；可信工具栏人工导航沿原 scope 串行，网页不取得业务类型。
+ * [OUTPUT]: 内置浏览器导航与关闭合同；每次下载固定原生保存或受管目录策略，网页不取得业务类型。
  * [POS]: src/main/browser/types.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +17,7 @@ export interface BrowserManagerOptions {
   accentColor?: (dark: boolean) => string
   allowNavigation: (instanceId: string, url: string) => boolean
   allowNetwork: (instanceId: string, url: string, resourceType: string) => boolean
-  allowDownload: (instanceId: string, url: string) => boolean
+  downloadPolicy: (instanceId: string, url: string) => { kind: 'native' } | { kind: 'managed'; directory: string } | null
   allowUserNavigation: (instanceId: string) => boolean
   userNavigation?: (instanceId: string, operation: () => Promise<void>) => Promise<void>
   toolbarState: (instanceId: string) => Record<string, unknown>

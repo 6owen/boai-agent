@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定会话/材料身份、期望版本、活跃标签状态、搜索来源失效 revision 与宿主材料预览回执。
- * [OUTPUT]: 独立材料详情标签的复核读取与来源行定位；隐藏时停止读取，清理/授权变化立即失效旧原文，迟到读取不回填。
+ * [OUTPUT]: 固定材料 Markdown/代码文件预览与来源行定位；显式按最新状态同hash复核后重读，隐藏/清理/授权变化失效旧原文，迟到读取不回填。
  * [POS]: detail-panel 的材料原文数据边界；不执行模型或读取任意文件路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,14 +16,33 @@ export function MaterialTab({ api, conversationId, id, revision, active, line, r
 }) {
   const [preview, setPreview] = useState<MaterialPreview>(), [loading, setLoading] = useState(active), [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [verified, setVerified] = useState<{ key: string; revision: number }>()
+  const identity = `${conversationId}:${id}:${revision}:${requestId}:${active}`
+  const identityRef = useRef(identity); identityRef.current = identity
+  const repairing = useRef(false)
+  const expectedRevision = verified?.key === identity ? verified.revision : revision
   const loadedSource = useRef(-1)
+  const recheck = async () => {
+    if (!active || repairing.current) return
+    const key = identity
+    repairing.current = true; setLoading(true); setPreview(undefined); setError('')
+    try {
+      const detail = await api.request('getConversationMetadata', { id: conversationId })
+      if (identityRef.current !== key) return
+      const material = detail.materials?.find(material => material.id === id)
+      if (!material) throw new Error('材料已清理或不存在')
+      const result = await api.request('recheckMaterial', { id, expectedRevision: material.revision })
+      if (identityRef.current === key) { setVerified({ key, revision: result.material.revision }); setRefresh(value => value + 1) }
+    } catch (failure) { if (identityRef.current === key) { setLoading(false); setError(materialErrorText(failure instanceof Error ? failure.message : String(failure))) } }
+    finally { repairing.current = false }
+  }
   useEffect(() => {
     let disposed = false, request = 0, timer: ReturnType<typeof setTimeout> | undefined
     const load = async () => {
       if (!active) return
       const token = ++request; setLoading(true); setPreview(undefined); setError('')
       try {
-        const result = await api.request('getMaterialPreview', { id, expectedRevision: revision })
+        const result = await api.request('getMaterialPreview', { id, expectedRevision })
         if (!disposed && token === request) { loadedSource.current = sourceRevision; setPreview(result); setLoading(false) }
       } catch (failure) { if (!disposed && token === request) { setPreview(undefined); setLoading(false); setError(materialErrorText(failure instanceof Error ? failure.message : String(failure))) } }
     }
@@ -37,10 +56,10 @@ export function MaterialTab({ api, conversationId, id, revision, active, line, r
       if (active && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 120)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
-  }, [api, conversationId, id, revision, active, requestId, refresh, sourceRevision])
-  const current = loadedSource.current === sourceRevision && preview?.material.id === id && preview.material.revision === revision ? preview : undefined
-  return <div className="detail-section flex min-h-0 flex-1 flex-col gap-2">
+  }, [api, conversationId, id, expectedRevision, active, requestId, refresh, sourceRevision])
+  const current = loadedSource.current === sourceRevision && preview?.material.id === id && preview.material.revision === expectedRevision ? preview : undefined
+  return <div className="detail-section file-preview-detail flex min-h-0 flex-1 flex-col gap-2">
     <MaterialPreviewPanel preview={current} loading={loading || active && !current && !error} error={error} line={line} />
-    {error && active && <Button variant="secondary" size="sm" onClick={() => setRefresh(value => value + 1)}>重新核对材料</Button>}
+    {error && active && <Button variant="secondary" size="sm" disabled={loading} onClick={() => void recheck()}>重新核对材料</Button>}
   </div>
 }

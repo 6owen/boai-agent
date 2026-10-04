@@ -1,11 +1,11 @@
 /*
  * [INPUT]: 成果修订/采用/显式待验收 DTO、实际员工/连接、详情页面与逻辑家族身份、持久未决请求和只读回执结果。
- * [OUTPUT]: 明确修订员工可执行状态与核心空配置默认连接；按主页面隔离的稳定未决身份与白名单恢复，重启统一 unknown；聊天可核对旧待处理页的原未决请求，不覆盖同成果的另一请求；待验收冻结明确版本/hash，未知只能核对，确认未提交后才原载荷重试或放弃。
- * [POS]: 成果详情的纯请求状态；不存正文预览、不读文件、不提交 IPC 或模型。
+ * [OUTPUT]: 明确修订员工可执行状态与核心空配置默认连接；修订回执严格绑定原请求/本人/正文与指定员工；按主页面隔离的稳定未决身份与白名单恢复，重启统一 unknown；聊天可核对旧待处理页的原未决请求，不覆盖同成果的另一请求；待验收冻结明确版本/hash，未知只能核对，确认未提交后才原载荷重试或放弃。
+ * [POS]: 聊天成果与只读详情共用的纯请求状态；不存正文预览、不读文件、不提交 IPC 或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { ARTIFACT_LIMITS, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAdoptionInput, type ArtifactRevisionInput } from '@shared/domain/artifacts'
-import type { Connection, DigitalAgent } from '@shared/domain'
+import { ARTIFACT_LIMITS, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactRevisionInput } from '@shared/domain/artifacts'
+import type { Connection, DigitalAgent, Message } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
 
 export type ArtifactRequest<T> = { input: T; status: 'pending' | 'unknown' | 'not_accepted' }
@@ -41,6 +41,12 @@ export function artifactRequestAction(request?: Pick<ArtifactRequest<unknown>, '
 }
 export function artifactReceiptResult<T>(request: ArtifactRequest<T>, found: boolean): ArtifactRequest<T> | undefined {
   return found ? undefined : { ...request, status: 'not_accepted' }
+}
+export function artifactAdoptionReceiptMatches(input: ArtifactAdoptionInput, receipt: ArtifactAdoptionReceipt, conversationId: string, logicalArtifactId: string) {
+  return receipt.id === input.requestId && receipt.conversationId === conversationId && receipt.logicalArtifactId === logicalArtifactId && receipt.artifactId === input.artifactId && receipt.contentHash === input.contentHash && receipt.userId === 'user' && receipt.adoptionRevision === input.expectedAdoptionRevision + 1
+}
+export function artifactRevisionReceiptMatches(input: ArtifactRevisionInput, receipt: Message) {
+  return receipt.conversationId === input.conversationId && receipt.artifactRevisionRequestId === input.requestId && receipt.senderType === 'user' && receipt.senderId === 'user' && !receipt.origin && receipt.status === 'completed' && receipt.content === input.content && receipt.mentionIds?.length === 1 && receipt.mentionIds[0] === input.targetAgentId
 }
 export function artifactAcceptanceReceiptMatches(input: ArtifactAcceptanceInput, receipt: ArtifactAcceptanceReceipt, conversationId: string) {
   const acceptance = receipt.acceptance

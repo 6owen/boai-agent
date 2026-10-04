@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 真实 SDK 工具调用、当前 Work 持有者与 Main 实际动作回执。
- * [OUTPUT]: 当前有效内置模型员工默认浏览器权限，不读旧 allowBrowser；ACP/停用、原成员/配置/清理代际与事务身份严格核对。
- * [OUTPUT]: 人工空白窗口只登记员工/会话清理归属、不制造工作；prepared→started→terminal/unknown 的稳定持久回执；同 ID 不同参数拒绝，未知写入冻结原工作，重启不重放。
+ * [OUTPUT]: 当前有效内置模型员工默认具备工具调用资格，不读旧 allowBrowser；ACP/停用、原成员/配置/清理代际与事务身份严格核对。
+ * [OUTPUT]: 内置浏览器使用固定应用身份，人工开窗不写业务记录；run调用来源/权限登记独立于浏览器窗口和登录资料；prepared→started→terminal/unknown 的稳定持久回执；同 ID 不同参数拒绝，未知写入冻结原工作，重启不重放。
  * [POS]: 浏览器业务事实，不保存 Cookie/截图正文；所有状态和 effect 变化沿 WorkRepository 原 SQLite 事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,12 +9,12 @@ import { createHash } from 'node:crypto'
 import type { DigitalAgent,Conversation } from '../../../shared/domain'
 import { isBrowserCapableAgent } from '../../../shared/domain'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserScopeOwner } from '../../../shared/ipc/browser'
+import { APPLICATION_BROWSER_SCOPE } from '../../../shared/ipc/browser'
+import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserTaskAuthorization } from '../../../shared/ipc/browser'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { WorkRepository } from '../collaboration/work-repository'
 import { summarizeMedia } from './media'
 export interface BrowserActionRecord extends BrowserActionEnvelope { id: string; status: 'prepared'|'started'|'completed'|'failed'|'cancelled_before_start'|'unknown'; mutating: boolean; startedAt?:string; createdAt: string; reply?: BrowserActionReply }
-export const browserScopeKey = (agentId: string,conversationId: string,epoch: number) => createHash('sha256').update(JSON.stringify([agentId,conversationId,epoch])).digest('hex')
 export const browserCommandHash = (parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 export class BrowserRepository {
   constructor(private store: ProductStore,private works: WorkRepository) {}
@@ -28,23 +28,16 @@ export class BrowserRepository {
       }
     })
   }
-  private async identity(tx:RecordTransaction,lease:BrowserScopeOwner) {
+  private async identity(tx:RecordTransaction,lease:BrowserLease) {
     const agent=await tx.get<DigitalAgent>('agents',lease.agentId),conversation=await tx.get<Conversation>('conversations',lease.conversationId)
     const clock=await tx.get<{epoch:number}>('conversationCompletionClocks',lease.conversationId)
-    if (!agent || !isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || browserScopeKey(agent.id,conversation.id,lease.scopeEpoch)!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.scopeKey)) throw new Error('浏览器员工/会话/清理代际授权已变化')
+    if (!agent || !isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || APPLICATION_BROWSER_SCOPE!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.runId)) throw new Error('浏览器工具调用的员工、会话或清理代际授权已变化')
   }
-  registerManualScope(owner:BrowserScopeOwner) {
-    return this.store.transaction(async tx => {
-      await this.identity(tx,owner)
-      // Showing an existing window must not erase the current real execution's lease.
-      if (!await tx.get('browserScopes',owner.scopeKey)) await tx.put({collection:'browserScopes',id:owner.scopeKey,value:{id:owner.scopeKey,...owner}})
-    })
-  }
-  registerScope(lease:BrowserLease) {
+  registerTask(lease:BrowserLease) {
     return this.works.browserTransaction(lease.runId,'prepare',async (tx,{work,execution}) => {
       await this.identity(tx,lease)
-      if (work.id!==lease.workId || work.origin || execution.agentId!==lease.agentId || work.conversationId!==lease.conversationId) throw new Error('浏览器不属于原手动工作')
-      await tx.put({collection:'browserScopes',id:lease.scopeKey,value:{id:lease.scopeKey,...lease}})
+      if (work.id!==lease.workId || work.origin || execution.agentId!==lease.agentId || work.conversationId!==lease.conversationId) throw new Error('浏览器工具调用缺少原手动工作授权')
+      await tx.put({collection:'browserScopes',id:lease.runId,value:{id:lease.runId,...lease}})
       return {value:undefined}
     })
   }
@@ -58,7 +51,7 @@ export class BrowserRepository {
   get(actionId:string) { return this.store.transaction(tx=>tx.get<BrowserActionRecord>('browserActions',actionId)) }
   async prepare(envelope: BrowserActionEnvelope,mutating: boolean) {
     return this.works.browserTransaction(envelope.lease.runId,'prepare',async (tx,{work,execution}) => {
-      if (work.id !== envelope.lease.workId || work.origin || execution.agentId !== envelope.lease.agentId || work.conversationId !== envelope.lease.conversationId) throw new Error('浏览器不属于当前手动工作')
+      if (work.id !== envelope.lease.workId || work.origin || execution.agentId !== envelope.lease.agentId || work.conversationId !== envelope.lease.conversationId) throw new Error('浏览器工具调用缺少当前手动工作授权')
       await this.identity(tx,envelope.lease)
       const previous = await tx.get<BrowserActionRecord>('browserActions',envelope.actionId)
       if (previous) {
@@ -68,7 +61,7 @@ export class BrowserRepository {
       if ((await tx.list<BrowserActionRecord>('browserActions')).some(action => action.lease?.workId === work.id && action.mutating && ['prepared','started','unknown'].includes(action.status))) throw new Error('原工作仍有未核对的浏览器动作，不能用新调用重放')
       const action: BrowserActionRecord = { ...envelope,id:envelope.actionId,status:'prepared',mutating,createdAt:new Date().toISOString() }
       await tx.put({collection:'browserActions',id:action.id,value:action})
-      await tx.put({collection:'browserScopes',id:envelope.lease.scopeKey,value:{id:envelope.lease.scopeKey,...envelope.lease}})
+      await tx.put({collection:'browserScopes',id:envelope.lease.runId,value:{id:envelope.lease.runId,...envelope.lease}})
       return { value:{action,fresh:true} }
     })
   }
@@ -95,5 +88,5 @@ export class BrowserRepository {
     })
   }
   sourcesForRun(runId:string) { return this.store.browserSourcesForRun(runId) }
-  scopes() { return this.store.load<BrowserScopeOwner & Partial<BrowserLease> & {id:string}>('browserScopes') }
+  taskAuthorizations() { return this.store.load<BrowserTaskAuthorization & Partial<BrowserLease> & {id:string}>('browserScopes') }
 }

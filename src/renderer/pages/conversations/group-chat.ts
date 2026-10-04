@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已发布消息、工作结果、产物与当前审批的共享合同。
- * [OUTPUT]: 群工作优先使用宿主即时证据 bool，false 不回退旧缓存，兼容旧局部证据与人工待审边界；本轮用户触发关联不重复显示为引用，保留手动/跨消息引用；保守连续发言、文件/审批关联与有证据的工作状态展示。
+ * [OUTPUT]: 群工作优先使用宿主即时证据 bool，false 不回退旧缓存，兼容旧局部证据与人工待审边界；本轮用户触发关联不重复显示为引用，保留手动/跨消息引用；保守连续发言、文件/审批关联与有证据的工作状态展示；已登记成果优先固定 sourceMessageId，缺失原消息不猜其他交付消息。
  * [POS]: 单聊/群聊共用的纯消息展示投影及群工作状态，不创建任务或推断执行归属。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -42,7 +42,9 @@ export function artifactsByMessage(detail: ConversationDetail) {
   for (const artifact of detail.artifacts) {
     const works = artifact.id ? detail.workItems?.filter(work => work.conversationId === detail.conversation.id && work.artifactIds.includes(artifact.id!)) ?? [] : []
     let message: Message | undefined
-    if (works.length) {
+    if (artifact.sourceMessageId) {
+      message = detail.messages.find(value => value.id === artifact.sourceMessageId)
+    } else if (works.length) {
       const ids = new Set(works.flatMap(work => work.resultMessageIds))
       if (ids.size !== 1) continue
       message = detail.messages.find(value => ids.has(value.id))

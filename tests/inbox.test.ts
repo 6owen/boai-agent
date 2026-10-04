@@ -1,11 +1,11 @@
 /*
  * [INPUT]: 真实 AppService/SQLite 与可控离线 Engine、原调度器/Work/审批/成果资格。
- * [OUTPUT]: 四来源分页前筛选/稳定游标、原成果真实文件名/作者与失效原因、零执行读取、已发布问题关系/回答事务与未知幂等、原 task 预算接续和停止/副作用/清理重启边界。
+ * [OUTPUT]: 四来源分页前筛选/稳定游标、同 hash 材料恢复与撤权时代隔离、原成果真实文件名/作者与失效原因、零执行读取、已发布问题关系/回答事务与未知幂等、原 task 预算接续和停止/副作用/清理重启边界。
  * [POS]: D5 待处理宿主验收；不调用商业模型，不替代 Electron BDD。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cp, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppService } from '../src/runtime/service'
@@ -16,7 +16,7 @@ import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { materialDirectory } from '../src/runtime/modules/materials/material-files'
-import type { ConversationMaterial } from '../src/shared/domain/materials'
+import type { ConversationMaterial, MaterialPreview } from '../src/shared/domain/materials'
 import { workEvidenceError } from '../src/runtime/modules/collaboration/work-protocol'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { Connection, Conversation, ConversationDetail, InboxItem, InboxPage, Message, ParticipationDecision, Snapshot, WorkItem, WorkExecution, WorkBudget } from '../src/shared/domain'
@@ -221,6 +221,69 @@ describe('D5 original question ownership and safe continuation', () => {
     expect(await service.handle('getMessageReceipt', { requestId: 'answer' })).toBeNull()
   })
 
+  it.each(['chat', 'task'] as const)('same-hash material repair restores the original %s question and its fixed reply identity', async kind => {
+    const { service, engine, conversation, root, dataPath } = await fixture(); engine.kind = kind
+    const source = join(root, 'source.md'); await writeFile(source, '原问题的同一份材料')
+    const material = await service.handle('prepareMaterial', { conversationId: conversation.id, path: source, requestId: 'material', authorizedAgentIds: ['researcher'] }) as ConversationMaterial
+    await service.handle('sendMessage', { conversationId: conversation.id, content: '参考原件', requestId: 'private-original', mentionIds: [], materialSelections: [{ id: material.id, revision: material.revision }] }); await idle(service, conversation)
+    const question = (await list(service, { kind: 'question' })).items[0], before = await detail(service, conversation)
+    const original = join(materialDirectory(dataPath, conversation.id, material.id), 'original'), moved = join(root, 'original-away')
+    await rename(original, moved)
+    await expect(service.handle('getMaterialPreview', { id: material.id })).rejects.toThrow()
+    const unavailable = await service.handle('getMaterialPreparation', { requestId: 'material' }) as ConversationMaterial
+    expect(unavailable.status).toBe('unavailable')
+    expect(await service.handle('getInboxItem', { id: question.id })).toBeNull()
+    await rename(moved, original)
+    const calls = { decisions: engine.decisions.length, runs: engine.contexts.length }
+    const repaired = await service.handle('recheckMaterial', { id: material.id, expectedRevision: unavailable.revision }) as MaterialPreview
+    expect(repaired.material).toMatchObject({ contentHash: material.contentHash, readableRevisionFrom: material.revision, revision: material.revision + 2 })
+    const current = await service.handle('getInboxItem', { id: question.id }) as InboxItem
+    expect(current).toMatchObject({ id: question.id, messageId: question.messageId, question: { id: question.question!.id, revision: question.question!.revision, canReply: true } })
+    expect((await list(service, { kind: 'question', limit: 1 })).items.map(item => item.id)).toEqual([question.id])
+    expect({ decisions: engine.decisions.length, runs: engine.contexts.length }).toEqual(calls)
+    engine.action = 'reply'
+    const accepted = await service.handle('replyInboxQuestion', reply(question)) as Message; await idle(service, conversation)
+    expect(accepted.inboxReply?.questionId).toBe(question.question!.id)
+    if (kind === 'task') {
+      const after = await detail(service, conversation)
+      expect(after.workItems).toHaveLength(1)
+      expect(after.workItems![0]).toMatchObject({ id: before.workItems![0].id, budgetId: before.workItems![0].budgetId, status: 'delivered' })
+      expect(after.workBudgets![0]).toMatchObject({ id: before.workBudgets![0].id, deadlineAt: before.workBudgets![0].deadlineAt })
+    }
+    expect(await service.handle('getInboxItem', { id: question.id })).toBeNull()
+  })
+
+  it('a restored material never revives an old question after authorization was revoked and granted again', async () => {
+    const { service, engine, conversation, root, dataPath } = await fixture()
+    const source = join(root, 'source.md'); await writeFile(source, '仅原授权时代可读')
+    const material = await service.handle('prepareMaterial', { conversationId: conversation.id, path: source, requestId: 'material', authorizedAgentIds: ['researcher'] }) as ConversationMaterial
+    await service.handle('sendMessage', { conversationId: conversation.id, content: '参考原件', requestId: 'private-original', mentionIds: [], materialSelections: [{ id: material.id, revision: material.revision }] }); await idle(service, conversation)
+    const question = (await list(service, { kind: 'question' })).items[0]
+    const original = join(materialDirectory(dataPath, conversation.id, material.id), 'original'), moved = join(root, 'original-away')
+    const repair = async () => {
+      await rename(original, moved)
+      await expect(service.handle('getMaterialPreview', { id: material.id })).rejects.toThrow()
+      const unavailable = await service.handle('getMaterialPreparation', { requestId: 'material' }) as ConversationMaterial
+      await rename(moved, original)
+      return (await service.handle('recheckMaterial', { id: material.id, expectedRevision: unavailable.revision }) as MaterialPreview).material
+    }
+    const repaired = await repair()
+    expect((await service.handle('getInboxItem', { id: question.id }) as InboxItem).question?.canReply).toBe(true)
+    const revoked = await service.handle('setMaterialAuthorization', { id: material.id, expectedRevision: repaired.revision, authorizedAgentIds: [] }) as ConversationMaterial
+    expect(revoked.readableRevisionFrom).toBeUndefined()
+    expect(await service.handle('getInboxItem', { id: question.id })).toBeNull()
+    await expect(service.handle('recheckMaterial', { id: material.id, expectedRevision: revoked.revision })).rejects.toThrow('撤权')
+    const granted = await service.handle('setMaterialAuthorization', { id: material.id, expectedRevision: revoked.revision, authorizedAgentIds: ['researcher'] }) as ConversationMaterial
+    const calls = { decisions: engine.decisions.length, runs: engine.contexts.length }
+    const repairedAgain = await repair()
+    expect(repairedAgain.readableRevisionFrom).toBe(granted.revision)
+    expect(await service.handle('getInboxItem', { id: question.id })).toBeNull()
+    expect((await list(service, { kind: 'question' })).items).toEqual([])
+    await expect(service.handle('replyInboxQuestion', reply(question))).rejects.toThrow()
+    expect(await service.handle('getMessageReceipt', { requestId: 'answer' })).toBeNull()
+    expect({ decisions: engine.decisions.length, runs: engine.contexts.length }).toEqual(calls)
+  })
+
   it('a real backup into a different root keeps the explicit chat question/receipt without model replay', async () => {
     const { service, engine, conversation, root } = await fixture(); const { question } = await ask(service, conversation); engine.action = 'reply'
     const accepted = await service.handle('replyInboxQuestion', reply(question)) as Message; await idle(service, conversation)
@@ -289,6 +352,16 @@ describe('D5 authoritative SQL before bounded pagination', () => {
     expect(await store.inboxRows({ limit: 20 })).toEqual([])
     await store.write([{ collection: 'conversationCleanup', id: 'chat', value: { id: 'chat' } }])
     expect(await store.inboxRows({ limit: 20 })).toEqual([])
+  })
+
+  it('material repair filters older grants, future and malformed revisions before the page limit', async () => {
+    const store = await database()
+    await store.write([{ collection: 'materials', id: 'private', value: { id: 'private', conversationId: 'chat', status: 'ready', messageId: 'sent', revision: 4, readableRevisionFrom: 2, contentHash: 'same-bytes', parseVersion: 'text-v1' } }])
+    await store.write([1, 5, 2.5, '2', 2].map((revision, index) => {
+      const row = failure(`work-${index}`, index === 4 ? '2026-09-01T00:00:00.000Z' : '2026-10-01T00:00:00.000Z')
+      return { ...row, value: { ...row.value, materialSources: [{ id: 'private', conversationId: 'chat', revision, contentHash: 'same-bytes', parseVersion: 'text-v1' }] } }
+    }))
+    expect((await store.inboxRows({ kind: 'failure', limit: 1 })).map(row => row.id)).toEqual(['failure:work:work-4'])
   })
 
   it('fresh acceptance invalidation remains visible with the fixed version/hash and an explicit reason', async () => {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 显式工作意图、运行身份、当前聊天成员/附件接收范围校验后的上下文与 SQLite 事务。
- * [OUTPUT]: 修订来源按当前聊天附件范围或旧显式名单核对，成员退出与来源版本失效不能新增根/子工作预算。
+ * [OUTPUT]: 修订来源按当前聊天附件范围或旧显式名单核对，同hash可用性恢复允许原有效引用，授权变更仍截断；成员退出与来源版本失效不能新增根/子工作预算。
  * [OUTPUT]: 首次已核核心来源的完整组织合同经同一预算工厂给48次；读取已有预算始终保留原值，群根/子工作/恢复与重启不另起额度。
  * [OUTPUT]: bobo 原组织合同/真实调用采用和独立群根沿唯一预算；实际组织证据同提交事务核验；浏览器 prepared/start/terminal 与原持有者和副作用标记同事务；取消后只确认原执行事实、不释放新运行；settle 可组合原事务消息完成 hook；工作结果/消息/完成身份任一失败同事务回滚，不按运行结束推断公开完成。
  * [OUTPUT]: 公开 task 用户问题同结果事务保存；补充原工作版本/执行/副作用/预算/依赖门禁同回答消息复核，不新建预算；用户修订请求/目标员工与唯一新根预算同事务绑定，重试/唤醒/子工作保留修订身份但不继承原成果工作或 occurrence；材料来源随认领/父子继承及持有者条件事务追加；显式额度追加/工作接续/消息/容量同事务；原工作身份与已交付结果保留；共享预算、执行权、父子/依赖和停止门禁。
@@ -12,7 +12,7 @@ import type { AgentRun, AutomationBudgetRenewalInput, BudgetModelCall, ModelUsag
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../../../shared/domain/bobo-collaboration'
 import type { ProfileModelCall } from '../profile/profile-activity'
 import type { ArtifactRevisionRequest, ArtifactVersion } from '../../../shared/domain/artifacts'
-import { isConversationMaterialVisible } from '../../../shared/domain/materials'
+import { isConversationMaterialVisible, isMaterialReadRevisionValid } from '../../../shared/domain/materials'
 import { renewAutomationWork } from './work-renewal'
 import { assertAutomationExecution, activateAutomationExecution, resumeAutomationExecution } from '../automations/automation-repository'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
@@ -138,7 +138,7 @@ export class WorkRepository {
     if (!artifact || artifact.conversationId !== conversationId || artifact.contentHash !== request.contentHash || artifact.logicalArtifactId !== request.logicalArtifactId || artifact.contentStatus !== 'ready') throw new WorkUnavailableError('修订原版的内容身份已失效')
     for (const ref of artifact.materialSources ?? []) {
       const material = await tx.get<ConversationMaterial>('materials', ref.id)
-      if (ref.conversationId !== conversationId || !material || material.conversationId !== conversationId || material.status !== 'ready' || !material.messageId || material.revision !== ref.revision || material.contentHash !== ref.contentHash || material.parseVersion !== ref.parseVersion || !isConversationMaterialVisible(material, conversation, agentId)) throw new WorkUnavailableError('修订原版的材料来源或执行授权已失效')
+      if (ref.conversationId !== conversationId || !material || material.conversationId !== conversationId || material.status !== 'ready' || !material.messageId || !isMaterialReadRevisionValid(material, ref.revision) || material.contentHash !== ref.contentHash || material.parseVersion !== ref.parseVersion || !isConversationMaterialVisible(material, conversation, agentId)) throw new WorkUnavailableError('修订原版的材料来源或执行授权已失效')
     }
     return request
   }

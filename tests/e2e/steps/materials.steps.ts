@@ -1,15 +1,17 @@
 /*
+ * [OUTPUT]: 可选审阅模式保留Markdown排版/源码、TypeScript/HTML关键帧及已发送原件与身份，不改变业务断言。
  * [INPUT]: D1 中文材料场景、生产 Electron UI/IPC、隔离原件与共享协议 fixture。
- * [OUTPUT]: 显式共享点击后等待实际提交的授权状态；同名独立来源、共享投影/可信行定位、切页重启不重放、严格失败门禁、真实 File 原生授权/伪造拒绝与未知准备/消息只读核对及唯一关联/轮次的业务断言。
+ * [OUTPUT]: 聊天Markdown/代码在右侧安全预览与Shiki高亮，来源行保持；新材料随当前成员授权、通用PDF不虚构正文、同字节恢复/未知回执与重启不重放。
  * [POS]: tests/e2e/steps/materials.steps.ts；准备文件和故障注入只在 support 层。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
+import { join } from 'node:path'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { messageDraft } from '../support/editor-controls'
-import { dropNativeMaterialFile, forgedMaterialRequests, managedMaterialFiles, materialOriginal, materialRecords, materialReplyFault, materialSendReplyFault, nextMaterialDialog, prepareMaterialsDesktop } from '../support/materials'
+import { dropNativeMaterialFile, forgedMaterialRequests, managedMaterialFiles, legacyMaterialGrant, materialOriginal, materialRecords, materialReplyFault, materialSendReplyFault, nextMaterialDialog, prepareMaterialsDesktop, temporarilyRemoveMaterialOriginal } from '../support/materials'
 import type { ConversationMaterial } from '../../../src/shared/domain/materials'
 import type { ConversationDetail, Message } from '../../../src/shared/domain'
 
@@ -27,6 +29,7 @@ interface State {
   frozenSend?: Awaited<ReturnType<SendFault['inspect']>>
   beforeRecovery?: ConversationDetail
   modelCalls?: number
+  restoreOriginal?: () => Promise<void>
 }
 export const test = base.extend<{ materialsState: State }>({ materialsState: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
@@ -49,12 +52,81 @@ async function idle(runtime: Desktop, conversationId: string) {
 async function inspectPreview(runtime: Desktop, material: ConversationMaterial, expectedLine: string) {
   const preview = runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)
   await expect(preview).toBeVisible()
-  await expect(preview.locator('[data-material-line="2"] > span')).toHaveText(expectedLine)
+  const source = preview.getByRole('tab', { name: '源码', exact: true })
+  if (await source.isVisible()) await source.click()
+  await expect(preview.locator('[data-file-line="2"] .shiki-line-content')).toHaveText(expectedLine)
   await preview.getByText('材料来源与解析记录', { exact: true }).click()
   await expect(preview).toContainText(material.id)
   await expect(preview).toContainText(material.contentHash!)
   await expect(preview).toContainText('text-v1')
 }
+
+When('用户将文档代码和网页源码作为聊天文件发送', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, page = runtime.page
+  await selectConversation(page, fixture.direct.title)
+  for (const [index, path] of [fixture.files.markdown, fixture.files.code, fixture.files.html].entries()) {
+    await addMaterial(runtime, path)
+    await expect(drafts(page).nth(index)).toHaveAttribute('data-material-status', 'ready')
+  }
+  await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('这些文件供预览检查。')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await idle(runtime, fixture.direct.id)
+  const current = await detail(runtime, fixture.direct.id)
+  materialsState.materials = current.materials!
+  materialsState.message = current.messages.find(message => message.senderType === 'user')!
+  materialsState.beforeRecovery = current
+  materialsState.modelCalls = fixture.endpoint.requests.length
+  expect(materialsState.message.materialIds).toHaveLength(3)
+  for (const material of materialsState.materials) await runtime.reviewFile(material.name, join(fixture.dataPath, 'materials', material.conversationId, material.id, 'original'))
+  await runtime.reviewData('已发送材料身份', { messageId: materialsState.message.id, materials: materialsState.materials.map(({ id, name, contentHash, conversationId }) => ({ id, name, contentHash, conversationId })) })
+  await runtime.reviewCheckpoint('在聊天中发送三份真实文件')
+})
+Then('聊天文件在右侧预览Markdown和Shiki源码且不执行业务操作', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, page = runtime.page
+  const byName = (name: string) => materialsState.materials!.find(material => material.name === name)!
+  async function open(name: string) {
+    const material = byName(name)
+    await page.locator(`#message-${materialsState.message!.id} [data-material-id="${material.id}"]`).getByRole('button', { name: `预览材料 ${name}`, exact: true }).click()
+    const preview = page.locator(`[data-material-preview-id="${material.id}"]:visible`)
+    await expect(preview).toBeVisible()
+    return preview
+  }
+  const markdown = await open('预览说明.md')
+  await expect(markdown.locator('[data-file-preview-kind="markdown"]')).toBeVisible()
+  await expect(markdown.getByRole('heading', { name: '可预览的聊天文档', exact: true })).toBeVisible()
+  await expect(markdown.locator('strong')).toHaveText('加粗正文')
+  await expect(markdown.locator('pre.shiki-code-block .shiki-token').first()).toBeVisible()
+  await expect(markdown.locator('pre.shiki-code-block')).toContainText('CHAT_MARKDOWN_CODE')
+  await expect(markdown.locator('script, iframe')).toHaveCount(0)
+  await runtime.reviewCheckpoint('Markdown 排版预览')
+  await markdown.getByRole('tab', { name: '源码', exact: true }).click()
+  await expect(markdown.locator('[data-file-line="1"] .shiki-line-content')).toHaveText('# 可预览的聊天文档')
+  await runtime.reviewCheckpoint('Markdown 源码与行号')
+  await markdown.getByRole('tab', { name: '预览', exact: true }).click()
+  await expect(markdown.getByRole('heading', { name: '可预览的聊天文档', exact: true })).toBeVisible()
+
+  const code = await open('preview.ts')
+  await expect(code.locator('[data-file-preview-kind="code"]')).toBeVisible()
+  await expect(code.locator('pre.shiki-code-block')).toHaveAttribute('data-language', /^(ts|typescript)$/)
+  await expect(code.locator('.shiki-token').first()).toBeVisible()
+  await expect(code.locator('[data-file-line="1"] .shiki-line-content')).toHaveText(fixture.texts.code.split('\n')[0])
+  await expect(code.locator('[data-file-line="2"] .shiki-line-content')).toHaveText(fixture.texts.code.split('\n')[1])
+  await runtime.reviewCheckpoint('TypeScript 附件的 Shiki 高亮')
+
+  const html = await open('preview.html')
+  await expect(html.locator('[data-file-preview-kind="code"]')).toBeVisible()
+  await expect(html.locator('pre.shiki-code-block')).toHaveAttribute('data-language', 'html')
+  await expect(html.locator('[data-file-line="2"] .shiki-line-content')).toHaveText(fixture.texts.html.split('\n')[1])
+  await expect(html.locator('script, iframe, object, embed')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as typeof window & { __boaiPreviewExecuted?: boolean }).__boaiPreviewExecuted)).toBeUndefined()
+  await runtime.reviewCheckpoint('HTML 文件仅显示源码')
+  const after = await detail(runtime, fixture.direct.id), before = materialsState.beforeRecovery!
+  expect(after.messages).toEqual(before.messages)
+  expect(after.materials).toEqual(before.materials)
+  expect(after.artifacts).toEqual([])
+  expect(after.workItems).toEqual([])
+  expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+})
 
 Given('材料协作组和私聊已连接离线协议模型', async ({ runtime, materialsState }) => {
   materialsState.fixture = await prepareMaterialsDesktop(runtime)
@@ -81,15 +153,10 @@ Then('两份报告有独立原文行号和来源身份', async ({ runtime, mater
   }
   expect(fixture.endpoint.requests).toHaveLength(0)
 })
-When('用户仅将第一份报告共享给研究员并发送材料', async ({ runtime, materialsState }) => {
+When('用户将两份报告随消息发送给当前群成员', async ({ runtime, materialsState }) => {
   const fixture = materialsState.fixture!, page = runtime.page
-  const first = drafts(page).first()
-  await first.locator('summary').click()
-  await expect(first.getByRole('checkbox', { name: '写手', exact: true })).toBeChecked()
-  // Sharing commits asynchronously; await the source-backed state rather than a synchronous checkbox toggle.
-  await first.getByRole('checkbox', { name: '写手', exact: true }).click()
-  await expect(first.getByRole('checkbox', { name: '写手', exact: true })).not.toBeChecked()
-  await expect(first.locator('summary')).toHaveText('共享给：研究员')
+  await expect(drafts(page).locator('summary')).toHaveCount(0)
+  await expect(drafts(page).getByRole('checkbox')).toHaveCount(0)
   materialsState.materials = (await detail(runtime, fixture.group.id)).materials!
   // Attachment-only sending exercises the real empty-body association and model projection.
   await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('')
@@ -103,27 +170,28 @@ When('用户仅将第一份报告共享给研究员并发送材料', async ({ ru
 })
 Then('员工只收到获准原文且回复来源可以定位', async ({ runtime, materialsState }) => {
   const fixture = materialsState.fixture!, current = await detail(runtime, fixture.group.id), page = runtime.page
-  const first = materialsState.materials!.find(material => material.authorizedAgentIds.length === 1)!, second = materialsState.materials!.find(material => material.authorizedAgentIds.length === 2)!
+  const [first, second] = materialsState.materials!
+  expect(current.materials?.every(material => material.deliveryScope === 'conversation')).toBe(true)
   const researchRequests = fixture.endpoint.requests.filter(request => request.model === 'materials-researcher').map(request => JSON.stringify(request))
   const writerRequests = fixture.endpoint.requests.filter(request => request.model === 'materials-writer').map(request => JSON.stringify(request))
   expect(researchRequests.some(request => request.includes('FIRST_PRIVATE_TOKEN_A') && request.includes('SECOND_SHARED_TOKEN_B'))).toBe(true)
   expect(writerRequests.some(request => request.includes('SECOND_SHARED_TOKEN_B'))).toBe(true)
-  expect(writerRequests.every(request => !request.includes('FIRST_PRIVATE_TOKEN_A'))).toBe(true)
+  expect(writerRequests.some(request => request.includes('FIRST_PRIVATE_TOKEN_A') && request.includes('SECOND_SHARED_TOKEN_B'))).toBe(true)
   const researcher = current.messages.find(message => message.senderId === 'researcher' && message.status === 'completed')!, writer = current.messages.find(message => message.senderId === 'writer' && message.status === 'completed')!
   expect(researcher.materialSources?.map(ref => ref.id).sort()).toEqual([first.id, second.id].sort())
-  expect(writer.materialSources?.map(ref => ref.id)).toEqual([second.id])
+  expect(writer.materialSources?.map(ref => ref.id).sort()).toEqual([first.id, second.id].sort())
   const source = page.locator(`#message-${researcher.id}`).getByRole('button', { name: '查看材料 报告.md 第 2 至 2 行', exact: true })
   await expect(source).toHaveCount(2); await source.first().click()
   const selected = page.locator(`[data-material-preview-id="${first.id}"]:visible`)
-  await expect(selected.getByRole('button', { name: '定位材料第 2 行', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(selected.getByRole('button', { name: '定位第 2 行', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(selected).toContainText(`来源定位：${first.id}:L2`)
   expect(current.workItems).toEqual([])
 })
 Then('材料详情切页后恢复且重启不重复调用模型', async ({ runtime, materialsState }) => {
-  const fixture = materialsState.fixture!, first = materialsState.materials!.find(material => material.authorizedAgentIds.length === 1)!, page = runtime.page
+  const fixture = materialsState.fixture!, first = materialsState.materials![0], page = runtime.page
   await page.getByRole('button', { name: '通讯录', exact: true }).click()
   await expect(page.locator('[data-material-preview-id]:visible')).toHaveCount(0)
-  await page.getByRole('button', { name: '会话', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
   await expect(page.locator(`[data-material-preview-id="${first.id}"]:visible`)).toBeVisible()
   const before = await detail(runtime, fixture.group.id), calls = fixture.endpoint.requests.length
   await runtime.restart(); await expect(runtime.page.locator('.app-shell')).toBeVisible()
@@ -138,14 +206,20 @@ Then('材料详情切页后恢复且重启不重复调用模型', async ({ runti
   expect(fixture.endpoint.requests).toHaveLength(calls)
 })
 
-When('用户在私聊保留有效材料并逐项添加坏编码超限与不支持材料', async ({ runtime, materialsState }) => {
+When('用户在私聊核对通用文件并逐项添加坏编码和超限材料', async ({ runtime, materialsState }) => {
   const fixture = materialsState.fixture!, page = runtime.page
   await selectConversation(page, fixture.direct.title); await addMaterial(runtime, fixture.files.valid)
   await expect(drafts(page).first()).toHaveAttribute('data-material-status', 'ready')
   materialsState.materials = (await detail(runtime, fixture.direct.id)).materials!
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('只处理保留的有效材料')
+  await addMaterial(runtime, fixture.files.unsupported)
+  await expect(drafts(page).nth(1)).toHaveAttribute('data-material-status', 'ready')
+  const generic = (await detail(runtime, fixture.direct.id)).materials!.find(material => material.name === '通用资料.pdf')!
+  expect(generic).toMatchObject({ format: 'file', parseVersion: 'binary-v1', status: 'ready' })
+  expect(generic.lineCount).toBeUndefined(); expect(generic.characterCount).toBeUndefined()
+  await drafts(page).nth(1).getByRole('button', { name: '移除材料 通用资料.pdf', exact: true }).click()
   materialsState.failed = []
-  for (const [path, name, reason] of [[fixture.files.encoding, '坏编码.txt', 'UTF-8'], [fixture.files.large, '超限.txt', '128 KiB'], [fixture.files.unsupported, '不支持.pdf', 'TXT']]) {
+  for (const [path, name, reason] of [[fixture.files.encoding, '坏编码.txt', 'UTF-8'], [fixture.files.large, '超限.txt', '128 KiB'], [fixture.files.oversized, '超限文件.pdf', '20 MiB']]) {
     await addMaterial(runtime, path)
     const failure = drafts(page).nth(1)
     await expect(failure).toHaveAttribute('data-material-status', 'failed')
@@ -155,7 +229,7 @@ When('用户在私聊保留有效材料并逐项添加坏编码超限与不支�
     expect(await messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('只处理保留的有效材料')
     const stored = (await detail(runtime, fixture.direct.id)).materials!.find(material => material.name === name)!
     materialsState.failed.push({ name, reason, id: stored.id })
-    if (name !== '不支持.pdf') { await failure.getByRole('button', { name: `移除材料 ${name}`, exact: true }).click(); await expect(drafts(page)).toHaveCount(1) }
+    if (name !== '超限文件.pdf') { await failure.getByRole('button', { name: `移除材料 ${name}`, exact: true }).click(); await expect(drafts(page)).toHaveCount(1) }
   }
 })
 Then('每份失败都有明确原因且其他原文和正文草稿保持', async ({ runtime, materialsState }) => {
@@ -163,15 +237,15 @@ Then('每份失败都有明确原因且其他原文和正文草稿保持', async
   expect(materialsState.failed).toHaveLength(3)
   const stored = (await detail(runtime, fixture.direct.id)).materials!
   expect(stored.find(material => material.id === good.id)).toEqual(good)
-  expect(stored.filter(material => material.status === 'removed')).toHaveLength(2)
-  expect(stored.find(material => material.name === '不支持.pdf')?.status).toBe('failed')
+  expect(stored.filter(material => material.status === 'removed')).toHaveLength(3)
+  expect(stored.find(material => material.name === '超限文件.pdf')?.status).toBe('failed')
   await drafts(runtime.page).first().getByRole('button', { name: '预览材料 有效材料.txt', exact: true }).click()
   await inspectPreview(runtime, good, fixture.texts.valid.split('\n')[1])
   expect(fixture.endpoint.requests).toHaveLength(0)
 })
 When('用户移除失败材料并发送保留的有效材料', async ({ runtime, materialsState }) => {
   const fixture = materialsState.fixture!, page = runtime.page
-  await drafts(page).nth(1).getByRole('button', { name: '移除材料 不支持.pdf', exact: true }).click()
+  await drafts(page).nth(1).getByRole('button', { name: '移除材料 超限文件.pdf', exact: true }).click()
   await expect(drafts(page)).toHaveCount(1)
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: '发送消息', exact: true }).click(); await idle(runtime, fixture.direct.id)
@@ -326,4 +400,59 @@ Then('只核对原消息与轮次且重启不重复关联或模型调用', async
   expect(restarted.materials).toEqual(before.materials)
   await expect(runtime.page.getByRole('region', { name: '消息材料', exact: true }).locator('[data-material-id]')).toHaveCount(1)
   expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+})
+
+Then('群成员变化后当前范围与旧显式名单各自保持', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!
+  await legacyMaterialGrant(runtime, fixture.dataPath, materialsState.materials![0].id)
+  const beforeCalls = fixture.endpoint.requests.length
+  await runtime.page.evaluate(async id => {
+    const conversation = (await window.boai.request('getConversation', { id })).conversation
+    await window.boai.request('createConversation', { id, kind: 'group', title: conversation.title, mode: conversation.mode, agentIds: ['researcher', 'reviewer'], expectedConfigVersion: conversation.configVersion })
+    await window.boai.request('sendMessage', { conversationId: id, content: '请当前成员继续核对两份历史报告', mentionIds: ['researcher', 'reviewer'], requestId: 'materials-current-members' })
+  }, fixture.group.id)
+  await idle(runtime, fixture.group.id)
+  const requests = fixture.endpoint.requests.slice(beforeCalls)
+  expect(requests.some(request => request.model === 'materials-writer')).toBe(false)
+  expect(requests.filter(request => request.model === 'materials-researcher').some(request => JSON.stringify(request).includes('FIRST_PRIVATE_TOKEN_A') && JSON.stringify(request).includes('SECOND_SHARED_TOKEN_B'))).toBe(true)
+  const reviewer = requests.filter(request => request.model === 'materials-reviewer').map(request => JSON.stringify(request))
+  expect(reviewer.some(request => request.includes('SECOND_SHARED_TOKEN_B'))).toBe(true)
+  expect(reviewer.every(request => !request.includes('FIRST_PRIVATE_TOKEN_A'))).toBe(true)
+  expect((await detail(runtime, fixture.group.id)).conversation.agentIds).toEqual(['researcher', 'reviewer'])
+})
+
+When('已发送材料的原件暂时缺失并重新启动', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, page = runtime.page
+  await selectConversation(page, fixture.direct.title); await addMaterial(runtime, fixture.files.valid)
+  await expect(drafts(page).first()).toHaveAttribute('data-material-status', 'ready')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click(); await idle(runtime, fixture.direct.id)
+  const current = await detail(runtime, fixture.direct.id)
+  materialsState.beforeRecovery = current; materialsState.materials = current.materials!; materialsState.modelCalls = fixture.endpoint.requests.length
+  materialsState.restoreOriginal = await temporarilyRemoveMaterialOriginal(fixture.dataPath, current.materials![0])
+  await runtime.page.reload(); await selectConversation(runtime.page, fixture.direct.title)
+  await expect(runtime.page.getByRole('button', { name: '核对材料 有效材料.txt', exact: true })).toBeVisible()
+  await runtime.restart(); await selectConversation(runtime.page, fixture.direct.title)
+  await runtime.page.getByRole('button', { name: '核对材料 有效材料.txt', exact: true }).click()
+})
+Then('材料显示不可用且不会展示之前的正文', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, material = materialsState.materials![0]
+  expect((await materialRecords(fixture.dataPath)).materials.find(value => value.id === material.id)?.status).toBe('unavailable')
+  await expect(runtime.page.getByRole('button', { name: '重新核对材料', exact: true })).toBeVisible()
+  await expect(runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)).toHaveCount(0)
+  expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+})
+When('用户恢复相同原件后明确重新核对材料', async ({ runtime, materialsState }) => {
+  await materialsState.restoreOriginal!()
+  await runtime.page.getByRole('button', { name: '重新核对材料', exact: true }).click()
+})
+Then('原材料正文恢复且消息和模型调用均未重放', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, material = materialsState.materials![0], before = materialsState.beforeRecovery!
+  await inspectPreview(runtime, material, fixture.texts.valid.split('\n')[1])
+  const current = await detail(runtime, fixture.direct.id), repaired = current.materials!.find(value => value.id === material.id)!
+  expect(repaired).toMatchObject({ status: 'ready', contentHash: material.contentHash, messageId: material.messageId, deliveryScope: material.deliveryScope })
+  expect(repaired.revision).toBeGreaterThan(material.revision)
+  expect(current.messages).toEqual(before.messages); expect(current.turns).toEqual(before.turns)
+  expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+  await runtime.page.getByRole('button', { name: '查看材料 有效材料.txt 第 2 至 2 行', exact: true }).click()
+  await inspectPreview(runtime, repaired, fixture.texts.valid.split('\n')[1])
 })

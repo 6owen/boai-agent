@@ -1,13 +1,13 @@
 /*
  * [INPUT]: 生产个人资料/聊天 UI、真实 IPC 与隔离 Desktop。
- * [OUTPUT]: 通过本人菜单/聊天本人头像资料入口进入资料；当前姓名/头像/用户名联动历史昵称、引用、工具条与表情，改名及重启同步且不回写旧 senderName；稳定 senderType/senderId 隔离自动化和员工；损坏旧图片回退、未保存/冲突、运行中保存及主题缩放验收。
+ * [OUTPUT]: 当前图表粒度/可访问日期及首次资料门禁，校验嵌套头像错误不掩盖资料冲突； 通过本人菜单/聊天本人头像资料入口进入资料；当前姓名/头像/用户名联动历史昵称、引用、工具条与表情，改名及重启同步且不回写旧 senderName；稳定 senderType/senderId 隔离自动化和员工；损坏旧图片回退、未保存/冲突、运行中保存及主题缩放验收。
  * [POS]: profile.feature 的业务步骤，协议服务在 support/profile。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
 import { test } from '../support/test'
-import { cancelProfileWindowClose, prepareProfile } from '../support/profile'
+import { cancelProfileWindowClose, prepareProfile, holdProfileSnapshot } from '../support/profile'
 import { messageDraft } from '../support/editor-controls'
 import type { Desktop } from '../support/desktop'
 
@@ -32,7 +32,7 @@ When('从设置搜索进入资料并保存名称用户名和上传头像', async
   await dialog.getByRole('textbox', { name: '用户名', exact: true }).fill('ada_wang')
   await dialog.getByRole('button', { name: '更换个人头像' }).click()
   const bad = page.waitForEvent('filechooser'); await page.getByRole('button', { name: '上传本地图片' }).click(); await (await bad).setFiles({ name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('broken') })
-  await expect(page.getByRole('alert')).toContainText('无法读取这张图片')
+  await expect(page.getByRole('alert').filter({ hasText: '无法读取这张图片' })).toBeVisible()
   const image = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 32; const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#4477cc'; ctx.fillRect(0, 0, 64, 32); return canvas.toDataURL().split(',')[1] })
   const choosing = page.waitForEvent('filechooser'); await page.getByRole('button', { name: '上传本地图片' }).click(); await (await choosing).setFiles({ name: 'avatar.png', mimeType: 'image/png', buffer: Buffer.from(image, 'base64') })
   await expect(dialog.locator('.user-avatar img')).toHaveAttribute('src', /^data:image\/png;base64,/)
@@ -187,7 +187,7 @@ Then('编辑个人资料时运行和输入草稿保持且用量可核对', async
   await expect.poll(async () => { const date = new Date().toISOString().slice(0, 10); return (await page.evaluate(query => window.boai.request('getProfileActivity', query), { from: date, to: date, timezone: 'UTC' })).totalTokens }).toBe(state.model.calls * 15)
   const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), state.chats.direct.id); expect(detail.workItems ?? []).toHaveLength(0)
   await page.getByRole('button', { name: '每周', exact: true }).click(); await expect(page.locator('.profile-chart')).toBeVisible()
-  await page.getByRole('button', { name: '累计', exact: true }).click(); await expect(page.locator('.profile-activity')).toContainText('区间累计')
+  await page.getByRole('button', { name: '累计', exact: true }).click(); await expect(page.getByRole('button', { name: '累计', exact: true })).toHaveAttribute('aria-pressed', 'true'); await expect(page.locator('.profile-chart')).toBeVisible(); await expect(page.locator('.profile-chart .recharts-line')).toHaveCount(1)
 })
 Then('个人资料通过浅深色窗口缩放和键盘图表验收', async ({ runtime }) => {
   const page = runtime.page
@@ -208,6 +208,29 @@ Then('个人资料通过浅深色窗口缩放和键盘图表验收', async ({ ru
   await page.setViewportSize({ width: 1124, height: 900 })
   await page.locator('.profile-day').last().focus(); await page.keyboard.press('ArrowLeft')
   await expect(page.locator('.profile-day').nth(await page.locator('.profile-day').count() - 8)).toBeFocused()
-  await page.locator('.profile-text-data summary').click(); await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.locator('.profile-day').last()).toHaveAttribute('aria-label', /\d{4}-\d{2}-\d{2}：/); await page.getByRole('button', { name: '每周', exact: true }).click(); await expect(page.locator('.profile-chart .recharts-bar')).toBeVisible(); await page.getByRole('button', { name: '累计', exact: true }).click(); await expect(page.locator('.profile-chart')).toBeVisible(); await expect(page.locator('.profile-chart .recharts-line')).toHaveCount(1)
   expect(runtime.errors).toEqual([])
+})
+
+Then('首次资料快照返回前所有编辑入口保持禁用', async ({ runtime }) => {
+  const gate = await holdProfileSnapshot(runtime)
+  try {
+    await runtime.page.reload({ waitUntil: 'domcontentloaded' })
+    await expect.poll(async () => (await gate.inspect()).waiting).toBeGreaterThan(0)
+    await openProfile(runtime)
+    const profile = runtime.page.locator('.profile-document')
+    await expect(profile.getByRole('button', { name: '编辑', exact: true })).toBeDisabled()
+    await expect(profile.getByRole('button', { name: '编辑显示名称', exact: true })).toBeDisabled()
+    await expect(profile.getByRole('button', { name: '更换个人头像', exact: true })).toBeDisabled()
+    await expect(runtime.page.getByRole('dialog', { name: '编辑个人资料', exact: true })).toHaveCount(0)
+    expect((await gate.inspect()).writes).toBe(0)
+    await gate.release()
+    await expect(profile.locator('h1')).toHaveText('旧资料')
+    await profile.getByRole('button', { name: '编辑', exact: true }).click()
+    await runtime.page.getByRole('textbox', { name: '显示名称', exact: true }).fill('快照之后编辑')
+    await runtime.page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(runtime.page.getByRole('dialog', { name: '编辑个人资料', exact: true })).toHaveCount(0)
+    await expect(profile.locator('h1')).toHaveText('快照之后编辑')
+    expect((await gate.inspect()).writes).toBe(1)
+  } finally { await gate.release() }
 })

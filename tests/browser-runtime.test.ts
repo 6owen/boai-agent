@@ -1,20 +1,22 @@
 /*
  * [INPUT]: 原浏览器 single parser、真实 SQLite Work/动作回执、宿主桥替身及真实 Mastra/本地模型 HTTP 协议。
+ * [OUTPUT]: 下载完成/hash核验后进入工作区，重复回执复用真实路径；受管根父层系统别名可用/根下链接拒绝，未知/外改不复制；全局窗口身份与run工具调用审计分离。
  * [OUTPUT]: SQLite 浏览器动作默认接受有效内置员工的旧 false/缺字段；停用/ACP、配置版本和清理代际撤权保持。
- * [OUTPUT]: 首调用前拒绝批处理/越界、冻结审批、未知不重放、同工具身份幂等、取消后原事实与退出、实际 SDK PNG 媒体运输/持久脱敏合同。
+ * [OUTPUT]: 首调用前拒绝批处理/越界、冻结审批、普通release无隐形接管/暂停、未知不重放、同工具身份幂等、取消后原事实与退出、实际 SDK PNG 媒体运输/持久脱敏合同。
  * [POS]: tests/browser-runtime.test.ts；Electron 真实页面由 browser-migration BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach,describe,expect,it,vi } from 'vitest'
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
-import { mkdtemp,rm } from 'node:fs/promises'
+import { mkdtemp,rm,mkdir,readFile,readdir,writeFile,realpath,symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import { BrowserRepository,browserScopeKey,browserCommandHash } from '../src/runtime/modules/browser/repository'
+import { BrowserRepository,browserCommandHash } from '../src/runtime/modules/browser/repository'
 import { BrowserSession,browserRequestOrigins } from '../src/runtime/modules/browser/session'
 import { summarizeMedia } from '../src/runtime/modules/browser/media'
 import { browserChatPrompt } from '../src/runtime/adapters/mastra/browser-model'
@@ -24,19 +26,20 @@ import type { EngineContext } from '../src/runtime/contracts'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import { executeBrowserSingleCommand,parseBrowserSingleCommand,getBrowserToolHelp } from '../src/runtime/adapters/mastra/browser-tool-runtime'
 import type { BrowserPaneFns } from '../src/runtime/adapters/mastra/browser-tool-types'
+import { APPLICATION_BROWSER_SCOPE } from '../src/shared/ipc/browser'
 import type { BrowserActionEnvelope,BrowserActionReply,BrowserHostBridge,BrowserHostMethods,BrowserLease } from '../src/shared/ipc/browser'
 import type { DigitalAgent,Conversation,WorkExecution } from '../src/shared/domain'
 const cleanup:(()=>Promise<void>)[]=[]
 afterEach(async()=>{vi.restoreAllMocks();for(const close of cleanup.splice(0).reverse())await close()})
 async function fixture() {
-  const root=await mkdtemp(join(tmpdir(),'boai-browser-test-')); cleanup.push(()=>rm(root,{recursive:true,force:true}))
+  const root=await realpath(await mkdtemp(join(tmpdir(),'boai-browser-test-'))); cleanup.push(()=>rm(root,{recursive:true,force:true}))
   const store=new ProductStore(join(root,'boai.sqlite'));await store.init();cleanup.push(()=>store.close())
   const agent:DigitalAgent={id:'agent',name:'研究员',role:'研究',instructions:'研究',color:'#000000',connectionId:'connection',modelId:'model',skillIds:[],knowledgeIds:[],allowCommands:false,allowBrowser:true,active:true,configVersion:1}
   const conversation:Conversation={id:'chat',kind:'direct',title:'研究',agentIds:[agent.id],mode:'natural',sharedKnowledgeIds:[],workspacePath:root,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),configVersion:1}
   await store.write([{collection:'agents',id:agent.id,value:agent},{collection:'conversations',id:conversation.id,value:conversation}])
   const works=new WorkRepository(store);await works.init()
   const work=await works.claim({conversationId:'chat',sourceMessageId:'request',agentId:'agent',runId:'run',intent:{key:'main',scope:'读取明确站点',deliverable:'实际研究结果'}})
-  const lease:BrowserLease={scopeKey:browserScopeKey('agent','chat',1),scopeEpoch:1,agentId:'agent',conversationId:'chat',workId:work.id,runId:'run',generation:'generation',configVersion:1,agentName:'研究员',conversationTitle:'研究',downloadDirectory:root}
+  const lease:BrowserLease={scopeKey:APPLICATION_BROWSER_SCOPE,scopeEpoch:1,agentId:'agent',conversationId:'chat',workId:work.id,runId:'run',generation:'generation',configVersion:1,agentName:'研究员',conversationTitle:'研究',downloadDirectory:root}
   const repository=new BrowserRepository(store,works)
   const envelope=(command='navigate https://example.test/') => ({lease,actionId:'action',toolCallId:'sdk-call',command:parseBrowserSingleCommand(command).command,argumentHash:browserCommandHash(parseBrowserSingleCommand(command).parts),approvedOrigins:['https://example.test']})
   return {root,store,works,work,lease,repository,envelope,agent}
@@ -204,7 +207,7 @@ describe('per-run browser session actual exit and no replay',()=>{
   })
   it('registers cleanup ownership before a window can be acquired, even if no action is accepted',async()=>{
     const {repository,lease,store}=await fixture();let scopeSeen=false
-    const bridge=host(async(method)=>{if(method==='acquire'){scopeSeen=(await repository.scopes()).some(scope=>scope.scopeKey===lease.scopeKey);throw new Error('窗口准备失败')}})
+    const bridge=host(async(method)=>{if(method==='acquire'){scopeSeen=(await repository.taskAuthorizations()).some(scope=>scope.id===lease.runId && scope.scopeKey===APPLICATION_BROWSER_SCOPE);throw new Error('窗口准备失败')}})
     const session=new BrowserSession(lease,bridge,repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true})
     await expect(session.execute('snapshot','first')).rejects.toThrow('窗口准备失败')
     expect(scopeSeen).toBe(true);expect(await store.load('browserActions')).toHaveLength(0)
@@ -245,19 +248,19 @@ describe('per-run browser session actual exit and no replay',()=>{
     const original=(await store.load<{lease:BrowserLease}>('browserActions'))[0];expect(original.lease.generation).toBe('generation')
     await session.drain()
   })
-  it('parks a completed security release after the Main command settles, and resumes without reexecuting that command',async()=>{
-    const {repository,lease}=await fixture();const released=deferred<void>(),controls:string[]=[];let executions=0
+  it('returns a completed security release without hidden takeover, parking or command replay',async()=>{
+    const {repository,lease}=await fixture();const controls:string[]=[];let executions=0
     const bridge=host(async(method,input)=>{
       if(method==='inspect')return {...page,scopeKey:lease.scopeKey}
       if(method==='executeSingle'){executions++;const envelope=input as BrowserActionEnvelope;await repository.start({actionId:envelope.actionId,generation:envelope.lease.generation,runId:lease.runId,workId:lease.workId});return {actionId:envelope.actionId,generation:envelope.lease.generation,status:'completed',needsUserControl:true,result:{output:'网页需要人工验证，已真实释放控制',appendReleaseHint:false}} satisfies BrowserActionReply}
       if(method==='drain')return {drained:true}
-      if(method==='userControl'){controls.push((input as {action:string}).action);released.resolve();return}
+      if(method==='userControl'){controls.push((input as {action:string}).action);return}
       if(method==='resumeSnapshot')return {source:{...page,scopeKey:lease.scopeKey,generation:(input as BrowserLease).generation},output:'当前验证后的真实页面'}
     })
     const session=new BrowserSession(lease,bridge,repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true})
-    let settled=false;const action=session.execute('release','sdk-release').then(reply=>{settled=true;return reply});await released.promise
-    expect(settled).toBe(false);expect(controls).toEqual(['take']);await repository.authorizeResume(lease);await session.resume('after-challenge')
-    expect((await action).result?.output).toContain('当前验证后的真实页面');expect(executions).toBe(1)
+    const reply=await session.execute('release','sdk-release')
+    expect(reply.status).toBe('completed');expect(reply.result?.output).toContain('网页需要人工验证')
+    expect(controls).toEqual([]);expect(executions).toBe(1)
     await session.drain()
   })
   it('does not let resume unlock an unknown mutating action or manufacture a fresh budget',async()=>{
@@ -275,4 +278,95 @@ describe('per-run browser session actual exit and no replay',()=>{
     let stopped=false;const stop=session.drain().then(()=>{stopped=true});await Promise.resolve();expect(stopped).toBe(false)
     acquire.resolve();await drainStarted.promise;expect(stopped).toBe(false);drained.resolve({drained:true});await stop;await rejected
   })
+})
+
+it('promotes only completed hash-verified staged downloads and reuses the same private file across receipts',async()=>{
+ const f=await fixture(),staged=join(f.root,'staging'),destination=join(f.root,'run-files'),bytes=Buffer.from('verified downloaded report')
+ await mkdir(staged);await mkdir(destination);const original=join(staged,'report.pdf');await writeFile(original,bytes);f.lease.downloadDirectory=staged
+ const download={id:'download',path:original,name:'report.pdf',size:bytes.length,hash:createHash('sha256').update(bytes).digest('hex'),url:'https://example.test/report',obtainedAt:new Date().toISOString()}
+ const replies=new Map<string,BrowserActionReply>()
+ const bridge=host(async(method,input)=>{
+   if(method==='inspect')return page
+   if(method==='lookup')return replies.get((input as {actionId:string}).actionId)??null
+   if(method==='executeSingle'){
+     const envelope=input as BrowserActionEnvelope
+     await f.repository.start({actionId:envelope.actionId,generation:envelope.lease.generation,runId:f.lease.runId,workId:f.lease.workId})
+     const reply:BrowserActionReply={actionId:envelope.actionId,generation:f.lease.generation,status:'completed',result:{output:'completed download -> self:/runs/run/report.pdf',appendReleaseHint:false,image:{data:'cG5n',mimeType:'image/png',sizeBytes:3}},downloads:[download]};replies.set(reply.actionId,reply);return reply
+   }
+ })
+ const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true,downloadDestination:{root:f.root,runPath:destination}})
+ const first=await session.execute('downloads list','first-download-call')
+ expect(first.downloads).toBeUndefined();expect(first.result?.output).toContain('self:/runs/run/browser-')
+ expect(first.result?.image).toMatchObject({data:'cG5n',mimeType:'image/png',sizeBytes:3})
+ const files=await readdir(destination);expect(files).toHaveLength(1);expect(await readFile(join(destination,files[0]!))).toEqual(bytes)
+ expect(first.result?.output).not.toContain('self:/runs/run/report.pdf')
+ expect(first.result?.output).toContain(`self:/runs/run/${files[0]}`)
+ expect((await session.execute('downloads list','first-download-call')).result?.output).toBe(first.result?.output)
+ expect((await session.execute('downloads list','next-observation')).result?.output).toBe(first.result?.output)
+ expect(await readdir(destination)).toEqual(files)
+ await writeFile(join(destination,files[0]!), 'externally changed original')
+ await expect(session.execute('downloads list','first-download-call')).rejects.toThrow('未覆盖')
+ expect(await readFile(join(destination,files[0]!),'utf8')).toBe('externally changed original')
+ await session.drain()
+})
+it('old pending download receipts retain progress without advertising a readable workspace path',async()=>{
+ const f=await fixture()
+ const bridge=host(async(method,input)=>{
+   if(method==='inspect')return page
+   if(method==='executeSingle'){
+     const envelope=input as BrowserActionEnvelope;await f.repository.start({actionId:envelope.actionId,generation:f.lease.generation,runId:f.lease.runId,workId:f.lease.workId})
+     return {actionId:envelope.actionId,generation:f.lease.generation,status:'completed',result:{output:'Downloads (1) action=list: started=1, completed=0\n[started] pending.pdf (1 KiB/2 KiB) -> self:/runs/run/pending.pdf',appendReleaseHint:false}}
+   }
+ })
+ const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true})
+ const first=await session.execute('downloads list','pending-download')
+ expect(first.result?.output).toContain('[started] pending.pdf (1 KiB/2 KiB)')
+ expect(first.result?.output).not.toContain('self:/')
+ expect((await session.execute('downloads list','pending-download')).result?.output).toBe(first.result?.output)
+ await session.drain()
+})
+it.each(['parent-alias','run-link','ancestor-link'] as const)('download promotion handles %s at the managed data root boundary',async kind=>{
+ const f=await fixture(),staged=join(f.root,'staging'),physicalParent=join(f.root,'physical'),aliasParent=join(f.root,'system-alias'),bytes=Buffer.from('verified bytes across system alias')
+ await mkdir(staged);await mkdir(join(physicalParent,'data'),{recursive:true});await symlink(physicalParent,aliasParent)
+ const managedRoot=join(kind==='parent-alias'?aliasParent:physicalParent,'data'),destination=join(managedRoot,'runs','run')
+ let actualDestination=destination
+ if(kind==='run-link'){
+   await mkdir(join(managedRoot,'runs'));actualDestination=join(managedRoot,'other-run');await mkdir(actualDestination);await symlink(actualDestination,destination)
+ }else if(kind==='ancestor-link'){
+   actualDestination=join(managedRoot,'other-runs','run');await mkdir(actualDestination,{recursive:true});await symlink(join(managedRoot,'other-runs'),join(managedRoot,'runs'))
+ }else await mkdir(destination,{recursive:true})
+ const original=join(staged,'report.pdf');await writeFile(original,bytes);f.lease.downloadDirectory=staged
+ const bridge=host(async(method,input)=>{
+   if(method==='inspect')return page
+   if(method==='executeSingle'){
+     const envelope=input as BrowserActionEnvelope;await f.repository.start({actionId:envelope.actionId,generation:f.lease.generation,runId:f.lease.runId,workId:f.lease.workId})
+     return {actionId:envelope.actionId,generation:f.lease.generation,status:'completed',downloads:[{id:'download',path:original,name:'report.pdf',size:bytes.length,hash:createHash('sha256').update(bytes).digest('hex'),url:'https://example.test/report',obtainedAt:new Date().toISOString()}]}
+   }
+ })
+ const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true,downloadDestination:{root:managedRoot,runPath:destination}})
+ if(kind==='parent-alias'){
+   const result=await session.execute('downloads list','alias-download')
+   const files=await readdir(actualDestination);expect(files).toHaveLength(1)
+   expect(result.result?.output).toContain(`self:/runs/run/${files[0]}`);expect(await readFile(join(actualDestination,files[0]!))).toEqual(bytes)
+ }else{
+   await expect(session.execute('downloads list','linked-download')).rejects.toThrow('Symbolic links')
+   expect(await readdir(actualDestination)).toEqual([])
+ }
+ expect(await readFile(original)).toEqual(bytes)
+ await session.drain()
+})
+it.each(['unknown','changed'] as const)('does not promote %s staged download bytes into a business workspace',async failure=>{
+ const f=await fixture(),staged=join(f.root,'staging'),destination=join(f.root,'run-files'),bytes=Buffer.from('private partial or modified bytes')
+ await mkdir(staged);await mkdir(destination);const original=join(staged,'ordinary-name.pdf');await writeFile(original,bytes);f.lease.downloadDirectory=staged
+ const bridge=host(async(method,input)=>{
+   if(method==='inspect')return page
+   if(method==='executeSingle'){
+     const envelope=input as BrowserActionEnvelope;await f.repository.start({actionId:envelope.actionId,generation:f.lease.generation,runId:f.lease.runId,workId:f.lease.workId})
+     return {actionId:envelope.actionId,generation:f.lease.generation,status:failure==='unknown'?'unknown':'completed',downloads:[{id:'download',path:original,name:'ordinary-name.pdf',size:bytes.length,hash:'0'.repeat(64),url:'https://example.test/',obtainedAt:new Date().toISOString()}]}
+   }
+ })
+ const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true,downloadDestination:{root:f.root,runPath:destination}})
+ await expect(session.execute('downloads list','unverified-download')).rejects.toThrow()
+ expect(await readdir(destination)).toEqual([]);expect(await readFile(original)).toEqual(bytes)
+ await session.drain()
 })

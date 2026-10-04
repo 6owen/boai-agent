@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 真实 AppService/SQLite/组织发布和工作接续，带明确开始/实际退出屏障的内部模型协议。
+ * [OUTPUT]: 失败群业务根重试的判断/执行继续原预算；群内bobo未选连接沿首个有效默认模型且不获得组织权限。
  * [OUTPUT]: 无关历史清理后组织继续并真实交付；依赖成果经宿主来源/hash 核对后提供确切路径，依赖引用不变成本人产物。
  * [OUTPUT]: 新完整组织的原共享额度固定48次，真实定向执行仍验证24次内完成和零未知账本；原存储预算不提升。
  * [OUTPUT]: 已分工员工的真实广播更新在模型计数前跳过，合并邀请/普通聊天/用户/未分工及来源本人问题/待核对仍保持判断；同请求定向工作在慢开场结束前交付、未拥有工作/普通 peer 无权抢 wake、同员工取消后实际退出再接续；普通用户群仍单 lane、原预算与一次认领保持。
@@ -29,9 +30,9 @@ async function account(context: EngineContext, phase: 'decision' | 'task' | 'cha
   await context.onModelCallStarted!(context.modelCallId!, phase)
   await context.onModelCallUsage!(context.modelCallId!, { inputTokens: 10, outputTokens: 5, totalTokens: 15 })
 }
-async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<typeof barrier>; chatOwner?: 'researcher' | 'writer'; chatWait?: ReturnType<typeof barrier>; childWait?: ReturnType<typeof barrier>; secondChild?: boolean; dependentWriter?: boolean; delegateAfterChat?: boolean; clearUnrelatedDuringOrganization?: boolean; publishChildArtifact?: boolean } = {}) {
+async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<typeof barrier>; chatOwner?: 'researcher' | 'writer'; chatWait?: ReturnType<typeof barrier>; childWait?: ReturnType<typeof barrier>; secondChild?: boolean; dependentWriter?: boolean; delegateAfterChat?: boolean; clearUnrelatedDuringOrganization?: boolean; publishChildArtifact?: boolean; failRootOnce?:boolean } = {}) {
   const path = await mkdtemp(join(tmpdir(), 'boai-bobo-scheduling-')); cleanup.push(() => rm(path, { recursive: true, force: true }))
-  const state = { receipt: undefined as BoboCollaborationReceipt | undefined, group: undefined as Conversation | undefined, children: [] as WorkItem[], rootEntered: false, chatEntered: false, childRuns: [] as EngineContext[], tasklessResponses: [] as string[], decisions: [] as EngineContext[], illegalDecision: undefined as WorkItem | 'no-work' | undefined }
+  const state = { receipt: undefined as BoboCollaborationReceipt | undefined, group: undefined as Conversation | undefined, children: [] as WorkItem[], rootEntered: false, rootFailed:false, chatEntered: false, childRuns: [] as EngineContext[], tasklessResponses: [] as string[], decisions: [] as EngineContext[], illegalDecision: undefined as WorkItem | 'no-work' | undefined }
   const chatStarted = barrier()
   const engine: AgentEngine = {
     test: async () => 'connected',
@@ -39,6 +40,10 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
       await account(context, 'decision'); state.decisions.push(context)
       const observedThroughSequence = context.participation!.observedThroughSequence
       if (context.conversation.purpose === 'core') return { action: 'reply', responseKind: 'task', observedThroughSequence, work: { key: 'main', scope: '组织独立员工', deliverable: '真实组织回执', organization: { mode: 'organize_and_execute', goal: '核查数据后汇总' } } }
+      if (options.failRootOnce && state.rootFailed && context.agent.id==='bobo' && context.participation?.isFirstDecision) {
+        const work=context.workItems!.find(work=>work.ownerAgentId==='bobo' && !work.parentWorkId)!
+        return {action:'reply',responseKind:'task',observedThroughSequence,work:{workId:work.id,expectedVersion:work.version,key:work.key,scope:work.scope,deliverable:work.deliverable}}
+      }
       if (state.illegalDecision) {
         const work = state.illegalDecision === 'no-work' ? undefined : state.illegalDecision
         return { action: 'reply', responseKind: 'task', observedThroughSequence, ...(work ? { work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version } } : {}) }
@@ -84,6 +89,10 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
         await context.onWorkOutcome!({ disposition: 'delivered', summary: '实际核查完成', evidence: [{ kind: 'answer', reference: '核查结果为79' }] }); await context.onDelta('核查结果为79'); return
       }
       state.rootEntered = true
+      if (options.failRootOnce) {
+        if (!state.rootFailed) {state.rootFailed=true;throw new Error('受控原根执行失败，可明确重试')}
+        await context.onWorkOutcome!({disposition:'delivered',summary:'原根重试完成',evidence:[{kind:'answer',reference:'核查结果为79'}]});await context.onDelta('核查结果为79');return
+      }
       if (!context.work.waitRevision) {
         if (options.delegateAfterChat) await chatStarted.promise
         state.children.push(await context.delegateWork!({ key: 'check', ownerAgentId: options.ordinary ? 'writer' : 'researcher', scope: '实际核查12、27、40', deliverable: '实际数据结果' }))
@@ -110,7 +119,7 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
     state.group = await service.handle('createConversation', { kind: 'group', title: '普通用户群', agentIds: ['researcher', 'writer'] }) as Conversation
     await service.handle('sendMessage', { conversationId: state.group.id, requestId: 'ordinary-root', content: '研究员先安排写作员核查，再汇总', mentionIds: ['researcher'] })
   }
-  await vi.waitFor(() => expect(state.children.length).toBe(options.secondChild || options.dependentWriter ? 2 : 1), { timeout: 5000, interval: 10 })
+  await vi.waitFor(() => {if(options.failRootOnce) expect(state.rootFailed).toBe(true);else expect(state.children.length).toBe(options.secondChild || options.dependentWriter ? 2 : 1)}, { timeout: 5000, interval: 10 })
   const detail = () => service.handle('getConversation', { id: state.group!.id }) as Promise<ConversationDetail>
   const settled = () => vi.waitFor(async () => {
     const view = await detail()
@@ -258,4 +267,56 @@ describe('bobo opening and real directed work scheduling', () => {
     expect(view.workItems!.find(work => work.id === first.id)?.status).toBe('cancelled'); expect(view.workItems!.find(work => work.id === second.id)?.status).toBe('delivered')
     expect(view.messages.filter(message => message.senderId === 'researcher' && message.content === '核查结果为79')).toHaveLength(1)
   })
+})
+
+it('charges retry decision and task calls to the same original collaboration budget before either model phase starts',async()=>{
+ const f=await fixture({failRootOnce:true});await f.settled()
+ const before=await f.detail(),failed=before.runs.find(run=>run.agentId==='bobo' && run.status==='failed')!,budget=before.workBudgets![0]!
+ expect(failed).toBeDefined()
+ await f.service.handle('retryRun',{id:failed.id,requestId:'retry-original-root'})
+ await f.settled()
+ const after=await f.detail(),newRuns=after.runs.filter(run=>!before.runs.some(old=>old.id===run.id))
+ expect(newRuns.some(run=>run.phase==='decision')).toBe(true)
+ expect(newRuns.some(run=>run.phase==='execution'),JSON.stringify(newRuns)).toBe(true)
+ expect(newRuns.every(run=>run.status==='completed' && run.collaborationRequestId===failed.collaborationRequestId)).toBe(true)
+ const calls=await (f.service as unknown as {store:ProductStore}).store.load<{runId:string;budgetId:string}>('budgetModelCalls')
+ for(const run of newRuns) expect(calls.filter(call=>call.runId===run.id)).toHaveLength(1)
+ expect(after.workBudgets![0]).toMatchObject({id:budget.id,deadlineAt:budget.deadlineAt,maxModelCalls:budget.maxModelCalls,modelCalls:budget.modelCalls+newRuns.length,unknownCalls:0})
+ expect(calls.filter(call=>newRuns.some(run=>run.id===call.runId)).every(call=>call.budgetId===budget.id)).toBe(true)
+})
+it('uses the core default connection in an existing authorized group after clearing explicit selection without granting management tools',async()=>{
+ const f=await fixture();await f.settled()
+ const snapshot=await f.service.handle('snapshot',undefined)as Snapshot,bobo=snapshot.agents.find(agent=>agent.id==='bobo')!
+ const {configVersion,workspaceRef,memoryNamespace,policyVersion,creationSource,...input}=bobo
+ await f.service.handle('saveAgent',{...input,connectionId:'',modelId:'',expectedConfigVersion:configVersion})
+ const sent=await f.service.handle('sendMessage',{conversationId:f.state.group!.id,content:'bobo，仅讨论下一步',mentionIds:['bobo'],requestId:'core-default-in-group'})as Message
+ await f.settled()
+ const contexts=f.state.decisions.filter(context=>context.agent.id==='bobo' && context.triggerMessageId===sent.id)
+ expect(contexts.length,JSON.stringify((await f.detail()).runs.filter(run=>run.triggerMessageId===sent.id))).toBeGreaterThan(0)
+ for(const context of contexts){expect(context.connection.id).toBe(snapshot.connections[0]!.id);expect(context.findEmployees).toBeUndefined();expect(context.organizeCollaboration).toBeUndefined()}
+ expect((await f.detail()).runs.filter(run=>run.triggerMessageId===sent.id).every(run=>run.status==='completed')).toBe(true)
+})
+
+it.each(['calls','deadline'] as const)('refuses a retry decision before calling the model when the original collaboration %s budget is exhausted',async boundary=>{
+ const f=await fixture({failRootOnce:true});await f.settled()
+ const before=await f.detail(),failed=before.runs.find(run=>run.agentId==='bobo' && run.status==='failed')!,budget=before.workBudgets![0]!,calls=f.state.decisions.length
+ const next={...budget,...(boundary==='calls'?{modelCalls:budget.maxModelCalls}:{deadlineAt:new Date(0).toISOString()})}
+ await (f.service as unknown as {store:ProductStore}).store.write([{collection:'workBudgets',id:budget.id,value:next}])
+ await expect(f.service.handle('retryRun',{id:failed.id,requestId:'exhausted-root-retry'})).rejects.toThrow()
+ expect(f.state.decisions).toHaveLength(calls);expect((await f.detail()).runs).toEqual(before.runs)
+})
+it('reserves retry judgment on the original core organization budget before taking an execution holder',async()=>{
+ const path=await mkdtemp(join(tmpdir(),'boai-core-retry-budget-'));cleanup.push(()=>rm(path,{recursive:true,force:true}))
+ const engine:AgentEngine={test:async()=>'',decide:async context=>{await account(context,'decision');return {action:'reply',responseKind:'task',observedThroughSequence:context.participation!.observedThroughSequence,work:{key:'original',scope:'创建独立员工',deliverable:'员工',organization:{mode:'employee_creation',goal:'创建独立员工'}}}},run:async context=>{await account(context,'task');throw new Error('受控组织执行失败，尚无副作用')}}
+ const service=new AppService({dataPath:path,engine,secrets:{get:async()=>'',set:async()=>{},delete:async()=>{}},emit:()=>{}});await service.init();cleanup.push(()=>service.close())
+ await service.handle('saveConnection',{name:'fixture',provider:'openai-compatible',baseUrl:'http://localhost:1234',defaultModel:'fixture'})
+ const core=await service.handle('startCoreConversation',{requestId:'core-original',content:'请创建独立员工'})as Conversation
+ const detail=()=>service.handle('getConversation',{id:core.id})as Promise<ConversationDetail>
+ await vi.waitFor(async()=>{const d=await detail();expect(d.runs.some(run=>run.phase==='execution'&&run.status==='failed')).toBe(true);expect(d.turns!.every(turn=>turn.status==='failed')).toBe(true)})
+ const before=await detail(),failed=before.runs.find(run=>run.phase==='execution')!,budget=before.workBudgets![0]!
+ await service.handle('retryRun',{id:failed.id,requestId:'explicit-core-retry'})
+ await vi.waitFor(async()=>{const d=await detail();expect(d.turns!.every(turn=>turn.status==='failed')).toBe(true);expect(d.runs.filter(run=>run.phase==='execution')).toHaveLength(2)})
+ const after=await detail(),newRuns=after.runs.filter(run=>!before.runs.some(old=>old.id===run.id))
+ expect(newRuns.map(run=>run.phase).sort()).toEqual(['decision','execution'])
+ expect(after.workBudgets![0]).toMatchObject({id:budget.id,modelCalls:budget.modelCalls+2,deadlineAt:budget.deadlineAt,maxModelCalls:24})
 })

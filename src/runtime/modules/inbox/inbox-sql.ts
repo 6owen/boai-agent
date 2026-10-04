@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定 records 表、类型化筛选/游标与明确来源关系。
- * [OUTPUT]: 四类当前事项在 LIMIT 前过滤、原成果真实文件名/作者搜索、稳定时间/ID 排序及清理/材料版本门禁；只生成宿主固定 SELECT。
+ * [OUTPUT]: 四类当前事项在 LIMIT 前过滤、原成果真实文件名/作者搜索、稳定时间/ID 排序及清理/材料同授权时代读取版本门禁；只生成宿主固定 SELECT。
  * [POS]: D5 SQL 投影；不接受外部 SQL、不制造工作或终态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -23,7 +23,10 @@ const sources = [
   branch('artifactAcceptances', 'acceptance', `${value('status')} IN ('pending','unavailable')`, { id: `'acceptance:' || s.id`, agent: `(SELECT json_extract(a.value,'$.ownerAgentId') FROM records a WHERE a.collection='artifacts' AND a.id=${value('artifactId')})`, message: `(SELECT json_extract(a.value,'$.sourceMessageId') FROM records a WHERE a.collection='artifacts' AND a.id=${value('artifactId')})`, summary: `(SELECT json_extract(a.value,'$.name') FROM records a WHERE a.collection='artifacts' AND a.id=${value('artifactId')})` }),
 ].join('\nUNION ALL\n')
 function validRefs(expression: string) {
-  return `NOT EXISTS(SELECT 1 FROM json_each(COALESCE(json_extract(${expression},'$.materialSources'),'[]')) ref WHERE NOT EXISTS(SELECT 1 FROM records material WHERE material.collection='materials' AND material.id=json_extract(ref.value,'$.id') AND json_extract(material.value,'$.conversationId')=json_extract(ref.value,'$.conversationId') AND json_extract(material.value,'$.status')='ready' AND json_extract(material.value,'$.messageId') IS NOT NULL AND json_extract(material.value,'$.revision')=json_extract(ref.value,'$.revision') AND json_extract(material.value,'$.contentHash')=json_extract(ref.value,'$.contentHash') AND json_extract(material.value,'$.parseVersion')=json_extract(ref.value,'$.parseVersion')))`
+  const expected = "json_extract(ref.value,'$.revision')", current = "json_extract(material.value,'$.revision')"
+  // Match isMaterialReadRevisionValid before LIMIT; authorization changes reset the lower bound.
+  const revision = `typeof(${expected}) IN ('integer','real') AND ${expected}=CAST(${expected} AS INTEGER) AND ${expected} BETWEEN ${-Number.MAX_SAFE_INTEGER} AND ${Number.MAX_SAFE_INTEGER} AND ${expected} BETWEEN COALESCE(json_extract(material.value,'$.readableRevisionFrom'),${current}) AND ${current}`
+  return `NOT EXISTS(SELECT 1 FROM json_each(COALESCE(json_extract(${expression},'$.materialSources'),'[]')) ref WHERE NOT EXISTS(SELECT 1 FROM records material WHERE material.collection='materials' AND material.id=json_extract(ref.value,'$.id') AND json_extract(material.value,'$.conversationId')=json_extract(ref.value,'$.conversationId') AND json_extract(material.value,'$.status')='ready' AND json_extract(material.value,'$.messageId') IS NOT NULL AND ${revision} AND json_extract(material.value,'$.contentHash')=json_extract(ref.value,'$.contentHash') AND json_extract(material.value,'$.parseVersion')=json_extract(ref.value,'$.parseVersion')))`
 }
 /** All text and cursor values are bound parameters; callers cannot supply a query fragment. */
 export function inboxSql(query: InboxQuery & { limit: number; id?: string }) {

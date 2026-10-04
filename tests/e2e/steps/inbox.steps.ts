@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 可选审阅模式留存原问题补充、未知回执、原消息拒绝与稍后处理/采用画面。
  * [INPUT]: D5 聊天中文场景、原任务/问题/审批/成果资格与真实 Desktop/工具协议。
- * [OUTPUT]: 无独立待处理导航、原问题明确关联/普通聊天不解除等待、原Work预算接续/未知只核对、旧审批拒绝与固定版本资格/采用的业务断言。
+ * [OUTPUT]: 原员工聊天卡片审批/采用/稍后验收及同一composer修改；原问题关联/普通聊天不解除等待、原Work预算接续/未知只核对和固定版本资格。
  * [POS]: 原聊天问题卡片 Electron 步骤；底层 Inbox 仅核对服务事实，支撑层控制传输故障，不替代原业务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -35,6 +36,7 @@ interface State {
 export const test = base.extend<{ inboxState: State }>({ inboxState: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 const artifactPanel = (runtime: Desktop, id: string) => runtime.page.locator(`[data-artifact-id="${id}"]:visible`)
+const artifactCard = (runtime: Desktop, id: string) => runtime.page.locator(`.messages [data-chat-artifact-id="${id}"]`)
 async function items(runtime: Desktop, kind?: InboxItem['kind']) { return (await runtime.page.evaluate(kind => window.boai.request('listInbox', { kind }), kind)).items }
 async function settled(runtime: Desktop, id: string) {
   await expect.poll(async () => {
@@ -102,6 +104,7 @@ When('用户从聊天原问题卡片补充但提交回复丢失', async ({ runti
   await expect(runtime.page.locator('.reply-preview')).toContainText('请明确报告交付给谁？')
   inboxState.fault = await loseInboxReply(runtime)
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('交付给本人，请沿原任务发布真实报告。')
+  await runtime.reviewCheckpoint('明确回复原问题，沿用同一输入框')
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
   const pending = runtime.page.getByRole('region', { name: '待核对补充', exact: true })
   await expect(pending.getByRole('button', { name: '核对补充结果', exact: true })).toBeVisible()
@@ -109,6 +112,7 @@ When('用户从聊天原问题卡片补充但提交回复丢失', async ({ runti
   expect(inboxState.frozen).toMatchObject({ questionId: inboxState.item!.question!.id, expectedRevision: inboxState.item!.question!.revision, content: '交付给本人，请沿原任务发布真实报告。' })
   await pending.getByRole('button', { name: '核对补充结果', exact: true }).click()
   await expect(pending.getByRole('alert')).toContainText('回执暂不可读')
+  await runtime.reviewCheckpoint('提交失联后只核对原问题回执')
 })
 Then('原工作沿原预算交付且未知请求没有变成普通聊天', async ({ runtime, inboxState }) => {
   const fixture = inboxState.fixture!, detail = await settled(runtime, fixture.group.id)
@@ -153,13 +157,15 @@ Given('设计师正等待一项真实命令批准', async ({ runtime, inboxState
 })
 When('用户在原聊天查看并拒绝原命令', async ({ runtime, inboxState }) => {
   await openSourceChat(runtime, inboxState.item!.conversationId)
-  const view = runtime.page.locator(`[data-approval-id="${inboxState.item!.approvalId}"]`)
+  const view = runtime.page.locator(`.messages [data-approval-id="${inboxState.item!.approvalId}"]`)
   await expect(view).toContainText('printf group-chat-approved > approval-marker.txt')
   await expect(view).toContainText(inboxState.item!.approval!.cwd)
   expect(inboxState.approvalFixture!.state.calls).toBe(inboxState.calls)
+  await runtime.reviewCheckpoint('在原员工消息查看命令与工作目录')
   await view.getByRole('button', { name: '拒绝', exact: true }).click()
   await expect.poll(async () => (await items(runtime, 'approval')).length).toBe(0)
   await settled(runtime, inboxState.approvalFixture!.group.id)
+  await runtime.reviewCheckpoint('拒绝原命令后的聊天状态')
 })
 Then('旧审批不能重新批准且没有执行文件', async ({ runtime, inboxState }) => {
   const approvalId = inboxState.item!.approvalId!
@@ -175,18 +181,22 @@ Given('一个真实成果已经发布但用户未要求稍后验收', async ({ r
   await runtime.page.evaluate(id => window.boai.request('sendMessage', { conversationId: id, content: '请发布实际可检查的报告。', mentionIds: [], requestId: 'inbox-report-v1' }), fixture.group.id)
   inboxState.artifact = (await settled(runtime, fixture.group.id)).artifacts[0] as ArtifactVersion
   expect(inboxState.artifact).toBeDefined(); inboxState.calls = fixture.endpoint.requests.length
-  await openArtifact(runtime, inboxState.artifact, fixture.group.title)
+  await openSourceChat(runtime, fixture.group.id)
+  await expect(artifactCard(runtime, inboxState.artifact.id)).toBeVisible()
+  await expect(runtime.page.locator('[data-artifact-id]:visible')).toHaveCount(0)
 })
 Then('已发布未采用的成果不会自动出现在待验收', async ({ runtime, inboxState }) => {
   expect(await items(runtime, 'acceptance')).toEqual([])
   expect((await inboxRecords(inboxState.fixture!.dataPath)).acceptances).toEqual([])
 })
 When('用户明确要求稍后验收原版并从原消息打开', async ({ runtime, inboxState }) => {
-  await artifactPanel(runtime, inboxState.artifact!.id).getByRole('button', { name: '稍后验收此版本', exact: true }).click()
+  await artifactCard(runtime, inboxState.artifact!.id).getByRole('button', { name: '稍后处理', exact: true }).click()
   await expect.poll(async () => (await items(runtime, 'acceptance')).length).toBe(1)
   inboxState.item = (await items(runtime, 'acceptance'))[0]
   await openArtifact(runtime, inboxState.artifact!, inboxState.fixture!.group.title)
   await expect(artifactPanel(runtime, inboxState.artifact!.id)).toBeVisible()
+  await expect(artifactPanel(runtime, inboxState.artifact!.id).getByRole('button', { name: /^(采用此版本|要求修改|稍后处理)$/ })).toHaveCount(0)
+  await runtime.reviewCheckpoint('原消息稍后处理，右侧只读预览')
 })
 Then('切换主页面保留聊天原版详情且没有自动采用', async ({ runtime, inboxState }) => {
   expect(inboxState.item!.artifact).toMatchObject({ id: inboxState.artifact!.id, contentHash: inboxState.artifact!.contentHash, contentVersion: 1 })
@@ -198,10 +208,10 @@ Then('切换主页面保留聊天原版详情且没有自动采用', async ({ ru
   await expect(artifactPanel(runtime, inboxState.artifact!.id)).toHaveCount(1)
 })
 When('用户从该原版要求修改并得到新版', async ({ runtime, inboxState }) => {
-  const panel = artifactPanel(runtime, inboxState.artifact!.id)
-  await panel.getByRole('button', { name: '要求修改', exact: true }).click()
-  await panel.getByRole('textbox', { name: '修改要求', exact: true }).fill('保留原报告并补充验收说明，发布修订版。')
-  await panel.getByRole('button', { name: '提交修改要求', exact: true }).click()
+  await artifactCard(runtime, inboxState.artifact!.id).getByRole('button', { name: '要求修改', exact: true }).click()
+  await expect(runtime.page.locator('.reply-preview')).toContainText(inboxState.artifact!.name)
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('保留原报告并补充验收说明，发布修订版。')
+  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
   await expect.poll(async () => (await artifactDetail(runtime, inboxState.fixture!.group.id)).artifacts.length, { timeout: 30_000 }).toBe(2)
   const detail = await settled(runtime, inboxState.fixture!.group.id)
   expect(detail.artifacts).toHaveLength(2); inboxState.v2 = detail.artifacts.find(value => value.contentVersion === 2) as ArtifactVersion
@@ -217,13 +227,13 @@ Then('原资格结束且新版没有继承待验收', async ({ runtime, inboxSta
 })
 When('用户明确将新版加入待验收并采用此版', async ({ runtime, inboxState }) => {
   await openArtifact(runtime, inboxState.v2!, inboxState.fixture!.group.title)
-  await artifactPanel(runtime, inboxState.v2!.id).getByRole('button', { name: '稍后验收此版本', exact: true }).click()
+  await artifactCard(runtime, inboxState.v2!.id).getByRole('button', { name: '稍后处理', exact: true }).click()
   await expect.poll(async () => (await items(runtime, 'acceptance')).length).toBe(1)
   const item = (await items(runtime, 'acceptance'))[0]
   expect(item.artifact).toMatchObject({ id: inboxState.v2!.id, contentHash: inboxState.v2!.contentHash, contentVersion: 2 })
   await openArtifact(runtime, inboxState.v2!, inboxState.fixture!.group.title)
   inboxState.calls = inboxState.fixture!.endpoint.requests.length
-  await artifactPanel(runtime, inboxState.v2!.id).getByRole('button', { name: '采用此版本', exact: true }).click()
+  await artifactCard(runtime, inboxState.v2!.id).getByRole('button', { name: '采用此版本', exact: true }).click()
   await expect.poll(async () => (await items(runtime, 'acceptance')).length).toBe(0)
 })
 Then('原资格和采用指向一致且无额外工作或模型执行', async ({ runtime, inboxState }) => {

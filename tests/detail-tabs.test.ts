@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 详情标签/成果未决请求的纯状态转换与真实员工/连接配置。
- * [OUTPUT]: 真实核心默认连接/显式连接保留与跨页迟到回执隔离；成果家族/明确版本/hash与主页面隔离、冻结请求的未知只读核对/重启统一 unknown（旧 null 不授权重发）/原身份重试；自动化新建草稿/按计划编辑去重、重命名与独立关闭；Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
+ * [OUTPUT]: 固定修订回执必须匹配本人原请求与指定员工； 真实核心默认连接/显式连接保留与跨页迟到回执隔离；成果家族/明确版本/hash与主页面隔离、冻结请求的未知只读核对/重启统一 unknown（旧 null 不授权重发）/原身份重试；自动化新建草稿/按计划编辑去重、重命名与独立关闭；Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
  * [POS]: 多标签状态的模块回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
 import { detailTabsReducer as reduce, detailWorkspacesReducer, emptyDetailTabs, type DetailTarget } from '../src/renderer/components/detail-panel/tabs-state'
-import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artifactRevisionTarget, restoreArtifactPending, updateArtifactPending, type ArtifactPending } from '../src/renderer/components/detail-panel/artifact-state'
+import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artifactRevisionTarget, artifactRevisionReceiptMatches, artifactAdoptionReceiptMatches, restoreArtifactPending, updateArtifactPending, type ArtifactPending } from '../src/renderer/components/detail-panel/artifact-state'
 import type { Connection, DigitalAgent } from '../src/shared/domain'
 
 describe('detail workspace tabs', () => {
@@ -152,6 +152,25 @@ describe('artifact review identity and pending requests', () => {
     expect(artifactRevisionTarget({ ...core, systemRole: undefined }, [local])).toBeUndefined()
     expect(artifactRevisionTarget({ ...core, active: false }, [local])).toBeUndefined()
     expect(artifactRevisionTarget({ ...core, connectionId: empty.id, modelId: 'custom' }, [empty, local])).toEqual({ connection: empty, modelId: 'custom' })
+  })
+  it('checks the adoption receipt belongs to the frozen request, family and expected adoption revision', () => {
+    const input = pending.adoption!.input
+    const receipt = { id: input.requestId, fingerprint: 'fingerprint', conversationId: 'chat', logicalArtifactId: 'report', artifactId: input.artifactId, contentHash: input.contentHash, eventId: 'event', adoptionRevision: input.expectedAdoptionRevision + 1, adoptedAt: '2026-10-03T00:00:00Z', userId: 'user' as const }
+    expect(artifactAdoptionReceiptMatches(input, receipt, 'chat', 'report')).toBe(true)
+    expect(artifactAdoptionReceiptMatches(input, { ...receipt, id: 'other-request' }, 'chat', 'report')).toBe(false)
+    expect(artifactAdoptionReceiptMatches(input, { ...receipt, adoptionRevision: receipt.adoptionRevision + 1 }, 'chat', 'report')).toBe(false)
+    expect(artifactAdoptionReceiptMatches(input, receipt, 'other-chat', 'report')).toBe(false)
+    expect(artifactAdoptionReceiptMatches(input, receipt, 'chat', 'other-family')).toBe(false)
+  })
+  it('accepts only the original personal revision receipt for the explicitly selected employee', () => {
+    const input = pending.revision!.input
+    const receipt = { id: 'message', conversationId: input.conversationId, senderType: 'user' as const, senderId: 'user', senderName: '你', status: 'completed' as const, content: input.content, mentionIds: [input.targetAgentId], artifactRevisionRequestId: input.requestId, sequence: 1, createdAt: '2026-10-03T00:00:00Z' }
+    expect(artifactRevisionReceiptMatches(input, receipt)).toBe(true)
+    expect(artifactRevisionReceiptMatches(input, { ...receipt, artifactRevisionRequestId: 'another-request' })).toBe(false)
+    expect(artifactRevisionReceiptMatches(input, { ...receipt, mentionIds: ['other-employee'] })).toBe(false)
+    expect(artifactRevisionReceiptMatches(input, { ...receipt, content: 'different request' })).toBe(false)
+    expect(artifactRevisionReceiptMatches(input, { ...receipt, artifactRevisionRequestId: undefined })).toBe(false)
+    expect(artifactRevisionReceiptMatches(input, { ...receipt, conversationId: 'another-chat' })).toBe(false)
   })
   it('rejects corrupted or oversized inputs rather than restoring an executable incomplete request', () => {
     const key = artifactPendingKey(pending.scope, pending.conversationId, pending.logicalArtifactId)

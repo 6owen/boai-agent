@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 每场景独立 Desktop 与已结束的历史消息。
- * [OUTPUT]: 本人/自动化/人工补充/外部单聊、员工引用与 senderId=user 的非本人历史、可控离线模型与大历史。
+ * [OUTPUT]: 首次snapshot可控延迟且记录真实资料写入； 本人/自动化/人工补充/外部单聊、员工引用与 senderId=user 的非本人历史、可控离线模型与大历史。
  * [POS]: 个人资料 BDD 数据和模型协议支撑，不接触用户目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -87,4 +87,25 @@ export async function cancelProfileWindowClose(runtime: Desktop) {
     BrowserWindow.getAllWindows()[0].close()
   })
   return runtime.app.evaluate(() => (globalThis as typeof globalThis & { profileClosePrompt?: string }).profileClosePrompt)
+}
+
+/** Hold only initial snapshots after reload; profile mutations still use production IPC. */
+export async function holdProfileSnapshot(runtime: Desktop) {
+  await runtime.app.evaluate(({ ipcMain }) => {
+    const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
+    const original = handlers.get('boai:request')!
+    const state = { waiting: 0, writes: 0, released: false, release: () => {} }
+    const gate = new Promise<void>(resolve => { state.release = () => { state.released = true; resolve() } })
+    Object.assign(globalThis, { profileSnapshotGate: state })
+    ipcMain.removeHandler('boai:request')
+    ipcMain.handle('boai:request', async (event, payload) => {
+      if (payload.method === 'snapshot' && !state.released) { state.waiting++; await gate }
+      if (payload.method === 'updateUserProfile') state.writes++
+      return original(event, payload)
+    })
+  })
+  return {
+    inspect: () => runtime.app.evaluate(() => { const state = (globalThis as typeof globalThis & { profileSnapshotGate: { waiting: number; writes: number } }).profileSnapshotGate; return { waiting: state.waiting, writes: state.writes } }),
+    release: () => runtime.app.evaluate(() => (globalThis as typeof globalThis & { profileSnapshotGate: { release(): void } }).profileSnapshotGate.release()),
+  }
 }

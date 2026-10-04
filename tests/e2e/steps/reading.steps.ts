@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
+ * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
  * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本与个人浏览 API。
  * [OUTPUT]: 四项检索筛选均为 sm、28px 等高/全局 text-xs 字号/14px图标，明暗同款 secondary 的 card/渐变/控制阴影/零边框并留真实顶栏截图，默认四筛选文字/图标同为muted、时间选中正文色/图标仍muted及清除恢复占位，时间聚焦/展开保持中性边缘；长选项限高及真实排列末项滚动/选中、日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代标题图标入口/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
  * [POS]: D6 Electron 步骤；仅 support 控制历史/HTTP 和传输观测，业务与 SQLite 事务保持真实。
@@ -703,7 +703,9 @@ Given('原工作与明确修订已经发布两版同名报告', async ({ runtime
   await runtime.page.evaluate(conversationId => window.boai.request('sendMessage', { conversationId, content: '请发布可检查的报告。', mentionIds: [], requestId: 'reading-file-v1' }), fixture.group.id)
   const first = (await settled(runtime, fixture.group.id, 1)).artifacts[0] as ArtifactVersion
   await openConversation(runtime, fixture.group.title); await message(runtime, first.sourceMessageId!).getByRole('button', { name: `打开 ${first.name}`, exact: true }).click()
-  const panel = artifact(runtime, first.id); await panel.getByRole('button', { name: '要求修改', exact: true }).click(); await panel.getByRole('textbox', { name: '修改要求', exact: true }).fill('保留原报告并补充说明，发布修订版。'); await panel.getByRole('button', { name: '提交修改要求', exact: true }).click()
+  await runtime.page.locator(`.messages [data-chat-artifact-id="${first.id}"]`).getByRole('button', { name: '要求修改', exact: true }).click()
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('保留原报告并补充说明，发布修订版。')
+  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
   readingState.artifacts = (await settled(runtime, fixture.group.id, 2)).artifacts as ArtifactVersion[]
   expect(readingState.artifacts.find(item => item.contentVersion === 2)!.previousArtifactId).toBe(first.id); readingState.calls = fixture.endpoint.requests.length
 })

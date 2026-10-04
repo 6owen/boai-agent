@@ -1,15 +1,17 @@
 /*
  * [INPUT]: 宿主复制时 hash 的已发布原件/明确来源绑定、ProductStore 事务、用户修订/采用/显式待验收与事务内材料来源校验。
- * [OUTPUT]: 发布保留宿主真实浏览器有界来源； 正文索引使用同一次来源/hash 核读的严格 UTF-8 TXT/MD；固定本人/版/hash 的显式待验收资格与原事务终结/最小清理回执；独立成果链、核验字节供工具读取、严格有界 Markdown 预览、用户修订/幂等采用及安全清理与仅核对恢复。
+ * [OUTPUT]: 修订目标沿固定核心身份复用未选择连接时的首个有效默认，显式失效选择不回退；发布保留宿主真实浏览器有界来源； 正文索引保持严格 UTF-8 TXT/MD，独立预览核对同次 hash 字节支持 Markdown/代码/纯文本；固定本人/版/hash 的显式待验收资格与原事务终结/最小清理回执；独立成果链、核验字节供工具读取、用户修订/幂等采用及安全清理与仅核对恢复。
  * [POS]: workspaces 的成果持久权威；不按同名关联，不改 Work 结果/预算，不执行模型或继承旧审核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, open, realpath, unlink } from 'node:fs/promises'
-import { extname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
+import { isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
+import { isCoreAgent } from '../../../shared/domain/core-agent'
 import type { AgentRun, Connection, Conversation, DigitalAgent, Message, WorkItem } from '../../../shared/domain'
 import type { MaterialReadRef } from '../../../shared/domain/materials'
+import { previewFile } from '../../../shared/domain/file-preview'
 import { ARTIFACT_LIMITS, type ArtifactAcceptance, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAcceptanceStatus, type ArtifactAdoptionCurrent, type ArtifactAdoptionEvent, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactAdoptionState, type ArtifactPreview, type ArtifactPublication, type ArtifactRegistration, type ArtifactRevisionInput, type ArtifactRevisionPrepared, type ArtifactRevisionRequest, type ArtifactRevisionSource, type ArtifactVersion } from '../../../shared/domain/artifacts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { contained, MAX_FILE_BYTES } from './file-access'
@@ -67,7 +69,9 @@ export class ArtifactRepository {
     const conversation = await this.conversation(tx, conversationId), agent = await tx.get<DigitalAgent>('agents', identifier(agentId))
     if (!agent?.active || !conversation.agentIds.includes(agent.id)) throw new Error('请明确选择当前聊天中可执行的员工')
     if (agent.executionBackend?.kind === 'acp-local') throw new Error('首批成果修订不支持外部 ACP 员工')
-    const connection = await tx.get<Connection>('connections', agent.connectionId)
+    const connection = !agent.connectionId && isCoreAgent(agent)
+      ? (await tx.list<Connection>('connections')).find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))
+      : await tx.get<Connection>('connections', agent.connectionId)
     if (!connection || !(agent.modelId || connection.defaultModel) || connection.provider === 'openai-compatible' && !connection.baseUrl) throw new Error('修订员工没有可用的 API 模型连接')
     return agent
   }
@@ -120,20 +124,21 @@ export class ArtifactRepository {
     } catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
     finally { await handle.close() }
   }
-  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requireMarkdown = true, readText: boolean | 'search' = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
+  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readText: boolean | 'search' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview'>> {
     await this.conversation(tx, artifact.conversationId)
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
     if (artifact.contentStatus === 'removed' || !artifact.contentHash) throw new Error(artifact.contentError ?? '成果尚无可信内容身份')
     await this.sourceRefs(tx, artifact, artifact.conversationId, agentId)
     const actual = await this.bytes(artifact.conversationId, artifact.id, undefined, artifact.managedRelativePath, readText === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
     if (actual.contentHash !== artifact.contentHash) throw new ContentError('成果已被外部修改，原文件已保留')
-    const supported = ['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())
-    if (requireMarkdown && !supported) throw new Error('首批仅支持 Markdown 预览和采用，请使用外部打开')
+    const filePreview = requirePreview ? previewFile(artifact.name, actual.bytes) : undefined
+    if (filePreview?.kind === 'unsupported' && !allowUnsupported) throw new Error(filePreview.reason)
     if (readText && actual.size > MAX_FILE_BYTES) throw new ContentError('文本文件最多 1 MiB')
-    const text = requireMarkdown && supported || readText === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : '', verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(requireMarkdown ? { contentStatus: supported ? 'ready' as const : 'unsupported' as const } : {}) }
-    if (requireMarkdown && supported) delete verified.contentError
+    const text = filePreview?.text ?? (readText === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : ''), verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(filePreview ? { contentStatus: filePreview.kind === 'unsupported' ? 'unsupported' as const : 'ready' as const } : {}) }
+    if (filePreview?.kind === 'unsupported') verified.contentError = filePreview.reason
+    else if (filePreview) delete verified.contentError
     if (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError) await tx.put(record('artifacts', verified))
-    return { artifact: verified, text }
+    return { artifact: verified, text, ...(filePreview ? { filePreview } : {}) }
   }
   private async unavailable(artifactId: string, error: unknown) {
     await this.store.transaction(async tx => {
@@ -185,8 +190,8 @@ export class ArtifactRepository {
     const family = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === conversation.id && value.logicalArtifactId === logicalArtifactId)
     const artifact: ArtifactVersion = { id: artifactId, conversationId: conversation.id, name: publication.name, path: actual.path, size: actual.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt ?? new Date().toISOString(), browserSources: publication.browserSources ? clone(publication.browserSources.slice(0,20)) : undefined, materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId, contentVersion: Math.max(0, ...family.map(value => value.contentVersion)) + 1, contentHash: actual.contentHash, contentStatus: 'ready', managedRelativePath: actual.managedRelativePath, registrationSource: 'publication', ...(binding.sourceWorkId ? { sourceWorkId: binding.sourceWorkId } : {}), ...(binding.sourceMessageId ? { sourceMessageId: binding.sourceMessageId } : {}), ...(previous ? { previousArtifactId: previous.id, revisionRequestId: revisionRequest!.id } : {}) }
     await this.sourceRefs(tx, artifact, conversation.id, publication.ownerAgentId)
-    try { if (['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())) markdown(actual.bytes); else { artifact.contentStatus = 'unsupported'; artifact.contentError = '首批仅支持 Markdown 预览和采用，请使用外部打开' } }
-    catch (error) { artifact.contentStatus = 'unavailable'; artifact.contentError = errorText(error) }
+    const filePreview = previewFile(artifact.name, actual.bytes)
+    if (filePreview.kind === 'unsupported') { artifact.contentStatus = 'unsupported'; artifact.contentError = filePreview.reason }
     await tx.put(record('artifacts', artifact))
     if (previous) await this.finishFamilyAcceptances(tx, logicalArtifactId, 'superseded')
     return clone(artifact)
@@ -207,14 +212,15 @@ export class ArtifactRepository {
       const actual = await this.bytes(conversationId, artifactId, undefined, location.managedRelativePath)
       artifact.contentHash = actual.contentHash; artifact.size = actual.size
       await this.sourceRefs(tx, artifact, conversationId)
-      if (['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())) { markdown(actual.bytes); artifact.contentStatus = 'ready' }
-      else { artifact.contentStatus = 'unsupported'; artifact.contentError = '首批仅支持 Markdown 预览和采用，请使用外部打开' }
+      const filePreview = previewFile(artifact.name, actual.bytes)
+      artifact.contentStatus = filePreview.kind === 'unsupported' ? 'unsupported' : 'ready'
+      if (filePreview.reason) artifact.contentError = filePreview.reason; else delete artifact.contentError
     } catch (error) { artifact.contentError = errorText(error) }
     await tx.put(record('artifacts', artifact)); return clone(artifact)
   }
 
   async preview(artifactId: string, expectedHash?: string, agentId?: string): Promise<ArtifactPreview> {
-    try { return await this.store.transaction(async tx => this.previewState(tx, await this.checked(tx, await this.version(tx, artifactId), expectedHash, agentId))) }
+    try { return await this.store.transaction(async tx => this.previewState(tx, await this.checked(tx, await this.version(tx, artifactId), expectedHash, agentId, true, false, true))) }
     catch (error) { if (error instanceof ContentError) await this.unavailable(artifactId, error); throw error }
   }
   async list(conversationId: string): Promise<ArtifactVersion[]> {
@@ -223,9 +229,7 @@ export class ArtifactRepository {
       const artifacts = (await tx.list<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId && known(value))
       for (const artifact of artifacts) {
         try {
-          const supported = ['.md', '.markdown'].includes(extname(artifact.name).toLowerCase())
-          const verified = await this.checked(tx, artifact, undefined, undefined, supported); artifact.path = verified.artifact.path
-          artifact.contentStatus = supported ? 'ready' : 'unsupported'
+          const verified = await this.checked(tx, artifact, undefined, undefined, true, false, true); Object.assign(artifact, verified.artifact)
           if (artifact.contentStatus === 'ready') { delete artifact.contentError; await this.acceptanceInTransaction(tx, artifact.id, true) }
         }
         catch (error) { artifact.contentStatus = 'unavailable'; artifact.contentError = errorText(error); await this.finishAcceptance(tx, artifact.id, 'unavailable', artifact.contentError) }
@@ -405,7 +409,7 @@ export class ArtifactRepository {
     const current = await tx.get<ArtifactAdoptionCurrent>('artifactAdoptionCurrent', logicalArtifactId) ?? null
     return { logicalArtifactId, revision: current?.adoptionRevision ?? 0, current: clone(current), events: (await tx.list<ArtifactAdoptionEvent>('artifactAdoptionEvents')).filter(value => value.logicalArtifactId === logicalArtifactId).map(clone) }
   }
-  private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text'>): Promise<ArtifactPreview> {
+  private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview'>): Promise<ArtifactPreview> {
     const versions = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === preview.artifact.conversationId && value.logicalArtifactId === preview.artifact.logicalArtifactId).sort((a, b) => a.contentVersion - b.contentVersion).map(clone)
     return { ...preview, versions, adoption: await this.adoptionInTransaction(tx, preview.artifact.logicalArtifactId), acceptance: await this.acceptanceInTransaction(tx, preview.artifact.id, true) }
   }

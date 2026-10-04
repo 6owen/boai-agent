@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 群聊展示投影与消息、工作、产物合同。
- * [OUTPUT]: 即时宿主证据优先且 false 不回退陈旧正文、不覆盖人工待审；普通回复去除重复触发引用而保留明确引用/原数据、连续发言不得跨边界、歧义文件不得错挂、审批不得错归属、无证据不得显示已交付。
+ * [OUTPUT]: 即时宿主证据优先且 false 不回退陈旧正文、不覆盖人工待审；普通回复去除重复触发引用而保留明确引用/原数据、连续发言不得跨边界、固定成果原消息缺失不得换挂、歧义文件不得错挂、审批不得错归属、无证据不得显示已交付。
  * [POS]: Vitest 群聊展示不变量回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -58,6 +58,14 @@ describe('group messages preserve origin and result boundaries', () => {
     expect(artifactsByMessage({ ...detail, artifacts: [{ ...detail.artifacts[0], runId: 'other-run' }] }).size).toBe(0)
     expect(artifactsByMessage({ ...detail, workItems: [] }).get('m')).toEqual(detail.artifacts)
     expect(artifactsByMessage({ ...detail, workItems: [], messages: [message, { ...message, id: 'second' }] }).size).toBe(0)
+  })
+  it('attaches a fixed published file only to its recorded author message, even when a work has several results', () => {
+    const artifact = { ...detail.artifacts[0], sourceMessageId: 'm' }
+    const conversation = { ...detail, artifacts: [artifact], workItems: [{ ...work, resultMessageIds: ['m', 'm2'] }] }
+    expect(artifactsByMessage(conversation).get('m')).toEqual([artifact])
+    expect(artifactsByMessage({ ...conversation, messages: [{ ...message, id: 'm2' }] }).size).toBe(0)
+    expect(artifactsByMessage({ ...conversation, messages: [{ ...message, senderId: 'other' }] }).size).toBe(0)
+    expect(artifactsByMessage({ ...conversation, messages: [{ ...message, status: 'streaming' }] }).size).toBe(0)
   })
   it('shows a private-draft approval without guessing a preceding message', () => {
     const approval = { id: 'approval', runId: 'r', conversationId: 'c', agentName: '写手', command: 'pwd', cwd: '/fixture' }

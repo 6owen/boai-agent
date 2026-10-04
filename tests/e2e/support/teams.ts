@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 场景独立 Desktop、真实持久目录和浏览器窗口。
  * [OUTPUT]: 核心首发真实受理后的回复丢失/查询不可读与请求身份观测；缺失默认模型的旧记录、独立存储竞争、生成进程中断、已发布员工/群移除及文件冲突准备和真实创建耗时记录。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: 团队创建 BDD 故障支撑；生产 UI 不提供故障入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -48,7 +49,7 @@ export async function coreReplyFault(runtime: Desktop, options: { loseStartReply
 }
 
 export async function coreStartReceipts(runtime: Desktop) {
-  const store = new ProductStore(join(runtime.root, 'v2', 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(runtime.root, 'v2', 'boai.sqlite'))
   try { return await store.load<{ id: string; conversationId: string; fingerprint: string; cleared?: boolean }>('coreConversationStarts') } finally { await store.close() }
 }
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
+ * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -38,8 +38,9 @@ async function prepareAppearance(runtime: Desktop) {
     await expect(page.locator('.app-shell')).toBeVisible()
   }
   const open = async () => {
-    await runtime.page.getByRole('button', { name: '设置', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '外观', exact: true }).click()
+    await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('button', { name: '外观', exact: true }).click()
   }
   const zoom = () => runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())
   const expectWindowFilled = async () => {

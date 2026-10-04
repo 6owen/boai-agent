@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已提交个人资料、活跃页面标记、变更事件和只读活动接口。
- * [OUTPUT]: 直接选头像/恢复默认小老虎并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
+ * [OUTPUT]: 首次权威资料快照前禁用所有编辑/头像写入入口，真实版本变化仍保留冲突保护；直接选头像/恢复默认小老虎并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
  * [POS]: 复用设置文档布局的个人资料页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,12 +17,14 @@ import { ProfileEditor } from './profile-editor'
 import { ProfileShare } from './profile-share'
 import { ActivityChart, profileActivityRange, tokenText } from './profile-activity'
 
-export function ProfileSettings({ api, profile = defaultUserProfile, active, refresh, onSkill }: { api: DesktopApi; profile?: LocalUserProfile; active: boolean; refresh: () => Promise<void>; onSkill: (id: string) => void }) {
+export function ProfileSettings({ api, profile: committedProfile, active, refresh, onSkill }: { api: DesktopApi; profile?: LocalUserProfile; active: boolean; refresh: () => Promise<void>; onSkill: (id: string) => void }) {
+  const profile = committedProfile ?? defaultUserProfile, ready = Boolean(committedProfile)
   const [sharing, setSharing] = useState(false), [uploading, setUploading] = useState(false), [editing, setEditing] = useState(false), [activity, setActivity] = useState<ProfileActivity>(), [error, setError] = useState(''), [retry, setRetry] = useState(0)
   const editButton = useRef<HTMLButtonElement>(null), shareButton = useRef<HTMLButtonElement>(null)
-  const openEditor = (trigger: HTMLButtonElement) => { editButton.current = trigger; setEditing(true) }
+  const openEditor = (trigger: HTMLButtonElement) => { if (ready) { editButton.current = trigger; setEditing(true) } }
   const { busy: avatarBusy, error: avatarError, run: saveAvatar } = useMutation()
   const selectAvatar = (avatar: UserAvatar) => void saveAvatar(async () => {
+    if (!ready) return
     await api.request('updateUserProfile', { expectedRevision: profile.revision, displayName: profile.displayName, username: profile.username, avatar })
     await refresh()
   })
@@ -44,8 +46,9 @@ export function ProfileSettings({ api, profile = defaultUserProfile, active, ref
     { label: '当前连续', value: activity.currentStreak === null ? '未记录' : `${activity.currentStreak} 天`, hint: '按本人主动发送消息的自然日计算' },
   ] : []
   return <section className="settings-document profile-document">
-    <header className="settings-document-heading"><h2>个人资料</h2><div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div></header>
-    <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
+    <header className="settings-document-heading"><h2>个人资料</h2><div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!ready || !activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div></header>
+    <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={!ready || avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
+    {!ready && <Loading>正在读取个人资料…</Loading>}
     {avatarError && <Banner>{avatarError}</Banner>}
     {error && <Banner>{error}<Button variant="link" onClick={() => setRetry(value => value + 1)}>重试</Button></Banner>}
     {!activity && !error && <Loading>正在读取本机活动…</Loading>}
@@ -59,6 +62,6 @@ export function ProfileSettings({ api, profile = defaultUserProfile, active, ref
       </dl></CardContent></Card></section><section><h3>最常用的技能</h3><Card className="profile-insight-card"><CardContent>{activity.skills.length ? <ol className="profile-skills">{activity.skills.map(skill => <li key={skill.id}><Button variant="ghost" size="content" disabled={!skill.available} onClick={() => onSkill(skill.id)}><Sparkles /><span>{skill.name}<small>{skill.count} 次使用{!skill.available ? ' · 已移除' : ''}</small></span></Button></li>)}</ol> : <p className="text-muted-foreground">还没有已记录的技能激活</p>}</CardContent></Card></section></div>
     </>}
     {sharing && activity && <ProfileShare api={api} profile={profile} activity={activity} onClose={() => setSharing(false)} finalFocus={shareButton} />}
-    {editing && <ProfileEditor profile={profile} api={api} refresh={refresh} onClose={() => setEditing(false)} finalFocus={editButton} />}
+    {editing && ready && <ProfileEditor profile={profile} api={api} refresh={refresh} onClose={() => setEditing(false)} finalFocus={editButton} />}
   </section>
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；作用域授权回调。
- * [OUTPUT]: 固定地址栏布局/正常窗口缩放与网页输入，无员工遮罩或操作权菜单；销毁中不布局，冻结 WebContents 校验来源；navigationHistory/console-message 对象事件、独立持久 partition/沙箱/真实退出与受管下载/权限/sender 门禁。
+ * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；内置浏览器导航与下载策略。
+ * [OUTPUT]: 固定地址栏布局/正常窗口缩放与网页输入；持久登录分区、沙箱与实际退出；人工下载沿原生保存，工具下载固定受管目录，工具退出仅取消受管下载；同ID重开拒绝旧窗口迟到回调。
  * [POS]: src/main/browser/browser-pane-manager.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,7 +10,7 @@
  *
  * Owns browser instances as dedicated BrowserWindow objects.
  * Each instance maps 1:1 to a full native window while preserving
- * each employee/conversation's isolated cookie partition and CDP automation support.
+ * the built-in browser's persistent cookie partition and CDP automation support.
  */
 
 import { join, parse as parsePath, basename, relative, isAbsolute } from 'node:path'
@@ -152,7 +152,7 @@ interface BrowserInstance {
   partition: string
   downloadDirectory: string | null
   toolbarError: string | null
-  activeDownloads: Map<string, { item: DownloadItem; done: Promise<void> }>
+  activeDownloads: Map<string, { item: DownloadItem; done: Promise<void>; kind: 'native' | 'managed' }>
   loadDone: Promise<void> | null
   resolveLoadDone: (() => void) | null
 }
@@ -466,10 +466,10 @@ export class BrowserPaneManager {
     window.addBrowserView(toolbarView)
     window.setTopBrowserView(toolbarView)
 
+    this.instances.set(instanceId, instance)
     this.layoutAllViews(instance)
 
     this.setupWindowListeners(instance)
-    this.instances.set(instanceId, instance)
     this.emitStateChange(instance)
     mainLog.info(`[browser-pane] toolbar version: v4-react-chromeless`)
     mainLog.info(`[browser-pane] Created instance: ${instanceId} (show=${shouldShow}, ownerType=${ownerType}, ownerSessionId=${ownerSessionId ?? 'none'})`)
@@ -535,10 +535,10 @@ export class BrowserPaneManager {
     if (instance?.loadDone) await instance.loadDone
   }
 
-  async cancelDownloads(id: string): Promise<void> {
+  async cancelDownloads(id: string, options: { managedOnly?: boolean } = {}): Promise<void> {
     const instance = this.instances.get(id)
     if (!instance) return
-    const downloads = [...instance.activeDownloads.values()]
+    const downloads = [...instance.activeDownloads.values()].filter(entry => !options.managedOnly || entry.kind === 'managed')
     for (const entry of downloads) entry.item.cancel()
     await Promise.all(downloads.map(entry => entry.done))
   }
@@ -1723,7 +1723,7 @@ export class BrowserPaneManager {
 
   private canLayoutViews(instance: BrowserInstance): boolean {
     // Instances remain registered until all retained WebContents actually exit.
-    return !this.destroyingIds.has(instance.id) && !instance.window.isDestroyed()
+    return this.instances.get(instance.id) === instance && !this.destroyingIds.has(instance.id) && !instance.window.isDestroyed()
       && instance.ownedWebContents.every(contents => !contents.isDestroyed())
   }
 
@@ -1738,7 +1738,7 @@ export class BrowserPaneManager {
   }
 
   private finalizeDestroyedInstance(instance: BrowserInstance, source: 'destroy' | 'closed'): void {
-    if (!this.instances.has(instance.id) || !instance.window.isDestroyed() || instance.ownedWebContents.some(contents=>!contents.isDestroyed())) return
+    if (this.instances.get(instance.id) !== instance || !instance.window.isDestroyed() || instance.ownedWebContents.some(contents=>!contents.isDestroyed())) return
 
     this.destroyingIds.delete(instance.id)
     this.closePopupsForParent(instance.id, 'parent_destroy')
@@ -1870,7 +1870,7 @@ export class BrowserPaneManager {
   }
 
   private pushToolbarState(instance: BrowserInstance): void {
-    if (instance.window.isDestroyed() || instance.toolbarView.webContents.isDestroyed()) return
+    if (this.instances.get(instance.id) !== instance || instance.window.isDestroyed() || instance.toolbarView.webContents.isDestroyed()) return
     const state = {
       url: instance.currentUrl,
       title: instance.title,
@@ -2099,7 +2099,7 @@ export class BrowserPaneManager {
     `).catch(() => {
       if (!allowRetry) return
       setTimeout(() => {
-        if (!this.instances.has(instance.id)) return
+        if (this.instances.get(instance.id) !== instance) return
         if (instance.currentUrl !== urlAtInstall) return
         if (instance.themeObserverToken !== token) return
         this.installThemeObserver(instance, false)
@@ -2109,7 +2109,7 @@ export class BrowserPaneManager {
 
   private scheduleEarlyThemeExtraction(instance: BrowserInstance, urlAtSchedule: string): void {
     setTimeout(() => {
-      if (!this.instances.has(instance.id)) return
+      if (this.instances.get(instance.id) !== instance) return
       if (instance.currentUrl !== urlAtSchedule) return
       void this.extractThemeColor(instance)
     }, EARLY_THEME_EXTRACTION_DELAY_MS)
@@ -2215,12 +2215,6 @@ export class BrowserPaneManager {
     }
   }
 
-  private resolveDownloadsDir(instance: BrowserInstance): string {
-    if (!instance.downloadDirectory) throw new Error('本次工作没有受管下载目录')
-    mkdirSync(instance.downloadDirectory, { recursive: true })
-    return instance.downloadDirectory
-  }
-
   private uniqueFilename(dir: string, filename: string): string {
     if (!existsSync(join(dir, filename))) return filename
     const { name, ext } = parsePath(filename)
@@ -2296,13 +2290,17 @@ export class BrowserPaneManager {
       const wcId = webContents?.id
       if (typeof wcId !== 'number') return
       const instance = this.getInstanceByWebContentsId(wcId)
-      if (!instance || !this.options.allowDownload?.(instance.id, item.getURL())) { event.preventDefault(); return }
+      const policy = instance ? this.options.downloadPolicy(instance.id, item.getURL()) : null
+      if (!instance || !policy) { event.preventDefault(); return }
 
-      // Auto-save: set a deterministic path so Electron doesn't show a native dialog
-      const downloadsDir = this.resolveDownloadsDir(instance)
-      const filename = this.uniqueFilename(downloadsDir, basename(item.getFilename().replace(/\\/g, '/')) || 'download')
-      const savePath = join(downloadsDir, filename)
-      item.setSavePath(savePath)
+      let filename = basename(item.getFilename().replace(/\\/g, '/')) || 'download'
+      let savePath: string | undefined
+      if (policy.kind === 'managed') {
+        mkdirSync(policy.directory, { recursive: true })
+        filename = this.uniqueFilename(policy.directory, filename)
+        savePath = join(policy.directory, filename)
+        item.setSavePath(savePath)
+      }
 
       const downloadId = `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const started: BrowserDownloadEntry = {
@@ -2329,7 +2327,7 @@ export class BrowserPaneManager {
       item.on('updated', onUpdated)
       let finish!: () => void
       const done = new Promise<void>(resolve => { finish = resolve })
-      instance.activeDownloads.set(downloadId, { item, done })
+      instance.activeDownloads.set(downloadId, { item, done, kind: policy.kind })
 
       item.once('done', (_e, state) => {
         item.removeListener('updated', onUpdated)
@@ -2647,7 +2645,7 @@ export class BrowserPaneManager {
   }
 
   private emitStateChange(instance: BrowserInstance): void {
-    if (!this.instances.has(instance.id)) {
+    if (this.instances.get(instance.id) !== instance) {
       return
     }
     this.stateChangeCallback?.(this.toInfo(instance))

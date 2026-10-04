@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 隔离 Electron、离线真实 Mastra HTTP 工具协议、可观测本地网页与原生产浏览器窗口/事务。
- * [OUTPUT]: 无浏览器配置的新员工、旧false/缺值与可选群成员；真实普通工具栏导航/X关闭、零尺寸第三视图和无控制权菜单核对，明确task/媒体/Cookie/提交/SQLite回执；本轮仅同步合同，未运行。
+ * [OUTPUT]: 内置浏览器窗口取证不接受业务归属参数，工具任务仍用原工作事实验收。
+ * [OUTPUT]: 真实普通工具栏导航/X关闭、零尺寸第三视图和无控制权菜单核对，明确task/媒体/持久登录Cookie/提交/SQLite回执。
  * [POS]: BRM4 浏览器迁移桌面支撑；模型 fixture 发原工具命令，实际效果由生产实现执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -40,7 +41,7 @@ export async function browserFixtureSite(runtime: Desktop) {
     if (url.pathname === '/download.txt') { response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="browser-result.txt"' }); response.end('BRM_DOWNLOAD_TEXT 真正下载的公开内容'); return }
     if (url.pathname === '/favicon.ico') { response.writeHead(404); response.end(); return }
     const account = url.searchParams.get('set')
-    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...(account ? { 'Set-Cookie': `browser_user=${account}; Path=/; HttpOnly; SameSite=Lax` } : {}) }); response.end(webpage(account ?? cookie))
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...(account ? { 'Set-Cookie': `browser_user=${account}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400` } : {}) }); response.end(webpage(account ?? cookie))
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); runtime.trackServer(server)
   return { server, hits, origin: `http://127.0.0.1:${(server.address() as { port: number }).port}`, mutations: () => mutations }
@@ -113,7 +114,7 @@ export async function prepareBrowserDesktop(runtime: Desktop, options: { legacy?
   return { ...setup, endpoint, site, errors, observedTools, plans, send }
 }
 export const browserDetail = (runtime: Desktop, conversationId: string): Promise<ConversationDetail> => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), conversationId)
-export const browserWindows = (runtime: Desktop, conversationId: string): Promise<BrowserWindowState[]> => runtime.page.evaluate(id => window.boai.request('getBrowserWindows', { conversationId: id }), conversationId)
+export const browserWindows = (runtime: Desktop): Promise<BrowserWindowState[]> => runtime.page.evaluate(() => window.boai.request('getBrowserWindows', {}))
 export async function browserRecords(dataPath: string) {
   const db = new DatabaseSync(join(dataPath, 'boai.sqlite'), { readOnly: true }), load = <T>(collection: string) => db.prepare('SELECT value FROM records WHERE collection=? ORDER BY rowid').all(collection).map(row => JSON.parse(String(row.value)) as T)
   try { return { artifacts: load<ArtifactVersion>('artifacts'), messages: load<Message>('messages'), works: load<WorkItem>('workItems'), budgets: load<WorkBudget>('workBudgets'), actions: load<Record<string, unknown>>('browserActions'), evidence: load<Record<string, unknown>>('browserEvidence'), scopes: load<Record<string, unknown>>('browserScopes'), approvals: load<Record<string, unknown>>('approvals') } } finally { db.close() }
@@ -153,6 +154,6 @@ export async function spoofBrowserSender(runtime: Desktop, instanceId: string, o
     const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: unknown[]) => Promise<unknown>> })._invokeHandlers, event = { sender: page, senderFrame: page.mainFrame }, attempt = async (channel: string, ...args: unknown[]) => {
       try { await handlers.get(channel)!(event, ...args); return 'accepted' } catch (error) { return String(error) }
     }
-    return { toolbar: await attempt('browser-toolbar:navigate', instanceId, `${origin}/forged`), renderer: await attempt('boai:request', { method: 'browserControl', input: { agentId: 'researcher', conversationId: 'forged', action: 'clear' } }) }
+    return { toolbar: await attempt('browser-toolbar:navigate', instanceId, `${origin}/forged`), renderer: await attempt('boai:request', { method: 'browserControl', input: { action: 'clear' } }) }
   }, { instanceId, origin })
 }

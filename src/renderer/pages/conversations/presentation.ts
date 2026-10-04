@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 成员投递、轮次与工作结果领域类型。
- * [OUTPUT]: 会话/工作结果文案、正文内成员标签/材料草稿和明确原问题关联、稳定发送请求和未知回执状态的草稿合同及展示辅助函数。
+ * [OUTPUT]: 会话/工作结果文案、正文内成员标签/材料草稿和明确原问题/成果修订关联、普通/ACP稳定发送请求和未知回执状态的草稿合同及展示辅助函数。
  * [POS]: src/renderer/pages/conversations/presentation.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import type { AgentDelivery, TurnStatus, WorkDisposition } from '@shared/domain'
 import type { MaterialSelection } from '@shared/domain/materials'
 import type { MaterialDraftItem } from './-components/material-draft'
 import type { ChatQuestionTarget } from './question-state'
+import type { ChatArtifactRevisionTarget } from './use-chat-artifacts'
 
 export const runLabels = { queued: '排队中', running: '正在处理', waiting_approval: '等待授权', completed: '已完成', failed: '失败', cancelled: '已取消', interrupted: '已中断' }
 export const workDispositionLabels: Record<WorkDisposition, string> = { delivered: '已交付', progress: '已有进展', waiting: '等待输入或依赖', blocked: '需要处理', no_progress: '尚无交付结论' }
@@ -18,8 +19,10 @@ export interface DraftMention { id: string; label: string; start: number; end: n
 export interface ChatDraft {
   text: string; mentionIds: string[]; mentions?: DraftMention[]; replyId?: string
   questionReply?: ChatQuestionTarget
+  artifactRevision?: ChatArtifactRevisionTarget
   materials?: MaterialDraftItem[]
   submission?: {
+    kind?: 'external'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string
     input: { content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
   }

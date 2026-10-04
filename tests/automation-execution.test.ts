@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
+ * [OUTPUT]: 详情无固定问题版本的补充也拒绝，不再动态绑定下一轮等待；原预算追加合同保持。
  * [OUTPUT]: 聊天明确补充按 occurrence 版本/当前原问题原子核对，旧版本/旧等待问题零消息工作/预算写入、原关系回执重启核对与同 key 禁止换目标；实际受管发布原件/复制 hash 与未知/缺失交付证据；到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
  * [POS]: 自动化执行意图回归；不调用外部模型或真实用户计划。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -85,6 +86,11 @@ async function setup(engine: AgentEngine) {
   const plan = await service.handle('saveAutomation', { name: 'report', prompt: 'automatic request', conversationId: conversation.id, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }) as AutomationDefinition
   return { root, service, make, conversation, plan, detail: () => service.handle('getConversation', { id: conversation.id }) as Promise<ConversationDetail>, view: () => service.handle('listAutomations', undefined) as Promise<AutomationsView> }
 }
+async function waitingQuestion(f: Awaited<ReturnType<typeof setup>>, occurrenceId: string) {
+  const current=(await f.view()).occurrences.find(item=>item.id===occurrenceId)!
+  const question=(await f.detail()).messages.find(message=>message.senderType==='agent' && message.status==='completed' && current.waitingTurnIds?.includes(message.turnId!))!
+  return {expectedVersion:current.stateVersion,questionMessageId:question.id}
+}
 const decide: NonNullable<AgentEngine['decide']> = async context => {
   const trigger = context.messages.find(message => message.id === context.triggerMessageId)!
   return { action: context.agent.id === 'researcher' && !context.participation?.hasRespondedInTurn && trigger.content !== 'context update' ? 'reply' : 'pass', responseKind: 'task', work: { key: 'main', scope: trigger.content, deliverable: '可检查的结果' }, observedThroughSequence: Math.max(...context.messages.map(message => message.sequence)) }
@@ -117,7 +123,7 @@ it('replies to exactly one waiting occurrence, keeps its original budget/source,
   const human = await f.service.handle('sendMessage', { conversationId: f.conversation.id, content: 'context update', mentionIds: [], requestId: 'ordinary' }) as Message
   await until(async () => (await f.detail()).turns!.find(turn => turn.id === human.turnId)?.status === 'completed')
   expect((await f.view()).occurrences.filter(o => o.status === 'waiting_user')).toHaveLength(2)
-  const input = { occurrenceId: first.id, content: '42', requestId: 'reply-first' }
+  const input = { occurrenceId: first.id, content: '42', requestId: 'reply-first', question:await waitingQuestion(f,first.id) }
   const reply = await f.service.handle('replyAutomation', input) as Message
   await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.deliveryStatus === 'delivered')
   expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
@@ -138,9 +144,9 @@ it('records each clarification cycle explicitly instead of leaving an old questi
   const f = await setup(clarificationEngine())
   const o = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'cycle' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
-  const firstReply = await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '需要再次确认', requestId: 'clarify' }) as Message
+  const firstReply = await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '需要再次确认', requestId: 'clarify', question:await waitingQuestion(f,o.id) }) as Message
   await until(async () => (await f.view()).occurrences[0]?.waitingTurnIds?.includes(firstReply.turnId!) === true)
-  const secondReply = await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'answer' }) as Message
+  const secondReply = await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'answer', question:await waitingQuestion(f,o.id) }) as Message
   await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
   const detail = await f.detail()
   expect(detail.turns!.find(turn => turn.id === secondReply.turnId)?.replyToTurnIds).toEqual([firstReply.turnId])
@@ -164,6 +170,9 @@ it('fences a chat clarification to the exact occurrence version and current wait
   const current = (await f.view()).occurrences[0], before = await f.detail(), callsBefore = contexts.length
   const currentQuestion = before.messages.find(message => message.senderType === 'agent' && message.status === 'completed' && current.waitingTurnIds?.includes(message.turnId!))!
   expect(currentQuestion.id).not.toBe(firstQuestion.id); expect(current.stateVersion).toBeGreaterThan(firstWaiting.stateVersion)
+  await expect(f.service.handle('replyAutomation',{occurrenceId:initial.id,content:'旧详情表单的答案',requestId:'stale-unversioned-detail'})).rejects.toThrow('必须固定原问题')
+  expect((await f.detail()).messages).toEqual(before.messages)
+  expect(contexts).toHaveLength(callsBefore)
   const input = { occurrenceId: initial.id, content: '42', requestId: 'chat-current-supplement', question: { expectedVersion: current.stateVersion, questionMessageId: currentQuestion.id } }
   for (const question of [{ ...input.question, expectedVersion: firstWaiting.stateVersion }, { ...input.question, questionMessageId: firstQuestion.id }, { ...input.question, questionMessageId: firstReply.id }, { ...input.question, questionMessageId: 'missing-question' }]) {
     await expect(f.service.handle('replyAutomation', { ...input, question })).rejects.toThrow()
@@ -206,9 +215,10 @@ it.each(['deadline', 'capacity', 'permission', 'commit'] as const)('rejects a cl
     const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
     await f.service.handle('saveAgent', { ...input, name: agent.name + ' changed' })
   }
+  const question=await waitingQuestion(f,o.id)
   const transaction = store.transaction.bind(store)
   if (blocker === 'commit') store.transaction = operation => transaction(tx => operation({ ...tx, put: async record => { if (record.collection === 'messages') throw new Error('reply commit fault'); await tx.put(record) } }))
-  try { await expect(f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'blocked-reply' })).rejects.toThrow() }
+  try { await expect(f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'blocked-reply', question })).rejects.toThrow() }
   finally { store.transaction = transaction }
   const detail = await f.detail()
   expect(detail.messages.some(message => message.content === '42')).toBe(false)
@@ -217,7 +227,7 @@ it.each(['deadline', 'capacity', 'permission', 'commit'] as const)('rejects a cl
   expect(detail.workBudgets![0].modelCalls).toBe(budget.modelCalls)
   expect((await f.view()).occurrences.find(item => item.id === o.id)?.status).toBe('waiting_user')
   if (blocker === 'commit') {
-    await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'blocked-reply' })
+    await f.service.handle('replyAutomation', { occurrenceId: o.id, content: '42', requestId: 'blocked-reply', question })
     await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
   }
 })
@@ -410,7 +420,7 @@ it('explicitly renews an expired clarification, keeps all accounting and ignores
   await internal.automations.stop(first.id, '迟到的旧计时器', 'budget', 0)
   await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
   expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
-  await expect(f.service.handle('replyAutomation', { ...input, renewBudget: undefined })).rejects.toThrow('requestId')
+  await expect(f.service.handle('replyAutomation', { ...input, renewBudget: undefined })).rejects.toThrow('必须固定原问题')
   const detail = await f.detail(), after = (await f.view()).occurrences[0], budget = detail.workBudgets![0]
   expect(detail.workBudgets).toHaveLength(1)
   expect(budget).toMatchObject({ id: before.id, maxModelCalls: 48, maxRuns: 16, usageIncomplete: true })

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: CodeBlock 输出的 Shiki 明暗 token 变量与项目全局表面/字号/圆角。
- * [OUTPUT]: 全局代码块、横向滚动和随应用 .dark 切换的语法高亮；行内 code 继续使用 typeset.css。
+ * [INPUT]: CodeBlock 输出的 Shiki 明暗 token、可选文件行号与项目全局表面/字号/圆角。
+ * [OUTPUT]: 全局代码块、文件逐行定位/选中表面、横向滚动和随应用 .dark 切换的语法高亮；行内 code 继续使用 typeset.css。
  * [POS]: renderer/styles 的 Shiki 定制入口，由 global.css 加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -23,3 +23,8 @@ pre.shiki-code-block {
 pre.shiki-code-block>code { display:block;min-width:max-content;padding:0;border:0;background:transparent;color:inherit;font:inherit;white-space:pre }
 .shiki-token { color:var(--shiki-light,inherit);font-style:var(--shiki-light-font-style,normal);font-weight:var(--shiki-light-font-weight,normal);text-decoration:var(--shiki-light-text-decoration,none) }
 .dark .shiki-token { color:var(--shiki-dark,inherit);font-style:var(--shiki-dark-font-style,normal);font-weight:var(--shiki-dark-font-weight,normal);text-decoration:var(--shiki-dark-text-decoration,none) }
+pre.shiki-code-block.shiki-numbered { margin:0;padding:8px 0 }
+.shiki-line { display:flex;min-width:max-content;padding-right:16px }
+.shiki-line[data-selected] { background:var(--accent) }
+.shiki-line-number { flex:0 0 48px;min-height:0;padding:0 12px 0 4px;border-radius:0;background:transparent;color:var(--muted-foreground);font:inherit;text-align:right;user-select:none }
+.shiki-line-content { display:block;flex:1;white-space:pre }

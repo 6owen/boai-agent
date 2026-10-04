@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 场景独立 Desktop、真实本机文本文件、共享 Mastra 兼容 HTTP fixture 与生产原生 IPC。
- * [OUTPUT]: 同名异内容/严格文本失败材料、一次原生对话框替换和真实本机 File 拖入观测、伪造公开授权请求拒绝、真实准备/消息提交后丢回复与只读回执故障观测；资源随场景回收。
+ * [OUTPUT]: Markdown/TypeScript/HTML真实预览原件、通用PDF/超过20MiB夹具；同名来源/严格文本失败、原生File授权及准备/发送失联观测；资源随场景回收。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效；真实移走/恢复同字节原件验证显式核对。
  * [POS]: D1 材料桌面验收支撑；文件路径只交给原生选择端，不进入公开 prepareMaterial 输入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'
@@ -41,19 +42,23 @@ export async function prepareMaterialsDesktop(runtime: Desktop) {
     first: '# 同名材料甲\r\nFIRST_PRIVATE_TOKEN_A：只共享给研究员。\r\n第三行甲\r\n',
     second: '# 同名材料乙\nSECOND_SHARED_TOKEN_B：共享给两位员工。\n第三行乙\n',
     valid: '有效材料第一行\nVALID_DRAFT_TOKEN_C：应保留的原文。\n第三行\n',
+    markdown: '# 可预览的聊天文档\n\n这里有 **加粗正文**。\n\n```typescript\nconst greeting: string = "CHAT_MARKDOWN_CODE"\n```\n\n<script>window.__boaiPreviewExecuted = true</script>\n',
+    code: 'export const previewLabel: string = "CHAT_TYPESCRIPT_PREVIEW"\nconst literal = "<script>not executable</script>"\n',
+    html: '<!doctype html>\n<html><body><h1>HTML_SOURCE_ONLY</h1><script>window.__boaiPreviewExecuted = true</script><iframe src="https://example.invalid/preview"></iframe></body></html>\n',
   }
-  const files = { first: join(sources, 'first', '报告.md'), second: join(sources, 'second', '报告.md'), valid: join(sources, '有效材料.txt'), encoding: join(sources, '坏编码.txt'), large: join(sources, '超限.txt'), unsupported: join(sources, '不支持.pdf') }
+  const files = { first: join(sources, 'first', '报告.md'), second: join(sources, 'second', '报告.md'), valid: join(sources, '有效材料.txt'), encoding: join(sources, '坏编码.txt'), large: join(sources, '超限.txt'), unsupported: join(sources, '通用资料.pdf'), oversized: join(sources, '超限文件.pdf'), markdown: join(sources, '预览说明.md'), code: join(sources, 'preview.ts'), html: join(sources, 'preview.html') }
   await Promise.all([
     writeFile(files.first, texts.first), writeFile(files.second, texts.second), writeFile(files.valid, texts.valid),
-    writeFile(files.encoding, Buffer.from([0xff, 0xfe, 0x00, 0x61])), writeFile(files.large, Buffer.alloc(MATERIAL_LIMITS.bytes + 1, 'a')), writeFile(files.unsupported, '%PDF-1.4\nfixture'),
+    writeFile(files.encoding, Buffer.from([0xff, 0xfe, 0x00, 0x61])), writeFile(files.large, Buffer.alloc(MATERIAL_LIMITS.bytes + 1, 'a')), writeFile(files.unsupported, '%PDF-1.4\nfixture'), writeFile(files.oversized, Buffer.alloc(MATERIAL_LIMITS.attachmentBytes + 1, 'x')),
+    writeFile(files.markdown, texts.markdown), writeFile(files.code, texts.code), writeFile(files.html, texts.html),
   ])
   await runtime.start()
   const setup = await runtime.page.evaluate(async url => {
     const connection = await window.boai.request('saveConnection', { name: '材料离线协议', provider: 'openai-compatible', baseUrl: url, defaultModel: 'materials-fixture' })
     const snapshot = await window.boai.request('snapshot', undefined)
-    for (const agent of snapshot.agents.filter(agent => ['researcher', 'writer'].includes(agent.id))) {
+    for (const agent of snapshot.agents.filter(agent => ['researcher', 'writer', 'reviewer'].includes(agent.id))) {
       const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
-      await window.boai.request('saveAgent', { ...input, name: agent.id === 'researcher' ? '研究员' : '写手', connectionId: connection.id, modelId: `materials-${agent.id}`, allowCommands: false, expectedConfigVersion: configVersion })
+      await window.boai.request('saveAgent', { ...input, name: ({ researcher: '研究员', writer: '写手', reviewer: '审核员' } as Record<string, string>)[agent.id], connectionId: connection.id, modelId: `materials-${agent.id}`, allowCommands: false, expectedConfigVersion: configVersion })
     }
     const group = await window.boai.request('createConversation', { kind: 'group', title: '材料协作组', agentIds: ['researcher', 'writer'] })
     const direct = await window.boai.request('createConversation', { kind: 'direct', title: '材料私聊', agentIds: ['researcher'] })
@@ -102,7 +107,7 @@ export async function materialReplyFault(runtime: Desktop) {
 }
 
 export async function materialRecords(dataPath: string) {
-  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
   try {
     return {
       materials: await store.load<ConversationMaterial>('materials'), preparations: await store.load<{ id: string; materialId: string; conversationId: string; fingerprint: string }>('materialPreparations'),
@@ -118,6 +123,14 @@ export async function managedMaterialFiles(dataPath: string) {
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error }
 }
 export const materialOriginal = (dataPath: string, material: ConversationMaterial) => readFile(join(dataPath, 'materials', material.conversationId, material.id, 'original'), 'utf8')
+
+/** Change only the actual isolated original; production startup and preview detect its absence. */
+export async function temporarilyRemoveMaterialOriginal(dataPath: string, material: ConversationMaterial) {
+  const original = join(dataPath, 'materials', material.conversationId, material.id, 'original')
+  const saved = `${original}.bdd-saved`
+  await rename(original, saved)
+  return async () => { await rename(saved, original) }
+}
 
 /** Use Chromium's real file input File, retaining Electron's native path metadata. Never construct File(bytes). */
 export async function dropNativeMaterialFile(runtime: Desktop, path: string) {
@@ -184,4 +197,16 @@ export async function materialSendReplyFault(runtime: Desktop) {
     inspect: () => runtime.app.evaluate(() => structuredClone((globalThis as MaterialGlobals).__boaiMaterialSendReplyFault)),
     allowLookup: () => runtime.app.evaluate(() => { (globalThis as MaterialGlobals).__boaiMaterialSendReplyFault.lookupUnavailable = false }),
   }
+}
+
+/** Prepare an old persisted explicit grant while the app is stopped; current UI never offers this setting. */
+export async function legacyMaterialGrant(runtime: Desktop, dataPath: string, id: string) {
+  await runtime.close()
+  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  try {
+    const material = (await store.load<ConversationMaterial>('materials')).find(value => value.id === id)!
+    const { deliveryScope, ...legacy } = material
+    await store.write([{ collection: 'materials', id, value: { ...legacy, authorizedAgentIds: ['researcher'] } }])
+  } finally { await store.close() }
+  await runtime.start()
 }

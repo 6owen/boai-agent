@@ -1,7 +1,7 @@
 /*
  * [INPUT]: SQLite 原子记录事务、统一记忆合同及确定性范围/生命周期策略。
  * [OUTPUT]: 召回同事务精确核对实际条目/获知授权/输入来源，旧快照保守代际门禁；无关清空不取消任务，相关忘记/纠正/范围/到期仍失效。
- * [OUTPUT]: 兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
+ * [OUTPUT]: 自动纠正与手工编辑共用多级派生失效，启动只修复旧失效来源投影且保留无关记忆；兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
  * [POS]: runtime/modules/memory/memory-repository.ts；SQLite 唯一权威，无私有文本缓存。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,6 +50,12 @@ export class MemoryRepository {
     return this.store.transaction(async tx => {
       let runtime = await tx.get<{ id: string; version: number; activatedAt: string }>('memoryRuntime', 'policy-v2')
       if (!runtime) { runtime = { id: 'policy-v2', version: 2, activatedAt: stamp() }; await tx.put({ collection: 'memoryRuntime', id: runtime.id, value: runtime }) }
+      const entries = await tx.list<MemoryEntry>('memory')
+      for (const agentId of new Set(entries.map(entry => entry.ownerAgentId))) {
+        const roots = entries.filter(entry => entry.ownerAgentId === agentId && memoryStatus(entry) !== 'active').map(entry => entry.id)
+        const descendants = this.expiredDescendants(entries.filter(entry => entry.ownerAgentId === agentId), roots)
+        if (descendants.length) await this.put(tx, { agentId, scope: 'employee' }, descendants, true)
+      }
       return runtime.activatedAt
     })
   }
@@ -111,6 +117,19 @@ export class MemoryRepository {
   private async blocked(tx: RecordTransaction, agentId: string, messages: string[], memories: string[], content?: string) {
     return (await tx.list<MemoryForget>('memoryForgets')).some(item => item.ownerAgentId === agentId && (item.sourceMessageIds.some(id => messages.includes(id)) || item.sourceMemoryIds.some(id => memories.includes(id)) || !!content && !messages.length && item.fingerprint === hash(content)))
   }
+  private descendants(entries: MemoryEntry[], roots: string[]) {
+    const affected = new Set(roots)
+    for (let changed = true; changed;) {
+      changed = false
+      for (const entry of entries) if (!affected.has(entry.id) && entry.sourceMemoryIds?.some(id => affected.has(id))) { affected.add(entry.id); changed = true }
+    }
+    return affected
+  }
+  private expiredDescendants(entries: MemoryEntry[], roots: string[]) {
+    const affected = this.descendants(entries, roots), original = new Set(roots)
+    return entries.filter(entry => !original.has(entry.id) && affected.has(entry.id) && memoryStatus(entry) === 'active')
+      .map(entry => ({ ...entry, status: 'expired' as const, version: entry.version + 1, updatedAt: stamp() }))
+  }
   save(input: MemoryInput): Promise<MemoryView> {
     return this.store.transaction(async tx => {
       if (await this.receipt(tx, input.agentId, input.requestId, hash(JSON.stringify(input)))) return this.view(tx, input)
@@ -142,10 +161,8 @@ export class MemoryRepository {
       if (previous && previous.content !== content) await this.rememberForget(tx, previous)
       const dependentUpdates: MemoryEntry[] = []
       if (previous && (input.useScope !== undefined || input.lifecycle !== undefined || previous.content !== content || input.expiresAt !== undefined)) {
-        const all = (await tx.list<MemoryEntry>('memory')).filter(item => item.ownerAgentId === input.agentId), affected = new Set([previous.id])
-        for (let changed = true; changed;) { changed = false; for (const item of all) if (!affected.has(item.id) && item.sourceMemoryIds?.some(id => affected.has(id))) { affected.add(item.id); changed = true } }
-        const descendants = all.filter(item => item.id !== previous.id && affected.has(item.id))
-        for (const child of descendants) dependentUpdates.push({ ...child, status: 'expired', version: child.version + 1, updatedAt: stamp() })
+        const all = (await tx.list<MemoryEntry>('memory')).filter(item => item.ownerAgentId === input.agentId)
+        dependentUpdates.push(...this.expiredDescendants(all, [previous.id]))
       }
       return this.put(tx, input, [entry, ...dependentUpdates], !!previous)
     })
@@ -189,7 +206,8 @@ export class MemoryRepository {
       for (const item of candidates) {
         if (!item || typeof item.content !== 'string' || !item.content.trim() || item.content.length > MEMORY_MAX_CONTENT || !Array.isArray(item.sourceMessageIds) || !item.sourceMessageIds.length || item.sourceMessageIds.some(id => !messages.has(id)) || (item.sourceResourceIds ?? []).some(id => !resources.has(id))) throw new Error('记忆提取包含无效内容或未授权来源')
         const content = item.content.trim()
-        const parents = [...new Set([...(policy?.sourceMemoryIds ?? []), ...item.sourceMessageIds.flatMap(id => policy?.messageMemoryIds?.[id] ?? [])])]
+        const replaced = this.descendants(view.entries, (item.supersedes ?? []).map(target => target.id))
+        const parents = [...new Set([...(policy?.sourceMemoryIds ?? []), ...item.sourceMessageIds.flatMap(id => policy?.messageMemoryIds?.[id] ?? [])])].filter(id => !replaced.has(id))
         const parentEntries: MemoryEntry[] = []
         for (const id of parents) {
           const parent = await tx.get<MemoryEntry>('memory', id)
@@ -233,7 +251,9 @@ export class MemoryRepository {
             sourceConversationIds: [...new Set([policy.conversationId, ...item.sourceMessageIds.flatMap(id => policy.messageConversationIds?.[id] ?? []), ...parentEntries.flatMap(sourceConversations)])], sourceMemoryIds: parents, status: 'active' as const, supersedes } : {}),
         })
       }
-      return entries.length ? this.put(tx, query, entries, entries.some(entry => entry.status === 'superseded')) : view
+      const superseded = entries.filter(entry => entry.status === 'superseded').map(entry => entry.id)
+      if (superseded.length) entries.push(...this.expiredDescendants((await tx.list<MemoryEntry>('memory')).filter(entry => entry.ownerAgentId === query.agentId && !entries.some(update => update.id === entry.id)), superseded))
+      return entries.length ? this.put(tx, query, entries, superseded.length > 0) : view
     })
   }
   observation(input: MemoryObservation) { return { collection: 'memoryObservations', id: input.id, value: input } }

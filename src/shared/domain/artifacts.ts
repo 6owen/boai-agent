@@ -1,10 +1,11 @@
 /*
  * [INPUT]: 宿主复制时 hash 的真实成果发布、明确用户修订来源与固定本人采用/待验收请求。
- * [OUTPUT]: 成果可携带真实浏览器 URL/title/time/pageVersion 有界来源；与 Work.resultVersion 独立的成果内容身份/版本链、严格 Markdown 预览、用户修订与幂等采用 DTO；固定版本的显式待验收资格及只读回执，资格不表示质量批准。
+ * [OUTPUT]: 成果可携带真实浏览器 URL/title/time/pageVersion 有界来源；与 Work.resultVersion 独立的成果内容身份/版本链、严格 Markdown/代码/纯文本预览、用户修订与幂等采用 DTO；固定版本的显式待验收资格及只读回执，资格不表示质量批准。
  * [POS]: shared/domain 的成果扩展合同；不导入领域 index，不以文件名推断版本或继承审核/采用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { MaterialReadRef } from './materials'
+import type { FilePreview } from './file-preview'
 
 export const ARTIFACT_LIMITS = { publicationBytes: 20 * 1024 * 1024, previewBytes: 1024 * 1024, previewCharacters: 200_000, revisionCharacters: 12_000 } as const
 export type ArtifactContentStatus = 'ready' | 'unsupported' | 'unavailable' | 'removed'
@@ -56,7 +57,7 @@ export interface ArtifactRegistration {
   sourceWorkId: string | null
   sourceMessageId: string | null
 }
-export interface ArtifactPreview { artifact: ArtifactVersion; text: string; versions: ArtifactVersion[]; adoption: ArtifactAdoptionState; acceptance?: ArtifactAcceptance | null }
+export interface ArtifactPreview { artifact: ArtifactVersion; text: string; filePreview?: FilePreview; versions: ArtifactVersion[]; adoption: ArtifactAdoptionState; acceptance?: ArtifactAcceptance | null }
 
 export interface ArtifactRevisionInput {
   conversationId: string

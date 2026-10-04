@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 公开消息或宿主已核对成果正文、各自真实材料来源及当前会话材料回执。
- * [OUTPUT]: 仅为身份/版本/hash/行范围均可核对的材料引用提供原文定位按钮；成果复用实际发布来源，不虚构消息/读取记录；其余引用保留纯文本，Markdown 不执行外链。
+ * [OUTPUT]: 仅为身份/有效授权版本/hash/行范围均可核对的材料引用提供原文定位按钮；同hash显式恢复保留原来源定位，授权变更不继承；其余引用保留纯文本。
  * [POS]: 聊天消息内可信材料来源展示；不根据文件名或模型声明猜测读取权限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Fragment, type ReactNode } from 'react'
 import type { ConversationDetail, Message } from '@shared/domain'
-import type { ConversationMaterial } from '@shared/domain/materials'
+import { isMaterialReadRevisionValid, type ConversationMaterial } from '@shared/domain/materials'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/common/markdown'
 import { materialDisplayName } from './material-draft'
@@ -23,7 +23,7 @@ export function MaterialMarkdown({ message, source, detail, onPreview }: Materia
       const index = match.index!, first = Number(match[2]), last = Number(match[3] ?? match[2])
       if (index > start) parts.push(children.slice(start, index))
       const material = detail.materials?.find(value => value.id === match[1] && value.conversationId === detail.conversation.id && value.status === 'ready')
-      const verified = material && material.contentHash && published.materialSources?.some(ref => ref.id === material.id && ref.conversationId === material.conversationId && ref.revision === material.revision && ref.contentHash === material.contentHash && ref.parseVersion === material.parseVersion) && first <= last && last <= (material.lineCount ?? 0)
+      const verified = material && material.contentHash && published.materialSources?.some(ref => ref.id === material.id && ref.conversationId === material.conversationId && isMaterialReadRevisionValid(material, ref.revision) && ref.contentHash === material.contentHash && ref.parseVersion === material.parseVersion) && first <= last && last <= (material.lineCount ?? 0)
       parts.push(verified ? <Button key={index} variant="link" size="content" className="inline text-inherit" aria-label={`查看材料 ${materialDisplayName(material.name)} 第 ${first} 至 ${last} 行`} onClick={() => onPreview(material, first)}>{match[0]}</Button> : match[0])
       start = index + match[0].length
     }

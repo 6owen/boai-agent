@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 私有 Runtime 租约/动作信封、冻结来源与原版 Electron BrowserPaneManager。
- * [OUTPUT]: 单 scope/串行动作与普通人工导航、持有者握手、无任务空白窗口和原分区复用；人工不扩展员工来源授权，真实关闭/实际退出/跨重启清理与未知事实边界。
+ * [OUTPUT]: 项目内置浏览器单窗口/固定登录分区与独立任务持有者；人工导航不扩张模型权限，跨任务互斥等实际退出；旧分区保留，旧调用尾部不能更新重开窗口。
  * [POS]: Main 浏览器唯一宿主；网页/Renderer 不取得 BrowserPaneFns 或任意 CDP 接口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,20 +11,22 @@ import { session } from 'electron'
 import { BrowserPaneManager } from './browser-pane-manager'
 import type { BrowserPaneFns } from '../../runtime/adapters/mastra/browser-tool-types'
 import { BROWSER_PAGE_METRICS_EXPRESSION, executeBrowserSingleCommand, parseBrowserSingleCommand } from '../../runtime/adapters/mastra/browser-tool-runtime'
-import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserScopeOwner, BrowserWindowState } from '../../shared/ipc/browser'
+import { APPLICATION_BROWSER_SCOPE } from '../../shared/ipc/browser'
+import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserWindowState } from '../../shared/ipc/browser'
 
 const PAGE_STATE_EXPRESSION = `(() => ({url:location.href,title:document.title,html:(document.documentElement?.outerHTML||'').slice(0,2000000),forms:Array.from(document.querySelectorAll('input,textarea,select')).slice(0,1000).map(e=>({type:e.type,name:e.name,value:e.type==='password'?'[redacted]':String(e.value).slice(0,2000),checked:e.checked,disabled:e.disabled}))}))()`
-interface Profile { scopeKey: string; scopeEpoch: number; agentId: string; conversationId: string; partition: string; status: 'ready' | 'clearing' | 'cleared'; retiredLeases?: string[] }
+interface Profile { scopeKey: string; partition: string; status: 'ready' | 'clearing' | 'cleared'; retiredLeases?: string[] }
 interface Scope {
-  owner: BrowserScopeOwner; lease?: BrowserLease; state: BrowserWindowState; partition: string; active: boolean; origins: Set<string>
+  lease?: BrowserLease; state: BrowserWindowState; partition: string; active: boolean; origins: Set<string>
   queue: Promise<void>; inFlight?: Promise<BrowserActionReply>; actionReplies: Map<string, { hash: string; reply?: BrowserActionReply; pending?: Promise<BrowserActionReply> }>
+  draining?: Promise<{ drained: true }>
   pageHash?: string; pageCounter: number; releaseRequested: boolean; performingAgentAction: boolean
 }
 export interface BrowserServiceOptions {
   rendererDirectory: string; preloadPath: string; developmentUrl?: string
   profileRegistryPath: string; managedDataDirectory: string
   onStateChanged?: (state: BrowserWindowState) => void
-  onUserControl?: (input: { scopeKey: string; action: BrowserControlAction | 'stop'; owner: BrowserScopeOwner; lease?: BrowserLease }) => Promise<void>
+  onUserControl?: (input: { scopeKey: string; action: BrowserControlAction | 'stop'; lease?: BrowserLease }) => Promise<void>
   /** Tests inject a driver; production always uses the copied native manager. */
   manager?: BrowserPaneManager
   clearPartition?: (partition: string) => Promise<void>
@@ -53,14 +55,19 @@ export class BrowserService {
         if (!origin(url)) return false
         return type === 'mainFrame' || type === 'subFrame' ? this.allowedNavigation(id, url) : true
       },
-      allowDownload: (id, url) => { const scope = this.byInstance(id), target = origin(url); return !!scope?.active && scope.performingAgentAction && !!target && scope.origins.has(target) },
-      allowUserNavigation: id => { const scope = this.byInstance(id); return !!scope && !scope.state.clearing && !['draining', 'closing', 'closed'].includes(scope.state.control) },
+      downloadPolicy: (id, url) => {
+        const scope = this.byInstance(id), target = origin(url)
+        if (!scope || !target || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return null
+        if (!scope.performingAgentAction) return { kind: 'native' }
+        return scope.active && scope.lease && scope.origins.has(target) ? { kind: 'managed', directory: scope.lease.downloadDirectory } : null
+      },
+      allowUserNavigation: id => { const scope = this.byInstance(id); return !!scope && !scope.state.clearing && !['closing', 'closed'].includes(scope.state.control) },
       userNavigation: (id, operation) => this.navigateByUser(id, operation),
-      toolbarState: id => { const scope = this.byInstance(id); return scope ? { state: scope.state, agentName: scope.owner.agentName, conversationTitle: scope.owner.conversationTitle } : {} },
+      toolbarState: id => { const scope = this.byInstance(id); return scope ? { state: scope.state } : {} },
       userControl: async (id, action) => {
         const scope = this.byInstance(id); if (!scope) throw new Error('浏览器已关闭')
         if (!this.options.onUserControl) throw new Error('浏览器宿主控制入口不可用')
-        await this.options.onUserControl({ scopeKey: scope.owner.scopeKey, action, owner: scope.owner, ...(scope.lease ? { lease: scope.lease } : {}) })
+        await this.options.onUserControl({ scopeKey: APPLICATION_BROWSER_SCOPE, action, ...(scope.lease ? { lease: scope.lease } : {}) })
       },
     })
     this.manager.onStateChange(info => {
@@ -74,18 +81,19 @@ export class BrowserService {
   }
   private byInstance(id: string): Scope | undefined { return [...this.scopes.values()].find(scope => scope.state.instanceId === id) }
   private emit(scope: Scope): void {
+    if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return
     scope.state.revision += 1
     this.options.onStateChanged?.(structuredClone(scope.state))
     const instance = this.manager?.getInstance(scope.state.instanceId)
     const toolbarContents = instance?.ownedWebContents?.[0] ?? instance?.toolbarView.webContents
     if (instance && toolbarContents && !toolbarContents.isDestroyed()) toolbarContents.send('browser-toolbar:state-update', {
       url: scope.state.url, title: scope.state.title, isLoading: scope.state.isLoading, canGoBack: instance.canGoBack, canGoForward: instance.canGoForward,
-      themeColor: instance.themeColor, state: structuredClone(scope.state), agentName: scope.owner.agentName, conversationTitle: scope.owner.conversationTitle,
+      themeColor: instance.themeColor, state: structuredClone(scope.state),
     })
   }
   private allowedNavigation(id: string, url: string): boolean {
     const scope = this.byInstance(id), target = origin(url)
-    if (!scope || !target || scope.state.clearing || ['draining', 'closing', 'closed'].includes(scope.state.control)) return false
+    if (!scope || !target || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return false
     // An acquired task lease never locks ordinary browsing. Only the actual
     // employee action uses its frozen approved origins; human navigation does
     // not add those URLs to the employee's authorization or tool receipts.
@@ -93,17 +101,17 @@ export class BrowserService {
   }
   private navigateByUser(id: string, operation: () => Promise<void>): Promise<void> {
     const scope = this.byInstance(id)
-    if (!scope || scope.state.clearing || ['draining', 'closing', 'closed'].includes(scope.state.control)) return Promise.reject(new Error('浏览器已关闭或正在清理'))
+    if (!scope || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return Promise.reject(new Error('浏览器已关闭或正在清理'))
     const navigation = scope.queue.then(async () => {
-      if (this.scopes.get(scope.owner.scopeKey) !== scope || scope.state.clearing || ['draining', 'closing', 'closed'].includes(scope.state.control)) throw new Error('原浏览器已关闭或正在清理')
+      if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) throw new Error('原浏览器已关闭或正在清理')
       await operation()
     })
     scope.queue = navigation.catch(() => undefined)
     // Creation/close/cleanup also wait for this real navigation to exit.
-    return this.transition(scope.owner.scopeKey, () => navigation)
+    return this.transition(APPLICATION_BROWSER_SCOPE, () => navigation)
   }
   private require(lease: BrowserLease, active = true): Scope {
-    const scope = this.scopes.get(lease.scopeKey)
+    const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
     if (!scope?.lease || !sameLease(scope.lease, lease) || active && (!scope.active || scope.state.control !== 'agent-controlled')) throw new Error('浏览器租约已失效或原任务已结束')
     return scope
   }
@@ -134,33 +142,29 @@ export class BrowserService {
     void next.finally(() => { if (this.scopeTransitions.get(scopeKey) === next) this.scopeTransitions.delete(scopeKey) }).catch(() => {})
     return next
   }
-  manualOpen(owner: BrowserManualOpenRequest): Promise<BrowserWindowState> {
-    return this.transition(owner.scopeKey, async () => {
+  manualOpen(_input: BrowserManualOpenRequest): Promise<BrowserWindowState> {
+    return this.transition(APPLICATION_BROWSER_SCOPE, async () => {
       await this.registryReady
-      if (!owner.scopeKey || !owner.agentId || !owner.conversationId || !Number.isSafeInteger(owner.scopeEpoch) || !Number.isSafeInteger(owner.configVersion)) throw new Error('无效的浏览器员工会话归属')
-      const profile = this.profiles.get(owner.scopeKey)
-      if (profile?.status === 'clearing') throw new Error('浏览器作用域正在清理，尚不可使用')
-      if (profile && (profile.agentId !== owner.agentId || profile.conversationId !== owner.conversationId || profile.scopeEpoch !== owner.scopeEpoch)) throw new Error('浏览器资料归属不匹配')
-      const existing = this.scopes.get(owner.scopeKey)
+      const profile = this.profiles.get(APPLICATION_BROWSER_SCOPE)
+      if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
+      const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
       if (existing && existing.state.control !== 'closed') {
-        if (existing.state.control === 'closing') throw new Error('原浏览器窗口尚未实际退出')
+        if (existing.state.control === 'closing') throw new Error('内置浏览器尚未实际关闭')
         if (!existing.state.toolbarReady) throw new Error(existing.state.error ?? '浏览器工具栏尚未准备好')
         this.manager.focus(existing.state.instanceId)
         return structuredClone(existing.state)
       }
-      const partition = `persist:boai-browser-${hash(owner.scopeKey)}`
-      if (!profile) this.profiles.set(owner.scopeKey, { scopeKey: owner.scopeKey, scopeEpoch: owner.scopeEpoch, agentId: owner.agentId, conversationId: owner.conversationId, partition, status: 'ready' })
-      else profile.status = 'ready'
+      const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
+      this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' })
       await this.saveRegistry()
-      const instanceId = `browser-${hash(owner.scopeKey).slice(0, 20)}`
+      const instanceId = `browser-${hash(APPLICATION_BROWSER_SCOPE).slice(0, 20)}`
       const scope: Scope = {
-        owner: structuredClone(owner), partition, active: false, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
-        state: { scopeKey: owner.scopeKey, scopeEpoch: owner.scopeEpoch, agentId: owner.agentId, conversationId: owner.conversationId, agentName: owner.agentName, conversationTitle: owner.conversationTitle, generation: '', instanceId, revision: existing?.state.revision ?? 0, pageVersion: '0', url: 'about:blank', title: '新网页', isLoading: false, isVisible: false, toolbarReady: false, control: 'user-controlled' },
+        partition, active: false, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
+        state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: '0', url: 'about:blank', title: '新网页', isLoading: false, isVisible: false, toolbarReady: false, control: 'user-controlled' },
       }
-      this.scopes.set(owner.scopeKey, scope)
-      this.manager.createInstance(instanceId, { show: false, ownerType: 'session', ownerSessionId: owner.scopeKey, workspaceId: owner.conversationId, partition })
-      const instance = this.manager.getInstance(instanceId)
-      if (instance) instance.window.setTitle(`${owner.agentName} · ${owner.conversationTitle} · Browser`)
+      this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
+      this.manager.createInstance(instanceId, { show: false, partition })
+      this.manager.getInstance(instanceId)?.window.setTitle('内置浏览器')
       try { await this.manager.ready(instanceId) } catch (error) { scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
       scope.state.toolbarReady = true
       this.manager.focus(instanceId)
@@ -169,36 +173,35 @@ export class BrowserService {
     })
   }
   acquire(lease: BrowserLease): Promise<void> {
-    const existing = this.scopes.get(lease.scopeKey)
+    const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
     if (existing && (['draining', 'closing'].includes(existing.state.control) || existing.inFlight && (!existing.lease || !sameLease(existing.lease, lease)))) return Promise.reject(new Error('原浏览器动作尚未实际退出，请等待后重试'))
-    return this.transition(lease.scopeKey, () => this.acquireScope(lease))
+    return this.transition(APPLICATION_BROWSER_SCOPE, () => this.acquireScope(lease))
   }
   private async acquireScope(lease: BrowserLease): Promise<void> {
     await this.registryReady
-    if (!lease.scopeKey || !lease.runId || !lease.workId || !lease.generation || !Number.isSafeInteger(lease.scopeEpoch) || !Number.isSafeInteger(lease.configVersion) || !isAbsolute(lease.downloadDirectory)) throw new Error('无效的浏览器任务归属')
+    if (!lease.scopeKey || !lease.agentId || !lease.conversationId || !lease.runId || !lease.workId || !lease.generation || !Number.isSafeInteger(lease.scopeEpoch) || !Number.isSafeInteger(lease.configVersion) || !isAbsolute(lease.downloadDirectory)) throw new Error('无效的浏览器工具调用身份')
     if (this.retiredRuns.has(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器执行代际已退出')
-    const profile = this.profiles.get(lease.scopeKey)
-    if (profile?.status === 'clearing') throw new Error('浏览器作用域正在清理，尚不可使用')
+    const profile = this.profiles.get(APPLICATION_BROWSER_SCOPE)
+    if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
     if (profile?.retiredLeases?.includes(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器租约已清理，不得重放')
-    if (profile && (profile.agentId !== lease.agentId || profile.conversationId !== lease.conversationId || profile.scopeEpoch !== lease.scopeEpoch)) throw new Error('浏览器资料归属不匹配')
-    if (profile?.status === 'cleared') { profile.status = 'ready'; await this.saveRegistry() }
-    const existing = this.scopes.get(lease.scopeKey)
-    if (existing?.active) { if (existing.lease && sameLease(existing.lease, lease)) return; throw new Error('该员工在本会话中的浏览器正由另一工作使用') }
+    const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+    if (existing && ['draining', 'closing'].includes(existing.state.control)) throw new Error('原浏览器动作尚未实际退出，请等待后重试')
+    if (existing?.active) { if (existing.lease && sameLease(existing.lease, lease)) return; throw new Error('内置浏览器正由另一任务使用，请等待实际退出') }
     if (existing?.inFlight) throw new Error('原浏览器动作尚未实际退出，请等待后重试')
     await mkdir(lease.downloadDirectory, { recursive: true })
     const dataRoot = await realpath(this.options.managedDataDirectory), downloadRoot = await realpath(lease.downloadDirectory)
     if ((await lstat(lease.downloadDirectory)).isSymbolicLink() || relative(dataRoot, downloadRoot).startsWith('..') || isAbsolute(relative(dataRoot, downloadRoot))) throw new Error('浏览器下载必须位于本次受管工作目录')
-    const partition = `persist:boai-browser-${hash(lease.scopeKey)}`
-    if (!profile) { this.profiles.set(lease.scopeKey, { scopeKey: lease.scopeKey, scopeEpoch: lease.scopeEpoch, agentId: lease.agentId, conversationId: lease.conversationId, partition, status: 'ready' }); await this.saveRegistry() }
-    const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${hash(lease.scopeKey).slice(0, 20)}`
+    const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
+    this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' }); await this.saveRegistry()
+    const instanceId = `browser-${hash(APPLICATION_BROWSER_SCOPE).slice(0, 20)}`
     const scope: Scope = {
-      owner: { scopeKey: lease.scopeKey, scopeEpoch: lease.scopeEpoch, agentId: lease.agentId, conversationId: lease.conversationId, configVersion: lease.configVersion, agentName: lease.agentName, conversationTitle: lease.conversationTitle }, lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
-      state: { scopeKey: lease.scopeKey, scopeEpoch: lease.scopeEpoch, agentId: lease.agentId, conversationId: lease.conversationId, agentName: lease.agentName, conversationTitle: lease.conversationTitle, workId: lease.workId, runId: lease.runId, generation: lease.generation, instanceId, revision: existing?.state.revision ?? 0, pageVersion: existing?.state.pageVersion ?? '0', url: existing?.state.url ?? 'about:blank', title: existing?.state.title ?? '新网页', isLoading: false, isVisible: false, toolbarReady: false, control: 'agent-controlled' },
+      lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
+      state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: existing?.state.pageVersion ?? '0', url: existing?.state.url ?? 'about:blank', title: existing?.state.title ?? '新网页', isLoading: existing?.state.isLoading ?? false, isVisible: existing?.state.isVisible ?? false, toolbarReady: false, control: 'agent-controlled' },
     }
-    this.scopes.set(lease.scopeKey, scope)
-    this.manager.createInstance(instanceId, { show: false, ownerType: 'session', ownerSessionId: lease.scopeKey, workspaceId: lease.conversationId, partition, downloadDirectory: downloadRoot })
+    this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
+    this.manager.createInstance(instanceId, { show: false, partition, downloadDirectory: downloadRoot })
     const instance = this.manager.getInstance(instanceId)
-    if (instance) { instance.downloadDirectory = downloadRoot; instance.cdp.invalidateRefs(); instance.window.setTitle(`${lease.agentName} · ${lease.conversationTitle} · Browser`) }
+    if (instance) { instance.downloadDirectory = downloadRoot; instance.cdp.invalidateRefs(); instance.window.setTitle('内置浏览器') }
     try { await this.manager.ready(instanceId) } catch (error) { scope.active = false; scope.state.control = 'idle'; scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
     scope.state.toolbarReady = true
     this.emit(scope)
@@ -249,7 +252,7 @@ export class BrowserService {
         if (approved.some(value => !value) || approved.length > 20) throw new Error('浏览任务的网页来源授权无效')
         scope.origins = new Set(approved as string[])
         if (parsed.targetUrl && !scope.origins.has(origin(parsed.targetUrl)!)) throw new Error('尚未批准该网页来源')
-        if (current?.url !== 'about:blank' && !scope.origins.has(origin(current?.url ?? '')!)) throw new Error('当前页面不在获准来源范围')
+        if (parsed.action !== 'navigate' && current?.url !== 'about:blank' && !scope.origins.has(origin(current?.url ?? '')!)) throw new Error('当前页面不在获准来源范围')
         if (parsed.mutating && parsed.action !== 'navigate' && (!envelope.approval || envelope.approval.commandHash !== argumentHash || envelope.approval.pageVersion !== current?.pageVersion || envelope.approval.url !== current?.url)) throw new Error('网页操作缺少对应当前页面与内容的明确批准')
         await beforeStart?.()
         this.require(envelope.lease)
@@ -288,7 +291,7 @@ export class BrowserService {
     const guard = () => { this.require(lease); if (scope.releaseRequested) throw new Error('浏览器窗口正在关闭') }
     const act = async <T>(operation: () => Promise<T> | T): Promise<T> => { guard(); return await operation() }
     const forbidden = async (): Promise<never> => { throw new Error('此浏览器能力首批未开放') }
-    const bound = (requested?: string) => { if (requested && requested !== id) throw new Error('不能操作其他员工或会话的窗口') }
+    const bound = (requested?: string) => { if (requested && requested !== id) throw new Error('不能操作其他窗口') }
     return {
       openPanel: args => act(() => { if (!args?.background) manager.focus(id); return { instanceId: id } }),
       navigate: url => act(() => manager.navigate(id, url)), snapshot: () => act(() => manager.getAccessibilitySnapshot(id)),
@@ -306,7 +309,9 @@ export class BrowserService {
           try { path = await realpath(path) } catch { /* Pending managed downloads may not have created the file yet. */ }
           const rel = relative(directory, path)
           if (rel.startsWith('..') || isAbsolute(rel)) continue
-          current.push({...entry,savePath:`self:/runs/${lease.runId}/${rel.split(/[/\\]/).join('/')}`})
+          // Runtime publishes a readable self: path only after hash-checked promotion.
+          const { savePath: _savePath, ...progress } = entry
+          current.push(progress)
         }
         return current
       }),
@@ -336,6 +341,8 @@ export class BrowserService {
     const directory = await realpath(scope.lease.downloadDirectory)
     for (const entry of entries) {
       if (entry.state !== 'completed' || !entry.savePath || !origin(entry.url) || !scope.origins.has(origin(entry.url)!)) continue
+      const candidate = relative(directory, resolve(entry.savePath)), selected = relative(resolve(scope.lease.downloadDirectory), resolve(entry.savePath))
+      if ((candidate.startsWith('..') || isAbsolute(candidate)) && (selected.startsWith('..') || isAbsolute(selected))) continue
       if ((await lstat(entry.savePath)).isSymbolicLink()) throw new Error('下载原件不是受管普通文件')
       const actual = await realpath(entry.savePath), rel = relative(directory, actual)
       if (rel.startsWith('..') || isAbsolute(rel)) continue
@@ -346,19 +353,29 @@ export class BrowserService {
     return out
   }
   async drain(lease: BrowserLease): Promise<{ drained: true }> {
-    const scope = this.scopes.get(lease.scopeKey)
+    const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
     if (!scope?.lease || !sameLease(scope.lease, lease)) return { drained: true }
     return this.drainScope(scope)
   }
-  private async drainScope(scope: Scope): Promise<{ drained: true }> {
+  private drainScope(scope: Scope): Promise<{ drained: true }> {
+    if (scope.draining) return scope.draining
+    const pending = this.performDrain(scope)
+    scope.draining = pending
+    void pending.catch(() => { if (scope.draining === pending) scope.draining = undefined })
+    return pending
+  }
+  private async performDrain(scope: Scope): Promise<{ drained: true }> {
+    if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return { drained: true }
     scope.active = false
     if (scope.state.control !== 'closed') scope.state.control = 'draining'
     if (scope.lease) this.retiredRuns.add(`${scope.lease.runId}:${scope.lease.generation}`)
-    this.emit(scope); this.manager.stop(scope.state.instanceId)
-    await this.manager.cancelDownloads(scope.state.instanceId)
+    this.emit(scope)
+    if (scope.performingAgentAction) this.manager.stop(scope.state.instanceId)
+    await this.manager.cancelDownloads(scope.state.instanceId, { managedOnly: true })
     await scope.queue
     await this.manager.waitForLoads(scope.state.instanceId)
     const instance = this.manager.getInstance(scope.state.instanceId); await instance?.cdp.drain()
+    if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return { drained: true }
     if (scope.state.control !== 'closed') scope.state.control = 'idle'
     this.emit(scope)
     return { drained: true }
@@ -372,7 +389,7 @@ export class BrowserService {
       if (scope.state.control !== 'user-controlled') throw new Error('当前浏览器不处于人工操作状态')
       if (!scope.lease) throw new Error('尚无可继续的员工任务，请在聊天中发送新任务')
       if (!this.options.onUserControl) throw new Error('原任务无法继续，请在聊天中发起新任务')
-      await this.options.onUserControl({ scopeKey: input.scopeKey, action: 'resume', owner: scope.owner, lease: scope.lease })
+      await this.options.onUserControl({ scopeKey: input.scopeKey, action: 'resume', lease: scope.lease })
       return
     }
     if (input.action === 'clear') { await this.clearScope({ scopeKey: input.scopeKey }); return }
@@ -380,6 +397,7 @@ export class BrowserService {
     void draining.catch(() => {})
     await this.transition(input.scopeKey, async () => {
       await draining
+      if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return
       if (input.action === 'close') {
         scope.state.control = 'closing'; this.emit(scope)
         try { await this.manager.destroyInstance(scope.state.instanceId); scope.state.control = 'closed'; this.emit(scope) }
@@ -405,12 +423,16 @@ export class BrowserService {
     if (scope) {
       scope.pageHash = undefined; scope.pageCounter = 0; scope.actionReplies.clear(); scope.origins.clear()
       Object.assign(scope.state, { control: 'closed', clearing: false, url: 'about:blank', title: '新网页', pageVersion: '0', isLoading: false, isVisible: false, toolbarReady: false })
-      delete scope.state.error; delete scope.state.workId; delete scope.state.runId
+      delete scope.state.error
       this.emit(scope)
     }
     return { cleared: true }
   }
   list(): BrowserWindowState[] { return [...this.scopes.values()].map(scope => structuredClone(scope.state)) }
-  async disconnectAll(): Promise<void> { await Promise.all([...this.scopes.values()].map(scope => this.transition(scope.owner.scopeKey, () => this.drainScope(scope)))) }
+  currentLease(): BrowserLease | null {
+    const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+    return scope?.lease && (scope.active || ['draining', 'user-controlled'].includes(scope.state.control)) ? structuredClone(scope.lease) : null
+  }
+  async disconnectAll(): Promise<void> { await Promise.all([...this.scopes.values()].map(scope => this.transition(APPLICATION_BROWSER_SCOPE, () => this.drainScope(scope)))) }
   async shutdown(): Promise<void> { await this.registryReady; await this.disconnectAll(); await this.manager.destroyAll() }
 }

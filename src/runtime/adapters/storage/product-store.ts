@@ -2,11 +2,11 @@
  * [INPUT]: 本地 SQLite 连接、当前聊天成员/附件接收范围与产品记录。
  * [OUTPUT]: 成员增删及材料deliveryScope变更同事务提升检索代际，旧员工筛选游标不能混入新接收范围。
  * [OUTPUT]: bobo 员工发现与组织回执 SQL 有界投影、同事务配置时钟；浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
- * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法。
+ * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法；只读取证连接不执行迁移、索引失效或建表写入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createClient, type Client } from '@libsql/client'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { advanceCandidateClock, candidateCursor, employeeCandidatesSql, readCandidateCursor } from '../../modules/bobo-collaboration/candidate-sql'
@@ -66,6 +66,18 @@ export class ProductStore {
   private client!: Client
   private tail: Promise<unknown> = Promise.resolve()
   constructor(readonly filename: string) {}
+  /** Inspect an existing database without changing startup/index state or acquiring a writer. */
+  static async openReadOnly(filename: string): Promise<Pick<ProductStore, 'load' | 'close'>> {
+    if (!(await stat(filename)).isFile()) throw new Error('只读取证要求已有数据库文件')
+    const store = new ProductStore(filename)
+    // One connection keeps SQLite's connection-local query_only guard on every operation.
+    store.client = createClient({ url: pathToFileURL(filename).href, concurrency: 1 })
+    try {
+      await store.client.execute('PRAGMA query_only=ON')
+      await store.client.execute('SELECT 1 FROM records LIMIT 1')
+      return store
+    } catch (error) { store.client.close(); throw error }
+  }
   async init() {
     await mkdir(dirname(this.filename), { recursive: true })
     this.client = createClient({ url: pathToFileURL(this.filename).href })

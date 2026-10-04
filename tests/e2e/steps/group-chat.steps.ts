@@ -1,6 +1,7 @@
 /*
- * [INPUT]: 单聊/群聊中文场景、单行群名与可点击成员入口、真实 Electron 与隔离历史/离线模型支撑。
- * [OUTPUT]: 单聊/群聊头像真实资料无启用标签，按展开状态区分当前资料浮层与退出动画；资料底部直接进入对应员工可编辑配置并关闭浮层、复用记忆页的同一标签切回配置、关闭后头像恢复焦点且可再打开；群消息和标题指定不同成员不误开首人或群配置；同卡片与消息工具条、表情持久回执/引用草稿/复制/真实 Trace 和主题窄窗交互；长历史新消息不抢滚动且无旧式新消息悬浮返回按钮；D6提供显式阅读导航；Markdown真实应用内预览后显式外开并保留原路径/任务标签；本人头像靠右与当前个人资料名称；composer 姓名提及恢复实际 DOM 选区/连续点名/续写和选中替换，行内节点/草稿、提及/IME/空结果防误发；用户整组镜像且正文左对齐、员工靠左、渐隐标题、文件/工作、跨会话草稿、键盘及真实命令审批断言。
+ * [OUTPUT]: 可选功能审阅留存原消息批准前后、真实命令原件与单次执行/未冒充交付事实。
+ * [INPUT]: 单聊/群聊中文场景、单行群名与可点击成员入口、只读文件预览的折叠来源记录、真实 Electron 与隔离历史/离线模型支撑。
+ * [OUTPUT]: 用浏览器原生Range建立待替换文字选区，避免操作系统导航键差异；实际姓名点击仍断言原选区替换与光标连续输入； 单聊/群聊头像真实资料无启用标签，按展开状态区分当前资料浮层与退出动画；资料底部直接进入对应员工可编辑配置并关闭浮层、复用记忆页的同一标签切回配置、关闭后头像恢复焦点且可再打开；群消息和标题指定不同成员不误开首人或群配置；同卡片与消息工具条、表情持久回执/引用草稿/复制/真实 Trace 和主题窄窗交互；长历史新消息不抢滚动且无旧式新消息悬浮返回按钮；D6提供显式阅读导航；Markdown真实应用内预览后显式外开并保留原路径/任务标签；本人头像靠右与当前个人资料名称；composer 姓名提及恢复实际 DOM 选区/连续点名/续写和选中替换，行内节点/草稿、提及/IME/空结果防误发；用户整组镜像且正文左对齐、员工靠左、渐隐标题、文件/工作、跨会话草稿、键盘及真实命令审批断言。
  * [POS]: 单聊/群聊共享交互 E2E；不改写生产 DOM 或模拟业务响应。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -59,6 +60,7 @@ Then('任务面板展示真实父子工作且文件可以打开', async ({ runti
   await page.locator('#message-history-writer').getByRole('button', { name: '打开 竞品分析报告.md', exact: true }).click()
   const preview = page.getByRole('tabpanel', { name: '竞品分析报告.md', exact: true })
   await expect(preview.getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('群聊验收的离线报告。')
+  await preview.locator('summary').filter({ hasText: /^文件记录$/ }).click()
   await preview.getByRole('button', { name: '外部打开', exact: true }).click()
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.artifacts[1].path))
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
@@ -164,6 +166,7 @@ When('用户再次点名设计师并允许这次执行', async ({ runtime, group
   const approval = page.getByRole('region', { name: '设计师 的命令审批' })
   await expect(approval).toBeVisible()
   groupDesign.approvalCwd = (await page.evaluate(() => window.boai.request('snapshot', undefined))).approvals[0].cwd
+  await runtime.reviewCheckpoint('在设计师原消息批准这次命令')
   await approval.getByRole('button', { name: '允许这次执行', exact: true }).dblclick()
 })
 Then('命令只执行一次且已结束运行不冒充已交付', async ({ runtime, groupDesign }) => {
@@ -180,6 +183,9 @@ Then('命令只执行一次且已结束运行不冒充已交付', async ({ runti
   const work = detail.workItems!.find(work => work.activeRunId === execution.id) ?? detail.workItems!.find(work => work.id === execution.workId)!
   expect(work.status).not.toBe('delivered')
   await expect(page.locator(`[data-work-id="${work.id}"]`)).not.toContainText('已交付')
+  await runtime.reviewFile('实际命令结果 · approval-marker.txt', join(groupDesign.approvalCwd!, 'approval-marker.txt'))
+  await runtime.reviewData('双击批准仍只执行一次', { commandEvents: execution.toolEvents.filter(event => event.name === 'execute_command'), workId: work.id, workStatus: work.status, result: await readFile(join(groupDesign.approvalCwd!, 'approval-marker.txt'), 'utf8') })
+  await runtime.reviewCheckpoint('实际命令执行一次，运行结束不冒充交付')
   expect(runtime.errors).toEqual([]); expect(groupDesign.fixture!.state.errors).toEqual([])
 })
 
@@ -350,9 +356,20 @@ Then('姓名提及后光标保持在标签后并保留实际选区', async ({ ru
   await expect.poll(() => inputText(input)).toBe('前文 @研究员补充后文')
 
   await input.fill('前文 待替换 后文')
-  for (let index = 0; index < '前文 待替换 后文'.length; index++) await input.press('ArrowLeft')
-  for (let index = 0; index < 3; index++) await input.press('ArrowRight')
-  for (let index = 0; index < 3; index++) await input.press('Shift+ArrowRight')
+  // The scenario tests preserving an existing selection when clicking a name, not OS-specific Home/arrow behavior.
+  await input.evaluate(async element => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+    let node: Node | null
+    while ((node = walker.nextNode())) {
+      const start = node.textContent?.indexOf('待替换') ?? -1
+      if (start < 0) continue
+      const range = document.createRange(); range.setStart(node, start); range.setEnd(node, start + 3)
+      const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range)
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      return
+    }
+    throw new Error('未找到待替换文本，不能建立选区前提')
+  })
   await expect.poll(() => input.evaluate(() => ({ collapsed: window.getSelection()!.isCollapsed, text: window.getSelection()!.toString() }))).toEqual({ collapsed: false, text: '待替换' })
   await mention('history-writer', '写手')
   await expect.poll(beforeCaret).toBe('前文 @写手')

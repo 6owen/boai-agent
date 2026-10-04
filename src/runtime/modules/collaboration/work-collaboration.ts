@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 同一 SQLite 事务中的 bobo 原组织工作、真实来源、冻结群发布和模型调用身份。
+ * [OUTPUT]: 明确认领原组织重试后，判断阶段可在原ready工作预算内预留，执行阶段仍须当前实际持有者。
  * [OUTPUT]: 核心组织权限、唯一独立群根/启动意图、跨会话原预算授权及真实组织交付证据；不调用模型或执行文件。
  * [POS]: WorkRepository 的 bobo 协作事务规则，群是员工的组织形式，不取得员工生命周期。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -158,7 +159,8 @@ export async function collaborationCallAuthority(tx: RecordTransaction, run: Age
   if (isCoreConversation(conversation)) {
     const source = await assertOrganizationSource(tx, { conversationId: conversation.id, sourceMessageId: run.triggerMessageId, agentId: run.agentId })
     work = (await tx.list<WorkItem>('workItems')).find(item => item.conversationId === conversation.id && item.sourceMessageId === source.source.id && item.organization?.requestId === requestId)
-    if (!work || work.ownerAgentId !== run.agentId || (phase !== 'memory' && work.activeRunId !== run.id)) throw new WorkUnavailableError('原组织工作没有授予本次模型调用')
+    const retryDecision = phase === 'decision' && work?.id === turn.workId && work?.status === 'ready' && !work.activeRunId && !work.requiresReview
+    if (!work || work.ownerAgentId !== run.agentId || (phase !== 'memory' && !retryDecision && work.activeRunId !== run.id)) throw new WorkUnavailableError('原组织工作没有授予本次模型调用')
   } else {
     if (conversation.kind !== 'group' || turn.collaborationRequestId !== requestId || !turn.workId) throw new WorkUnavailableError('普通聊天不能借用协作预算')
     work = await tx.get<WorkItem>('workItems', turn.workId)

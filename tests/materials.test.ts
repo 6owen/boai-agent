@@ -1,16 +1,17 @@
 /*
  * [INPUT]: 真实 ProductStore、宿主私有材料文件和可控文件执行断点。
- * [OUTPUT]: 普通附件当前成员动态可见/退出撤权、离线不挡消息、旧名单不扩权和稳定范围回执；准备幂等/事务回滚/严格文本/实际图片/二进制容量/原名/取消退出；hash 外改保留、草稿重启清理和仅已发原件备份核对。
+ * [OUTPUT]: 当前成员/旧名单、稳定回执与实际退出；独立代码/纯文本预览不进入模型正文/持久解析；同hash已发材料显式修复保留原引用/备份，撤权/清理/错hash拒绝恢复；严格文本/图片/二进制、外改保留和草稿重启清理。
  * [POS]: tests/materials.test.ts；离线模块回归，不调用模型或使用假事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, describe, expect, it } from 'vitest'
-import { copyFile, link, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, link, mkdir, mkdtemp, readFile, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Conversation, DigitalAgent } from '../src/shared/domain'
 import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial } from '../src/shared/domain/materials'
+import { FILE_PREVIEW_LIMITS } from '../src/shared/domain/file-preview'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
 import { materialDirectory, materialImageMimeType, readMaterialOriginal, type MaterialCheckpoint } from '../src/runtime/modules/materials/material-files'
@@ -47,6 +48,55 @@ async function fixture(checkpoint?: MaterialCheckpoint) {
 }
 
 describe('durable conversation materials', () => {
+  it('repairs only an explicitly rechecked sent original and preserves same-hash historical references through restart and backup', async () => {
+    const setup = await fixture(), material = await setup.prepare(); await setup.attach(material)
+    const original = join(materialDirectory(setup.root, 'chat', material.id), 'original'), held = `${original}.held`
+    const before = await setup.repository.read(material.id, 'alice', 'chat')
+    await rename(original, held)
+    await expect(setup.repository.preview(material.id, material.revision)).rejects.toThrow('不存在')
+    const unavailable = (await setup.store.load<ConversationMaterial>('materials'))[0]
+    await rename(held, original)
+    await setup.repository.recover()
+    await expect(setup.repository.preview(material.id)).rejects.toThrow('不存在')
+    await expect(setup.repository.recheck(material.id, material.revision)).rejects.toThrow('版本已更新')
+    const repaired = await setup.repository.recheck(material.id, unavailable.revision)
+    expect(repaired.text).toBe(before.text); expect(repaired.material).toMatchObject({ status: 'ready', contentHash: before.ref.contentHash, readableRevisionFrom: before.ref.revision })
+    expect(repaired.material.revision).toBeGreaterThan(unavailable.revision)
+    await setup.repository.validateRefs([before.ref], 'alice', 'chat')
+    await setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [before.ref], 'alice', 'chat'))
+    const restarted = new MaterialRepository(setup.store, setup.root); await restarted.recover()
+    await restarted.validateRefs([before.ref], 'alice', 'chat')
+    const backupRoot = await realpath(await mkdtemp(join(tmpdir(), 'boai-material-repaired-backup-'))); roots.push(backupRoot)
+    await setup.store.backup(join(backupRoot, 'boai.sqlite'))
+    await restarted.exportSnapshot(backupRoot)
+    const backup = new ProductStore(join(backupRoot, 'boai.sqlite')); stores.push(backup); await backup.init()
+    const restored = new MaterialRepository(backup, backupRoot); await restored.recover()
+    await restored.validateRefs([before.ref], 'alice', 'chat')
+    expect((await restored.read(material.id, 'alice', 'chat')).text).toBe(before.text)
+  })
+
+  it('does not repair changed bytes, revoked legacy grants, cleanup gates or unsent drafts', async () => {
+    const setup = await fixture(), material = await setup.prepare(); await setup.attach(material)
+    const original = join(materialDirectory(setup.root, 'chat', material.id), 'original'), bytes = await readFile(original)
+    const before = await setup.repository.read(material.id, 'alice', 'chat')
+    await writeFile(original, 'different bytes')
+    await expect(setup.repository.preview(material.id)).rejects.toThrow('外部修改')
+    const unavailable = (await setup.store.load<ConversationMaterial>('materials'))[0]
+    await expect(setup.repository.recheck(material.id, unavailable.revision)).rejects.toThrow('外部修改')
+    await writeFile(original, bytes)
+    await setup.store.write([{ collection: 'conversationCleanup', id: 'chat', value: { id: 'chat' } }])
+    await expect(setup.repository.recheck(material.id, unavailable.revision)).rejects.toThrow('正在清理')
+    await setup.store.write([], [{ collection: 'conversationCleanup', id: 'chat' }])
+    const repaired = await setup.repository.recheck(material.id, unavailable.revision)
+    const revoked = await setup.repository.authorize(material.id, repaired.material.revision, [])
+    await expect(setup.repository.recheck(material.id, revoked.revision)).rejects.toThrow('撤权')
+    const granted = await setup.repository.authorize(material.id, revoked.revision, ['alice'])
+    expect(granted.readableRevisionFrom).toBeUndefined()
+    await expect(setup.repository.validateRefs([before.ref], 'alice', 'chat')).rejects.toThrow('快照已失效')
+    await expect(setup.store.transaction(tx => setup.repository.validateRefsInTransaction(tx, [before.ref], 'alice', 'chat'))).rejects.toThrow('快照已失效')
+    const draft = await setup.prepare('draft')
+    await expect(setup.repository.recheck(draft.id, draft.revision)).rejects.toThrow('未发送')
+  })
   it('copies actual UTF-8 content privately, normalizes line mapping, and keeps same-name inputs distinct', async () => {
     const { root, store, repository, source, prepare } = await fixture()
     const secondDirectory = join(root, 'other-source'); await mkdir(secondDirectory)
@@ -203,9 +253,30 @@ describe('durable conversation materials', () => {
     expect(material.characterCount).toBeUndefined(); expect(material.lineCount).toBeUndefined()
     const original = await readMaterialOriginal(setup.root, 'chat', material.id, material.contentHash!)
     expect(original.bytes).toEqual(bytes); expect(original).not.toHaveProperty('text')
-    expect(await setup.repository.preview(material.id)).toEqual({ material, text: '' })
+    expect(await setup.repository.preview(material.id)).toMatchObject({ material, text: '', filePreview: expect.objectContaining({ kind: expect.any(String) }) })
     await setup.attach(material)
     expect(await setup.repository.read(material.id, 'alice', 'chat')).toMatchObject({ text: '', ref: { parseVersion: BINARY_MATERIAL_PARSE_VERSION } })
+  })
+
+  it.each([
+    ['code.tsx', 'export const Page = () => <h1>你好</h1>', 'code', 'tsx'],
+    ['data.json', '{"ok": true}', 'code', 'json'],
+    ['web.html', '<script>globalThis.unsafe = true</script>', 'code', 'html'],
+    ['image.svg', '<svg onload="alert(1)"></svg>', 'code', 'xml'],
+    ['notes.unknown', '原文\r\n第二行\n', 'text', undefined],
+  ])('previews %s from checked originals without inventing model text or parse metadata', async (name, text, kind, language) => {
+    const setup = await fixture(), source = join(setup.root, name); await writeFile(source, text)
+    const material = await setup.prepare('code-preview', ['alice'], source); await setup.attach(material)
+    expect(await setup.repository.preview(material.id, material.revision)).toMatchObject({ text: '', filePreview: { kind, text, ...(language ? { language } : {}) } })
+    const modelRead = await setup.repository.read(material.id, 'alice', 'chat')
+    expect(modelRead.text).toBe(''); expect(modelRead.filePreview).toBeUndefined()
+    expect(modelRead.material.lineCount).toBeUndefined(); expect(modelRead.material.characterCount).toBeUndefined()
+    expect(modelRead.ref.parseVersion).toBe(BINARY_MATERIAL_PARSE_VERSION)
+    const stored = (await setup.store.load<ConversationMaterial>('materials'))[0]
+    expect(stored).not.toHaveProperty('filePreview'); expect(stored).not.toHaveProperty('text')
+    await writeFile(join(materialDirectory(setup.root, 'chat', material.id), 'original'), 'external change')
+    await expect(setup.repository.preview(material.id)).rejects.toThrow('外部修改')
+    expect((await setup.repository.list('chat'))[0].status).toBe('unavailable')
   })
 
   it('preserves clipboard file names and binds the original name to the preparation identity', async () => {
@@ -219,6 +290,16 @@ describe('durable conversation materials', () => {
     await expect(setup.repository.prepare({ ...input, name: '另一个名字.pdf' })).rejects.toThrow('requestId')
     await expect(setup.repository.prepare({ ...input, requestId: 'invalid-name', name: 'unsafe\u0000.png' })).rejects.toThrow('附件名称')
     expect(await setup.store.load('materials')).toHaveLength(1)
+  })
+
+  it('keeps a sent code attachment ready and intact when only its preview exceeds the line bound', async () => {
+    const setup = await fixture(), source = join(setup.root, 'large.ts'), text = '\n'.repeat(FILE_PREVIEW_LIMITS.lines)
+    await writeFile(source, text)
+    const material = await setup.prepare('large-code', ['alice'], source); await setup.attach(material)
+    expect(await setup.repository.preview(material.id)).toMatchObject({ material: { status: 'ready', parseVersion: BINARY_MATERIAL_PARSE_VERSION }, text: '', filePreview: { kind: 'unsupported', text: '', reason: expect.stringContaining('10000 行') } })
+    expect((await setup.repository.read(material.id, 'alice', 'chat')).text).toBe('')
+    expect((await setup.repository.recheck(material.id, material.revision)).filePreview?.kind).toBe('unsupported')
+    expect(await readFile(join(materialDirectory(setup.root, 'chat', material.id), 'original'), 'utf8')).toBe(text)
   })
 
   it('lets opaque attachments exceed the text byte limit without consuming the text character allowance', async () => {

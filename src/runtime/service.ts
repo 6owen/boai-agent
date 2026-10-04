@@ -1,12 +1,13 @@
 /*
+ * [OUTPUT]: ACP受理回执/精准停止沿原请求和实际退出；补充强制固定问题版本；协作重试判断沿原预算；核心默认连接用于全部合法执行入口；浏览器下载隔离暂存并按受管数据根核验目标目录；材料/成果按原ID/hash返回独立有界代码/文本预览，模型材料正文仍沿原解析。
  * [OUTPUT]: 新聊天附件按当前会话成员投影和核读，无独立共享操作；历史显式名单兼容，准备不制造消息或工作。
  * [OUTPUT]: 图片/通用文件附件沿原授权与hash回执提交；图片仅以内存原生媒体供模型回答，通用文件不虚构文本，前端不依赖视觉能力。
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
- * [OUTPUT]: 启用的内置模型员工（含 bobo）浏览器默认可用，旧 false/缺字段不再门禁；ACP/停用拒绝，原自动化/组织阶段及工作/审批/范围/代际边界保留。
- * [OUTPUT]: 无任务人工浏览器只登记明确成员/会话清理归属，零模型/工作/租约；当前浏览器可用性随判断投影。召回按实际版本/获知/输入来源校验，无关历史清空不取消工作，相关失效沿真实运行来源传播；依赖文件只传宿主即时核验的原成果路径。
+ * [OUTPUT]: 启用的内置模型员工（含 bobo）默认具备浏览器工具调用资格，旧 false/缺字段不再门禁；ACP/停用拒绝，原自动化/组织阶段及工作/审批/范围/代际边界保留。
+ * [OUTPUT]: 内置浏览器窗口/登录由应用统一管理，人工开窗零业务记录；工具调用按run独立审计，业务清理不关窗口或清登录；当前浏览器可用性随判断投影。召回按实际版本/获知/输入来源校验，无关历史清空不取消工作，相关失效沿真实运行来源传播；依赖文件只传宿主即时核验的原成果路径。
  * [OUTPUT]: 私有重新汇报先串行核验并持久追加实际新输入，获知回执保存全部真正读取的消息来源；汇报续步使用原Work累计额度与绝对期限，无独立30秒提前截断，最多两次且零工具重放。
  * [OUTPUT]: bobo 原讨论到独立群组织接线、共享原预算/唯一首次启动、受管文件显式恢复与真实回执证据与只读已提交组织身份的私有汇报；单事务核对全部来源的真实工作广播，来源与目标均排除本人问题/待核对；对本请求未完成员工仅更新上下文、不另开判断或计费；未拥有工作或定向 wake 的业务判断明确 pass，分工提交后及时排入原接续，不伪造用户或模型消息。
- * [OUTPUT]: 手动已认领 task 独占浏览器租约、Main 实际开始回执与定向控制/清理； R1 材料/成果正文沿同次 hash 核验文本接线，本地多词相关性/有界覆盖与索引版本游标严格校验，不创建 Work/模型；仅 Trace 明确请求才返回有界核源摘要；D6 元信息/即时结果证据、独立个人历史/固定目标与发布完成身份/阅读锚点，清空保留 epoch，重启/备份零重放。
+ * [OUTPUT]: 手动已认领 task 独占内置浏览器工具执行许可、Main 实际开始回执与定向控制/清理； R1 材料/成果正文沿同次 hash 核验文本接线，本地多词相关性/有界覆盖与索引版本游标严格校验，不创建 Work/模型；仅 Trace 明确请求才返回有界核源摘要；D6 元信息/即时结果证据、独立个人历史/固定目标与发布完成身份/阅读锚点，清空保留 epoch，重启/备份零重放。
  * [OUTPUT]: 只读待处理四来源投影、实际公开问题/回答消息同事务和稳定未知回执；安全补充定向沿原 task/budget，初次 task ask 无工具；这两种 task 路径跳过已释放持有者后的额外自动记忆模型维护，保留授权召回；显式本人固定成果版本的待验收请求及只读回执，不代表质量批准；已保存员工的本机单技能准备与来源/hash/版本冻结，受管副本和员工授权同事务绑定，原请求只读核对与安全恢复。
  * [OUTPUT]: 真实成果内容 hash/不可变版本、修订消息原子关系/新根预算、逐阶段来源复核、采用与回执、启动历史独立登记/活动列表不推断发布、实际文件交付与 Markdown 预览分离/直接返回验证字节、监控选定来源复核和无 WAL 备份快照及 hash 清理门禁；私有材料准备/原子消息关联与持久受理回执，每阶段来源授权、回复/成果来源和限定聊天记忆，hash 清理冲突及仅已发送材料备份；通讯录员工/整类删除与空群解散、群记录保留及运行退出门禁、定时计划暂停和删除投影回收；核心会话非空首条消息/具名团队请求与受理回执同事务、用户团队名按原消息强制绑定、默认模型绑定和核心专属团队工具/原工作去重；员工统一召回、即时获知回执与增量记忆的原始预算/发布门禁；团队短事务受理与备份互斥、批量发布/内存安装及显式恢复； 本机资料版本事务/快照与发送时名称、普通调用身份/技能观测及排除审批的执行区间；T1.2 生成/取消与可编辑方案； 明确连接的定时任务草稿提取、候选授权复核、共享模型容量和独立调用用量账本（不制造 Work/occurrence）；接入 T1 草稿持久化与启动只读中断核对； 表情回应串行持久化、会话隔离且不触发模型或刷新旧消息预览；兼容旧分类的多标签/普通员工统一排序、原子批量标签与选中员工删除、版本检查，标签/排序仅广播通讯录局部通知，删除保持关联全局失效；ACP 草稿会话测试不保存配置，独立临时目录清理及精确草稿验证回执；本机列表缓存与明确重新扫描、安装后失效； 本地安装固定写入 ~/.agents/skills、不创建 Resource/员工绑定，商城状态按现存 local 身份匹配；本机扫描身份只读导出，无需导入或创建资源；本机只读目录/详情/ID 导入与不授予执行权的收藏接入；已授权聊天的最新同名 JSON 产物监控读取；明确额度追加/消息/安全工作续行同事务，权限和实际退出复核；仅宿主调用的通知领取/回执入口；每次任务聊天的独立工作区/授权指纹、普通单聊复用隔离与纯预览/历史查询；人类补充与原始触发绑定、事务续行及授权上下文映射；自动化逐请求预算预留/去重结算与等待容量唤醒；自动化跨工作/接续归属、证据汇总与定向取消待实际退出；消息/轮次与消费意图同事务提交；接入商店与多来源技能管理/收藏/更新、使用状态检查、文件恢复、配置/记忆失效和备份互斥及删除关联清理/持久清理恢复；增加按会话/消息轮次查询 Trace、归属绑定与独立观测错误；本地 API/ACP 配置导入去重/编辑保留来源及 OpenAI 协议、成员并发回复/记忆整理、完成消息集合校验/独立根工作不相互作废、统一判断时限、编辑时按连接读取密钥、草稿连接的只读目录/测试、会话历史清理、工作认领/接续/停止、实际调用容量和有界汇报修复与原子发布。
  *           核心首发响应失联可只读核对权威回执，已提交却未安装须重启且不重放；可靠未提交只清理独占空目录，未知提交不删除；清理后首发明确拒绝重放。
@@ -50,7 +51,7 @@ import { runAcp } from './adapters/acp/client'
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
-import { cp, lstat, mkdir, readdir, rm, rmdir, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, readdir, readFile, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
@@ -85,8 +86,9 @@ import { recallMemory } from './modules/memory/memory-recall'
 import { memoryUseScope } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '../shared/domain/memory'
 import { ModelCapacity } from './modules/collaboration/model-capacity'
-import type { BrowserHostBridge, BrowserLease, BrowserControlInput, BrowserManualOpenInput, BrowserScopeOwner } from '../shared/ipc/browser'
-import { BrowserRepository, browserScopeKey } from './modules/browser/repository'
+import { APPLICATION_BROWSER_SCOPE } from '../shared/ipc/browser'
+import type { BrowserHostBridge, BrowserLease, BrowserControlInput, BrowserManualOpenInput, BrowserTaskAuthorization } from '../shared/ipc/browser'
+import { BrowserRepository } from './modules/browser/repository'
 import { BrowserSession } from './modules/browser/session'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
 import { BoboCollaborationService, type BoboCollaborationHooks } from './modules/bobo-collaboration/service'
@@ -165,6 +167,7 @@ export class AppService {
   private readonly profiles: LaunchProfiles
   private externalTests=new Set<AbortController>()
   private externalTasks=new Set<Promise<void>>()
+  private externalRuns=new Map<string,Promise<void>>()
   private readonly employees: EmployeeService
   private readonly contactList: ContactListRepository
   private readonly contactDeletion: ContactDeletionService
@@ -353,10 +356,11 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await this.preserveLegacyRuntimeFacts()
     await this.teams.recover()
     await this.teamCreation.recover()
     for (const pending of await this.store.load<{id:string;conversationId:string}>('browserCleanups')) {
-      try { await this.clearBrowserScopes(scope=>scope.scopeKey===pending.id) }
+      try { await this.clearBrowserTaskRecords(scope=>scope.id===pending.id) }
       catch (error) { this.clearingConversations.add(pending.conversationId); this.emit({type:'runtime-error',error:`浏览器存储清理待修复：${this.errorMessage(error)}`}) }
     }
     for (const conflict of await this.history.recover()) {
@@ -446,6 +450,25 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    if (method === 'cancelRun') {
+      const value = z.object({ conversationId: id, workId: id.optional(), runId: id.optional() }).strict().refine(value => !(value.workId && value.runId), '请选择一个停止对象').parse(input)
+      if (value.runId) {
+        const { exited } = await this.serialize(async () => {
+          this.getConversation(value.conversationId)
+          const run = this.runs.get(value.runId!)
+          if (!run?.backend || run.conversationId !== value.conversationId) fail('外部运行不属于当前会话')
+          const current = run!
+          if (!terminal.has(current.status)) {
+            this.runControllers.get(current.id)?.abort(new Error('用户停止此外部任务'))
+            await this.finishRun(current, 'cancelled', '用户停止此外部任务')
+            await this.clearApprovals(current.id)
+          }
+          return { exited: this.externalRuns.get(current.id) }
+        })
+        await exited
+        return
+      }
+    }
     if (method === 'prepareMaterial') {
       const value = z.object({ conversationId: id, path: z.string().min(1).max(8000), name: z.string().min(1).max(200).optional(), requestId: id, authorizedAgentIds: ids.max(12).optional() }).strict().parse(input)
       const { preparation } = await this.serialize(async () => {
@@ -501,14 +524,9 @@ export class AppService {
     }
     if (method === 'bindLocalSkill') return this.skills.bindLocal(bindLocalSkillSchema.parse(input))
     if (method === 'getSkillBindingReceipt') return this.skills.getBindingReceipt(z.object({ requestId: id }).strict().parse(input).requestId)
-    if (method === 'getBrowserWindows') {
-      const value=z.object({conversationId:id}).strict().parse(input)
-      const conversation=this.getConversation(value.conversationId)
-      const states=await this.options.browserHost?.request('list',{}) ?? []
-      return states.filter(state => state.conversationId===conversation.id && conversation.agentIds.includes(state.agentId))
-    }
-    if (method === 'openBrowser') return this.openBrowser(z.object({agentId:id,conversationId:id}).strict().parse(input))
-    if (method === 'browserControl') return this.browserControl(z.object({agentId:id,conversationId:id,action:z.enum(['take','resume','show','hide','close','clear'])}).strict().parse(input))
+    if (method === 'getBrowserWindows') { z.object({}).strict().parse(input); return this.options.browserHost?.request('list',{}) ?? [] }
+    if (method === 'openBrowser') return this.openBrowser(z.object({}).strict().parse(input))
+    if (method === 'browserControl') return this.browserControl(z.object({action:z.enum(['take','resume','show','hide','close','clear'])}).strict().parse(input))
     if (method === 'listSkillMarketplace') return this.marketplace.list(input)
     if (method === 'getSkillMarketplaceDetail') return this.marketplace.detail(input)
     if (method === 'refreshSkillMarketplace') return this.marketplace.invalidate(z.object({ provider: marketplaceProviderSchema }).strict().parse(input).provider)
@@ -630,6 +648,7 @@ export class AppService {
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
         case 'listLaunchProfiles': z.undefined().parse(input); return this.profiles.list()
         case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
+        case 'getExternalTaskReceipt': { const value = z.object({ conversationId: id, requestId: id }).strict().parse(input); return this.externalTaskReceipt(value.conversationId, value.requestId) }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
         case 'snapshot': z.undefined().parse(input); return this.snapshot()
         case 'updateUserProfile': { const profile = await this.userProfile.update(input as import('../shared/domain/profile').UserProfileInput); this.changed(); return profile }
@@ -664,6 +683,7 @@ export class AppService {
           return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
         }
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
+        case 'recheckMaterial': { const value = z.object({ id, expectedRevision: z.number().int().positive() }).strict().parse(input); try { return await this.materials.recheck(value.id, value.expectedRevision) } finally { this.changed() } }
         case 'getMessageReceipt': return this.messageReceipt(z.object({ requestId: id }).strict().parse(input).requestId)
         case 'listInbox': return this.inbox.list(inboxQuerySchema.parse(input ?? {}))
         case 'getInboxItem': return this.inbox.get(z.object({ id: z.string().min(1).max(600) }).strict().parse(input).id)
@@ -1026,7 +1046,7 @@ export class AppService {
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
     for (const agentId of agentIds) await this.cancelEmployee(agentId, '员工已删除')
-    await this.clearBrowserScopes(scope => agentIds.includes(scope.agentId))
+    await this.clearBrowserTaskRecords(scope => agentIds.includes(scope.agentId))
     if (ownedResourceIds.length) {
       await this.memory.invalidateResources(ownedResourceIds)
       await this.memoryChanged(this.employees.values().map(agent => agent.id))
@@ -1059,7 +1079,7 @@ export class AppService {
     this.workTimers.delete(id)
     for (const agent of this.employees.values()) await this.memory.invalidateConversation(agent.id, id)
     await this.memoryChanged([...this.employees.values()].map(agent => agent.id))
-    await this.clearBrowserScopes(scope => scope.conversationId === id)
+    await this.clearBrowserTaskRecords(scope => scope.conversationId === id)
     if (conversation.purpose === 'core') await this.boboCollaboration.clearSource(id, { criticalHeld: true })
     if (conversation.kind === 'group') await this.boboCollaboration.clearGroup(id, { criticalHeld: true })
     const result = remove ? await this.history.remove(conversation) : await this.history.clear(conversation, hide)
@@ -1091,7 +1111,7 @@ export class AppService {
   private async ensureCoreConnection() {
     const agent = this.getAgent(CORE_AGENT_ID)
     if (agent.connectionId) { this.getConnection(agent.connectionId); return agent }
-    const connection = [...this.connections.values()].find(value => value.defaultModel.trim())
+    const connection = [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))
     if (!connection) fail(`请先在设置中配置一个模型连接，${agent.name} 会使用该连接的默认模型`)
     const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, creationSource: _s, ...definition } = agent
     return this.employees.save({ ...definition, connectionId: connection!.id, modelId: '', expectedConfigVersion: configVersion })
@@ -1321,7 +1341,7 @@ export class AppService {
     const existing = this.requests.get(input.requestId)
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
     const conversation = clone(this.getConversation(input.conversationId))
-    if (conversation.purpose === 'core' && !this.getAgent(CORE_AGENT_ID).connectionId) await this.ensureCoreConnection()
+    if (conversation.agentIds.includes(CORE_AGENT_ID) && !this.getAgent(CORE_AGENT_ID).connectionId) await this.ensureCoreConnection()
     let revision: ArtifactRevisionInput | undefined
     if (input.artifactRevision) {
       if (origin || commit || humanReply || input.materialSelections?.length || input.stopPrevious || input.replyToMessageId) fail('成果修订须作为独立的本人新请求受理')
@@ -1377,6 +1397,7 @@ export class AppService {
 
   private async replyAutomation(input: { occurrenceId: string; content: string; requestId: string; question?: { expectedVersion: number; questionMessageId: string }; renewBudget?: AutomationBudgetRenewalInput }) {
     if (input.question && input.renewBudget) fail('回复原问题与追加预算须分别明确提交')
+    if (!input.question && !input.renewBudget) fail('补充请求必须固定原问题消息和版本，请从原聊天问题卡回复')
     const relation = input.question ? { questionId: `occurrence:${input.occurrenceId}`, questionRevision: input.question.expectedVersion, questionMessageId: input.question.questionMessageId } : undefined
     if (relation) {
       const receipt = await this.messageReceipt(input.requestId)
@@ -1402,7 +1423,7 @@ export class AppService {
         if (this.automationFingerprint(o.conversationId) !== origin!.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
         const next = await this.works.renewAutomation(origin!, o.conversationId, input.renewBudget, records)
         this.automations.budgetRenewed(next)
-      } else await this.automations.reply(origin!, o.conversationId, input.question?.expectedVersion ?? o.stateVersion, records)
+      } else await this.automations.reply(origin!, o.conversationId, input.question!.expectedVersion, records)
     }, true, input.renewBudget, undefined, relation)
     if (input.renewBudget) this.scheduleWork(o.conversationId)
     return reply
@@ -1505,21 +1526,62 @@ export class AppService {
     this.changed(o.conversationId)
   }
 
+  private async preserveLegacyRuntimeFacts() {
+    const migrated = await this.store.transaction(async tx => {
+      for (const request of await tx.list<RequestRecord>('requests')) {
+        if (await tx.get('messageReceipts',request.id)) continue
+        let input: { kind?: string; conversationId?: string }
+        try { input=JSON.parse(request.fingerprint) } catch { continue }
+        if (input.kind!=='external-task' || !input.conversationId) continue
+        const message=request.messageId ? await tx.get<Message>('messages',request.messageId) : undefined
+        const receipt:MessageReceipt={id:request.id,fingerprint:request.fingerprint,conversationId:input.conversationId,...(message?.conversationId===input.conversationId ? {messageId:message.id} : {cleared:true})}
+        await tx.put(record('messageReceipts',receipt))
+      }
+      const leases=[...(await tx.list<{lease?:BrowserLease}>('browserActions')).flatMap(item=>item.lease?[item.lease]:[]),...await tx.list<BrowserLease>('browserScopes')]
+      const updated:AgentRun[]=[]
+      for (const run of await tx.list<AgentRun>('runs')) {
+        if (run.browserDownloadIsolation || ![run.agentId,run.conversationId,run.id].every(value=>/^[a-zA-Z0-9_-]{1,200}$/.test(value))) continue
+        const directory=join(this.dataPath,'agents',run.agentId,'workspace','sessions',run.conversationId,'runs',run.id)
+        if (!run.toolEvents.some(tool=>tool.name==='browser_tool') && !leases.some(lease=>lease.agentId===run.agentId && lease.conversationId===run.conversationId && lease.runId===run.id && lease.downloadDirectory===directory)) continue
+        run.browserDownloadIsolation='legacy'; await tx.put(record('runs',run)); updated.push(run)
+      }
+      return updated
+    })
+    for (const run of migrated) { const current=this.runs.get(run.id); if(current) current.browserDownloadIsolation=run.browserDownloadIsolation }
+  }
+  private async externalTaskReceipt(conversationId: string, requestId: string): Promise<Message | null> {
+    return this.store.transaction(async tx => {
+      const receipt = await tx.get<MessageReceipt>('messageReceipts', requestId)
+      const legacy = receipt ? undefined : await tx.get<RequestRecord>('requests', requestId)
+      if (!receipt && !legacy) return null
+      if (receipt?.cleared) fail('原外部任务消息已清理；旧请求不会重新执行')
+      const fingerprint = receipt?.fingerprint ?? legacy!.fingerprint
+      let request: { kind?: string; conversationId?: string }
+      try { request = JSON.parse(fingerprint) } catch { return fail('requestId 已用于其他请求') }
+      if (request.kind !== 'external-task' || request.conversationId !== conversationId) fail('requestId 已用于不同外部任务')
+      if (this.clearingConversations.has(conversationId) || await tx.get('conversationCleanup', conversationId)) fail('原聊天正在清理，外部任务不会重放')
+      const messageId = receipt?.messageId ?? legacy?.messageId
+      const message = messageId ? await tx.get<Message>('messages', messageId) : undefined
+      if (!message || !this.messages.has(message.id)) fail('外部任务已受理但当前服务未完整安装，请重启核对，不要重复发送')
+      return clone(message!)
+    })
+  }
   private async sendExternalTask(input: {conversationId:string;content:string;requestId:string}) {
-    const fingerprint=JSON.stringify({kind:'external-task',...input}),existing=this.requests.get(input.requestId)
-    if(existing){if(existing.fingerprint!==fingerprint)fail('requestId 已用于不同请求');return clone(this.messages.get(existing.messageId!)!)}
+    const fingerprint=JSON.stringify({kind:'external-task',...input}),existing=await this.externalTaskReceipt(input.conversationId,input.requestId)
+    if(existing){if(existing.content!==input.content)fail('requestId 已用于不同请求');return existing}
     const conversation=this.getConversation(input.conversationId),agent=await this.employees.reconcile(conversation.agentIds[0]!)
     if(conversation.kind!=='direct'||agent.executionBackend?.kind!=='acp-local'||!agent.active)fail('请选择已启用的外部员工单聊')
-    if([...this.runs.values()].some(r=>r.conversationId===conversation.id&&!terminal.has(r.status)))fail('本会话已有任务，请先停止或等待完成')
+    if([...this.runs.values()].some(r=>r.conversationId===conversation.id&&(!terminal.has(r.status)||this.externalRuns.has(r.id))))fail('本会话已有任务，请先停止或等待完成')
     if(this.externalTasks.size>=2)fail('同时最多运行两个外部任务')
     const profile=this.profiles.get((agent.executionBackend as {profileId:string}).profileId)
     const verified=profile.verified??fail('请先在设置中测试外部启动项')
     const message=this.nextMessage(conversation.id,{senderType:'user',senderId:'user',senderName:(await this.userProfile.get()).displayName,content:input.content,status:'completed'})
     const run=this.newRun(conversation,agent.id,message.id);run.responseKind='task';run.status='running';run.backend={program:{name:verified.name,version:verified.version,executableHash:profile.executableHash},kind:'acp-local',profileId:profile.id,profileRevision:profile.revision,externalInvocations:1,sessionPolicy:'fresh',toolControl:'external'}
     const request={id:input.requestId,fingerprint,messageId:message.id},controller=new AbortController()
-    await this.store.write([record('messages',message),record('runs',run),record('requests',request)])
+    const receipt:MessageReceipt={...request,conversationId:conversation.id}
+    await this.store.write([record('messages',message),record('runs',run),record('requests',request),record('messageReceipts',receipt)])
     this.runControllers.set(run.id,controller);this.messages.set(message.id,message);this.runs.set(run.id,run);this.requests.set(request.id,request);this.changed(conversation.id)
-    const task=this.executeExternal(run,clone(agent),profile,message,controller).catch(error=>this.emit({type:'runtime-error',error:this.errorMessage(error)}));this.externalTasks.add(task);void task.finally(()=>this.externalTasks.delete(task))
+    const task=this.executeExternal(run,clone(agent),profile,message,controller).catch(error=>this.emit({type:'runtime-error',error:this.errorMessage(error)}));this.externalTasks.add(task);this.externalRuns.set(run.id,task);void task.finally(()=>{this.externalTasks.delete(task);this.externalRuns.delete(run.id)})
     return clone(message)
   }
   private async executeExternal(run:AgentRun,agent:DigitalAgent,profile:import('../shared/domain/backends').LaunchProfile,trigger:Message,controller:AbortController){
@@ -1722,7 +1784,7 @@ export class AppService {
     }
     if(agent.executionBackend?.kind==='acp-local')fail('UNSUPPORTED：外部任务后端不支持聊天、决策或记忆阶段')
     if (!agent.active || !conversation.agentIds.includes(agent.id)) fail('员工已停用或移出会话')
-    const connection = this.getConnection(agent.connectionId), apiKey = await this.apiKey(connection)
+    const connection = this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : '')), apiKey = await this.apiKey(connection)
     signal.throwIfAborted()
     const forgotten = await this.memory.forgottenMessageIds(agent.id)
     const materialContext = await this.materialMessages(conversation, turn.triggerMessageId, agent.id, throughSequence)
@@ -1889,7 +1951,7 @@ export class AppService {
       }
       if (decision.work?.organization && (!isCoreAgent(context.agent) || context.conversation.purpose !== 'core' || run.origin || context.legacyTeamName || decision.action !== 'reply' || decision.responseKind !== 'task')) fail('组织意图只适用于本人明确要求 bobo 发起组织的核心讨论')
       // An ordinary peer decision cannot mint a root or consume a directed continuation.
-      if (turn.collaborationRequestId && decision.responseKind === 'task') {
+      if (turn.collaborationRequestId && context.conversation.kind === 'group' && decision.responseKind === 'task') {
         const work = context.workItems?.find(work => work.id === decision.work?.workId)
         if (!work || work.ownerAgentId !== delivery.agentId || work.collaborationRequestId !== turn.collaborationRequestId || work.status !== 'ready' || work.activeRunId || work.requiresReview || (work.wakeId && work.wakeId !== turn.wakeId)) {
           decision.action = 'pass'; delete decision.responseKind; delete decision.work
@@ -1999,8 +2061,9 @@ export class AppService {
           }
         }
         if (this.options.browserHost && isBrowserCapableAgent(context.agent) && !run.origin && !context.work.organization && decision.action === 'reply') {
+          run.browserDownloadIsolation='isolated'; await this.store.write([record('runs',run)])
           const epoch=(await this.reading.readState(conversation.id)).epoch
-          const lease:BrowserLease={scopeKey:browserScopeKey(run.agentId,conversation.id,epoch),scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work.id,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:this.runDirectories.get(run.id)!}
+          const lease:BrowserLease={scopeKey:APPLICATION_BROWSER_SCOPE,scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work.id,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:join(this.dataPath,'browser-downloads',run.id)}
           const validate=async () => {
             effective.throwIfAborted()
             if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id)) fail('浏览器工作已停止或正在清理')
@@ -2009,7 +2072,7 @@ export class AppService {
             await this.assertMaterialRefs(context)
             if (!await this.memory.recallValid(context.memory!)) fail('浏览器任务的记忆来源已失效')
           }
-          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,originalRequest:this.messages.get(context.work.sourceMessageId)?.content ?? '',validate,approve:command=>this.requestApproval(run,controller,command,lease.downloadDirectory,true,'browser')})
+          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,downloadDestination:{root:this.dataPath,runPath:this.runDirectories.get(run.id)!},originalRequest:this.messages.get(context.work.sourceMessageId)?.content ?? '',validate,approve:command=>this.requestApproval(run,controller,command,this.runDirectories.get(run.id)!,true,'browser')})
           this.browserSessions.set(run.id,{session,validate}); context.browserSession=session
         }
         context.beforeEffect = () => this.serialize(async () => { effective.throwIfAborted(); await this.assertMaterialRefs(context); if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本工具执行'); await this.works.markEffect(run.id) })
@@ -2428,63 +2491,64 @@ export class AppService {
     return this.browser.start(input)
   }
   async browserControl(input:BrowserControlInput) {
-    const conversation=this.getConversation(input.conversationId),agent=this.getAgent(input.agentId)
-    if (!conversation.agentIds.includes(agent.id)) fail('员工不属于当前会话')
     const host=this.options.browserHost ?? fail('浏览器宿主未连接')
-    const epoch=(await this.reading.readState(conversation.id)).epoch,scopeKey=browserScopeKey(agent.id,conversation.id,epoch)
-    const sessions=[...this.browserSessions.values()].filter(({session})=>session.lease.scopeKey===scopeKey)
+    const lease=await host.request('currentLease',{}),runId=lease?.runId
+    const owner=runId ? this.browserSessions.get(runId) : undefined
     if (input.action==='resume') {
-      const owner=sessions.find(({session})=>{const run=this.runs.get(session.lease.runId);return run && !terminal.has(run.status) && this.runControllers.has(run.id)}) ?? fail('原运行已经结束，请发送新任务以重新核对来源并取得新租约')
-      await owner.validate();await this.browser.authorizeResume(owner.session.lease)
-      await owner.session.resume(randomUUID())
-      this.emit({type:'browser:changed',conversationId:conversation.id});return
-    }
-    if (input.action==='take') {
-      const owner=sessions.find(({session})=>{const run=this.runs.get(session.lease.runId);return run && !terminal.has(run.status)})
+      if (!owner || !this.runControllers.has(runId!) || terminal.has(this.runs.get(runId!)!.status)) fail('原运行已经结束，请发送新任务以重新核对来源并取得调用许可')
+      await owner!.validate();await this.browser.authorizeResume(owner!.session.lease)
+      await owner!.session.resume(randomUUID())
+    } else if (input.action==='take') {
       if(owner) await owner.session.pause()
-      await host.request('userControl',{scopeKey,action:'take'})
-      this.emit({type:'browser:changed',conversationId:conversation.id});return
+      await host.request('userControl',{scopeKey:APPLICATION_BROWSER_SCOPE,action:'take'})
+    } else {
+      if (['close','clear'].includes(input.action) && owner) {
+        await this.serialize(async () => {
+          const run=this.runs.get(owner.session.lease.runId)
+          if(run && !terminal.has(run.status)){this.runControllers.get(run.id)?.abort(new Error('用户关闭浏览器'));await this.finishRun(run,'cancelled','用户关闭浏览器');await this.clearApprovals(run.id)}
+        })
+        await owner.session.drain()
+      }
+      await host.request('userControl',{scopeKey:APPLICATION_BROWSER_SCOPE,action:input.action})
     }
-    if (['close','clear'].includes(input.action)) {
-      await this.serialize(async () => {
-        for (const {session} of sessions) {
-          const run=this.runs.get(session.lease.runId)
-          if (run && !terminal.has(run.status)) { this.runControllers.get(run.id)?.abort(new Error('用户关闭浏览器')); await this.finishRun(run,'cancelled','用户关闭浏览器'); await this.clearApprovals(run.id) }
-        }
-      })
-      await Promise.all(sessions.map(({session})=>session.drain()))
+    this.emit({type:'browser:changed'})
+  }
+  private async openBrowser(_input:BrowserManualOpenInput) {
+    if (this.closing || this.backingUp) fail('服务正在退出或备份')
+    const host=this.options.browserHost ?? fail('浏览器宿主未连接')
+    const state=await host.request('manualOpen',{})
+    this.emit({type:'browser:changed'})
+    return state
+  }
+  private async clearBrowserDownloads(owner:BrowserTaskAuthorization) {
+    const runs=(await this.store.load<AgentRun>('runs')).filter(run=>run.browserDownloadIsolation==='isolated' && run.agentId===owner.agentId && run.conversationId===owner.conversationId)
+    const actions=await this.store.load<import('./modules/browser/repository').BrowserActionRecord>('browserActions')
+    for (const run of runs) {
+      if (!/^[a-zA-Z0-9_-]{1,200}$/.test(run.id)) fail('浏览器下载归属无效，已保留原件')
+      const directory=join(this.dataPath,'browser-downloads',run.id)
+      try { if((await lstat(directory)).isSymbolicLink()) fail('浏览器下载目录已被替换，已保留原件') }
+      catch(error) { if((error as NodeJS.ErrnoException).code==='ENOENT') continue; throw error }
+      const known=new Map(actions.filter(action=>action.lease?.runId===run.id && action.lease.agentId===owner.agentId && action.lease.conversationId===owner.conversationId && action.lease.downloadDirectory===directory && action.reply?.status==='completed').flatMap(action=>action.reply!.downloads??[]).map(file=>[file.path,file]))
+      for(const name of await readdir(directory)) {
+        const path=join(directory,name),expected=known.get(path),info=await lstat(path)
+        if (!expected || !info.isFile() || info.isSymbolicLink() || info.size!==expected.size || createHash('sha256').update(await readFile(path)).digest('hex')!==expected.hash) fail(`浏览器下载暂存原件未完成、缺少回执或已外部修改，已保留；请核对后移除该文件再清理：${path}`)
+        await unlink(path)
+      }
+      await rmdir(directory)
     }
-    if (input.action==='clear') await this.clearBrowserScopes(scope=>scope.scopeKey===scopeKey)
-    else await host.request('userControl',{scopeKey,action:input.action})
-    this.emit({type:'browser:changed',conversationId:conversation.id})
   }
-  private async openBrowser(input:BrowserManualOpenInput) {
-    return this.serialize(async () => {
-      if (this.closing || this.backingUp) fail('服务正在退出或备份')
-      const conversation=this.getConversation(input.conversationId),agent=this.getAgent(input.agentId)
-      if (!conversation.agentIds.includes(agent.id)) fail('员工不属于当前会话')
-      if (!isBrowserCapableAgent(agent)) fail('浏览器仅支持已启用的内置模型员工，外部任务后端暂不支持')
-      const host=this.options.browserHost ?? fail('浏览器宿主未连接')
-      const epoch=(await this.reading.readState(conversation.id)).epoch
-      const owner:BrowserScopeOwner={scopeKey:browserScopeKey(agent.id,conversation.id,epoch),scopeEpoch:epoch,agentId:agent.id,conversationId:conversation.id,configVersion:agent.configVersion,agentName:agent.name,conversationTitle:conversation.title}
-      await this.browser.registerManualScope(owner)
-      const state=await host.request('manualOpen',owner)
-      this.emit({type:'browser:changed',conversationId:conversation.id})
-      return state
-    })
-  }
-  private async clearBrowserScopes(matches:(owner:BrowserScopeOwner)=>boolean) {
-    const scopes=(await this.browser.scopes()).filter(matches)
+  private async clearBrowserTaskRecords(matches:(owner:BrowserTaskAuthorization & {id:string})=>boolean) {
+    await this.preserveLegacyRuntimeFacts()
+    const scopes=(await this.browser.taskAuthorizations()).filter(matches)
     for (const scope of scopes) {
-      const cleanup={id:scope.scopeKey,conversationId:scope.conversationId,agentId:scope.agentId,status:'pending'}
+      const cleanup={id:scope.id,conversationId:scope.conversationId,agentId:scope.agentId,status:'pending'}
       await this.store.write([record('browserCleanups',cleanup)])
-      const host=this.options.browserHost ?? fail('浏览器存储未能实际清理，请重启后修复')
-      await Promise.all([...this.browserSessions.values()].filter(({session})=>session.lease.scopeKey===scope.scopeKey).map(({session})=>session.drain()))
-      await host.request('clearScope',{scopeKey:scope.scopeKey})
+      await Promise.all([...this.browserSessions.values()].filter(({session})=>session.lease.runId===scope.runId).map(({session})=>session.drain()))
+      await this.clearBrowserDownloads(scope)
       await this.store.transaction(async tx=>{
-        for(const action of await tx.list<import('./modules/browser/repository').BrowserActionRecord>('browserActions')) if(action.lease?.scopeKey===scope.scopeKey) await tx.put({collection:'browserActions',id:action.id,value:{id:action.id,argumentHash:action.argumentHash,conversationId:scope.conversationId,status:'cleared'}})
-        for(const evidence of await tx.list<{id:string;scopeKey:string}>('browserEvidence')) if(evidence.scopeKey===scope.scopeKey) await tx.remove('browserEvidence',evidence.id)
-        await tx.remove('browserCleanups',scope.scopeKey);await tx.remove('browserScopes',scope.scopeKey)
+        for(const action of await tx.list<import('./modules/browser/repository').BrowserActionRecord>('browserActions')) if(action.lease && (scope.runId ? action.lease.runId===scope.runId : action.lease.scopeKey===scope.scopeKey)) await tx.put({collection:'browserActions',id:action.id,value:{id:action.id,argumentHash:action.argumentHash,conversationId:scope.conversationId,status:'cleared'}})
+        for(const evidence of await tx.list<{id:string;scopeKey:string;runId?:string}>('browserEvidence')) if(scope.runId ? evidence.runId===scope.runId : evidence.scopeKey===scope.scopeKey) await tx.remove('browserEvidence',evidence.id)
+        await tx.remove('browserCleanups',scope.id);await tx.remove('browserScopes',scope.id)
       })
     }
   }
@@ -2604,6 +2668,7 @@ export class AppService {
     if (!['failed', 'cancelled', 'interrupted'].includes(original.status)) fail('只能重试失败、停止或中断的任务')
     const conversation = this.getConversation(original.conversationId)
     if (!conversation.agentIds.includes(original.agentId) || !this.getAgent(original.agentId).active) fail('原员工已不在会话中')
+    if (isCoreAgent(this.getAgent(original.agentId)) && !this.getAgent(original.agentId).connectionId) await this.ensureCoreConnection()
     const originalMessage = this.messages.get(original.triggerMessageId) ?? fail('原用户消息不存在')
     const prepared = this.scheduler.prepare({ ...conversation, agentIds: [original.agentId] }, { ...originalMessage, mentionIds: [original.agentId] })
     if (original.origin) {
@@ -2611,7 +2676,13 @@ export class AppService {
     }
     prepared.turn.origin = original.origin ? clone(original.origin) : undefined
     if (original.origin && !original.workId) prepared.turn.resumesRunIds = [original.id]
-    if (original.workId) prepared.turn.workId = original.workId
+    if (original.workId) {
+      const work = (await this.works.view(conversation.id)).workItems.find(work => work.id === original.workId)
+      if (!work || work.ownerAgentId !== original.agentId) fail('原工作归属已变化，不能重试')
+      prepared.turn.workId = original.workId
+      prepared.turn.collaborationRequestId = work!.collaborationRequestId
+      if (original.collaborationRequestId && original.collaborationRequestId !== work!.collaborationRequestId) fail('原协作工作来源不一致，不能重试')
+    } else if (original.collaborationRequestId) prepared.turn.collaborationRequestId = original.collaborationRequestId
     const request: RequestRecord = { id: requestId, fingerprint }
     const records = [...prepared.records, record('requests', request)]
     if (original.workId) await this.works.authorizeRetry(original.workId, original.agentId, records)
@@ -2639,6 +2710,8 @@ export class AppService {
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materials.busy) fail('有任务、材料准备或技能管理操作正在执行或等待修复，请先停止或完成后备份')
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
+      await this.preserveLegacyRuntimeFacts()
+      const legacyBrowserRuns = new Set((await this.store.load<AgentRun>('runs')).filter(run => run.browserDownloadIsolation === 'legacy' && [run.agentId,run.conversationId,run.id].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.dataPath,'agents',run.agentId,'workspace','sessions',run.conversationId,'runs',run.id)))
       const databaseWork = join(destination, `.database-work-${randomUUID()}`), databaseFile = join(databaseWork, 'boai.sqlite')
       await mkdir(databaseWork)
       await this.store.backup(databaseFile)
@@ -2655,10 +2728,10 @@ export class AppService {
         await backupClient.execute({ sql: 'VACUUM INTO ?', args: [join(destination, 'boai.sqlite')] })
       } finally { backupClient.close() }
       await rm(databaseWork, { recursive: true, force: true })
-      for (const folder of ['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces']) await cp(join(this.dataPath, folder), join(destination, folder), { recursive: true, dereference: false })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false }, null, 2))
+      for (const folder of ['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces']) await cp(join(this.dataPath, folder), join(destination, folder), { recursive: true, dereference: false, filter: source => !legacyBrowserRuns.has(source) })
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.

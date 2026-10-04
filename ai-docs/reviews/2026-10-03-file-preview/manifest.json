@@ -1,0 +1,291 @@
+{
+  "_header": {
+    "INPUT": "上一轮两个 Electron trace 与定向日志。",
+    "OUTPUT": "真实帧逐字节提取清单、原文件哈希、技术结论与明确证据缺口。",
+    "POS": "ai-docs/reviews/2026-10-03-file-preview/manifest.json",
+    "PROTOCOL": "修改时同步本 Header 并检查所属 .folder.md。"
+  },
+  "schemaVersion": 1,
+  "title": "聊天文件预览 · 真实证据审阅样例",
+  "assembledAt": "2026-10-02T16:44:21.612942+00:00",
+  "sampleOnly": true,
+  "rerunInThisTurn": false,
+  "automatedReportPipelineImplemented": false,
+  "technicalResult": {
+    "status": "passed",
+    "totalScenarios": 3,
+    "passedScenarios": 3,
+    "durationSeconds": 16.7,
+    "scope": "上轮定向 Electron 回归。样例截图取其中员工交付代码与聊天文件预览两个场景；日志还包含同名材料场景。"
+  },
+  "humanReview": {
+    "status": "pending",
+    "reviewer": null,
+    "decision": null
+  },
+  "modelEnvironment": "离线协议服务；不含真实供应商模型质量评估。",
+  "traces": [
+    {
+      "id": "artifacts",
+      "sourcePath": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/test-results/artifacts.feature-用户按所见原件修订和采用明确成果版本-员工交付的代码文件从消息直接打开高亮预览/desktop-1.zip",
+      "sha256": "8e3f163ae9d5fed6d505f785a51f0eb28cee7e94b776e2395323b6c3b9487e63",
+      "byteLength": 1887239,
+      "traceMember": "trace.trace",
+      "copiedFullTrace": false,
+      "runtimeMetadata": {
+        "browserName": "electron",
+        "playwrightVersion": "1.63.0",
+        "platform": "darwin",
+        "wallTime": 1790958568919,
+        "monotonicTime": 3105.559
+      },
+      "environmentVariablesArchived": false,
+      "originalTestWorkspace": {
+        "directoryName": "boai-bdd-5inFUA",
+        "existsAtSampleAssembly": false,
+        "originalFilesArchived": false
+      }
+    },
+    {
+      "id": "materials",
+      "sourcePath": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/test-results/materials.feature-用户材料按原件和明确共享范围进入已有聊天-聊天文件直接打开安全的文档与代码预览/desktop-1.zip",
+      "sha256": "656fd280cf2cbd96bf8a54baf12d37c1878f11a5093dd927a33074a203c03791",
+      "byteLength": 3713449,
+      "traceMember": "trace.trace",
+      "copiedFullTrace": false,
+      "runtimeMetadata": {
+        "browserName": "electron",
+        "playwrightVersion": "1.63.0",
+        "platform": "darwin",
+        "wallTime": 1790958571650,
+        "monotonicTime": 5836.763
+      },
+      "environmentVariablesArchived": false,
+      "originalTestWorkspace": {
+        "directoryName": "boai-bdd-McEtyI",
+        "existsAtSampleAssembly": false,
+        "originalFilesArchived": false
+      }
+    }
+  ],
+  "frames": [
+    {
+      "file": "01-employee-delivery.jpeg",
+      "label": "员工交付消息",
+      "traceId": "artifacts",
+      "sourceMember": "screencast/page@b3a9d5f6a155c6886cbb4159f27dd344-1790958570475.jpeg",
+      "sourceEvent": {
+        "type": "screencast-frame",
+        "pageId": "page@b3a9d5f6a155c6886cbb4159f27dd344",
+        "file": "screencast/page@b3a9d5f6a155c6886cbb4159f27dd344-1790958570475.jpeg",
+        "width": 1290,
+        "height": 860,
+        "timestamp": 4661.461,
+        "frameSwapWallTime": 1790958570471.2231
+      },
+      "anchorEvent": {
+        "type": "before",
+        "callId": "call@32",
+        "startTime": 4815.977,
+        "class": "Frame",
+        "method": "click",
+        "params": {
+          "selector": "#message-c88ae3cf-ae89-4086-9e1b-2c68b1b46e1a >> internal:role=button[name=\"打开 交付模块.ts\"s]",
+          "strict": true,
+          "timeout": 30000
+        },
+        "stepId": "pw:api@74"
+      },
+      "frameMinusAnchorMilliseconds": -154.516,
+      "sha256": "f9d8b52004486610184b0be6b90b6bd874ce96c7b1e3c2ad5fdb560fbcc1f62b",
+      "byteLength": 25959,
+      "encodedDimensions": {
+        "width": 800,
+        "height": 533
+      },
+      "copyMethod": "Exact zip member bytes; no crop, redraw, re-encoding or enhancement",
+      "visuallyInspected": true,
+      "visualInspectionResult": "员工交付消息"
+    },
+    {
+      "file": "02-delivered-code.jpeg",
+      "label": "员工交付代码预览",
+      "traceId": "artifacts",
+      "sourceMember": "screencast/page@b3a9d5f6a155c6886cbb4159f27dd344-1790958570975.jpeg",
+      "sourceEvent": {
+        "type": "screencast-frame",
+        "pageId": "page@b3a9d5f6a155c6886cbb4159f27dd344",
+        "file": "screencast/page@b3a9d5f6a155c6886cbb4159f27dd344-1790958570975.jpeg",
+        "width": 1290,
+        "height": 860,
+        "timestamp": 5162.015,
+        "frameSwapWallTime": 1790958570972.046
+      },
+      "anchorEvent": {
+        "type": "after",
+        "callId": "call@60",
+        "endTime": 5242.156
+      },
+      "frameMinusAnchorMilliseconds": -80.141,
+      "sha256": "96f303179145c4cffb15ea4e8112dc0446c52ee34143b6dd0741ee4ff0026a9e",
+      "byteLength": 34422,
+      "encodedDimensions": {
+        "width": 800,
+        "height": 533
+      },
+      "copyMethod": "Exact zip member bytes; no crop, redraw, re-encoding or enhancement",
+      "visuallyInspected": true,
+      "visualInspectionResult": "员工交付代码预览"
+    },
+    {
+      "file": "03-markdown-preview.jpeg",
+      "label": "Markdown 排版预览",
+      "traceId": "materials",
+      "sourceMember": "screencast/page@801ce79440681af747ce54418e1794dd-1790958574562.jpeg",
+      "sourceEvent": {
+        "type": "screencast-frame",
+        "pageId": "page@801ce79440681af747ce54418e1794dd",
+        "file": "screencast/page@801ce79440681af747ce54418e1794dd-1790958574562.jpeg",
+        "width": 1290,
+        "height": 860,
+        "timestamp": 8748.931,
+        "frameSwapWallTime": 1790958574558.989
+      },
+      "anchorEvent": {
+        "type": "before",
+        "callId": "call@135",
+        "startTime": 8861.141,
+        "class": "Frame",
+        "method": "click",
+        "params": {
+          "selector": "[data-material-preview-id=\"50990ba0-7ca0-4060-bef6-ce2ae158b0d2\"]:visible >> internal:role=tab[name=\"源码\"s]",
+          "strict": true,
+          "timeout": 30000
+        },
+        "stepId": "pw:api@86"
+      },
+      "frameMinusAnchorMilliseconds": -112.21,
+      "sha256": "cc602c4059aaf2a933cbe124a06fdaa21ffffa7147c77c9b524e93b813aa5a17",
+      "byteLength": 41698,
+      "encodedDimensions": {
+        "width": 800,
+        "height": 533
+      },
+      "copyMethod": "Exact zip member bytes; no crop, redraw, re-encoding or enhancement",
+      "visuallyInspected": true,
+      "visualInspectionResult": "Markdown 排版预览"
+    },
+    {
+      "file": "04-markdown-source.jpeg",
+      "label": "Markdown 源码",
+      "traceId": "materials",
+      "sourceMember": "screencast/page@801ce79440681af747ce54418e1794dd-1790958574717.jpeg",
+      "sourceEvent": {
+        "type": "screencast-frame",
+        "pageId": "page@801ce79440681af747ce54418e1794dd",
+        "file": "screencast/page@801ce79440681af747ce54418e1794dd-1790958574717.jpeg",
+        "width": 1290,
+        "height": 860,
+        "timestamp": 8903.217,
+        "frameSwapWallTime": 1790958574713.1218
+      },
+      "anchorEvent": {
+        "type": "after",
+        "callId": "call@137",
+        "endTime": 8894
+      },
+      "frameMinusAnchorMilliseconds": 9.217,
+      "sha256": "964f68a7fbccbd993de0cc4823846b24ccd2046c493849d416ba938c42e2948c",
+      "byteLength": 43185,
+      "encodedDimensions": {
+        "width": 800,
+        "height": 533
+      },
+      "copyMethod": "Exact zip member bytes; no crop, redraw, re-encoding or enhancement",
+      "visuallyInspected": true,
+      "visualInspectionResult": "Markdown 源码"
+    },
+    {
+      "file": "05-typescript-preview.jpeg",
+      "label": "TypeScript 附件预览",
+      "traceId": "materials",
+      "sourceMember": "screencast/page@801ce79440681af747ce54418e1794dd-1790958575012.jpeg",
+      "sourceEvent": {
+        "type": "screencast-frame",
+        "pageId": "page@801ce79440681af747ce54418e1794dd",
+        "file": "screencast/page@801ce79440681af747ce54418e1794dd-1790958575012.jpeg",
+        "width": 1290,
+        "height": 860,
+        "timestamp": 9198.951,
+        "frameSwapWallTime": 1790958575008.788
+      },
+      "anchorEvent": {
+        "type": "before",
+        "callId": "call@157",
+        "startTime": 9206.633,
+        "class": "Frame",
+        "method": "click",
+        "params": {
+          "selector": "#message-fbd5dc47-0462-4c64-be6c-27157ef81e06 [data-material-id=\"0138c17b-a989-415d-8373-93579a49d0bd\"] >> internal:role=button[name=\"预览材料 preview.html\"s]",
+          "strict": true,
+          "timeout": 30000
+        },
+        "stepId": "pw:api@97"
+      },
+      "frameMinusAnchorMilliseconds": -7.682,
+      "sha256": "e2f86456e638eccf04f8a87650516a1ff90e7e22a290e2a5e3181fe47a99f8e7",
+      "byteLength": 41202,
+      "encodedDimensions": {
+        "width": 800,
+        "height": 533
+      },
+      "copyMethod": "Exact zip member bytes; no crop, redraw, re-encoding or enhancement",
+      "visuallyInspected": true,
+      "visualInspectionResult": "TypeScript 附件预览"
+    }
+  ],
+  "log": {
+    "sourcePath": "/tmp/boai-im-preview-electron-final.log",
+    "sha256": "8a1bcdce057bb919ff2fc6d94f9398194c08d95ecb04fd7e9b42925ecbb0cd92",
+    "byteLength": 836,
+    "excerptFile": "test-summary.txt",
+    "excerptSha256": "e52fb428dc48a3a2911c5ef5f6cd0f4c778311fdc274e94b6004fb2eaed16a50",
+    "selection": "只保留原日志 Running/三个通过用例/最终 passed 原文行，附样例范围说明。"
+  },
+  "evidenceGaps": [
+    {
+      "kind": "recording",
+      "description": "提取内容是 trace 的 screencast-frame，未保留标准录屏；不能据此评估完整连续动效与等待过程。"
+    },
+    {
+      "kind": "delivered-files",
+      "description": "已核对原文件所在两个旧场景临时数据目录均已不存在；本样例没有归档原产物，不将截图或脚本内容冒充原件。"
+    },
+    {
+      "kind": "source-snapshot",
+      "description": "该次运行未记录完整运行时源码/工作树摘要，不能仅凭当前 HEAD 证明截图对应当前全部源码。"
+    },
+    {
+      "kind": "frame-resolution",
+      "description": "原 trace JPEG 为 800×533 等压缩帧，保留原始像素；放大不增加原始清晰度。"
+    },
+    {
+      "kind": "coverage",
+      "description": "此处未展示其他功能、完整采用/修订/审批回归证据，也未进行本轮重跑或真实模型质量评估。"
+    }
+  ],
+  "reportPageValidation": {
+    "scope": "本离线HTML样例自身交互检查；没有启动BoAI或重跑产品场景。",
+    "checkedAt": "2026-10-02T16:51:07.524352+00:00",
+    "browser": "Headless installed Google Chrome via Playwright",
+    "result": "passed",
+    "checks": [
+      "All 5 screenshot tabs load real local JPEG files",
+      "Zoom dialog opens and next image changes source",
+      "Escape closes dialog and returns focus",
+      "390px viewport has no horizontal document overflow",
+      "No pageerror or console error"
+    ],
+    "productScenarioRerun": false
+  }
+}

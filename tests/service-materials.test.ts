@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 真实 AppService/SQLite/材料原件、可控 FakeEngine 与原生任务文件工具。
  * [OUTPUT]: 准备零消息/工作/模型、图片与任意二进制的真实原件/授权媒体及仅文件元信息、零持久 dataURL；发送事务回滚与未知回执核对、数量/版本/范围、原文/派生回复/Work 元数据/成果授权与动态来源继承、撤权取消、跨聊天记忆/根投影、hash 清理/外改冲突重启修复及仅已发材料备份迁移回归。
- * [OUTPUT]: 新缺省聊天附件随当前成员可读，@仅选择响应者；新成员实际模型上下文拿到历史文本/图片，移出后原件读取拒绝，私聊提交/读取与上下文不跨聊天；旧显式名单继续限定授权。
+ * [OUTPUT]: 新缺省聊天附件随当前成员可读，@仅选择响应者；新成员实际模型上下文拿到历史文本/图片，移出后原件读取拒绝，私聊提交/读取与上下文不跨聊天；旧显式名单继续限定授权；备份恢复的非持久filePreview沿原件重新生成，不进入存储。
  * [POS]: D1 材料宿主集成验收；不调用真实模型，不替代 renderer 文件选择或 Electron BDD。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -505,7 +505,7 @@ describe('service material delivery boundaries', () => {
     await rm(sent.source); await rm(draft.source); await cp(backupRoot, restoredRoot, { recursive: true })
     const restored = await open(restoredRoot)
     expect(restoredRoot).not.toBe(dataPath); expect(restoredRoot).not.toBe(backupRoot)
-    expect(await restored.service.handle('getMaterialPreview', { id: granted.id, expectedRevision: granted.revision })).toEqual({ material: committed, text: '备份原件 BACKUP_MATERIAL_CANARY' })
+    expect(await restored.service.handle('getMaterialPreview', { id: granted.id, expectedRevision: granted.revision })).toEqual({ material: committed, text: '备份原件 BACKUP_MATERIAL_CANARY', filePreview: { kind: 'markdown', text: '备份原件 BACKUP_MATERIAL_CANARY' } })
     expect(await storeOf(restored.service).load('materials')).toEqual([committed])
     expect(await restored.service.handle('getMessageReceipt', { requestId: input.requestId })).toEqual(message)
     expect(await restored.service.handle('getMaterialPreparation', { requestId: draft.requestId })).toBeNull()
@@ -514,7 +514,7 @@ describe('service material delivery boundaries', () => {
     expect(restored.engine.contexts).toEqual([]); expect(restored.engine.decisions).toEqual([])
     expect((await detail(restored.service, group)).runs.every(run => run.toolEvents.length === 0)).toBe(true)
     await restored.service.close(); const restarted = await open(restoredRoot)
-    expect(await restarted.service.handle('getMaterialPreview', { id: granted.id })).toEqual({ material: committed, text: '备份原件 BACKUP_MATERIAL_CANARY' })
+    expect(await restarted.service.handle('getMaterialPreview', { id: granted.id })).toEqual({ material: committed, text: '备份原件 BACKUP_MATERIAL_CANARY', filePreview: { kind: 'markdown', text: '备份原件 BACKUP_MATERIAL_CANARY' } })
     expect(restarted.engine.contexts).toEqual([]); expect(restarted.engine.decisions).toEqual([])
   })
 

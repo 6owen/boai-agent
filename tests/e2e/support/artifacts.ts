@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
- * [OUTPUT]: 真实 write_file/publish_artifact/report_work 往返、可选D5 task ask无工具提问与原工作补充、明确普通聊天不接续等待、宿主授权修订身份、材料来源及丢回执核对。
+ * [OUTPUT]: 真实Markdown/代码 write_file/publish_artifact/report_work 往返、D5原问题补充、普通聊天不接续等待、宿主授权修订身份、材料来源及丢回执核对。
+ * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: D2 成果 Electron 支撑；仅控制模型输出/传输故障，不替代工具、文件或事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -31,7 +32,7 @@ function sendTool(response: ServerResponse, name: string, args: unknown, index: 
   response.end('data: [DONE]\n\n')
 }
 
-export async function prepareArtifactsDesktop(runtime: Desktop, options: { askForSupplement?: boolean } = {}) {
+export async function prepareArtifactsDesktop(runtime: Desktop, options: { askForSupplement?: boolean; file?: { name: string; fileName: string; content: string } } = {}) {
   const errors: string[] = [], runs = new Map<string, number>(), replacements: { runId: string; revisionRequestId: string }[] = []
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
@@ -60,9 +61,9 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
       const source = current ? contentText(current.content) : ''
       const materialIds = [...new Set([...source.matchAll(/"materialId":"([0-9a-f-]{36})"/g), ...source.matchAll(/material:([0-9a-f-]{36}):text-v1:L2/g)].map(value => value[1]))]
       const version = revisionRequestId ? 'ARTIFACT_V2' : 'ARTIFACT_V1', text = `# 交付报告\n\n版本标记：${version}\n独立原件：REPORT_${runs.get(runId)}\n验收：逐项检查原件和来源。\n${materialIds.map(id => `材料依据：material:${id}:text-v1:L2`).join('\n')}\n`
-      const path = `self:/runs/${runId}/report.md`, called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
-      if (!called.includes('write_file')) { sendTool(response, 'write_file', { path, content: text }, index); return }
-      if (!called.includes('publish_artifact')) { sendTool(response, 'publish_artifact', { path, name: '交付报告.md', ...(revisionRequestId ? { revisionRequestId } : {}) }, index); return }
+      const path = `self:/runs/${runId}/${options.file?.fileName ?? 'report.md'}`, called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
+      if (!called.includes('write_file')) { sendTool(response, 'write_file', { path, content: options.file?.content ?? text }, index); return }
+      if (!called.includes('publish_artifact')) { sendTool(response, 'publish_artifact', { path, name: options.file?.name ?? '交付报告.md', ...(revisionRequestId ? { revisionRequestId } : {}) }, index); return }
       const artifactId = messages.filter(value => value.role === 'tool').map(value => { try { return JSON.parse(contentText(value.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
       if (!artifactId) throw new Error('真实 publish_artifact 没有返回可检查成果身份')
       if (!called.includes('report_work')) { sendTool(response, 'report_work', { disposition: 'delivered', summary: '报告已发布，原件和来源可检查。', evidence: [{ kind: 'artifact', reference: artifactId }] }, index); return }
@@ -104,7 +105,7 @@ export async function artifactReplyFault(runtime: Desktop, kind: 'adoption' | 'r
 }
 export const artifactPendingRequests = (runtime: Desktop) => runtime.page.evaluate(() => JSON.parse(localStorage.getItem('boai:artifacts:pending-requests') ?? '{}') as Record<string, { conversationId: string; logicalArtifactId: string; revision?: { input: ArtifactRevisionInput; status: string }; adoption?: { input: ArtifactAdoptionInput; status: string } }>)
 export async function artifactRecords(dataPath: string) {
-  const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
+  const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
   try { return {
     artifacts: await store.load<ArtifactVersion>('artifacts'), revisions: await store.load<ArtifactRevisionRequest>('artifactRevisionRequests'), adoptionEvents: await store.load<ArtifactAdoptionEvent>('artifactAdoptionEvents'), adoptionCurrent: await store.load<ArtifactAdoptionCurrent>('artifactAdoptionCurrent'), adoptionReceipts: await store.load<ArtifactAdoptionReceipt>('artifactAdoptionReceipts'),
     messages: await store.load<Message>('messages'), turns: await store.load<DiscussionTurn>('turns'), workItems: await store.load<WorkItem>('workItems'), materials: await store.load<ConversationMaterial>('materials'), cleanups: await store.load<{ id: string; conversationId: string; status: string }>('artifactCleanups'), cleanupGates: await store.load<{ id: string }>('conversationCleanup'),
