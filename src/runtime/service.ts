@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 定时原问题明确补充固定原员工/轮次与Work，共用事务接续原预算，其他未答问题保留。
+ * [OUTPUT]: 工作/文件视图最小委托固定SQL，点击复核原消息/字节/hash/范围；审批导航核对实际pending钩子与固定原卡身份，不创建Work或调用模型。
+ * [OUTPUT]: 已保存ACP启动项当前程序/hash/登录目录只读核对，零握手/执行/验证记录变更。
  * [OUTPUT]: ACP受理回执/精准停止沿原请求和实际退出；补充强制固定问题版本；协作重试判断沿原预算；核心默认连接用于全部合法执行入口；浏览器下载隔离暂存并按受管数据根核验目标目录；材料/成果按原ID/hash返回独立有界代码/文本预览，模型材料正文仍沿原解析。
  * [OUTPUT]: 新聊天附件按当前会话成员投影和核读，无独立共享操作；历史显式名单兼容，准备不制造消息或工作。
  * [OUTPUT]: 图片/通用文件附件沿原授权与hash回执提交；图片仅以内存原生媒体供模型回答，通用文件不虚构文本，前端不依赖视觉能力。
@@ -73,6 +76,8 @@ import { ResourceCleanups } from './modules/resources/resource-cleanups'
 import { SkillLibraryExport, planSkillLibraryExportSchema, exportSkillLibrarySchema } from './modules/resources/skill-library-export'
 import { SkillCollectionRepository, collectionChangeSchema, detachSkillRecords } from './modules/resources/skill-collections'
 import { ProductStore, type RecordTransaction, type StoredRecord } from './adapters/storage/product-store'
+import { WorkViewRepository } from './modules/collaboration/work-view-repository'
+import { workViewQuerySchema, conversationFileQuerySchema, workViewTargetSchema, conversationFileTargetSchema } from './modules/collaboration/work-view-sql'
 import { ConversationReadingRepository } from './modules/conversations/reading-repository'
 import { ConversationSearchRepository } from './modules/conversations/search-repository'
 import { READING_LIMITS, type ConversationMessagePageQuery, type ConversationView } from '../shared/domain/reading'
@@ -94,7 +99,7 @@ import { WorkRepository, WorkUnavailableError } from './modules/collaboration/wo
 import { BoboCollaborationService, type BoboCollaborationHooks } from './modules/bobo-collaboration/service'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../shared/domain/bobo-collaboration'
 import { Inbox, inboxQuerySchema, inboxReplySchema } from './modules/inbox/inbox'
-import { questionSource, validateQuestionReply, answerQuestion, type QuestionSource } from './modules/inbox/user-question'
+import { automationQuestionSource, questionSource, validateQuestionReply, answerQuestion, type QuestionSource } from './modules/inbox/user-question'
 import type { InboxQuestionReply, InboxReplyRelation } from '../shared/domain/inbox'
 import { TaskAdmission } from './modules/collaboration/task-admission'
 import { workOutcomeSchema, workDelegationSchema, workWaitSchema, workEvidenceError } from './modules/collaboration/work-protocol'
@@ -647,6 +652,7 @@ export class AppService {
         case 'listExternalFiles': {const value=z.object({runId:id}).strict().parse(input);return this.externalFiles(value.runId)}
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
         case 'listLaunchProfiles': z.undefined().parse(input); return this.profiles.list()
+        case 'getLaunchProfileStatus': return this.profiles.status(lookupSchema.parse(input).id)
         case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
         case 'getExternalTaskReceipt': { const value = z.object({ conversationId: id, requestId: id }).strict().parse(input); return this.externalTaskReceipt(value.conversationId, value.requestId) }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
@@ -691,6 +697,10 @@ export class AppService {
         case 'listConversationMessages': return this.conversationBrowsing.messagePage(messagePageSchema.parse(input))
         case 'getConversationView': return this.conversationView(messagePageSchema.parse(input))
         case 'getConversationMetadata': { const value = conversationMetadataSchema.parse(input); return this.conversationMetadata(value.id, value.includeTriggerSummaries) }
+        case 'queryWorkViews': return this.works.queryViews(workViewQuerySchema.parse(input))
+        case 'queryConversationFiles': return this.store.queryConversationFiles(conversationFileQuerySchema.parse(input))
+        case 'resolveWorkViewTarget': return this.workViewReading.resolveWork(workViewTargetSchema.parse(input))
+        case 'resolveConversationFileTarget': return this.workViewReading.resolveFile(conversationFileTargetSchema.parse(input))
         case 'searchConversations': return this.conversationBrowsing.search(searchSchema.parse(input))
         case 'resolveConversationSearchTarget': return this.conversationBrowsing.resolve(searchTargetSchema.parse(input))
         case 'getConversationReading': { const value = readingLookupSchema.parse(input); this.getConversation(value.conversationId); return this.reading.readState(value.conversationId) }
@@ -842,6 +852,18 @@ export class AppService {
       validateArtifact: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份，请核对原文件'); await this.store.transaction(tx => this.artifactRepository.validateCurrentArtifact(tx, artifact.id, artifact.contentHash!, undefined, false)) },
       readMaterialText: async (material, conversation) => { this.getConversation(conversation.id); if (!material.messageId || material.status !== 'ready') fail('材料未发送或已不可用'); return (await this.materials.preview(material.id, material.revision)).text },
       readArtifactText: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份'); return (await this.store.transaction(tx => this.artifactRepository.readSearchText(tx, artifact.id, artifact.contentHash!))).text },
+    })
+  }
+  private get workViewReading() {
+    return new WorkViewRepository(this.store, {
+      approval: approval => { if (this.approvals.get(approval.id)?.runId !== approval.runId || !this.pendingApprovals.has(approval.id) || this.runs.get(approval.runId)?.status !== 'waiting_approval') fail('原审批已结束，无法定位') },
+      message: (tx, message) => this.validateReadingMessage(tx, message),
+      work: (tx, work) => this.materials.validateRefsInTransaction(tx, work.materialSources ?? [], undefined, work.conversationId),
+      material: async (tx, material) => {
+        if (material.status !== 'ready' || !material.contentHash) fail('原材料已不可读取')
+        await this.materials.validateRefsInTransaction(tx, [{ id: material.id, conversationId: material.conversationId, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion }], undefined, material.conversationId)
+      },
+      artifact: async (tx, artifact, hash) => { await this.artifactRepository.validateCurrentArtifact(tx, artifact.id, hash, undefined, false) },
     })
   }
   private async conversationView(query: ConversationMessagePageQuery): Promise<ConversationView> {
@@ -1326,7 +1348,7 @@ export class AppService {
   }
   private async sendMessage(input: z.infer<typeof sendSchema>, origin?: AutomationOrigin, commit?: (message: Message, records: StoredRecord[]) => Promise<void>, humanReply = false, renewBudget?: AutomationBudgetRenewalInput, questionReply?: QuestionSource, automationQuestionReply?: InboxReplyRelation) {
     if (this.clearingConversations.has(input.conversationId)) fail('此会话清理尚未完成，不能受理或读取原消息')
-    const relation = questionReply ? { questionId: questionReply.question.id, questionRevision: questionReply.question.revision, questionMessageId: questionReply.message.id, ...(questionReply.work ? { workId: questionReply.work.id } : {}) } : automationQuestionReply
+    const relation = automationQuestionReply ?? (questionReply ? { questionId: questionReply.question.id, questionRevision: questionReply.question.revision, questionMessageId: questionReply.message.id, ...(questionReply.work ? { workId: questionReply.work.id } : {}) } : undefined)
     const fingerprint = JSON.stringify({ kind: 'message', ...input, ...(origin?{origin}:{}), ...(humanReply ? { humanReply } : {}), ...(renewBudget ? { renewBudget } : {}), ...(relation ? { inboxReply: relation } : {}) })
     const receiptFingerprint = createHash('sha256').update(fingerprint).digest('hex')
     const receipt = await this.store.transaction(async tx => {
@@ -1390,6 +1412,7 @@ export class AppService {
     }
     this.conversations.set(conversation.id, conversation)
     this.messages.set(message.id, message); this.requests.set(request.id, request)
+    for (const value of records) if (value.collection === 'decisions') this.scheduler.decisions.set(value.id, value.value as DecisionRecord)
     if (questionReply) this.scheduler.installQuestionAnswer(questionReply.decision, questionReply.turn)
     this.emit({ type: 'message', message }); this.changed(conversation.id); this.scheduler.accept(prepared)
     return clone(message)
@@ -1398,7 +1421,7 @@ export class AppService {
   private async replyAutomation(input: { occurrenceId: string; content: string; requestId: string; question?: { expectedVersion: number; questionMessageId: string }; renewBudget?: AutomationBudgetRenewalInput }) {
     if (input.question && input.renewBudget) fail('回复原问题与追加预算须分别明确提交')
     if (!input.question && !input.renewBudget) fail('补充请求必须固定原问题消息和版本，请从原聊天问题卡回复')
-    const relation = input.question ? { questionId: `occurrence:${input.occurrenceId}`, questionRevision: input.question.expectedVersion, questionMessageId: input.question.questionMessageId } : undefined
+    const relation: InboxReplyRelation | undefined = input.question ? { questionId: `occurrence:${input.occurrenceId}`, questionRevision: input.question.expectedVersion, questionMessageId: input.question.questionMessageId } : undefined
     if (relation) {
       const receipt = await this.messageReceipt(input.requestId)
       if (receipt) {
@@ -1409,22 +1432,32 @@ export class AppService {
     const o = await this.automations.replyContext(input.occurrenceId)
     const origin = this.messages.get(o.messageId!)?.origin
     if (!origin || !belongsToOccurrence(origin, o)) fail('本次运行缺少可信原始来源')
-    if (input.question) await this.store.transaction(async tx => {
-      const current = await tx.get<AutomationOccurrence>('automationOccurrences', o.id) ?? fail('本次运行已不存在，请重新核对')
-      const message = await tx.get<Message>('messages', input.question!.questionMessageId) ?? fail('原问题消息已不可用，请重新核对')
-      const turn = message?.turnId ? await tx.get<DiscussionTurn>('turns', message.turnId) : undefined
-      if (current.stateVersion !== input.question!.expectedVersion || current.status !== 'waiting_user' || current.cancellationRequestedAt) fail('原问题版本已变化或本次运行已停止，请重新核对')
-      if (message.status !== 'completed' || message.senderType !== 'agent' || message.conversationId !== o.conversationId || !turn || turn.conversationId !== o.conversationId || !current.waitingTurnIds?.includes(turn.id) || turn.status !== 'waiting_user' || !belongsToOccurrence(turn.origin, current) || !belongsToOccurrence(message.origin ?? turn.origin, current)) fail('原问题消息已变化或不属于本次等待，请重新核对')
-      await this.materials.validateRefsInTransaction(tx, message.materialSources ?? [], message.senderId, message.conversationId)
-    })
-    const reply = await this.sendMessage({ conversationId: o.conversationId, content: input.content, requestId: input.requestId, mentionIds: [], ...(relation ? { replyToMessageId: relation.questionMessageId } : {}) }, origin, async (_message, records) => {
+    const questionReply = input.question ? await this.store.transaction(async tx => {
+      if (o.stateVersion !== input.question!.expectedVersion) fail('原问题版本已变化，请重新核对')
+      const source = await automationQuestionSource(tx, o, input.question!.questionMessageId)
+      await this.materials.validateRefsInTransaction(tx, source.message.materialSources ?? [], source.agentId, o.conversationId)
+      if (source.work) await this.works.questionContinuation(tx, source.work.id, source.question.id, source.question.revision, origin)
+      return source
+    }) : undefined
+    if (relation && questionReply?.work) relation.workId = questionReply.work.id
+    const reply = await this.sendMessage({ conversationId: o.conversationId, content: input.content, requestId: input.requestId, mentionIds: questionReply ? [questionReply.agentId] : [], ...(relation ? { replyToMessageId: relation.questionMessageId } : {}) }, origin, async (_message, records) => {
       if (this.conversationBusy(o.conversationId) || [...this.activeAdapters].some(id => this.runs.get(id)?.conversationId === o.conversationId)) fail('会话仍有执行中的任务，请稍后补充')
       if (input.renewBudget) {
         if (this.automationFingerprint(o.conversationId) !== origin!.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
         const next = await this.works.renewAutomation(origin!, o.conversationId, input.renewBudget, records)
         this.automations.budgetRenewed(next)
-      } else await this.automations.reply(origin!, o.conversationId, input.question!.expectedVersion, records)
-    }, true, input.renewBudget, undefined, relation)
+      } else await this.automations.reply(origin!, o.conversationId, input.question!.expectedVersion, input.question!.questionMessageId, records, async tx => {
+        const current = await automationQuestionSource(tx, o, input.question!.questionMessageId)
+        if (current.work?.id !== questionReply?.work?.id || current.question.id !== questionReply!.question.id || current.question.revision !== questionReply!.question.revision) fail('原问题或工作版本已变化，请重新核对')
+        await this.materials.validateRefsInTransaction(tx, current.message.materialSources ?? [], current.agentId, o.conversationId)
+        if (current.work) current.work = await this.works.answerQuestion(tx, current.work.id, current.question.id, current.question.revision, _message, origin)
+        else if (current.decision) {
+          current.decision.userQuestion!.answeredMessageId = _message.id
+          await tx.put(record('decisions', current.decision))
+        }
+        Object.assign(questionReply!, current)
+      })
+    }, true, input.renewBudget, questionReply, relation)
     if (input.renewBudget) this.scheduleWork(o.conversationId)
     return reply
   }
@@ -1506,7 +1539,7 @@ export class AppService {
       } catch { /* Missing, changed or unauthorized originals cannot prove delivery. */ }
     }
     return aggregateAutomation(o, {
-      turns: [...this.scheduler.turns.values()], runs: [...this.runs.values()], messages: [...this.messages.values()],
+      turns: [...this.scheduler.turns.values()], decisions: [...this.scheduler.decisions.values()], runs: [...this.runs.values()], messages: [...this.messages.values()],
       works: workItems, wakes: workWakes, artifacts, verifiedArtifactIds, budget: workBudgets.find(budget => budget.id === o.budgetId),
       activeRunIds: new Set([...this.runControllers.keys(), ...this.activeAdapters]),
       activeTurnIds: new Set([...this.scheduler.turns.keys()].filter(id => this.scheduler.hasActiveTurn(id))),

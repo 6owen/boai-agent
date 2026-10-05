@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工领域类型、显式配置导航请求、DesktopApi 与公共组件、统一 UI 基础组件。
- * [OUTPUT]: 本机技能绑定页面隔离/隐藏停读，真实能力状态与当前受管说明/来源入口；群知识仍按既有共享交集提示；配置导航请求经未保存守卫返回配置页；员工统一记忆页及系统文件/工作区详情；会话清空后更新只读投影。
+ * [OUTPUT]: 本机技能绑定和能力说明按页面隐藏停读，配置版本变化重新核对；真实能力状态与当前受管说明/来源入口；群知识仍按既有共享交集提示；配置导航请求经未保存守卫返回配置页；员工统一记忆页及系统文件/工作区详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -32,13 +32,16 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     const token = ++loadToken.current
     try { const result = await api.request('getAgentHome', { agentId: agent.id, conversationId: contextId }); if (token === loadToken.current) { setHome(result); setError('') } } catch (e) { if (token === loadToken.current) setError(errorText(e)) }
   }
-  useEffect(() => { setHome(null); void loadHome(); return () => { loadToken.current++ } }, [agent.id, contextId])
-  useEffect(() => api.subscribe(event => {
+  useEffect(() => { setHome(null); setError(''); if (active) void loadHome(); return () => { loadToken.current++ } }, [api, agent.id, agent.configVersion, contextId, active])
+  useEffect(() => {
+    if (!active) return
+    return api.subscribe(event => {
     if (event.type !== 'conversation:cleared' || event.conversationId !== contextId) return
     // Close only generated file views; employee source drafts remain editable.
     if (fileName && !['AGENTS.md', 'SOUL.md'].includes(fileName)) setFileName(null)
     void loadHome()
-  }), [api, contextId, fileName])
+    })
+  }, [api, active, contextId, fileName])
   const selectTab = (next: EmployeeTab) => {
     if (next === tab) return
     // Switching panels unmounts the old form; keep this tab owner mounted on discard.

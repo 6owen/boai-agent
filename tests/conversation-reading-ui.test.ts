@@ -1,12 +1,12 @@
 /*
  * [INPUT]: Renderer 真实个人历史/可见完成快照、独立阅读/锚点版本、搜索游标和原会话/消息/文件目标。
- * [OUTPUT]: 搜索索引代际不混页/最新覆盖回执与中文多词原样高亮；详情固定 ID/limit1/四项并行、隐藏停止后续批次与错误身份不泄露正文；旧页底部保持历史锚点而非切换最新跟随；不以开始序号猜已读、失焦隐藏/流式拒绝、完成去重与缺口保留、独立 CAS 迟到合并、有界历史和固定搜索目标的意图测试；显式核对只解除后续真实交互的去重屏障，不重放失联写入。
+ * [OUTPUT]: 搜索索引代际不混页/最新覆盖回执与中文多词原样高亮；详情固定 ID/limit1/四项并行、隐藏停止后续批次与错误身份不泄露正文；旧页底部保持历史锚点而非切换最新跟随；页面内有符号小数位置与原非负整数持久合同分离且同持久格不重写；不以开始序号猜已读、失焦隐藏/流式拒绝、完成去重与缺口保留、独立 CAS 迟到合并、有界历史和固定搜索目标的意图测试；显式核对只解除后续真实交互的去重屏障，不重放失联写入。
  * [POS]: D6 Renderer 纯状态验收；不执行 Electron、模型或业务动作。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
 import type { Message } from '../src/shared/domain'
-import type { ConversationMessageItem, ConversationMessagePage, ConversationReadingState, ConversationSearchPage, ConversationSearchResult, ConversationSearchTarget, ConversationView } from '../src/shared/domain/reading'
+import { READING_LIMITS, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationSearchPage, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '../src/shared/domain/reading'
 import type { DesktopApi } from '../src/shared/ipc'
 import { mergeMessagePages, mergeReadingState, readConversationSearchPages, sameSearchTarget, searchExcerptParts, updateLiveMessage, visibleCompletions } from '../src/renderer/pages/conversations/reading-state'
 import { useConversationReading } from '../src/renderer/pages/conversations/-components/use-conversation-reading'
@@ -22,6 +22,28 @@ const page = (...items: ConversationMessageItem[]): ConversationMessagePage => (
 const state: ConversationReadingState = { id: 'chat', conversationId: 'chat', userId: 'user', epoch: 1, revision: 0, boundary: 0, sparseSeen: [], completionCount: 2, unreadCount: 2, legacyCompletedUnknown: true, firstUnreadMessageId: 'b', anchor: null }
 
 describe('explicit reading reconciliation and later interaction', () => {
+  it.each([[-0.9375, 0], [18.3125, 18], [READING_LIMITS.anchorOffset + 0.3125, READING_LIMITS.anchorOffset]])('preserves visual offset %s across page locations while persisting only bounded integer %s', async (offset, persisted) => {
+    vi.useFakeTimers(); readingEffects.length = 0
+    let rowTop = 100 - offset
+    const root = Object.assign(new EventTarget(), { clientHeight: 100, scrollHeight: 300, scrollTop: 20, getBoundingClientRect: () => ({ top: 100, bottom: 200 }), querySelectorAll: () => [{ dataset: { readingMessageId: 'original' }, getBoundingClientRect: () => ({ top: rowTop, bottom: 160 }) }] })
+    const view = { conversation: { id: 'chat' }, messagePage: page(item('original', 1)), reading: state } as ConversationView
+    const onLocation = vi.fn(), request = vi.fn(async () => ({ ...state, anchor: { messageId: 'original', offset: persisted, revision: 1 } }))
+    vi.stubGlobal('window', new EventTarget()); vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible', hasFocus: () => true }))
+    const cleanup: (() => void)[] = []
+    try {
+      useConversationReading({ api: { request } as unknown as DesktopApi, active: true, view, root: { current: root } as unknown as import('react').RefObject<HTMLDivElement>, following: { current: false }, onLocation, onReading: next => { view.reading = mergeReadingState(view.reading, next) } })
+      for (const effect of readingEffects) { const done = effect(); if (done) cleanup.push(done) }
+      root.dispatchEvent(new Event('scroll')); await vi.advanceTimersByTimeAsync(600)
+      expect(onLocation).toHaveBeenLastCalledWith('original', false, offset)
+      expect(request).toHaveBeenCalledExactlyOnceWith('saveConversationAnchor', { conversationId: 'chat', epoch: 1, expectedAnchorRevision: 0, messageId: 'original', offset: persisted })
+      // A layout shift within the same durable pixel keeps the precise page position without rewriting reading state.
+      rowTop -= 0.0625
+      root.dispatchEvent(new Event('scroll')); await vi.advanceTimersByTimeAsync(600)
+      expect(onLocation).toHaveBeenLastCalledWith('original', false, offset + 0.0625)
+      expect(request).toHaveBeenCalledTimes(1)
+      expect(view.reading.anchor).toEqual({ messageId: 'original', offset: persisted, revision: 1 })
+    } finally { for (const done of cleanup) done(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals() }
+  })
   it('keeps a historical bottom anchored until the message window confirms latest following', async () => {
     vi.useFakeTimers(); readingEffects.length = 0
     const root = Object.assign(new EventTarget(), { clientHeight: 100, scrollHeight: 300, scrollTop: 200, getBoundingClientRect: () => ({ top: 100, bottom: 200 }), querySelectorAll: () => [{ dataset: { readingMessageId: 'old' }, getBoundingClientRect: () => ({ top: 80, bottom: 160 }) }] })

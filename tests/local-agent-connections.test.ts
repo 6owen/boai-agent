@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 本地扫描、真实 ACP 客户端、AppService 与隔离登录/可执行夹具。
+ * [OUTPUT]: 只读启动项状态即时拒借外改/缺失程序与失效登录目录，保留原配置/验证/工作事实且不调用模型或握手。
  * [OUTPUT]: 短命令自动解析/Node 识别、无执行保存、参数边界/空参数保留、固定路径跨 PATH 变化与重启、拒绝 shell/相对路径；草稿验证继承、失败与未授权隔离、登录来源及会话认证回归。
  * [POS]: tests/local-agent-connections.test.ts；不读取真实登录或调用付费模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -13,7 +14,7 @@ import { LocalConfigDiscovery } from '../src/main/local-configs/discovery'
 import { AppService } from '../src/runtime/service'
 import { runAcp } from '../src/runtime/adapters/acp/client'
 import { inspectProgram, resolveProgram } from '../src/runtime/modules/backends/program'
-import type { LaunchProfile } from '../src/shared/domain'
+import type { LaunchProfile, LaunchProfileStatus } from '../src/shared/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.unstubAllEnvs(); for (const close of cleanup.splice(0).reverse()) await close() })
@@ -160,4 +161,28 @@ it('looks up only installed executable files and rejects shell commands, relativ
   await symlink('/bin/sh', alias)
   expect(() => inspectProgram(alias)).toThrow('不支持 shell')
   expect(() => resolveProgram('pretend-agent', [f.bin])).toThrow('未找到')
+})
+
+it('reads one saved program identity without changing verification or executing after external change and removal', async () => {
+  const f = await fixture(), saved = await f.service.handle('saveLaunchProfile', f.discovery.launchProfile(f.scan().logins[0].configId)) as LaunchProfile
+  const verified = await f.service.handle('testLaunchProfile', { id: saved.id }) as LaunchProfile
+  expect(verified.verified).toBeDefined()
+  const before = await f.service.handle('snapshot', undefined)
+  expect(await f.service.handle('getLaunchProfileStatus', { id: saved.id })).toMatchObject({ profile: verified, status: 'available' })
+  await writeFile(f.executable, '#!/usr/bin/env node\nthrow new Error("VIEW_MUST_NOT_EXECUTE");\n')
+  expect(await f.service.handle('getLaunchProfileStatus', { id: saved.id })).toMatchObject({ profile: verified, status: 'changed' })
+  await rm(f.executable)
+  expect(await f.service.handle('getLaunchProfileStatus', { id: saved.id })).toMatchObject({ profile: verified, status: 'unavailable' })
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([verified])
+  expect(await f.service.handle('snapshot', undefined)).toEqual(before)
+  await expect(f.service.handle('getLaunchProfileStatus', { id: saved.id, executable: '/unapproved' })).rejects.toThrow()
+})
+
+it('reports an unavailable configured login directory read-only without clearing the prior handshake', async () => {
+  const f = await fixture(), saved = await f.service.handle('saveLaunchProfile', f.discovery.launchProfile(f.scan().logins[0].configId)) as LaunchProfile
+  const verified = await f.service.handle('testLaunchProfile', { id: saved.id }) as LaunchProfile
+  await rm(f.directory, { recursive: true })
+  const status = await f.service.handle('getLaunchProfileStatus', { id: saved.id }) as LaunchProfileStatus
+  expect(status.status).toBe('unavailable'); expect(status.profile).toEqual(verified)
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([verified])
 })

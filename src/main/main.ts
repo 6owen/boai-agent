@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 已保存启动项ID的当前程序只读状态列入typed白名单，零外部执行。
+ * [OUTPUT]: 放行工作/文件只读有界查询和精确原目标解析，沿唯一runtime请求桥。
  * [OUTPUT]: 聊天附件准备缺省按当前聊天发送，短期来源失效仅核对原发送范围与稳定回执；旧显式名单只保留兼容。
  * [INPUT]: Electron、共享领域/IPC 合同、材料原生选择/拖入/真实粘贴与宿主服务及技能库保存请求。
  * [OUTPUT]: 有界截图/文件来源 token、Finder 多文件复制引用；临时副本持久归属/hash、启动回收旧来源并等待实际准备退出后清理，来源过期先只读核对原回执。
@@ -78,7 +80,7 @@ const browsers = new BrowserService({
     } else await requestRuntime('browserControl', { action })
   },
 })
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
 for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
@@ -104,6 +106,7 @@ for (const method of ['getArtifactPreview', 'reviseArtifact', 'adoptArtifact', '
 for (const method of ['prepareLocalSkillBinding', 'bindLocalSkill', 'getSkillBindingReceipt'] as const) methods.add(method)
 for (const method of ['listInbox', 'getInboxItem', 'replyInboxQuestion', 'requestArtifactAcceptance', 'getArtifactAcceptanceReceipt'] as const) methods.add(method)
 for (const method of ['listConversationMessages', 'searchConversations', 'resolveConversationSearchTarget', 'getConversationReading', 'observeConversationReading', 'saveConversationAnchor', 'getConversationView', 'getConversationMetadata'] as const) methods.add(method)
+for (const method of ['queryWorkViews', 'queryConversationFiles', 'resolveWorkViewTarget', 'resolveConversationFileTarget'] as const) methods.add(method)
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)

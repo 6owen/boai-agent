@@ -1,11 +1,12 @@
 /*
  * [INPUT]: WorkRepository 事务、明确预算授权、原始自动化及新的人类消息/轮次。
+ * [OUTPUT]: 明确额度续行保留原接续语义，同事务登记其已接续等待问题的原消息关系。
  * [OUTPUT]: 不清零的额度回执、安全未完成工作的定向接续、原始身份和已交付结果保留。
  * [POS]: 工作预算续行事务规则；不调用模型，不重放待核对操作或外部独立依赖。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
-import type { AgentRun, AutomationBudgetRenewalInput, AutomationOccurrence, AutomationOrigin, BudgetRenewal, DiscussionTurn, Message, WorkBudget, WorkBudgetLimits, WorkExecution, WorkItem, WorkWake } from '../../../shared/domain'
+import type { AgentRun, AutomationBudgetRenewalInput, AutomationOccurrence, AutomationOrigin, BudgetRenewal, DiscussionTurn, DecisionRecord, Message, WorkBudget, WorkBudgetLimits, WorkExecution, WorkItem, WorkWake } from '../../../shared/domain'
 import { WORK_BUDGET_ALLOWANCE as allowance } from '../../../shared/domain/work'
 import type { RecordTransaction, StoredRecord } from '../../adapters/storage/product-store'
 import { belongsToOccurrence, unansweredAutomationTurns } from '../automations/automation-results'
@@ -46,10 +47,15 @@ export async function renewAutomationWork(tx: RecordTransaction, origin: Automat
   grant.after = limits(budget); budget.renewals = [...(budget.renewals ?? []), grant]
   await tx.put(row('workBudgets', budget))
   turn.replyToTurnIds = unansweredAutomationTurns(o, turns).map(t => t.id)
+  // This explicit budget continuation already resumes these waiting turns under the existing contract.
+  for (const decision of await tx.list<DecisionRecord>('decisions')) if (turn.replyToTurnIds.includes(decision.turnId) && decision.userQuestion && !decision.userQuestion.answeredMessageId) {
+    decision.userQuestion.answeredMessageId = message.id; await tx.put(row('decisions', decision)); records.push(row('decisions', decision))
+  }
   turn.resumesTurnIds = turns.filter(t => ['failed', 'cancelled', 'budget_exhausted'].includes(t.status)).map(t => t.id)
   // Old attempts and their evidence remain readable. Only a new wake may claim unfinished work.
   for (const wake of await tx.list<WorkWake>('workWakes')) if (workIds.has(wake.workId) && ['pending', 'scheduled'].includes(wake.status)) { wake.status = 'cancelled'; wake.reason = '用户明确追加额度，改由新的接续负责'; await tx.put(row('workWakes', wake)) }
   for (const work of unfinished) {
+    if (work.userQuestion && !work.userQuestion.answeredMessageId) work.userQuestion.answeredMessageId = message.id
     delete work.wakeId; delete work.cancellationCause; work.version++; work.waitRevision++; work.updatedAt = createdAt
     work.status = work.requiredResults.length ? 'waiting' : 'ready'
     await tx.put(row('workItems', work))

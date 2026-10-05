@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定 SQL 待处理来源、原 Work/问题事务和当前审批/成果只读核对。
- * [OUTPUT]: 有界稳定分页、当前资格/安全动作、原成果文件名/作者/来源和固定版本、精确业务导航；查询零模型/零新工作。
+ * [OUTPUT]: 有界稳定分页、当前资格/安全动作、原成果固定版本；自动化问题虚拟身份精确核对原消息/Work/触发版本及当前材料，失效零旧正文；查询零模型/零新工作。
  * [POS]: D5 只读收件箱投影；终态仍由原来源拥有。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,9 +9,9 @@ import type { Approval, AutomationOccurrence, Conversation, DecisionRecord, Digi
 import type { InboxItem, InboxPage, InboxQuery } from '../../../shared/domain/inbox'
 import type { ArtifactAcceptance } from '../../../shared/domain/artifacts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
-import { WorkRepository } from '../collaboration/work-repository'
+import { WorkRepository, WorkUnavailableError } from '../collaboration/work-repository'
 import type { InboxSqlRow } from './inbox-sql'
-import { questionSource, validateQuestionReply } from './user-question'
+import { automationQuestionSource, questionSource, validateQuestionReply, type QuestionSource } from './user-question'
 
 const id = z.string().min(1).max(600)
 export const inboxQuerySchema = z.object({ kind: z.enum(['question', 'approval', 'failure', 'acceptance']).optional(), search: z.string().trim().max(1000).optional(), before: z.object({ time: z.string().datetime(), id }).strict().optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
@@ -42,8 +42,38 @@ export class Inbox {
     return { items: visible, ...(items.length > limit && last ? { nextCursor: { time: last.time, id: last.id } } : before ? { nextCursor: before } : {}) }
   }
   async get(id: string): Promise<InboxItem | null> {
+    const exact = /^question:occurrence:(.+):message:([^:]+)$/.exec(id)
+    if (exact) return this.automationQuestion(id, exact[1], exact[2])
     const row = (await this.store.inboxRows({ id, limit: 1 }))[0]
     return row ? this.project(row) : null
+  }
+  private async automationQuestion(id: string, occurrenceId: string, messageId: string): Promise<InboxItem | null> {
+    const read = async (tx: RecordTransaction, expected?: AutomationOccurrence) => {
+      const occurrence = expected ?? await tx.get<AutomationOccurrence>('automationOccurrences', occurrenceId)
+      if (!occurrence) return null
+      let source: QuestionSource
+      try { source = await automationQuestionSource(tx, occurrence, messageId) }
+      catch (error) { if (error instanceof WorkUnavailableError) return null; throw error }
+      if (source.conversation.list?.hidden || await tx.get('conversationCleanup', source.conversation.id)) return null
+      const agent = await tx.get<DigitalAgent>('agents', source.agentId)
+      return agent ? { occurrence, source, agent } : null
+    }
+    const first = await this.store.transaction(tx => read(tx))
+    if (!first) return null
+    // This hook owns its transaction. Never call it while holding the inbox read transaction.
+    try { await this.hooks.validateSource?.({ materialSources: first.source.work?.materialSources, runId: first.source.message.runId }, first.source.message, first.source.conversation.id) }
+    catch { return null }
+    return this.store.transaction(async tx => {
+      const current = await read(tx, first.occurrence)
+      if (!current) return null
+      const { occurrence, source, agent } = current, { message, conversation, work, question } = source
+      if (work?.id !== first.source.work?.id || work?.version !== first.source.work?.version || question.id !== first.source.question.id || question.revision !== first.source.question.revision || message.content !== first.source.message.content || JSON.stringify(work?.materialSources) !== JSON.stringify(first.source.work?.materialSources)) return null
+      try { await this.hooks.validateQuestion(tx, { ...message, materialSources: [...(work?.materialSources ?? []), ...(message.materialSources ?? [])] }, source.agentId) }
+      catch { return null }
+      return { id, kind: 'question', conversationId: conversation.id, conversationTitle: conversation.title, time: message.createdAt, summary: question.content, status: occurrence.status, agentId: agent.id, agentName: agent.name, messageId: message.id, turnId: source.turn.id, ...(message.runId ? { runId: message.runId } : {}), occurrenceId: occurrence.id, automationId: occurrence.automationId,
+        question: { id: `occurrence:${occurrence.id}`, messageId: message.id, content: question.content, revision: occurrence.stateVersion, canReply: false, unavailableReason: '请从本次自动化运行明确补充，沿用原触发身份与预算' },
+        ...(work ? { workId: work.id, work: { id: work.id, version: work.version, status: work.status, requiresReview: work.requiresReview } } : {}) } satisfies InboxItem
+    })
   }
   private async project(row: InboxSqlRow): Promise<InboxItem | null> {
     const conversation = JSON.parse(row.conversation) as Conversation, agent = row.agent ? JSON.parse(row.agent) as DigitalAgent : undefined, message = row.message ? JSON.parse(row.message) as Message : undefined

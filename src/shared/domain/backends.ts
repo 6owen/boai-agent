@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 员工后端选择与受信任本地程序启动配置。
+ * [OUTPUT]: 单个已保存启动项的当前程序/hash/登录目录只读状态；核对不执行程序、不修改原验证记录。
  * [OUTPUT]: ACP 启动输入接受短命令、持久化使用已解析绝对路径与自动 Node 方式；指定登录目录与执行能力合同；启用中的 Mastra 员工默认具备浏览器能力，旧 allowBrowser 值不控制权限，ACP 保持不支持。
  * [POS]: shared/domain/backends.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -12,6 +13,7 @@ export function isBrowserCapableAgent(agent: Pick<DigitalAgent, 'active' | 'exec
   return !!agent?.active && (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
 }
 export interface LaunchProfile { id: string; name: string; executable: string; args: string[]; runtime?: 'node'; codexHome?: string; localConfigId?: string; useExistingLogin: boolean; hostAccessAcknowledged: true; revision: number; executableHash: string; verified?: { name: string; version: string; protocolVersion: number; checkedAt: string } }
+export interface LaunchProfileStatus { profile: LaunchProfile; status: 'available' | 'changed' | 'unavailable'; detail: string; checkedAt: string }
 /** executable accepts an installed command name or absolute path; save/test resolves it without a shell. */
 export type LaunchProfileInput = Omit<LaunchProfile,'id'|'revision'|'executableHash'|'verified'> & { id?: string; expectedRevision?: number }
 

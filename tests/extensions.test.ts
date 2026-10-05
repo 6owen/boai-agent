@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 自动化与外部执行模块、领域类型和测试运行引擎。
  * [OUTPUT]: ACP受理回执跨重启/清理去重与精确停止实际退出；浏览器新旧暂存目录排除业务备份。
- * [OUTPUT]: 外部 Agent、自动化事务投递与显式独立工作报告的回归验证。
+ * [OUTPUT]: 外部 Agent、自动化事务投递与显式独立工作报告的回归验证；受理边界用同一固定 Date 时刻隔离跨分钟干扰。
  * [POS]: tests/extensions.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { it, expect, afterEach } from 'vitest'
+import { it, expect, afterEach, vi } from 'vitest'
 import { mkdtemp, rm, cp, mkdir, writeFile, readFile, access } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -31,12 +31,14 @@ it('calendar keys deduplicate the repeated DST hour and daily/weekly cron is bou
 it('records missed, stale, overlapping, and revoked occurrences without dispatching twice',async()=>{
  const root=await mkdtemp(join(tmpdir(),'boai-admission-'));roots.push(root);const store=new ProductStore(join(root,'boai.sqlite'));await store.init();let fingerprint='v1',dispatches=0
  const automation=new AutomationService(store,root,{critical:operation=>operation(),validate:()=>fingerprint,busy:()=>false,dispatch:async(d,o,origin,commit)=>{dispatches++;const message:import('../src/shared/domain').Message = {id:o.id,turnId:'turn-'+o.id,conversationId:o.conversationId,senderType:'user',senderId:'automation',senderName:d.name,content:d.prompt,status:'completed',sequence:dispatches,createdAt:new Date().toISOString(),origin};await commit(message,[]);return message},inspect:()=>undefined,cancel:async()=>{},changed:()=>{},notify:()=>{}})
+ // Plan creation and its current admission share one calendar minute and effective time.
+ vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-05T12:07:30.000Z'))
  try{await automation.init();const time=new Date().toISOString().slice(11,16);const d=await automation.save({name:'guarded',prompt:'report',conversationId:'direct',frequency:'daily',weekday:1,time,timezone:'UTC',enabled:true,notify:false});
  const missed=await automation.admit(d.id,d.revision,'schedule','missed',Date.now()-21*60_000);expect(missed.status).toBe('skipped');expect(missed.reason).toContain('补跑窗口');
  const first=await automation.run(d.id,'manual-once');expect(first.status).toBe('running');const overlap=await automation.admit(d.id,d.revision,'schedule','overlap',Date.now());expect(overlap.reason).toContain('并发');expect(dispatches).toBe(1);
  await automation.stop(first.id);fingerprint='v2';const revoked=await automation.run(d.id,'revoked');expect(revoked.reason).toContain('权限已变更');
  await automation.pause(d.id);const stale=await automation.admit(d.id,d.revision,'schedule','stale',Date.now()+60_000);expect(stale.reason).toContain('旧版本');expect(dispatches).toBe(1);expect((await automation.run(d.id,'manual-once')).id).toBe(first.id)
- }finally{await automation.close();await store.close()}
+ }finally{try{await automation.close();await store.close()}finally{vi.useRealTimers()}}
 })
 
 it('group automation retains independent decisions and attributes both results to one occurrence',async()=>{const {service}=await setup();await employee(service);const snap=await service.handle('snapshot',undefined)as Snapshot,a=snap.agents.find(a=>a.id==='writer')!;const {configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=a;await service.handle('saveAgent',{...input,connectionId:snap.agents.find(a=>a.id==='researcher')!.connectionId});const c=await service.handle('createConversation',{kind:'group',title:'auto-group',agentIds:['researcher','writer']})as Conversation;const d=await service.handle('saveAutomation',{name:'group report',prompt:'collaborate',conversationId:c.id,frequency:'weekly',weekday:1,time:'09:00',timezone:'UTC',enabled:false,notify:false})as AutomationDefinition;await service.handle('runAutomation',{id:d.id,requestId:'group-once'});await until(async()=>((await service.handle('listAutomations',undefined))as AutomationsView).occurrences[0]?.status==='completed');const detail=await service.handle('getConversation',{id:c.id})as ConversationDetail;expect(new Set(detail.messages.filter(m=>m.senderType==='agent').map(m=>m.senderId))).toEqual(new Set(['researcher','writer']));const o=((await service.handle('listAutomations',undefined))as AutomationsView).occurrences[0];expect(o.resultMessageIds).toHaveLength(2);expect(new Set(detail.decisions?.map(d=>d.agentId))).toEqual(new Set(['researcher','writer']))})

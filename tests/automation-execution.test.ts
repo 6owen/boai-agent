@@ -1,12 +1,13 @@
 /*
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
+ * [OUTPUT]: 实际执行后公开的 Work 问题与初始 ask 同样保留原等待、精确 get/补充及同轮另一员工的问题；已有工具原件不重放，原 Work/预算/期限与回执保持。
  * [OUTPUT]: 详情无固定问题版本的补充也拒绝，不再动态绑定下一轮等待；原预算追加合同保持。
  * [OUTPUT]: 聊天明确补充按 occurrence 版本/当前原问题原子核对，旧版本/旧等待问题零消息工作/预算写入、原关系回执重启核对与同 key 禁止换目标；实际受管发布原件/复制 hash 与未知/缺失交付证据；到期续行/重复提交/原始身份/重启、初始判断重试归并和已交付工作不重跑；两次等待隔离/多轮补充/幂等提交、权限/容量/到期/提交回滚；完整宿主调用链的判断/限流重试/执行/记忆预算去重与未知用量验证；跨工作归属/无证据不交付、取消等待退出/人工任务隔离、无重放恢复与事务执行门禁验证。
  * [POS]: 自动化执行意图回归；不调用外部模型或真实用户计划。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, it } from 'vitest'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -17,6 +18,10 @@ import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
 import { aggregateAutomation } from '../src/runtime/modules/automations/automation-results'
 import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
+import { RequestContext } from '@mastra/core/request-context'
+import { noopObserve } from '@mastra/core/tools'
+import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import type { InboxItem } from '../src/shared/domain/inbox'
 
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0).reverse()) await dispose() })
@@ -54,6 +59,19 @@ it('does not label all-pass, ordinary chat, or an unverified artifact as deliver
   expect(aggregateAutomation(occurrence(), { ...input, artifacts })).toMatchObject({ deliveryStatus: 'blocked' })
   expect(aggregateAutomation(occurrence(), { ...input, artifacts, verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'delivered' })
   expect(aggregateAutomation(occurrence(), { ...input, artifacts: [{ ...artifacts[0], runId: 'another-work' }], verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'blocked' })
+})
+it('keeps an unanswered user question actionable while its work waits, until the host commits its exact continuation', () => {
+  const input = resultFixture()
+  input.turns[0].status = 'waiting_user'
+  input.works[0].status = 'waiting'
+  input.works[0].outcome = { disposition: 'waiting', summary: '等待本人补充', userQuestion: '交付给谁？' }
+  expect(aggregateAutomation(occurrence(), input)).toMatchObject({ status: 'waiting_user', waitingTurnIds: ['turn'], deliveryStatus: 'pending', finishedAt: undefined })
+  // A normal chat cannot answer the occurrence even if it happens to mention the old turn.
+  input.turns.push({ ...input.turns[0], id: 'ordinary', origin: undefined, status: 'completed', replyToTurnIds: ['turn'] })
+  expect(aggregateAutomation(occurrence(), input)).toMatchObject({ status: 'waiting_user', waitingTurnIds: ['turn'] })
+  expect(aggregateAutomation(occurrence(), { ...input, activeRunIds: new Set(['run']) })).toMatchObject({ status: 'running', waitingTurnIds: ['turn'] })
+  input.turns.push({ ...input.turns[0], id: 'explicit', status: 'completed', replyToTurnIds: ['turn'] })
+  expect(aggregateAutomation(occurrence(), input)).toMatchObject({ status: 'waiting_work', waitingTurnIds: [] })
 })
 it('keeps pending children and an unexited adapter open while retaining verified partial results', () => {
   const input = resultFixture()
@@ -111,6 +129,110 @@ function clarificationEngine(): AgentEngine {
     else await context.onDelta('请补充本次需要核查的数字。')
   } }
 }
+it.each(['current', 'previous-completed'] as const)('keeps a question published after actual task execution actionable (%s) and resumes only its original work without replaying tools', async version => {
+  const writes = new Map<string, number>(), files = new Map<string, string>(), continuations: string[] = []
+  const engine: AgentEngine = { test: async () => '', decide: async context => ({ action: context.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'task', work: { key: `execute-then-question-${context.agent.id}`, scope: '执行后核对本人缺失信息', deliverable: '本人独立交付' }, observedThroughSequence: Math.max(...context.messages.map(message => message.sequence)) }), run: async context => {
+    if (context.continuation) {
+      continuations.push(context.agent.id)
+      expect(context.completedWorkTools?.flatMap(receipt => receipt.tools).map(tool => tool.id)).toContain(`preparation-${context.agent.id}`)
+      expect(await readFile(files.get(context.agent.id)!, 'utf8')).toBe(`${context.agent.id} 已完成的准备，不能重写`)
+      await deliver(context, `${context.agent.id} 已沿原工作交付。`); return
+    }
+    const runtime = await createTaskRuntime(context), invocation = { requestContext: new RequestContext(), observe: noopObserve }
+    try {
+      writes.set(context.agent.id, (writes.get(context.agent.id) ?? 0) + 1)
+      await runtime.tools.write_file.execute!({ path: `self:/runs/${context.runId}/preparation.txt`, content: `${context.agent.id} 已完成的准备，不能重写` }, invocation)
+      files.set(context.agent.id, join(context.workspace!.runPath, 'preparation.txt'))
+      await context.onTool({ id: `preparation-${context.agent.id}`, name: 'write_file', status: 'completed', detail: '已完成准备文件', createdAt: new Date().toISOString() })
+      const content = `${context.agent.id} 已完成准备，请明确交付对象。`
+      await context.onDelta(content)
+      await context.onWorkOutcome!({ disposition: 'waiting', summary: '实际执行后等待本人补充', userQuestion: content })
+    } finally { await runtime.workspace.destroy() }
+  } }
+  const f = await setup(engine), initial = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'execute-then-question' }) as AutomationOccurrence
+  await until(async () => { const value = await f.detail(); return value.workItems?.length === 2 && value.workItems.every(work => work.status === 'waiting') && value.turns!.every(turn => ['completed', 'waiting_user'].includes(turn.status)) })
+  await until(async () => ['waiting_user', 'waiting_work'].includes((await f.view()).occurrences[0]?.status))
+  const before = await f.detail(), original = before.workItems!.find(work => work.ownerAgentId === 'researcher')!, other = before.workItems!.find(work => work.ownerAgentId === 'writer')!
+  const message = before.messages.find(value => value.id === original.userQuestion!.messageId)!, run = before.runs.find(value => value.id === message.runId)!, originalTurn = before.turns!.find(value => value.id === message.turnId)!
+  expect(originalTurn.status).toBe('waiting_user'); expect(run).toMatchObject({ workId: original.id, status: 'completed', responseKind: 'task', messageId: message.id })
+  const host = f.service as unknown as { store: ProductStore; scheduler: { turns: Map<string, DiscussionTurn> }; automations: { observe(): void } }, store = host.store
+  if (version === 'previous-completed') {
+    // Explicitly prepare the old persisted bookkeeping around the same actual published Work/Run/message.
+    const prior = (await f.view()).occurrences[0], oldTurn = { ...originalTurn, status: 'completed' as const }
+    await store.write([{ collection: 'turns', id: oldTurn.id, value: oldTurn }, { collection: 'automationOccurrences', id: prior.id, value: { ...prior, status: 'waiting_work', stateVersion: prior.stateVersion + 1, waitingTurnIds: [] } }])
+    Object.assign(host.scheduler.turns.get(oldTurn.id)!, oldTurn)
+    host.automations.observe()
+    await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
+  }
+  const current = (await f.view()).occurrences[0]
+  expect(current.status).toBe('waiting_user')
+  const expectedTurnStatus = version === 'previous-completed' ? 'completed' : 'waiting_user'
+  expect((await store.load<DiscussionTurn>('turns')).find(turn => turn.id === originalTurn.id)?.status).toBe(expectedTurnStatus)
+  const factsBeforeRead = await Promise.all(['messages', 'workItems', 'workBudgets', 'automationOccurrences'].map(collection => store.load(collection)))
+  const itemId = `question:occurrence:${initial.id}:message:${message.id}`
+  const item = await f.service.handle('getInboxItem', { id: itemId }) as InboxItem
+  expect(item).toMatchObject({ messageId: message.id, workId: original.id, agentId: original.ownerAgentId, question: { revision: current.stateVersion, canReply: false } })
+  expect(await Promise.all(['messages', 'workItems', 'workBudgets', 'automationOccurrences'].map(collection => store.load(collection)))).toEqual(factsBeforeRead)
+  const input = { occurrenceId: initial.id, content: '给本人，继续原工作。', requestId: 'execute-question-answer', question: { expectedVersion: current.stateVersion, questionMessageId: message.id } }
+  const reply = await f.service.handle('replyAutomation', input) as Message
+  await until(async () => (await f.detail()).workItems!.find(work => work.id === original.id)?.status === 'delivered')
+  await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
+  const after = await f.detail(), waiting = (await f.view()).occurrences[0]
+  expect(after.workItems).toHaveLength(2); expect(after.workBudgets).toHaveLength(1)
+  expect(after.workItems!.find(work => work.id === original.id)).toMatchObject({ sourceMessageId: original.sourceMessageId, ownerAgentId: original.ownerAgentId, budgetId: original.budgetId, rootWorkId: original.rootWorkId, userQuestion: { answeredMessageId: reply.id } })
+  expect(after.workItems!.find(work => work.id === other.id)).toEqual(other)
+  expect(after.workBudgets![0]).toMatchObject({ id: before.workBudgets![0].id, deadlineAt: before.workBudgets![0].deadlineAt, maxModelCalls: before.workBudgets![0].maxModelCalls, maxRuns: before.workBudgets![0].maxRuns })
+  expect(after.workBudgets![0].runs).toBe(before.workBudgets![0].runs + 1)
+  expect(after.workBudgets![0].modelCalls).toBeGreaterThan(before.workBudgets![0].modelCalls)
+  expect(reply.inboxReply).toMatchObject({ questionRevision: current.stateVersion, questionMessageId: message.id, workId: original.id })
+  expect(waiting.waitingTurnIds).toContain(originalTurn.id)
+  expect((await store.load<DiscussionTurn>('turns')).find(turn => turn.id === originalTurn.id)?.status).toBe(expectedTurnStatus)
+  expect(await f.service.handle('getInboxItem', { id: itemId })).toBeNull()
+  expect(await f.service.handle('getInboxItem', { id: `question:occurrence:${initial.id}:message:${other.userQuestion!.messageId}` })).toMatchObject({ workId: other.id, question: { revision: waiting.stateVersion } })
+  expect(continuations).toEqual(['researcher']); expect([...writes.entries()].sort()).toEqual([['researcher', 1], ['writer', 1]])
+  expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
+  expect(await f.detail()).toEqual(after)
+})
+it('does not turn task report question text without a committed userQuestion into a user waiting state', async () => {
+  const f = await setup({ test: async () => '', decide, run: async context => {
+    await context.onDelta('核查记录：请问这是参考说明吗？')
+    await context.onWorkOutcome!({ disposition: 'waiting', summary: '等待工作条件，不是已公开本人问题' })
+  } })
+  await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'unstructured-question-text' })
+  await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_work')
+  const value = await f.detail()
+  expect(value.turns![0].status).toBe('completed')
+  expect(value.workItems![0]).toMatchObject({ status: 'waiting' }); expect(value.workItems![0].userQuestion).toBeUndefined()
+  expect((await f.view()).occurrences[0].waitingTurnIds).toEqual([])
+})
+it('resumes the exact task-ask work and keeps another employee question in the same turn waiting', async () => {
+  let executions = 0
+  const engine: AgentEngine = { test: async () => '', decide: async context => ({ action: context.participation?.hasRespondedInTurn ? 'pass' : 'ask', responseKind: 'task', work: { key: `question-${context.agent.id}`, scope: '原始固定请求', deliverable: '本人独立核查结果' }, observedThroughSequence: Math.max(...context.messages.map(message => message.sequence)) }), run: async context => {
+    if (!context.continuation) { await context.onDelta(`${context.agent.id}：请明确交付对象。`); return }
+    executions++; await deliver(context, `${context.agent.id}：已按原任务交付。`)
+  } }
+  const f = await setup(engine)
+  const first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'task-question' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
+  const before = await f.detail(), works = before.workItems!, original = works.find(work => work.ownerAgentId === 'researcher')!, other = works.find(work => work.ownerAgentId === 'writer')!
+  expect(works).toHaveLength(2); expect(works.every(work => work.status === 'waiting')).toBe(true)
+  const question = original.userQuestion!, current = (await f.view()).occurrences[0]
+  const input = { occurrenceId: first.id, content: '给本人，接续这份原工作。', requestId: 'task-question-answer', question: { expectedVersion: current.stateVersion, questionMessageId: question.messageId } }
+  const reply = await f.service.handle('replyAutomation', input) as Message
+  await until(async () => (await f.detail()).workItems!.find(work => work.id === original.id)?.status === 'delivered')
+  await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
+  const after = await f.detail()
+  expect(after.workItems).toHaveLength(2); expect(after.workBudgets).toHaveLength(1)
+  expect(after.workItems!.find(work => work.id === original.id)).toMatchObject({ sourceMessageId: original.sourceMessageId, ownerAgentId: original.ownerAgentId, budgetId: original.budgetId, userQuestion: { answeredMessageId: reply.id } })
+  expect(after.workItems!.find(work => work.id === other.id)).toEqual(other)
+  expect(reply.inboxReply).toMatchObject({ questionMessageId: question.messageId, workId: original.id })
+  expect(after.turns!.find(turn => turn.id === reply.turnId)).toMatchObject({ workId: original.id, replyToTurnIds: [before.messages.find(message => message.id === question.messageId)!.turnId] })
+  expect(after.workBudgets![0].deadlineAt).toBe(before.workBudgets![0].deadlineAt)
+  expect(executions).toBe(1); expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
+  const next = (await f.view()).occurrences[0]
+  await expect(f.service.handle('replyAutomation', { ...input, requestId: 'already-answered', question: { ...input.question, expectedVersion: next.stateVersion } })).rejects.toThrow()
+  expect((await f.detail()).messages).toEqual(after.messages)
+})
 it('replies to exactly one waiting occurrence, keeps its original budget/source, and deduplicates a submitted reply', async () => {
   const f = await setup(clarificationEngine())
   const first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'first' }) as AutomationOccurrence

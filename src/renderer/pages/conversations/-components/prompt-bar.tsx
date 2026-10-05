@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 受控会话草稿、真实成员、发送与已有会话操作、共享 Soft composer/Popover。
+ * [OUTPUT]: /files打开当前会话文件视图，沿同一草稿保留正文。
  * [OUTPUT]: 原问题关联停用点名、未知请求冻结编辑并提供聚焦；未提交首条消息时隐藏依赖会话的目录/产物命令；真实行内成员节点与系统按钮皮肤、@ / 筛选和光标处插入；编辑器管理选区/删除/IME/历史，单聊保留原生 textarea，不显示额外提及栏。
  * [OUTPUT]: 附件通过独立slot显示在composer内部文本框上方；单聊和群聊粘贴优先收真实File，再处理明确系统文件引用；普通文本/HTML仍纯文本，不把路径文字当文件来源。
  * [POS]: 会话私有 composer 增强；参考 https://www.beautifului.dev/r/prompt-bar.json，复用本项目组件，不接入演示数据或全局皮肤。
@@ -28,7 +29,7 @@ function tokenAt(text: string, start: number, end: number): Token | null {
 const commands = [
   { id: 'summarize', name: '/summarize', description: '总结会话 · 填入草稿，编辑后发送', icon: FileText, prompt: '请总结当前会话的关键结论、分歧和下一步建议。' },
   { id: 'todo', name: '/todo', description: '整理待办 · 填入草稿，编辑后发送', icon: Check, prompt: '请根据当前会话整理待办事项，列出负责人、交付内容和待确认问题。' },
-  { id: 'files', name: '/files', description: '打开任务与产物', icon: FileText },
+  { id: 'files', name: '/files', description: '打开聊天文件', icon: FileText },
   { id: 'workspace', name: '/workspace', description: '打开会话工作目录', icon: FolderOpen },
 ]
 export interface PromptBarHandle { mention(id: string): void; focus(): void }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作视图有界只读DTO与五组计数导出，复用既有Work及真实文件身份。
  * [INPUT]: 产品实体、成果内容版本/修订与采用合同、受管材料/来源、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
  * [OUTPUT]: 运行保留浏览器下载新隔离/旧临时目录备份边界标识。
  * [OUTPUT]: 真实协作请求贯穿群消息/轮次/运行；原组织判断来源与群开场事件不伪造 user 或 group run。
@@ -28,6 +29,7 @@ export * from './automations'
 import type { ExecutionBackend } from './backends'
 export * from './backends'
 export * from './work'
+export * from './work-views'
 import type { WorkIntent, WorkItem, WorkBudget, WorkDisposition, WorkDraft, WorkWake } from './work'
 export type Provider = 'openai' | 'anthropic' | 'openai-compatible'
 export interface Connection {

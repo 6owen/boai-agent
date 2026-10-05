@@ -1,10 +1,10 @@
 /*
  * [INPUT]: Playwright Electron、场景独立数据目录、可选打包入口与组件测试服务、显式 BOAI_REVIEW_RUN_DIR。
- * [OUTPUT]: 可重启的真实桌面生命周期与资源回收；可选关键画面/明确原件/白名单数据归档、每次关闭前画面和逐次 trace 索引。
+ * [OUTPUT]: 可重启的真实桌面生命周期与资源回收；可选关键画面/明确原件/白名单数据归档、每次关闭前画面和逐次 trace 索引；独立原生窗口capturePage整幅截取及窗口/zoom/renderer/NativeImage代表元数据，零viewport/图像修改。
  * [POS]: Electron BDD 场景共享宿主；启动由 Given 控制，允许先准备旧数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { _electron as electron, type ElectronApplication, type Page, type TestInfo } from '@playwright/test'
+import { _electron as electron, type ElectronApplication, type JSHandle, type Page, type TestInfo } from '@playwright/test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -46,6 +46,32 @@ export class Desktop {
 
   async reviewCheckpoint(label: string): Promise<void> {
     await this.review?.checkpoint(label, this.window)
+  }
+
+  async reviewNativeCheckpoint(label: string): Promise<void> {
+    await this.review?.nativeCheckpoint(label, async () => {
+      const app = this.application, page = this.window
+      if (!app || !page || page.isClosed()) throw new Error('原生窗口未启动或已关闭，未获取画面')
+      const renderer = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, outerWidth, outerHeight, devicePixelRatio, visualViewport: visualViewport && { width: visualViewport.width, height: visualViewport.height, scale: visualViewport.scale } }))
+      const window = await app.browserWindow(page) as JSHandle<import('electron').BrowserWindow>
+      try {
+        const captured = await app.evaluate(async ({ screen }, window) => {
+          if (window.isDestroyed() || window.webContents.isDestroyed()) throw new Error('原生目标窗口已销毁')
+          const before = { contentSize: window.getContentSize(), bounds: window.getBounds(), contentBounds: window.getContentBounds(), zoomFactor: window.webContents.getZoomFactor() }
+          // Omit both rect and options: capture the whole actual visible webContents, independent of CSS zoom.
+          const image = await window.webContents.capturePage()
+          if (image.isEmpty()) throw new Error('原生capturePage返回空画面')
+          const scaleFactors = image.getScaleFactors(), pngScaleFactor = Math.max(...scaleFactors)
+          if (!Number.isFinite(pngScaleFactor) || pngScaleFactor <= 0) throw new Error('原生画面缺少有效像素代表')
+          const png = image.toPNG({ scaleFactor: pngScaleFactor })
+          const after = { contentSize: window.getContentSize(), bounds: window.getBounds(), contentBounds: window.getContentBounds(), zoomFactor: window.webContents.getZoomFactor() }
+          if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('原生截取期间窗口尺寸或缩放变化，未登记不确定画面')
+          const display = screen.getDisplayMatching(after.bounds)
+          return { png: png.toString('base64'), native: { windowId: window.id, webContentsId: window.webContents.id, before, after, display: { bounds: display.bounds, workArea: display.workArea, scaleFactor: display.scaleFactor } }, image: { scaleFactors, representations: scaleFactors.map(scaleFactor => ({ scaleFactor, size: image.getSize(scaleFactor) })), pngScaleFactor } }
+        }, window)
+        return { png: Buffer.from(captured.png, 'base64'), metadata: { method: 'Electron.webContents.capturePage()', rect: null, pixelTransform: 'none', native: captured.native, renderer, image: captured.image } }
+      } finally { await window.dispose() }
+    })
   }
 
   async reviewFile(label: string, path: string): Promise<void> {

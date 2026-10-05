@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
+ * [OUTPUT]: 已有宿主明确接续时模型协议交付，不再对已回答原问题重复固定ask；执行期问题先真实write_file再report_work等待，原草稿单次副作用可核对。
  * [OUTPUT]: 真实Markdown/代码 write_file/publish_artifact/report_work 往返、D5原问题补充、普通聊天不接续等待、宿主授权修订身份、材料来源及丢回执核对。
  * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
  * [POS]: D2 成果 Electron 支撑；仅控制模型输出/传输故障，不替代工具、文件或事务。
@@ -32,8 +33,9 @@ function sendTool(response: ServerResponse, name: string, args: unknown, index: 
   response.end('data: [DONE]\n\n')
 }
 
-export async function prepareArtifactsDesktop(runtime: Desktop, options: { askForSupplement?: boolean; file?: { name: string; fileName: string; content: string } } = {}) {
+export async function prepareArtifactsDesktop(runtime: Desktop, options: { askForSupplement?: boolean; askDuringExecution?: boolean; file?: { name: string; fileName: string; content: string } } = {}) {
   const errors: string[] = [], runs = new Map<string, number>(), replacements: { runId: string; revisionRequestId: string }[] = []
+  const executionQuestions: { runId: string; path: string; content: string; writeRequests: number }[] = []
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as ModelMessage[], system = messages.filter(value => value.role === 'system').map(value => contentText(value.content)).join('\n')
@@ -41,7 +43,7 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
         const current = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)
         if (current?.content === '这条是日常问候，请不要作为文件任务补充。') { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
-        sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: options.askForSupplement ? 'ask' : 'reply', responseKind: 'task', work: { key: `artifact-${data.originalUserRequestId}`, scope: '按明确请求发布可检查报告', deliverable: 'Markdown 报告和真实来源' } }); return
+        sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: options.askForSupplement && !data.continuation?.replyToTurnIds?.length ? 'ask' : 'reply', responseKind: 'task', work: { key: `artifact-${data.originalUserRequestId}`, scope: '按明确请求发布可检查报告', deliverable: 'Markdown 报告和真实来源' } }); return
       }
       if (system.includes('Private memory maintenance')) { sendTeamOutput(response, { candidates: [] }); return }
       if (system.includes('Read the actual new conversation facts. Publish a relevant, updated report')) {
@@ -54,6 +56,14 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
       if (!writer) throw new Error('成果任务没有获得真实 write_file 工具')
       const runId = writer.function.description?.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
       if (!runId) throw new Error('宿主工具描述没有当前 run 的私有写入路径')
+      if (options.askDuringExecution && !executionQuestions.length) executionQuestions.push({ runId, path: `self:/runs/${runId}/waiting-draft.md`, content: 'EXECUTION_QUESTION_DRAFT：提问前已经执行，补充不能重放此原草稿写入。\n', writeRequests: 0 })
+      const executionQuestion = executionQuestions.find(value => value.runId === runId)
+      if (executionQuestion) {
+        const called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
+        if (!called.includes('write_file')) { executionQuestion.writeRequests++; sendTool(response, 'write_file', { path: executionQuestion.path, content: executionQuestion.content }, index); return }
+        if (!called.includes('report_work')) { sendTool(response, 'report_work', { disposition: 'waiting', summary: '已完成原草稿，仍需明确交付对象。', userQuestion: '请明确报告交付给谁？' }, index); return }
+        sendTeamOutput(response, '请明确报告交付给谁？'); return
+      }
       if (!runs.has(runId)) runs.set(runId, runs.size + 1)
       const publish = tools!.find(value => value.function.name === 'publish_artifact')!, revisionRequestId = publish.function.description?.match(/revisionRequestId=([a-zA-Z0-9_-]+)/)?.[1]
       if (revisionRequestId && !replacements.some(value => value.runId === runId)) replacements.push({ runId, revisionRequestId })
@@ -81,7 +91,7 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
     const group = await window.boai.request('createConversation', { kind: 'group', title: '成果协作组', agentIds: ['researcher'] }), other = await window.boai.request('createConversation', { kind: 'direct', title: '独立成果私聊', agentIds: ['researcher'] })
     return { group, other, dataPath: (await window.boai.request('snapshot', undefined)).dataPath }
   }, endpoint.url)
-  return { ...setup, endpoint, source, materialText, errors, replacements }
+  return { ...setup, endpoint, source, materialText, errors, replacements, executionQuestions }
 }
 
 /** Production request executes first. Only its acknowledgement and subsequent receipt transport fail. */

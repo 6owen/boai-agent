@@ -1,17 +1,18 @@
 /*
  * [INPUT]: 自动化定义/触发、宿主许可判断与 ProductStore 事务。
+ * [OUTPUT]: 原自动化问题仅解除固定问题，原Work补充与消息/容量同事务，其他原问题保持等待；旧完成/同伴失败轮次须在同事务以确切已提交Run/Work问题核对，不重写原轮次或恢复业务。
  * [OUTPUT]: 创建请求与计划同事务去重，删除保留创建身份防止重建；监控检查点/比较证据/通知同事务提交与规则变更重建基线；以可信预算当前期限准入续行；结果/通知、聊天/触发、补充/容量/消息同事务；版本化受理、执行许可与无重放恢复。
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import type { DiscussionTurn, Message, WorkBudget } from '../../../shared/domain'
+import type { AgentRun, DiscussionTurn, DecisionRecord, Message, WorkItem, WorkBudget } from '../../../shared/domain'
 import type { AutomationDefinition, AutomationDispatch, AutomationInput, AutomationOccurrence, AutomationOrigin, AutomationMonitorCheckpoint, AutomationMonitorRead } from '../../../shared/domain/automations'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { checkWorkBudget, newWorkBudget, WorkUnavailableError } from '../collaboration/work-budget'
 import { compareMonitorObservation, monitorPolicyFingerprint, monitorPolicySchema } from './automation-monitor'
-import { unansweredAutomationTurns } from './automation-results'
+import { automationQuestionStates, belongsToOccurrence, unansweredAutomationTurns } from './automation-results'
 import { notificationPolicy, queueAutomationNotice, recoverAutomationNotices } from './automation-notifications'
 import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, pendingOccurrence, scheduleIdentity, scheduleDays } from './schedule-policy'
 
@@ -107,19 +108,22 @@ export class AutomationRepository {
     }
   }
   assertExecutable(origin: AutomationOrigin, conversationId: string) { return this.store.transaction(tx => assertAutomationExecution(tx, origin, conversationId)) }
-  reply(origin: AutomationOrigin, conversationId: string, expectedVersion: number, records: StoredRecord[]) {
+  reply(origin: AutomationOrigin, conversationId: string, expectedVersion: number, questionMessageId: string, records: StoredRecord[], commitQuestion?: (tx: RecordTransaction) => Promise<void>) {
     return this.store.transaction(async tx => {
       const o = await assertAutomationExecution(tx, origin, conversationId)
       if (o.status !== 'waiting_user' || o.stateVersion !== expectedVersion) throw new Error('等待记录已经变化，请刷新后补充')
-      const waiting = unansweredAutomationTurns(o, await tx.list<DiscussionTurn>('turns'))
-      if (!waiting.length) throw new Error('本次没有等待补充的提问')
+      const waiting = unansweredAutomationTurns(o, await tx.list<DiscussionTurn>('turns'), automationQuestionStates(await tx.list<Message>('messages'), await tx.list<WorkItem>('workItems'), await tx.list<DecisionRecord>('decisions'), await tx.list<AgentRun>('runs')))
+      const question = await tx.get<Message>('messages', questionMessageId)
+      const answered = waiting.find(turn => turn.id === question?.turnId)
+      if (!question || !answered || question.conversationId !== conversationId || question.senderType !== 'agent' || question.status !== 'completed' || !belongsToOccurrence(question.origin ?? answered.origin, o)) throw new Error('本次原问题已不可用或不再等待补充')
+      await commitQuestion?.(tx)
       const next = await resumeAutomationExecution(tx, origin, conversationId)
       const turn = records.find(record => record.collection === 'turns')?.value as DiscussionTurn | undefined
       if (!turn || turn.origin?.occurrenceId !== o.id || turn.conversationId !== conversationId) throw new Error('补充消息缺少本次自动化来源')
-      turn.replyToTurnIds = waiting.map(turn => turn.id)
-      next.waitingTurnIds = []
-      await tx.put(row('automationOccurrences', next))
+      turn.replyToTurnIds = [answered.id]
       for (const record of records) await tx.put(record)
+      next.waitingTurnIds = unansweredAutomationTurns(o, await tx.list<DiscussionTurn>('turns'), automationQuestionStates(await tx.list<Message>('messages'), await tx.list<WorkItem>('workItems'), await tx.list<DecisionRecord>('decisions'), await tx.list<AgentRun>('runs'))).map(turn => turn.id)
+      await tx.put(row('automationOccurrences', next))
       return next
     })
   }

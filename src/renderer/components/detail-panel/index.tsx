@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 窄标题栏内详情标签按实际可用宽度收缩，标题省略且独立关闭按钮保持可达；多个标签仍局部滚动。
+ * [OUTPUT]: 明确消息/审批来源导航恢复旧详情header时只展示标签，不抢原聊天焦点；后续显式切标签仍聚焦。
  * [INPUT]: 多个详情名称、图标、选中/未保存状态、排序与关闭回调与统一窗口 Tabs。
  * [OUTPUT]: 全局 header 中可拖拽排序、可滚动、独立关闭的浏览器式标签栏，以及下方详情内容容器。
  * [POS]: src/renderer/components/detail-panel/index.tsx。
@@ -10,9 +12,9 @@ import { cn } from 'cn'
 import { X } from '@/components/icons'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export function DetailPanelHeader({ tabs, activeKey, onClose, onMove }: {
+export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, focusOnMount = true }: {
   tabs: { key: string; label: string; description: string; icon: ReactNode; dirty: boolean }[]
-  activeKey: string | null; onClose(key: string): void
+  activeKey: string | null; onClose(key: string): void; focusOnMount?: boolean
   onMove(key: string, targetKey: string, placement: 'before' | 'after'): void
 }) {
   const [dragged, setDragged] = useState<string | null>(null)
@@ -23,10 +25,11 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove }: {
     const box = event.currentTarget.getBoundingClientRect()
     return { key, placement: event.clientX < box.left + box.width / 2 ? 'before' as const : 'after' as const }
   }
-  const list = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement>(null), initialFocus = useRef(focusOnMount), activated = useRef(false)
   useEffect(() => {
     const active = list.current?.querySelector<HTMLElement>('[role=tab][aria-selected=true]')
-    active?.focus({ preventScroll: true })
+    if (activated.current || initialFocus.current) active?.focus({ preventScroll: true })
+    activated.current = true
     const tab = active?.closest<HTMLElement>('.detail-tab')
     const reveal = () => tab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     reveal()
@@ -37,7 +40,7 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove }: {
   }, [activeKey])
   return <div className="detail-header">
     <TabsList variant="window" aria-label="详情标签" ref={list} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null) }}>
-      {tabs.map(tab => <div className={cn('detail-tab', { dragging: dragged === tab.key })} key={tab.key} data-selected={activeKey === tab.key} data-drop={drop?.key === tab.key ? drop.placement : undefined}
+      {tabs.map(tab => <div className={cn('detail-tab min-w-[min(90px,100%)] max-w-[min(180px,100%)]', { dragging: dragged === tab.key })} key={tab.key} data-selected={activeKey === tab.key} data-drop={drop?.key === tab.key ? drop.placement : undefined}
         onDragOver={event => {
           const next = locate(event, tab.key); setDrop(next)
           if (next) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 明确自动化问题以原来源/预算核对同一Work补充，原执行/副作用/依赖门禁保持。
+ * [OUTPUT]: 工作视图共用只读SQL投影；不认领、不续行、不改变业务状态。
  * [INPUT]: 显式工作意图、运行身份、当前聊天成员/附件接收范围校验后的上下文与 SQLite 事务。
  * [OUTPUT]: 修订来源按当前聊天附件范围或旧显式名单核对，同hash可用性恢复允许原有效引用，授权变更仍截断；成员退出与来源版本失效不能新增根/子工作预算。
  * [OUTPUT]: 首次已核核心来源的完整组织合同经同一预算工厂给48次；读取已有预算始终保留原值，群根/子工作/恢复与重启不另起额度。
@@ -37,10 +39,17 @@ export interface WorkClaimInput {
 export class WorkRepository {
   constructor(private store: ProductStore) {}
 
+  /** Shared read projection; does not claim, resume or mutate a Work. */
+  queryViews(query: import('../../../shared/domain/work-views').WorkViewQuery) { return this.store.queryWorkViews(query) }
+
   /** Admission is checked again inside the message transaction; no new work or allowance is created. */
-  async questionContinuation(tx: RecordTransaction, workId: string, questionId: string, revision: number) {
+  async questionContinuation(tx: RecordTransaction, workId: string, questionId: string, revision: number, origin?: AutomationOrigin) {
     const work = await tx.get<WorkItem>('workItems', workId)
-    if (!work || work.origin || work.userQuestion?.id !== questionId || work.userQuestion.revision !== revision || work.userQuestion.answeredMessageId) throw new WorkUnavailableError('原工作问题已经变化、回答或不存在，请刷新')
+    if (!work || (origin ? !work.origin || work.origin.occurrenceId !== origin.occurrenceId || work.origin.automationId !== origin.automationId || work.origin.authorizedFingerprint !== origin.authorizedFingerprint : !!work.origin) || work.userQuestion?.id !== questionId || work.userQuestion.revision !== revision || work.userQuestion.answeredMessageId) throw new WorkUnavailableError('原工作问题已经变化、回答或不存在，请刷新')
+    if (origin) {
+      const occurrence = await assertAutomationExecution(tx, origin, work.conversationId)
+      if (work.budgetId !== occurrence.budgetId || work.sourceMessageId !== occurrence.messageId) throw new WorkUnavailableError('原工作不属于本次自动化原请求和预算')
+    }
     if (work.status !== 'waiting' || work.activeRunId || work.requiresReview || work.cancellationCause || work.dependsOnWorkIds.length || work.requiredResults.length) throw new WorkUnavailableError('原工作已停止、中断、待核对或依赖等待，不能用补充信息接续')
     if (work.version !== revision) throw new WorkUnavailableError('原工作版本已变化，请刷新')
     if ((await tx.list<WorkExecution>('workExecutions')).some(execution => execution.workId === work.id && (execution.status === 'active' || (execution.pendingEffects ?? 0) > 0))) throw new WorkUnavailableError('原工作仍有执行或待核对副作用，不能接续')
@@ -55,8 +64,8 @@ export class WorkRepository {
     return work
   }
 
-  async answerQuestion(tx: RecordTransaction, workId: string, questionId: string, revision: number, message: Message) {
-    const work = await this.questionContinuation(tx, workId, questionId, revision)
+  async answerQuestion(tx: RecordTransaction, workId: string, questionId: string, revision: number, message: Message, origin?: AutomationOrigin) {
+    const work = await this.questionContinuation(tx, workId, questionId, revision, origin)
     work.userQuestion!.answeredMessageId = message.id
     work.status = 'ready'; work.version++; work.updatedAt = timestamp()
     await tx.put(row('workItems', work))

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前有界消息/真实完成快照、已提交阅读状态、消息滚动容器和主页面/窗口可见性。
- * [OUTPUT]: 只观测实际可见完成身份，阅读与稳定消息锚点独立 CAS；沿用消息窗口确认的跟随状态，旧页底部不误当最新；失联只核对，显式核对成功仅开放下一次实际交互的新快照，隐藏/失焦/迟到不污染另一窗口。
+ * [OUTPUT]: 只观测实际可见完成身份，阅读与稳定消息锚点独立 CAS；页面位置保留有符号小数偏移，仅持久提交归一为原非负整数合同；沿用消息窗口确认的跟随状态，旧页底部不误当最新；失联只核对，显式核对成功仅开放下一次实际交互的新快照，隐藏/失焦/迟到不污染另一窗口。
  * [POS]: ChatView 的 D6 个人阅读宿主接线；不改变工作、审批、采用或模型上下文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -26,7 +26,7 @@ export function useConversationReading({ api, active, view, root, following, onR
       const bounds = row.getBoundingClientRect(), id = row.dataset.readingMessageId
       if (!id || bounds.bottom <= viewport.top || bounds.top >= viewport.bottom) continue
       ids.add(id)
-      if (!anchor) anchor = { messageId: id, offset: Math.min(READING_LIMITS.anchorOffset, Math.max(0, Math.round(viewport.top - bounds.top))) }
+      if (!anchor) anchor = { messageId: id, offset: viewport.top - bounds.top }
     }
     return { ids, anchor }
   }
@@ -51,8 +51,9 @@ export function useConversationReading({ api, active, view, root, following, onR
   }, [api, view.conversation.id])
   const saveAnchor = useCallback(async () => {
     if (!allowed() || anchoring.current) return
-    const captured = current.current.view, anchor = measure().anchor
-    if (!anchor) return
+    const captured = current.current.view, measured = measure().anchor
+    if (!measured) return
+    const anchor = { ...measured, offset: Math.min(READING_LIMITS.anchorOffset, Math.max(0, Math.round(measured.offset))) }
     const signature = JSON.stringify([captured.reading.epoch, anchor])
     if (anchored.current === signature || captured.reading.anchor?.messageId === anchor.messageId && captured.reading.anchor.offset === anchor.offset) return
     anchored.current = signature; anchoring.current = true

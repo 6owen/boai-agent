@@ -1,18 +1,19 @@
 /*
  * [INPUT]: 共享领域类型、产品存储与群事件。
  * [OUTPUT]: 宿主核对已分工成员的真实业务广播仅保留上下文，在模型计数前跳过重复判断；用户/明确收件人/首轮/定向接续及未分工成员保持原边界。真实 bobo 公告的 collaboration_start 以唯一启动意图在原事务消费；仅同请求的定向工作可与开场并行，同员工真实执行/退出仍互斥，普通用户轮次仍单 lane 并优先；bobo 固定群根/成员独立判断及同预算子工作接续；重启不自动开工。普通聊天最终公开回复通过宿主 commitReply hook 同事务保存真实完成事实；失败/流式/取消不计完成，task 仍由原 Work 事务所有者提交。
- * [OUTPUT]: 公开 chat ask 的具体问题消息/判断关系同事务，原问题回答定向轮次及投影仅在提交后安装；自动化来源贯穿轮次并定向停止执行；删除员工/群时显式终结等待，保留已完成投递；群聊轮次、并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与清理后的投影回收。
+ * [OUTPUT]: 公开 chat ask 的具体问题消息/判断关系同事务；task实际执行后仅沿已提交Message→Run→原Work.userQuestion核读等待，未提交/普通正文/依赖等待不算本人问题；原问题回答定向轮次及投影仅在提交后安装；自动化来源贯穿轮次并定向停止执行；删除员工/群时显式终结等待，保留已完成投递；群聊轮次、并行流式/完成事件版本、有限并行任务/定向接续、用户输入优先与清理后的投影回收。
  * [POS]: src/runtime/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import type { AgentDelivery, CollaborationStartIntent, Conversation, ConversationEvent, Contribution, DecisionRecord, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, WorkItem } from '../shared/domain'
+import type { AgentDelivery, AgentRun, CollaborationStartIntent, Conversation, ConversationEvent, Contribution, DecisionRecord, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, WorkItem } from '../shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from './adapters/storage/product-store'
 import { collaborationStartAuthority } from './modules/collaboration/work-collaboration'
 import { checkWorkBudget } from './modules/collaboration/work-budget'
 import { workIntentSchema } from './modules/collaboration/work-protocol'
 import { MAX_INDEPENDENT_TASKS } from './modules/collaboration/task-admission'
+import { publishedWorkQuestionMatches } from '../shared/domain/inbox'
 
 const now = () => new Date().toISOString()
 const row = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -465,12 +466,19 @@ export class GroupScheduler {
         const nextTurn = { ...active.turn, publicMessages: active.turn.publicMessages + 1, generation: Math.max(active.turn.generation, next.generation) }
         const questionDecision = decision.action === 'ask' && decision.responseKind !== 'task' ? { ...decision, userQuestion: { id: `decision:${decision.id}`, messageId: message.id, content: message.content, revision: 1 } } : undefined
         await commit([...records, row('events', next), row('grants', nextGrant), row('deliveries', nextDelivery), row('turns', nextTurn), ...(questionDecision ? [row('decisions', questionDecision)] : []), ...(nextContribution ? [row('contributions', nextContribution)] : []), ...candidates.map(candidate => row('deliveries', candidate)), ...previous.map(candidate => row('deliveries', candidate))])
+        // Execution can discover a user question after its initial reply decision. Trust only the committed work result.
+        const workQuestion = decision.responseKind === 'task' && message.runId && await this.store.transaction(async tx => {
+          const run = await tx.get<AgentRun>('runs', message.runId!)
+          if (!run?.workId || run.status !== 'completed' || run.responseKind !== 'task' || run.conversationId !== active.turn.conversationId || run.turnId !== active.turn.id || run.agentId !== decision.agentId || run.messageId !== message.id) return false
+          const work = await tx.get<WorkItem>('workItems', run.workId), published = await tx.get<Message>('messages', message.id)
+          return publishedWorkQuestionMatches(work, run, published)
+        })
         // Only acknowledge delivery and speaking rights after durable publication.
         Object.assign(grant, nextGrant); Object.assign(delivery, nextDelivery)
         if (questionDecision) Object.assign(decision, questionDecision)
         active.turn.publicMessages = nextTurn.publicMessages; active.turn.generation = nextTurn.generation
         active.contributions.set(decision.agentId, previousContributions + 1)
-        if (decision.action === 'ask') active.asked = true
+        if (decision.action === 'ask' || workQuestion) active.asked = true
         if (decision.action === 'request_handoff') for (const recipient of decision.recipientAgentIds ?? []) active.invited.add(recipient)
         if (contribution && nextContribution) Object.assign(contribution, nextContribution)
         for (const item of previous) Object.assign(this.deliveries.get(item.id)!, item)

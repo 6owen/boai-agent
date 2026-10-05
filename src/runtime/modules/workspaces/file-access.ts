@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前员工会话工作区、宿主材料来源授权门禁与真实文件请求。
- * [OUTPUT]: 发布真实字节 hash、明确宿主修订请求，失败只删除本次未外改原件；拒绝路径/链接越界、按当前来源授权核对内建文件访问，并仅在私有源和共享目标均获准时发布真实产物。
+ * [OUTPUT]: 首次共享目录并发创建仅接受EEXIST后核验的真实目录，链接/文件/其他IO故障仍拒绝；发布真实字节 hash、明确宿主修订请求，失败只删除本次未外改原件；拒绝路径/链接越界、按当前来源授权核对内建文件访问，并仅在私有源和共享目标均获准时发布真实产物。
  * [POS]: runtime/modules/workspaces 的逻辑路径、授权检查和真实文件副作用边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -78,8 +78,12 @@ export async function workspaceTarget(root: string, relative: string, createPare
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       if (!createParents) throw error
       if (index < parts.length - 1) {
-        await mkdir(current)
-        if ((await lstat(current)).isSymbolicLink() || !contained(rootReal, await realpath(current))) throw new Error('Unsafe workspace directory')
+        try { await mkdir(current) } catch (creationError) {
+          // Another employee may have created this shared parent after our lstat.
+          if ((creationError as NodeJS.ErrnoException).code !== 'EEXIST') throw creationError
+        }
+        const created = await lstat(current)
+        if (created.isSymbolicLink() || !created.isDirectory() || !contained(rootReal, await realpath(current))) throw new Error('Unsafe workspace directory')
       }
     }
   }

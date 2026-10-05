@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作/文件有界页与五组同条件计数同次SQL，变更代际同事务推进；范围变动使旧游标失效。
  * [INPUT]: 本地 SQLite 连接、当前聊天成员/附件接收范围与产品记录。
  * [OUTPUT]: 成员增删及材料deliveryScope变更同事务提升检索代际，旧员工筛选游标不能混入新接收范围。
  * [OUTPUT]: bobo 员工发现与组织回执 SQL 有界投影、同事务配置时钟；浏览器成果来源按 runId 在 SQL 限制20项，仅投影来源字段；R1 固定相关性/多词 SQL、正文有界队列与覆盖统计、原来源变更/撤权/清理同事务撤销正文，重启/恢复先清除未核验摘录；D6 历史/完成身份、inbox/自动化固定查询；原子读检查写与有界写锁等待、不重试已开始事务，备份和空间回收。
@@ -9,6 +10,7 @@ import { createClient, type Client } from '@libsql/client'
 import { mkdir, stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { randomUUID } from 'node:crypto'
 import { advanceCandidateClock, candidateCursor, employeeCandidatesSql, readCandidateCursor } from '../../modules/bobo-collaboration/candidate-sql'
 import type { BoboCollaborationReceipt, EmployeeCandidate, EmployeeCandidatePage, EmployeeCandidateQuery } from '../../../shared/domain/bobo-collaboration'
 import type { BrowserArtifactSource } from '../../../shared/domain/artifacts'
@@ -19,6 +21,9 @@ import type { InboxQuery } from '../../../shared/domain/inbox'
 import type { ConversationCompletion, ConversationMessagePageQuery, ConversationSearchCoverage, ConversationSearchQuery } from '../../../shared/domain/reading'
 import { conversationMessagesSql, conversationSearchSql, conversationSearchTargetSql, firstUnreadCompletionSql, type ConversationMessageSqlRow, type ConversationSearchSqlRow, type ConversationSearchSqlTarget, type FirstUnreadCompletionSqlQuery } from '../../modules/conversations/reading-sql'
 import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLLECTION, searchBodyCandidatesSql, searchBodyCoverageSql, searchBodyFailuresSql, type SearchBodyCandidate } from '../../modules/conversations/search-index-sql'
+import { advanceWorkViewClock, conversationFilesSql, conversationFileQuerySchema, readWorkViewCursor, workViewQuerySchema, workViewsSql, workViewCursor, workViewTargetSql } from '../../modules/collaboration/work-view-sql'
+import { WORK_VIEW_LIMITS, type WorkViewQuery, type WorkViewPage, type WorkViewItem, type ConversationFileQuery, type ConversationFilePage, type ConversationFileItem } from '../../../shared/domain/work-views'
+import type { WorkItem } from '../../../shared/domain/work'
 
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
 const advanceSearchClockSql = `INSERT INTO records(collection,id,value) SELECT '${SEARCH_INDEX_CLOCK_COLLECTION}','${SEARCH_INDEX_CLOCK_ID}',json_object('id','${SEARCH_INDEX_CLOCK_ID}','revision',1) WHERE changes()>0 ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1)`
@@ -83,6 +88,15 @@ export class ProductStore {
     this.client = createClient({ url: pathToFileURL(this.filename).href })
     await this.client.execute('PRAGMA journal_mode=WAL')
     await this.client.execute('CREATE TABLE IF NOT EXISTS records (collection TEXT NOT NULL, id TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (collection, id))')
+    const viewEpoch = randomUUID()
+    await this.client.execute({ sql: "INSERT INTO records(collection,id,value) VALUES('workViewClock','current',json_object('id','current','revision',1,'epoch',?)) ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1,'$.epoch',?)", args: [viewEpoch, viewEpoch] })
+    // Read projections use the existing records; these indexes add no second task authority.
+    await this.client.batch([
+      { sql: "CREATE INDEX IF NOT EXISTS work_view_scope ON records(json_extract(value,'$.conversationId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS work_view_owner ON records(json_extract(value,'$.ownerAgentId'),json_extract(value,'$.status'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE collection IN ('materials','artifacts')", args: [] },
+    ], 'write')
     // A reopened or restored database never trusts old bytes before bounded source verification.
     await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
   }
@@ -90,6 +104,36 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
       return result.rows.map(row => JSON.parse(String(row.value)) as T)
+    })
+  }
+  queryWorkViews(query: WorkViewQuery): Promise<WorkViewPage> {
+    query = workViewQuerySchema.parse(query)
+    return this.enqueue(async () => {
+      const result = await this.client.execute(workViewsSql(query))
+      const metadata = JSON.parse(String(result.rows[0].value)) as Omit<WorkViewPage, 'items'>
+      const previous = readWorkViewCursor(query)
+      if (previous && (previous.revision !== metadata.revision || previous.scopeEpoch !== metadata.scopeEpoch)) throw new Error('STALE_CURSOR: 工作或可见范围已变化，请刷新')
+      const rows = result.rows.slice(1).map(row => JSON.parse(String(row.value)) as WorkViewItem), limit = query.limit ?? WORK_VIEW_LIMITS.defaultPage
+      const items = rows.slice(0, limit), last = items.at(-1)
+      return { ...metadata, items, ...(rows.length > limit && last ? { nextCursor: workViewCursor(query, metadata.revision, metadata.scopeEpoch!, last.work.createdAt, last.work.id) } : {}) }
+    })
+  }
+  queryConversationFiles(query: ConversationFileQuery): Promise<ConversationFilePage> {
+    query = conversationFileQuerySchema.parse(query)
+    return this.enqueue(async () => {
+      const result = await this.client.execute(conversationFilesSql(query))
+      const metadata = JSON.parse(String(result.rows[0].value)) as Omit<ConversationFilePage, 'items'>
+      const previous = readWorkViewCursor(query)
+      if (previous && (previous.revision !== metadata.revision || previous.scopeEpoch !== metadata.scopeEpoch)) throw new Error('STALE_CURSOR: 文件或可见范围已变化，请刷新')
+      const rows = result.rows.slice(1).map(row => JSON.parse(String(row.value)) as ConversationFileItem), limit = query.limit ?? WORK_VIEW_LIMITS.defaultPage
+      const items = rows.slice(0, limit), last = items.at(-1)
+      return { ...metadata, items, ...(rows.length > limit && last ? { nextCursor: workViewCursor(query, metadata.revision, metadata.scopeEpoch!, last.createdAt, last.id, last.kind) } : {}) }
+    })
+  }
+  workViewTarget(workId: string): Promise<WorkItem | undefined> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(workViewTargetSql(workId))
+      return result.rows.length ? JSON.parse(String(result.rows[0].work)) as WorkItem : undefined
     })
   }
   findBoboEmployeeCandidates(query: EmployeeCandidateQuery): Promise<EmployeeCandidatePage> {
@@ -189,8 +233,8 @@ export class ProductStore {
   }
   write(records: StoredRecord[], removals: { collection: string; id: string }[] = []): Promise<void> {
     // Serialize now so a later in-memory change cannot alter this transaction.
-    const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
-    statements.push(...removals.flatMap(record => [...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
+    const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceWorkViewClock(record.collection), ...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
+    statements.push(...removals.flatMap(record => [...advanceWorkViewClock(record.collection), ...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
     return this.enqueue(async () => { if (statements.length) await this.client.batch(statements, 'write') })
   }
   /** BEGIN IMMEDIATE protects the read/check/write sequence, including other writers. */
@@ -213,12 +257,14 @@ export class ProductStore {
           },
           put: async record => {
             const value = JSON.stringify(record.value)
+            for (const statement of advanceWorkViewClock(record.collection)) await transaction.execute(statement)
             for (const statement of advanceCandidateClock(record.collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(record.collection, record.id, value)) await transaction.execute(statement)
             for (const statement of invalidateSearchBodies(record.collection, record.id, value)) await transaction.execute(statement)
             await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] })
           },
           remove: async (collection, id) => {
+            for (const statement of advanceWorkViewClock(collection)) await transaction.execute(statement)
             for (const statement of advanceCandidateClock(collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(collection, id)) await transaction.execute(statement)
             for (const statement of invalidateSearchBodies(collection, id)) await transaction.execute(statement)

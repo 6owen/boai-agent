@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 工作/文件有界查询和精确原目标解析沿类型化IPC；不增加执行或路径读取权限。
+ * [OUTPUT]: getLaunchProfileStatus仅按已保存启动项ID只读核对当前程序，不接受路径或启动验证。
  * [OUTPUT]: 新 prepareMaterial 不携收件人名单，附件随当前聊天消息发送；旧显式名单/撤权方法只供历史兼容。
  * [INPUT]: 跨进程产品实体、材料授权/版本、真实 File 的有界字节、明确系统剪贴板文件格式、桌面请求与宿主事件。
  * [OUTPUT]: 无本地路径 File 通过有界 name/bytes 产生私有来源身份；真实 paste 可读取系统文件引用，Renderer 不获得路径读取接口。
@@ -18,7 +20,7 @@ import type { BrowserControlInput, BrowserWindowState, BrowserManualOpenInput } 
 import type { ConversationMaterial, MaterialSelection, MaterialPreview } from '../domain/materials'
 import type { SkillMarketplaceListRequest, SkillMarketplaceDetailRequest, SkillMarketplaceListResult, SkillMarketplaceItem, SkillMarketplaceProvider, MarketplaceResult } from '../domain/skill-marketplace'
 import type { AutomationDraftRequest, AutomationDraftResult, AutomationBudgetRenewalInput, AutomationHistoryPage, AutomationHistoryQuery, AutomationInput, AutomationDefinition, AutomationOccurrence, AutomationsView } from '../domain/automations'
-import type { LaunchProfile, LaunchProfileInput } from '../domain/backends'
+import type { LaunchProfile, LaunchProfileInput, LaunchProfileStatus } from '../domain/backends'
 import type { ConversationListChange } from '../domain/conversation-list'
 import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
@@ -46,6 +48,10 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  queryWorkViews: { input: import('../domain/work-views').WorkViewQuery; output: import('../domain/work-views').WorkViewPage }
+  queryConversationFiles: { input: import('../domain/work-views').ConversationFileQuery; output: import('../domain/work-views').ConversationFilePage }
+  resolveWorkViewTarget: { input: import('../domain/work-views').WorkViewTargetInput; output: import('../domain/work-views').WorkViewTarget }
+  resolveConversationFileTarget: { input: import('../domain/work-views').ConversationFileTargetInput; output: import('../domain/work-views').ConversationFileTarget }
   listBoboCollaborationOperations: { input: { conversationId: string }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt[] }
   getBoboCollaborationOperation: { input: { operationId: string }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
   resumeBoboCollaboration: { input: { operationId: string; expectedVersion: number }; output: import('../domain/bobo-collaboration').BoboCollaborationReceipt }
@@ -141,6 +147,7 @@ export interface Methods {
   replyAutomation: { input: {occurrenceId:string;content:string;requestId:string;question?:{expectedVersion:number;questionMessageId:string};renewBudget?:AutomationBudgetRenewalInput}; output: Message }
   previewAutomation: { input: Pick<AutomationInput, 'frequency' | 'time' | 'weekday' | 'daysOfWeek' | 'timezone'>; output: {nextTimes:string[]} }
   listLaunchProfiles: { input: undefined; output: LaunchProfile[] }
+  getLaunchProfileStatus: { input: { id: string }; output: LaunchProfileStatus }
   saveLaunchProfile: { input: LaunchProfileInput; output: LaunchProfile }
   testLaunchProfile: { input: { id: string }; output: LaunchProfile }
   testLaunchProfileDraft: { input: LaunchProfileInput; output: NonNullable<LaunchProfile['verified']> }

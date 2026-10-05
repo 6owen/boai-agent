@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 通讯录配置/清理/标签管理的中文场景、会话常驻名称输入/检索 Dialog、Electron fixture、隔离 SQLite 旧分类、原生鼠标排序、真实产品 IPC 和工作区文件。
+ * [OUTPUT]: 员工工作规则经明确配置/系统文件入口核读AGENTS.md后返回资料概览；保留原指令、零会话创建、配置保存/草稿守卫与会话复用断言。
  * [OUTPUT]: 通讯录管理仅经加号菜单打开且无独立按钮；标签增删真实提交停顿期间，筛选/管理搜索及 Portal 标签搜索/未选员工行及人数/取消选择的可用状态、颜色、有效透明度和位置保持；设置标签/删除/关闭按钮及当前标签勾选保持写锁，前三项按钮颜色/背景色与渐变/有效透明度/位置保持，浏览控件可用状态不变，展开权限后永久不可用的完全访问项维持 disabled/半透明；add/remove 前后截图与比较证据独立保存，测试门闩与观测在 finally 恢复；会话检索关闭后常驻名称输入保留且通讯录往返仍复用原私聊与草稿；平面联系人搜索/折叠及跨标签全员工排序；旧分类兼容标签与重启、默认收起筛选/搜索清空选择、浅深/窄窗紧凑双栏管理与底部动画面板、标题可读及搜索/关闭按钮实际布局；常规按钮行内新建标签/取消零写入、标签改名/保留员工删除、即时多标签勾选和 mixed 状态保持未选成员，标签提交零全局读取且保留管理 DOM/选择/滚动及原详情；只读紧凑所选浮层、人数仅数字主色、单位普通颜色且取消选择主色和批量栏无编辑配置、取消选择/改筛选关闭删除浮层并禁用退出缓存动作、危险按钮确认/取消零写入与冻结版本拒绝、真实单聊/工作区清理、空群解散及其他群历史和重启保留；原配置保护/会话复用/默认启用隐藏的桌面断言。
  * [POS]: tests/e2e/steps/contacts.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -64,8 +65,21 @@ async function openContacts(runtime: Desktop) {
   await expect(people.locator('.conversation-item')).toHaveCount(3)
   await people.getByRole('button', { name: '研究员', exact: true }).click()
   await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
-  await expect(detail).toContainText('Prompt')
-  await expect(detail).toContainText('你是一名研究员')
+  const original = (await snapshot()).agents.find(agent => agent.id === 'researcher')!
+  await detail.getByRole('button', { name: '查看配置与系统文件', exact: true }).click()
+  await detail.getByRole('tab', { name: '系统文件', exact: true }).click()
+  const files = detail.getByRole('tabpanel', { name: '系统文件', exact: true })
+  await files.getByRole('button', { name: /AGENTS\.md/ }).click()
+  const instructions = files.getByRole('textbox', { name: 'AGENTS.md 内容', exact: true })
+  await expect(instructions).toBeVisible()
+  await expect(instructions).toHaveValue(/你是一名研究员/)
+  await expect(instructions).toHaveValue(original.instructions)
+  await runtime.reviewCheckpoint('通讯录通过系统文件核读原员工工作规则')
+  await detail.getByRole('button', { name: '返回资料', exact: true }).click()
+  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('region', { name: '员工当前负责工作', exact: true })).toBeVisible()
+  expect((await snapshot()).agents.find(agent => agent.id === 'researcher')).toEqual(original)
+  await runtime.reviewCheckpoint('读取规则后返回员工资料概览且配置未改变')
   await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveCount(0)
   expect((await snapshot()).conversations).toHaveLength(1)
   return { app, page, errors, snapshot, group, nav, contacts, list, detail, people, groups }

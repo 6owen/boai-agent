@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 显式 BOAI_REVIEW_RUN_DIR、Playwright 场景身份、真实窗口与本场景隔离目录内的明确文件/白名单数据。
- * [OUTPUT]: 不覆盖旧尝试的原始截图、原件字节/hash、有限 JSON、trace 索引及显式证据缺口；不扫描应用库或浏览器登录资料。
+ * [OUTPUT]: 不覆盖旧尝试的原始截图、原件字节/hash、有限 JSON、trace 索引及显式证据缺口；Playwright与原生整幅capturePage画面分源保留，原生PNG仅读头部维度并记录原窗口/zoom/图像代表元数据，不处理像素；不扫描应用库或浏览器登录资料。
  * [POS]: Electron BDD 可选留证器；技术结果与人工待审阅分开，普通测试不启用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +14,11 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024
 const MAX_DATA_BYTES = 1024 * 1024
 const PRIVATE_DIRECTORIES = new Set(['partitions', 'browser', 'session storage', 'local storage', 'indexeddb', 'service worker', 'cache', 'code cache', 'blob_storage'])
 
+export interface NativeReviewScreenshot {
+  png: Buffer
+  metadata: { method: 'Electron.webContents.capturePage()'; rect: null; pixelTransform: 'none'; native: Record<string, unknown>; renderer: { width: number; height: number; [key: string]: unknown }; image: Record<string, unknown> }
+}
+
 interface ReviewEvidence {
   kind: 'screenshot' | 'file' | 'data'
   label: string
@@ -24,6 +29,7 @@ interface ReviewEvidence {
   launch: number
   source?: string
   viewport?: { width: number; height: number } | null
+  nativeCapture?: NativeReviewScreenshot['metadata'] & { pngDimensions: { width: number; height: number } }
 }
 
 const digest = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex')
@@ -136,7 +142,7 @@ export class FeatureReview {
       gaps: this.gaps,
       cleanupErrors: this.cleanupErrors,
       testErrors: this.info.errors.map((error) => ({ message: error.message, stack: error.stack })),
-      notes: ['截图为真实窗口原始字节；trace 是可回放事件记录，不是标准连续录屏。', '本文件在桌面 fixture 清理阶段记录状态；最终测试结果以本批 Playwright 报告为准。', '只归档显式指定的原件/白名单 JSON；未自动导出完整聊天、数据库或浏览器登录资料。'],
+      notes: ['截图保留各采集方式的原始字节；Playwright与Electron原生capturePage分源标注，缩放画面完整性以原生尺寸/zoom/PNG元数据和实际审阅核对；trace 是事件回放，不是连续录屏。', '原生capturePage无rect，仅采集当前webContents整幅可见页面，不包括系统窗口边框或其他webContents。', '本文件在桌面 fixture 清理阶段记录状态；最终测试结果以本批 Playwright 报告为准。', '只归档显式指定的原件/白名单 JSON；未自动导出完整聊天、数据库或浏览器登录资料。'],
     }
   }
 
@@ -169,7 +175,21 @@ export class FeatureReview {
   checkpoint(label: string, page?: Page) {
     return this.capture(label, async () => {
       if (!page || page.isClosed()) throw new Error('窗口未启动或已经关闭，未获取画面')
-      await this.store('screenshot', label, await page.screenshot({ timeout: 5000 }), `${safeName(label)}.png`, 'image/png', { viewport: page.viewportSize() })
+      await this.store('screenshot', label, await page.screenshot({ timeout: 5000 }), `${safeName(label)}.png`, 'image/png', { source: 'Playwright.page.screenshot()', viewport: page.viewportSize() })
+    })
+  }
+
+  nativeCheckpoint(label: string, read: () => Promise<NativeReviewScreenshot>) {
+    return this.capture(label, async () => {
+      const { png, metadata } = await read()
+      // Inspect PNG's IHDR only; the captured bytes are never decoded, cropped or resized.
+      if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || png.toString('ascii', 12, 16) !== 'IHDR') throw new Error('原生截取未返回带尺寸的PNG原件')
+      const pngDimensions = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }
+      if (!pngDimensions.width || !pngDimensions.height) throw new Error('原生截取画面为空')
+      const nativeCapture = { ...metadata, pngDimensions }
+      await this.store('screenshot', label, png, `${safeName(label)}.native.png`, 'image/png', { source: metadata.method, viewport: { width: metadata.renderer.width, height: metadata.renderer.height }, nativeCapture })
+      const recorded = Buffer.from(JSON.stringify({ ...nativeCapture, pngBytes: png.length, pngSha256: digest(png) }, null, 2))
+      await this.store('data', `${label} · 原生截取元数据`, recorded, `${safeName(label)}.capture.json`, 'application/json', { source: metadata.method })
     })
   }
 

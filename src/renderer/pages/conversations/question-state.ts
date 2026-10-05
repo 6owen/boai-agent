@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 已公开原问题、明确会话/工作或自动化轮次来源（兼容旧员工消息缺 origin）、冻结补充与跨关闭/重启客户端请求记录。
- * [OUTPUT]: 原消息问题投影、仅传输字段白名单、原 key/载荷 CAS 和本人原关系回执校验；不保存第二套业务解决状态。
+ * [OUTPUT]: 原消息问题投影、自动化逐原公开问题/Work及精确答复关系；旧完成/同伴失败轮次仅匹配实际Run/Work已提交问题才补原卡入口；仅传输字段白名单、原 key/载荷 CAS 和本人原关系回执校验；新旧记录混合按原消息核读/标已答，纯旧无问题记录保留latest兼容，不保存第二套业务解决状态。
  * [POS]: conversations 问题补充合同；沿用旧 inbox 存储 key，使移除独立页面后仍能核对历史未知请求。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { ConversationDetail, Message } from '@shared/domain'
+import type { AutomationOrigin, ConversationDetail, Message, PublishedUserQuestion } from '@shared/domain'
 import type { InboxQuestionReply } from '@shared/domain/inbox'
+import { publishedWorkQuestionMatches } from '@shared/domain/inbox'
 
 export const INBOX_QUESTION_PENDING_KEY = 'boai:inbox:question-pending'
 export interface ChatQuestionTarget {
@@ -59,7 +60,7 @@ export function updateInboxQuestionRequests(previous: InboxQuestionRequests, id:
 export function inboxQuestionReceiptMatches(request: InboxQuestionRequest, message: Message) {
   if (message.conversationId !== request.conversationId || message.senderType !== 'user' || message.senderId !== 'user' || message.content !== request.input.content) return false
   const relation = message.inboxReply
-  if (request.occurrenceId) return message.origin?.occurrenceId === request.occurrenceId && message.origin.automationId === request.automationId && relation?.questionId === request.input.questionId && relation.questionRevision === request.input.expectedRevision && relation.questionMessageId === request.questionMessageId && !relation.workId
+  if (request.occurrenceId) return message.origin?.occurrenceId === request.occurrenceId && message.origin.automationId === request.automationId && relation?.questionId === request.input.questionId && relation.questionRevision === request.input.expectedRevision && relation.questionMessageId === request.questionMessageId && relation.workId === request.workId
   return !message.origin && relation?.questionId === request.input.questionId && relation.questionRevision === request.input.expectedRevision && relation.questionMessageId === request.questionMessageId && relation.workId === request.workId
 }
 
@@ -79,18 +80,42 @@ export function chatQuestions(detail: ConversationDetail): ChatQuestion[] {
   }
   for (const decision of detail.decisions ?? []) if (decision.action === 'ask' && decision.responseKind !== 'task') add(decision.userQuestion)
   for (const work of detail.workItems ?? []) if (!work.origin) add(work.userQuestion, work.id)
-  // Automatic questions are owned by an occurrence, not by ordinary Work question replies.
-  const waitingTurns = new Map((detail.turns ?? []).filter(turn => turn.origin && turn.status === 'waiting_user' && turn.conversationId === detail.conversation.id).map(turn => [turn.id, turn]))
+  // Each recorded automated question keeps its original message and Work, while submission still uses the occurrence API.
+  const turns = new Map((detail.turns ?? []).filter(turn => turn.origin && turn.conversationId === detail.conversation.id).map(turn => [turn.id, turn]))
+  const recordedOccurrences = new Set<string>(), recordedMessages = new Set<string>()
+  const sameOrigin = (a: AutomationOrigin | undefined, b: AutomationOrigin) => a?.kind === 'automation' && a.occurrenceId === b.occurrenceId && a.automationId === b.automationId && a.authorizedFingerprint === b.authorizedFingerprint
+  const exactAnswer = (message: Message, origin: AutomationOrigin, workId?: string) => detail.messages.find(reply => reply.conversationId === detail.conversation.id && reply.status === 'completed' && reply.senderType === 'user' && reply.senderId === 'user' && sameOrigin(reply.origin, origin) && reply.inboxReply?.questionId === `occurrence:${origin.occurrenceId}` && reply.inboxReply.questionMessageId === message.id && reply.inboxReply.workId === workId)?.id
+  const addAutomated = (question: PublishedUserQuestion | undefined, ownerId: string, workId?: string, workOrigin?: AutomationOrigin) => {
+    if (!question) return
+    const message = detail.messages.find(value => value.id === question.messageId), turn = message?.turnId ? turns.get(message.turnId) : undefined, origin = turn?.origin
+    if (!message || !origin || message.conversationId !== detail.conversation.id || message.status !== 'completed' || message.senderType !== 'agent') return
+    recordedOccurrences.add(origin.occurrenceId)
+    if (recordedMessages.has(message.id) || message.senderId !== ownerId || message.origin && !sameOrigin(message.origin, origin) || workId && !sameOrigin(workOrigin, origin) || !question.content.trim() || !message.content.includes(question.content)) return
+    const answeredMessageId = question.answeredMessageId ?? exactAnswer(message, origin, workId)
+    if (turn.status !== 'waiting_user' && !answeredMessageId) {
+      const work = workId ? detail.workItems?.find(value => value.id === workId) : undefined, run = message.runId ? detail.runs.find(value => value.id === message.runId) : undefined
+      if (!['completed', 'failed'].includes(turn.status) || !publishedWorkQuestionMatches(work, run, message)) return
+    }
+    recordedMessages.add(message.id)
+    result.push({ itemId: `question:occurrence:${origin.occurrenceId}:message:${message.id}`, conversationId: detail.conversation.id, questionMessageId: message.id, questionId: `occurrence:${origin.occurrenceId}`, revision: 0, content: question.content, occurrenceId: origin.occurrenceId, automationId: origin.automationId, ...(workId ? { workId } : {}), ...(answeredMessageId ? { answeredMessageId } : {}) })
+  }
+  for (const work of detail.workItems ?? []) if (work.conversationId === detail.conversation.id && work.userQuestion && work.resultMessageIds.includes(work.userQuestion.messageId)) addAutomated(work.userQuestion, work.ownerAgentId, work.id, work.origin)
+  for (const decision of detail.decisions ?? []) if (decision.action === 'ask' && decision.responseKind !== 'task' && decision.userQuestion && detail.messages.some(message => message.id === decision.userQuestion!.messageId && message.turnId === decision.turnId)) addAutomated(decision.userQuestion, decision.agentId)
+  // Mixed records keep the old employee's original message; a peer's reply to the same turn does not answer it.
+  const waitingTurns = new Map([...turns.values()].filter(turn => turn.status === 'waiting_user').map(turn => [turn.id, turn]))
   const automated = new Map<string, { message: Message; origin: NonNullable<Message['origin']> }>()
   for (const message of detail.messages) {
     const origin = message.turnId ? waitingTurns.get(message.turnId)?.origin : undefined
-    if (!origin || message.origin && (message.origin.occurrenceId !== origin.occurrenceId || message.origin.automationId !== origin.automationId) || message.conversationId !== detail.conversation.id || message.status !== 'completed' || message.senderType !== 'agent') continue
+    if (!origin || recordedMessages.has(message.id) || message.origin && !sameOrigin(message.origin, origin) || message.conversationId !== detail.conversation.id || message.status !== 'completed' || message.senderType !== 'agent') continue
+    const run = message.runId ? detail.runs.find(value => value.id === message.runId) : undefined
+    if (run?.responseKind === 'task' || run?.workId || (detail.workItems ?? []).some(work => work.conversationId === detail.conversation.id && (work.resultMessageIds.includes(message.id) || work.userQuestion?.messageId === message.id)) || (detail.decisions ?? []).some(decision => decision.turnId === message.turnId && decision.agentId === message.senderId && (decision.action !== 'ask' || decision.responseKind === 'task' || decision.userQuestion))) continue
     const previous = automated.get(origin.occurrenceId)
     if (!previous || message.sequence > previous.message.sequence) automated.set(origin.occurrenceId, { message, origin })
   }
   for (const { message, origin } of automated.values()) {
-    const answered = (detail.turns ?? []).find(turn => turn.conversationId === detail.conversation.id && turn.origin?.occurrenceId === origin.occurrenceId && turn.origin.automationId === origin.automationId && turn.replyToTurnIds?.includes(message.turnId!))
-    result.push({ itemId: `question:occurrence:${origin.occurrenceId}`, conversationId: detail.conversation.id, questionMessageId: message.id, questionId: `occurrence:${origin.occurrenceId}`, revision: 0, content: message.content, occurrenceId: origin.occurrenceId, automationId: origin.automationId, ...(answered ? { answeredMessageId: answered.triggerMessageId } : {}) })
+    const mixed = recordedOccurrences.has(origin.occurrenceId)
+    const answeredMessageId = mixed ? exactAnswer(message, origin) : (detail.turns ?? []).find(turn => turn.conversationId === detail.conversation.id && turn.origin?.occurrenceId === origin.occurrenceId && turn.origin.automationId === origin.automationId && turn.replyToTurnIds?.includes(message.turnId!))?.triggerMessageId
+    result.push({ itemId: `question:occurrence:${origin.occurrenceId}${mixed ? `:message:${message.id}` : ''}`, conversationId: detail.conversation.id, questionMessageId: message.id, questionId: `occurrence:${origin.occurrenceId}`, revision: 0, content: message.content, occurrenceId: origin.occurrenceId, automationId: origin.automationId, ...(answeredMessageId ? { answeredMessageId } : {}) })
   }
   return result
 }

@@ -1,11 +1,13 @@
 /*
+ * [OUTPUT]: 会话和全局任务按真实Work/run/approval身份回到原员工审批卡，原拒绝/双击允许/单次执行和零伪交付断言保持。
+ * [OUTPUT]: 原工作记录经会话菜单任务与产物进入，父子/审批/文件/关闭焦点断言保留；/files进入主区域文件视图，回聊天后草稿与工作身份不变。
  * [OUTPUT]: 可选功能审阅留存原消息批准前后、真实命令原件与单次执行/未冒充交付事实。
  * [INPUT]: 单聊/群聊中文场景、单行群名与可点击成员入口、只读文件预览的折叠来源记录、真实 Electron 与隔离历史/离线模型支撑。
  * [OUTPUT]: 用浏览器原生Range建立待替换文字选区，避免操作系统导航键差异；实际姓名点击仍断言原选区替换与光标连续输入； 单聊/群聊头像真实资料无启用标签，按展开状态区分当前资料浮层与退出动画；资料底部直接进入对应员工可编辑配置并关闭浮层、复用记忆页的同一标签切回配置、关闭后头像恢复焦点且可再打开；群消息和标题指定不同成员不误开首人或群配置；同卡片与消息工具条、表情持久回执/引用草稿/复制/真实 Trace 和主题窄窗交互；长历史新消息不抢滚动且无旧式新消息悬浮返回按钮；D6提供显式阅读导航；Markdown真实应用内预览后显式外开并保留原路径/任务标签；本人头像靠右与当前个人资料名称；composer 姓名提及恢复实际 DOM 选区/连续点名/续写和选中替换，行内节点/草稿、提及/IME/空结果防误发；用户整组镜像且正文左对齐、员工靠左、渐隐标题、文件/工作、跨会话草稿、键盘及真实命令审批断言。
  * [POS]: 单聊/群聊共享交互 E2E；不改写生产 DOM 或模拟业务响应。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { expect, type Locator } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { access, readFile, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -13,6 +15,7 @@ import { test as base } from '../support/test'
 import { prepareGroupChat, resizeGroupWindow } from '../support/group-chat'
 
 const inputText = (input: Locator) => input.evaluate(element => element instanceof HTMLTextAreaElement ? element.value : Array.from(element.querySelector('p')?.childNodes ?? []).map(node => node instanceof HTMLBRElement ? node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n' : node instanceof HTMLElement && node.matches('[data-mention-id]') ? node.querySelector('.composer-mention-tag')?.textContent ?? '' : node.textContent ?? '').join(''))
+const openWorkRecords = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click() }
 
 type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; approvalCwd?: string; directReplyId?: string; directTurnId?: string }
 export const test = base.extend<{ groupDesign: State }>({ groupDesign: async ({}, use) => use({}) })
@@ -52,7 +55,7 @@ Then('群聊我的发言靠右员工靠左且文件归属明确', async ({ runti
 })
 Then('任务面板展示真实父子工作且文件可以打开', async ({ runtime, groupDesign }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
+  await openWorkRecords(page)
   await expect(page.locator('.group-activity [data-work-id]')).toHaveCount(2)
   await expect(page.locator('[data-work-id="history-root"]')).toContainText('已交付')
   await expect(page.locator('.work-child [data-work-id="history-writing"]')).toContainText('已交付')
@@ -65,14 +68,14 @@ Then('任务面板展示真实父子工作且文件可以打开', async ({ runti
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.artifacts[1].path))
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(page.locator('.group-activity')).toBeVisible()
-  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
+  await openWorkRecords(page)
   await page.locator('.messages').evaluate(element => { element.scrollTop = 0 })
   await page.screenshot({ path: 'test-results/group-chat-light.png', scale: 'css', animations: 'disabled' })
   await resizeGroupWindow(runtime, 1440, 1024)
   await page.screenshot({ path: 'test-results/group-chat-1440.png', scale: 'css', animations: 'disabled' })
   await resizeGroupWindow(runtime, 1487, 1058)
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await expect(page.getByRole('button', { name: '打开任务与产物', exact: true })).toBeFocused()
+  await expect(page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true })).toBeFocused()
 })
 Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
   const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容' })
@@ -101,7 +104,7 @@ Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
 })
 Then('明暗与窄窗群聊均可阅读和操作', async ({ runtime, groupDesign }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
+  await openWorkRecords(page)
   await page.evaluate(async () => { const a = await window.boai.request('getAppearance', undefined); await window.boai.request('updateAppearance', { patch: { mode: 'dark' }, expectedRevision: a.revision }) })
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect.poll(() => page.locator('.chat-artifact').first().evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(33, 33, 33)')
@@ -113,7 +116,7 @@ Then('明暗与窄窗群聊均可阅读和操作', async ({ runtime, groupDesign
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'test-results/group-chat-narrow.png', scale: 'css', animations: 'disabled' })
-  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
+  await openWorkRecords(page)
   await expect(page.locator('.group-activity')).toBeVisible()
   const stage = await page.locator('.chat-panel').boundingBox(), panel = await page.locator('.detail-panel').boundingBox()
   expect(stage!.x + stage!.width).toBeLessThanOrEqual(panel!.x + 1)
@@ -149,7 +152,23 @@ Then('审批显示命令目录且拒绝后没有执行文件', async ({ runtime,
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
   groupDesign.approvalCwd = snapshot.approvals[0].cwd
   await expect(approval).toContainText(groupDesign.approvalCwd)
-  await page.getByRole('button', { name: '打开任务与产物', exact: true }).click()
+  const awaiting = snapshot.approvals[0]
+  const detailBefore = await page.evaluate(id => window.boai.request('getConversation', { id }), groupDesign.fixture!.group.id)
+  const awaitingWork = detailBefore.workItems!.find(work => work.activeRunId === awaiting.runId)!
+  expect(awaitingWork).toBeDefined()
+  const calls = groupDesign.fixture!.state.calls
+  await page.getByRole('tablist', { name: '会话视图', exact: true }).getByRole('tab', { name: '任务', exact: true }).click()
+  const currentWork = page.locator(`[data-work-id="${awaitingWork.id}"]:visible`)
+  await expect(currentWork).toContainText('待审批')
+  await expect(currentWork.getByRole('button', { name: '允许这次执行', exact: true })).toHaveCount(0)
+  await runtime.reviewCheckpoint('会话任务标记真实待审批工作，仅提供原聊天入口')
+  await currentWork.getByRole('button', { name: '查看原审批', exact: true }).click()
+  await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeFocused()
+  await expect(approval).toBeInViewport()
+  expect(groupDesign.fixture!.state.calls).toBe(calls)
+  await runtime.reviewData('审批定位保持原身份', { workId: awaitingWork.id, runId: awaiting.runId, approvalId: awaiting.id, providerRequests: calls })
+  await runtime.reviewCheckpoint('任务准确回到原员工审批卡')
+  await openWorkRecords(page)
   await expect(page.locator('.group-activity')).toContainText('待确认')
   await page.screenshot({ path: 'test-results/group-chat-approval.png', scale: 'css', animations: 'disabled' })
   await approval.getByRole('button', { name: '拒绝', exact: true }).click()
@@ -165,7 +184,17 @@ When('用户再次点名设计师并允许这次执行', async ({ runtime, group
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
   const approval = page.getByRole('region', { name: '设计师 的命令审批' })
   await expect(approval).toBeVisible()
-  groupDesign.approvalCwd = (await page.evaluate(() => window.boai.request('snapshot', undefined))).approvals[0].cwd
+  const awaiting = (await page.evaluate(() => window.boai.request('snapshot', undefined))).approvals[0]
+  groupDesign.approvalCwd = awaiting.cwd
+  const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), groupDesign.fixture!.group.id)
+  const work = detail.workItems!.find(work => work.activeRunId === awaiting.runId)!
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '任务', exact: true }).click()
+  const currentWork = page.getByRole('main', { name: '全局任务', exact: true }).locator(`[data-work-id="${work.id}"]`)
+  await expect(currentWork).toContainText('待审批')
+  await runtime.reviewCheckpoint('全局任务同一审批工作与原员工')
+  await currentWork.getByRole('button', { name: '查看原审批', exact: true }).click()
+  await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeFocused()
+  await expect(approval).toBeInViewport()
   await runtime.reviewCheckpoint('在设计师原消息批准这次命令')
   await approval.getByRole('button', { name: '允许这次执行', exact: true }).dblclick()
 })
@@ -396,8 +425,17 @@ Then('快捷命令只填草稿或打开已有功能', async ({ runtime, groupDes
   await expect(page.getByRole('status')).toContainText('没有匹配的命令')
   await expect.poll(() => inputText(input)).toBe('/unknown')
   await input.press('Escape'); await input.fill('/files'); await input.press('Enter')
-  await expect(page.locator('.group-activity')).toBeVisible()
+  const files = page.getByRole('region', { name: '会话文件', exact: true })
+  await expect(files).toBeVisible()
+  await expect(page.locator('.chat-header').getByRole('tab', { name: '文件', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(files).toContainText('竞品分析报告.md')
+  await expect(files).toContainText('研究要点.md')
+  await expect.poll(() => inputText(page.locator('.chat-composer [aria-label="消息内容"]'))).toBe('')
+  await page.locator('.chat-header').getByRole('tab', { name: '聊天', exact: true }).click()
+  await expect(input).toBeVisible()
   await expect.poll(() => inputText(input)).toBe('')
+  expect(groupDesign.fixture!.state.calls).toBe(calls)
+  expect((await page.evaluate(id => window.boai.request('getConversation', { id }), groupDesign.fixture!.group.id)).workItems?.map(work => work.id).sort()).toEqual(['history-root', 'history-writing'])
   await runtime.app.evaluate(({ shell }) => { shell.openPath = async path => { (globalThis as unknown as { groupOpened: string }).groupOpened = path; return '' } })
   await input.fill('/workspace'); await input.press('Enter')
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.group.workspacePath))

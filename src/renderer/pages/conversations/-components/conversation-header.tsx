@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 最新会话/成员/资料快照、群组/员工配置与任务入口、列表更新与清理回调、统一 DropdownMenu 与成员资料浮层。
- * [OUTPUT]: 标题栏无已读/未读状态、阅读说明或上下跳转按钮；核心菜单编辑标题、普通会话置顶、成员资料/任务产物/原操作菜单保持。
+ * [OUTPUT]: 同一会话受控聊天/任务/文件标签；标题栏无阅读状态或上下跳转按钮；核心标题编辑、普通置顶及成员资料/原操作菜单保持。
  * [POS]: 会话标题交互；清空确认复用 ConversationHistoryDialog，持久操作交给宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,7 @@ import type { ConversationListChange } from '@shared/domain/conversation-list'
 import { isCoreConversation } from '@shared/domain/core-agent'
 import { Workflow, FolderOpen, MoreHorizontal, Pencil, Pin, Search, Settings, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConversationHistoryDialog } from './conversation-history-dialog'
 import { AgentInfoPopover } from './agent-info-popover'
@@ -21,22 +22,24 @@ interface Props {
   onConfigureAgent(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onClear(id: string, hide: boolean): Promise<void>
+  view?: 'chat' | 'tasks' | 'files'
+  onViewChange?(view: 'chat' | 'tasks' | 'files'): void
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear }: Props) {
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear, view = 'chat', onViewChange }: Props) {
   const [clearing, setClearing] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const openDetails = (open: () => void) => { trigger.current?.focus(); open() }
   return <>
     <header className="chat-header">
       <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{conversation.title}</h2></div></div>
+      {onViewChange && <Tabs value={view} onValueChange={value => onViewChange(value as 'chat' | 'tasks' | 'files')} className="pointer-events-auto shrink-0"><TabsList aria-label="会话视图"><TabsTrigger value="chat">聊天</TabsTrigger><TabsTrigger value="tasks">任务</TabsTrigger><TabsTrigger value="files">文件</TabsTrigger></TabsList></Tabs>}
       <div className="chat-header-actions">
         {conversation.kind === 'group' && <>
           <div className="chat-members" aria-label="群聊成员">
             {members.slice(0, 3).map(member => <AgentInfoPopover key={member.id} agent={member} resources={resources} placement="header" onConfigure={() => onConfigureAgent(member)} />)}
             {members.length > 3 && <Button variant="link" size="content" className="chat-members-more" aria-label={`打开群组设置，另有 ${members.length - 3} 位成员`} title="群组设置" onClick={event => { event.currentTarget.focus(); onDetails() }}>+{members.length - 3}</Button>}
           </div>
-          <Button variant="ghost" size="icon-sm" aria-label="打开任务与产物" title="任务与产物" onClick={event => { event.currentTarget.focus(); onActivity() }}><FolderOpen /></Button>
         </>}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button ref={trigger} variant="ghost" size="icon-sm" aria-label="会话操作" />}><MoreHorizontal /></DropdownMenuTrigger>

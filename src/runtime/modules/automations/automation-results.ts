@@ -1,13 +1,16 @@
 /*
  * [INPUT]: 同一次自动化的持久来源、轮次/工作/正文、已核查文件与实际执行器占用。
+ * [OUTPUT]: 同轮多员工按各自公开问题回执保留未答等待，不由回复一个turn推断全部员工问题已答；旧完成/同伴失败轮次仅沿确切已提交Run/Work问题只读投影等待，不改写轮次或恢复执行。
+ * [OUTPUT]: 已公开未回答问题优先于工作等待，活跃执行/审批和实际取消仍优先；普通消息不能解除等待。
  * [OUTPUT]: 自动化交付拒绝将 bobo 组织回执作为自身业务证据。
  * [OUTPUT]: 明确接续后的失败归并、累计额度/追加回执与旧证据保留；仅宿主明确补充解除对应提问的等待；新预算用量作为唯一统计来源、旧记录保持未知；跨接续的运行和交付分离汇总；独立依赖不获得归属，缺失证据不算交付。
  * [POS]: 自动化结果的纯投影；不调用模型、不执行或恢复工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { AgentRun, Artifact, AutomationOccurrence, AutomationOrigin, DiscussionTurn, Message, WorkBudget, WorkItem, WorkWake } from '../../../shared/domain'
+import type { AgentRun, Artifact, AutomationOccurrence, AutomationOrigin, DiscussionTurn, DecisionRecord, Message, WorkBudget, WorkItem, WorkWake } from '../../../shared/domain'
 import { workBudgetExhausted } from '../collaboration/work-budget'
 import { workEvidenceError } from '../collaboration/work-protocol'
+import { publishedWorkQuestionMatches } from '../../../shared/domain/inbox'
 
 const endedRun = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const endedTurn = new Set(['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted', 'waiting_user'])
@@ -15,13 +18,25 @@ export function belongsToOccurrence(origin: AutomationOrigin | undefined, occurr
   return origin?.occurrenceId === occurrence.id && origin.automationId === occurrence.automationId
 }
 /** Only a host-committed continuation in this occurrence answers its waiting turns. */
-export function unansweredAutomationTurns(o: AutomationOccurrence, turns: DiscussionTurn[]) {
+export function automationQuestionStates(messages: Message[], works: WorkItem[], decisions: DecisionRecord[] = [], runs: AgentRun[] = []) {
+  const published = new Map(messages.filter(message => message.status === 'completed' && message.senderType === 'agent' && message.turnId).map(message => [message.id, message])), runById = new Map(runs.map(run => [run.id, run]))
+  return [...works.map(work => ({ question: work.userQuestion, work })), ...decisions.map(decision => ({ question: decision.userQuestion, work: undefined }))].flatMap(({ question, work }) => {
+    const message = question && published.get(question.messageId)
+    return question && message ? [{ turnId: message.turnId!, answeredMessageId: question.answeredMessageId, ...(publishedWorkQuestionMatches(work, runById.get(message.runId ?? ''), message) ? { publishedTaskQuestion: true } : {}) }] : []
+  })
+}
+export function unansweredAutomationTurns(o: AutomationOccurrence, turns: DiscussionTurn[], questions: { turnId: string; answeredMessageId?: string; publishedTaskQuestion?: boolean }[] = []) {
   const owned = turns.filter(turn => turn.conversationId === o.conversationId && belongsToOccurrence(turn.origin, o))
   const answered = new Set(owned.flatMap(turn => turn.replyToTurnIds ?? []))
-  return owned.filter(turn => turn.status === 'waiting_user' && !answered.has(turn.id))
+  return owned.filter(turn => {
+    const published = questions.filter(question => question.turnId === turn.id)
+    if (turn.status !== 'waiting_user') return ['completed', 'failed'].includes(turn.status) && published.some(question => question.publishedTaskQuestion && !question.answeredMessageId)
+    return published.length ? published.some(question => !question.answeredMessageId) : !answered.has(turn.id)
+  })
 }
 interface Results {
   turns: DiscussionTurn[]
+  decisions?: DecisionRecord[]
   runs: AgentRun[]
   messages: Message[]
   works: WorkItem[]
@@ -39,7 +54,7 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   const turns = input.turns.filter(turn => turn.conversationId === o.conversationId && (owns(turn.origin) || (!turn.origin && (turn.id === o.turnId || !!turn.workId && workIds.has(turn.workId)))))
   if (!turns.length && !works.length) return
   const turnIds = new Set(turns.map(turn => turn.id))
-  const waitingTurns = unansweredAutomationTurns(o, turns)
+  const waitingTurns = unansweredAutomationTurns(o, turns, automationQuestionStates(input.messages, works, input.decisions, input.runs))
   const resumedTurns = new Set(turns.flatMap(turn => turn.resumesTurnIds ?? []))
   const resumedRuns = new Set(turns.flatMap(turn => turn.resumesRunIds ?? []))
   const runs = input.runs.filter(run => run.conversationId === o.conversationId && (owns(run.origin) || (!run.origin && (!!run.turnId && turnIds.has(run.turnId) || !!run.workId && workIds.has(run.workId)))))
@@ -69,8 +84,8 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   let status: AutomationOccurrence['status']
   if (o.cancellationRequestedAt) status = live ? 'cancelling' : 'cancelled'
   else if (live) status = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : 'running'
-  else if (waitingWork) status = 'waiting_work'
   else if (waitingTurns.length) status = 'waiting_user'
+  else if (waitingWork) status = 'waiting_work'
   else if (works.some(work => work.status === 'interrupted') || turns.some(turn => turn.status === 'interrupted')) status = 'interrupted'
   else if (works.some(work => work.status === 'cancelled') || turns.some(turn => turn.status === 'cancelled' && unresolved(turn))) status = 'cancelled'
   else if (works.some(work => work.status === 'failed') || turns.some(turn => ['failed', 'budget_exhausted'].includes(turn.status) && unresolved(turn))) status = 'failed'
