@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工与系统助手共用模型API/本机Agent两级选择；具体连接按真实协议绑定，切换不静默清除技能、知识或命令权限。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude核心配置复用原程序/API字段，组织群允许独立Claude成员；核心不得经普通建群加入，自动化仍未开放。
  * [OUTPUT]: Claude材料接入沿原入口，图片理解需实际模型支持；普通群已接，核心组织/自动化门禁保持。
@@ -22,7 +23,6 @@ import { SelectField } from '@/components/ui/select-field'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog'
 import type { LaunchProfile } from '@shared/domain'
-import { backendProtocol } from '@shared/domain/backends'
 import { useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '@shared/domain'
@@ -32,6 +32,7 @@ import type { DesktopApi } from '@shared/ipc'
 import { Banner, colors, EditorFrame, errorText, Field, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common/index'
 import { GroupMembers } from './group-members'
 import { AvatarPicker } from './avatar-picker'
+import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
 import { LocalSkillBinding } from './local-skill-binding'
 import { committedSkillBindingAgent } from './local-skill-binding-state'
 export const templates = [
@@ -44,13 +45,18 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const core = isCoreAgent(agent)
   const formId = useId()
   const [uploading, setUploading] = useState(false)
-  const [profiles,setProfiles]=useState<LaunchProfile[]>([])
-  useEffect(()=>{void api.request('listLaunchProfiles',undefined).then(setProfiles).catch(()=>{})},[api])
+  const [profiles, setProfiles] = useState<LaunchProfile[]>([]), [profileError, setProfileError] = useState('')
+  useEffect(() => {
+    if (!active) return
+    let current = true
+    void api.request('listLaunchProfiles', undefined).then(value => { if (current) { setProfiles(value); setProfileError('') } }, () => { if (current) setProfileError('本机连接读取失败，请重新打开员工配置。') })
+    return () => { current = false }
+  }, [api, active])
   const initialVersion = useRef(agent?.configVersion)
   const preset = template === undefined ? undefined : templates[template]
   const [form, setForm] = useState<AgentInput>(() => {
     if (agent) return savedAgentForm(agent)
-    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: snapshot.connections[0]?.id ?? '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
+    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
   })
   const { busy, error, run, setError } = useMutation()
   const guard = useContext(GuardContext)
@@ -74,7 +80,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     try { await onSaved(); setBoundResources([]) } catch { setBindingNotice('技能绑定已提交，列表刷新未完成；请重新打开员工配置核对。') }
   }
   const availableResources = [...new Map([...boundResources, ...snapshot.resources].map(resource => [resource.id, resource])).values()]
-  const connection = snapshot.connections.find(item => item.id === form.connectionId)
+  const allowTaskOnly = !core && !form.skillIds.length && !form.knowledgeIds.length && !form.allowCommands && !snapshot.conversations.some(conversation => conversation.kind === 'group' && agent && conversation.agentIds.includes(agent.id))
+  const modelReady = agentModelSelectionReady(form, snapshot.connections, profiles, allowTaskOnly)
   const readCommittedConfiguration = async () => {
     if (!agent) return
     try {
@@ -92,7 +99,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     }, { resetOnDiscard: false })
   }
   const submit = (event: FormEvent) => {
-    event.preventDefault(); if (uploading || bindingLocked || saveUnconfirmed) return
+    event.preventDefault(); if (uploading || bindingLocked || saveUnconfirmed || !modelReady) return
     void run(async () => {
       let committed: DigitalAgent
       try { committed = await api.request('saveAgent', { ...form, expectedConfigVersion: initialVersion.current, name: form.name.trim(), role: form.role.trim() }) }
@@ -103,7 +110,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       guard.saved(onClose)
     })
   }
-  return <EditorFrame title={core ? '编辑系统助手' : agent ? '编辑数字员工' : '认识一位新同事'} description={core ? '设置助手名称、运行方式和默认模型。' : '定义他的职责、能力和工作方式。'} footer={<><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={locked || !form.name.trim()}>{busy && <LoaderCircle size={15} className="spinner" />}{agent ? '保存修改' : '创建员工'}</Button></>}>
+  return <EditorFrame title={core ? '编辑系统助手' : agent ? '编辑数字员工' : '认识一位新同事'} description={core ? '设置助手名称、运行方式和默认模型。' : '定义他的职责、能力和工作方式。'} footer={<><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={locked || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{agent ? '保存修改' : '创建员工'}</Button></>}>
     <form data-edit-form id={formId} onSubmit={submit} className="form-grid">
       {error && <div className="full"><Banner>{error}</Banner></div>}
       {bindingNotice && <div className="full"><Banner kind="notice">{bindingNotice}</Banner></div>}
@@ -112,12 +119,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       <Field label={core ? '助手名称' : '员工名称'}><Input required maxLength={80} value={form.name} onChange={e => set('name', e.target.value)} placeholder={core ? '例如：bobo' : '例如：资料研究员'} /></Field>
       <Field label="职责简介"><Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="一句话描述擅长的工作" /></Field>
       {!agent && <Field label="初始工作规则" full hint="创建后保存在员工 AGENTS.md，可在系统文件中修改。"><Textarea rows={5} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……" /></Field>}
-      <Field label="执行后端" full><SelectField value={form.executionBackend?.kind??'mastra-model'} onValueChange={selectedValue => setForm(current=>({...current,executionBackend:selectedValue==='mastra-model'?{kind:'mastra-model'}:{kind:selectedValue==='codex-local'?'codex-local':selectedValue==='claude-local'?'claude-local':'acp-local',profileId:profiles.find(p=>(p.protocol??'acp')===backendProtocol(selectedValue==='codex-local'?'codex-local':selectedValue==='claude-local'?'claude-local':'acp-local'))?.id??''},...(selectedValue!=='mastra-model'?{connectionId:'',modelId:''}:{}),...(selectedValue==='acp-local'?{skillIds:[],knowledgeIds:[],allowCommands:false}:{})}))} options={[{ value: 'mastra-model', label: '模型 API · 聊天与协作' }, { value: 'codex-local', label: '本机 Codex · 聊天与协作' }, { value: 'claude-local', label: '本机 Claude · 聊天与协作' }, ...(!core ? [{ value: 'acp-local', label: '外部 ACP · 仅显式任务' }] : [])]} /></Field>
-      {form.executionBackend && form.executionBackend.kind!=='mastra-model'?<Field label="本机连接" full hint={form.executionBackend.kind==='codex-local'?'先在设置中添加并测试本机 Codex。支持单聊、普通群聊与文件任务，命令需逐次批准。可绑定技能与知识；支持 bobo 组织群，关闭命令权限后可用于定时任务。':form.executionBackend.kind==='claude-local'?'选择已核对的本机 Claude 程序，并在下方指定兼容API连接与模型。支持单聊、普通群分工、文件任务与图片输入；图片理解取决于模型。支持核心助手建团队与组织群；关闭命令权限后可用于定时任务。':'先在设置中接入并测试 ACP 程序。当前仅支持显式任务。'}><SelectField required value={form.executionBackend.profileId} onValueChange={selectedValue => set('executionBackend',{kind:form.executionBackend?.kind==='codex-local'?'codex-local':form.executionBackend?.kind==='claude-local'?'claude-local':'acp-local',profileId:selectedValue})} options={[{ value: '', label: '请选择' }, ...profiles.filter(p=>(p.protocol??'acp')===backendProtocol(form.executionBackend?.kind==='codex-local'?'codex-local':form.executionBackend?.kind==='claude-local'?'claude-local':'acp-local')).map(p=>({ value: p.id, label: `${p.name}${p.verified?'':' · 未测试'}` }))]} /></Field>:null}
-      {(!form.executionBackend||form.executionBackend.kind==='mastra-model'||form.executionBackend.kind==='claude-local')&&<>
-      <Field label="模型连接" hint={form.executionBackend?.kind==='claude-local'?'提供给本机Claude的模型来源；支持Anthropic接口与DeepSeek官方连接。':undefined}><SelectField value={form.connectionId} onValueChange={selectedValue => set('connectionId', selectedValue)} options={[{ value: '', label: '暂未配置' }, ...snapshot.connections.map(item => ({ value: item.id, label: item.name }))]} /></Field>
-      <Field label="模型 ID" hint={connection ? `留空使用连接默认模型：${connection.defaultModel}` : '创建模型连接后即可开始对话。'}><Input value={form.modelId} onChange={e => set('modelId', e.target.value)} placeholder="使用连接默认模型" /></Field>
-      </>}<div className="field full"><span className="field-label">员工头像</span><div className="employee-avatar-field"><AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={busy} onChange={avatar => set('avatar', avatar)} onBusyChange={setUploading} /><span className="field-hint">选择内置头像，或上传本地图片。</span></div></div>
+      <AgentModelFields value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
+      <div className="field full"><span className="field-label">员工头像</span><div className="employee-avatar-field"><AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={busy} onChange={avatar => set('avatar', avatar)} onBusyChange={setUploading} /><span className="field-hint">选择内置头像，或上传本地图片。</span></div></div>
       </fieldset>
       {(form.executionBackend?.kind!=='acp-local')&&<><div className="field full"><span className="field-label">启用的 Skills</span><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationDirty={dirty} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div>
       <fieldset className="contents" disabled={locked}>

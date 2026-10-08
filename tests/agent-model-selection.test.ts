@@ -1,0 +1,68 @@
+/*
+ * [INPUT]: 全局模型选择合同与隔离API/本机配置。
+ * [OUTPUT]: 明确API来源不受列表顺序影响，本机按实际协议而非品牌绑定，失效/未测试/不适用连接拒绝提交且不自动回退。
+ * [POS]: tests/agent-model-selection.test.ts；纯模块回归，不执行外部程序或E2E。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+import { expect, it } from 'vitest'
+import type { Connection, LaunchProfile } from '../src/shared/domain'
+import { agentModelLabel, agentModelSelectionReady, agentRunMode, changeAgentRunMode, selectAgentProfile, type AgentModelSelection } from '../src/renderer/components/employee/agent-model-selection'
+
+const connections: Connection[] = [
+  { id: 'first', name: '日常连接', provider: 'openai', baseUrl: '', defaultModel: 'default-a', hasApiKey: true },
+  { id: 'chosen', name: '项目连接', provider: 'anthropic', baseUrl: '', defaultModel: 'default-b', hasApiKey: true },
+]
+const selected: AgentModelSelection = { executionBackend: { kind: 'mastra-model' }, connectionId: 'chosen', modelId: 'explicit-model' }
+const profile = (id: string, protocol: LaunchProfile['protocol'], name = id): LaunchProfile => ({ id, name, protocol, executable: '/fixture/program', args: [], hostAccessAcknowledged: true, useExistingLogin: false, revision: 1, executableHash: 'fixture', verified: { name, version: 'fixture', protocolVersion: 1, checkedAt: '2026-10-08T00:00:00Z' } })
+
+it('keeps the selected API and explicit model when connection order changes, and never substitutes a deleted connection', () => {
+  for (const list of [connections, [...connections].reverse()]) {
+    expect(agentModelSelectionReady(selected, list, [])).toBe(true)
+    expect(agentModelLabel(selected, list, [])).toBe('项目连接 · explicit-model')
+  }
+  expect(agentModelSelectionReady(selected, connections.slice(0, 1), [])).toBe(false)
+  expect(agentModelLabel(selected, connections.slice(0, 1), [])).toBe('模型 API · 请选择连接')
+  expect(selected.connectionId).toBe('chosen')
+})
+
+it('requires an explicit local choice and does not silently pick an installed program', () => {
+  const draft = changeAgentRunMode(selected, 'local')
+  expect(agentRunMode(draft)).toBe('local')
+  expect(agentModelSelectionReady(draft, connections, [profile('available', 'codex-app-server')])).toBe(false)
+  expect(changeAgentRunMode(draft, 'api')).toEqual(selected)
+})
+
+it('binds native and ACP configurations by their protocol, even when names are identical or mention another brand', () => {
+  for (const [protocol, kind] of [['codex-app-server', 'codex-local'], ['claude-cli', 'claude-local'], ['acp', 'acp-local'], [undefined, 'acp-local']] as const) {
+    const saved = profile(`${kind}-${protocol ?? 'legacy'}`, protocol, 'Pi / omp / Codex 自定义连接')
+    const choice = selectAgentProfile(selected, saved)
+    expect(agentRunMode(choice)).toBe('local')
+    expect(choice.executionBackend).toEqual({ kind, profileId: saved.id })
+    expect(agentModelSelectionReady(choice, connections, [saved])).toBe(true)
+    expect(agentModelLabel(choice, connections, [saved])).toBe(saved.name)
+    expect(choice.connectionId).toBe(kind === 'claude-local' ? 'chosen' : '')
+  }
+})
+
+it('rejects stale, untested and protocol-mismatched profiles without rebinding to another available one', () => {
+  const saved = profile('selected', 'codex-app-server'), choice = selectAgentProfile(selected, saved)
+  expect(agentModelSelectionReady(choice, connections, [profile('other', 'codex-app-server')])).toBe(false)
+  expect(agentModelSelectionReady(choice, connections, [{ ...saved, verified: undefined }])).toBe(false)
+  expect(agentModelSelectionReady(choice, connections, [{ ...saved, protocol: 'acp' }])).toBe(false)
+  expect(choice.executionBackend).toEqual({ kind: 'codex-local', profileId: 'selected' })
+})
+
+it('prevents task-only profiles for incompatible employees while preserving native choices and explicit API requirements', () => {
+  const acp = profile('task-only', 'acp'), native = profile('native', 'codex-app-server'), claude = profile('api-backed', 'claude-cli')
+  expect(agentModelSelectionReady(selectAgentProfile(selected, acp), connections, [acp], false)).toBe(false)
+  expect(agentModelSelectionReady(selectAgentProfile(selected, native), [], [native], false)).toBe(true)
+  expect(agentModelSelectionReady(selectAgentProfile(selected, claude), [], [claude], false)).toBe(false)
+  expect(agentModelSelectionReady(selectAgentProfile(selected, claude), connections, [claude], false)).toBe(true)
+})
+
+it('accepts an explicit model on a configured connection and refuses missing model or credentials', () => {
+  const noDefault = connections.map(connection => ({ ...connection, defaultModel: '' }))
+  expect(agentModelSelectionReady(selected, noDefault, [])).toBe(true)
+  expect(agentModelSelectionReady({ ...selected, modelId: '' }, noDefault, [])).toBe(false)
+  expect(agentModelSelectionReady(selected, noDefault.map(connection => ({ ...connection, hasApiKey: false })), [])).toBe(false)
+})

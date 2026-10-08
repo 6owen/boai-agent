@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行对象统一称模型API或本机Agent员工，现有能力/来源与命令门禁保持。
  * [OUTPUT]: Claude自动化沿原七项表单选择已核对程序及明确API来源，命令关闭与宿主最终指纹复核保持。
  * [OUTPUT]: 七项表单支持已验证本机Codex员工，无需API连接；命令权限仍关闭，最终准入由宿主核验。
  * [INPUT]: 固定计划/草稿身份、快照、日程预览/创建回执 IPC 与现有详情标签守卫。
@@ -127,7 +128,7 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
           <Setting label="运行于" value={targetLabel}>
             <SelectField aria-label="聊天方式" disabled={form.taskKind === 'monitor'} value={form.conversationPolicy} onValueChange={value => change({ conversationPolicy: value as Form['conversationPolicy'], conversationId: undefined, employeeIds: undefined })} options={[{ value: 'new-conversation', label: '新任务聊天' }, { value: 'existing-conversation', label: '指定聊天' }]} />
             {form.conversationPolicy === 'new-conversation' ? <Field label="执行员工"><SelectField value={form.employeeIds?.[0] ?? ''} onValueChange={value => change({ employeeIds: value ? [value] : undefined })} options={[{ value: '', label: '选择员工' }, ...snapshot.agents.map(a => ({ value: a.id, label: `${a.name}${eligible(a.id) ? '' : ' · 配置或权限不可用'}`, disabled: !eligible(a.id) }))]} /></Field> : <><Input aria-label="搜索已有聊天" placeholder="搜索已有聊天" value={targetQuery} onChange={e => setTargetQuery(e.target.value)} /><Field label="目标会话"><SelectField value={form.conversationId ?? ''} onValueChange={value => change({ conversationId: value || undefined, ...(form.monitor ? { monitor: { ...form.monitor, source: { ...form.monitor.source, conversationId: value } } } : {}) })} options={[{ value: '', label: '选择会话' }, ...snapshot.conversations.filter(c => c.id === form.conversationId || c.title.includes(targetQuery)).map(c => ({ value: c.id, label: `${c.title} · ${c.kind === 'group' ? '群聊' : '单聊'}`, disabled: !c.agentIds.length || !c.agentIds.every(eligible) }))]} /></Field></>}
-            <p className="field-hint">选择已启用、连接可用且关闭命令权限的模型 API、本机 Codex 或 Claude 员工。Claude 还需明确模型来源。没有可用对象时，请在通讯录和设置中配置；草稿会保留。</p>
+            <p className="field-hint">选择已启用、连接可用且关闭命令权限的模型 API 或本机 Agent 员工。需要模型 API 的本机 Agent 还须配置具体连接。没有可用对象时，请在通讯录和设置中配置；草稿会保留。</p>
             {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
           </Setting>
         </div>

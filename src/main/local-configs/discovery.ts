@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 有界配置扫描、当前扫描范围与用户选中的配置标识。
- * [OUTPUT]: 无密钥预览、重读导入API连接或指定登录目录的ACP/明确原生Codex启动项；复用只读程序解析，不执行程序。
+ * [OUTPUT]: 实际程序候选与独立协议/来源预填；选择时复查程序身份，未接入程序不可生成草稿；原API/ACP导入保持。
  * [POS]: main/local-configs 的模型连接用例，扫描不访问网络或修改源文件。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,13 +8,16 @@ import { dirname } from 'node:path'
 import type { ConnectionInput, LaunchProfileInput } from '../../shared/domain'
 import { scanLocalConfigs, readScannedApiKeyConfig } from './local-config-scan'
 import { findCodexAcp, inspectCodexAcp, type CodexAcpProgram } from './codex-acp'
-import { resolveProgram } from '../../runtime/modules/backends/program'
+import { inspectProgram, resolveProgram } from '../../runtime/modules/backends/program'
+import { discoverAgentPrograms } from './agent-programs'
+import { CLAUDE_PROGRAM_LIMIT } from '../../runtime/adapters/claude/policy'
 
 export class LocalConfigDiscovery {
   private scope: Parameters<typeof scanLocalConfigs>[0]
   private selected = new Set<string>()
   private agents = new Set<string>()
   private program?: CodexAcpProgram
+  private detected = new Map<string, ReturnType<typeof discoverAgentPrograms>[number]>()
 
   constructor(private searchPaths?: string[]) {}
 
@@ -22,6 +25,7 @@ export class LocalConfigDiscovery {
     this.selected.clear()
     this.agents.clear()
     this.program = undefined
+    this.detected.clear()
     const result = scanLocalConfigs(options)
     this.scope = options
     this.selected = new Set(result.logins.filter(item => item.authType === 'api_key').map(item => item.configId))
@@ -31,7 +35,27 @@ export class LocalConfigDiscovery {
       this.agents.add(login.configId)
       if (this.program) login.acp = { executable: this.program.executable, runtime: this.program.runtime }
     }
+    const programs = discoverAgentPrograms(this.searchPaths, result.logins.filter(item => item.authType === 'oauth'), !!options.directory)
+    this.detected = new Map(programs.map(item => [item.candidate.candidateId, item]))
+    result.agents = programs.map(item => item.candidate)
     return result
+  }
+
+  detectedProfile(candidateId: string): LaunchProfileInput {
+    const detected = this.detected.get(candidateId)
+    if (!detected) throw new Error('请重新扫描并选择本机 Agent')
+    const { candidate, hash } = detected
+    if (!candidate.protocol) throw new Error('已发现这个程序，但暂未接入它的运行协议')
+    let program
+    try { program = inspectProgram(candidate.executable, candidate.protocol === 'claude-cli' ? CLAUDE_PROGRAM_LIMIT : undefined) }
+    catch { throw new Error('程序已移除或不可读取，请重新扫描') }
+    if (program.hash !== hash || program.path !== candidate.executable) throw new Error('程序已变化，请重新扫描')
+    if (candidate.localConfigId && candidate.protocol !== 'claude-cli') {
+      const draft = this.launchProfile(candidate.localConfigId, candidate.protocol)
+      if (draft.executable !== candidate.executable) throw new Error('程序路径已变化，请重新扫描')
+      return { ...draft, protocol: candidate.protocol }
+    }
+    return { name: candidate.name, executable: program.path, runtime: program.runtime, protocol: candidate.protocol, args: [], useExistingLogin: candidate.protocol !== 'claude-cli', hostAccessAcknowledged: true }
   }
 
   launchProfile(configId: string, protocol: 'acp' | 'codex-app-server' = 'acp'): LaunchProfileInput {
