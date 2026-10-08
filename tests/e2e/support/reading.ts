@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 阅读位置提交后丢失回执及临时核对失败只拦截IPC返回；首次打开会话正常，故障仅在真实提交后生效，保留原始故障与恢复后只读核对。
  * [INPUT]: 隔离桌面、真实 SQLite 旧历史、同名材料原件与可控制结束顺序的离线 Mastra HTTP 流。
  * [OUTPUT]: 万条同文不同身份历史、混合搜索真实同名材料、可指定历史数量/追加正文的实际员工并行流和一次分页快照延迟；固定目标读取可等待真实删除事务后执行原 IPC 并恢复 handler，验证迟到异常隔离；完成顺序与浏览请求观测，不替代发布或阅读事务；隐藏会话由真实获准查询拒绝，不提供检索恢复显示旁路。
  * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效。
@@ -142,4 +143,29 @@ export async function readingBrowserProbe(runtime: Desktop) {
     ipcMain.removeHandler('boai:request'); ipcMain.handle('boai:request', async (event, payload) => { (globalThis as BrowserProbe).__boaiReadingRequests.push(structuredClone(payload)); return original(event, payload) })
   })
   return () => runtime.app.evaluate(() => structuredClone((globalThis as BrowserProbe).__boaiReadingRequests))
+}
+
+export async function readingAnchorReplyFault(runtime: Desktop, conversationId: string) {
+  await runtime.app.evaluate(({ ipcMain }, conversationId) => {
+    const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers, original = handlers.get('boai:request')!
+    const state = { saves: 0, committed: false, lookups: 0, available: false, dispose: () => {} }
+    state.dispose = () => { ipcMain.removeHandler('boai:request'); ipcMain.handle('boai:request', original) }
+    Object.assign(globalThis, { __boaiReadingAnchorFault: state })
+    ipcMain.removeHandler('boai:request'); ipcMain.handle('boai:request', async (event, payload) => {
+      if (payload.input?.conversationId !== conversationId || state.available) return original(event, payload)
+      if (payload.method === 'saveConversationAnchor') {
+        state.saves++
+        if (!state.committed) { await original(event, payload); state.committed = true }
+        throw new Error('ENOENT: injected reading reply loss /private/reading-fixture/original')
+      }
+      if (state.committed && payload.method === 'getConversationReading') { state.lookups++; throw new Error('READING_LOOKUP_UNAVAILABLE /private/reading-fixture/original') }
+      return original(event, payload)
+    })
+  }, conversationId)
+  type Fault = typeof globalThis & { __boaiReadingAnchorFault: { saves: number; committed: boolean; lookups: number; available: boolean; dispose(): void } }
+  return {
+    inspect: () => runtime.app.evaluate(() => { const { saves, committed, lookups, available } = (globalThis as Fault).__boaiReadingAnchorFault; return { saves, committed, lookups, available } }),
+    allowLookup: () => runtime.app.evaluate(() => { (globalThis as Fault).__boaiReadingAnchorFault.available = true }),
+    dispose: () => runtime.app.evaluate(() => (globalThis as Fault).__boaiReadingAnchorFault.dispose()),
+  }
 }

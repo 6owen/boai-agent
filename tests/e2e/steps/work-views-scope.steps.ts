@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 完成式目标原文与八状态分列核对，全局/会话只读不新增Work、运行、预算、调用或成果；原生整幅截图按状态留证。
  * [INPUT]: WV-T03/T07/T08中文场景、实际Electron UI和显式预置/真实执行支撑。
  * [OUTPUT]: 根子/依赖与AND、全部来源/无Work边界、五列75项连续分页/模式/筛选；全局可见main与实际日历浮层精确定位、关键帧及实际查询耗时内存记录。
  * [POS]: 工作视图范围业务步骤；不修改产品状态机、不宣称预置或离线协议为真实供应商成功。
@@ -33,6 +34,42 @@ async function globalTasks(page: Page) { await main(page).getByRole('button', { 
 async function option(page: Page, label: string, value: string) { await selectScheduleOption(page, label, value) }
 const query = (page: Page, input: WorkViewQuery = {}) => page.evaluate(input => window.boai.request('queryWorkViews', input), input)
 async function visibleIds(page: Page) { return workView(page).locator('[data-work-id]:visible').evaluateAll(elements => elements.map(element => (element as HTMLElement).dataset.workId!)) }
+
+Given('工作视图已有八种状态和完成式目标的明确预置历史', async ({ runtime, workScope }) => {
+  workScope.history = await prepareScopeHistory(runtime, 'goals'); workScope.before = await scopeRecords(workScope.history.dataPath)
+  expect(workScope.before.works).toHaveLength(8)
+  for (const key of ['runs', 'occurrences', 'calls', 'profileCalls', 'budgets', 'artifacts'] as const) expect(workScope.before[key]).toEqual([])
+})
+When('用户在全局列表和原会话核对目标与状态', async ({ runtime, workScope }) => {
+  await globalTasks(runtime.page); await runtime.page.getByRole('tab', { name: '列表', exact: true }).click()
+  const expectedStates = { ready: '待开始', running: '进行中', waiting: '等待输入或依赖', blocked: '受阻', delivered: '已交付', failed: '失败', cancelled: '已停止', interrupted: '已中断' }
+  await expect(workView(runtime.page).locator('[data-work-id]:visible')).toHaveCount(8)
+  for (const work of workScope.history!.works) {
+    const card = task(runtime.page, work.id), header = card.locator(':scope > [data-slot="card-header"]')
+    await expect(header.locator('[data-slot="card-title"]')).toHaveText(`目标：${work.deliverable}`)
+    await expect(header.locator(':scope > div > span')).toHaveText(expectedStates[work.status])
+    await expect(card.getByRole('button', { name: /^(查看结果|交付文件)/ })).toHaveCount(0)
+  }
+  await option(runtime.page, '状态筛选', '已停止'); await expect(workView(runtime.page).locator('[data-work-id]:visible')).toHaveCount(1)
+  await expect(runtime.page.getByRole('listbox')).toBeHidden()
+  await runtime.reviewNativeCheckpoint('明确预置已停止：完成式文字标为目标，无结果文件入口')
+  await workView(runtime.page).getByRole('button', { name: '清除筛选', exact: true }).click()
+  await task(runtime.page, 'scope-goal-interrupted').getByRole('button', { name: '查看原聊天', exact: true }).click()
+  await runtime.page.getByRole('tablist', { name: '会话视图', exact: true }).getByRole('tab', { name: '任务', exact: true }).click()
+  await expect(workView(runtime.page).locator('[data-work-id]:visible')).toHaveCount(8)
+  await expect(task(runtime.page, 'scope-goal-interrupted').locator('[data-slot="card-title"]')).toHaveText('目标：全部文件已写完并正式发布')
+  await expect(task(runtime.page, 'scope-goal-interrupted')).toContainText('已中断')
+  await option(runtime.page, '状态筛选', '已中断'); await expect(workView(runtime.page).locator('[data-work-id]:visible')).toHaveCount(1)
+  await expect(runtime.page.getByRole('listbox')).toBeHidden()
+  await runtime.reviewNativeCheckpoint('明确预置原会话已中断：目标原文与真实状态保持分离')
+})
+Then('目标原文和真实状态分别显示且没有新增调用成果或工作', async ({ runtime, workScope }) => {
+  const after = await scopeRecords(workScope.history!.dataPath), projected = await query(runtime.page, { conversationId: workScope.history!.group.id })
+  expect(after).toEqual(workScope.before)
+  expect(new Map(projected.items.map(item => [item.work.id, item.work]))).toEqual(new Map(workScope.history!.works.map(work => [work.id, work])))
+  expect(runtime.errors).toEqual([])
+  await runtime.reviewData('明确预置目标状态：七类原账本读取前后相同、模型与成果为空', { before: workScope.before, after, projected })
+})
 
 Given('工作视图已有明确预置的甲根乙子与独立依赖', async ({ runtime, workScope }) => {
   workScope.history = await prepareScopeHistory(runtime, 'relationships'); workScope.before = await scopeRecords(workScope.history.dataPath)

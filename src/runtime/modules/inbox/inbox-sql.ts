@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 固定 records 表、类型化筛选/游标与明确来源关系。
  * [OUTPUT]: 四类当前事项在 LIMIT 前过滤、原成果真实文件名/作者搜索、稳定时间/ID 排序及清理/材料同授权时代读取版本门禁；只生成宿主固定 SELECT。
+ * [OUTPUT]: 自动化汇总只选实际未答Work/Decision问题或缺记录的旧chat；已知task交付/已答问题不占据同轮最后消息位置，最终来源仍复核。
  * [POS]: D5 SQL 投影；不接受外部 SQL、不制造工作或终态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,10 +13,24 @@ function branch(collection: string, kind: string, predicate: string, fields: { i
   return `SELECT '${kind}' AS kind, '${collection}' AS sourceCollection, s.id AS sourceId, ${fields.id ?? `'${kind}:${collection}:' || s.id`} AS id, ${fields.conversation ?? value('conversationId')} AS conversationId, ${fields.agent ?? 'NULL'} AS agentId, ${fields.message ?? 'NULL'} AS messageId, ${fields.time ?? value('createdAt')} AS time, ${fields.summary ?? value('reason')} AS summary, s.value AS source FROM records s WHERE s.collection='${collection}' AND (${predicate})`
 }
 const unanswered = `${value('userQuestion.id')} IS NOT NULL AND ${value('userQuestion.answeredMessageId')} IS NULL`
+// A waiting turn can contain another employee's later delivery. Latest reply is not question identity.
+const automationQuestionMessage = `(SELECT m.id FROM records m WHERE m.collection='messages'
+  AND json_extract(m.value,'$.conversationId')=${value('conversationId')}
+  AND json_extract(m.value,'$.status')='completed' AND json_extract(m.value,'$.senderType')='agent'
+  AND json_extract(m.value,'$.turnId') IN (SELECT value FROM json_each(${value('waitingTurnIds')}))
+  AND (EXISTS(SELECT 1 FROM records q WHERE json_extract(q.value,'$.userQuestion.messageId')=m.id
+    AND json_extract(q.value,'$.userQuestion.id') IS NOT NULL AND json_extract(q.value,'$.userQuestion.answeredMessageId') IS NULL
+    AND ((q.collection='workItems' AND json_extract(q.value,'$.ownerAgentId')=json_extract(m.value,'$.senderId') AND json_extract(q.value,'$.conversationId')=${value('conversationId')} AND json_extract(q.value,'$.origin.occurrenceId')=s.id)
+      OR (q.collection='decisions' AND json_extract(q.value,'$.agentId')=json_extract(m.value,'$.senderId') AND json_extract(q.value,'$.turnId')=json_extract(m.value,'$.turnId') AND json_extract(q.value,'$.action')='ask' AND COALESCE(json_extract(q.value,'$.responseKind'),'chat')='chat')))
+    OR (NOT EXISTS(SELECT 1 FROM records r WHERE r.collection='runs' AND r.id=json_extract(m.value,'$.runId') AND (json_extract(r.value,'$.responseKind')='task' OR json_extract(r.value,'$.workId') IS NOT NULL))
+      AND NOT EXISTS(SELECT 1 FROM records d WHERE d.collection='decisions' AND json_extract(d.value,'$.agentId')=json_extract(m.value,'$.senderId') AND json_extract(d.value,'$.turnId')=json_extract(m.value,'$.turnId') AND (json_extract(d.value,'$.action')<>'ask' OR json_extract(d.value,'$.responseKind')='task' OR json_extract(d.value,'$.userQuestion') IS NOT NULL))
+      AND NOT EXISTS(SELECT 1 FROM records w WHERE w.collection='workItems' AND json_extract(w.value,'$.conversationId')=${value('conversationId')} AND (json_extract(w.value,'$.userQuestion.messageId')=m.id OR EXISTS(SELECT 1 FROM json_each(json_extract(w.value,'$.resultMessageIds')) WHERE value=m.id)))
+      AND NOT EXISTS(SELECT 1 FROM records a WHERE a.collection='messages' AND json_extract(a.value,'$.conversationId')=${value('conversationId')} AND json_extract(a.value,'$.status')='completed' AND json_extract(a.value,'$.senderType')='user' AND json_extract(a.value,'$.senderId')='user' AND json_extract(a.value,'$.origin.occurrenceId')=s.id AND json_extract(a.value,'$.inboxReply.questionMessageId')=m.id)))
+  ORDER BY json_extract(m.value,'$.sequence') DESC,m.id DESC LIMIT 1)`
 const sources = [
   branch('decisions', 'question', `${unanswered} AND ${value('action')}='ask' AND COALESCE(${value('responseKind')}, 'chat')='chat'`, { id: `'question:' || ${value('userQuestion.id')}`, conversation: `(SELECT json_extract(t.value,'$.conversationId') FROM records t WHERE t.collection='turns' AND t.id=${value('turnId')} AND json_extract(t.value,'$.origin') IS NULL)`, agent: value('agentId'), message: value('userQuestion.messageId'), summary: value('userQuestion.content') }),
   branch('workItems', 'question', `${unanswered} AND ${value('origin')} IS NULL`, { id: `'question:' || ${value('userQuestion.id')}`, agent: value('ownerAgentId'), message: value('userQuestion.messageId'), summary: value('userQuestion.content') }),
-  branch('automationOccurrences', 'question', `${value('status')}='waiting_user' AND ${value('waitingTurnIds')} IS NOT NULL`, { id: `'question:occurrence:' || s.id`, time: value('startedAt'), message: `(SELECT m.id FROM records m WHERE m.collection='messages' AND json_extract(m.value,'$.conversationId')=${value('conversationId')} AND json_extract(m.value,'$.status')='completed' AND json_extract(m.value,'$.senderType')='agent' AND json_extract(m.value,'$.turnId') IN (SELECT value FROM json_each(${value('waitingTurnIds')})) ORDER BY json_extract(m.value,'$.sequence') DESC LIMIT 1)`, summary: value('name') }),
+  branch('automationOccurrences', 'question', `${value('status')}='waiting_user' AND ${value('waitingTurnIds')} IS NOT NULL`, { id: `'question:occurrence:' || s.id`, time: value('startedAt'), message: automationQuestionMessage, summary: value('name') }),
   branch('approvals', 'approval', `EXISTS(SELECT 1 FROM records r WHERE r.collection='runs' AND r.id=${value('runId')} AND json_extract(r.value,'$.status')='waiting_approval')`, { id: `'approval:' || s.id`, agent: `(SELECT json_extract(r.value,'$.agentId') FROM records r WHERE r.collection='runs' AND r.id=${value('runId')})`, time: `(SELECT json_extract(r.value,'$.createdAt') FROM records r WHERE r.collection='runs' AND r.id=${value('runId')})`, summary: value('command') }),
   branch('workItems', 'failure', `${value('origin')} IS NULL AND ${value('status')} IN ('failed','interrupted','blocked')`, { id: `'failure:work:' || s.id`, agent: value('ownerAgentId'), message: value('sourceMessageId'), time: value('updatedAt'), summary: `COALESCE(${value('outcome.summary')},${value('deliverable')})` }),
   branch('turns', 'failure', `${value('origin')} IS NULL AND ${value('status')} IN ('failed','interrupted','budget_exhausted') AND NOT EXISTS(SELECT 1 FROM records w WHERE w.collection='workItems' AND json_extract(w.value,'$.conversationId')=${value('conversationId')} AND json_extract(w.value,'$.status') IN ('failed','interrupted','blocked') AND (w.id=${value('workId')} OR EXISTS(SELECT 1 FROM records r WHERE r.collection='runs' AND json_extract(r.value,'$.turnId')=s.id AND json_extract(r.value,'$.workId')=w.id)))`, { id: `'failure:turn:' || s.id`, message: value('triggerMessageId'), summary: `COALESCE(${value('reason')},'轮次中断，需核对原执行记录')` }),

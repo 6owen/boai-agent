@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
+ * [OUTPUT]: 本机/API逐请求计量、部分回执未知与伪造运行/来源/阶段拒绝，保留原期限和唯一账本。
  * [INPUT]: 真实独立 SQLite 连接、自动化受理和复用的工作预算/逐调用账本。
  * [OUTPUT]: 追加额度竞争/故障回滚、累计与迟到用量、父子工作及已交付保护/待核对拒绝；补充不改变原工作身份或重放已交付结果；无工作判断预算、并发预留/回执幂等、未知用量/原始期限及等待恢复容量不变量验证。
  * [POS]: 自动化预算与执行容量的持久事务回归；不调用真实模型。
@@ -36,6 +38,38 @@ async function fixture() {
   return { store, repository, works, connect, admit, budget }
 }
 const intent = { key: 'main', scope: '核查', deliverable: '可检查结果' }
+it.each(['codex-local', 'claude-local'] as const)('counts %s turns and API calls separately in one occurrence, retains unknown partial usage and rejects a forged runtime or source', async kind => {
+  const f = await fixture(), entry = await f.admit()
+  const native: AgentRun = { ...entry.run, backend: { kind, profileId: 'profile', profileRevision: 1, sessionPolicy: 'fresh', toolControl: 'none', externalInvocations: 0 } }
+  const turn = { id: native.turnId!, conversationId: native.conversationId, origin: entry.origin, status: 'running' }
+  await f.store.write([
+    row('agents', { id: 'lead', active: true, allowCommands: false, executionBackend: { kind, profileId: 'profile' } }),
+    row('agents', { id: 'api', active: true, allowCommands: false, executionBackend: { kind: 'mastra-model' } }),
+    row('conversations', { id: 'chat', kind: 'group', agentIds: ['lead', 'api'] }), row('turns', turn), row('runs', native),
+  ])
+  const original = await f.budget(entry.occurrence.budgetId!)
+  await f.works.reserveAutomationCall(native, 'native-decision', 'decision')
+  const api = { ...entry.run, id: 'api-run', agentId: 'api' }
+  await f.store.write([row('runs', api)])
+  await f.works.reserveAutomationCall(api, 'api-decision', 'decision')
+  const known = { inputTokens: 5, outputTokens: 7, totalTokens: 12 }
+  await f.works.settleAutomationCall(native.id, 'native-decision', known)
+  await f.works.settleAutomationCall(api.id, 'api-decision', known)
+  expect(await f.budget(original.id)).toMatchObject({ callUnit: 'mixed', modelCalls: 2, unknownCalls: 1, usageIncomplete: true, deadlineAt: original.deadlineAt, usage: { inputTokens: 10, outputTokens: 14, totalTokens: 24 } })
+  await f.works.settleAutomationCall(native.id, 'native-decision', known, true)
+  expect(await f.budget(original.id)).toMatchObject({ unknownCalls: 0, usageIncomplete: false })
+  await f.works.settleAutomationCall(native.id, 'native-decision', { outputTokens: 9 }, true)
+  expect(await f.budget(original.id)).toMatchObject({ unknownCalls: 1, usageIncomplete: true, usage: { outputTokens: 16 } })
+  await f.works.reserveAutomationCall(native, 'native-decision', 'decision')
+  await expect(f.works.reserveAutomationCall({ ...native, backend: undefined }, 'forged-kind', 'decision')).rejects.toThrow('运行方式')
+  await expect(f.works.reserveAutomationCall({ ...native, origin: { ...entry.origin, authorizedFingerprint: 'forged' } }, 'forged-source', 'decision')).rejects.toThrow('来源')
+  await expect(f.works.reserveAutomationCall(native, 'forged-phase', 'execution')).rejects.toThrow('阶段')
+  await f.store.write([row('agents', { id: 'lead', active: false, executionBackend: { kind, profileId: 'profile' } })])
+  await expect(f.works.reserveAutomationCall(native, 'disabled', 'decision')).rejects.toThrow('授权')
+  expect((await f.store.load<BudgetModelCall>('budgetModelCalls')).sort((a, b) => a.id.localeCompare(b.id)).map(call => [call.id, call.callUnit])).toEqual([['api-decision', undefined], ['native-decision', 'external-turn']])
+  expect(await f.budget(original.id)).toMatchObject({ modelCalls: 2, deadlineAt: original.deadlineAt })
+})
+
 it('creates a bounded budget before any work exists and gives a new occurrence its own budget', async () => {
   const f = await fixture(), first = await f.admit()
   expect((await f.works.view('chat')).workItems).toEqual([])

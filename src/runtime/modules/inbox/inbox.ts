@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 固定 SQL 待处理来源、原 Work/问题事务和当前审批/成果只读核对。
  * [OUTPUT]: 有界稳定分页、当前资格/安全动作、原成果固定版本；自动化问题虚拟身份精确核对原消息/Work/触发版本及当前材料，失效零旧正文；查询零模型/零新工作。
+ * [OUTPUT]: 自动化汇总get/list复用精确问题的原负责人/Work/当前版本和跨hook核验，不把较晚交付或已答正文投影为补充问题。
  * [POS]: D5 只读收件箱投影；终态仍由原来源拥有。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -79,13 +80,10 @@ export class Inbox {
     const conversation = JSON.parse(row.conversation) as Conversation, agent = row.agent ? JSON.parse(row.agent) as DigitalAgent : undefined, message = row.message ? JSON.parse(row.message) as Message : undefined
     const source = JSON.parse(row.source)
     const base: InboxItem = { id: row.id, kind: row.kind as InboxItem['kind'], conversationId: conversation.id, conversationTitle: conversation.title, time: row.time, summary: source.reason ?? '', status: source.status ?? '', ...(agent ? { agentId: agent.id, agentName: agent.name } : {}), ...(message ? { messageId: message.id, turnId: message.turnId, runId: message.runId } : {}) }
+    if (row.kind === 'question' && row.sourceCollection === 'automationOccurrences') return message ? this.automationQuestion(row.id, source.id, message.id) : null
     let sourceError: string | undefined
     if (row.kind !== 'acceptance') try { await this.hooks.validateSource?.(source, message, conversation.id) } catch { sourceError = '原来源内容或授权已失效，请先核对原记录' }
     if (row.kind === 'question') {
-      if (row.sourceCollection === 'automationOccurrences') {
-        const occurrence = source as AutomationOccurrence
-        return { ...base, summary: sourceError ?? message!.content, occurrenceId: occurrence.id, automationId: occurrence.automationId, question: { id: `occurrence:${occurrence.id}`, messageId: message!.id, content: sourceError ? '' : message!.content, revision: occurrence.stateVersion, canReply: false, unavailableReason: sourceError ?? '请从本次自动化运行明确补充，沿用原触发身份与预算' } }
-      }
       let question = (source as DecisionRecord | WorkItem).userQuestion!
       if (!question || question.answeredMessageId) return null
       let reason: string | undefined = sourceError

@@ -1,14 +1,16 @@
 /*
+ * [OUTPUT]: Codex/Claude组织继承、既有员工保持、发布前程序与来源复核、SQL分页先过滤分别验证；bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite/受管文件、原用户请求与 Work 持有者，以及故障注入。
  * [OUTPUT]: 员工一等身份、仅缺员准备与新旧 Mastra 默认浏览器能力摘要、三种组织模式/原预算原子发布、幂等/只读恢复和取消实际退出及 hash 清理不变量。
  * [POS]: bobo 组织模块验收；不使用模型或伪造群运行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import { inspectProgram } from '../src/runtime/modules/backends/program'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, test, vi } from 'vitest'
-import type { AgentRun, Conversation, DigitalAgent, Message, WorkExecution, WorkItem } from '../src/shared/domain'
+import type { AgentRun, Conversation, DigitalAgent, Message, WorkExecution, WorkItem, LaunchProfile } from '../src/shared/domain'
 import type { BoboCollaborationOperation, BoboCollaborationPlan, BoboOrganizationAuthority } from '../src/shared/domain/bobo-collaboration'
 import { boboCollaborationPlanSchema } from '../src/shared/domain/bobo-collaboration'
 import type { BoboOrganizationMode } from '../src/shared/domain/work'
@@ -225,4 +227,58 @@ test('explicit recovery uses a new holder without claiming that it generated the
   expect(result.status).toBe('committed'); expect(result.agents.map(agent => agent.id)).toEqual(interrupted.agents.map(agent => agent.id)); expect((await stat(path)).mtimeMs).toBe(before.mtimeMs)
   const announcement = (await f.store.load<Message>('messages')).find(message => message.id === result.announcementMessageId)!
   expect(announcement.collaborationSource).toMatchObject({ sourceRunId: f.authority.runId, toolCallId: f.provenance.toolCallId, modelCallId: f.provenance.modelCallId }); expect(announcement.runId).toBeUndefined()
+})
+
+async function useNativeCore(f: Awaited<ReturnType<typeof fixture>>, runtime: 'codex' | 'claude' = 'codex') {
+  const program = join(f.dataPath, `${runtime}-fixture.mjs`)
+  await copyFile(resolve(runtime === 'claude' ? 'tests/fixtures/claude-employee.mjs' : 'tests/fixtures/codex-app-server.mjs'), program)
+  await chmod(program, 0o700)
+  const file = inspectProgram(program)
+  const profile: LaunchProfile = { id: 'native', name: '本机', protocol: runtime === 'claude' ? 'claude-cli' : 'codex-app-server', executable: file.path, executableHash: file.hash, runtime: 'node', args: [], revision: 1, useExistingLogin: false, hostAccessAcknowledged: true, verified: { name: 'Codex', version: runtime === 'claude' ? '2.1.214' : '0.159.3', protocolVersion: 2, checkedAt: new Date().toISOString() } }
+  const core = (await f.store.load<DigitalAgent>('agents')).find(agent => agent.id === 'bobo')!
+  core.executionBackend = { kind: runtime === 'claude' ? 'claude-local' : 'codex-local', profileId: profile.id }; core.connectionId = runtime === 'claude' ? 'model' : ''; core.modelId = runtime === 'claude' ? 'fixture' : ''
+  if (runtime === 'claude') await f.store.write([{ collection: 'connections', id: 'model', value: { id: 'model', name: 'explicit Claude source', provider: 'anthropic', baseUrl: 'https://api.anthropic.com', defaultModel: 'fixture', hasApiKey: true } }])
+  await f.store.write([{ collection: 'launchProfiles', id: profile.id, value: profile }, { collection: 'agents', id: core.id, value: core }])
+  return { profile, core }
+}
+
+test.each(['codex', 'claude'] as const)('%s organization inherits only the selected runtime and preserves reused API employees', async runtime => {
+  const f = await fixture('organize_only'), { core } = await useNativeCore(f, runtime)
+  const before = (await f.store.load<DigitalAgent>('agents')).find(agent => agent.id === 'writer')
+  const receipt = await f.service.organize(plan, f.authority, f.provenance)
+  expect(receipt.status).toBe('committed')
+  const agents = await f.store.load<DigitalAgent>('agents')
+  expect(agents.find(agent => agent.id === 'writer')).toEqual(before)
+  expect(agents.find(agent => agent.id === receipt.agents[0].id)).toMatchObject({ executionBackend: core.executionBackend, connectionId: core.connectionId, modelId: core.modelId, allowBrowser: false, allowCommands: false })
+  const operation = (await f.store.load<BoboCollaborationOperation>('boboCollaborations'))[0]
+  expect(operation.executionBackend).toEqual(core.executionBackend)
+  expect(await f.service.organize(plan, f.authority, f.provenance)).toEqual(receipt)
+})
+
+test.each([['codex', 'profile'], ['codex', 'program'], ['claude', 'profile'], ['claude', 'program'], ['claude', 'connection']] as const)('%s organization refuses changed %s at publication without publishing new objects', async (runtime, change) => {
+  let profile: LaunchProfile
+  const f = await fixture('organize_only', { checkpoint: async phase => {
+    if (phase === 'before-commit') await f.store.write(change === 'connection' ? [{ collection: 'connections', id: 'model', value: { id: 'model', name: 'changed source', provider: 'anthropic', baseUrl: 'https://example.invalid', defaultModel: 'fixture', hasApiKey: true } }] : [{ collection: 'launchProfiles', id: profile.id, value: { ...profile, ...(change === 'profile' ? { revision: 2 } : { executableHash: 'changed-program' }) } }])
+  } })
+  profile = (await useNativeCore(f, runtime)).profile
+  const receipt = await f.service.organize(plan, f.authority, f.provenance)
+  expect(receipt.status).toBe('needs_attention')
+  expect(await f.store.load('agents')).toHaveLength(2)
+  expect(await f.store.load('conversations')).toHaveLength(1)
+  expect(await f.store.load('collaborationStarts')).toEqual([])
+})
+
+test.each(['codex', 'claude'] as const)('%s candidate pagination excludes unverified profiles before limit and profile changes invalidate its cursor', async runtime => {
+  const f = await fixture(), { profile, core } = await useNativeCore(f, runtime)
+  const members = ['a-native', 'b-native', 'c-unverified'].map(id => ({ ...core, id, systemRole: undefined, executionBackend: { kind: core.executionBackend!.kind as 'codex-local' | 'claude-local', profileId: id === 'c-unverified' ? 'unverified' : profile.id } }))
+  await f.store.write([...members.map(agent => ({ collection: 'agents', id: agent.id, value: agent })), { collection: 'launchProfiles', id: 'unverified', value: { ...profile, id: 'unverified', verified: undefined } }])
+  const page = await f.service.findEmployees({ limit: 1 })
+  expect(page.employees.map(employee => employee.agentId)).toEqual(['a-native'])
+  expect(page.employees[0].capabilities.browser).toBe(false)
+  const all = await f.service.findEmployees({ limit: 20 })
+  expect(all.employees.map(employee => employee.agentId)).toEqual(['a-native', 'b-native', 'writer'])
+  expect(JSON.stringify(all)).not.toContain(profile.executable)
+  await f.store.write([{ collection: 'launchProfiles', id: profile.id, value: { ...profile, verified: undefined } }])
+  await expect(f.service.findEmployees({ limit: 1, cursor: page.cursor })).rejects.toThrow('STALE_CURSOR')
+  expect((await f.service.findEmployees({ limit: 1 })).employees.map(employee => employee.agentId)).toEqual(['writer'])
 })

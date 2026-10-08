@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite、bobo 核心来源/组织工作、群启动 CAS、原调用回执和会话清理。
  * [OUTPUT]: 新完整协作48/其他24首次事务、根子同ID共原期限；人为旧24重启/明确重认领/群根/子工作保持24，模型无法指定额度，输出等原限制不变。
  * [OUTPUT]: 固定组织权限/真实证据、两会话无父子共预算、逐调用已知/未知记账、原子发布/启动回滚、子工作/成员边界与重启不自动开工。
@@ -24,18 +25,19 @@ afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice
 const row = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const now = () => new Date().toISOString()
 const employee = (id: string): DigitalAgent => ({ id, name: id, role: '处理真实工作', instructions: '按本人授权处理', color: '#336699', connectionId: 'connection', modelId: 'model', skillIds: [], knowledgeIds: [], allowCommands: false, active: true, configVersion: 1, ...(id === 'bobo' ? { systemRole: 'core' as const } : {}) })
-async function fixture(mode: WorkOrganization['mode'] = 'organize_and_execute', prior = true) {
+async function fixture(mode: WorkOrganization['mode'] = 'organize_and_execute', prior = true, native = false) {
   const path = await mkdtemp(join(tmpdir(), 'boai-collaboration-budget-')); cleanup.push(() => rm(path, { recursive: true, force: true }))
   const store = new ProductStore(join(path, 'product.sqlite')); await store.init(); cleanup.push(() => store.close())
   const works = new WorkRepository(store); await works.init()
   const agents = ['bobo', 'researcher', 'writer'].map(employee)
+  if (native) { agents[0].executionBackend = { kind: 'codex-local', profileId: 'native' }; agents[0].connectionId = '' }
   const core: Conversation = { id: 'core-chat', kind: 'direct', purpose: 'core', title: '与 bobo 讨论', agentIds: ['bobo'], mode: 'natural', sharedKnowledgeIds: [], workspacePath: join(path, 'workspaces', 'core-chat'), createdAt: now(), updatedAt: now() }
   const source: Message = { id: 'source-user', conversationId: core.id, senderType: 'user', senderId: 'user', senderName: '本人', content: '请找研究和写作员工建群，并配合交付报告。', status: 'completed', sequence: 1, createdAt: now() }
   const organization: WorkOrganization = { requestId: `bobo-collaboration:${source.id}`, mode, goal: '合作完成有依据的报告' }
   const coreTurn: DiscussionTurn = { id: 'core-turn', conversationId: core.id, triggerMessageId: source.id, status: 'responding', generation: 0, createdAt: now(), modelCalls: 1, publicMessages: 0, collaborationRequestId: organization.requestId }
-  const run = (id: string, overrides: Partial<AgentRun> = {}): AgentRun => ({ id, conversationId: core.id, turnId: coreTurn.id, agentId: 'bobo', agentName: 'bobo', triggerMessageId: source.id, messageId: `${id}-reply`, status: 'running', createdAt: now(), toolEvents: [], phase: 'execution', collaborationRequestId: organization.requestId, ...overrides })
+  const run = (id: string, overrides: Partial<AgentRun> = {}): AgentRun => ({ id, conversationId: core.id, turnId: coreTurn.id, agentId: 'bobo', agentName: 'bobo', triggerMessageId: source.id, messageId: `${id}-reply`, status: 'running', createdAt: now(), toolEvents: [], phase: 'execution', collaborationRequestId: organization.requestId, ...(native ? { backend: { kind: 'codex-local' as const, profileId: 'native', profileRevision: 1, externalInvocations: 2, sessionPolicy: 'fresh' as const, toolControl: 'host-bridge' as const } } : {}), ...overrides })
   const decisionRun = run('decision-run', { phase: 'decision', status: 'completed' }), organizationRun = run('organization-run')
-  await store.write([...agents.map(agent => row('agents', agent)), row('conversations', core), row('messages', source), row('turns', coreTurn), row('runs', decisionRun), row('runs', organizationRun), row('profileModelCalls', { id: 'decision-known', runId: decisionRun.id, conversationId: core.id, phase: 'decision', startedAt: now(), budgetOwned: false, usage: { inputTokens: 20, outputTokens: 5, totalTokens: 25 } }), row('profileModelCalls', { id: 'decision-unknown', runId: decisionRun.id, conversationId: core.id, phase: 'decision', startedAt: now(), budgetOwned: false, usage: { outputTokens: 3 } })])
+  await store.write([...agents.map(agent => row('agents', agent)), row('conversations', core), row('messages', source), row('turns', coreTurn), row('runs', decisionRun), row('runs', organizationRun), row('profileModelCalls', { id: 'decision-known', runId: decisionRun.id, conversationId: core.id, phase: 'decision', startedAt: now(), ...(native ? { callUnit: 'external-turn' } : {}), budgetOwned: false, usage: { inputTokens: 20, outputTokens: 5, totalTokens: 25 } }), row('profileModelCalls', { id: 'decision-unknown', runId: decisionRun.id, conversationId: core.id, phase: 'decision', startedAt: now(), ...(native ? { callUnit: 'external-turn' } : {}), budgetOwned: false, usage: { outputTokens: 3 } })])
   const claim = { conversationId: core.id, sourceMessageId: source.id, agentId: 'bobo', runId: organizationRun.id, intent: { key: 'main', scope: '查找并组织员工', deliverable: '发布真实员工/群与组织回执' }, organization, ...(prior ? { priorDecision: { runId: decisionRun.id, callIds: ['decision-known', 'decision-unknown'] } } : {}) }
   const work = await works.claim(claim); organizationRun.workId = work.id
   await store.write([row('runs', organizationRun)])
@@ -323,4 +325,33 @@ describe('independent group root and original shared budget', () => {
     expect((await f.store.load<DigitalAgent>('agents')).map(agent => agent.id)).toEqual(['bobo', 'researcher', 'writer'])
     await new WorkRepository(f.store).init(); expect((await f.store.load<WorkBudget>('workBudgets'))[0]!.workItems).toBe(prior.workItems)
   })
+})
+
+it('native organization and an API child retain individual units, incomplete receipts and the first decision deadline', async () => {
+  const f = await fixture('organize_and_execute', true, true)
+  const budget = () => f.store.transaction(tx => tx.get<WorkBudget>('workBudgets', f.work.budgetId))
+  expect(await budget()).toMatchObject({ callUnit: 'mixed', modelCalls: 2, unknownCalls: 1 })
+  expect(Date.parse((await budget())!.deadlineAt)).toBe(Date.parse(f.decisionRun.createdAt) + 300000)
+  await f.works.reserveCollaborationCall(f.organizationRun, 'native-execution', 'execution')
+  await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { inputTokens: 10, outputTokens: 2, totalTokens: 12 })
+  expect((await budget())!.unknownCalls).toBe(2)
+  await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { inputTokens: 10, outputTokens: 2, totalTokens: 12 }, true)
+  expect((await budget())!.unknownCalls).toBe(1)
+  await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { outputTokens: 4 }, true)
+  expect((await budget())!.unknownCalls).toBe(2)
+  const { root, run, prepared } = await claimRoot(f)
+  const child = await f.works.delegate(run.id, { key: 'api-child', ownerAgentId: 'researcher', scope: '核查', deliverable: '核查结果' })
+  const api = f.run('api-child-run', { agentId: 'researcher', backend: undefined, conversationId: f.group.id, turnId: prepared.turn.id, triggerMessageId: f.announcement.id, workId: child.id })
+  await f.store.write([row('runs', api)])
+  expect(await f.works.scheduleWake(child.wakeId!, prepared.turn.id, [])).toBe(true)
+  await f.works.claim({ conversationId: f.group.id, sourceMessageId: f.announcement.id, agentId: 'researcher', runId: api.id, wakeId: child.wakeId, intent: { key: child.key, scope: child.scope, deliverable: child.deliverable, workId: child.id, expectedVersion: child.version } })
+  await f.works.reserveCollaborationCall(api, 'api-call', 'execution')
+  await f.works.settleCollaborationCall(api.id, 'api-call', { inputTokens: 2, outputTokens: 1, totalTokens: 3 })
+  const call = (await f.store.load<BudgetModelCall>('budgetModelCalls')).find(call => call.id === 'api-call')!
+  expect(call.callUnit).toBeUndefined(); expect(call.usageComplete).toBe(true)
+  expect(child.budgetId).toBe(root.budgetId); expect(root.budgetId).toBe(f.work.budgetId)
+  expect(Date.parse((await budget())!.deadlineAt)).toBe(Date.parse(f.decisionRun.createdAt) + 300000)
+  const changed = { ...f.agents[0], executionBackend: { kind: 'mastra-model' as const } }
+  await f.store.write([row('agents', changed)])
+  await expect(f.works.reserveCollaborationCall(run, 'wrong-runtime', 'execution')).rejects.toThrow('运行方式')
 })

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-lr2-real-2",
+  "runtime": "Codex 0.159.3",
+  "platform": "macOS arm64",
+  "supplier": "real-provider",
+  "sourceElectron": true,
+  "humanReview": "pending",
+  "stats": {
+    "startTime": "2026-10-05T08:52:34.878Z",
+    "duration": 201490.866,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "report": "../../../.local/feature-review/codex-lr2-real-2-report/index.html",
+  "scenarios": [
+    "设置接入与新建员工、无API双轮聊天、重启同session",
+    "新建员工、原Work文件任务、真实原件hash与消息交付"
+  ],
+  "limits": [
+    "未覆盖随后新增的成果修订",
+    "非发行包",
+    "原LR0无工具结论撤回，改用完整工具载体探测"
+  ],
+  "frozenBuildManifest": "../../../.local/feature-review/codex-lr2-real-2/build-manifest.json"
+}

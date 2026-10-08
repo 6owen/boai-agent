@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T18:00:37.566369+00:00",
+  "section": 82,
+  "scope": "Prepare actual native-window close confirmation verification without substituting dialog responses. Native actor unavailable; actual close, continue/discard and restart assertions not reached.",
+  "productionChanged": false,
+  "fullGoalComplete": false,
+  "nativeCloseVerified": false,
+  "toolOutcome": {
+    "recordedAt": "2026-10-06T18:00:35.318889+00:00",
+    "source": "mcp__cua_repl.js actual tool result in this turn",
+    "operation": "await cua.listApps()",
+    "result": "The Mac is locked and automatic unlock is paused because physical input was detected. Ask the user to unlock the Mac manually before continuing.",
+    "nativeActionsPerformed": 0,
+    "userInputRequested": true,
+    "userReplyReceived": false,
+    "goalBlockedStatusSet": false
+  },
+  "cases": [
+    {
+      "title": "真实Codex未知保存经原生关闭弹窗继续或放弃后重启",
+      "status": "failed",
+      "modelMode": "real-provider",
+      "errors": [
+        {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   0,\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 180000ms exceeded while waiting on the predicate",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   0,\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 180000ms exceeded while waiting on the predicate\n    at Object.<anonymous> (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/local-agent-configuration.steps.ts:236:163)\n    at BddStepInvoker.runWithAfterStepHooks (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)\n    at BddStepInvoker.invoke (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)\n    at /Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/codex-employee.feature.spec.js:10:5"
+        }
+      ],
+      "gaps": [],
+      "cleanupErrors": [],
+      "manifest": {
+        "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/manifest.json",
+        "bytes": 5044,
+        "sha256": "bf9f6172b6acf1bb4317274d8a4b8cf5c4351d71ffffbe84e7f0cc30b3b873e8"
+      },
+      "items": [
+        {
+          "label": "本机Codex实际连接验证",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/001-本机Codex实际连接验证.png",
+          "bytes": 193613,
+          "sha256": "dad238288588bfeb03b74ebd2e3f81dbf6a8b4d1263bb9f5ff7a8b818ace19f4"
+        },
+        {
+          "label": "创建本机Codex员工无API配置",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/002-创建本机Codex员工无API配置.png",
+          "bytes": 242144,
+          "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+        },
+        {
+          "label": "真实原生关闭最终原状态",
+          "kind": "data",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/003-真实原生关闭最终原状态.json",
+          "bytes": 11525,
+          "sha256": "e7baefd6fc5241ede2edf9672f43096a57b7d031c4febe04a3d97fcf0dd5c8e8"
+        },
+        {
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/004-第-1-次启动结束画面.png",
+          "bytes": 319095,
+          "sha256": "32023a0e729d890243d3b813720344c57ec9d541aa6be5072127ddb8b3d42a1c"
+        }
+      ],
+      "verifiedBeforeNativeAction": {
+        "configurationVersion": 1,
+        "messages": 2,
+        "completedProductRuns": 3,
+        "workCount": 0,
+        "savedConfigurationUnchanged": true
+      },
+      "nativeCloseVerified": false
+    },
+    {
+      "title": "真实Claude未知保存经原生关闭弹窗继续或放弃后重启",
+      "status": "failed",
+      "modelMode": "real-provider",
+      "errors": [
+        {
+          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   0,\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 180000ms exceeded while waiting on the predicate",
+          "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[32m- Array [\u001b[39m\n\u001b[32m-   0,\u001b[39m\n\u001b[32m- ]\u001b[39m\n\u001b[31m+ Array []\u001b[39m\n\nCall Log:\n- Timeout 180000ms exceeded while waiting on the predicate\n    at Object.<anonymous> (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/local-agent-configuration.steps.ts:236:163)\n    at BddStepInvoker.runWithAfterStepHooks (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)\n    at BddStepInvoker.invoke (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)\n    at /Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/claude-employee.feature.spec.js:9:5"
+        }
+      ],
+      "gaps": [],
+      "cleanupErrors": [],
+      "manifest": {
+        "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/manifest.json",
+        "bytes": 6202,
+        "sha256": "8453d569f0f6d3d75d61aaa832e1dfafc6f1eabc097d00872fa62f5011515f8e"
+      },
+      "items": [
+        {
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/001-第-1-次启动结束画面.png",
+          "bytes": 104674,
+          "sha256": "97607275b4515cb700752e21f0657eb88cf927f3d0f82d6d9fd617aea10cb2fe"
+        },
+        {
+          "label": "真实模型使用产品系统加密",
+          "kind": "data",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/002-真实模型使用产品系统加密.json",
+          "bytes": 71,
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+        },
+        {
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/003-Claude程序核对只证明程序状态.png",
+          "bytes": 196948,
+          "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+        },
+        {
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/004-新员工明确选择Claude程序与模型来源.png",
+          "bytes": 279016,
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+        },
+        {
+          "label": "真实原生关闭最终原状态",
+          "kind": "data",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/005-真实原生关闭最终原状态.json",
+          "bytes": 11773,
+          "sha256": "fab0a3522ece5236475dbb54fc6581cf6f8f2bf0bfc8773f46667d2b5578e516"
+        },
+        {
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot",
+          "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/006-第-2-次启动结束画面.png",
+          "bytes": 319126,
+          "sha256": "f695ead84f57afe2774381f8d584f653ac5027f86c93dcea675ac979b8728bc2"
+        }
+      ],
+      "verifiedBeforeNativeAction": {
+        "configurationVersion": 1,
+        "messages": 2,
+        "completedProductRuns": 3,
+        "workCount": 0,
+        "savedConfigurationUnchanged": true
+      },
+      "nativeCloseVerified": false
+    }
+  ],
+  "stats": {
+    "startTime": "2026-10-06T17:51:19.646Z",
+    "duration": 422715.93,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "regression": {
+    "reviewTestsPassed": 18,
+    "typecheck": "passed",
+    "bddgen": "passed"
+  },
+  "productionFilesUnchanged": 583,
+  "packageFilesUnchanged": 3405,
+  "changesFromSection81": [
+    "tests/e2e/features/claude-employee.feature",
+    "tests/e2e/features/codex-employee.feature",
+    "tests/e2e/steps/local-agent-configuration.steps.ts",
+    "tests/e2e/support/desktop.ts"
+  ],
+  "limitations": [
+    "Both real-source cases failed waiting for the first actual native dialog response; observed response list was empty. No native close action or dialog screenshot was performed.",
+    "The initial explicit ordinary chat completed in both cases, but this cannot count as native-close verification.",
+    "Only acceptance-before reply loss was reached. Acceptance-after loss, continue/discard, actual window closure, restart assertions, and packaged/native cases remain unverified.",
+    "The explicit expectedWindowClosed lifecycle branch has type and existing review regression checks; its actual native-closed-window use remains unverified.",
+    "The initial failure final-data allCalls list is a completed-phase accumulator and empty; it does not mean the already attempted save was never requested. The actual save IPC count is not fully exported by this failed attempt.",
+    "Mac window close and application quit/power loss are distinct contracts.",
+    "Historical successful configuration and runtime evidence is preserved; complete LR0-LR6 remains outstanding."
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/001-本机Codex实际连接验证.png",
+      "bytes": 193613,
+      "sha256": "dad238288588bfeb03b74ebd2e3f81dbf6a8b4d1263bb9f5ff7a8b818ace19f4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/002-创建本机Codex员工无API配置.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/003-真实原生关闭最终原状态.json",
+      "bytes": 11525,
+      "sha256": "e7baefd6fc5241ede2edf9672f43096a57b7d031c4febe04a3d97fcf0dd5c8e8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/004-第-1-次启动结束画面.png",
+      "bytes": 319095,
+      "sha256": "32023a0e729d890243d3b813720344c57ec9d541aa6be5072127ddb8b3d42a1c"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/704506bbdae38bebaafd-e24e58cd5f8db4990c10-retry0-repeat0-CqIryn/manifest.json",
+      "bytes": 5044,
+      "sha256": "bf9f6172b6acf1bb4317274d8a4b8cf5c4351d71ffffbe84e7f0cc30b3b873e8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/001-第-1-次启动结束画面.png",
+      "bytes": 104674,
+      "sha256": "97607275b4515cb700752e21f0657eb88cf927f3d0f82d6d9fd617aea10cb2fe"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/003-Claude程序核对只证明程序状态.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/005-真实原生关闭最终原状态.json",
+      "bytes": 11773,
+      "sha256": "fab0a3522ece5236475dbb54fc6581cf6f8f2bf0bfc8773f46667d2b5578e516"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/006-第-2-次启动结束画面.png",
+      "bytes": 319126,
+      "sha256": "f695ead84f57afe2774381f8d584f653ac5027f86c93dcea675ac979b8728bc2"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/scenarios/76620a6b86e22810b964-0e69e6eeb4d2821efb07-retry0-repeat0-6mYm6b/manifest.json",
+      "bytes": 6202,
+      "sha256": "8453d569f0f6d3d75d61aaa832e1dfafc6f1eabc097d00872fa62f5011515f8e"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/playwright-results.json",
+      "bytes": 900746,
+      "sha256": "89035861ff4919ded73838730fb234a27ceda68a333c5c067998f5a979f989c2"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "c99a20f1d9b3c4d04ce7b036eb7a0f478898fc554f789741a12c64265d9441ad"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "688d81d9b775223e628f44e287769654cb07d301440594cbea8af7dc04224a38"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1.log",
+      "bytes": 16541,
+      "sha256": "0c42d3d8024aad9e5691671c182f1f9fcb12b30425ace8f200f4ed7d0cf3e902"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/typecheck-1.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/bddgen-1.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/review-regression-1.log",
+      "bytes": 196,
+      "sha256": "b36ce0092ad93e26e68610326a2d3ec105656d4f9d0b1e7c98ea100256356b49"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/native-tool-unavailable.json",
+      "bytes": 442,
+      "sha256": "c5a0e3a8785e21e5aa44e96998a150dc3a798e419feb9be076e2c3bffa9be7d4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/frozen-inputs/claude-employee.feature",
+      "bytes": 8258,
+      "sha256": "d77f0c5ba8074ab282ca56523421b98320c226d7af080b5a10c45c65bed2ad4f"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/frozen-inputs/codex-employee.feature",
+      "bytes": 20645,
+      "sha256": "fdc75eb71ded14861f341f7c1d06de27c2d95e58320b0b0dd7fbfa57ebd28f6b"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/frozen-inputs/desktop.ts",
+      "bytes": 8861,
+      "sha256": "36f6b85cf3e2f34a3c62bb48d21e4c3275c45950fa4229a040b685638591d57e"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/frozen-inputs/local-agent-configuration.steps.ts",
+      "bytes": 31180,
+      "sha256": "5f440b331172595a2c6468fb1ea7cc6a8c4341ca1c8ee7939dc8eb44513451ec"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/index.html",
+      "bytes": 68756,
+      "sha256": "cd348487c85eb61c439068580b649029d24c396a0dc402096a26f469d8a09445"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/checks.json",
+      "bytes": 54732,
+      "sha256": "3aef40133bac141db5ab99520580ed783cd24a373f78de3fc7f1c6e520f5d3d8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/manifest.json",
+      "bytes": 1263,
+      "sha256": "31e685997427c422df1054ca6838244b788c27e1e924ecc90138c2aabaff2e9d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0003-e7baefd6fc5241ed.json",
+      "bytes": 11525,
+      "sha256": "e7baefd6fc5241ede2edf9672f43096a57b7d031c4febe04a3d97fcf0dd5c8e8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0004-32023a0e729d8902.png",
+      "bytes": 319095,
+      "sha256": "32023a0e729d890243d3b813720344c57ec9d541aa6be5072127ddb8b3d42a1c"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0001-dad238288588bfeb.png",
+      "bytes": 193613,
+      "sha256": "dad238288588bfeb03b74ebd2e3f81dbf6a8b4d1263bb9f5ff7a8b818ace19f4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0009-fab0a3522ece5236.json",
+      "bytes": 11773,
+      "sha256": "fab0a3522ece5236475dbb54fc6581cf6f8f2bf0bfc8773f46667d2b5578e516"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0006-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0010-f695ead84f57afe2.png",
+      "bytes": 319126,
+      "sha256": "f695ead84f57afe2774381f8d584f653ac5027f86c93dcea675ac979b8728bc2"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0002-931526d0f03564ac.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0008-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0005-97607275b4515cb7.png",
+      "bytes": 104674,
+      "sha256": "97607275b4515cb700752e21f0657eb88cf927f3d0f82d6d9fd617aea10cb2fe"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/source-1-report/resources/0007-2af097f8e3f33af0.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/current-package-manifest.json",
+      "bytes": 600509,
+      "sha256": "a1251533c26dbfd3f2369757fcb0c005ed20140c192f3eccbe194a3074d13763"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/typecheck-2.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/bddgen-2.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/report-resource-verification.json",
+      "bytes": 151,
+      "sha256": "5c98b4fa723c95341d8691fc420de1e518009746289e43ce85b2c9f52a6aa76d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-close-20261007/post-failure-inputs/local-agent-configuration.steps.ts",
+      "bytes": 31805,
+      "sha256": "54ef204f1c682438eefef8efcc696253663a238e145ce83a4cc0035f0da90e64"
+    }
+  ],
+  "followup": {
+    "recordedAt": "2026-10-06T18:02:43.080464+00:00",
+    "scope": "Only test evidence export: persist pre-native coordinator facts and current uncompleted save/native dialog observations in final state.",
+    "typecheck": "passed",
+    "bddgen": "passed",
+    "nativeRerun": "not performed while tool unavailable",
+    "frozenSource1StillPreserved": true,
+    "currentChangedFromFrozenSource1": [
+      "tests/e2e/steps/local-agent-configuration.steps.ts"
+    ]
+  }
+}

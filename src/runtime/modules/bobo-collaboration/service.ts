@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 原 Work 持有者、真实用户消息、冻结员工方案、既有 TeamFiles 与 SQLite 发布钩子。
  * [OUTPUT]: 复用联系人/仅缺员准备默认浏览器可用的 Mastra 员工、原请求幂等、员工/独立群/真实 bobo 公告/共享预算启动意图同事务发布；实际退出、保守清理和只读恢复。
  * [POS]: bobo 发起群协作的组织模块；不调用成员模型、不复制私人聊天或材料、不负责群执行调度。
@@ -7,7 +9,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
-import type { Connection, Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '../../../shared/domain'
+import type { Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '../../../shared/domain'
 import { avatarPresets } from '../../../shared/domain/avatars'
 import { boboCollaborationPlanSchema, employeeCandidateQuerySchema, type BoboCollaborationOperation, type BoboCollaborationReceipt, type BoboCollaborationSource, type BoboOrganizationAuthority } from '../../../shared/domain/bobo-collaboration'
 import { emptyContactList, type ContactListPreferences } from '../../../shared/domain/contact-list'
@@ -17,7 +19,7 @@ import type { CollaborationStartIntent } from '../../../shared/domain/work'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { agentSchema } from '../employees/employee-service'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint, type TeamFileOperation } from '../teams/team-files'
-import { resolveTeamModel } from '../teams/team-repository'
+import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { collaborationReceipt } from './receipt'
 
@@ -74,7 +76,7 @@ export class BoboCollaborationService {
     if (!agent || isCoreAgent(agent) || agent.systemRole === 'core' || !agent.active || agent.configVersion !== configVersion || agent.executionBackend?.kind === 'acp-local') return fail('CONFIG_CHANGED', '员工已变化、停用或不能参与群协作，请重新查找')
     const cleanup = await tx.list<{ agentIds: string[] }>('contactDeletions')
     if (cleanup.some(item => item.agentIds.includes(id))) fail('CONFIG_CHANGED', '员工正在清理')
-    resolveTeamModel(await tx.get<Connection>('connections', agent.connectionId), agent.modelId)
+    await resolveEmployeeRuntime(tx, agent)
     return agent
   }
   private async authorize(tx: RecordTransaction, operation: BoboCollaborationOperation, authority = operation.authority) {
@@ -88,11 +90,12 @@ export class BoboCollaborationService {
     for (const member of operation.existingMembers) {
       const agent = await this.validMember(tx, member.agentId, member.configVersion)
       const fingerprint = operation.existingConnectionFingerprints.find(item => item.agentId === agent.id)?.fingerprint
-      if (!fingerprint || resolveTeamModel(await tx.get<Connection>('connections', agent.connectionId), agent.modelId).fingerprint !== fingerprint) fail('CONFIG_CHANGED', '既有员工的模型连接已变化')
+      if (!fingerprint || (await resolveEmployeeRuntime(tx, agent)).fingerprint !== fingerprint) fail('CONFIG_CHANGED', '既有员工的模型连接已变化')
     }
     const core = await tx.get<DigitalAgent>('agents', 'bobo')
-    if (!core || !isCoreAgent(core) || core.configVersion !== authority.agentConfigVersion || core.connectionId !== operation.connectionId || (core.modelId || (await tx.get<Connection>('connections', core.connectionId))?.defaultModel) !== operation.modelId) fail('CONFIG_CHANGED', 'bobo 的原模型配置已变化')
-    if (resolveTeamModel(await tx.get<Connection>('connections', operation.connectionId), operation.modelId).fingerprint !== operation.connectionFingerprint) fail('CONFIG_CHANGED', '原模型连接已变化')
+    if (!core || !isCoreAgent(core) || core.configVersion !== authority.agentConfigVersion) fail('CONFIG_CHANGED', 'bobo 的原运行配置已变化')
+    const runtime = await resolveEmployeeRuntime(tx, core!)
+    if (runtime.connectionId !== operation.connectionId || runtime.modelId !== operation.modelId || runtime.fingerprint !== operation.connectionFingerprint) fail('CONFIG_CHANGED', '原运行配置已变化')
     await this.hooks.validateSource?.(tx, operation)
   }
   async organize(input: unknown, authority: BoboOrganizationAuthority, provenance: { modelCallId?: string; toolCallId: string }, signal?: AbortSignal): Promise<BoboCollaborationReceipt> {
@@ -115,16 +118,16 @@ export class BoboCollaborationService {
       }
       const source = await tx.get<Message>('messages', authority.sourceMessageId), sourceConversation = await tx.get<Conversation>('conversations', authority.sourceConversationId), core = await tx.get<DigitalAgent>('agents', 'bobo')
       if (!source || source.senderType !== 'user' || source.senderId !== 'user' || source.origin || source.status !== 'completed' || source.conversationId !== authority.sourceConversationId || !sourceConversation || !isCoreConversation(sourceConversation) || !core || !isCoreAgent(core)) fail('UNAUTHORIZED', '缺少本人在原 bobo 讨论中的真实请求')
-      const connection = await tx.get<Connection>('connections', core!.connectionId), model = resolveTeamModel(connection, core!.modelId), createdAt = now()
+      const model = await resolveEmployeeRuntime(tx, core!), createdAt = now()
       const existingMembers = [] as BoboCollaborationOperation['existingMembers'], existingConnectionFingerprints: BoboCollaborationOperation['existingConnectionFingerprints'] = []
       for (const member of plan.existingMembers) {
         const agent = await this.validMember(tx, member.agentId, member.configVersion)
         existingMembers.push({ ...member, name: agent.name, role: agent.role.slice(0, 1000) })
-        existingConnectionFingerprints.push({ agentId: agent.id, fingerprint: resolveTeamModel(await tx.get<Connection>('connections', agent.connectionId), agent.modelId).fingerprint })
+        existingConnectionFingerprints.push({ agentId: agent.id, fingerprint: (await resolveEmployeeRuntime(tx, agent)).fingerprint })
       }
       const creationSource: BoboCollaborationSource = { kind: 'bobo-collaboration', operationId: id, requestId: organization.requestId }
       const agents: DigitalAgent[] = plan.newEmployees.map((member, index) => {
-        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: { kind: 'mastra-model' }, connectionId: core!.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true })
+        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: model.executionBackend, connectionId: model.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: model.executionBackend.kind === 'mastra-model', allowCommands: false, active: true })
         return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource }
       })
       const groupConversationId = organization.mode === 'employee_creation' ? undefined : randomUUID()
@@ -132,7 +135,7 @@ export class BoboCollaborationService {
       const announcement: Message | undefined = groupConversationId ? { id: randomUUID(), conversationId: groupConversationId, senderType: 'agent', senderId: 'bobo', senderName: core!.name, content: plan.announcement!, status: 'completed', sequence: 1, createdAt, collaborationRequestId: organization.requestId, collaborationSource: { operationId: id, sourceRunId: authority.runId, modelCallId: provenance.modelCallId, toolCallId: provenance.toolCallId } } : undefined
       if (conversation && announcement) { conversation.lastMessageAt = createdAt; conversation.lastMessagePreview = announcement.content.slice(0, 120) }
       const contacts = await tx.get<ContactListPreferences>('contactList', 'contacts') ?? emptyContactList()
-      const operation: BoboCollaborationOperation = { id, schemaVersion: 1, requestId: organization.requestId, payloadHash, version: 1, organizationWorkId: authority.workId, sourceConversationId: authority.sourceConversationId, sourceMessageId: authority.sourceMessageId, sourceMessageHash: sourceHash(source!), mode: organization.mode, goal: organization.goal, budgetId: owner.budget.id, contactRevision: contacts.revision, authority: { ...authority }, existingMembers, existingConnectionFingerprints, agents, connectionId: core!.connectionId, modelId: model.modelId, connectionFingerprint: model.fingerprint, groupConversationId, conversation, announcement, announcementSource: { ...provenance, runId: authority.runId }, status: 'accepted', createdAt, files: [], directories: [] }
+      const operation: BoboCollaborationOperation = { id, schemaVersion: 1, requestId: organization.requestId, payloadHash, version: 1, organizationWorkId: authority.workId, sourceConversationId: authority.sourceConversationId, sourceMessageId: authority.sourceMessageId, sourceMessageHash: sourceHash(source!), mode: organization.mode, goal: organization.goal, budgetId: owner.budget.id, contactRevision: contacts.revision, authority: { ...authority }, existingMembers, existingConnectionFingerprints, agents, ...(model.executionBackend.kind !== 'mastra-model' ? { executionBackend: model.executionBackend } : {}), connectionId: model.connectionId, modelId: model.modelId, connectionFingerprint: model.fingerprint, groupConversationId, conversation, announcement, announcementSource: { ...provenance, runId: authority.runId }, status: 'accepted', createdAt, files: [], directories: [] }
       Object.assign(operation, teamFileLog(this.view(operation), this.homes))
       await this.authorize(tx, operation); signal?.throwIfAborted(); await tx.put(record(operation))
       return { operation, start: true }

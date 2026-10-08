@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话详情、消息和运行领域类型。
- * [OUTPUT]: 按轮次整理的活动展示投影。
+ * [OUTPUT]: 按轮次整理活动，并按原用户消息身份投影已持久化中断；不推断执行/交付，不生成消息或续跑。
  * [POS]: src/renderer/pages/conversations/activity.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -16,6 +16,14 @@ export interface ActivityRound {
 
 export function byCreatedAt<T extends { createdAt: string; id: string }>(a: T, b: T) {
   return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
+}
+
+/** A message keeps its own historical turn; another request cannot explain its interruption. */
+export function interruptedTriggerTurn(detail: Pick<ConversationDetail, 'conversation' | 'turns'>, message: Message) {
+  if (message.senderType !== 'user' || message.conversationId !== detail.conversation.id) return undefined
+  const turns = (detail.turns ?? []).filter(turn => turn.conversationId === message.conversationId && turn.triggerMessageId === message.id)
+  const turn = message.turnId ? turns.find(turn => turn.id === message.turnId) : [...turns].sort(byCreatedAt).at(-1)
+  return turn?.status === 'interrupted' ? turn : undefined
 }
 
 /** Explicit chronology also works when persisted rows arrive in a different order. */

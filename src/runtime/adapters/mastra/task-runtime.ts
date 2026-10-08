@@ -1,7 +1,10 @@
 /*
+ * [OUTPUT]: 文件任务保留获准原文件名/逻辑路径，仅未指定时默认本run目录；材料写入门禁/工具原参数/发布与实际退出保持，不静默迁移拒绝的目标。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
  * [OUTPUT]: 当前启用的内置模型员工默认获准 task 浏览器工具，不读旧能力字段；ACP/停用、普通 chat、无 Work、自动化与组织阶段不提供。
  * [OUTPUT]: 同run文件工具按真实受理次序串行至实际退出，修订发布仅广告宿主原请求literal；汇报按本轮登记 ID 校验，依赖只保存 waiting，组织 Work 仅三个真实组织工具。
+ * [OUTPUT]: 命令工具明确由调用本身创建并等待宿主审批，不要求模型先自行获得原生执行批准。
  * [OUTPUT]: 手动已认领工作显式浏览器工具，disposal 等待实际退出；结果协议显式 userQuestion 引用公开问题，不能替代工作依赖等待；成果读取直接使用宿主 hash 校验所得字节而不重开原件；显式宿主修订身份的成果发布；核心身份且宿主授权时提供 create_team，按工具调用身份进入原子发布并复用副作用门禁；原生技能名/路径解析到固定资源身份供激活观测；内建文件工具复核宿主来源授权、隐藏未获准列举项且拒绝猜路径访问；受约束的命令/产物工具、委派/等待及业务结果声明。
  * [POS]: Mastra 任务工具适配器；副作用前先登记持久核对标记。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -70,7 +73,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       ...(ctx.browserSession && isBrowserCapableAgent(ctx.agent) && ctx.work && !ctx.work.origin && !ctx.work.organization && ctx.responseKind === 'task' ? { browser_tool: createBrowserTool(ctx.browserSession) } : {}),
       ...(isCoreAgent(ctx.agent) && ctx.createTeam ? {
         create_team: createTool({
-          id: 'create_team', description: 'Create the team explicitly requested by the user and its group chat in one product operation. Choose the team name, member names, roles and working instructions from the requirement. Returns the committed group and member identities; only a successful receipt proves creation. New members share the core Agent model connection, with no commands or resource bindings. Do not call for ordinary conversation or repeat an already delivered creation.',
+          id: 'create_team', description: 'Create the team explicitly requested by the user and its group chat in one product operation. Choose the team name, member names, roles and working instructions from the requirement. Returns the committed group and member identities; only a successful receipt proves creation. New members inherit the core Agent execution backend and model configuration with independent identities, workspaces and sessions, with no commands or resource bindings. Do not call for ordinary conversation or repeat an already delivered creation.',
           inputSchema: teamModelPlanSchema,
           execute: async (plan, context) => {
             check(signal)
@@ -98,7 +101,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
         }),
       }),
       write_file: createTool({
-        id: 'write_file', description: `Write a private task file under self:/runs/${ctx.runId}/. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. Use publish_artifact to share a finished result. No shared or system-file writes.`,
+        id: 'write_file', description: `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. Use publish_artifact to share a finished result. No shared or system-file writes.`,
         inputSchema: z.object({ path: z.string(), content: z.string().max(MAX_FILE_BYTES) }),
         execute: ({ path: file, content }) => fileOperation(async () => {
           check(signal)
@@ -170,7 +173,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       } : {}),
       ...(ctx.agent.allowCommands ? {
         execute_command: createTool({
-          id: 'execute_command', description: `Run a host shell command only after explicit user approval. Cwd: ${scope.runPath}. Host user permissions, NOT a security sandbox. Imported skill sources and system files must not be modified. Results stay private until published.`,
+          id: 'execute_command', description: `Request BoAI host approval for this exact command, then wait for its execution result. Calling this tool first displays the command in the user's original chat; it does not run until the user approves there. Do not separately ask for approval in prose or use a native sandbox escalation. A refusal returns approved:false. Cwd: ${scope.runPath}. Approved commands have host user permissions, NOT a security sandbox. Imported skill sources and system files must not be modified. Results stay private until published.`,
           inputSchema: z.object({ command: z.string().min(1).max(12_000) }),
           execute: async ({ command }) => {
             check(signal)
@@ -196,7 +199,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     return {
       workspace, tools: availableTools, skills: ctx.organizeCollaboration ? [] : identities,
       dispose: async () => { filesClosing = true; await fileQueue; try { await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
-      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Write outputs in self:/runs/${ctx.runId}/; self:/work/ contains this session's working files. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
+      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified; non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
   } catch (error) { try { await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
   }

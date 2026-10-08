@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 工作标题显式标为目标，保留原deliverable字节与真实状态/交付入口；完成式目标不代表已经交付。
+ * [OUTPUT]: 中断且无原原因的工作明确提示核对已有结果，不把缺少文案当未知工作状态或承诺自动续行。
  * [INPUT]: 宿主核对的Work行、实际员工快照、真实审批/运行身份及固定来源解析接口。
  * [OUTPUT]: 会话/全局/员工共用自然高度不收缩的只读工作卡；按查询/Work身份保留详情与子展开，原请求/问题/结果/待审批卡分别精确导航，可信自动化显示原计划并回查具体触发，父子与结果依赖分开，不改业务状态。
  * [POS]: 工作视图的最小业务卡片，子工作仍沿同一有界宿主查询。
@@ -46,11 +48,11 @@ export function WorkCard({ api, item, snapshot, active, compact, onNavigate, onI
   }
   const source = item.source === 'automation' ? `定时触发 · ${origin?.name || '计划名称未知'}` : item.source === 'ordinary' ? '普通工作' : '来源未知'
   return <Card size="sm" className={selected ? 'shrink-0 gap-3 bg-muted/60' : 'shrink-0 gap-3'} data-work-id={work.id} data-selected={selected ? 'true' : undefined} aria-current={selected ? 'true' : undefined} onClick={event => { if (event.target instanceof Element && event.target.closest('[data-work-id]') === event.currentTarget) onSelect?.() }} onFocusCapture={event => { if (event.target instanceof Element && event.target.closest('[data-work-id]') === event.currentTarget) onSelect?.() }}>
-    <CardHeader><div className="flex min-w-0 items-start justify-between gap-2"><CardTitle className="min-w-0 break-words">{work.deliverable}</CardTitle><span className="shrink-0 text-xs text-muted-foreground">{workStateLabels[work.status]}</span></div></CardHeader>
+    <CardHeader><div className="flex min-w-0 items-start justify-between gap-2"><CardTitle className="min-w-0 break-words"><span className="text-muted-foreground">目标：</span>{work.deliverable}</CardTitle><span className="shrink-0 text-xs text-muted-foreground">{workStateLabels[work.status]}</span></div></CardHeader>
     <CardContent className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm"><Avatar name={owner?.name ?? item.ownerName ?? '负责人未知'} seed={work.ownerAgentId} avatar={owner?.avatar} color={owner?.color} small /><span className="truncate">{owner?.name ?? item.ownerName ?? '负责人未知'}</span>{work.parentWorkId && <span className="text-xs text-muted-foreground">子工作</span>}</div>
       {(!compact || origin) && <p className="m-0 break-words text-xs text-muted-foreground">{item.conversationTitle} · {source} · {new Date(work.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
-      {(work.status === 'waiting' || work.status === 'blocked' || work.status === 'failed' || work.status === 'interrupted') && <p className="m-0 break-words text-sm text-muted-foreground">{work.nextStep || work.outcome?.summary || '原因未记录，请查看原聊天。'}</p>}
+      {(work.status === 'waiting' || work.status === 'blocked' || work.status === 'failed' || work.status === 'interrupted') && <p className="m-0 break-words text-sm text-muted-foreground">{work.nextStep || work.outcome?.summary || (work.status === 'interrupted' ? '处理已中断，未自动重新执行。请先核对已有结果。' : '原因未记录，请查看原聊天。')}</p>}
       {!!item.approvalTargets?.length && <p role="status" className="m-0 text-sm text-muted-foreground">待审批，请在原聊天查看请求并处理。</p>}
       {!item.sourceAvailable && <p role="status" className="m-0 text-xs text-muted-foreground">原请求消息不可定位。</p>}
       <details className="text-sm" open={view.details} onToggle={event => { if (event.currentTarget.open !== view.details) changeView({ details: event.currentTarget.open }) }}><summary className="cursor-pointer text-muted-foreground">工作详情</summary><div className="mt-2 flex flex-col gap-2">

@@ -1,0 +1,796 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-07T19:09:20.024355+00:00",
+  "kind": "three-independent-claude-core-save-source-cases-policy11",
+  "status": "incomplete-one-pass-two-pre-save-failures",
+  "sourceBuildOnly": true,
+  "actualProductScenes": 3,
+  "passed": 1,
+  "failed": 2,
+  "automaticRetry": 0,
+  "actualSaveAttempts": 1,
+  "controlledBusinessRestarts": 2,
+  "sourceBuild": {
+    "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/build-receipt-1.json",
+    "bytes": 109363,
+    "sha256": "ec15a9e1b14a1ad2c7683408df40f7c8ea9aa87786ef14481235532154150bb0"
+  },
+  "frozenInputs": {
+    "nonDist": 778,
+    "dist": 119,
+    "total": 897,
+    "generatedBdd": 47,
+    "allUnchangedAtPublication": true
+  },
+  "runtimePolicyVersion": 11,
+  "cases": [
+    {
+      "name": "normal",
+      "status": "passed",
+      "actualProductScenes": 1,
+      "attempts": 1,
+      "automaticRetry": 0,
+      "actualDurationMs": 92365,
+      "originalSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/same-attempt-summary-1.json",
+        "bytes": 69233,
+        "sha256": "1946ff9f9a25902312b33bb27ada0802c1db31c07bd193c5bdd3899060549a39"
+      },
+      "publicSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude核心正常保存-策略11-20261008.json",
+        "bytes": 69233,
+        "sha256": "1946ff9f9a25902312b33bb27ada0802c1db31c07bd193c5bdd3899060549a39"
+      },
+      "terminalVerification": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/terminal-verification-receipt-1.json",
+        "bytes": 1658,
+        "sha256": "7a03e3a51b43374d719f1f4f1de8d38fcdf687469f9aff87af042b24966eb7bb"
+      },
+      "report": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/source-normal-1-report/index.html",
+        "bytes": 1078447,
+        "sha256": "43b449c846cd5d00f9fd7f67eb6d94c9d4ee21b5c923c167264fe0b704522b7b"
+      },
+      "actualSaveAttempted": true,
+      "controlledBusinessRestarts": 2,
+      "explicitNewChatAfterRestarts": true,
+      "resourceCount": 38,
+      "reportCopyCount": 38,
+      "traceCount": 4,
+      "resourcePlusTraceReferences": 42,
+      "actualOriginalCopyTraceHashChecks": 80,
+      "actualExternalStages": 12,
+      "budget": {
+        "limits": {
+          "id": "budget-8a026f9995ea5d6a66b24794667afa453a2b129301d8e6990b338ffb03d738ab",
+          "deadlineAt": "2026-10-07T18:24:14.126Z",
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "maxRuns": 8,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3
+        },
+        "final": {
+          "id": "budget-8a026f9995ea5d6a66b24794667afa453a2b129301d8e6990b338ffb03d738ab",
+          "modelCalls": 9,
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T18:24:14.126Z",
+          "usage": {
+            "inputTokens": 142387,
+            "outputTokens": 10178,
+            "totalTokens": 152565
+          },
+          "usageIncomplete": true,
+          "unknownCalls": 1
+        },
+        "completeCalls": 8,
+        "unknownCalls": 1,
+        "knownOutputTokens": 10178,
+        "unknownNotZeroFilled": true,
+        "notFullCostOrReliabilityProof": true
+      },
+      "originalFiles": {
+        "childFormalHash": "665d62e0c73b8bf15f2b893fd5c0213a4f3de690f27403b2c5abe07c2d4164cd",
+        "childOriginalAndAfterExitExportsHashEqual": true,
+        "preparedCoreProof": {
+          "sha256": "633dcee56a40766d018f78e327780a88dd1947618b0f4f67def316a35dc48744",
+          "ino": 353985132,
+          "size": 274,
+          "modified": 1791397225683.306
+        },
+        "preparedCoreAfterExitMetadataEqual": true,
+        "fixedFourPostExit": [
+          {
+            "name": "core-proof.md",
+            "presence": "exists",
+            "sha256": "633dcee56a40766d018f78e327780a88dd1947618b0f4f67def316a35dc48744",
+            "ino": 353985132,
+            "size": 274,
+            "modified": 1791397225683.306,
+            "toolCompletionProvedByOriginalReceipt": true,
+            "businessDelivery": false
+          },
+          {
+            "name": "review-01.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "postExitObserved": true,
+            "doesNotProveToolWasNotCalled": true
+          },
+          {
+            "name": "review-02.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "postExitObserved": true,
+            "doesNotProveToolWasNotCalled": true
+          },
+          {
+            "name": "review-03.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "postExitObserved": true,
+            "doesNotProveToolWasNotCalled": true
+          }
+        ],
+        "formalArtifacts": 1,
+        "parentPrivateProofDoesNotClaimDelivered": true,
+        "noRawPrivateOrNativeHistoryExportsAddedBySummary": true
+      },
+      "actualExit": {
+        "originalSaveAffectedPidAndGroups": {
+          "identities": [
+            {
+              "pid": 45802,
+              "group": 45802,
+              "started": "Thu Oct  8 02:20:03 2026    "
+            },
+            {
+              "pid": 45803,
+              "group": 45802,
+              "started": "Thu Oct  8 02:20:04 2026    "
+            }
+          ],
+          "groups": [
+            45802
+          ],
+          "exitVerified": true
+        },
+        "finalProcessExit": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T18:20:38.716Z",
+          "owned": [
+            {
+              "pid": 46039,
+              "parent": 46034,
+              "group": 46034,
+              "started": "Thu Oct  8 02:20:29 2026    "
+            }
+          ],
+          "groups": []
+        },
+        "all12CliTraceGroupsExited": true,
+        "afterCloseRecordsEqualFinal": true,
+        "fixtureCleanupErrors": [],
+        "exportBeforeFixtureCleanup": true
+      },
+      "failureOriginalPreserved": null
+    },
+    {
+      "name": "before",
+      "status": "failed",
+      "actualProductScenes": 1,
+      "attempts": 1,
+      "automaticRetry": 0,
+      "actualDurationMs": 76847,
+      "originalSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/before-same-attempt-summary-1.json",
+        "bytes": 54916,
+        "sha256": "b70a890bd1c60f5b01167aa15dc88169612d3be1948c9df5ebc78e3a6d4c8c69"
+      },
+      "publicSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude核心受理前未到保存-策略11-20261008.json",
+        "bytes": 54916,
+        "sha256": "b70a890bd1c60f5b01167aa15dc88169612d3be1948c9df5ebc78e3a6d4c8c69"
+      },
+      "terminalVerification": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/before-terminal-verification-receipt-1.json",
+        "bytes": 1826,
+        "sha256": "348aa529f0d71692a40e4fda52eea01fd3a7da61c73e2196391ea92871eda8d3"
+      },
+      "report": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1-report/index.html",
+        "bytes": 524160,
+        "sha256": "64f5ecba92b6d2a07e66f217f0c1f3699d4e6d92bd6409bee0568fe9bb01d841"
+      },
+      "actualSaveAttempted": false,
+      "controlledBusinessRestarts": 0,
+      "explicitNewChatAfterRestarts": false,
+      "resourceCount": 23,
+      "reportCopyCount": 23,
+      "traceCount": 2,
+      "resourcePlusTraceReferences": 25,
+      "actualOriginalCopyTraceHashChecks": 48,
+      "actualExternalStages": 9,
+      "budget": {
+        "limits": {
+          "id": "budget-b9e8d81d09f440731e7751d7668050025f3706d4ea846ebeee9b9c4d4cf7f8a5",
+          "deadlineAt": "2026-10-07T18:44:59.340Z",
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "maxRuns": 8,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3
+        },
+        "final": {
+          "id": "budget-b9e8d81d09f440731e7751d7668050025f3706d4ea846ebeee9b9c4d4cf7f8a5",
+          "modelCalls": 9,
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T18:44:59.340Z",
+          "usage": {
+            "inputTokens": 143911,
+            "outputTokens": 10327,
+            "totalTokens": 154238
+          },
+          "usageIncomplete": false,
+          "unknownCalls": 0
+        },
+        "completeCalls": 9,
+        "unknownCalls": 0,
+        "knownOutputTokens": 10327,
+        "allSettledCompleteUsageObserved": true,
+        "notOverallReliabilityOrFutureCostProof": true
+      },
+      "originalFiles": {
+        "formalPublishedFiles": [
+          {
+            "id": "c4906304-4cb3-44fd-998c-8d5cf5999a3a",
+            "ownerAgentId": "3d5fb18b-025e-4375-984e-8f65259fc8f3",
+            "name": "child.md",
+            "contentHash": "b63761eab5fc2d666979fb410ffa4da135a5517edd4ce8a44000fd0a3e8cdad9",
+            "sourcePath": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/3d5fb18b-025e-4375-984e-8f65259fc8f3/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/runs/8405b396-d7fa-4ad6-bd17-97f73ada40be/child.md",
+            "path": "/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/workspaces/cffb5cd9-954f-4b04-a476-466f54193143/artifacts/c4906304-4cb3-44fd-998c-8d5cf5999a3a-child.md",
+            "originalExport": {
+              "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1/scenarios/76620a6b86e22810b964-ff1e0e2cf141c32d7077-retry0-repeat0-tQ79Ly/018-c4906304-4cb3-44fd-998c-8d5cf5999a3a-child.md",
+              "sha256": "b63761eab5fc2d666979fb410ffa4da135a5517edd4ce8a44000fd0a3e8cdad9",
+              "bytes": 65
+            },
+            "reportCopy": {
+              "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1-report/resources/0018-b63761eab5fc2d66.md",
+              "sha256": "b63761eab5fc2d666979fb410ffa4da135a5517edd4ce8a44000fd0a3e8cdad9",
+              "bytes": 65
+            },
+            "hashMatchedAfterActualExit": true,
+            "sourceInodeAndMtime": "not captured by this helper; no invented source metadata"
+          },
+          {
+            "id": "675c87ea-5a5d-489f-b8be-7797c9d58784",
+            "ownerAgentId": "bobo",
+            "name": "core-proof.md",
+            "contentHash": "f14c42a6fac95a8d0bc5c2b0a24830a1af463ec9509929cb1b18de10a64b5754",
+            "sourcePath": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/bobo/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/runs/83f2d83e-931a-485c-a76c-0c1d268674ef/core-proof.md",
+            "path": "/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/workspaces/cffb5cd9-954f-4b04-a476-466f54193143/artifacts/675c87ea-5a5d-489f-b8be-7797c9d58784-core-proof.md",
+            "originalExport": {
+              "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1/scenarios/76620a6b86e22810b964-ff1e0e2cf141c32d7077-retry0-repeat0-tQ79Ly/019-675c87ea-5a5d-489f-b8be-7797c9d58784-core-proof.md",
+              "sha256": "f14c42a6fac95a8d0bc5c2b0a24830a1af463ec9509929cb1b18de10a64b5754",
+              "bytes": 354
+            },
+            "reportCopy": {
+              "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1-report/resources/0019-f14c42a6fac95a8d.md",
+              "sha256": "f14c42a6fac95a8d0bc5c2b0a24830a1af463ec9509929cb1b18de10a64b5754",
+              "bytes": 354
+            },
+            "hashMatchedAfterActualExit": true,
+            "sourceInodeAndMtime": "not captured by this helper; no invented source metadata"
+          }
+        ],
+        "postExitFixedFour": [
+          {
+            "name": "core-proof.md",
+            "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/bobo/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/work/core-proof.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "actualFinalExitVerified": true,
+            "initialLstatObservedAbsence": true,
+            "doesNotProveNoWriteElsewhere": true,
+            "doesNotExportActualRunScopedUnpublishedNotes": true
+          },
+          {
+            "name": "review-01.md",
+            "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/bobo/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/work/review-01.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "actualFinalExitVerified": true,
+            "initialLstatObservedAbsence": true,
+            "doesNotProveNoWriteElsewhere": true,
+            "doesNotExportActualRunScopedUnpublishedNotes": true
+          },
+          {
+            "name": "review-02.md",
+            "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/bobo/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/work/review-02.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "actualFinalExitVerified": true,
+            "initialLstatObservedAbsence": true,
+            "doesNotProveNoWriteElsewhere": true,
+            "doesNotExportActualRunScopedUnpublishedNotes": true
+          },
+          {
+            "name": "review-03.md",
+            "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-3UnMQY/v2/agents/bobo/workspace/sessions/cffb5cd9-954f-4b04-a476-466f54193143/work/review-03.md",
+            "presence": "absent-at-post-exit-check",
+            "errorCode": "ENOENT",
+            "actualFinalExitVerified": true,
+            "initialLstatObservedAbsence": true,
+            "doesNotProveNoWriteElsewhere": true,
+            "doesNotExportActualRunScopedUnpublishedNotes": true
+          }
+        ],
+        "explicitGap": "Actual three unpublished run-scoped notes have completed write receipts but were outside the original four fixed-path whitelist and were not exported before fixture cleanup. Their bytes/hash/ino/mtime are not recoverable here. No directory scan, new client or extra model was started to repair this evidence gap.",
+        "formalCoreProofWasActuallyPublishedByG": true,
+        "fixedPathAbsenceDoesNotClaimNoRunScopedWrites": true
+      },
+      "actualExit": {
+        "finalProcessExit": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T18:41:08.932Z",
+          "owned": [
+            {
+              "pid": 50284,
+              "parent": 50280,
+              "group": 50280,
+              "started": "Thu Oct  8 02:39:54 2026    "
+            }
+          ],
+          "groups": [],
+          "reason": "本场结束正常关闭；不重启、不续行、不重放；不修改原场景通过或失败"
+        },
+        "all9CliTraceGroupsExited": true,
+        "all9CliExitCodesZero": true,
+        "afterClose21CollectionsEqualBeforeClose": true,
+        "fixtureCleanupErrors": [],
+        "exportsBeforeFixtureCleanup": true
+      },
+      "failureOriginalPreserved": {
+        "assertionFile": "tests/e2e/steps/claude-core-live-save.steps.ts:138",
+        "code": "required-natural-activity-window-not-observed",
+        "originalFailureResource": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1/scenarios/76620a6b86e22810b964-ff1e0e2cf141c32d7077-retry0-repeat0-tQ79Ly/009-真实活动核心保存原场景失败.json",
+          "sha256": "91e2fddd4bb378aeac527154193c258913018c6bebcf7fccb7a32667b69784a2",
+          "bytes": 438
+        },
+        "naturalGateSatisfied": false,
+        "observedReasons": [
+          "G already delivered with activeRunId cleared and original parent execution completed/published at final natural snapshot",
+          "completed write receipt addresses run-scoped core-proof instead of required self:/work/core-proof.md; required path predicate is false",
+          "three completed note receipts use run-scoped 核读说明-1/2/3.md rather than requested work/review-01/02/03.md"
+        ],
+        "rootCause": "Why the provider-selected paths differed remains unknown; current evidence does not isolate timing versus instruction-following cause or prove a formatter defect",
+        "lastStagesAllCompletedWithoutRecordedError": true,
+        "notBudgetOrDeadlineCancellation": true,
+        "noGateRelaxationHoldRetryOrDelay": true
+      }
+    },
+    {
+      "name": "after",
+      "status": "failed",
+      "actualProductScenes": 1,
+      "attempts": 1,
+      "automaticRetry": 0,
+      "actualDurationMs": 17880,
+      "originalSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/after-same-attempt-summary-1.json",
+        "bytes": 33740,
+        "sha256": "f5373d6933ad2c1cc0a69a1990d350fd851b0fb0dfe15dd71ee357228cb38c7f"
+      },
+      "publicSummary": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude核心受理后未到保存-策略11-20261008.json",
+        "bytes": 33740,
+        "sha256": "f5373d6933ad2c1cc0a69a1990d350fd851b0fb0dfe15dd71ee357228cb38c7f"
+      },
+      "terminalVerification": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/after-terminal-verification-receipt-1.json",
+        "bytes": 1936,
+        "sha256": "49262001144b2e13f29a4269751a99f2abd6efc59bfd37004b39cd8089fc574e"
+      },
+      "report": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1-report/index.html",
+        "bytes": 104629,
+        "sha256": "1397e38a1b39127888e290b4c2ce77c1c5645ddab59baffd4ad3e470b6c04179"
+      },
+      "actualSaveAttempted": false,
+      "controlledBusinessRestarts": 0,
+      "explicitNewChatAfterRestarts": false,
+      "resourceCount": 16,
+      "reportCopyCount": 16,
+      "traceCount": 2,
+      "resourcePlusTraceReferences": 18,
+      "actualOriginalCopyTraceHashChecks": 34,
+      "actualExternalStages": 2,
+      "budget": {
+        "actualLimitsBeforeAndAfterClose": {
+          "id": "budget-06a0180fd5347d32c9ad23ea271faffe692d925b300c2f235007ba999056a061",
+          "maxModelCalls": 24,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T18:52:32.297Z",
+          "maxRuns": 8,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "accounting": "model-calls-v1",
+          "callUnit": "external-turn"
+        },
+        "limitsNotEditedOrExtended": true,
+        "preCloseUsage": {
+          "inputTokens": 13491,
+          "outputTokens": 972,
+          "totalTokens": 14463
+        },
+        "postClose": {
+          "id": "budget-06a0180fd5347d32c9ad23ea271faffe692d925b300c2f235007ba999056a061",
+          "modelCalls": 2,
+          "usage": {
+            "inputTokens": 18733,
+            "outputTokens": 972,
+            "totalTokens": 19705
+          },
+          "usageIncomplete": true,
+          "unknownCalls": 1
+        },
+        "completeCalls": 1,
+        "unknownCalls": 1,
+        "knownOutputTokens": 972,
+        "taskKnownPartialUsage": {
+          "inputTokens": 5242,
+          "outputTokens": 0,
+          "totalTokens": 5242
+        },
+        "partialZeroOutputNotFinalZeroCost": true
+      },
+      "originalFiles": {
+        "formalPublishedFiles": [],
+        "sameAttemptGIdentityAvailable": false,
+        "fourFixedPathChecksPerformed": false,
+        "preCloseSourceUnavailable": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1/scenarios/76620a6b86e22810b964-01fcec358d79660ba8fc-retry0-repeat0-8ZbCE3/008-真实活动核心结束前固定四文件来源身份不可用.json",
+          "sha256": "3ca954c05ff539cf28f7040ef4c9d92eb48409f6d16d679625438504d1130838",
+          "bytes": 126
+        },
+        "postExitSourceUnavailable": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1/scenarios/76620a6b86e22810b964-01fcec358d79660ba8fc-retry0-repeat0-8ZbCE3/016-真实活动核心固定四文件退出后核对不可用.json",
+          "sha256": "f985efc711fd1c5cb53a01cb191ffd9353d9653b80668bb9430b9efaec914297",
+          "bytes": 134
+        },
+        "physicalExistenceOfUninspectedFiles": "unknown; no directory scan or invented absence",
+        "beforeUnpublishedRunNotesGapPreserved": true
+      },
+      "actualExit": {
+        "finalProcessExit": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T18:47:43.068Z",
+          "owned": [
+            {
+              "pid": 52626,
+              "parent": 52622,
+              "group": 52622,
+              "started": "Thu Oct  8 02:47:27 2026    "
+            },
+            {
+              "pid": 52676,
+              "parent": 52626,
+              "group": 52676,
+              "started": "Thu Oct  8 02:47:41 2026    "
+            },
+            {
+              "pid": 52677,
+              "parent": 52676,
+              "group": 52676,
+              "started": "Thu Oct  8 02:47:41 2026    "
+            },
+            {
+              "pid": 52682,
+              "parent": 52677,
+              "group": 52676,
+              "started": "Thu Oct  8 02:47:42 2026    "
+            }
+          ],
+          "groups": [
+            52676
+          ],
+          "reason": "本场结束正常关闭；不重启、不续行、不重放；不修改原场景通过或失败"
+        },
+        "fourOriginalPidsAndOneOriginalGroupActuallyExited": true,
+        "finalRecordsExportedAfterActualExit": true,
+        "preCloseAndPostCloseRecordsEqual": false,
+        "changedCollectionNames": [
+          "turns",
+          "runs",
+          "deliveries",
+          "works",
+          "budgets",
+          "calls",
+          "executions"
+        ],
+        "same21CollectionNamesAndCountsNotSameValues": true,
+        "fixtureCleanupErrors": [],
+        "exportsBeforeFixtureCleanup": true
+      },
+      "failureOriginalPreserved": {
+        "assertionFile": "tests/e2e/steps/claude-core-live-save.steps.ts:132",
+        "code": "expected-collaboration-budget-not-yet-observed",
+        "originalFailureResource": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1/scenarios/76620a6b86e22810b964-01fcec358d79660ba8fc-retry0-repeat0-8ZbCE3/007-真实活动核心保存原场景失败.json",
+          "sha256": "52d2f74004003cebe28ca40c38d1e170ab8069f86d697ac31e4b5888a9b2df98",
+          "bytes": 663
+        },
+        "expected": {
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "callUnit": "mixed",
+          "accounting": "model-calls-v1"
+        },
+        "observed": {
+          "id": "budget-06a0180fd5347d32c9ad23ea271faffe692d925b300c2f235007ba999056a061",
+          "maxModelCalls": 24,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T18:52:32.297Z",
+          "callUnit": "external-turn",
+          "accounting": "model-calls-v1"
+        },
+        "observedSourceTiming": "Original step129 polls only one budget existence; step132 immediately asserts shared48/mixed. Same-attempt original administrative task is still running and no organization or G/child Work exists in pre-close snapshot.",
+        "notBudgetExceededOrDeadlineCancellation": true,
+        "rootCause": "A pre-organization budget snapshot was observed; no new run was allowed to test whether this same original task would later create the48/mixed collaboration. No claim of reduced shared budget or provider defect.",
+        "decisionFormatterOutcome": "Three original formatter calls, two schema rejections, then valid completed private decision; no reminders. Rejection correction is observed, not a failed final formatter.",
+        "noConditionChangeHoldRetryOrDelay": true
+      }
+    }
+  ],
+  "countsAcrossIndependentCasesOnly": {
+    "resourceCount": 77,
+    "reportCopyCount": 77,
+    "traceCount": 8,
+    "resourcePlusTraceReferences": 85,
+    "actualOriginalCopyTraceHashChecks": 162,
+    "actualExternalStages": 23
+  },
+  "images": [
+    {
+      "case": "normal",
+      "png": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-J4acKe/015-真实活动核心保存原状态和已发布子成果.native.png",
+          "bytes": 461930,
+          "sha256": "42971605484a96b5e892dc40af4b99f617bb50e3b35ba1b3fbd2a1177609d20d"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心正常保存原聊天与草稿.png",
+          "bytes": 461930,
+          "sha256": "42971605484a96b5e892dc40af4b99f617bb50e3b35ba1b3fbd2a1177609d20d"
+        },
+        "byteExact": true
+      },
+      "capture": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-J4acKe/016-真实活动核心保存原状态和已发布子成果.capture.json",
+          "bytes": 1685,
+          "sha256": "51a71a0e24f9341841425506b0d0361644c60d4e4bf54d2c687a256dc067200f"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心正常保存原聊天与草稿.capture.json",
+          "bytes": 1685,
+          "sha256": "51a71a0e24f9341841425506b0d0361644c60d4e4bf54d2c687a256dc067200f"
+        },
+        "byteExact": true
+      },
+      "width": 2580,
+      "height": 1720,
+      "rect": null,
+      "pixelTransform": "none",
+      "rootVisualInspection": true,
+      "humanApproval": false,
+      "physicalMacWindowCloseProof": false
+    },
+    {
+      "case": "normal",
+      "png": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-J4acKe/022-真实活动核心保存两次重启后明确新交流.native.png",
+          "bytes": 243656,
+          "sha256": "232d68ba692335bea3c284aef47622304d633591621cb2ff634b26c07a167583"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心正常保存重启后新交流.png",
+          "bytes": 243656,
+          "sha256": "232d68ba692335bea3c284aef47622304d633591621cb2ff634b26c07a167583"
+        },
+        "byteExact": true
+      },
+      "capture": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-1/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-J4acKe/023-真实活动核心保存两次重启后明确新交流.capture.json",
+          "bytes": 1685,
+          "sha256": "cfc8aaf7a3e6bcaea33403eca85564db16a7431ce9db1f6f7ca791842683c49e"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心正常保存重启后新交流.capture.json",
+          "bytes": 1685,
+          "sha256": "cfc8aaf7a3e6bcaea33403eca85564db16a7431ce9db1f6f7ca791842683c49e"
+        },
+        "byteExact": true
+      },
+      "width": 2580,
+      "height": 1720,
+      "rect": null,
+      "pixelTransform": "none",
+      "rootVisualInspection": true,
+      "humanApproval": false,
+      "physicalMacWindowCloseProof": false
+    },
+    {
+      "case": "before",
+      "png": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1/scenarios/76620a6b86e22810b964-ff1e0e2cf141c32d7077-retry0-repeat0-tQ79Ly/012-真实Claude活动核心保存退出前原生画面.native.png",
+          "bytes": 533304,
+          "sha256": "46def955cdc96da7aafe7730ab8814d1a62b28b5ad7f4dda9c34b1c26592be8e"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心受理前未到保存.png",
+          "bytes": 533304,
+          "sha256": "46def955cdc96da7aafe7730ab8814d1a62b28b5ad7f4dda9c34b1c26592be8e"
+        },
+        "byteExact": true
+      },
+      "capture": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-before-1/scenarios/76620a6b86e22810b964-ff1e0e2cf141c32d7077-retry0-repeat0-tQ79Ly/013-真实Claude活动核心保存退出前原生画面.capture.json",
+          "bytes": 1685,
+          "sha256": "6cd90ffe81907d39e6d29a1d5b379c1ac5bd972b92653300b70e23715844f9ec"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心受理前未到保存.capture.json",
+          "bytes": 1685,
+          "sha256": "6cd90ffe81907d39e6d29a1d5b379c1ac5bd972b92653300b70e23715844f9ec"
+        },
+        "byteExact": true
+      },
+      "width": 2580,
+      "height": 1720,
+      "rect": null,
+      "pixelTransform": "none",
+      "rootVisualInspection": true,
+      "humanApproval": false,
+      "physicalMacWindowCloseProof": false
+    },
+    {
+      "case": "after",
+      "png": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1/scenarios/76620a6b86e22810b964-01fcec358d79660ba8fc-retry0-repeat0-8ZbCE3/010-真实Claude活动核心保存退出前原生画面.native.png",
+          "bytes": 590161,
+          "sha256": "daca270f362440c030fd3bab27d81f898122ac0de259f459047aa60af60e1174"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心受理后未到保存.png",
+          "bytes": 590161,
+          "sha256": "daca270f362440c030fd3bab27d81f898122ac0de259f459047aa60af60e1174"
+        },
+        "byteExact": true
+      },
+      "capture": {
+        "source": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/product-source-unknown-1/source-after-1/scenarios/76620a6b86e22810b964-01fcec358d79660ba8fc-retry0-repeat0-8ZbCE3/011-真实Claude活动核心保存退出前原生画面.capture.json",
+          "bytes": 1685,
+          "sha256": "8064c40da479b3f3dd9a5532b8ae65d19603b52ad2d89f32f485a7234039b2f5"
+        },
+        "copy": {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-真实Claude核心受理后未到保存.capture.json",
+          "bytes": 1685,
+          "sha256": "8064c40da479b3f3dd9a5532b8ae65d19603b52ad2d89f32f485a7234039b2f5"
+        },
+        "byteExact": true
+      },
+      "width": 2580,
+      "height": 1720,
+      "rect": null,
+      "pixelTransform": "none",
+      "rootVisualInspection": true,
+      "humanApproval": false,
+      "physicalMacWindowCloseProof": false
+    }
+  ],
+  "readOnlyDiagnostics": {
+    "pathSource": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/path-source-review-1/review-1.json",
+      "bytes": 47108,
+      "sha256": "2f870afe51d2c41f959e1c89ca2e4f23f9685d78c2e73e3f11abeb8d6a15ba4b"
+    },
+    "pathSourceReceipt": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/path-source-review-1/final-receipt-1.json",
+      "bytes": 1159,
+      "sha256": "8386c73cbbeac449009f90bacf523fcd127096351955f0f457e556b634d57263"
+    },
+    "afterOrganizationBudget": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/after-budget-timing-review-1/review-1.json",
+      "bytes": 19903,
+      "sha256": "e8965a7c80a6c8fcfc3b1d8737f000eba2b25df40c3900245e23e7a55af487c9"
+    },
+    "afterOrganizationBudgetReceipt": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/after-budget-timing-review-1/final-receipt-1.json",
+      "bytes": 727,
+      "sha256": "61e56fe991e624f3bbb5353e9c0ccc215f7212e86d7beb76b38f24ed0975d647"
+    }
+  },
+  "correctionsToImmutableOriginalSummaries": [
+    {
+      "case": "after",
+      "originalFileUnmodified": true,
+      "supersededInterpretation": "pre-organization temporary budget might later become48/mixed",
+      "currentRecordedFact": "same-source Work is ordinary core-proof-parent without organization/collaborationRequestId; budget is24/external-turn",
+      "staticContract": "existing ordinary Work cannot become organization and its budget cannot become same-request48; only initial organize_and_execute claim creates48",
+      "preconditionGap": "budget-existence step129 cannot establish required organization identity; source/employee/organization identity must be verified before budgetId and original48/mixed assertions",
+      "notObserved": "task continuation, tools, delivery, final usage and final native Trace after interruption remain unknown",
+      "notBudgetReductionExhaustionOrFormatterFailure": true
+    },
+    {
+      "case": "before",
+      "originalFileUnmodified": true,
+      "recordedParameterOmission": "decision.organization.goal first omits fixed paths; decision.deliverable retains three filenames, later service replaces it with fixed organization deliverable",
+      "privacyBoundary": "do not copy entire private core conversation; required business constraints still must reach public organization goal/announcement/group Work",
+      "toolPathRewriteObserved": false,
+      "conflictingGeneralPrompt": "default self:/runs/{runId}/ vs permitted self:/work for non-material task",
+      "providerReasonForChoosingDifferentPaths": "unknown",
+      "threeUnpublishedRunNotesOriginalBytesHashInodeMtime": "not exported before cleanup; remain unknown"
+    }
+  ],
+  "independentReviews": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/independent-source-1/final-receipt-1.json",
+      "bytes": 1840,
+      "sha256": "f45e3c5327838bd19f7fa962646a76c38aadd1f79765b13030a6a06c6a1ed5c5"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/independent-docs-1/final-receipt-2.json",
+      "bytes": 876,
+      "sha256": "6948c80edfdf63c97381458742b9b8622cbcad42dbb1564d8c79c3d0fcc6a750"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-formatter-complex-20261008/independent-product-normal-1/final-receipt-1.json",
+      "bytes": 1486,
+      "sha256": "a95b35de4bf12613a0edf433180247c5ee3b2618a89043cab43c719b4b870d54"
+    }
+  ],
+  "oldFailuresRetained": [
+    "section109-three-source-normal-failures",
+    "section110-v1-and-helpers",
+    "same-turn-production-inverse-and-metadata-helper-failures",
+    "before-and-after-original-product-failures"
+  ],
+  "newApplicationBuilt": false,
+  "priorStrategy10AppDoesNotProveStrategy11": true,
+  "packageBuildLimitation": {
+    "freeMiBAtPublication": 335,
+    "existingCompletePackageApproximatelyGiB": 1,
+    "noExistingPackageOrOtherArtifactsDeleted": true
+  },
+  "humanApproval": false,
+  "fullGoalComplete": false,
+  "limitations": [
+    "only normal source save validated; before/after unknown-save cases did not reach save",
+    "physical unsaved Mac window close not verified",
+    "not an actual old-app strategy10 to strategy11 upgrade",
+    "path handoff and organization classification gaps not fixed by this publication",
+    "no new full macOS package; other platforms/configurations and complete LR0-LR6/LA coverage remain incomplete",
+    "counts are evidence totals, not clause coverage or internal provider requests"
+  ],
+  "rawThinkingSdkHistoryCredentialsExportedByPublication": false
+}

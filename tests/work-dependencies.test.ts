@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 暂不公开等待仍计算原无进展额度，不以新等待revision绕过原上限；先后交付和未知副作用分开验证。
+ * [OUTPUT]: 重新汇报暂不公开时保留已声明依赖等待，结果先后竞态共原唤醒/预算；未知副作用仍阻止续行。
  * [INPUT]: 隔离 SQLite 工作图、并发结果提交与根预算。
  * [OUTPUT]: 父子/依赖分离、通知去重、循环/失败隔离、停止范围及版本迁移验证。
  * [POS]: tests/work-dependencies.test.ts，使用真实持久事务。
@@ -31,6 +33,61 @@ async function claimWake(works: WorkRepository, work: WorkItem, runId: string) {
 const deliver = (works: WorkRepository, runId: string) => works.settle(runId, { disposition: 'delivered', summary: '检查已完成', evidence: [{ kind: 'answer', reference: '42' }] }, { messageId: `${runId}-result`, content: '结果为 42', artifactIds: [] })
 const wait = (works: WorkRepository, runId: string, child: WorkItem) => works.waitFor(runId, { dependencies: [{ workId: child.id, resultVersion: 1 }], nextStep: '根据检查结果完成汇总' })
 const finishWaiting = (works: WorkRepository, runId: string) => works.settle(runId, { disposition: 'waiting', summary: '等待检查结果' }, { messageId: `${runId}-waiting`, content: '检查完成后汇总', artifactIds: [] })
+
+it.each([false, true])('withholding a stale report preserves declared waiting when child delivered first=%s', async deliveredFirst => {
+  const { works, parent } = await fixture(), child = await works.delegate('parent-run', childInput)
+  await wait(works, 'parent-run', child)
+  await works.markEffect('parent-run'); await works.confirmEffect('parent-run')
+  const budget = (await works.view('group')).workBudgets[0]
+  if (deliveredFirst) { await claimWake(works, child, 'child-run'); await deliver(works, 'child-run') }
+  await works.withhold('parent-run', '新消息使旧草稿不再适合公开', [])
+  let actual = (await works.view('group')).workItems.find(work => work.id === parent.id)!
+  expect(actual).toMatchObject({ status: deliveredFirst ? 'ready' : 'waiting', requiresReview: false, waitRevision: 1, nextStep: '根据检查结果完成汇总', requiredResults: [{ workId: child.id, resultVersion: 1 }], observedResults: [{ workId: child.id, resultVersion: 1 }], outcome: { disposition: 'waiting' }, resultVersion: 0, resultMessageIds: [] })
+  expect(actual.activeRunId).toBeUndefined()
+  if (!deliveredFirst) { await claimWake(works, child, 'child-run'); await deliver(works, 'child-run') }
+  const current = await works.view('group')
+  actual = current.workItems.find(work => work.id === parent.id)!
+  expect(actual.status).toBe('ready')
+  expect(current.workWakes.filter(wake => wake.workId === parent.id)).toHaveLength(1)
+  expect(current.workBudgets[0].id).toBe(budget.id); expect(current.workBudgets[0].deadlineAt).toBe(budget.deadlineAt)
+  const continued = await claimWake(works, parent, 'continued')
+  expect(continued).toMatchObject({ ownerAgentId: parent.ownerAgentId, budgetId: budget.id, rootWorkId: parent.id, activeRunId: 'continued', observedResults: [{ workId: child.id, resultVersion: 1 }] })
+  await expect(works.withhold('parent-run', '旧结果迟到', [])).rejects.toThrow('执行权')
+  expect((await works.view('group')).workItems.find(work => work.id === parent.id)).toEqual(continued)
+})
+
+it('keeps unconfirmed effects while withholding a declared wait and never wakes execution through them', async () => {
+  const { works, parent } = await fixture(), child = await works.delegate('parent-run', childInput)
+  await wait(works, 'parent-run', child); await works.markEffect('parent-run')
+  await works.withhold('parent-run', '旧草稿暂不公开', [])
+  const waiting = (await works.view('group')).workItems.find(work => work.id === parent.id)!
+  expect(waiting).toMatchObject({ status: 'waiting', requiresReview: true, waitRevision: 1, requiredResults: [{ workId: child.id, resultVersion: 1 }] })
+  await claimWake(works, child, 'child-run'); await deliver(works, 'child-run')
+  const actual = await works.view('group'), blocked = actual.workItems.find(work => work.id === parent.id)!
+  expect(blocked).toMatchObject({ status: 'blocked', requiresReview: true })
+  const wake = actual.workWakes.find(value => value.workId === parent.id)!
+  expect(wake.kind).toBe('blocked'); expect(await works.scheduleWake(wake.id, 'forbidden', [])).toBe(false)
+})
+
+it('withholding without a declared dependency still blocks the unreviewed original work', async () => {
+  const { works, parent } = await fixture()
+  await works.withhold('parent-run', '原结果无法核对', [])
+  expect((await works.view('group')).workItems.find(work => work.id === parent.id)).toMatchObject({ status: 'blocked', outcome: { disposition: 'blocked', summary: '原结果无法核对' }, requiredResults: [], waitRevision: 0, resultVersion: 0 })
+})
+
+it('counts unchanged withheld waits against the original no-progress allowance', async () => {
+  const { store, works, parent } = await fixture(), child = await works.delegate('parent-run', childInput)
+  const budget = (await works.view('group')).workBudgets[0]
+  await store.write([{ collection: 'workBudgets', id: budget.id, value: { ...budget, maxNoProgress: 2 } }])
+  await wait(works, 'parent-run', child); await works.withhold('parent-run', '旧草稿不公开', [])
+  await claimWake(works, child, 'child-run'); await deliver(works, 'child-run')
+  for (const runId of ['again-1', 'again-2']) {
+    await claimWake(works, parent, runId); await wait(works, runId, child); await works.withhold(runId, '没有新增结果', [])
+  }
+  const actual = await works.view('group')
+  expect(actual.workItems.find(work => work.id === parent.id)).toMatchObject({ status: 'blocked', waitRevision: 3, resultVersion: 0, outcome: { disposition: 'blocked', summary: '达到原始工作的无进展接续上限' } })
+  expect(actual.workBudgets[0]).toMatchObject({ id: budget.id, deadlineAt: budget.deadlineAt, noProgress: 2, workItems: 2 })
+})
 
 it('does not turn decomposition into a dependency or complete a parent when a child delivers', async () => {
   const { works, parent } = await fixture(), child = await works.delegate('parent-run', childInput)

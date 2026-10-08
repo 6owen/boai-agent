@@ -1,0 +1,1022 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T05:59:48.516833+00:00",
+  "scope": "spec13 §60 original question, unsent core draft and legacy ACP bottom navigation; continuation and restart checked independently",
+  "productionCodeChanged": false,
+  "humanReview": "pending",
+  "batches": [
+    {
+      "batch": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T05:28:39.100Z",
+        "duration": 56320.46799999999,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "report": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/checks.json",
+        "sha256": "fba44671a54a557a5267b66d41a8bac1f71bbca4a0ea9eab50f86f9769efabd6"
+      },
+      "build": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1/build-manifest.json",
+        "sha256": "eb19d266b97709844aa71167d02c806ca25a5e8068fe3d6c95e001cbe8fb8641"
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T05:29:55.143310+00:00",
+        "files": 872,
+        "changed": [],
+        "omitted": []
+      },
+      "cases": [
+        {
+          "title": "使用离线协议通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Claude核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0094-690954ce2ef95694.json",
+                "sha256": "690954ce2ef956944f67f3138c660798b6304ed4a43562703167ca3151d8efbb"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0108-ee3eb34607298f7d.json",
+              "sha256": "ee3eb34607298f7d25d03fa89c7d709a7ec2938b6f9df4a59cf92278c4359489"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Claude原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0071-c5689de91e9312c4.json",
+                "sha256": "c5689de91e9312c4bbbf08b5b24d8e0a7c2c16b7f6f67d05586ecf741c4e00a6"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0083-e3c22dc65646ef2b.json",
+              "sha256": "e3c22dc65646ef2baa8ebccc5ca15d2e4dfc27978a30000113f729e67a45bb4c"
+            }
+          ]
+        },
+        {
+          "title": "旧式ACP员工通过原界面切到离线协议保留旧文件并完成新工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "旧ACP显式任务导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0007-eab24527dcb81e96.json",
+                "sha256": "eab24527dcb81e963f9d964d74fb09d508da3e719ebf3a893383a0d7ac863ca9"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "执行外部任务",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0018-a5b041a18ff3e43f.json",
+              "sha256": "a5b041a18ff3e43f851ba335966f8629ca9bfe6de072b56a3835bb21070d6080"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议让定时员工等待补充并通过回复原问题完成原工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0029-569a705626050172.json",
+                "sha256": "569a7056260501723a83d255b10d9afc52a113061eec7fd2910e30f36561d34f"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0037-6839f0e88d5364b8.json",
+              "sha256": "6839f0e88d5364b8c5009116ff96b4d66a90afa92ccc4a2c922dc644f50054d6"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议配置本机 bobo 并创建员工组织真实群交付",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0046-cd528a07d4affd9f.json",
+                "sha256": "cd528a07d4affd9f4708f7cccc5e85ac6b78964a03b15ec46ee9063759c282de"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 4,
+                "conversations": 0,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-1-report/resources/0056-3c9269d9041963c8.json",
+              "sha256": "3c9269d9041963c8733b029e0a89fadb4070e71dff7ded207e08f6c41c9d575e"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "batch": "real-1",
+      "stats": {
+        "startTime": "2026-10-06T05:29:56.199Z",
+        "duration": 611946.316,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 5,
+        "passed": 4,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "report": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/checks.json",
+        "sha256": "be75e0568eae2570720dc7d6e8347641bc5e4bafde3c3ceea06599e28317c72a"
+      },
+      "build": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1/build-manifest.json",
+        "sha256": "d16e3556fee72172de8665f7b92121e4893ff6028d1ecbeb0b195d85037c9248"
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T05:41:05.430360+00:00",
+        "files": 872,
+        "changed": [],
+        "omitted": []
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "failed",
+          "navigation": [
+            {
+              "label": "Claude核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0068-bf288720df096524.json",
+                "sha256": "bf288720df096524d9ec57600fa8a800fe4f8668a7c664c61a38b075a09e8254"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0072-cb61d232b182aaab.json",
+              "sha256": "cb61d232b182aaab7fdbae73b9fde8b0d9b058f05ddeb64a0b374a300141fa8e"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Claude原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0089-6b40eb13fd502f07.json",
+                "sha256": "6b40eb13fd502f07faffcb1ae931dadbacf8a789476cb2e191556a878e59c40b"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0101-40d5280f30f8abe2.json",
+              "sha256": "40d5280f30f8abe29fa6a86a4857f9b61fe68d8d5f3f90e244b13e57dc7cb196"
+            }
+          ]
+        },
+        {
+          "title": "旧式ACP员工通过原界面切到真实Codex保留旧文件并完成新工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "旧ACP显式任务导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0025-a059c721831b498b.json",
+                "sha256": "a059c721831b498b0a6fd86d15a26299691978ea986f5fc96327e801e6497eb1"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "执行外部任务",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0036-6646fc3c7fedefc9.json",
+              "sha256": "6646fc3c7fedefc9575de03bd4c7bde2387fa867b6c6bb064630aa4333b1a439"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Codex让定时员工等待补充并通过回复原问题完成原工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0047-5776f93c539c7cbd.json",
+                "sha256": "5776f93c539c7cbdd9e4941c8da26e3df925c65da9759695352b25fc22f7a340"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0055-c5f7494a923714ac.json",
+              "sha256": "c5f7494a923714ac110cd524710e5392a6455349e9f0e91fd2943e3904b69b90"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Codex配置本机 bobo 并创建员工组织真实群交付",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0008-2c57f6eb2ec667f1.json",
+                "sha256": "2c57f6eb2ec667f1e5b868866273a9ab9d40b8eeec299958873f6cc8dbf1671d"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 4,
+                "conversations": 0,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0017-e057d430bc070969.json",
+              "sha256": "e057d430bc0709698b992ca14e160e4f57582da17c6d7dbd9ccabf1f9c5e3090"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "batch": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T05:41:09.049Z",
+        "duration": 56825.882999999994,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "report": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/checks.json",
+        "sha256": "2c26bf9c69489d3cdae3423006d6f9e7d8ab9b630850519b343669f153b8f177"
+      },
+      "build": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2/build-manifest.json",
+        "sha256": "a70f8f55afd022688b88d1fcb805dd667e42bbfe541479935bf4b29f49cfb4ad"
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T05:42:25.412101+00:00",
+        "files": 872,
+        "changed": [],
+        "omitted": []
+      },
+      "cases": [
+        {
+          "title": "使用离线协议通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Claude核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0094-78f2cfdbd78974bb.json",
+                "sha256": "78f2cfdbd78974bba45b0993a19bc4cb44d8703c72a47226c02fa3af2f71772c"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0108-804f4d2e2d5cc3a0.json",
+              "sha256": "804f4d2e2d5cc3a0b892a53f31884b1a13edc9eab09c7c72e4379f2fc5b3b295"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Claude原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0071-135ce5d5d2ed997d.json",
+                "sha256": "135ce5d5d2ed997d42b3eb5cd77cc9073b4af60c2921887df468dbedcf99aef6"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0083-ea200f9c2e39989c.json",
+              "sha256": "ea200f9c2e39989cf04c1d88a4f29132a25368b0090224ea7e6d9dfe7cd37a52"
+            }
+          ]
+        },
+        {
+          "title": "旧式ACP员工通过原界面切到离线协议保留旧文件并完成新工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "旧ACP显式任务导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0007-479ebefac45093da.json",
+                "sha256": "479ebefac45093da9bd7786178e9f5d06378f225a9ab1e64ed56f692372a08e6"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "执行外部任务",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0018-2d4f19a0a5ec6afa.json",
+              "sha256": "2d4f19a0a5ec6afa9181aad20734aab2c8879a25f89102f0312fc6a4d251fd18"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议让定时员工等待补充并通过回复原问题完成原工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex原问题导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0029-211e8dc438be3b28.json",
+                "sha256": "211e8dc438be3b28fe67e0d114c8fd8d11eea19307b39ec9940c1209f66d17b5"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "发送消息",
+              "hasFixedReference": true,
+              "counts": {
+                "agents": 5,
+                "conversations": 2,
+                "messages": 2,
+                "runs": 2,
+                "works": 1,
+                "budgets": 1,
+                "calls": 2,
+                "occurrences": 1,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0037-df7b612199f91084.json",
+              "sha256": "df7b612199f91084867d9481f115b398b66c2e9eded6a1190c2ae2061b0406c1"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议配置本机 bobo 并创建员工组织真实群交付",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "Codex核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0046-e70b312bfd847177.json",
+                "sha256": "e70b312bfd84717740b21990a88a847cf6973c9a5aa0450e0e96cc3d1a216255"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 4,
+                "conversations": 0,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "offline-protocol",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/offline-2-report/resources/0056-eee60460eab0135a.json",
+              "sha256": "eee60460eab0135a3037f41afdd6fa9024407a3ef1e95e493e1b66e8e4789dcf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "batch": "real-2",
+      "stats": {
+        "startTime": "2026-10-06T05:42:26.495Z",
+        "duration": 137968.064,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "report": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-2-report/checks.json",
+        "sha256": "c765217f3b2a2dc537f8789cdefdf97f1e5d518896da2369a3a2ab5ebb2a745f"
+      },
+      "build": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-2/build-manifest.json",
+        "sha256": "2128a13d949e4a7563676d1c1d8f0da6fe5d158a91d323c7572ec471ec1c9ffa"
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T05:45:35.025008+00:00",
+        "files": 872,
+        "changed": [],
+        "omitted": []
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "failed",
+          "navigation": [
+            {
+              "label": "Claude核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-2-report/resources/0012-5bc75a4723a46eb5.json",
+                "sha256": "5bc75a4723a46eb5f4337dce563a95c88c5cb27a237f8e310a274e066599685a"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/real-2-report/resources/0016-254a5968cdae4973.json",
+              "sha256": "254a5968cdae4973dec0cc7377c241978e9e2a30946465b449a7b6064e2170aa"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "batch": "package-1",
+      "stats": {
+        "startTime": "2026-10-06T05:45:44.980Z",
+        "duration": 666817.063,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 3,
+        "passed": 1,
+        "failed": 2,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "report": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/checks.json",
+        "sha256": "19a94c62d7f7fea674a79d56fcff233fdb78ffe820de087ce74a58cdc4fc4da7"
+      },
+      "build": {
+        "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1/build-manifest.json",
+        "sha256": "ec08e3137029a4a6581b132df31183d54f857173740088f44abcd2a958aed0b2"
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T05:57:39.945617+00:00",
+        "files": 872,
+        "changed": [],
+        "omitted": []
+      },
+      "cases": [
+        {
+          "title": "旧式ACP员工通过原界面切到真实Codex保留旧文件并完成新工作",
+          "status": "passed",
+          "navigation": [
+            {
+              "label": "旧ACP显式任务导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0019-8fac4bae262adad9.json",
+                "sha256": "8fac4bae262adad9625293c11b0cea7b5b5a3fbd40d69cc119f8555ad0025eb5"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": false,
+              "sendLabel": "执行外部任务",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 5,
+                "conversations": 1,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0030-78a20ab8a6a81e07.json",
+              "sha256": "78a20ab8a6a81e0703388458f06db5b7e3e62f57b3825cf61afed592c670c814"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Codex让定时员工等待补充并通过回复原问题完成原工作",
+          "status": "failed",
+          "navigation": [],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0034-570908b4677167fd.json",
+              "sha256": "570908b4677167fdff9b8dd847284cac150db4df63ba788fd6c28121fab2688d"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Codex配置本机 bobo 并创建员工组织真实群交付",
+          "status": "failed",
+          "navigation": [
+            {
+              "label": "Codex核心空白页导航原身份与零业务调用",
+              "data": {
+                "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0008-41a9c2b99042c2d9.json",
+                "sha256": "41a9c2b99042c2d9343bc7a61a82188fe2b77537a9350932c8cc96f7c671db78"
+              },
+              "sameRecords": true,
+              "writes": [],
+              "coreDraft": true,
+              "sendLabel": "发送消息",
+              "hasFixedReference": false,
+              "counts": {
+                "agents": 4,
+                "conversations": 0,
+                "messages": 0,
+                "runs": 0,
+                "works": 0,
+                "budgets": 0,
+                "calls": 0,
+                "occurrences": 0,
+                "artifacts": 0,
+                "codexSessions": 0,
+                "claudeSessions": 0
+              },
+              "coreConversations": 0
+            }
+          ],
+          "modelMode": "real-provider",
+          "finalStateEvidence": [
+            {
+              "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0011-3d93e20b779744df.json",
+              "sha256": "3d93e20b779744dfd3afdf6504b499179a4a58def3de740fcb57baf59901a5a7"
+            }
+          ]
+        }
+      ],
+      "package-verification": {
+        "reference": {
+          "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1/package-verification.json",
+          "sha256": "e955aa2079b5531e12522e35771b9ac9a70bbcf5aaebde7ee3fac0e1080cee7f"
+        },
+        "changed": [],
+        "omitted": [],
+        "files": 3405
+      },
+      "packaged-dist-verification": {
+        "reference": {
+          "path": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1/packaged-dist-verification.json",
+          "sha256": "fd1746a312fcafbba1bf881fe03650c2dcd08cff303e2c21a21f8ed02274e1de"
+        },
+        "archive": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI Agent.app/Contents/Resources/app.asar",
+        "matched": 119,
+        "mismatches": [],
+        "files": 119
+      }
+    }
+  ],
+  "verification": [
+    {
+      "report": "offline-1-report",
+      "copiedResources": 109,
+      "hashedReferences": 120,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "real-1-report",
+      "copiedResources": 102,
+      "hashedReferences": 114,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "offline-2-report",
+      "copiedResources": 109,
+      "hashedReferences": 120,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "real-2-report",
+      "copiedResources": 17,
+      "hashedReferences": 19,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "package-1-report",
+      "copiedResources": 35,
+      "hashedReferences": 40,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    }
+  ],
+  "images": [
+    {
+      "label": "Claude原问题设置往返后原输入与发送语义保持",
+      "report": "real-1-report",
+      "source": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0090-770d172f5d102932.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR1-Claude设置往返后原问题-20261006.png",
+      "sha256": "770d172f5d102932a7cfe8d80f7192c10eca9af341dc5a333f809b040e9ad145",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "humanReview": "pending"
+    },
+    {
+      "label": "Claude核心空白页设置往返后原输入与发送语义保持",
+      "report": "real-2-report",
+      "source": ".local/feature-review/local-agent-navigation-contexts-20261006/real-2-report/resources/0013-efd31f2694d68d2d.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR1-Claude核心空白页设置往返-20261006.png",
+      "sha256": "efd31f2694d68d2d35b15fde1a86345f97806d6138629a4de88c745dd945f307",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "scope": "navigation passed; subsequent organization failed on original output budget",
+      "humanReview": "pending"
+    },
+    {
+      "label": "Codex原问题设置往返后原输入与发送语义保持",
+      "report": "real-1-report",
+      "source": ".local/feature-review/local-agent-navigation-contexts-20261006/real-1-report/resources/0048-3122bf2d6056c7e0.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR1-Codex设置往返后原问题-20261006.png",
+      "sha256": "3122bf2d6056c7e0875a74ecf3e8397191f910543ea36fea0d963f412ffe8e95",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "scope": "source scenario passed",
+      "humanReview": "pending"
+    },
+    {
+      "label": "旧ACP显式任务设置往返后原输入与发送语义保持",
+      "report": "package-1-report",
+      "source": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0020-29cf452cac74c873.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR6-旧ACP底部配置后显式任务-20261006.png",
+      "sha256": "29cf452cac74c873a72e24571ed33116730f02e18e762c7a38c33ef3d7ed54f6",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "scope": "legacy ACP protocol fixture followed by real Codex migration; whole scenario passed",
+      "humanReview": "pending"
+    },
+    {
+      "label": "Codex核心空白页设置往返后原输入与发送语义保持",
+      "report": "package-1-report",
+      "source": ".local/feature-review/local-agent-navigation-contexts-20261006/package-1-report/resources/0009-4aad07a766600e81.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR6-Codex核心空白页设置往返-20261006.png",
+      "sha256": "4aad07a766600e815a5044d3b1c2e52ae7dfb5a0ba6daf27f3fd1f68011ed255",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "scope": "packaged core navigation passed; subsequent group summary exceeded original deadline",
+      "humanReview": "pending"
+    }
+  ],
+  "limitations": [
+    "Navigation does not save configuration or test the connection. Active rebinding and unknown configuration receipts need independent coverage.",
+    "Legacy ACP execution uses the controlled protocol fixture; only subsequent Codex requests use the actual provider in real batches.",
+    "Packaged Claude, other platforms, signing, notarization and installers are outside this batch.",
+    "Package batch 1 original question failed before navigation: Codex decision timed out, no Work was created, usage remained unknown. Core navigation passed but the group summary was cancelled at the original absolute deadline after child delivery. Root cause of the provider delay remains unknown; source passes do not replace these failures.",
+    "Real source batch 1 Claude organization reached 17873 reported output tokens against its original 16000 limit; three work items were delivered but one later decision was cancelled. Batch 2 reached 19477 and cancelled the group root before summary delivery; subsequent decision and memory requests were rejected. Both navigation phases passed, both full scenarios failed before restart verification. No budget or production changes, and no success is inferred from prior batches."
+  ]
+}

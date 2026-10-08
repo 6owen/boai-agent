@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Codex/Claude共用外部阶段计量，回执同时比较具体kind与profile，禁止跨运行时借用预算身份。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 同一 SQLite 事务中的 bobo 原组织工作、真实来源、冻结群发布和模型调用身份。
  * [OUTPUT]: 明确认领原组织重试后，判断阶段可在原ready工作预算内预留，执行阶段仍须当前实际持有者。
  * [OUTPUT]: 核心组织权限、唯一独立群根/启动意图、跨会话原预算授权及真实组织交付证据；不调用模型或执行文件。
@@ -9,6 +11,7 @@ import { createHash } from 'node:crypto'
 import type { AgentRun, CollaborationStartIntent, Conversation, DiscussionTurn, DigitalAgent, Message, WorkBudget, WorkExecution, WorkItem, WorkOrganization, WorkOutcome } from '../../../shared/domain'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../../../shared/domain/bobo-collaboration'
 import { isCoreAgent, isCoreConversation } from '../../../shared/domain/core-agent'
+import { isNativeBackend, sameBackendBinding } from '../../../shared/domain/backends'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 import { checkWorkBudget, WorkUnavailableError } from './work-budget'
 
@@ -155,6 +158,8 @@ export async function collaborationCallAuthority(tx: RecordTransaction, run: Age
   if (!requestId || current.collaborationRequestId !== requestId) throw new WorkUnavailableError('协作模型调用没有宿主绑定的原请求')
   const agent = await tx.get<DigitalAgent>('agents', run.agentId), conversation = await tx.get<Conversation>('conversations', run.conversationId)
   if (!agent?.active || agent.executionBackend?.kind === 'acp-local' || !conversation?.agentIds.includes(agent.id) || await tx.get('conversationCleanup', conversation.id)) throw new WorkUnavailableError('协作员工或会话授权已经变化')
+  const native = isNativeBackend(agent.executionBackend)
+  if (!sameBackendBinding(agent?.executionBackend, current.backend) || current.backend?.kind === 'acp-local') throw new WorkUnavailableError('协作运行方式与当前员工不一致')
   let work: WorkItem | undefined
   if (isCoreConversation(conversation)) {
     const source = await assertOrganizationSource(tx, { conversationId: conversation.id, sourceMessageId: run.triggerMessageId, agentId: run.agentId })
@@ -176,7 +181,7 @@ export async function collaborationCallAuthority(tx: RecordTransaction, run: Age
   }
   const budget = await tx.get<WorkBudget>('workBudgets', work.budgetId)
   if (!budget || budget.origin || budget.accounting !== 'model-calls-v1' || budget.collaborationRequestId !== requestId) throw new WorkUnavailableError('原协作预算缺失或账本不可信，不能重建默认额度')
-  return { budget, work, requestId }
+  return { budget, work, requestId, native }
 }
 
 export async function assertCollaborationEvidence(tx: RecordTransaction, work: WorkItem, outcome: WorkOutcome) {

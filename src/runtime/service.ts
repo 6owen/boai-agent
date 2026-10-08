@@ -1,4 +1,22 @@
 /*
+ * [OUTPUT]: 本机配置删除保留员工原绑定与历史；同配置测试/实际执行退出前拒绝删除，原工作沿既有取消边界收尾。
+ * [OUTPUT]: 原额度追加回执固定的未完成负责人在确认讨论中只接收上下文，沿原 WorkWake 接续；其他员工和普通本人消息保留独立判断。
+ * [OUTPUT]: 本机员工更换来源连接或模型ID同运行后端换绑共用实际退出/原Work待核对门禁；拒绝发生在配置保存与取消原执行之前，普通资料编辑保持原行为。
+ * [OUTPUT]: 实际本机适配器退出后收尾普通调用观测，缺计量仍未知且不清空已知部分；原Work预算不由个人活动结算。交付后维护仍用精确原用户来源白名单。
+ * [OUTPUT]: 重新汇报放弃/不支持/达上限时保留宿主已声明等待，原Run记waiting且草稿withheld，不发布或重放已执行操作。
+ * [OUTPUT]: 本机中途计量与外部完整终态分别传给原预算/个人活动；Claude和Codex部分字段齐全仍保持未知完整性。
+ * [OUTPUT]: Claude核心、组织/团队与自动化沿已核对程序及明确API来源接线；原时钟/occurrence/预算保持，自动化受理和执行均复核配置指纹，仍禁止命令与旧ACP。
+ * [OUTPUT]: 交互分工接续在本轮真实交付后沿原员工/来源/账本整理记忆；等待不维护，失败不改变交付或重放工具，其他唤醒授权不扩展。
+ * [OUTPUT]: Claude独立员工接入单聊与普通群的原Work预算/分工，逐次核对程序及API来源；核心组织与自动化按各自授权接入，会话和清理仍独立。
+ * [OUTPUT]: API/Codex与旧ACP人工发布共用复制前准备记录，启动排除未提交原件；备份保留相对引用且不自动发布。
+ * [OUTPUT]: 运行方式切换等待真实适配器/进程退出，已取消但仍需核对的工作不换绑；旧缺省API按原方式比较。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
+ * [OUTPUT]: 本机备份副本标记恢复后新会话并排除受管原生私有目录；启动只失效续用资格，保留原消息/工作/成果，不启动外部进程。
+ * [OUTPUT]: 本机任务判断、执行、汇报和已发布工作记忆共用原外部请求预算/期限，普通聊天仍无Work；维护失败不改已交付结果。
+ * [OUTPUT]: 本机Codex私有记忆复用原来源/事务与独立阶段；材料仍在调用及提交前核验，不借API模型维护。
+ * [OUTPUT]: 原生Codex交互任务沿原Work/文件发布/命令审批，原ACP手动发布与停止入口不越权接管；累计用量缺失保持未知。
+ * [OUTPUT]: 原生Codex员工独立路由判断/聊天与容量；不借API密钥或自动重试，普通聊天不建Work；未开放阶段保留显式门禁。
+ * [OUTPUT]: 原生Codex启动项测试走app-server账户与无工具会话验证，不发送模型请求；协议参与本机导入去重，旧ACP不误用原生配置。
  * [OUTPUT]: 定时原问题明确补充固定原员工/轮次与Work，共用事务接续原预算，其他未答问题保留。
  * [OUTPUT]: 工作/文件视图最小委托固定SQL，点击复核原消息/字节/hash/范围；审批导航核对实际pending钩子与固定原卡身份，不创建Work或调用模型。
  * [OUTPUT]: 已保存ACP启动项当前程序/hash/登录目录只读核对，零握手/执行/验证记录变更。
@@ -49,15 +67,21 @@ import { pathToFileURL } from 'node:url'
 import { AutomationService, automationSchema } from './modules/automations/automation-service'
 import { aggregateAutomation, belongsToOccurrence } from './modules/automations/automation-results'
 import type { AutomationInput, AutomationDefinition, AutomationOrigin, AutomationOccurrence, AutomationBudgetRenewalInput } from '../shared/domain/automations'
+import { resolveClaudeRuntime, resolveCodexRuntime, resolveEmployeeRuntime } from './modules/backends/runtime-config'
 import { LaunchProfiles, profileSchema } from './modules/backends/profiles'
 import { runAcp } from './adapters/acp/client'
+import { CodexEmployeeEngine } from './adapters/codex/engine'
+import { ClaudeEmployeeEngine } from './adapters/claude/engine'
+import { testClaudeProgram } from './adapters/claude/turn'
+import { backendProtocol, isNativeBackend } from '../shared/domain/backends'
+import { testCodexConnection } from './adapters/codex/turn'
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
 import { cp, lstat, mkdir, readdir, readFile, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
-import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
+import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, WorkBudget, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
 import { isBrowserCapableAgent } from '../shared/domain'
 import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
@@ -84,6 +108,7 @@ import { READING_LIMITS, type ConversationMessagePageQuery, type ConversationVie
 import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
+import { memoryEvidenceMessages } from './modules/employees/memory-extraction'
 import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
@@ -139,7 +164,7 @@ const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
 type RequestRecord = { id: string; fingerprint: string; messageId?: string }
 type CoreConversationStart = { id: string; fingerprint: string; conversationId: string; messageId?: string; teamName?: string; cleared?: true }
-type RunSnapshot = { id: string; agent: DigitalAgent; connection: Connection; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
+type RunSnapshot = { id: string; agent: DigitalAgent; connection?: Connection; runtimeProfile?: import('../shared/domain/backends').LaunchProfile; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const now = () => new Date().toISOString()
 const clone = <T>(value: T): T => structuredClone(value)
@@ -169,8 +194,11 @@ export class AppService {
   private readonly resourceCleanups: ResourceCleanups
   private readonly skillCollections: SkillCollectionRepository
   private readonly automations: AutomationService
+  private readonly codexEngine: CodexEmployeeEngine
+  private readonly claudeEngine: ClaudeEmployeeEngine
   private readonly profiles: LaunchProfiles
   private externalTests=new Set<AbortController>()
+  private externalProfileTests=new Map<AbortController,string>()
   private externalTasks=new Set<Promise<void>>()
   private externalRuns=new Map<string,Promise<void>>()
   private readonly employees: EmployeeService
@@ -264,6 +292,8 @@ export class AppService {
     this.history = new ConversationHistory(this.store, this.dataPath, this.materials, this.artifactRepository, this.reading)
     this.works = new WorkRepository(this.store)
     this.browser = new BrowserRepository(this.store,this.works)
+    this.codexEngine = new CodexEmployeeEngine(this.store)
+    this.claudeEngine = new ClaudeEmployeeEngine(this.store)
     this.profiles=new LaunchProfiles(this.store)
     this.homes = new WorkspaceService(this.dataPath)
     this.teamCreation = new TeamCreationService(this.teams, this.dataPath, this.homes, {
@@ -316,7 +346,7 @@ export class AppService {
       contextOnly: (turn, event, delivery) => this.contextOnlyPeerDelivery(turn, event, delivery),
       decide: (turn, event, delivery, signal) => this.executeDecision(turn, event, delivery, signal),
       speak: (turn, event, decision, signal, publish) => this.executeResponse(turn, event, decision, signal, publish),
-      settled: (turn, participants, signal) => turn.wakeId ? Promise.resolve() : this.updateMemories(turn, participants, signal),
+      settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal),
       executionBusy: (conversationId, agentId) => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && run.agentId === agentId && run.phase === 'execution' }),
       idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
@@ -326,12 +356,12 @@ export class AppService {
       readMonitor: async (definition, signal) => {
         const source = definition.monitor?.source ?? fail('监控来源缺失')
         const scope = await this.serialize(async () => {
-          if (this.closing || this.backingUp || this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
+          if (this.closing || this.backingUp || await this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
           return { conversation: clone(this.getConversation(source.conversationId)), artifacts: (await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts')).filter(a => a.conversationId === source.conversationId) }
         })
         return readMonitorArtifact(this.dataPath, scope.conversation, scope.artifacts, source, signal, artifact => this.serialize(async () => {
           signal.throwIfAborted()
-          if (this.closing || this.backingUp || this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
+          if (this.closing || this.backingUp || await this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
           await this.store.transaction(tx => this.materials.validateRefsInTransaction(tx, artifact.materialSources ?? [], undefined, scope.conversation.id))
         }))
       },
@@ -342,7 +372,7 @@ export class AppService {
           if (!conversation || conversation.purpose !== 'automation' || conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id) fail('本次任务聊天未完成事务初始化')
           this.conversations.set(conversation!.id, conversation!)
         }
-        if (this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
+        if (await this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
         if (this.conversationBusy(occurrence.conversationId)) fail('会话忙碌')
         return this.sendMessage({ conversationId: occurrence.conversationId, content: definition.prompt, mentionIds: [], requestId: 'automation-' + occurrence.id }, origin, commit)
       }),
@@ -361,6 +391,8 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await this.codexEngine.recover(this.dataPath)
+    await this.claudeEngine.recover(this.dataPath)
     await this.preserveLegacyRuntimeFacts()
     await this.teams.recover()
     await this.teamCreation.recover()
@@ -461,7 +493,7 @@ export class AppService {
         const { exited } = await this.serialize(async () => {
           this.getConversation(value.conversationId)
           const run = this.runs.get(value.runId!)
-          if (!run?.backend || run.conversationId !== value.conversationId) fail('外部运行不属于当前会话')
+          if (run?.backend?.kind !== 'acp-local' || run.conversationId !== value.conversationId) fail('该入口仅用于当前会话的旧 ACP 运行；本机员工任务请停止原工作')
           const current = run!
           if (!terminal.has(current.status)) {
             this.runControllers.get(current.id)?.abort(new Error('用户停止此外部任务'))
@@ -604,24 +636,34 @@ export class AppService {
       const controller=new AbortController(),directory=join(this.dataPath,'external-probes',`draft-${randomUUID()}`)
       this.externalTests.add(controller)
       try {
-        const profile=await this.serialize(async()=>{const prepared=await this.profiles.prepare(profileSchema.parse(input));this.profiles.forgetDraftVerification(prepared);return prepared})
-        const result=await runAcp({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
+        const profile=await this.serialize(async()=>{const prepared=await this.profiles.prepare(profileSchema.parse(input));this.profiles.forgetDraftVerification(prepared);if(prepared.id)this.externalProfileTests.set(controller,prepared.id);return prepared})
+        const result=profile.protocol==='codex-app-server'
+          ? {verified:await testCodexConnection({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal})}
+          : profile.protocol==='claude-cli' ? {verified:await testClaudeProgram({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal})}
+          : await runAcp({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
         return await this.serialize(async()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');this.profiles.recordDraftVerification(profile,result.verified);return result.verified})
       } catch(error) {
         if(error instanceof RequestError&&error.code===RequestError.authRequired().code)throw new Error('外部程序需要登录，请在程序自身完成认证后重新测试。')
         throw error
-      } finally { try { await rm(directory,{recursive:true,force:true}) } finally { this.externalTests.delete(controller) } }
+      } finally { try { await rm(directory,{recursive:true,force:true}) } finally { this.externalTests.delete(controller);this.externalProfileTests.delete(controller) } }
     }
     if(method==='testLaunchProfile') {
-      const profile=this.profiles.get(lookupSchema.parse(input).id),controller=new AbortController();this.externalTests.add(controller)
+      const controller=new AbortController();this.externalTests.add(controller)
+      let tested:{id:string;revision:number}|undefined
       try {
-        const result=await runAcp({profile,cwd:join(this.dataPath,'external-probes',profile.id),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
+        const profile=await this.serialize(async()=>{const value=this.profiles.get(lookupSchema.parse(input).id);this.externalProfileTests.set(controller,value.id);return value})
+        tested=profile
+        const probeDirectory=join(this.dataPath,'external-probes',profile.id)
+        const result=profile.protocol==='codex-app-server'
+          ? {verified:await testCodexConnection({profile,cwd:probeDirectory,privateHome:join(probeDirectory,'home'),signal:controller.signal})}
+          : profile.protocol==='claude-cli' ? {verified:await testClaudeProgram({profile,cwd:probeDirectory,privateHome:join(probeDirectory,'home'),signal:controller.signal})}
+          : await runAcp({profile,cwd:probeDirectory,signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
         return await this.serialize(()=>{if(this.closing||this.backingUp)fail('服务正在退出或备份，请重新测试');return this.profiles.verified(profile.id,profile.revision,result.verified)})
       } catch(error) {
-        if(!this.closing&&!this.backingUp)await this.serialize(()=>this.profiles.failedVerification(profile.id,profile.revision))
+        if(!this.closing&&!this.backingUp&&tested)await this.serialize(()=>this.profiles.failedVerification(tested!.id,tested!.revision))
         if(error instanceof RequestError&&error.code===RequestError.authRequired().code)throw new Error('外部程序需要登录，请在程序自身完成认证后重新测试。')
         throw error
-      } finally { this.externalTests.delete(controller) }
+      } finally { this.externalTests.delete(controller);this.externalProfileTests.delete(controller) }
     }
     if (method === 'listConnectionModels') {
       const draft = modelCatalogSchema.parse(input)
@@ -653,13 +695,34 @@ export class AppService {
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
         case 'listLaunchProfiles': z.undefined().parse(input); return this.profiles.list()
         case 'getLaunchProfileStatus': return this.profiles.status(lookupSchema.parse(input).id)
-        case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend?.kind==='acp-local'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
+        case 'deleteLaunchProfile': return this.deleteLaunchProfile(lookupSchema.parse(input).id)
+        case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId&&(p.protocol??'acp')===(value.protocol??'acp')):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend&&a.executionBackend.kind!=='mastra-model'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
         case 'getExternalTaskReceipt': { const value = z.object({ conversationId: id, requestId: id }).strict().parse(input); return this.externalTaskReceipt(value.conversationId, value.requestId) }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
         case 'snapshot': z.undefined().parse(input); return this.snapshot()
         case 'updateUserProfile': { const profile = await this.userProfile.update(input as import('../shared/domain/profile').UserProfileInput); this.changed(); return profile }
         case 'getProfileActivity': return this.userProfile.activity(input)
-        case 'saveAgent': {const value=agentSchema.parse(input);if(value.executionBackend?.kind==='acp-local'){this.profiles.get(value.executionBackend.profileId);if(value.id&&[...this.conversations.values()].some(c=>c.kind==='group'&&c.agentIds.includes(value.id!)))fail('请先将员工移出群聊，再切换为外部任务后端')}return this.employees.save(value)}
+        case 'saveAgent': {
+          const value = agentSchema.parse(input), previous = value.id ? this.getAgent(value.id) : undefined
+          const backend = value.executionBackend ?? previous?.executionBackend ?? { kind: 'mastra-model' as const }
+          if (backend.kind !== 'mastra-model') {
+            const profile = this.profiles.get(backend.profileId)
+            if (backendProtocol(backend.kind) !== (profile.protocol ?? 'acp')) fail('员工运行方式与本机连接协议不一致')
+            if (backend.kind === 'codex-local' && !profile.verified) fail('请先测试本机 Codex 连接，再创建员工')
+            if (value.id && [...this.conversations.values()].some(c => c.kind === 'group' && c.agentIds.includes(value.id!) && backend.kind === 'acp-local')) fail('此运行方式尚不支持该群，请先将员工移出群聊')
+            if (backend.kind === 'codex-local' && value.connectionId) fail('本机 Codex 员工不使用模型 API 连接')
+            if (backend.kind === 'claude-local') {
+              resolveClaudeRuntime({ ...value, executionBackend: backend }, profile, this.connections.get(value.connectionId))
+            }
+          }
+          const nativeModelChanged = previous && isNativeBackend(backend) && (previous.connectionId !== value.connectionId || previous.modelId !== value.modelId)
+          if (previous && (JSON.stringify(previous.executionBackend ?? { kind: 'mastra-model' }) !== JSON.stringify(backend) || nativeModelChanged)) {
+            if ([...this.runs.values()].some(run => run.agentId === previous.id && (!terminal.has(run.status) || this.runControllers.has(run.id) || this.activeAdapters.has(run.id) || this.externalRuns.has(run.id)))) fail('员工仍在执行，请等实际执行退出后再切换运行方式')
+            const works = await this.store.load<WorkItem>('workItems')
+            if (works.some(work => work.ownerAgentId === previous.id && (work.requiresReview || !['delivered', 'cancelled'].includes(work.status)))) fail('员工仍有未结束或待核对工作，请先处理原工作再切换运行方式')
+          }
+          return this.employees.save(value)
+        }
         case 'deleteAgent': return this.deleteEmployees([lookupSchema.parse(input).id])
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
         case 'getConnectionApiKey': return await this.options.secrets.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
@@ -886,12 +949,13 @@ export class AppService {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof Error && /Symbolic links|escaped/.test(error.message))) throw error
     }
     const loose: Artifact[] = []
+    const pendingPublications = discoverLegacy ? await this.artifactRepository.pendingPublicationPaths(conversation.id) : new Set<string>()
     for (const file of listed) {
       const location = relative(conversation.workspacePath, file.path).split(/[\\/]/).join('/')
       if (!location.startsWith('artifacts/')) { loose.push(file); continue }
       if ([...this.artifacts.values()].some(value => value.conversationId === conversation.id && (value.managedRelativePath === location || resolve(value.path) === resolve(file.path)))) continue
       // A copied file is not a published artifact until its host transaction commits.
-      if (!discoverLegacy) continue
+      if (!discoverLegacy || pendingPublications.has(location)) continue
       const registered = await this.store.transaction(tx => this.artifactRepository.registerLegacy(tx, { ...file, name: basename(file.path) }, conversation.id))
       this.artifacts.set(registered.id, registered)
     }
@@ -1013,6 +1077,16 @@ export class AppService {
     if (previous) for (const agent of this.employees.values()) if (agent.connectionId === connection.id) await this.cancelEmployee(agent.id, '模型连接已变更')
     this.changed(); return clone(connection)
   }
+  private async deleteLaunchProfile(id: string) {
+    this.profiles.get(id)
+    if ([...this.externalProfileTests.values()].includes(id)) fail('本机 Agent 正在测试，请等待测试结束后再删除')
+    const agents = this.employees.values().filter(agent => agent.executionBackend && agent.executionBackend.kind !== 'mastra-model' && agent.executionBackend.profileId === id)
+    for (const agent of agents) await this.cancelEmployee(agent.id, '正在删除本机 Agent 配置')
+    const agentIds = new Set(agents.map(agent => agent.id))
+    if ([...this.runs.values()].some(run => agentIds.has(run.agentId) && (!terminal.has(run.status) || this.runControllers.has(run.id) || this.activeAdapters.has(run.id) || this.externalRuns.has(run.id)))) fail('员工正在停止，请等实际执行退出后再删除本机 Agent')
+    await this.profiles.remove(id)
+    this.changed()
+  }
   private async deleteConnection(id: string) {
     this.getConnection(id)
     for (const agent of this.employees.values()) if (agent.connectionId === id) await this.cancelEmployee(agent.id, '模型连接已删除')
@@ -1132,6 +1206,7 @@ export class AppService {
 
   private async ensureCoreConnection() {
     const agent = this.getAgent(CORE_AGENT_ID)
+    if (isNativeBackend(agent.executionBackend)) { await this.store.transaction(tx => resolveEmployeeRuntime(tx, agent)); return agent }
     if (agent.connectionId) { this.getConnection(agent.connectionId); return agent }
     const connection = [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))
     if (!connection) fail(`请先在设置中配置一个模型连接，${agent.name} 会使用该连接的默认模型`)
@@ -1269,7 +1344,14 @@ export class AppService {
         const operation = source?.kind === 'bobo-collaboration' ? await this.boboCollaboration.get({ operationId: source.operationId }) : undefined
         if (!previous?.agentIds.includes(agent.id) || operation?.status !== 'committed' || operation.groupConversationId !== previous.id || operation.groupCleared) fail('请由 bobo 发起群协作；普通建群不能添加核心助手')
       }
-      if (input.kind === 'group' && agent.executionBackend?.kind === 'acp-local') fail('外部任务员工暂不支持自主群聊，请使用单聊任务入口')
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'claude-local') {
+        resolveClaudeRuntime(agent, this.profiles.get(agent.executionBackend.profileId), this.connections.get(agent.connectionId))
+      }
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'acp-local') fail('旧 ACP 任务员工暂不支持自主群聊，请使用单聊任务入口')
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'codex-local') {
+        const profile = this.profiles.get(agent.executionBackend.profileId)
+        if (profile.protocol !== 'codex-app-server' || !profile.verified) fail('请先测试本机 Codex 连接，再加入群聊')
+      }
     }
     this.validateResources(input.sharedKnowledgeIds ?? [], 'knowledge')
     if (previous && input.expectedConfigVersion !== undefined && (previous.configVersion ?? 1) !== input.expectedConfigVersion) fail('群设置已更新，请刷新后保存')
@@ -1443,7 +1525,7 @@ export class AppService {
     const reply = await this.sendMessage({ conversationId: o.conversationId, content: input.content, requestId: input.requestId, mentionIds: questionReply ? [questionReply.agentId] : [], ...(relation ? { replyToMessageId: relation.questionMessageId } : {}) }, origin, async (_message, records) => {
       if (this.conversationBusy(o.conversationId) || [...this.activeAdapters].some(id => this.runs.get(id)?.conversationId === o.conversationId)) fail('会话仍有执行中的任务，请稍后补充')
       if (input.renewBudget) {
-        if (this.automationFingerprint(o.conversationId) !== origin!.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
+        if (await this.automationFingerprint(o.conversationId) !== origin!.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
         const next = await this.works.renewAutomation(origin!, o.conversationId, input.renewBudget, records)
         this.automations.budgetRenewed(next)
       } else await this.automations.reply(origin!, o.conversationId, input.question!.expectedVersion, input.question!.questionMessageId, records, async tx => {
@@ -1463,9 +1545,9 @@ export class AppService {
   }
 
   private externalWorkspace(run:AgentRun){const root=join(this.dataPath,'external-workspaces',run.agentId,run.conversationId);return {root,runPath:join(root,'runs',run.id),workPath:join(root,'work'),sharedPath:this.getConversation(run.conversationId).workspacePath}}
-  private externalRun(id:string){const run=this.runs.get(id);if(!run?.backend||run.status!=='completed')fail('只能发布已完成的外部任务文件');if(!this.getConversation(run!.conversationId).agentIds.includes(run!.agentId))fail('员工已移出会话');return run!}
+  private externalRun(id:string){const run=this.runs.get(id);if(run?.backend?.kind!=='acp-local'||run.status!=='completed')fail('只能手动发布已完成的旧 ACP 任务文件；本机员工使用原工作成果');if(!this.getConversation(run!.conversationId).agentIds.includes(run!.agentId))fail('员工已移出会话');return run!}
   private async externalFiles(id:string){const run=this.externalRun(id),directory=this.externalWorkspace(run).runPath;const files:{name:string;relativePath:string}[]=[];const walk=async(path:string,prefix='',depth=0):Promise<void>=>{if(depth>3||files.length>=100)return;for(const entry of await readdir(path,{withFileTypes:true})){if(files.length>=100)break;if(entry.name.startsWith('.')||entry.isSymbolicLink())continue;const relativePath=prefix+entry.name;if(entry.isFile())files.push({name:relativePath,relativePath});else if(entry.isDirectory())await walk(join(path,entry.name),relativePath+'/',depth+1)}};await restrictedPath([directory],directory);await walk(directory);return {directory,files}}
-  private async publishExternal(id:string,relativePath:string){const run=this.externalRun(id),agent=this.getAgent(run.agentId),workspace=this.externalWorkspace(run);await publishArtifact({agent,runId:run.id,signal:new AbortController().signal,onArtifact:async artifact=>{const saved=await this.store.transaction(tx=>this.artifactRepository.register(tx,{...artifact,id:artifact.id!,conversationId:run.conversationId},{conversationId:run.conversationId,revisionRequestId:null,sourceWorkId:null,sourceMessageId:null}));Object.assign(artifact,saved);this.artifacts.set(saved.id,saved)}},workspace,`self:/runs/${run.id}/${relativePath}`);this.changed(run.conversationId)}
+  private async publishExternal(id:string,relativePath:string){const run=this.externalRun(id),agent=this.getAgent(run.agentId),workspace=this.externalWorkspace(run);await publishArtifact({agent,runId:run.id,signal:new AbortController().signal,onArtifactPreparing:artifact=>this.store.transaction(tx=>this.artifactRepository.preparePublication(tx,artifact,{conversationId:run.conversationId,revisionRequestId:null,sourceWorkId:null,sourceMessageId:null})),onArtifact:async artifact=>{const saved=await this.store.transaction(tx=>this.artifactRepository.register(tx,{...artifact,id:artifact.id!,conversationId:run.conversationId},{conversationId:run.conversationId,revisionRequestId:null,sourceWorkId:null,sourceMessageId:null}));Object.assign(artifact,saved);this.artifacts.set(saved.id,saved)}},workspace,`self:/runs/${run.id}/${relativePath}`);this.changed(run.conversationId)}
 
   private conversationBusy(conversationId:string){return this.clearingConversations.has(conversationId)||[...this.scheduler.turns.values()].some(t=>t.conversationId===conversationId&&(this.scheduler.hasActiveTurn(t.id)||!['completed','failed','cancelled','interrupted','budget_exhausted','waiting_user'].includes(t.status)))||[...this.runs.values()].some(r=>r.conversationId===conversationId&&!terminal.has(r.status))}
   private async generateAutomationDraft(input: unknown) {
@@ -1476,10 +1558,10 @@ export class AppService {
     if (!connection.defaultModel) fail('请先为所选连接配置模型')
     const targets: AutomationDraftTarget[] = []
     for (const agent of this.employees.values()) {
-      try { this.automationFingerprint({ conversationPolicy: 'new-conversation', employeeIds: [agent.id] } as AutomationInput); targets.push({ kind: 'employee', id: agent.id, name: agent.name }) } catch { /* Unavailable identities are not candidates. */ }
+      try { await this.automationFingerprint({ conversationPolicy: 'new-conversation', employeeIds: [agent.id] } as AutomationInput); targets.push({ kind: 'employee', id: agent.id, name: agent.name }) } catch { /* Unavailable identities are not candidates. */ }
     }
     for (const conversation of this.conversations.values()) {
-      try { this.automationFingerprint(conversation.id); targets.push({ kind: 'conversation', id: conversation.id, name: conversation.title }) } catch { /* Keep invalid chats out of the authorized input. */ }
+      try { await this.automationFingerprint(conversation.id); targets.push({ kind: 'conversation', id: conversation.id, name: conversation.title }) } catch { /* Keep invalid chats out of the authorized input. */ }
     }
     const controller = new AbortController(), signal = AbortSignal.any([controller.signal, AbortSignal.timeout(PARTICIPATION_TIMEOUT_MS)])
     this.externalTests.add(controller)
@@ -1495,7 +1577,7 @@ export class AppService {
         signal.throwIfAborted()
         const result = validateAutomationDraft(request, output, targets)
         // Revalidate selected identities after the model returns; revoked authority cannot enter a ready draft.
-        if (result.candidate.conversationId || result.candidate.employeeIds?.length) this.automationFingerprint(result.candidate as AutomationInput)
+        if (result.candidate.conversationId || result.candidate.employeeIds?.length) await this.automationFingerprint(result.candidate as AutomationInput)
         call.status = 'completed'
         return { ...result, usage: call.usage }
       } catch (error) { call.status = 'failed'; throw error }
@@ -1506,19 +1588,26 @@ export class AppService {
     try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled) }
   }
 
-  private automationFingerprint(target: string | AutomationInput) {
+  private async automationFingerprint(target: string | AutomationInput) {
     const c = typeof target === 'string' ? this.getConversation(target) : target.conversationPolicy !== 'new-conversation' ? this.getConversation(target.conversationId!) : undefined
     const agentIds = c?.agentIds ?? (typeof target !== 'string' ? target.employeeIds! : [])
     const agents = agentIds.map(id => this.getAgent(id))
     for (const a of agents) {
-      if (!a.active || a.executionBackend?.kind === 'acp-local') fail('自动化只支持启用的模型 API 员工')
+      if (!a.active || a.executionBackend?.kind === 'acp-local') fail('自动化只支持启用的模型 API 或已验证本机员工')
       if (a.allowCommands) fail('自动化暂不支持命令执行；请先关闭员工的命令权限')
-      const connection = this.getConnection(a.connectionId)
-      if (!a.modelId && !connection.defaultModel) fail('员工尚未配置模型')
+      if (!isNativeBackend(a.executionBackend)) {
+        const connection = this.getConnection(a.connectionId)
+        if (!a.modelId && !connection.defaultModel) fail('员工尚未配置模型')
+      }
     }
     // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
     const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [] } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
-    return createHash('sha256').update(JSON.stringify({ conversation: scope, agents: agents.map(a => ({ id: a.id, version: a.configVersion, connection: this.getConnection(a.connectionId) })) })).digest('hex')
+    const runtimeAgents = await Promise.all(agents.map(async a => isNativeBackend(a.executionBackend)
+      ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'claude-local'
+        ? resolveClaudeRuntime(a, this.profiles.get(a.executionBackend.profileId), this.getConnection(a.connectionId))
+        : await resolveCodexRuntime(a, this.profiles.get(a.executionBackend.profileId))).fingerprint }
+      : { id: a.id, version: a.configVersion, connection: this.getConnection(a.connectionId) }))
+    return createHash('sha256').update(JSON.stringify({ conversation: scope, agents: runtimeAgents })).digest('hex')
   }
   private async prepareAutomationConversation(d: AutomationDefinition, o: AutomationOccurrence): Promise<StoredRecord[]> {
     const input = conversationSchema.parse({ kind: 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
@@ -1817,7 +1906,12 @@ export class AppService {
     }
     if(agent.executionBackend?.kind==='acp-local')fail('UNSUPPORTED：外部任务后端不支持聊天、决策或记忆阶段')
     if (!agent.active || !conversation.agentIds.includes(agent.id)) fail('员工已停用或移出会话')
-    const connection = this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : '')), apiKey = await this.apiKey(connection)
+    const backend = agent.executionBackend
+    const runtimeProfile = isNativeBackend(backend) ? this.profiles.get(backend.profileId) : undefined
+    const connection = backend?.kind === 'codex-local' ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : ''))
+    if (backend?.kind === 'codex-local') await resolveCodexRuntime(agent, runtimeProfile)
+    if (backend?.kind === 'claude-local') resolveClaudeRuntime(agent, runtimeProfile, connection)
+    const apiKey = connection ? await this.apiKey(connection) : ''
     signal.throwIfAborted()
     const forgotten = await this.memory.forgottenMessageIds(agent.id)
     const materialContext = await this.materialMessages(conversation, turn.triggerMessageId, agent.id, throughSequence)
@@ -1868,10 +1962,13 @@ export class AppService {
     await this.materials.validateRefs(materialContext.refs, agent.id, conversation.id)
     const loaded = await this.homes.load(agent, conversation, combined, run.id)
     signal.throwIfAborted()
-    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, conversation, artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
+    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
+    if (runtimeProfile && isNativeBackend(backend)) run.backend = { kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
+      program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
+      externalInvocations: 0, sessionPolicy: run.responseKind === 'chat' ? 'scoped' : 'fresh', toolControl: run.responseKind === 'task' ? 'host-bridge' : 'none' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    const context: EngineContext = { browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent) && !origin, artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+    const context: EngineContext = { browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent) && !origin, artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
       readTaskFile: path => this.serialize(async () => {
         signal.throwIfAborted()
@@ -1901,7 +1998,8 @@ export class AppService {
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
         await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
         if (run.collaborationRequestId) return this.works.reserveCollaborationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
-        if (run.origin) return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
+        if (run.origin) { await this.automations.assertExecutable(run.origin, run.conversationId); return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution') }
+        if (context.workBudget?.sourceMessageId && run.workId) return this.works.reserveInteractiveCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.workId) await this.works.reserveCall(run.id)
         signal.throwIfAborted()
         return randomUUID()
@@ -1911,25 +2009,44 @@ export class AppService {
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能开始模型调用')
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，不能开始模型调用')
         if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
-        await this.observeActivity(run, () => this.userProfile.start({ id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId), thinking }))
+        if (isNativeBackend(run.backend)) { run.backend.externalInvocations++; await this.store.write([record('runs', run)]) }
+        await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))
       }),
       onSkillActivated: (toolCallId, skill) => this.observeActivity(run, () => this.userProfile.skill({ id: `${run.id}:${toolCallId}`, runId: run.id, conversationId: run.conversationId, skillId: skill.id, name: skill.name, createdAt: now() })),
-      onModelCallUsage: async (callId, usage) => {
+      onModelCallUsage: async (callId, usage, externalComplete) => {
         if (this.closing) return
-        if (run.collaborationRequestId) { await this.works.settleCollaborationCall(run.id, callId, usage); return }
-        if (!run.origin) { await this.observeActivity(run, () => this.userProfile.settle(callId, usage)); return }
-        const budget = await this.works.settleAutomationCall(run.id, callId, usage)
-        if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限')
+        if (run.collaborationRequestId) {
+          const budget = await this.works.settleCollaborationCall(run.id, callId, usage, externalComplete)
+          if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+          return
+        }
+        if (context.workBudget?.sourceMessageId && run.workId) {
+          const budget = await this.works.settleInteractiveCall(run.id, callId, usage, externalComplete)
+          if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+          return
+        }
+        if (!run.origin) { await this.observeActivity(run, () => this.userProfile.settle(callId, usage, externalComplete)); return }
+        const budget = await this.works.settleAutomationCall(run.id, callId, usage, externalComplete)
+        if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限', 'budget')
       },
       onUsage: async usage => {
         if (signal.aborted || terminal.has(run.status) || this.closing) return
         const clean = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage)
         const delta = clean.outputTokens === undefined ? undefined : clean.outputTokens - (run.usage?.outputTokens ?? 0)
-        run.usage = { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
-        if (run.workId && !run.origin) await this.works.usage(run.id, clean)
+        run.usage = runtimeProfile ? clean : { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
+        if (run.workId && !run.origin && !(context.workBudget?.accounting && run.phase === 'memory')) {
+          const budget = await this.works.usage(run.id, clean)
+          if (context.workBudget?.sourceMessageId && budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+        }
         if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta)
       },
     }
+    if (run.workId) {
+      const view = await this.works.view(conversation.id)
+      context.work = view.workItems.find(work => work.id === run.workId)
+      context.workBudget = view.workBudgets.find(budget => budget.id === context.work?.budgetId)
+    }
+    if (runtimeProfile) context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private') }
     if (isCoreAgent(agent) && conversation.purpose === 'core' && !origin && run.phase !== 'memory') {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
@@ -1938,6 +2055,23 @@ export class AppService {
     })
   }
   private async contextOnlyPeerDelivery(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery) {
+    if (turn.origin && !turn.workId && !turn.wakeId && delivery.conversationId === turn.conversationId && delivery.turnId === turn.id) {
+      return this.serialize(() => this.store.transaction(async tx => {
+        const storedTurn = await tx.get<DiscussionTurn>('turns', turn.id), stored = await tx.get<AgentDelivery>('deliveries', delivery.id)
+        const conversation = await tx.get<Conversation>('conversations', turn.conversationId)
+        if (!conversation || !conversation.agentIds.includes(delivery.agentId) || await tx.get('conversationCleanup', conversation.id) || storedTurn?.triggerMessageId !== turn.triggerMessageId || storedTurn.workId || storedTurn.wakeId || !stored || stored.turnId !== turn.id || stored.conversationId !== conversation.id || stored.agentId !== delivery.agentId || stored.eventId !== event.id) return
+        const occurrence = await tx.get<AutomationOccurrence>('automationOccurrences', turn.origin!.occurrenceId)
+        const budget = occurrence?.budgetId ? await tx.get<WorkBudget>('workBudgets', occurrence.budgetId) : undefined
+        if (occurrence?.conversationId !== conversation.id || occurrence.automationId !== turn.origin!.automationId || budget?.conversationId !== conversation.id || budget.origin?.occurrenceId !== turn.origin!.occurrenceId || budget.origin.authorizedFingerprint !== turn.origin!.authorizedFingerprint || storedTurn.origin?.occurrenceId !== turn.origin!.occurrenceId) return
+        const grant = budget.renewals?.find(value => value.turnId === turn.id && value.messageId === turn.triggerMessageId)
+        const message = grant ? await tx.get<Message>('messages', grant.messageId) : undefined
+        if (!grant || message?.status !== 'completed' || message.senderType !== 'user' || message.conversationId !== conversation.id || message.turnId !== turn.id || message.origin?.occurrenceId !== turn.origin!.occurrenceId) return
+        for (const version of grant.workVersions) {
+          const work = await tx.get<WorkItem>('workItems', version.id)
+          if (work?.ownerAgentId === delivery.agentId && work.conversationId === conversation.id && work.budgetId === budget.id && work.origin?.occurrenceId === occurrence.id) return '本次追加已由原工作定向接续，确认消息保留为上下文，不重复判断新任务'
+        }
+      }))
+    }
     if (!turn.collaborationRequestId || event.type !== 'agent_message' || delivery.conversationId !== turn.conversationId || delivery.turnId !== turn.id) return
     return this.serialize(() => this.store.transaction(async tx => {
       const conversation = await tx.get<Conversation>('conversations', turn.conversationId)
@@ -1976,8 +2110,10 @@ export class AppService {
       const visible = new Set(context.messages.map(message => message.id))
       context.workItems = await this.authorizedWorkItems(context.conversation, run.agentId, visible)
       context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence, sourceEventIds: delivery.eventIds ?? [event.id] }
-      if (!this.options.engine.decide) fail('模型引擎尚未支持成员独立参与判断')
-      const decision = await this.invokeModel(run, context, ctx => this.options.engine.decide!(ctx), PARTICIPATION_TIMEOUT_MS)
+      if (!this.engineFor(context).decide) fail('模型引擎尚未支持成员独立参与判断')
+      // Native phases already bound startup plus the external turn; do not apply
+      // the shorter API-only participation deadline over that managed lifetime.
+      const decision = await this.invokeModel(run, context, ctx => this.engineFor(ctx).decide!(ctx), context.runtimeProfile ? undefined : PARTICIPATION_TIMEOUT_MS)
       if (context.artifactRevision && decision.action === 'reply') {
         decision.responseKind = 'task'
         decision.work = { key: 'artifact-revision', scope: context.artifactRevision.content.slice(0, 2000), deliverable: '根据本次明确修改要求发布指定原版的新版本' }
@@ -2049,7 +2185,7 @@ export class AppService {
               intent = { ...intent, key: 'bobo-organization', scope: `发起组织：${organization.goal}`, deliverable: organization.mode === 'employee_creation' ? '发布独立员工并返回真实员工身份' : '发布独立员工群及真实 bobo 目标和分工说明', organization: { mode: organization.mode, goal: organization.goal } }
             }
             const callIds = decision.sourceDecisionRunId && !run.collaborationRequestId ? (await this.store.load<{ id: string; runId: string }>('profileModelCalls')).filter(call => call.runId === decision.sourceDecisionRunId).map(call => call.id) : []
-            return this.works.claim({ conversationId: conversation.id, sourceMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs, ...(organization ? { organization } : {}), ...(organization && decision.sourceDecisionRunId && callIds.length ? { priorDecision: { runId: decision.sourceDecisionRunId, callIds } } : {}) })
+            return this.works.claim({ conversationId: conversation.id, sourceMessageId, agentId: run.agentId, runId: run.id, intent, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs, ...(organization ? { organization } : {}), ...(!run.origin && (organization || context.runtimeProfile || context.members?.some(member => member.active && isNativeBackend(member.executionBackend))) && decision.sourceDecisionRunId && callIds.length ? { priorDecision: { runId: decision.sourceDecisionRunId, callIds } } : {}) })
           })
         } catch (error) {
           if (!(error instanceof WorkUnavailableError)) throw error
@@ -2057,12 +2193,14 @@ export class AppService {
           return 'deferred'
         }
         run.workId = context.work.id; run.workVersion = context.work.version
+        if (context.runtimeProfile) await this.store.write([record('runs', run)])
         if (context.work.collaborationRequestId) {
           run.collaborationRequestId = context.work.collaborationRequestId
           turn.collaborationRequestId = context.work.collaborationRequestId
           await this.store.write([record('runs', run), record('turns', turn)])
         }
         const budget = (await this.works.view(conversation.id)).workBudgets.find(budget => budget.id === context.work!.budgetId)!
+        context.workBudget = budget
         workDeadline = setTimeout(() => { void this.serialize(async () => { controller.abort(new Error('达到原始工作的时间上限')) }) }, Math.max(0, Date.parse(budget.deadlineAt) - Date.now()))
         workDeadline.unref()
         context.workItems = await this.authorizedWorkItems(context.conversation, run.agentId, new Set(context.messages.map(message => message.id)))
@@ -2139,7 +2277,7 @@ export class AppService {
             if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本团队创建')
             const original = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === chat.id && value.messageId === context.work!.sourceMessageId)
             const namedPlan = original?.teamName ? { ...plan, name: original.teamName } : plan
-            return this.teamCreation.acceptAgentPlan({ plan: namedPlan, connectionId: context.connection.id, modelId: current.modelId || context.connection.defaultModel, requestId: `core-team:${run.workId}` })
+            return this.teamCreation.acceptAgentPlan({ plan: namedPlan, ...(isNativeBackend(current.executionBackend) ? { executionBackend: current.executionBackend } : {}), connectionId: current.connectionId, modelId: current.modelId || context.connection?.defaultModel || '', requestId: `core-team:${run.workId}` })
           })
           const operation = await this.teamCreation.waitForCompletion(accepted.id, effective)
           if (operation.status !== 'committed' || !operation.conversationId) fail(`团队尚未创建完成：${operation.error || operation.status}；已有操作记录保留，未重复创建`)
@@ -2151,7 +2289,7 @@ export class AppService {
             if (context.work?.organization) fail('组织工作不能在原讨论中安排业务子工作，请在群内分工')
             effective.throwIfAborted()
             const proposal = workDelegationSchema.parse(input), owner = this.getAgent(proposal.ownerAgentId)
-            if (!owner.active || !this.getConversation(conversation.id).agentIds.includes(owner.id) || owner.executionBackend?.kind === 'acp-local') fail('委派对象不是当前有效的内置成员')
+            if (!owner.active || !this.getConversation(conversation.id).agentIds.includes(owner.id) || owner.executionBackend?.kind === 'acp-local') fail('委派对象不是当前有效的员工')
             await this.assertMaterialRefs(context)
             await this.materials.validateRefs(context.materialRefs ?? [], owner.id, conversation.id)
             await validateDependencies(proposal.dependencies ?? [])
@@ -2207,6 +2345,12 @@ export class AppService {
         try { return await this.requestApproval(run, controller, command, cwd, context.agent.allowCommands && !run.origin) }
         finally { if (!effective.aborted) await this.observeActivity(run, () => this.userProfile.execution(run, 'start')) }
       }
+      context.onArtifactPreparing = artifact => this.serialize(async () => {
+        if (context.work?.organization) fail('核心组织工作只能交付组织回执，业务成果须在群中发布')
+        if (!alive()) throw new Error('任务已停止，不能准备产物')
+        await this.assertMaterialRefs(context)
+        await this.store.transaction(tx => this.artifactRepository.preparePublication(tx, { ...artifact, ownerAgentId: run.agentId, runId: run.id }, { conversationId: conversation.id, revisionRequestId: artifact.revisionRequestId ?? null, sourceWorkId: run.workId ?? null, sourceMessageId: null }))
+      })
       context.onArtifact = artifact => this.serialize(async () => {
         if (context.work?.organization) fail('核心组织工作只能交付组织回执，业务成果须在群中发布')
         if (!alive()) throw new Error('任务已停止，不能发布产物')
@@ -2225,6 +2369,7 @@ export class AppService {
         context.onTool = async () => { fail('补充提问不允许执行工具') }
         context.beforeEffect = async () => { fail('补充提问不允许执行副作用') }
         context.onArtifact = async () => { fail('补充提问不允许发布成果') }
+        context.onArtifactPreparing = context.onArtifact
         context.approveCommand = async () => false
       }
       await this.invokeModel(run, context, async ctx => {
@@ -2232,7 +2377,7 @@ export class AppService {
         this.scheduler.executionStarted(turn.id, run.agentId)
         // Keep the resource lease until the adapter itself settles, even if the host has cancelled.
         const release = releaseTask; releaseTask = undefined
-        try { await this.options.engine.run(ctx) } finally { release?.() }
+        try { await this.engineFor(ctx).run(ctx) } finally { release?.() }
       })
       effective.throwIfAborted()
       if (!alive()) throw new Error('任务已停止')
@@ -2271,7 +2416,7 @@ export class AppService {
         await this.store.write([record('runs', run)])
         const withhold = (reason: string) => this.serialize(async () => {
           effective.throwIfAborted()
-          const saved = { ...run, status: 'completed' as const, finishedAt: now(), disposition: 'blocked' as const, draft: { ...run.draft!, status: 'withheld' as const, reason } }
+          const saved = { ...run, status: 'completed' as const, finishedAt: now(), disposition: context.pendingWorkWait ? 'waiting' as const : 'blocked' as const, draft: { ...run.draft!, status: 'withheld' as const, reason } }
           await this.works.withhold(run.id, reason, [record('runs', saved)])
           Object.assign(run, saved); this.changed(conversation.id)
         })
@@ -2309,7 +2454,7 @@ export class AppService {
             await this.store.write([record('snapshots', snapshot)])
             if (context.work) Object.assign(context.work, await this.works.recordMaterialSources(run.id, refs))
           })
-          if (run.draft.revisions >= 2 || !this.options.engine.report) {
+          if (run.draft.revisions >= 2 || !this.engineFor(context).report) {
             await withhold(stale.evidenceError ? `${stale.evidenceError}；${run.draft.revisions >= 2 ? '达到本次重新汇报上限' : '当前引擎不支持只更新汇报'}，已保存结果且未重放操作` : run.draft.revisions >= 2 ? '新消息持续到达，达到本次重新汇报上限；已执行操作保留，未重放' : '任务结果基于旧输入，当前引擎不支持只更新汇报；已保存草稿待核对')
             return 'deferred'
           }
@@ -2338,7 +2483,7 @@ export class AppService {
               await context.onUsage?.(cumulative)
             },
           }
-          const report = await this.invokeModel(run, reportContext, ctx => this.options.engine.report!(ctx, run.draft!))
+          const report = await this.invokeModel(run, reportContext, ctx => this.engineFor(ctx).report!(ctx, run.draft!))
           effective.throwIfAborted(); run.draft.revisions++
           if (report.action === 'discard') { await withhold('员工根据新信息决定暂不公开旧任务结果；已执行操作不会重放'); return 'deferred' }
           if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')
@@ -2359,21 +2504,40 @@ export class AppService {
       releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id) }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
-    if (!this.options.engine.extractMemory || this.closing) return
-    // A settled ordinary Work has released its holder; do not create an uncharged maintenance call on a question continuation.
-    if (this.messages.get(turn.triggerMessageId)?.inboxReply?.workId || [...this.scheduler.decisions.values()].some(decision => decision.turnId === turn.id && decision.action === 'ask' && decision.responseKind === 'task')) return
+    if (this.closing) return
+    const workContinuation = this.messages.get(turn.triggerMessageId)?.inboxReply?.workId
+    if ([...this.scheduler.decisions.values()].some(decision => decision.turnId === turn.id && decision.action === 'ask' && decision.responseKind === 'task')) return
     await Promise.all(participants.map(async agentId => {
       if (this.closing || signal.aborted) return
+      const native = isNativeBackend(this.getAgent(agentId).executionBackend)
+      // API question continuations still have no post-delivery maintenance authority.
+      if (!native && (workContinuation || !this.options.engine.extractMemory)) return
       if (!this.getConversation(turn.conversationId).agentIds.includes(agentId)) return
+      const taskRuns = [...this.runs.values()].filter(run => run.turnId === turn.id && run.agentId === agentId && run.phase === 'execution' && run.responseKind === 'task')
+      const sourceWorkIds = [...new Set(taskRuns.flatMap(run => run.workId ? [run.workId] : []))]
+      const view = sourceWorkIds.length ? await this.works.view(turn.conversationId) : undefined
+      const candidate = sourceWorkIds.length === 1 ? view?.workItems.find(work => work.id === sourceWorkIds[0]) : undefined
+      const candidateBudget = candidate && view?.workBudgets.find(budget => budget.id === candidate.budgetId)
+      const interactive = candidateBudget?.accounting === 'model-calls-v1' && !!candidateBudget.sourceMessageId && candidateBudget.sourceMessageId === candidate?.sourceMessageId && !candidate?.origin && !candidate?.collaborationRequestId
+      // Only original interactive ledgers grant post-delivery maintenance on a work wake.
+      // Other wake types keep their existing authority; a wake alone is not a chat turn.
+      if (turn.wakeId && !interactive) return
+      const work = native || interactive ? candidate : undefined
+      if (taskRuns.length && (native || interactive) && (!work || work.status !== 'delivered' || work.requiresReview)) return
+      if (work && !taskRuns.some(source => source.workId === work.id && source.status === 'completed' && source.disposition === 'delivered')) return
+      const budget = work && candidateBudget
       if (!await this.scheduler.reserveMaintenance(turn.id)) return
       const run = this.newRun(this.getConversation(turn.conversationId), agentId, turn.triggerMessageId, turn.id, 'memory')
+      if (work) run.workId = work.id
       run.status = 'running'; this.runs.set(run.id, run)
       const controller = new AbortController(), effective = AbortSignal.any([signal, controller.signal]); this.runControllers.set(run.id, controller)
+      const deadline = budget ? setTimeout(() => controller.abort(new Error('达到原始工作的时间上限')), Math.max(0, Date.parse(budget.deadlineAt) - Date.now())) : undefined
+      deadline?.unref()
       let key = ''
       try {
         const context = await this.engineContext(run, turn, effective); key = context.apiKey
         const query: MemoryQuery = { agentId, scope: 'employee' }
-        const candidates = await this.invokeModel(run, context, ctx => this.options.engine.extractMemory!(ctx), 30_000)
+        const candidates = await this.invokeModel(run, context, ctx => this.engineFor(ctx).extractMemory!(ctx), context.runtimeProfile ? undefined : 30_000)
         await this.serialize(async () => {
           effective.throwIfAborted()
           if (run.origin) await this.automations.assertExecutable(run.origin, turn.conversationId)
@@ -2381,7 +2545,7 @@ export class AppService {
           await this.assertMaterialRefs(context)
           if (!await this.memory.recallValid(context.memory!)) fail('记忆提取的实际输入来源已失效，不能保存旧候选')
           if (!current.agentIds.includes(agentId)) fail('员工已移出本会话')
-          const currentMessages = context.messages.filter(message => message.turnId === turn.id || message.id === turn.triggerMessageId)
+          const currentMessages = memoryEvidenceMessages(context)
           const contexts = this.memoryContexts(current, run.workId)
           for (const candidate of candidates) if (candidate.contextRef && !contexts.some(ref => ref.kind === candidate.contextRef!.kind && ref.id === candidate.contextRef!.id)) fail('记忆候选关联了未授权事项')
           for (const candidate of candidates) for (const target of candidate.supersedes ?? []) if (!context.memory?.recall?.versions.some(entry => entry.id === target.id && entry.version === target.version)) fail('纠正目标不属于本次获准召回版本')
@@ -2390,7 +2554,7 @@ export class AppService {
           const withProvenance = candidates.map(candidate => ({ ...candidate, ...(context.materialRefs?.length ? { useScope: 'conversation' as const, contextRef: undefined } : {}), sourceMessageIds: [...new Set([...candidate.sourceMessageIds, ...materialMessages])], sourceResourceIds: this.inheritedResources(candidate.sourceMessageIds, candidate.sourceResourceIds ?? []) }))
           await this.memory.extract(query, withProvenance, context.memory!.epoch, [...new Set([...currentMessages.map(message => message.id), ...materialMessages])], this.authorizedResources(currentAgent, current).map(resource => resource.id), {
             conversationId: current.id, useScope: context.materialRefs?.length ? 'conversation' : current.memoryScope ?? 'employee', disclosure: current.kind === 'direct' ? 'private' : 'public', requestId: `${turn.id}:${agentId}`, expectedInvalidationEpoch: context.memory!.invalidationEpoch ?? 0,
-            authorizedContexts: contexts, userMessageIds: currentMessages.filter(message => message.senderType === 'user' && message.senderId === 'user').map(message => message.id),
+            authorizedContexts: contexts, userMessageIds: currentMessages.filter(message => message.senderType === 'user' && message.senderId === 'user' && (message.turnId === turn.id || message.id === turn.triggerMessageId)).map(message => message.id),
             messageSourceIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, observations.find(item => item.id === message.runId)?.sourceMessageIds ?? []])),
             messageConversationIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, observations.find(item => item.id === message.runId)?.sourceConversationIds ?? []])),
             messageMemoryIds: Object.fromEntries(currentMessages.filter(message => message.senderId === agentId && message.runId).map(message => [message.id, this.snapshots.get(message.runId!)?.memoryEntryIds ?? []])),
@@ -2401,7 +2565,7 @@ export class AppService {
         })
         if (!terminal.has(run.status)) await this.finishRun(run, 'completed')
       } catch (error) { if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key)) }
-      finally { this.runControllers.delete(run.id) }
+      finally { if (deadline) clearTimeout(deadline); this.runControllers.delete(run.id) }
     }))
   }
 
@@ -2414,6 +2578,11 @@ export class AppService {
     }
   }
 
+  private engineFor(context: EngineContext): AgentEngine {
+    const engine = context.agent.executionBackend?.kind === 'claude-local' ? this.claudeEngine : this.codexEngine
+    return context.runtimeProfile ? { run: c => engine.run(c), decide: c => engine.decide(c), report: (c,d) => engine.report(c,d), extractMemory: c => engine.extractMemory(c), test: async () => { throw new Error('请通过本机连接测试') } } : this.options.engine
+  }
+
   private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {
     const readOnly = run.phase === 'decision' || run.phase === 'memory'
     const previousTiming = run.timing
@@ -2421,11 +2590,15 @@ export class AppService {
     let attemptUsage: ModelUsage = {}, started = false
     let reservedCallId = context.modelCallId
     const deadline = new AbortController(), signal = AbortSignal.any([context.signal, deadline.signal])
-    return withAbort(this.modelCapacity.run(context.connection.id, signal, async () => {
+    return withAbort(this.modelCapacity.run(context.connection?.id ?? `codex:${context.runtimeProfile!.id}`, signal, async () => {
       await this.serialize(async () => { signal.throwIfAborted(); await this.assertMaterialRefs(context) })
       if (started) for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (attemptUsage[field] !== undefined) earlierAttempts[field] = (earlierAttempts[field] ?? 0) + attemptUsage[field]!
       if (context.memory && !await this.memory.recallValid(context.memory)) fail('记忆已失效，旧模型请求被阻止')
       started = true; attemptUsage = {}
+      if (context.workBudget?.sourceMessageId && run.workId && !reservedCallId) reservedCallId = await this.serialize(async () => {
+        signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
+        return this.works.reserveInteractiveCall(run, randomUUID(), run.phase ?? 'execution')
+      })
       if (run.collaborationRequestId && !reservedCallId) reservedCallId = await this.serialize(async () => {
         signal.throwIfAborted(); if (this.closing || terminal.has(run.status)) fail('任务已结束')
         return this.works.reserveCollaborationCall(run, randomUUID(), run.phase ?? 'execution')
@@ -2449,13 +2622,14 @@ export class AppService {
         for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (earlierAttempts[field] ?? 0) + usage[field]!
         await context.onUsage!(cumulative)
       } : undefined }) } finally {
+        if (context.runtimeProfile) await this.observeActivity(run, () => this.userProfile.finishExternal(modelCallId))
         await this.observeActivity(run, () => this.userProfile.execution(run, 'finish')); this.activeAdapters.delete(run.id)
         if (timer) clearTimeout(timer)
         if (run.origin) this.changed(run.conversationId)
         if (run.phase === 'execution') this.scheduler.executionFinished(run.conversationId)
       }
     }, {
-      retryRateLimit: readOnly,
+      retryRateLimit: readOnly && !context.runtimeProfile,
       reserveRetry: async () => {
         if (!context.onAdditionalModelCall) fail('宿主未提供重试预算')
         const callId = await context.onAdditionalModelCall!()
@@ -2705,7 +2879,7 @@ export class AppService {
     const originalMessage = this.messages.get(original.triggerMessageId) ?? fail('原用户消息不存在')
     const prepared = this.scheduler.prepare({ ...conversation, agentIds: [original.agentId] }, { ...originalMessage, mentionIds: [original.agentId] })
     if (original.origin) {
-      if (this.automationFingerprint(conversation.id) !== original.origin.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
+      if (await this.automationFingerprint(conversation.id) !== original.origin.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
     }
     prepared.turn.origin = original.origin ? clone(original.origin) : undefined
     if (original.origin && !original.workId) prepared.turn.resumesRunIds = [original.id]
@@ -2745,6 +2919,7 @@ export class AppService {
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
       await this.preserveLegacyRuntimeFacts()
       const legacyBrowserRuns = new Set((await this.store.load<AgentRun>('runs')).filter(run => run.browserDownloadIsolation === 'legacy' && [run.agentId,run.conversationId,run.id].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.dataPath,'agents',run.agentId,'workspace','sessions',run.conversationId,'runs',run.id)))
+      const nativeRuntimeHomes = new Set([...this.runs.values()].filter(run => isNativeBackend(run.backend) && [run.agentId, run.conversationId].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.homes.root(run.agentId), 'sessions', run.conversationId, run.backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private')))
       const databaseWork = join(destination, `.database-work-${randomUUID()}`), databaseFile = join(databaseWork, 'boai.sqlite')
       await mkdir(databaseWork)
       await this.store.backup(databaseFile)
@@ -2757,14 +2932,17 @@ export class AppService {
         await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
         await backupClient.execute("UPDATE records SET value=json_object('id',id,'argumentHash',json_extract(value,'$.argumentHash'),'conversationId',coalesce(json_extract(value,'$.lease.conversationId'),json_extract(value,'$.conversationId')),'status','cleared') WHERE collection='browserActions'")
         await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: ['automationRuntime', 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
+        // Native transcripts live outside the product snapshot and may advance
+        // after export. Retain their references, but never resume them on restore.
+        for (const collection of ['codexRuntime', 'claudeRuntime']) await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [collection, 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
         // Seal the acknowledged database into a file that no preparation connection has opened.
         await backupClient.execute({ sql: 'VACUUM INTO ?', args: [join(destination, 'boai.sqlite')] })
       } finally { backupClient.close() }
       await rm(databaseWork, { recursive: true, force: true })
-      for (const folder of ['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces']) await cp(join(this.dataPath, folder), join(destination, folder), { recursive: true, dereference: false, filter: source => !legacyBrowserRuns.has(source) })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
+      for (const folder of ['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces']) await cp(join(this.dataPath, folder), join(destination, folder), { recursive: true, dereference: false, filter: source => !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source) })
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.

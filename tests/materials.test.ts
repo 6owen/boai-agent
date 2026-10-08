@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 重启草稿回收后旧发送明确要求放弃并重新选择，真实原件清理/无外部重读的断言保持。
  * [INPUT]: 真实 ProductStore、宿主私有材料文件和可控文件执行断点。
  * [OUTPUT]: 当前成员/旧名单、稳定回执与实际退出；独立代码/纯文本预览不进入模型正文/持久解析；同hash已发材料显式修复保留原引用/备份，撤权/清理/错hash拒绝恢复；严格文本/图片/二进制、外改保留和草稿重启清理。
  * [POS]: tests/materials.test.ts；离线模块回归，不调用模型或使用假事务。
@@ -548,7 +549,7 @@ describe('durable conversation materials', () => {
       expect(await readFile(original, 'utf8')).toBe('第一行\r\n第二行\n')
       expect(await setup.store.load('materialCleanups')).toEqual([expect.objectContaining({ id: material.id, status: 'pending', contentHash: material.contentHash })])
       await expect(setup.repository.preview(material.id)).rejects.toThrow('未发送材料草稿')
-      await expect(setup.attach(material)).rejects.toThrow('版本已更新')
+      await expect(setup.attach(material)).rejects.toThrow('放弃未受理发送，重新选择附件后发送')
     } finally { barrier.release() }
     await recovery
     await expect(readFile(original)).rejects.toMatchObject({ code: 'ENOENT' })

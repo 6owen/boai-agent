@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 明确SQLite预置的同触发两员工问题/Work/已公开Run与真实Inbox.get。
  * [OUTPUT]: 精确虚拟问题保留原员工/消息/Work和当前触发版本，旧SQL入口兼容；隐藏/清理/已答/停止/来源与材料失效拒绝，跨hook版本变化不返回旧正文，零业务写入。
+ * [OUTPUT]: 混合同轮较晚交付不得替代实际未答问题，汇总入口/列表排除已答问题并沿原负责人再次核验；真实故障模式先红后绿，不制造业务。
  * [POS]: 精确自动化问题读取合同模块测试；预置不代表执行成功，不调用模型或补充业务。
  * [PROTOCOL]: 修改时同步Header及所属.folder.md。
  */
@@ -42,6 +43,45 @@ async function fixture() {
 async function facts(store: ProductStore) { return Promise.all(['workItems', 'runs', 'turns', 'decisions', 'messages', 'automationOccurrences', 'workBudgets'].map(collection => store.load(collection))) }
 
 describe('精确自动化问题的只读虚拟身份', () => {
+  it('同轮另一员工较晚交付不替代原未答问题，列表和汇总均保留实际Work负责人', async () => {
+    const f = await fixture()
+    await f.store.transaction(async tx => {
+      const message = (await tx.get<Message>('messages', 'message-bob'))!, run = (await tx.get<AgentRun>('runs', 'run-bob'))!, work = (await tx.get<WorkItem>('workItems', 'work-bob'))!
+      await tx.put(row('messages', { ...message, turnId: 'turn-alice', content: '我的独立文件已正式交付。' }))
+      await tx.put(row('runs', { ...run, turnId: 'turn-alice' }))
+      delete work.userQuestion; work.status = 'delivered'; await tx.put(row('workItems', work))
+      await tx.put(row('automationOccurrences', { ...f.occurrence, waitingTurnIds: ['turn-alice'] }))
+    })
+    const before = await facts(f.store), expected = { agentId: 'alice', messageId: 'message-alice', workId: 'work-alice', question: { messageId: 'message-alice', content: '请明确alice的交付范围？', revision: 7 } }
+    expect(await f.inbox.get('question:occurrence:occ')).toMatchObject(expected)
+    const items = (await f.inbox.list({ kind: 'question' })).items
+    expect(items).toHaveLength(1); expect(items[0]).toMatchObject({ ...expected, id: 'question:occurrence:occ' })
+    expect(await f.inbox.get(target('message-bob'))).toBeNull(); expect(await facts(f.store)).toEqual(before)
+  })
+  it('较晚问题已答后汇总选择仍未答的原问题，全已答时不把旧正文当等待', async () => {
+    const f = await fixture()
+    await f.store.transaction(async tx => { const work = (await tx.get<WorkItem>('workItems', 'work-bob'))!; work.userQuestion!.answeredMessageId = 'answer-bob'; await tx.put(row('workItems', work)) })
+    expect(await f.inbox.get('question:occurrence:occ')).toMatchObject({ agentId: 'alice', messageId: 'message-alice', workId: 'work-alice' })
+    await f.store.transaction(async tx => { const work = (await tx.get<WorkItem>('workItems', 'work-alice'))!; work.userQuestion!.answeredMessageId = 'answer-alice'; await tx.put(row('workItems', work)) })
+    expect(await f.inbox.get('question:occurrence:occ')).toBeNull(); expect((await f.inbox.list({ kind: 'question' })).items).toEqual([])
+  })
+  it('汇总问题也核对来源hook期间版本变化，不返回旧问题或绕过原负责人', async () => {
+    const f = await fixture()
+    f.validateSource.mockImplementationOnce(async () => { await f.store.transaction(tx => tx.put(row('automationOccurrences', { ...f.occurrence, stateVersion: 8 }))) })
+    expect(await f.inbox.get('question:occurrence:occ')).toBeNull(); expect(f.validateQuestion).not.toHaveBeenCalled()
+  })
+  it('旧chat缺结构化问题仍仅兼容原等待消息，已知同轮task交付不能借旧兼容替代', async () => {
+    const f = await fixture()
+    await f.store.transaction(async tx => {
+      const alice = (await tx.get<AgentRun>('runs', 'run-alice'))!, bob = (await tx.get<AgentRun>('runs', 'run-bob'))!, message = (await tx.get<Message>('messages', 'message-bob'))!, work = (await tx.get<WorkItem>('workItems', 'work-bob'))!
+      alice.responseKind = 'chat'; delete alice.workId; await tx.put(row('runs', alice)); await tx.remove('workItems', 'work-alice')
+      await tx.put(row('runs', { ...bob, turnId: 'turn-alice' })); await tx.put(row('messages', { ...message, turnId: 'turn-alice', content: '我的独立文件已交付。' }))
+      delete work.userQuestion; work.status = 'delivered'; await tx.put(row('workItems', work)); await tx.put(row('automationOccurrences', { ...f.occurrence, waitingTurnIds: ['turn-alice'] }))
+    })
+    const before = await facts(f.store), item = await f.inbox.get('question:occurrence:occ')
+    expect(item).toMatchObject({ agentId: 'alice', messageId: 'message-alice', question: { messageId: 'message-alice', revision: 7 } }); expect(item?.workId).toBeUndefined()
+    expect(await facts(f.store)).toEqual(before)
+  })
   it('同一次触发两位员工各回原问题与真实Work，当前stateVersion不借问题版本且不改任何业务', async () => {
     const f = await fixture(), before = await facts(f.store)
     for (const id of ['alice', 'bob']) {

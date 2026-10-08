@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: AgentRun记录实际Claude或Codex来源，保留各自程序/profile和外部阶段计量。
+ * [OUTPUT]: 运行后端记录原生Codex/ACP、外部请求次数和宿主工具范围，不把原生turn视为单次模型调用。
  * [OUTPUT]: 工作视图有界只读DTO与五组计数导出，复用既有Work及真实文件身份。
  * [INPUT]: 产品实体、成果内容版本/修订与采用合同、受管材料/来源、持久工作/预算、协作投递/模型耗时、自动化、执行后端及员工头像合同。
  * [OUTPUT]: 运行保留浏览器下载新隔离/旧临时目录备份边界标识。
@@ -167,7 +169,7 @@ export interface AgentRun {
   disposition?: WorkDisposition
   timing?: { queueMs: number; executionMs: number; backoffMs: number; rateLimitRetries: number }
   failureKind?: 'unsupported' | 'auth_required' | 'input_required' | 'budget_exhausted' | 'transport'
-  backend?: { program?: {name:string;version:string;executableHash:string}; sessionId?:string; kind: 'acp-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh'; toolControl: 'external' }
+  backend?: { program?: {name:string;version:string;executableHash:string}; sessionId?:string; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
   id: string
   phase?: 'coordination' | 'decision' | 'execution' | 'memory'
   turnId?: string

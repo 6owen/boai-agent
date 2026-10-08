@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 文件证据同时保留精确artifactId和实际已提交交付messageId，支持原消息导航；不推断旧记录来源。
+ * [OUTPUT]: 本机/API混合请求计量随原预算只读投影；未知用量与运行交付保持分离。
  * [INPUT]: 同一次自动化的持久来源、轮次/工作/正文、已核查文件与实际执行器占用。
  * [OUTPUT]: 同轮多员工按各自公开问题回执保留未答等待，不由回复一个turn推断全部员工问题已答；旧完成/同伴失败轮次仅沿确切已提交Run/Work问题只读投影等待，不改写轮次或恢复执行。
  * [OUTPUT]: 已公开未回答问题优先于工作等待，活跃执行/审批和实际取消仍优先；普通消息不能解除等待。
@@ -71,7 +73,7 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
     const artifacts = input.artifacts.filter(artifact => artifact.id && artifact.runId === run.id && work.artifactIds.includes(artifact.id) && input.verifiedArtifactIds.has(artifact.id))
     if (workEvidenceError(work.outcome, { content: message.content, artifactIds: artifacts.map(artifact => artifact.id!) }, work.status === 'waiting')) continue
     if (work.outcome.evidence?.some(item => item.kind === 'collaboration')) continue
-    for (const item of work.outcome.evidence ?? []) if (item.kind !== 'collaboration') evidence.push({ kind: item.kind, reference: item.reference, workId: work.id, resultVersion: work.resultVersion, ...(item.kind === 'answer' ? { messageId: message.id } : { artifactId: item.reference }) })
+    for (const item of work.outcome.evidence ?? []) if (item.kind !== 'collaboration') evidence.push({ kind: item.kind, reference: item.reference, workId: work.id, resultVersion: work.resultVersion, messageId: message.id, ...(item.kind === 'artifact' ? { artifactId: item.reference } : {}) })
     if (work.status === 'delivered' && work.outcome.disposition === 'delivered' && work.outcome.evidence?.length) delivered.add(work.id)
   }
   const live = runs.some(run => !endedRun.has(run.status) || input.activeRunIds.has(run.id)) || turns.some(turn => !endedTurn.has(turn.status) || input.activeTurnIds.has(turn.id))
@@ -103,7 +105,7 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   return { status, deliveryStatus, turnIds: [...turnIds], waitingTurnIds: waitingTurns.map(turn => turn.id), workIds: [...workIds], rootWorkIds: works.filter(work => !work.parentWorkId).map(work => work.id),
     runIds: [...runIds], resultMessageIds: messages.map(message => message.id), resultEvidence: evidence,
     modelCalls: budget?.modelCalls ?? turns.reduce((sum, turn) => sum + turn.modelCalls, 0), usage: budget?.usage ?? usage, usageIncomplete: budget?.usageIncomplete ?? true,
-    ...(budget ? { budget: { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),
+    ...(budget ? { budget: { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),
     finishedAt: pending ? undefined : finishedAt,
     reason: o.cancellationRequestedAt ? o.reason : status === 'completed' ? undefined : turns.find(turn => turn.reason && !resumedTurns.has(turn.id))?.reason ?? works.find(work => ['blocked', 'failed', 'interrupted'].includes(work.status))?.outcome?.summary }
 }

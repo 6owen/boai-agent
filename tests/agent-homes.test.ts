@@ -1,11 +1,11 @@
 /*
  * [INPUT]: WorkspaceService、产品存储、记忆模块与临时数据。
- * [OUTPUT]: 系统文件、工作区、记忆和迁移边界的回归验证。
+ * [OUTPUT]: 系统文件、工作区、记忆和迁移边界；目录被占用/符号链接时拒绝并保留原件，恢复需明确加载。
  * [POS]: tests/agent-homes.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, test } from 'vitest'
-import { mkdtemp, readFile, writeFile, rm, symlink } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rename, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
@@ -23,6 +23,25 @@ async function setup() {
   return { root, agent, homes }
 }
 const empty: MemoryView = { entries: [], epoch: 0, namespace: 'test' }
+test.each(['work-file', 'work-link', 'shared-file', 'shared-link'])('unavailable session directory %s fails clearly without changing displaced originals or the link target', async fault => {
+  const { root, agent, homes } = await setup()
+  const conversation: Conversation = { id: 'direct', kind: 'direct', title: 'direct', agentIds: [agent.id], mode: 'natural', workspacePath: join(root, 'workspaces/direct'), sharedKnowledgeIds: [], createdAt: '', updatedAt: '' }
+  const { workspace } = await homes.load(agent, conversation, empty, 'baseline')
+  const target = fault.startsWith('work') ? workspace.workPath : workspace.sharedPath
+  await writeFile(join(target, 'original.md'), '原件保持')
+  await rename(target, target + '.saved')
+  const unrelated = join(root, 'unrelated'); await mkdir(unrelated); await writeFile(join(unrelated, 'private.md'), '无关原件')
+  if (fault.endsWith('file')) await writeFile(target, '占位文件不可删除')
+  else await symlink(unrelated, target)
+  await expect(homes.load(agent, conversation, empty, 'blocked')).rejects.toThrow('员工会话工作目录不可用，请恢复原目录及访问权限后再发送新消息。')
+  expect(await readdir(unrelated)).toEqual(['private.md'])
+  expect(await readFile(join(unrelated, 'private.md'), 'utf8')).toBe('无关原件')
+  expect(await readFile(join(target + '.saved', 'original.md'), 'utf8')).toBe('原件保持')
+  if (fault.endsWith('file')) expect(await readFile(target, 'utf8')).toBe('占位文件不可删除')
+  await rm(target); await rename(target + '.saved', target)
+  expect((await homes.load(agent, conversation, empty, 'explicit-next')).workspace.workPath).toBe(workspace.workPath)
+  expect(await readFile(join(target, 'original.md'), 'utf8')).toBe('原件保持')
+})
 test('each employee has separate source files; ordinary bootstrap does not read root private projections', async () => {
   const { root, agent, homes } = await setup()
   const second = { ...agent, id: 'writer', workspaceRef: undefined }; await homes.initialize(second)

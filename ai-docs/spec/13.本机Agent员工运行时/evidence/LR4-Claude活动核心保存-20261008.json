@@ -1,0 +1,1448 @@
+{
+  "kind": "section-109-live-claude-core-save-actual-attempt-summary",
+  "createdAt": "2026-10-07T16:18:15.322560+00:00",
+  "fullGoalComplete": false,
+  "humanApproval": "pending",
+  "productionChangeInThisIncrement": false,
+  "currentProductionBinding": "566 = 437 source + 119 dist + 10 root configs; previous section108 build remains unchanged",
+  "realCliLocalProtocolDoesNotProveVendorUiOrWork": true,
+  "nativeUnsavedCloseActualAttempts": 0,
+  "totals": {
+    "actualAttempts": 3,
+    "passed": 0,
+    "failed": 3,
+    "copiedReportResources": 51,
+    "resourceAndOriginalTraceHashes": 57,
+    "originalPlaywrightTraces": 6,
+    "realExternalPhases": 23,
+    "currentConditionalCombinationsNotStarted": 5,
+    "currentLiveSaveCombinationsFullyPassed": 0
+  },
+  "attempts": [
+    {
+      "attempt": "source-normal-1",
+      "title": "真实活动Claude核心组织遇到正常保存后保留原工作",
+      "target": "source",
+      "status": "failed",
+      "modelMode": "real-provider",
+      "humanReview": "pending",
+      "fixtureLaunchCount": 2,
+      "launchCountIsNotBusinessRestartCount": true,
+      "realExternalPhases": 2,
+      "phaseKinds": {
+        "decision": 1,
+        "task": 1
+      },
+      "businessRuns": 2,
+      "naturalGateFailedObserved": false,
+      "targetSaveProven": false,
+      "controlledBusinessRestartsProven": 0,
+      "explicitNewConversationProven": false,
+      "nativeUnsavedCloseTested": false,
+      "actualOwnedProcessExitVerified": true,
+      "budgetLimitsUnchanged": true,
+      "budgets": [
+        {
+          "workItems": 1,
+          "retries": 0,
+          "reportRefreshes": 0,
+          "noProgress": 0,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "id": "budget-0aa0600b7dd5091b0ea04f01a84f4a37b25d9546acaf089a9e83aabc5a87117d",
+          "schemaVersion": 1,
+          "modelCalls": 2,
+          "runs": 1,
+          "maxModelCalls": 48,
+          "maxRuns": 8,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T15:23:29.501Z",
+          "usage": {
+            "inputTokens": 14454,
+            "outputTokens": 1528,
+            "totalTokens": 15982
+          },
+          "usageIncomplete": true,
+          "collaborationRequestId": "bobo-collaboration:a4d0cc8a-1fc8-4f04-a600-e7e2e4752064",
+          "conversationId": "c92c6bbe-6efe-4152-84f5-a8f9671fd690",
+          "accounting": "model-calls-v1",
+          "unknownCalls": 1,
+          "callUnit": "mixed"
+        }
+      ],
+      "workRoles": {},
+      "artifacts": [],
+      "postExitFixedFiles": [],
+      "reportedMandatoryGaps": [],
+      "cleanupErrors": [],
+      "resources": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0001-8c3e72907f0eaad2.png",
+          "sha256": "8c3e72907f0eaad205835169c86c4779003313d36ed061dbcb40d0508d64d7f1",
+          "bytes": 104664,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0002-9664532b21f856f5.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0003-70defc488124d242.png",
+          "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+          "bytes": 197143,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0004-9a31bae2312de4b9.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0005-037d2381bbc7315d.json",
+          "sha256": "037d2381bbc7315dae686a0122bbd6cb2f9877ec0b2cf3e317fd3d7f5d24d932",
+          "bytes": 3707,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0006-4d90eca466492a06.json",
+          "sha256": "4d90eca466492a06a88248803268b02c8b3ae923718c519696078731ca44df4d",
+          "bytes": 1403,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0007-e57ae63c06ee0582.json",
+          "sha256": "e57ae63c06ee0582099a6fe99412c64dfced67de6650b0237fc64759ee8f1f2e",
+          "bytes": 25886,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0008-202f8c2cdaeae756.png",
+          "sha256": "202f8c2cdaeae756db2cc01d2dbbdf7d4e750d1bdf7c312d2a90bacfd72e9c4f",
+          "bytes": 387575,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0009-ab146005ab5c9753.download",
+          "sha256": "ab146005ab5c975394abe7531232545bf45c1b54832c2a8972cea63c756fc822",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0010-c22f3d2545d01847.json",
+          "sha256": "c22f3d2545d018477a69fc5266f14bf48bbf973f4dbe64aab33d2e606d90f8bb",
+          "bytes": 426,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0011-202f8c2cdaeae756.png",
+          "sha256": "202f8c2cdaeae756db2cc01d2dbbdf7d4e750d1bdf7c312d2a90bacfd72e9c4f",
+          "bytes": 387575,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0012-2d3de6462c26b3aa.json",
+          "sha256": "2d3de6462c26b3aaebf3d46dee978faaa12815a7bde56f6e4d19e0cc68433ad1",
+          "bytes": 625,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/resources/0013-177aebcc84ab33c9.json",
+          "sha256": "177aebcc84ab33c93db9570c0b3f0c0dd21a7fef3c6df22f7151fac1eb7c3926",
+          "bytes": 27278,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        }
+      ],
+      "originalEvidence": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/001-第-1-次启动结束画面.png",
+          "sha256": "8c3e72907f0eaad205835169c86c4779003313d36ed061dbcb40d0508d64d7f1",
+          "bytes": 104664,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/002-真实模型使用产品系统加密.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/003-Claude程序核对只证明程序状态.png",
+          "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+          "bytes": 197143,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/004-新员工明确选择Claude程序与模型来源.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/005-真实活动核心保存原始请求与配置.json",
+          "sha256": "037d2381bbc7315dae686a0122bbd6cb2f9877ec0b2cf3e317fd3d7f5d24d932",
+          "bytes": 3707,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/006-真实活动核心保存原场景失败.json",
+          "sha256": "4d90eca466492a06a88248803268b02c8b3ae923718c519696078731ca44df4d",
+          "bytes": 1403,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/007-真实Claude活动核心保存退出前实际状态.json",
+          "sha256": "e57ae63c06ee0582099a6fe99412c64dfced67de6650b0237fc64759ee8f1f2e",
+          "bytes": 25886,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/008-真实Claude活动核心保存退出前原生画面.native.png",
+          "sha256": "202f8c2cdaeae756db2cc01d2dbbdf7d4e750d1bdf7c312d2a90bacfd72e9c4f",
+          "bytes": 387575,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/009-真实Claude活动核心保存退出前原生画面.capture.json",
+          "sha256": "ab146005ab5c975394abe7531232545bf45c1b54832c2a8972cea63c756fc822",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/010-真实Claude活动核心保存退出前进程身份.json",
+          "sha256": "c22f3d2545d018477a69fc5266f14bf48bbf973f4dbe64aab33d2e606d90f8bb",
+          "bytes": 426,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/011-第-2-次启动结束画面.png",
+          "sha256": "202f8c2cdaeae756db2cc01d2dbbdf7d4e750d1bdf7c312d2a90bacfd72e9c4f",
+          "bytes": 387575,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/012-真实Claude活动核心保存实际退出核对.json",
+          "sha256": "2d3de6462c26b3aaebf3d46dee978faaa12815a7bde56f6e4d19e0cc68433ad1",
+          "bytes": 625,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/013-真实Claude活动核心保存退出后实际状态.json",
+          "sha256": "177aebcc84ab33c93db9570c0b3f0c0dd21a7fef3c6df22f7151fac1eb7c3926",
+          "bytes": 27278,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-1.zip",
+          "sha256": "08e2a48f355a899f17d32cd048a8aee68ed7f839c2bc92e8d01d2c97dd968da5",
+          "bytes": 523679,
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-2.zip",
+          "sha256": "194be7dd13b4d99ccf732564792d86f13fce57444fdc17e4e2ac31fc1bc273b4",
+          "bytes": 8526233,
+          "launch": 2
+        }
+      ],
+      "recordedLabels": [
+        "真实模型使用产品系统加密",
+        "真实活动核心保存原始请求与配置",
+        "真实活动核心保存原场景失败",
+        "真实Claude活动核心保存退出前实际状态",
+        "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+        "真实Claude活动核心保存退出前进程身份",
+        "真实Claude活动核心保存实际退出核对",
+        "真实Claude活动核心保存退出后实际状态"
+      ],
+      "captureLimit": "whole Electron webContents capturePage; actual metadata retained; not physical operating-system unsaved-close validation",
+      "references": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/registration.json",
+          "sha256": "60ac7f4d03843f39d5e240c236117599609311b6cbd78fb187dcca5a8cca7299",
+          "bytes": 668
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/execution-receipt.json",
+          "sha256": "dcbdcdfe74e2702695b3f5506a98d5d4cdedd11bebf08d2babd9b559c0f61ee8",
+          "bytes": 1074
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/final-receipt.json",
+          "sha256": "87a700ff07123ae5b010d66fc42a9e6fa64c36d818063a06d5b2c9368d887bda",
+          "bytes": 534
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/input-verification.json",
+          "sha256": "aa399731686654085b940b9a6891d7d82e97daf3a6111e4ca83fd4d2b70974d4",
+          "bytes": 357
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/build-manifest.json",
+          "sha256": "95b11084c78eb24919bc51ecf92854f53fa255397551048e5e620e7ad6f6039f",
+          "bytes": 103445
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-oEOGJj/manifest.json",
+          "sha256": "7fe0ef3e26dc7defd63706bb3cc1f1c0f9bd64b7e184d831fc4b2b6025bb83a0",
+          "bytes": 12980
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-report/checks.json",
+          "sha256": "a103bef041aac8f8858dc711fd4267bdfe92f3f9ec4134c6a7b961b33a753b4d",
+          "bytes": 91522
+        }
+      ],
+      "failure": {
+        "saveCase": "正常保存",
+        "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('menuitem', { name: '助手设置', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <div tabindex=\"-1\" role=\"menuitem\" id=\"base-ui-_r_7g_\" data-variant=\"default\" data-slot=\"dropdown-menu-item\" class=\"group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-md px-3 py-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-9 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-d…>…</div>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 100ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m  - element was detached from the DOM, retrying\u001b[22m\n"
+      },
+      "allGoalComplete": false
+    },
+    {
+      "attempt": "source-normal-2",
+      "title": "真实活动Claude核心组织遇到正常保存后保留原工作",
+      "target": "source",
+      "status": "failed",
+      "modelMode": "real-provider",
+      "humanReview": "pending",
+      "fixtureLaunchCount": 2,
+      "launchCountIsNotBusinessRestartCount": true,
+      "realExternalPhases": 12,
+      "phaseKinds": {
+        "decision": 4,
+        "task": 4,
+        "chat": 1,
+        "memory": 1,
+        "report": 2
+      },
+      "businessRuns": 12,
+      "naturalGateFailedObserved": true,
+      "targetSaveProven": false,
+      "controlledBusinessRestartsProven": 0,
+      "explicitNewConversationProven": false,
+      "nativeUnsavedCloseTested": false,
+      "actualOwnedProcessExitVerified": true,
+      "budgetLimitsUnchanged": true,
+      "budgets": [
+        {
+          "workItems": 3,
+          "retries": 0,
+          "reportRefreshes": 2,
+          "noProgress": 0,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "id": "budget-7b3d6245f99d1e5cdcbcd21a595d2d5c4dee7cba288aca6342db8504df7a78c4",
+          "schemaVersion": 1,
+          "modelCalls": 12,
+          "runs": 4,
+          "maxModelCalls": 48,
+          "maxRuns": 8,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T15:41:57.304Z",
+          "usage": {
+            "inputTokens": 145275,
+            "outputTokens": 17440,
+            "totalTokens": 162715
+          },
+          "usageIncomplete": true,
+          "collaborationRequestId": "bobo-collaboration:549ee3e3-a37d-4cec-8ff5-778c4414a86b",
+          "conversationId": "ead7d346-fa40-4689-b84d-8588dc1133e3",
+          "accounting": "model-calls-v1",
+          "unknownCalls": 1,
+          "callUnit": "mixed"
+        }
+      ],
+      "workRoles": {
+        "A": {
+          "id": "work-e47e01abea50fac6caa986dcdc2f6e85c1adc6f67812d643fdfec2cf18563c5b",
+          "ownerAgentId": "bobo",
+          "status": "delivered",
+          "parentWorkId": null,
+          "sourceMessageId": "549ee3e3-a37d-4cec-8ff5-778c4414a86b",
+          "budgetId": "budget-7b3d6245f99d1e5cdcbcd21a595d2d5c4dee7cba288aca6342db8504df7a78c4",
+          "requiredResults": [],
+          "observedResults": [],
+          "artifactIds": [],
+          "resultVersion": 1,
+          "cancellationCause": null
+        },
+        "G": {
+          "id": "work-38638c30cca56f65121a98ec33b76c16889c1d731a091e2421bfc8b0d46062ec",
+          "ownerAgentId": "bobo",
+          "status": "cancelled",
+          "parentWorkId": null,
+          "sourceMessageId": "e8c2f4f8-4307-463c-938c-8d93f28303d4",
+          "budgetId": "budget-7b3d6245f99d1e5cdcbcd21a595d2d5c4dee7cba288aca6342db8504df7a78c4",
+          "requiredResults": [
+            {
+              "workId": "work-8732d88bcc06159ccd4bc97ceb62ed3b5877d0f22ca5d8b2aaebfbdee3f06817",
+              "resultVersion": 1
+            }
+          ],
+          "observedResults": [
+            {
+              "workId": "work-8732d88bcc06159ccd4bc97ceb62ed3b5877d0f22ca5d8b2aaebfbdee3f06817",
+              "resultVersion": 1
+            }
+          ],
+          "artifactIds": [],
+          "resultVersion": 1,
+          "cancellationCause": "budget"
+        },
+        "children": [
+          {
+            "id": "work-8732d88bcc06159ccd4bc97ceb62ed3b5877d0f22ca5d8b2aaebfbdee3f06817",
+            "ownerAgentId": "ac44d169-cc3f-4376-8d3a-bc16378a4cd2",
+            "status": "delivered",
+            "parentWorkId": "work-38638c30cca56f65121a98ec33b76c16889c1d731a091e2421bfc8b0d46062ec",
+            "sourceMessageId": "e8c2f4f8-4307-463c-938c-8d93f28303d4",
+            "budgetId": "budget-7b3d6245f99d1e5cdcbcd21a595d2d5c4dee7cba288aca6342db8504df7a78c4",
+            "artifactIds": [
+              "8db0a8ad-08ec-490d-988f-028d6cf4071f"
+            ],
+            "resultVersion": 1
+          }
+        ]
+      },
+      "artifacts": [
+        {
+          "id": "8db0a8ad-08ec-490d-988f-028d6cf4071f",
+          "name": "child.md",
+          "ownerAgentId": "ac44d169-cc3f-4376-8d3a-bc16378a4cd2",
+          "sourceWorkId": "work-8732d88bcc06159ccd4bc97ceb62ed3b5877d0f22ca5d8b2aaebfbdee3f06817",
+          "contentHash": "4178d74142e13ac4c8fe759b493a550d14a41b656bc2338191ba7fcfca853f03",
+          "size": 534,
+          "contentVersion": 1,
+          "registrationSource": "publication",
+          "sourceMessageId": "65b94b16-5fe9-43de-ac00-cec6dc0e49b6"
+        }
+      ],
+      "postExitFixedFiles": [],
+      "reportedMandatoryGaps": [],
+      "cleanupErrors": [],
+      "resources": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0001-ff0520042d945628.png",
+          "sha256": "ff0520042d9456284cab54783a14ad5f05ecaa6428250853d954322e547ea222",
+          "bytes": 104685,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0002-9664532b21f856f5.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0003-2af097f8e3f33af0.png",
+          "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60",
+          "bytes": 196948,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0004-9a31bae2312de4b9.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0005-48fa5efe5f4246a9.json",
+          "sha256": "48fa5efe5f4246a909cdf087e902b609d9aafcec05ea6a45e199b46e2c0a339e",
+          "bytes": 3707,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0006-44b77404311ee0b6.json",
+          "sha256": "44b77404311ee0b639574787e01084bcd03be8527574400a61c9c004b61e85f5",
+          "bytes": 2823,
+          "label": "真实活动核心原首发受理与当前会话界面核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0007-22b3b138718083cd.json",
+          "sha256": "22b3b138718083cdd0725f232f1c107f5132f4dd879b0628a816ae0826cf2c7d",
+          "bytes": 27749,
+          "label": "真实活动核心保存原共享预算与最初绝对期限",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0008-61559ddeb243c3e0.json",
+          "sha256": "61559ddeb243c3e00eda410fb9977ff21214110086131a6e63ae1e70f5c98ceb",
+          "bytes": 161929,
+          "label": "真实活动核心保存自然门禁未满足",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0009-9a53f873491c6a1d.json",
+          "sha256": "9a53f873491c6a1d414dc1771ae4938f4c377fe7fc41a2abc980665c96130042",
+          "bytes": 429,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0010-173c703e5aebada7.json",
+          "sha256": "173c703e5aebada792e17d83db36256970fa3cd5af09644115c5759744f9199f",
+          "bytes": 155595,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0011-507b28dcbb8f8c0e.png",
+          "sha256": "507b28dcbb8f8c0eaf17c419031f36fc2906677635eb45a9d02e77e83a76b96b",
+          "bytes": 496167,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0012-7e591ce21e21f9a8.download",
+          "sha256": "7e591ce21e21f9a8f092c4a3e0de01af0bd8db89a94d39953ec28a018e9e3858",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0013-bdf153b8f054eaab.json",
+          "sha256": "bdf153b8f054eaab4964e3568a17abc9426b14e4588340addcc7af384c7cd456",
+          "bytes": 158,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0014-55d0f3cf7d12f227.png",
+          "sha256": "55d0f3cf7d12f227470298a10a2ee8ee556d2e57eb7513d555cc84fbb9207470",
+          "bytes": 495670,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0015-8cbce7f239b43697.json",
+          "sha256": "8cbce7f239b436971f343678a5793eb521546731d62f165ad5d9586562635be6",
+          "bytes": 357,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0016-dbe53a48b5e17b59.json",
+          "sha256": "dbe53a48b5e17b599a7ff0f89999c5c8d8f39a8d47a77cbc2111aa8511c08022",
+          "bytes": 169083,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/resources/0017-4178d74142e13ac4.md",
+          "sha256": "4178d74142e13ac4c8fe759b493a550d14a41b656bc2338191ba7fcfca853f03",
+          "bytes": 534,
+          "label": "真实Claude活动核心保存退出后已发布原件-child.md",
+          "kind": "file"
+        }
+      ],
+      "originalEvidence": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/001-第-1-次启动结束画面.png",
+          "sha256": "ff0520042d9456284cab54783a14ad5f05ecaa6428250853d954322e547ea222",
+          "bytes": 104685,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/002-真实模型使用产品系统加密.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/003-Claude程序核对只证明程序状态.png",
+          "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60",
+          "bytes": 196948,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/004-新员工明确选择Claude程序与模型来源.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/005-真实活动核心保存原始请求与配置.json",
+          "sha256": "48fa5efe5f4246a909cdf087e902b609d9aafcec05ea6a45e199b46e2c0a339e",
+          "bytes": 3707,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/006-真实活动核心原首发受理与当前会话界面核对.json",
+          "sha256": "44b77404311ee0b639574787e01084bcd03be8527574400a61c9c004b61e85f5",
+          "bytes": 2823,
+          "label": "真实活动核心原首发受理与当前会话界面核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/007-真实活动核心保存原共享预算与最初绝对期限.json",
+          "sha256": "22b3b138718083cdd0725f232f1c107f5132f4dd879b0628a816ae0826cf2c7d",
+          "bytes": 27749,
+          "label": "真实活动核心保存原共享预算与最初绝对期限",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/008-真实活动核心保存自然门禁未满足.json",
+          "sha256": "61559ddeb243c3e00eda410fb9977ff21214110086131a6e63ae1e70f5c98ceb",
+          "bytes": 161929,
+          "label": "真实活动核心保存自然门禁未满足",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/009-真实活动核心保存原场景失败.json",
+          "sha256": "9a53f873491c6a1d414dc1771ae4938f4c377fe7fc41a2abc980665c96130042",
+          "bytes": 429,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/010-真实Claude活动核心保存退出前实际状态.json",
+          "sha256": "173c703e5aebada792e17d83db36256970fa3cd5af09644115c5759744f9199f",
+          "bytes": 155595,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/011-真实Claude活动核心保存退出前原生画面.native.png",
+          "sha256": "507b28dcbb8f8c0eaf17c419031f36fc2906677635eb45a9d02e77e83a76b96b",
+          "bytes": 496167,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/012-真实Claude活动核心保存退出前原生画面.capture.json",
+          "sha256": "7e591ce21e21f9a8f092c4a3e0de01af0bd8db89a94d39953ec28a018e9e3858",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/013-真实Claude活动核心保存退出前进程身份.json",
+          "sha256": "bdf153b8f054eaab4964e3568a17abc9426b14e4588340addcc7af384c7cd456",
+          "bytes": 158,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/014-第-2-次启动结束画面.png",
+          "sha256": "55d0f3cf7d12f227470298a10a2ee8ee556d2e57eb7513d555cc84fbb9207470",
+          "bytes": 495670,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/015-真实Claude活动核心保存实际退出核对.json",
+          "sha256": "8cbce7f239b436971f343678a5793eb521546731d62f165ad5d9586562635be6",
+          "bytes": 357,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/016-真实Claude活动核心保存退出后实际状态.json",
+          "sha256": "dbe53a48b5e17b599a7ff0f89999c5c8d8f39a8d47a77cbc2111aa8511c08022",
+          "bytes": 169083,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/017-8db0a8ad-08ec-490d-988f-028d6cf4071f-child.md",
+          "sha256": "4178d74142e13ac4c8fe759b493a550d14a41b656bc2338191ba7fcfca853f03",
+          "bytes": 534,
+          "label": "真实Claude活动核心保存退出后已发布原件-child.md",
+          "kind": "file"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-1.zip",
+          "sha256": "9cf773cf49cd82ecf28aafd96bddef0866c5631fc496c90dc4ace538f22f10fe",
+          "bytes": 515013,
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-2.zip",
+          "sha256": "3fe8ba759b0155373512e51a3631173b30952ab9b764849bad4fd978ba69fa97",
+          "bytes": 41341416,
+          "launch": 2
+        }
+      ],
+      "recordedLabels": [
+        "真实模型使用产品系统加密",
+        "真实活动核心保存原始请求与配置",
+        "真实活动核心原首发受理与当前会话界面核对",
+        "真实活动核心保存原共享预算与最初绝对期限",
+        "真实活动核心保存自然门禁未满足",
+        "真实活动核心保存原场景失败",
+        "真实Claude活动核心保存退出前实际状态",
+        "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+        "真实Claude活动核心保存退出前进程身份",
+        "真实Claude活动核心保存实际退出核对",
+        "真实Claude活动核心保存退出后实际状态"
+      ],
+      "captureLimit": "whole Electron webContents capturePage; actual metadata retained; not physical operating-system unsaved-close validation",
+      "references": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/registration.json",
+          "sha256": "2ca1c638133b01cba822d215f36965bf51418699568926dac08d4dacd1cca787",
+          "bytes": 670
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/execution-receipt.json",
+          "sha256": "58487ee5e9fa0051d1f3e3162d40e1d2f7a6d7450931961fea92aea80086a09c",
+          "bytes": 1076
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/final-receipt.json",
+          "sha256": "87a700ff07123ae5b010d66fc42a9e6fa64c36d818063a06d5b2c9368d887bda",
+          "bytes": 534
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/input-verification.json",
+          "sha256": "744213456e8e37aa25319216bdfae816ffabc8ec03904fd396b07f7ea02e8c52",
+          "bytes": 359
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/build-manifest.json",
+          "sha256": "6d4a0316ab6c1f6288b4a9b20bc12fd84425fdbd9d5a8afcbc146e5b04db39fa",
+          "bytes": 103447
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-MG7FWk/manifest.json",
+          "sha256": "f4aa524dc217eda0dd50f320bc2d4bf91e2d8294d5c71702d7fc2089e9a69d85",
+          "bytes": 12590
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-2-report/checks.json",
+          "sha256": "9b5d7adc373654fe7c3d09a36414a22776d52cf0e9ea168b7dc6ef394d8a3f5e",
+          "bytes": 589813
+        }
+      ],
+      "failure": {
+        "saveCase": "正常保存",
+        "failure": "必须真实组织和子工作均已交付，核心完成宿主写入后仍执行且未发布；未捕获自然窗口不执行保存\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m"
+      },
+      "allGoalComplete": false
+    },
+    {
+      "attempt": "source-normal-3",
+      "title": "真实活动Claude核心组织遇到正常保存后保留原工作",
+      "target": "source",
+      "status": "failed",
+      "modelMode": "real-provider",
+      "humanReview": "pending",
+      "fixtureLaunchCount": 2,
+      "launchCountIsNotBusinessRestartCount": true,
+      "realExternalPhases": 9,
+      "phaseKinds": {
+        "decision": 3,
+        "task": 3,
+        "chat": 1,
+        "memory": 1,
+        "report": 1
+      },
+      "businessRuns": 8,
+      "naturalGateFailedObserved": true,
+      "targetSaveProven": false,
+      "controlledBusinessRestartsProven": 0,
+      "explicitNewConversationProven": false,
+      "nativeUnsavedCloseTested": false,
+      "actualOwnedProcessExitVerified": true,
+      "budgetLimitsUnchanged": true,
+      "budgets": [
+        {
+          "workItems": 3,
+          "retries": 0,
+          "reportRefreshes": 1,
+          "noProgress": 0,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "id": "budget-f4bdc5c0b09bb9a67d2626bbd34dfae85cf3dda932f66d86bd1d2fbb9fef9a74",
+          "schemaVersion": 1,
+          "modelCalls": 9,
+          "runs": 3,
+          "maxModelCalls": 48,
+          "maxRuns": 8,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-07T16:09:36.055Z",
+          "usage": {
+            "inputTokens": 100088,
+            "outputTokens": 6199,
+            "totalTokens": 106287
+          },
+          "usageIncomplete": true,
+          "collaborationRequestId": "bobo-collaboration:96731309-f45a-4d77-8b43-a6ce356cb125",
+          "conversationId": "a3a0bdc9-e95b-4e52-b0e1-3f8c628499b9",
+          "accounting": "model-calls-v1",
+          "unknownCalls": 2,
+          "callUnit": "mixed"
+        }
+      ],
+      "workRoles": {
+        "A": {
+          "id": "work-bce78897ad90a90ad5a136d6eb2e3e77c61b873499840248dc3b306bfc8a38fe",
+          "ownerAgentId": "bobo",
+          "status": "delivered",
+          "parentWorkId": null,
+          "sourceMessageId": "96731309-f45a-4d77-8b43-a6ce356cb125",
+          "budgetId": "budget-f4bdc5c0b09bb9a67d2626bbd34dfae85cf3dda932f66d86bd1d2fbb9fef9a74",
+          "requiredResults": [],
+          "observedResults": [],
+          "artifactIds": [],
+          "resultVersion": 1,
+          "cancellationCause": null
+        },
+        "G": {
+          "id": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+          "ownerAgentId": "bobo",
+          "status": "blocked",
+          "parentWorkId": null,
+          "sourceMessageId": "8d9db1d0-fbf6-4d9d-8b12-3a02d3b3a9b9",
+          "budgetId": "budget-f4bdc5c0b09bb9a67d2626bbd34dfae85cf3dda932f66d86bd1d2fbb9fef9a74",
+          "requiredResults": [
+            {
+              "workId": "work-2b6ecb61da837d070152a6c7fe7acc13f724a88dd805ddbd7887e852b4d83779",
+              "resultVersion": 1
+            }
+          ],
+          "observedResults": [
+            {
+              "workId": "work-2b6ecb61da837d070152a6c7fe7acc13f724a88dd805ddbd7887e852b4d83779",
+              "resultVersion": 1
+            }
+          ],
+          "artifactIds": [],
+          "resultVersion": 1,
+          "cancellationCause": null
+        },
+        "children": [
+          {
+            "id": "work-2b6ecb61da837d070152a6c7fe7acc13f724a88dd805ddbd7887e852b4d83779",
+            "ownerAgentId": "61cc6f96-f040-4234-bc25-ad3c60b7dac3",
+            "status": "interrupted",
+            "parentWorkId": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+            "sourceMessageId": "8d9db1d0-fbf6-4d9d-8b12-3a02d3b3a9b9",
+            "budgetId": "budget-f4bdc5c0b09bb9a67d2626bbd34dfae85cf3dda932f66d86bd1d2fbb9fef9a74",
+            "artifactIds": [],
+            "resultVersion": 0
+          }
+        ]
+      },
+      "artifacts": [],
+      "postExitFixedFiles": [
+        {
+          "workId": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+          "agentId": "bobo",
+          "conversationId": "819d68e2-9b84-4131-8022-b6e73003b78e",
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-veZK5H/v2/agents/bobo/workspace/sessions/819d68e2-9b84-4131-8022-b6e73003b78e/work/core-proof.md",
+          "presence": "absent-at-post-exit-check",
+          "fileObserved": false,
+          "sha256": null,
+          "ino": null,
+          "size": null,
+          "modified": null,
+          "finalExitVerified": true,
+          "physicalExistenceDoesNotEstablishCompletedWriteOrDelivery": null
+        },
+        {
+          "workId": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+          "agentId": "bobo",
+          "conversationId": "819d68e2-9b84-4131-8022-b6e73003b78e",
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-veZK5H/v2/agents/bobo/workspace/sessions/819d68e2-9b84-4131-8022-b6e73003b78e/work/review-01.md",
+          "presence": "absent-at-post-exit-check",
+          "fileObserved": false,
+          "sha256": null,
+          "ino": null,
+          "size": null,
+          "modified": null,
+          "finalExitVerified": true,
+          "physicalExistenceDoesNotEstablishCompletedWriteOrDelivery": null
+        },
+        {
+          "workId": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+          "agentId": "bobo",
+          "conversationId": "819d68e2-9b84-4131-8022-b6e73003b78e",
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-veZK5H/v2/agents/bobo/workspace/sessions/819d68e2-9b84-4131-8022-b6e73003b78e/work/review-02.md",
+          "presence": "absent-at-post-exit-check",
+          "fileObserved": false,
+          "sha256": null,
+          "ino": null,
+          "size": null,
+          "modified": null,
+          "finalExitVerified": true,
+          "physicalExistenceDoesNotEstablishCompletedWriteOrDelivery": null
+        },
+        {
+          "workId": "work-bdc1213165c7d0b35f7ca62dd9ed6954c2b001a53f233bf50d288930bd0a64ec",
+          "agentId": "bobo",
+          "conversationId": "819d68e2-9b84-4131-8022-b6e73003b78e",
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-veZK5H/v2/agents/bobo/workspace/sessions/819d68e2-9b84-4131-8022-b6e73003b78e/work/review-03.md",
+          "presence": "absent-at-post-exit-check",
+          "fileObserved": false,
+          "sha256": null,
+          "ino": null,
+          "size": null,
+          "modified": null,
+          "finalExitVerified": true,
+          "physicalExistenceDoesNotEstablishCompletedWriteOrDelivery": null
+        }
+      ],
+      "reportedMandatoryGaps": [],
+      "cleanupErrors": [],
+      "resources": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0001-8c3e72907f0eaad2.png",
+          "sha256": "8c3e72907f0eaad205835169c86c4779003313d36ed061dbcb40d0508d64d7f1",
+          "bytes": 104664,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0002-9664532b21f856f5.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0003-70defc488124d242.png",
+          "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+          "bytes": 197143,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0004-9a31bae2312de4b9.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0005-d6ee935984893207.json",
+          "sha256": "d6ee93598489320759f03abcc307e16777f902316c691d41e04c96092418a1ab",
+          "bytes": 3960,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0006-ff6a37a554864aa3.json",
+          "sha256": "ff6a37a554864aa3fea3c2ea74117ce0c5f2a852baa4c47c4f6402eb5f98066b",
+          "bytes": 3011,
+          "label": "真实活动核心原首发受理与当前会话界面核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0007-73453b9c4fd9132f.json",
+          "sha256": "73453b9c4fd9132fd9659941f2d1ff2b94301c54ffedf5cd8cf94f6b1c2ce20b",
+          "bytes": 25807,
+          "label": "真实活动核心保存原共享预算与最初绝对期限",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0008-532be10f7041cca5.json",
+          "sha256": "532be10f7041cca5a74a7dc3575e11d7e3948ac4b7487104155de7396d505fa3",
+          "bytes": 115307,
+          "label": "真实活动核心保存自然门禁未满足",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0009-9a53f873491c6a1d.json",
+          "sha256": "9a53f873491c6a1d414dc1771ae4938f4c377fe7fc41a2abc980665c96130042",
+          "bytes": 429,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0010-da74e53bc76bca6a.json",
+          "sha256": "da74e53bc76bca6afbf009d9f486134da7d713bace05d2bd5320445be7045a0d",
+          "bytes": 686,
+          "label": "真实活动核心结束前固定四文件来源身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0011-a8b6f148b7690d6a.json",
+          "sha256": "a8b6f148b7690d6a8c682a4c8ffd04cbbf63a4607e494044cbbdfb8a7714e904",
+          "bytes": 110403,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0012-2b8493ed2504652f.png",
+          "sha256": "2b8493ed2504652fc45c3865480af75d6396e88a35d54960e29c29d05a4e5879",
+          "bytes": 535504,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0013-309a421b124ad5b0.download",
+          "sha256": "309a421b124ad5b09099f21cd566b1540a4f2f7d32bd9252e375a23fd94a89be",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0014-587bc22e4ed9a4e6.json",
+          "sha256": "587bc22e4ed9a4e6f6d399bc6e14b3440e235636fbdcb5fc31ab575c032e41eb",
+          "bytes": 416,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0015-973c9b881e16977b.png",
+          "sha256": "973c9b881e16977b0c5e11dd689ab3448132179277f407bf91046efd8b8716ab",
+          "bytes": 535467,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0016-cb5a344185503940.json",
+          "sha256": "cb5a34418550394003e866948dd14b1dcd934c0b7227b0cc8e4a084f4716dc45",
+          "bytes": 615,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0017-d568c539e6509f86.json",
+          "sha256": "d568c539e6509f86190f6eb988bce15fc89d53ff444f8394f32683e418b65a53",
+          "bytes": 116416,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0018-f271522220987015.json",
+          "sha256": "f2715222209870152e7192b287a210328c365527812d5a15d4aa79698f9a66d5",
+          "bytes": 902,
+          "label": "真实活动核心实际退出后固定文件-core-proof.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0019-1ac256aaa0d0e1ed.json",
+          "sha256": "1ac256aaa0d0e1ed29847b6c735b646557617ecfa03adf8b4d0994e13479421d",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-01.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0020-6072ea141267ae71.json",
+          "sha256": "6072ea141267ae71a9e3972d2d06aae14e56f52b5ad0ab94895fe8d3834acc95",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-02.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/resources/0021-f3ebe16ead8b5f4a.json",
+          "sha256": "f3ebe16ead8b5f4a74dd0e06e72eeab0e7d10056060c196cc31195fe16354d14",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-03.md-读取结果",
+          "kind": "data"
+        }
+      ],
+      "originalEvidence": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/001-第-1-次启动结束画面.png",
+          "sha256": "8c3e72907f0eaad205835169c86c4779003313d36ed061dbcb40d0508d64d7f1",
+          "bytes": 104664,
+          "label": "第 1 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/002-真实模型使用产品系统加密.json",
+          "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+          "bytes": 71,
+          "label": "真实模型使用产品系统加密",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/003-Claude程序核对只证明程序状态.png",
+          "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+          "bytes": 197143,
+          "label": "Claude程序核对只证明程序状态",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/004-新员工明确选择Claude程序与模型来源.png",
+          "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+          "bytes": 279016,
+          "label": "新员工明确选择Claude程序与模型来源",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/005-真实活动核心保存原始请求与配置.json",
+          "sha256": "d6ee93598489320759f03abcc307e16777f902316c691d41e04c96092418a1ab",
+          "bytes": 3960,
+          "label": "真实活动核心保存原始请求与配置",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/006-真实活动核心原首发受理与当前会话界面核对.json",
+          "sha256": "ff6a37a554864aa3fea3c2ea74117ce0c5f2a852baa4c47c4f6402eb5f98066b",
+          "bytes": 3011,
+          "label": "真实活动核心原首发受理与当前会话界面核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/007-真实活动核心保存原共享预算与最初绝对期限.json",
+          "sha256": "73453b9c4fd9132fd9659941f2d1ff2b94301c54ffedf5cd8cf94f6b1c2ce20b",
+          "bytes": 25807,
+          "label": "真实活动核心保存原共享预算与最初绝对期限",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/008-真实活动核心保存自然门禁未满足.json",
+          "sha256": "532be10f7041cca5a74a7dc3575e11d7e3948ac4b7487104155de7396d505fa3",
+          "bytes": 115307,
+          "label": "真实活动核心保存自然门禁未满足",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/009-真实活动核心保存原场景失败.json",
+          "sha256": "9a53f873491c6a1d414dc1771ae4938f4c377fe7fc41a2abc980665c96130042",
+          "bytes": 429,
+          "label": "真实活动核心保存原场景失败",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/010-真实活动核心结束前固定四文件来源身份.json",
+          "sha256": "da74e53bc76bca6afbf009d9f486134da7d713bace05d2bd5320445be7045a0d",
+          "bytes": 686,
+          "label": "真实活动核心结束前固定四文件来源身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/011-真实Claude活动核心保存退出前实际状态.json",
+          "sha256": "a8b6f148b7690d6a8c682a4c8ffd04cbbf63a4607e494044cbbdfb8a7714e904",
+          "bytes": 110403,
+          "label": "真实Claude活动核心保存退出前实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/012-真实Claude活动核心保存退出前原生画面.native.png",
+          "sha256": "2b8493ed2504652fc45c3865480af75d6396e88a35d54960e29c29d05a4e5879",
+          "bytes": 535504,
+          "label": "真实Claude活动核心保存退出前原生画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/013-真实Claude活动核心保存退出前原生画面.capture.json",
+          "sha256": "309a421b124ad5b09099f21cd566b1540a4f2f7d32bd9252e375a23fd94a89be",
+          "bytes": 1685,
+          "label": "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/014-真实Claude活动核心保存退出前进程身份.json",
+          "sha256": "587bc22e4ed9a4e6f6d399bc6e14b3440e235636fbdcb5fc31ab575c032e41eb",
+          "bytes": 416,
+          "label": "真实Claude活动核心保存退出前进程身份",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/015-第-2-次启动结束画面.png",
+          "sha256": "973c9b881e16977b0c5e11dd689ab3448132179277f407bf91046efd8b8716ab",
+          "bytes": 535467,
+          "label": "第 2 次启动结束画面",
+          "kind": "screenshot"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/016-真实Claude活动核心保存实际退出核对.json",
+          "sha256": "cb5a34418550394003e866948dd14b1dcd934c0b7227b0cc8e4a084f4716dc45",
+          "bytes": 615,
+          "label": "真实Claude活动核心保存实际退出核对",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/017-真实Claude活动核心保存退出后实际状态.json",
+          "sha256": "d568c539e6509f86190f6eb988bce15fc89d53ff444f8394f32683e418b65a53",
+          "bytes": 116416,
+          "label": "真实Claude活动核心保存退出后实际状态",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/018-真实活动核心实际退出后固定文件-core-proof.md-读取结果.json",
+          "sha256": "f2715222209870152e7192b287a210328c365527812d5a15d4aa79698f9a66d5",
+          "bytes": 902,
+          "label": "真实活动核心实际退出后固定文件-core-proof.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/019-真实活动核心实际退出后固定文件-review-01.md-读取结果.json",
+          "sha256": "1ac256aaa0d0e1ed29847b6c735b646557617ecfa03adf8b4d0994e13479421d",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-01.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/020-真实活动核心实际退出后固定文件-review-02.md-读取结果.json",
+          "sha256": "6072ea141267ae71a9e3972d2d06aae14e56f52b5ad0ab94895fe8d3834acc95",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-02.md-读取结果",
+          "kind": "data"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/021-真实活动核心实际退出后固定文件-review-03.md-读取结果.json",
+          "sha256": "f3ebe16ead8b5f4a74dd0e06e72eeab0e7d10056060c196cc31195fe16354d14",
+          "bytes": 900,
+          "label": "真实活动核心实际退出后固定文件-review-03.md-读取结果",
+          "kind": "data"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-1.zip",
+          "sha256": "b76c9b1ce9d3fff096ef7f0f314426d2dd6952fb31dd277821943dc6d467c368",
+          "bytes": 515864,
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/test-results/claude-employee.feature-本机-c6f47--真实活动Claude核心组织遇到正常保存后保留原工作/desktop-2.zip",
+          "sha256": "1105e04e701a8ef649997a26cf248af7dc1515dc53e107f32df50a8f268c8c4a",
+          "bytes": 24233934,
+          "launch": 2
+        }
+      ],
+      "recordedLabels": [
+        "真实模型使用产品系统加密",
+        "真实活动核心保存原始请求与配置",
+        "真实活动核心原首发受理与当前会话界面核对",
+        "真实活动核心保存原共享预算与最初绝对期限",
+        "真实活动核心保存自然门禁未满足",
+        "真实活动核心保存原场景失败",
+        "真实活动核心结束前固定四文件来源身份",
+        "真实Claude活动核心保存退出前实际状态",
+        "真实Claude活动核心保存退出前原生画面 · 原生截取元数据",
+        "真实Claude活动核心保存退出前进程身份",
+        "真实Claude活动核心保存实际退出核对",
+        "真实Claude活动核心保存退出后实际状态",
+        "真实活动核心实际退出后固定文件-core-proof.md-读取结果",
+        "真实活动核心实际退出后固定文件-review-01.md-读取结果",
+        "真实活动核心实际退出后固定文件-review-02.md-读取结果",
+        "真实活动核心实际退出后固定文件-review-03.md-读取结果"
+      ],
+      "captureLimit": "whole Electron webContents capturePage; actual metadata retained; not physical operating-system unsaved-close validation",
+      "references": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/registration.json",
+          "sha256": "12043dbf35d32434052ee4ba92e1df9482490d88b2fe76a400041588d41931b5",
+          "bytes": 670
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/execution-receipt.json",
+          "sha256": "8a2c224361c42d5aad19807782ad9e6114d1c7a899650f1feb75bef498394afd",
+          "bytes": 1076
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/final-receipt.json",
+          "sha256": "87a700ff07123ae5b010d66fc42a9e6fa64c36d818063a06d5b2c9368d887bda",
+          "bytes": 534
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/input-verification.json",
+          "sha256": "8e3977e7c48d04ce606bdea3edfe38043c58fe9a44575e1750bdcdbe7699dd30",
+          "bytes": 359
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/build-manifest.json",
+          "sha256": "dcceb8177f2c6d13d27172ffbb2dfd48fcf9c32d0dddfaa95c16bd8479c8e740",
+          "bytes": 103447
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3/scenarios/76620a6b86e22810b964-0657a765c72f5e7a4fba-retry0-repeat0-weyhdQ/manifest.json",
+          "sha256": "92cce7efc3e83d779e9047349553096d2a37cb07bd3d129ee322d37cbb231e3e",
+          "bytes": 14043
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-3-report/checks.json",
+          "sha256": "76ab7861ed387e0790ba8ba74cf3e3fb4f14b73982e7254986e2abcd0dc02c32",
+          "bytes": 442205
+        }
+      ],
+      "failure": {
+        "saveCase": "正常保存",
+        "failure": "必须真实组织和子工作均已交付，核心完成宿主写入后仍执行且未发布；未捕获自然窗口不执行保存\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m"
+      },
+      "allGoalComplete": false
+    }
+  ],
+  "auxiliaryReferences": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/actual-cli-tools-wire-1.json",
+      "sha256": "b0eca27ad26216d2a50639a4f2eb7e0ed3812740d4a44edcee1a101f9dfc7068",
+      "bytes": 3238
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/diagnostic-findings-1.json",
+      "sha256": "566c75ed5b7a4a007dba1f36b641f31503a79d5c7b66af4ccbe71b731edde48e",
+      "bytes": 5130
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/native-close-preflight-1.json",
+      "sha256": "32a8d39859dc2482b572dfe045cd181632474bbcaa1ebb8a65efdaa61d5c2d83",
+      "bytes": 729
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/root-read-observations-1.json",
+      "sha256": "f32648200cc0e74ee1ee6b4b826c6802759a582467826a7bcf5ce5317a78349f",
+      "bytes": 2046
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/root-read-observations-2.json",
+      "sha256": "2d8dbba62ef6f98d9e6f36fc92d0ccd6b1c3227f1fa2f63fbf7f9c1ae3a8fe06",
+      "bytes": 1002
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/source-normal-1-boundary-1.json",
+      "sha256": "c8ad8d27bb568ddfe369e1b06c7e6a4d0dec9a0cb41142e25fcf26a94eec6674",
+      "bytes": 2186
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/independent-source-normal-2-review-1.json",
+      "sha256": "069bf16a293941f4db1f180c475178e128cdf6e925719ba4e18e4f9922beb991",
+      "bytes": 14601
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/independent-source-normal-3-review-1.json",
+      "sha256": "4b0370553f8575ea02d75b925f185dc5f1ab75f3e9135e0ff771e262846536cf",
+      "bytes": 51073
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/candidate-v3-independent-review-1.json",
+      "sha256": "e42ae1c089339e95883ff2086914d79bfdd447d561c88bdb7c24392ad8183c91",
+      "bytes": 8587
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/evidence-count-audit-1.json",
+      "sha256": "6a722e1a64a17702b13749db6588f5026c1a05459f2517fc76516a71fbc9a7f2",
+      "bytes": 33334
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/runner-v2-receipt.json",
+      "sha256": "2ad97ed90af64624e3f185131ca4d2230e0fb03b9fbebaa7eb209cde148b769e",
+      "bytes": 817
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/runner-v3-receipt.json",
+      "sha256": "15729f0060ad1167fc0dda4f8e6660186217798d2485c31fd1f5e7338f550ab1",
+      "bytes": 824
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/before-docs-receipt-1.json",
+      "sha256": "012da60b9b2c45a7d399c374923042510e54ba87190ba0c22d866f8fdef6b162",
+      "bytes": 4694
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/harness-manifest.json",
+      "sha256": "f20cac629d46701087ca61afd7aa9a9550617e9c392eeeb5038aa5dd4210fbab",
+      "bytes": 176720
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/harness-manifest-2.json",
+      "sha256": "b85bb2cdfa93d305fa53a218711d3a5499bd6ee6aff7dbb72aedea409c5608ca",
+      "bytes": 176720
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/harness-manifest-3.json",
+      "sha256": "500d788227dba8d25f1ab4b3b16ab8189560c974f47edbb986f4ea632613fa04",
+      "bytes": 176720
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/plan-1.json",
+      "sha256": "ea56b0fb8a28f1607b72c494ec7d2a8040c5df7c0a45a63ace201945964ab807",
+      "bytes": 2791
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-20261007/plan-3.json",
+      "sha256": "29ae52c89c90a2b1d81e9c8353a47014bf40525baa0a90c1c942597edace055d",
+      "bytes": 1438
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-candidate-20261007/static-checks-1.json",
+      "sha256": "cb029724b2f2045873e9f7af6eb62e51c687043cdb5ae064d598a84f3218c449",
+      "bytes": 15123
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-candidate-20261007/static-checks-2.json",
+      "sha256": "a07f12878dd41d4477782a9333402d8a2fe640219765c903685685661101381e",
+      "bytes": 15445
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-candidate-20261007/static-checks-3.json",
+      "sha256": "869d2b19019145c2c0b63606487cc6e5445c58fa085354a89e79953d57e9994e",
+      "bytes": 13608
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-candidate-20261007/menu-fix-cause-1.json",
+      "sha256": "ec9d614ccfb46133234eaa12ffcee7b71b2dda27e8852abba2b35185c1ba57fd",
+      "bytes": 6286
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-core-live-save-candidate-20261007/report-files-cause-and-inverse-1.json",
+      "sha256": "d19322cbea48229b2974d7b0822ee02bc0e2d283a53731731311395fc1ea1ddc",
+      "bytes": 20433
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/live-save-whole-package-before-1.json",
+      "sha256": "6b8169892d9da199f2a3fd18a2ef896bf62c525cad39c8c6cd502e0250ee7231",
+      "bytes": 1690
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/live-save-whole-package-after-1.json",
+      "sha256": "971c20065011744d8df2f9c2bf38c9cc3bc0af99eeaaa24e75f235d72ac09e51",
+      "bytes": 1690
+    }
+  ],
+  "limits": [
+    "Third source-normal3 private decision failed with formatterCalls0, reminder1; G waiting/child active at failure, no target save. Four original G core files were all absent at its actual post-exit read. This does not repair source-normal2 missing disk evidence.",
+    "First UI menu synchronization failure and second budget failure remain distinct original failures.",
+    "Source-normal-2 original uncompleted write final disk state remains unknown; post-close file observation added only in later candidate.",
+    "New report-length request is a new bounded business request, not a fix or proof of old native public thinking-cost cause.",
+    "Original48/16000/deadlines/natural gate and old offline assertions preserved; no artificial hold, seeded work or result, automatic business retry.",
+    "Full section19, native unsaved-close, original reliability and remaining provider/platform matrices still incomplete."
+  ]
+}

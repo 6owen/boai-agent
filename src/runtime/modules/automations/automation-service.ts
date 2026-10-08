@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生时钟与唯一账本保持；异步运行配置核对覆盖保存、受理、执行、监控与明确补充。
  * [INPUT]: 产品事务账本、原生日程适配器与宿主许可/消息投递。
  * [OUTPUT]: 固定原问题消息的接续提交保留其他未答轮次，并与原Work补充共用事务。
  * [OUTPUT]: 通讯录删除在宿主临界区暂停关联计划，定向终结关联等待并异步同步原生日程；稳定创建回执查询/重试与显式恢复；异步监控读取、提交前授权复核、停止待退出与无模型比较；全历史待处理计数与最近结束结果投影；预算追加后的计时器重排与旧期限回调隔离，系统时钟回拨不延长已启动时限；持久通知消费唤醒与预算停止原因；新任务聊天准备/授权、共享规则的纯日程预览和完整分页查询；指定 occurrence 的补充上下文与事务提交入口；原始预算期限与计算槽释放后的接续重查；有界配置同步、事务投递、跨工作结果汇总、停止待退出与重启证据核对；不自动重放业务。
@@ -27,7 +28,7 @@ export const automationSchema = scheduleSchema.extend({ requestId: z.string().mi
 })
 interface Hooks {
   critical<T>(operation: () => Promise<T>): Promise<T>
-  validate(target: string | AutomationInput): string
+  validate(target: string | AutomationInput): string | Promise<string>
   busy(conversationId: string): boolean
   prepareConversation?(definition: AutomationDefinition, occurrence: AutomationOccurrence): Promise<StoredRecord[]>
   dispatch(d: AutomationDefinition, o: AutomationOccurrence, origin: AutomationOrigin, commit: (message: Message, records: StoredRecord[]) => Promise<void>): Promise<Message>
@@ -69,8 +70,8 @@ export class AutomationService {
     await this.hooks.critical(() => this.reconcile(true))
     if (this.definitions.size) await this.synchronize()
   }
-  assertExecutable(origin: AutomationOrigin, conversationId: string) {
-    if (this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
+  async assertExecutable(origin: AutomationOrigin, conversationId: string) {
+    if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
     return this.repository.assertExecutable(origin, conversationId)
   }
   async replyContext(id: string) {
@@ -85,13 +86,13 @@ export class AutomationService {
   }
   /** Host critical section also covers the human reply and the newly acquired compute slot. */
   async reply(origin: AutomationOrigin, conversationId: string, expectedVersion: number, questionMessageId: string, records: StoredRecord[], commitQuestion?: (tx: RecordTransaction) => Promise<void>) {
-    if (this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
+    if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
     const o = await this.repository.reply(origin, conversationId, expectedVersion, questionMessageId, records, commitQuestion)
     this.occurrences.set(o.id, o)
   }
   /** Called under the host critical section, with retry records committed in the same transaction. */
   async resume(origin: AutomationOrigin, conversationId: string, records: StoredRecord[]) {
-    if (this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
+    if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
     const o = await this.repository.resume(origin, conversationId, records)
     this.occurrences.set(o.id, o)
   }
@@ -169,7 +170,7 @@ export class AutomationService {
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
       const value = automationSchema.parse(input)
-      const d = await this.hooks.critical(async () => (!value.id ? await this.repository.creation(value.requestId) : null) ?? await this.repository.save(value, this.hooks.validate(value)))
+      const d = await this.hooks.critical(async () => (!value.id ? await this.repository.creation(value.requestId) : null) ?? await this.repository.save(value, await this.hooks.validate(value)))
       this.retryCount = 0; await this.synchronize(d.id); this.hooks.changed()
       return structuredClone(this.definitions.get(d.id)!)
     })
@@ -228,9 +229,9 @@ export class AutomationService {
   preview(input: unknown) { const parsed = scheduleSchema.safeParse(input); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查日程设置'); const value = parsed.data; return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }
   admit(id: string, revision: number | undefined, source: 'manual' | 'schedule', key: string, time: number, version?: NativeAutomationVersion) {
     return this.serialize(async () => {
-      const result = await this.hooks.critical(() => this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, d => {
+      const result = await this.hooks.critical(() => this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
         if (this.closing || this.backingUp) return '应用正在退出或备份'
-        try { if (this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
+        try { if (await this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
         if (d.conversationId && this.hooks.busy(d.conversationId)) return '并发或会话忙碌，本次已跳过'
       }, this.hooks.prepareConversation))
       let o = result.occurrence
@@ -242,7 +243,7 @@ export class AutomationService {
           if (intent.definition.taskKind === 'monitor') {
             if (!this.hooks.readMonitor) throw new Error('监控数据读取不可用')
             o = await this.hooks.critical(async () => {
-              if (this.hooks.validate(intent.definition!) !== intent.definition!.authorizedFingerprint) throw new Error('监控授权已变化')
+              if (await this.hooks.validate(intent.definition!) !== intent.definition!.authorizedFingerprint) throw new Error('监控授权已变化')
               return this.repository.beginMonitor(o.id)
             })
             this.occurrences.set(o.id, o); this.armDeadline(o)
@@ -278,7 +279,7 @@ export class AutomationService {
       try {
         if (current.cancellationRequestedAt || this.closing) saved = await this.repository.updateOccurrence(current.id, current.stateVersion, { status: current.cancellationRequestedAt ? 'cancelled' : 'interrupted', deliveryStatus: 'unknown', reason: current.reason ?? '应用退出；监控不会自动重放', finishedAt: new Date().toISOString(), modelCalls: 0, usageIncomplete: false })
         else {
-          if (this.hooks.validate(definition) !== definition.authorizedFingerprint) throw new Error('监控授权已变化，本次不推进检查点')
+          if (await this.hooks.validate(definition) !== definition.authorizedFingerprint) throw new Error('监控授权已变化，本次不推进检查点')
           saved = await this.repository.completeMonitor(current.id, started.stateVersion, read)
         }
       } catch (error) {

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 团队需求、模型输出和用户编辑；无凭据或工具权限。
  * [OUTPUT]: 核心工具和兼容创建共同使用的 T2 连续记忆/群配置能力说明；旧来源版本保留；严格方案校验、内部准备日志、有界生成和冻结创建账本合同。
  * [POS]: shared/domain 团队创建跨进程合同。
@@ -29,9 +31,9 @@ export const teamPlanSchema = z.object({ ...planFields, members: z.array(teamMem
 export type TeamPlan = z.infer<typeof teamPlanSchema>
 export type TeamPlannerOutput = z.infer<typeof teamPlannerOutputSchema>
 // Product facts are deterministic; the model does not grant or describe permissions.
-export function teamCapabilityNotes(scenarioKind: TeamPlan['scenarioKind']): string[] {
+export function teamCapabilityNotes(scenarioKind: TeamPlan['scenarioKind'], backend: import('./backends').ExecutionBackend['kind'] = 'mastra-model'): string[] {
   return [
-    '新员工使用所选同一 API 模型，默认无命令权限、无 Skills、无知识绑定，不自动安装工具或联网。',
+    backend === 'codex-local' || backend === 'claude-local' ? `新员工使用核心助手所选本机 ${backend === 'claude-local' ? 'Claude 程序及明确 API 来源' : 'Codex 连接'}与模型，独立身份、工作区和会话；默认无命令权限、无 Skills、无知识绑定。` : '新员工使用所选同一 API 模型，默认无命令权限、无 Skills、无知识绑定，不自动安装工具或联网。',
     '成员可读写个人工作区文件并产生文件产物。',
     '同一员工的新交流可在相关私聊与群聊中接续；仅此聊天限制、来源授权和有效期仍适用，旧会话记忆不自动开放。',
     '命令权限、Skills 和知识绑定需用户通过现有设置另行配置；本方案不授予读取其他员工私有聊天的权限。',
@@ -50,6 +52,7 @@ export type TeamGenerationStatus = 'idle' | 'running' | 'succeeded' | 'needs_adj
 export interface TeamDraft extends TeamEditable {
   id: string; schemaVersion: 1; version: number; createdAt: string; updatedAt: string
   status: 'open' | 'committed' | 'cancelled'; generationStatus: TeamGenerationStatus
+  executionBackend?: import('./backends').ExecutionBackend
   resolvedModelId?: string; connectionFingerprint?: string; planInputHash?: string; generationId?: string
   manuallyEdited: boolean; creationOperationId?: string; planHash?: string; validationErrors: string[]
 }
@@ -67,6 +70,7 @@ export interface TeamCreationOperation {
   id: string; requestId: string; requestHash: string; draftId: string; acceptedDraftVersion: number; payloadHash: string
   version: number; status: 'accepted' | 'preparing' | 'ready_to_commit' | 'interrupted' | 'needs_attention' | 'committed' | 'cancelled'
   createdAt: string; committedAt?: string; attemptId?: string; cancelRequested?: boolean; error?: string
+  executionBackend?: import('./backends').ExecutionBackend
   connectionId: string; connectionFingerprint: string; modelId: string
   agents: DigitalAgent[]; conversation?: Conversation; memberIds: { memberKey: string; agentId: string }[]; conversationId?: string
   files: { path: string; hash: string; status: 'pending' | 'writing' | 'ready' }[]; directories: string[]

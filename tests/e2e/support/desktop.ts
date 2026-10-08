@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 原生关闭场景显式核对实际已关闭窗口，只保存无可用结束画面的事实；普通场景仍要求结束截图，trace及实际退出保持。
+ * [OUTPUT]: reviewFile可要求必需原件和已登记hash，归档失败向调用者显式拒绝，场景结束前继续保留其余证据。
+ * [OUTPUT]: 可显式为本场额外窗口原样留证；省略目标仍沿原主窗口，不改变启动、关闭或业务权限。
  * [INPUT]: Playwright Electron、场景独立数据目录、可选打包入口与组件测试服务、显式 BOAI_REVIEW_RUN_DIR。
  * [OUTPUT]: 可重启的真实桌面生命周期与资源回收；可选关键画面/明确原件/白名单数据归档、每次关闭前画面和逐次 trace 索引；独立原生窗口capturePage整幅截取及窗口/zoom/renderer/NativeImage代表元数据，零viewport/图像修改。
  * [POS]: Electron BDD 场景共享宿主；启动由 Given 控制，允许先准备旧数据。
@@ -44,13 +47,13 @@ export class Desktop {
     this.cleanup.push(cleanup)
   }
 
-  async reviewCheckpoint(label: string): Promise<void> {
-    await this.review?.checkpoint(label, this.window)
+  async reviewCheckpoint(label: string, targetPage?: Page): Promise<void> {
+    await this.review?.checkpoint(label, targetPage ?? this.window)
   }
 
-  async reviewNativeCheckpoint(label: string): Promise<void> {
+  async reviewNativeCheckpoint(label: string, targetPage?: Page): Promise<void> {
     await this.review?.nativeCheckpoint(label, async () => {
-      const app = this.application, page = this.window
+      const app = this.application, page = targetPage ?? this.window
       if (!app || !page || page.isClosed()) throw new Error('原生窗口未启动或已关闭，未获取画面')
       const renderer = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, outerWidth, outerHeight, devicePixelRatio, visualViewport: visualViewport && { width: visualViewport.width, height: visualViewport.height, scale: visualViewport.scale } }))
       const window = await app.browserWindow(page) as JSHandle<import('electron').BrowserWindow>
@@ -74,8 +77,8 @@ export class Desktop {
     })
   }
 
-  async reviewFile(label: string, path: string): Promise<void> {
-    await this.review?.file(label, path)
+  async reviewFile(label: string, path: string, options: { required?: boolean; expectedSha256?: string } = {}): Promise<void> {
+    await this.review?.file(label, path, options)
   }
 
   async reviewData(label: string, value: unknown): Promise<void> {
@@ -110,16 +113,19 @@ export class Desktop {
     return this.application
   }
 
-  async restart() {
-    await this.close()
+  async restart(options?: { expectedWindowClosed: true }) {
+    await this.close(options)
     await this.start()
   }
 
-  async close() {
+  async close(options?: { expectedWindowClosed: true }) {
     const app = this.application,
       page = this.window
     if (!app) return
-    if (this.review) await this.reviewCheckpoint(`第 ${this.launchCount} 次启动结束画面`)
+    if (options?.expectedWindowClosed) {
+      if (!page?.isClosed()) throw new Error('原生关闭场景的实际窗口尚未关闭')
+      await this.reviewData(`第 ${this.launchCount} 次启动窗口已实际关闭`, { windowClosed: page.isClosed(), screenshotAvailable: false })
+    } else if (this.review) await this.reviewCheckpoint(`第 ${this.launchCount} 次启动结束画面`)
     const path = this.info.outputPath(`desktop-${this.launchCount}.zip`)
     try {
       await app.context().tracing.stop({ path })

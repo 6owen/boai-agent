@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式自动化额度追加保留原计量单位与累计回执，不改内部调用未知事实。
  * [INPUT]: WorkRepository 事务、明确预算授权、原始自动化及新的人类消息/轮次。
  * [OUTPUT]: 明确额度续行保留原接续语义，同事务登记其已接续等待问题的原消息关系。
  * [OUTPUT]: 不清零的额度回执、安全未完成工作的定向接续、原始身份和已交付结果保留。
@@ -64,6 +65,6 @@ export async function renewAutomationWork(tx: RecordTransaction, origin: Automat
   await refreshWaiters(tx, conversationId, { runId: 'host', agentId: 'user' })
   delete o.cancellationRequestedAt; delete o.cancellationCause; o.waitingTurnIds = []
   o.status = 'failed' // resumeAutomationExecution must still acquire a computation slot atomically.
-  o.budget = { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: false, renewals: budget.renewals }
+  o.budget = { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: false, renewals: budget.renewals }
   await tx.put(row('automationOccurrences', o))
 }

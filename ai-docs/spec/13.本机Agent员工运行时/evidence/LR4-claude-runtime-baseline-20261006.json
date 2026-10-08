@@ -1,0 +1,202 @@
+{
+  "createdAt": "2026-10-05T23:02:27.876Z",
+  "scope": "Claude底层专用适配；非员工UI/Work/发行包",
+  "localProtocol": {
+    "kind": "actual-claude-cli-local-protocol",
+    "createdAt": "2026-10-05T23:00:15.482Z",
+    "platform": "darwin",
+    "uiVerified": false,
+    "workVerified": false,
+    "realProvider": false,
+    "sourceHashes": {
+      "src/runtime/adapters/claude/turn.ts": "00d6a7ee59d0bd1631e5cb5528e2bd2d75a6b8d68968e271d5f93f14bbbee19b",
+      "src/runtime/adapters/claude/policy.ts": "00de548ce70c498bc4569a41625c8f50d56b86ddbb7e77421cfff445e6b10f76",
+      "src/runtime/adapters/claude/process.ts": "feaf4fdc7016d6de906b889bd8540d3d1ec163d42f4b74a8e0384145303fe9d4",
+      "src/runtime/modules/backends/program.ts": "8fc4b5df5e6eca8ff1960e599904b0eb011307c47584fa3aabf8da3074398ff7",
+      "src/runtime/adapters/mastra/host-command.ts": "81c3a124190e732e271f40a25cee88ad9e3f7a84cfdcc8fb636bb0acd3ef571e",
+      "scripts/probe-claude-no-tools.mjs": "ea859cf88fb49456e49c1b84da78c3e2cb6067eefbc5938a75b8924972d39382"
+    },
+    "requests": [
+      {
+        "stage": "first",
+        "model": "deepseek-v4-pro",
+        "tools": [],
+        "stream": true,
+        "containsPoison": false,
+        "containsFirstToken": true,
+        "messages": 1
+      },
+      {
+        "stage": "resume",
+        "model": "deepseek-v4-pro",
+        "tools": [],
+        "stream": true,
+        "containsPoison": false,
+        "containsFirstToken": true,
+        "messages": 3
+      },
+      {
+        "stage": "isolation",
+        "model": "deepseek-v4-pro",
+        "tools": [],
+        "stream": true,
+        "containsPoison": false,
+        "containsFirstToken": false,
+        "messages": 1
+      },
+      {
+        "stage": "cancel",
+        "model": "deepseek-v4-pro",
+        "tools": [],
+        "stream": true,
+        "containsPoison": false,
+        "containsFirstToken": false,
+        "messages": 1
+      }
+    ],
+    "steps": [
+      {
+        "kind": "first",
+        "passed": true,
+        "sessionId": "6cb59c05-fb23-4ab1-b557-da3b9dc9614b",
+        "text": "收到",
+        "usage": {
+          "inputTokens": 18,
+          "outputTokens": 2,
+          "totalTokens": 20
+        }
+      },
+      {
+        "kind": "resume-current-turn-usage",
+        "passed": true,
+        "sessionId": "6cb59c05-fb23-4ab1-b557-da3b9dc9614b",
+        "text": "fixture-39642a87-70f9-40e1-8d04-da7ddff3838e",
+        "usage": {
+          "inputTokens": 28,
+          "outputTokens": 2,
+          "totalTokens": 30
+        }
+      },
+      {
+        "kind": "separate-session",
+        "passed": true,
+        "sessionId": "f355c639-7d06-4a54-a63d-de0fea243ac4",
+        "text": "不知道",
+        "usage": {
+          "inputTokens": 38,
+          "outputTokens": 2,
+          "totalTokens": 40
+        }
+      },
+      {
+        "kind": "actual-empty-tools-and-no-discovery",
+        "passed": true
+      },
+      {
+        "kind": "cancel-stalled-real-cli",
+        "passed": true
+      },
+      {
+        "kind": "no-credential-in-private-files",
+        "passed": true,
+        "filesChecked": 12
+      }
+    ],
+    "program": {
+      "executable": "/Users/wangwenbo/.nvm/versions/node/v24.16.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+      "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+      "version": "2.1.214"
+    },
+    "passed": true
+  },
+  "realProvider": {
+    "passed": true,
+    "kind": "actual-claude-cli-deepseek-model",
+    "uiVerified": false,
+    "workVerified": false,
+    "steps": [
+      {
+        "kind": "first",
+        "sessionId": "d33f4e40-1d21-475f-b74f-4f89b5d1a664",
+        "text": "收到",
+        "usage": {
+          "inputTokens": 224,
+          "outputTokens": 42,
+          "totalTokens": 266
+        }
+      },
+      {
+        "kind": "resume",
+        "sessionId": "d33f4e40-1d21-475f-b74f-4f89b5d1a664",
+        "text": "青竹-aa0f0d19",
+        "usage": {
+          "inputTokens": 242,
+          "outputTokens": 21,
+          "totalTokens": 263
+        }
+      },
+      {
+        "kind": "separate-session",
+        "sessionId": "58552a6c-320f-4386-8eed-9a64ae6a5a13",
+        "text": "不知道",
+        "usage": {
+          "inputTokens": 221,
+          "outputTokens": 56,
+          "totalTokens": 277
+        }
+      }
+    ],
+    "program": {
+      "executable": "/Users/wangwenbo/.nvm/versions/node/v24.16.0/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+      "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+      "version": "2.1.214"
+    },
+    "provider": {
+      "connectionId": "156886ae-cdc4-47de-969b-b049e5215ebc",
+      "model": "deepseek-v4-pro",
+      "baseUrl": "https://api.deepseek.com/anthropic",
+      "credentialSource": "existing-BoAI-vault-read-only"
+    }
+  },
+  "realSource": {
+    "createdAt": "2026-10-05T23:02:27.876Z",
+    "sourceHashes": {
+      "src/runtime/adapters/claude/turn.ts": "00d6a7ee59d0bd1631e5cb5528e2bd2d75a6b8d68968e271d5f93f14bbbee19b",
+      "src/runtime/adapters/claude/process.ts": "feaf4fdc7016d6de906b889bd8540d3d1ec163d42f4b74a8e0384145303fe9d4",
+      "src/runtime/adapters/claude/policy.ts": "00de548ce70c498bc4569a41625c8f50d56b86ddbb7e77421cfff445e6b10f76",
+      "src/runtime/modules/backends/program.ts": "8fc4b5df5e6eca8ff1960e599904b0eb011307c47584fa3aabf8da3074398ff7",
+      "src/runtime/adapters/mastra/host-command.ts": "81c3a124190e732e271f40a25cee88ad9e3f7a84cfdcc8fb636bb0acd3ef571e",
+      "src/main/vault.ts": "82d97a1f82285381de470eebb19d91430f6a16a307dcf89d90816221b4242baf",
+      "src/runtime/adapters/storage/product-store.ts": "309005651ba8f7e489ce7d8f4a687c0ef2eab986e8ab3d1bc6a94e7fa6b775d0",
+      "tests/fixtures/claude-real.ts": "0d397d353d5ded3c29d85afdc6375d935cde427756b732aa76bccb058e0e4036",
+      "scripts/probe-claude-runtime.mjs": "7bd6dd92126aa30ec01e773f11dd5ad3325c8af3b9e6a25dcadd5f835f6d6ea2"
+    },
+    "bundleHash": "c5aae15ff34a092ac3ac5c01da7b7e0dc3cb35d192de9326e0fdc690b071fe44"
+  },
+  "realUsage": {
+    "inputTokens": 687,
+    "outputTokens": 119,
+    "totalTokens": 806
+  },
+  "validation": {
+    "modules": {
+      "files": 3,
+      "passed": 34,
+      "log": ".local/feature-review/claude-runtime-20261006/modules-final-2.log",
+      "note": "超长事件夹具等待写入完成，并明确断言2MiB错误后复验；原模块日志保留。"
+    },
+    "typecheck": {
+      "passed": true,
+      "log": ".local/feature-review/claude-runtime-20261006/typecheck-2.log"
+    },
+    "sourceHashesRechecked": true
+  },
+  "limits": [
+    "仅macOS arm64 Claude 2.1.214",
+    "真实模型是DeepSeek，不是Anthropic模型；未使用订阅登录",
+    "未接员工运行方式/UI/AppService/Work/宿主工具/材料/记忆/协作",
+    "适配器无自动重发；CLI内部重试/调用上限尚未验证",
+    "原生续聊不是产品重启/备份恢复验收",
+    "无新Electron界面或应用包证据"
+  ]
+}

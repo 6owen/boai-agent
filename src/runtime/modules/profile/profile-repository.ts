@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际外部阶段退出补齐普通调用结束时间；缺少终态计量保持未知，已知部分不清空，完整回执/预算归属/API观测不改。
  * [INPUT]: ProductStore、资料草稿与宿主调用/技能/执行观测。
  * [OUTPUT]: 版本化原子资料保存、幂等调用观察与一致活动快照。
  * [POS]: 本机资料用例；预算权威仍在 WorkRepository。
@@ -39,16 +40,25 @@ export class ProfileRepository {
   async start(call: ProfileModelCall) {
     await this.store.transaction(async tx => { if (!await tx.get('profileModelCalls', call.id)) await tx.put({ collection: 'profileModelCalls', id: call.id, value: call }) })
   }
-  async settle(id: string, usage: ModelUsage) {
+  async settle(id: string, usage: ModelUsage, externalComplete?: boolean) {
     await this.store.transaction(async tx => {
       const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
       if (!call || call.budgetOwned) return
-      const known = { ...call.usage }
+      const known: ModelUsage = call.callUnit === 'external-turn' ? {} : { ...call.usage }
       for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) {
         const count = usage[field]
         if (typeof count === 'number' && Number.isFinite(count) && count >= 0) known[field] = Math.max(known[field] ?? 0, count)
       }
-      await tx.put({ collection: 'profileModelCalls', id, value: { ...call, usage: known, finishedAt: new Date().toISOString() } })
+      await tx.put({ collection: 'profileModelCalls', id, value: { ...call, usage: known,
+        ...(call.callUnit === 'external-turn' ? { usageComplete: externalComplete === true && ['inputTokens', 'outputTokens', 'totalTokens'].every(field => known[field as keyof ModelUsage] !== undefined) } : {}),
+        finishedAt: new Date().toISOString() } })
+    })
+  }
+  async finishExternal(id: string) {
+    await this.store.transaction(async tx => {
+      const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
+      if (!call || call.budgetOwned || call.callUnit !== 'external-turn' || call.usageComplete === true && call.finishedAt) return
+      await tx.put({ collection: 'profileModelCalls', id, value: { ...call, usageComplete: call.usageComplete === true, finishedAt: new Date().toISOString() } })
     })
   }
   async skill(event: SkillActivation) {

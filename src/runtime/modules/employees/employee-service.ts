@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
+ * [OUTPUT]: Claude员工类型可沿原定义保存；首批仅普通员工，核心与群协作的准入独立保留。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
+ * [OUTPUT]: codex-local保留独立身份，交互任务可沿宿主逐次申请命令；已绑定技能/知识沿冻结资源接入，浏览器保持未接入门禁。
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
  * [OUTPUT]: Mastra 员工及 bobo 默认具备浏览器能力，旧关闭/缺省字段在启动与 registry 正规化且不额外提升配置版本，ACP 仅正规化为不支持；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
  * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
@@ -14,7 +18,7 @@ import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/a
 import { thinkingLevels } from '../../../shared/domain/model-preferences'
 import { CORE_AGENT_ID, CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '../../../shared/domain/core-agent'
 
-export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.literal('acp-local'),profileId:z.string().min(1).max(200)}).strict()])
+export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.enum(['acp-local','codex-local','claude-local']),profileId:z.string().min(1).max(200)}).strict()])
 const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
 const text = (max: number) => z.string().trim().min(1).max(max)
@@ -43,11 +47,11 @@ export class EmployeeService {
   find(id: string): DigitalAgent | undefined { const value = this.definitions.get(id); return value && clone(value) }
   values(): DigitalAgent[] { return [...this.definitions.values()].map(clone) }
   /** Install only a successfully persisted definition; callers never retain the registry object. */
-  install(id: string, agent: DigitalAgent) { this.definitions.set(id, { ...clone(agent), allowBrowser: agent.executionBackend?.kind !== 'acp-local' }) }
+  install(id: string, agent: DigitalAgent) { this.definitions.set(id, { ...clone(agent), allowBrowser: (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' }) }
   /** Clone the entire batch before one registry swap; no partially installed snapshot. */
   installBatch(agents: DigitalAgent[], replace = false) {
     const next = replace ? new Map<string, DigitalAgent>() : new Map(this.definitions)
-    for (const agent of agents) next.set(agent.id, { ...clone(agent), allowBrowser: agent.executionBackend?.kind !== 'acp-local' })
+    for (const agent of agents) next.set(agent.id, { ...clone(agent), allowBrowser: (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' })
     this.definitions = next
   }
   async initialize(): Promise<StoredRecord[]> {
@@ -74,10 +78,10 @@ export class EmployeeService {
       color: '#638ac5', executionBackend: { kind: 'mastra-model' }, connectionId: '', modelId: '',
       skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true, configVersion: 1,
     })
-    else if (!isCoreAgent(core) || !core.active || core.allowCommands || core.executionBackend?.kind !== 'mastra-model') {
-      core.systemRole = 'core'; core.active = true; core.allowCommands = false; core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
+    else if (!isCoreAgent(core) || !core.active || core.allowCommands || core.executionBackend?.kind === 'acp-local') {
+      core.systemRole = 'core'; core.active = true; core.allowCommands = false; if (core.executionBackend?.kind === 'acp-local') core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
     }
-    for (const agent of this.definitions.values()) { agent.allowBrowser = agent.executionBackend?.kind !== 'acp-local'; await this.homes.initialize(agent); updates.push(record('agents', agent)) }
+    for (const agent of this.definitions.values()) { agent.allowBrowser = (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'; await this.homes.initialize(agent); updates.push(record('agents', agent)) }
     return updates
   }
   private validateResources(ids: string[], kind: Resource['kind']) {
@@ -117,9 +121,10 @@ export class EmployeeService {
     if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
-    if (isCoreAgent(previous) && (!input.active || input.allowCommands || executionBackend.kind !== 'mastra-model')) fail('系统核心 Agent 必须启用模型 API，且不能启用宿主命令或外部任务后端')
-    const allowBrowser = executionBackend.kind !== 'acp-local'
-    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length||input.allowCommands))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定和命令策略；请先取消这些绑定。')
+    if (isCoreAgent(previous) && (!input.active || input.allowCommands || !['mastra-model','codex-local','claude-local'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用宿主命令或旧 ACP 任务后端')
+    const allowBrowser = executionBackend.kind === 'mastra-model'
+    if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定；请先取消这些绑定。')
+    if(executionBackend.kind==='acp-local'&&input.allowCommands)fail('外部任务后端暂不支持 BoAI 的命令策略；请先关闭命令。')
     if (input.connectionId) this.hooks.connection(input.connectionId)
     this.validateResources(input.skillIds, 'skill'); this.validateResources(input.knowledgeIds, 'knowledge')
     const skillNames = input.skillIds.map(id => this.hooks.resource(id)!.name)

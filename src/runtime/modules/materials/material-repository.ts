@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原发送引用的重启已清理草稿明确要求放弃未受理发送并重新选择，不以刷新重试暗示旧版本可恢复。
+ * [OUTPUT]: API与原生Codex复用当前聊天及旧显式授权材料合同，旧ACP保持受限。
  * [INPUT]: 权威聊天/员工、SQLite 事务、宿主受管根/选取或临时文件、普通会话投递范围或旧明确授权、原名称与请求/revision。
  * [OUTPUT]: 普通附件按当前成员可见、旧名单不扩权；原件核验后的有界代码/文本预览独立于模型解析和搜索；同hash已发原件显式恢复及未撤权历史引用，草稿/清理冲突不恢复；可组合事务原件/解析版本校验、非持久预览、实际退出、草稿重启清理和已发备份核对。
  * [POS]: materials 的唯一业务权威；原件仅存在宿主私有 materials/，不创建 Work 或调用模型。
@@ -273,7 +275,9 @@ export class MaterialRepository {
     let characters = 0
     for (const selection of selections) {
       id(selection.id); revision(selection.revision)
-      const material = await this.material(tx, selection.id); this.ready(material, selection.revision)
+      const material = await this.material(tx, selection.id)
+      if (material.conversationId === conversationId && material.status === 'removed' && material.error === RESTART_DRAFT_REMOVED) throw new Error('附件草稿已在重启时清理。请放弃未受理发送，重新选择附件后发送。')
+      this.ready(material, selection.revision)
       if (material.conversationId !== conversationId) throw new Error('材料不属于当前聊天')
       if (material.messageId && material.messageId !== messageId) throw new Error('材料已关联另一条消息')
       if (material.deliveryScope !== 'conversation' && !material.authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增发布准备身份/事务回滚与提交消耗、缺失/未改/外改原件清理边界的真实SQLite验证。
  * [INPUT]: 真实 ProductStore 事务、受管成果原件与明确本人修订/采用请求。
  * [OUTPUT]: 受控群bobo未选模型的修订目标复用有效默认；显式失效选择拒绝、不影响普通员工。
  * [OUTPUT]: 成果复制到登记的外改拒绝、独立内容身份/版本、Markdown/代码/纯文本原文预览与二进制/编码/容量隔离、修订消息原子绑定/负责人边界、跨连接幂等采用与真实回执写失败整体回滚、来源撤权、hash 清理和迁移恢复仅核对验证。
@@ -71,6 +72,41 @@ async function fixture(options: Options = {}) {
 }
 
 describe('durable artifact identity and explicit user decisions', () => {
+  it('binds a pending copy to its original publication and removes that reservation only with the artifact commit', async () => {
+    const { store, repository, publication } = await fixture(), input = await publication()
+    await rm(input.path)
+    await store.transaction(tx => repository.preparePublication(tx, input, binding()))
+    await writeFile(input.path, '# 原版\r\n第一行\n')
+    await expect(store.transaction(tx => repository.registerLegacy(tx, input, 'chat'))).rejects.toThrow('未提交')
+    await expect(store.transaction(tx => repository.register(tx, { ...input, ownerAgentId: 'bob' }, binding()))).rejects.toThrow('发布身份不一致')
+    await expect(store.transaction(tx => repository.preparePublication(tx, { ...input, name: 'another.md' }, binding()))).rejects.toThrow('不同内容或来源')
+    await expect(store.transaction(async tx => { await repository.register(tx, input, binding()); throw new Error('rollback') })).rejects.toThrow('rollback')
+    expect(await store.load('artifacts')).toEqual([])
+    expect(await store.load('artifactPublicationIntents')).toHaveLength(1)
+    const committed = await store.transaction(tx => repository.register(tx, input, binding()))
+    expect(committed).toMatchObject({ id: input.id, contentHash: input.contentHash, registrationSource: 'publication' })
+    expect(await store.load('artifactPublicationIntents')).toEqual([])
+  })
+
+  it.each(['unchanged', 'missing', 'external-edit'])('cleans an interrupted %s copy without adopting or overwriting it', async state => {
+    const { store, repository, publication } = await fixture(), input = await publication()
+    await rm(input.path)
+    await store.transaction(tx => repository.preparePublication(tx, input, binding()))
+    if (state !== 'missing') await writeFile(input.path, state === 'unchanged' ? '# 原版\r\n第一行\n' : '保留外部编辑')
+    await store.transaction(tx => repository.invalidateConversation(tx, 'chat'))
+    expect(await store.load('artifacts')).toEqual([])
+    expect(await store.load('artifactPublicationIntents')).toEqual([])
+    if (state === 'external-edit') {
+      await expect(repository.cleanupConversation('chat')).rejects.toThrow('外部修改')
+      expect(await readFile(input.path, 'utf8')).toBe('保留外部编辑')
+      expect(await store.load('artifactCleanups')).toEqual([expect.objectContaining({ id: input.id, status: 'conflict' })])
+    } else {
+      await repository.cleanupConversation('chat')
+      await expect(readFile(input.path)).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(await store.load('artifactCleanups')).toEqual([])
+    }
+  })
+
   it('preserves exact Markdown and gives same-name originals independent identities without trusting model chain fields', async () => {
     const { store, repository, publication, register } = await fixture()
     const first = await register(), input = { ...await publication('second', '# 另一份\n'), logicalArtifactId: first.id, contentVersion: 9, previousArtifactId: first.id, requiresReview: true }

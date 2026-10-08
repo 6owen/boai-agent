@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: 核心员工身份、真实 SQLite/工作区与已安装 Mastra 工具和阶段工厂。
  * [OUTPUT]: 新旧库唯一核心身份、改名/省略标识重启保留、权限伪造拒绝及核心工具的调用身份/副作用门禁与真实 Mastra SDK 任务/普通阶段工具隔离回归。
  * [POS]: 预置核心 Agent 的模块测试；端到端团队会话/交付由宿主测试验证。
@@ -124,7 +125,7 @@ test('team tool supplies the real SDK invocation identity and a failed or cancel
 test('real Mastra SDK advertises and executes create_team only in the core task, recording the tool receipt before public success', async () => {
   const endpoint = await coreEndpoint(); cleanup.push(() => endpoint.close())
   const ctx = await context(), engine = new MastraEngine(), events: { name: string; status: string }[] = []
-  ctx.connection.baseUrl = endpoint.url
+  ctx.connection!.baseUrl = endpoint.url
   ctx.messages = [{ id: 'user-a', conversationId: ctx.conversation.id, senderType: 'user', senderId: 'user', senderName: '用户', content: '请创建四人写作团队', status: 'completed', sequence: 1, createdAt: new Date().toISOString() }]
   ctx.triggerMessageId = 'user-a'; ctx.responseKind = 'task'
   ctx.onAdditionalModelCall = async () => {}

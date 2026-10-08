@@ -1,0 +1,1117 @@
+{
+  "kind": "Claude-current-dependency-private-report-effort",
+  "createdAt": "2026-10-06T11:21:26.475292+00:00",
+  "fullGoalComplete": false,
+  "humanReview": "pending",
+  "policyVersion": 9,
+  "originalLimits": {
+    "maxOutputTokens": 16000,
+    "privatePhaseMs": 120000
+  },
+  "batches": [
+    {
+      "name": "source-1",
+      "counts": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T11:01:24.872Z",
+        "duration": 287430.29699999996,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-uR76To/manifest.json",
+            "sha256": "5c98db1823d0f52be12a786dd2be1f0a304355212df2e1bc2b3d1e06447603d7",
+            "bytes": 6215
+          },
+          "gaps": []
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/manifest.json",
+            "sha256": "7c72da69babad4808e316b07504c70aef19dae323522952f649e4d12e302b4ee",
+            "bytes": 29272
+          },
+          "gaps": [],
+          "actualState": {
+            "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/026-Claude核心最终状态含失败.json",
+            "sha256": "a580fb836f8bdd3552c7038e81db1f9339d61daffe6f140a46dac02ae143eb13",
+            "bytes": 93641
+          },
+          "budgets": [
+            {
+              "id": "budget-385d62d2b3b942a87c50bfb1ab42f01ad69bbbb8f66f6aed1ab61fc42c1e2cfc",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 130461,
+                "outputTokens": 11082,
+                "totalTokens": 141543
+              },
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T11:06:35.207Z"
+            }
+          ],
+          "works": [
+            {
+              "id": "work-fc33c532d68611a6a545eb88739c75938edefa7d4decf51b3427dc49bcd066b4",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-41ad2b0a04a53a064d706614ad12c55fd5a7301d553d528296f048c5170e7c3e",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-a6111b5216060d3705717156187b455aca481c27ef877650680ed2c6194d4671",
+              "status": "delivered",
+              "ownerAgentId": "fc8f402a-0ed9-4a2b-a9ec-9b7b8636f4f4",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "reports": [
+            {
+              "id": "89d2efc8-5078-41c0-82e1-ff5c412f5099",
+              "runId": "6a03c2cc-5478-40c5-8e3f-69cccb7a957a",
+              "usage": {
+                "inputTokens": 4084,
+                "outputTokens": 540,
+                "totalTokens": 4624
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "snapshotNote": "Original exported state. A failed case does not prove restart; pre-cleanup running records stay running."
+        }
+      ]
+    },
+    {
+      "name": "package-1",
+      "counts": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T11:06:34.314Z",
+        "duration": 284969.479,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-QoXtyF/manifest.json",
+            "sha256": "e1da3ade4ba3d59775f74820ae8b452a5dc94eeaa59adb35319fca0d695c1a98",
+            "bytes": 6368
+          },
+          "gaps": []
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-Temrvz/manifest.json",
+            "sha256": "8efdbbb59c161002b5b28c696c296d2dddc7ddcb7a62ca96e21a3ca20d15f9f5",
+            "bytes": 48202
+          },
+          "gaps": [],
+          "actualState": {
+            "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-Temrvz/016-Claude核心最终状态含失败.json",
+            "sha256": "bb3a522447de00ea998b215991e06babfc6f86d08396285fa8d4a58793664aec",
+            "bytes": 92307
+          },
+          "budgets": [
+            {
+              "id": "budget-fbf9150267acbb7ac7924f5f998de9413b290e06c9cd1b0baef16f4707577938",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 122040,
+                "outputTokens": 16697,
+                "totalTokens": 138737
+              },
+              "unknownCalls": 1,
+              "usageIncomplete": true,
+              "deadlineAt": "2026-10-06T11:11:47.761Z"
+            }
+          ],
+          "works": [
+            {
+              "id": "work-6b8aaa6268fa2f2068f7b0cb2e2249d1106a2b16b618f2c9c45d171639da59b1",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-c6e5c201d0cfcb88130f82224496ef7019e25b167e530871733fd2a0385968a5",
+              "status": "cancelled",
+              "ownerAgentId": "bobo",
+              "waitRevision": 0,
+              "resultVersion": 0,
+              "requiresReview": false
+            },
+            {
+              "id": "work-5250b431eb51b3fd539145b4f32553069988dbac0a6936e0d491889b1135473c",
+              "status": "delivered",
+              "ownerAgentId": "04fc462f-7e90-4151-8373-8c4c066300e1",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "reports": [
+            {
+              "id": "e161e977-5ee1-4c5d-aaa7-83ab03a51308",
+              "runId": "a077b30b-fd11-4cbd-828c-fdfe646ea8f8",
+              "usage": {
+                "inputTokens": 3383,
+                "outputTokens": 629,
+                "totalTokens": 4012
+              },
+              "usageComplete": true,
+              "thinking": "low"
+            },
+            {
+              "id": "fd4cc51b-fc7d-4f10-9929-6a396cc112de",
+              "runId": "a077b30b-fd11-4cbd-828c-fdfe646ea8f8",
+              "usage": {
+                "inputTokens": 3586,
+                "outputTokens": 6163,
+                "totalTokens": 9749
+              },
+              "usageComplete": false,
+              "thinking": "low"
+            }
+          ],
+          "snapshotNote": "Original exported state. A failed case does not prove restart; pre-cleanup running records stay running."
+        }
+      ],
+      "packageFiles": 3405
+    },
+    {
+      "name": "source-2",
+      "counts": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T11:14:46.802Z",
+        "duration": 116128.954,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-weFXe4/manifest.json",
+            "sha256": "3874cdf2b8becc07211de851564aad87643cb0dbdccbc2683ebb9df323a5717a",
+            "bytes": 6698
+          },
+          "gaps": []
+        },
+        {
+          "title": "使用离线协议从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-report-20261006/source-2/scenarios/704506bbdae38bebaafd-adc114cabec3dd5d7573-retry0-repeat0-IxWfho/manifest.json",
+            "sha256": "8fd860d3c0c3e055c3a7f48d7d1403dcd7807b59f5d2c8930026f7299ece4d92",
+            "bytes": 6722
+          },
+          "gaps": []
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-uR76To/manifest.json",
+      "sha256": "5c98db1823d0f52be12a786dd2be1f0a304355212df2e1bc2b3d1e06447603d7",
+      "bytes": 6215
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/manifest.json",
+      "sha256": "7c72da69babad4808e316b07504c70aef19dae323522952f649e4d12e302b4ee",
+      "bytes": 29272
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/026-Claude核心最终状态含失败.json",
+      "sha256": "a580fb836f8bdd3552c7038e81db1f9339d61daffe6f140a46dac02ae143eb13",
+      "bytes": 93641
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude等待汇报-source-1-20261006.png",
+      "sha256": "2ec7b123963ccb8d33f81c31ff20c0325dcdc7ef94a3f7519dcfc3663d771420",
+      "bytes": 325466
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude等待汇报-source-1-20261006.capture.json",
+      "sha256": "06fe191bbeafebac8dcc986d191a108582fd6146b0d44cfea00f2177dbaeeba7",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/024-重启后Claude群和原记录保持.native.png",
+      "sha256": "2ec7b123963ccb8d33f81c31ff20c0325dcdc7ef94a3f7519dcfc3663d771420",
+      "bytes": 325466
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/025-重启后Claude群和原记录保持.capture.json",
+      "sha256": "06fe191bbeafebac8dcc986d191a108582fd6146b0d44cfea00f2177dbaeeba7",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/build-manifest.json",
+      "sha256": "da5c3c92ac67b3d361a28ca1883eeb1753331b43f9962dee582f447d3bddeca0",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/freeze-verification.json",
+      "sha256": "99748e122dd59e120d4ab4401e62b235279de69aa141a723742d3366e9807ffb",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1/playwright-results.json",
+      "sha256": "16bc82cd1fde218c3eaa0589d0f8195fddc4c6edc96a7dedc6789ad74ae31b85",
+      "bytes": 358311
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/checks.json",
+      "sha256": "db46d44f9a3a63a51838517651b7a7d944964281647666d116be3466fdc8ed61",
+      "bytes": 347460
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/manifest.json",
+      "sha256": "cf53b2050302590af94219241b5dba49d628fab72ff8659a21d85b75af9e4b49",
+      "bytes": 1261
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/index.html",
+      "sha256": "701336830163f30833472a0300933648cf4cb03fb9f54d6a181de2314fe446c3",
+      "bytes": 357195
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0001-6ff1c93c38ed1808.png",
+      "sha256": "6ff1c93c38ed180888afeb21b3cb529f4ec48a408a23a9f4834c1625573998d5",
+      "bytes": 193711
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0002-4b81022900f99fc4.png",
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027",
+      "bytes": 242332
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0004-5909c682a335935d.json",
+      "sha256": "5909c682a335935d5f6172ccc2535bb3a337abd154f05cb655c1150562ef7524",
+      "bytes": 808
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0005-f227433c7c5925a4.png",
+      "sha256": "f227433c7c5925a4ac3a738011730704937bcca2e56fe3a1000f5a8c6d8e636a",
+      "bytes": 203276
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0006-522c261bfc93a3a0.json",
+      "sha256": "522c261bfc93a3a053ebab4ae8b0c3597011f5af050c6a711e523bed5e1245b1",
+      "bytes": 18668
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0007-ff7bb6a44a80fde4.png",
+      "sha256": "ff7bb6a44a80fde4551fdbcabb24099d63819ff40d9f297da886cab0a29f5bad",
+      "bytes": 203130
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0008-d2df727b9a8465c7.png",
+      "sha256": "d2df727b9a8465c7e21125c834ad7dbba4b703c16dd58536060c52d0b77ed89a",
+      "bytes": 104714
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0009-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0010-fda528c98059894b.png",
+      "sha256": "fda528c98059894b4224a1fbe5283d6dd7ace706678f1f21db55b38a081e8a96",
+      "bytes": 197011
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0011-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0012-fe1cbfc10c573161.png",
+      "sha256": "fe1cbfc10c5731615ac65cfbe7dd2852ec3f8488ba8d3268f90371c8b77d1c61",
+      "bytes": 291567
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0013-5353e31ff44cb96b.download",
+      "sha256": "5353e31ff44cb96b5d7ea6250bbaa90245bef06f9b8dfc92545973170c5d7ea6",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0014-8d59b39b47192ec7.json",
+      "sha256": "8d59b39b47192ec725288a981f314192c22aef4b992fb467cbf4253dcf0f5d83",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0015-4094895a68b18f79.png",
+      "sha256": "4094895a68b18f79002f4a44fa1d3d8167c2c2ec99d362a3fd638938e473585f",
+      "bytes": 289068
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0016-77897c3544118268.download",
+      "sha256": "77897c354411826801d4537d609fe347e20bc95a40215e0aabd94e1d8e1e7242",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0017-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0018-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0019-0b76c7323047b248.json",
+      "sha256": "0b76c7323047b24838747014206274c0628c03d987430ad845f34ab7f23a1dfb",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0020-cbdc04a2a36ac5b0.png",
+      "sha256": "cbdc04a2a36ac5b042827e8d60dee63e7d72b7c42b7d528dafa50d5e1c8b9ef3",
+      "bytes": 133098
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0021-3855bb258f67039f.download",
+      "sha256": "3855bb258f67039f7bc8636c4652ac71e811c5c9e25bf1867e13bb8c6c6e47a5",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0022-a580fb836f8bdd35.json",
+      "sha256": "a580fb836f8bdd3552c7038e81db1f9339d61daffe6f140a46dac02ae143eb13",
+      "bytes": 93641
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0023-82d4c6102fd98fa1.md",
+      "sha256": "82d4c6102fd98fa1ffd5a0f4e929624f98c6561e71398f1a2fe9bd2861e74435",
+      "bytes": 15
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0024-6497a1c4dfbe2f4f.md",
+      "sha256": "6497a1c4dfbe2f4f30ce8a6536746afde053d4ffe4feaa4dcc60cb4bb68ad0bc",
+      "bytes": 51
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0025-1692706b210b1eb6.json",
+      "sha256": "1692706b210b1eb698106421af2ccf382a748c87c9dbfefefeae2afe3ad90506",
+      "bytes": 54919
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0026-f3a0e91afa5f0aad.png",
+      "sha256": "f3a0e91afa5f0aad10bf4cdeac2d0e3525f310c75ff54daad1ee98237501aefe",
+      "bytes": 386831
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0027-9de3049ed124bf8d.download",
+      "sha256": "9de3049ed124bf8d544038870b67e7324d6fb72cc29e209f342b13dae841e512",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0028-df6a6de7cc830642.png",
+      "sha256": "df6a6de7cc830642c1174df9ea86a5f505e14330f0db8478c72886639de81ac2",
+      "bytes": 331016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0029-7826b944818f5f9e.download",
+      "sha256": "7826b944818f5f9e0e0abca6610785e60eda43dbae111602f6d5f646b674652f",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0030-84a7376afd01cf19.png",
+      "sha256": "84a7376afd01cf19db85e440d62bff848c4b8c5c749bcf99ba89ae682d0dfef3",
+      "bytes": 329611
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0031-2ec7b123963ccb8d.png",
+      "sha256": "2ec7b123963ccb8d33f81c31ff20c0325dcdc7ef94a3f7519dcfc3663d771420",
+      "bytes": 325466
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0032-06fe191bbeafebac.download",
+      "sha256": "06fe191bbeafebac8dcc986d191a108582fd6146b0d44cfea00f2177dbaeeba7",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0033-a580fb836f8bdd35.json",
+      "sha256": "a580fb836f8bdd3552c7038e81db1f9339d61daffe6f140a46dac02ae143eb13",
+      "bytes": 93641
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1-report/resources/0034-52ca34253f61c34e.png",
+      "sha256": "52ca34253f61c34e1f7f08e2858c29c1be887364ea950f3a830ddecbc20817aa",
+      "bytes": 325261
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-QoXtyF/manifest.json",
+      "sha256": "e1da3ade4ba3d59775f74820ae8b452a5dc94eeaa59adb35319fca0d695c1a98",
+      "bytes": 6368
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-Temrvz/manifest.json",
+      "sha256": "8efdbbb59c161002b5b28c696c296d2dddc7ddcb7a62ca96e21a3ca20d15f9f5",
+      "bytes": 48202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-Temrvz/016-Claude核心最终状态含失败.json",
+      "sha256": "bb3a522447de00ea998b215991e06babfc6f86d08396285fa8d4a58793664aec",
+      "bytes": 92307
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/build-manifest.json",
+      "sha256": "ee71f5fcbc821fa78a2906cac096cdd8fffe672ab8d691d945df4855ac922e03",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/freeze-verification.json",
+      "sha256": "cd6e17b40243e3d401fb85bb71301229fc13a04737acd29a8e02657644bc9a08",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/playwright-results.json",
+      "sha256": "bc48bce056dcf8cb075e4b3a46331c1bd7b7b7455372a413df5ea554818768bb",
+      "bytes": 686793
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/checks.json",
+      "sha256": "6b783f8aa20d3b3a4947ce6a74385bcae2fec25c5aaddb5640401ec02d67d17e",
+      "bytes": 347086
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/manifest.json",
+      "sha256": "550332955a94c40d5af58302442fd0ddaf1fc86b1c0a0cdc00171577bfa0bff3",
+      "bytes": 1263
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/index.html",
+      "sha256": "40f793367f6bd5af96bc8440f736110575fee1897beee632f7a532e4de99c0a0",
+      "bytes": 358012
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0001-c97cc79321f475e6.png",
+      "sha256": "c97cc79321f475e603547601bd2a5cf89bff72d3ab1c80d9f8f1504596d5ec7c",
+      "bytes": 193732
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0002-4b81022900f99fc4.png",
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027",
+      "bytes": 242332
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0004-c30184ecc862055f.json",
+      "sha256": "c30184ecc862055fed99dfbd37f0832f7a8b77160e84f0417583404a933fffdd",
+      "bytes": 806
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0005-44342a31961a0174.png",
+      "sha256": "44342a31961a0174f12d8ff734c02d91d0853ffe72f61f7e8d380e01e3eb2828",
+      "bytes": 205904
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0006-8d1ce5b4443f282c.json",
+      "sha256": "8d1ce5b4443f282c2f0b96de8abe209c0b4ab76f8a818f4ebdeeb465f124c5d2",
+      "bytes": 18689
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0007-ade8641608234dc6.png",
+      "sha256": "ade8641608234dc64c6f4b4b7c603fdec0bc774ee777636e97e4402e242bb38b",
+      "bytes": 255897
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0008-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0009-bf8a0d9566da2712.png",
+      "sha256": "bf8a0d9566da2712fc7606b4ecc3ba468790ef7b582adae13cb7832db39adfbb",
+      "bytes": 302146
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0010-76c04184eedc9dd2.json",
+      "sha256": "76c04184eedc9dd243a11bb22e911effe6766d4e90023489592fe1ffb11a4650",
+      "bytes": 40043
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0011-bf8a0d9566da2712.png",
+      "sha256": "bf8a0d9566da2712fc7606b4ecc3ba468790ef7b582adae13cb7832db39adfbb",
+      "bytes": 302146
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0012-05c92ebddbaa5cd3.png",
+      "sha256": "05c92ebddbaa5cd359985e4323eb8c6bb5b6d54eb976be5249b372c2526eed0f",
+      "bytes": 104745
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0013-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0014-70defc488124d242.png",
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+      "bytes": 197143
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0015-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0016-26168d815a42a025.png",
+      "sha256": "26168d815a42a025642367ed1f7ff7755885a796c505cd7cb56d51ba80f28c14",
+      "bytes": 292800
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0017-fb57589917d27944.download",
+      "sha256": "fb57589917d27944de55bb315855b422bca76a38634b0efb5479789bbc26ac8c",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0018-63188655eb0a480f.json",
+      "sha256": "63188655eb0a480f7eb9a38d8e31b8dce801a07e23ea7b8fd6b260d1b40b7b54",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0019-e04514438e4dbd18.png",
+      "sha256": "e04514438e4dbd18c43f39e4e1039f53e67f7db3a5e9e589b5b3affa72f18eea",
+      "bytes": 289215
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0020-2b9c54a38042addd.download",
+      "sha256": "2b9c54a38042addd1c75cf1156f77a01424f96ed8c5ca107f7aea48c2f42d043",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0021-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0022-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0023-fd8376a8efd642b0.json",
+      "sha256": "fd8376a8efd642b06fcbaca822cee29cb1e644e5c5b9788eea76516d61f6d77c",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0024-69f28ae464124161.png",
+      "sha256": "69f28ae464124161622230fe4ffd3fe93d0c2716113a936a5fdcb0b63f8d84da",
+      "bytes": 133073
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0025-ade50fc4778d2a2e.download",
+      "sha256": "ade50fc4778d2a2e4860af5bd9abb9b206a699b3b5774808c0b4a919d16d02a8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0026-bb3a522447de00ea.json",
+      "sha256": "bb3a522447de00ea998b215991e06babfc6f86d08396285fa8d4a58793664aec",
+      "bytes": 92307
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0027-bb3a522447de00ea.json",
+      "sha256": "bb3a522447de00ea998b215991e06babfc6f86d08396285fa8d4a58793664aec",
+      "bytes": 92307
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1-report/resources/0028-20fa73fbb030e357.png",
+      "sha256": "20fa73fbb030e357cb523582be9855a2c41cbc6ff821940191fa227e50d018e3",
+      "bytes": 380659
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/package-manifest.json",
+      "sha256": "cafaf9b678ea101dbcec750701e474f5266382fcfc56f4356f834744d03570a5",
+      "bytes": 869549
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/package-verification.json",
+      "sha256": "23dbec9bb375d92015edcd2150c84c7413457ec776f67e59f20256e6b13ed0c7",
+      "bytes": 105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-weFXe4/manifest.json",
+      "sha256": "3874cdf2b8becc07211de851564aad87643cb0dbdccbc2683ebb9df323a5717a",
+      "bytes": 6698
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2/scenarios/704506bbdae38bebaafd-adc114cabec3dd5d7573-retry0-repeat0-IxWfho/manifest.json",
+      "sha256": "8fd860d3c0c3e055c3a7f48d7d1403dcd7807b59f5d2c8930026f7299ece4d92",
+      "bytes": 6722
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2/build-manifest.json",
+      "sha256": "721ed618c3a1788ef9118b9fbeaed9c7276ac593781b53d7e632d85300fd4862",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2/freeze-verification.json",
+      "sha256": "8d3b01560eeafb003684c316cd32833e402da82f7d6ef976005311d1d9af558e",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2/playwright-results.json",
+      "sha256": "e1ad436023a582ef367fb2ab5eec68e0df7674825902eef562f06ccce53c36e1",
+      "bytes": 41546
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/checks.json",
+      "sha256": "ca6842f52904335205d88fe50f81f8aa3b8524dac8ad836e90860471b76561ec",
+      "bytes": 224421
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/manifest.json",
+      "sha256": "efa6b96fd9b540dba8337a29654ab388bf352a0eaea69e893df8059ca430520d",
+      "bytes": 1246
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/index.html",
+      "sha256": "24ea0c596f798615a13045329f33657c655284559981669b3bd707260719bc8c",
+      "bytes": 236211
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0001-b352e0d3471b4db2.png",
+      "sha256": "b352e0d3471b4db2b3bff5db9f7bc875ba05069574aa11395daf52dbc7cdae08",
+      "bytes": 194434
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0002-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0004-9a0ed81057bbcc08.json",
+      "sha256": "9a0ed81057bbcc08e451a36c9c1b04c364982f686975b321fdb31623e6361329",
+      "bytes": 808
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0005-890c163afc0caf77.png",
+      "sha256": "890c163afc0caf77f11f9f8cbadc9e05f4f463d6461e288d6e70407ebf236c06",
+      "bytes": 203220
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0006-80e86f7e6d3f71e0.json",
+      "sha256": "80e86f7e6d3f71e034fe4a6124ca87246e57f67896eedc0efc71235662ab7438",
+      "bytes": 18654
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0007-dee335b6626cef2a.json",
+      "sha256": "dee335b6626cef2adc8a733a31f29456d6c844af121faa722412ea2d732956d9",
+      "bytes": 33927
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0008-6e0aeb5ea2907149.png",
+      "sha256": "6e0aeb5ea29071492e02b3d1fabee3c8fdac537d524a5ab08a930ea3d6cf5c3f",
+      "bytes": 253081
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0009-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0010-7885de8a2ac1314b.png",
+      "sha256": "7885de8a2ac1314be2724e626aa6a376f7923fd10a562aeb7565f9a9b5a7146b",
+      "bytes": 299350
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0011-35b8e673adf20f64.json",
+      "sha256": "35b8e673adf20f645ccf054eb97eb709a6c3676f96d9cbbbbaa39d7b2975c591",
+      "bytes": 39976
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0012-7885de8a2ac1314b.png",
+      "sha256": "7885de8a2ac1314be2724e626aa6a376f7923fd10a562aeb7565f9a9b5a7146b",
+      "bytes": 299350
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0013-07907e7e3600aff6.png",
+      "sha256": "07907e7e3600aff67645d2958b69ddda1aeb2838346a441ff6c0c8d86ee6d705",
+      "bytes": 204026
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0014-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0015-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0016-62d0e3d60daf3500.json",
+      "sha256": "62d0e3d60daf3500cda0bf007e163791e3e5eba99c23d1d010433f4e8c3a82a9",
+      "bytes": 798
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0017-ad20b3b2bc83af5b.png",
+      "sha256": "ad20b3b2bc83af5b12315e9470774a7bfd11e75a0b0755259deaa4ea409812ef",
+      "bytes": 175532
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0018-ecdff05186e1f095.json",
+      "sha256": "ecdff05186e1f0959f6de9cb02a72ab385f5c6fcd5c8472f3076be01302ac3a7",
+      "bytes": 17612
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0019-6bdaf5b3bea061a1.json",
+      "sha256": "6bdaf5b3bea061a19cd973a74e174fc6c49de95a89790d8ed65d0e065bd489ae",
+      "bytes": 31186
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0020-b8f47c787c8822f9.png",
+      "sha256": "b8f47c787c8822f90755b0c24f34e36ff2802b9188d0ff09ddd99620533199d5",
+      "bytes": 243520
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0021-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0022-da0afdb08179c8ea.png",
+      "sha256": "da0afdb08179c8ead17a8d159edf09097f728029b974038595381416a4a81a3b",
+      "bytes": 273377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0023-50523edbc0019ccf.json",
+      "sha256": "50523edbc0019ccf8d92c0c6f81a9468f0a9f2a712be0ac37807ed4f582ab40a",
+      "bytes": 38223
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2-report/resources/0024-da0afdb08179c8ea.png",
+      "sha256": "da0afdb08179c8ead17a8d159edf09097f728029b974038595381416a4a81a3b",
+      "bytes": 273377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/bddgen-1.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/bddgen-2.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/bddgen-3.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/build-1.log",
+      "sha256": "ee1e4c51ba32f7a9d942b01d09ea18c32447fd79a3a7ddff0b61fac421f2a676",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/diagnostic-list.log",
+      "sha256": "f208f01e39953ce06b7a91e59466b9246c0105d00de996551b1df9419332306b",
+      "bytes": 279
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/effort-red-2.log",
+      "sha256": "069afa0db88b45f711cfb9171a15f5230c7d9916ab7d3e53246b705e317f1b51",
+      "bytes": 1327
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/effort-red.log",
+      "sha256": "a2fa2cca96d917fce9f8472438f6a905caeefe9fe07ff93ba37d53a4d2b59cc8",
+      "bytes": 1934
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/modules-full-1.log",
+      "sha256": "c38651be5a0cfebe531c1a4fc85b169c10c06314870dccbef488dce0d4d2c6f9",
+      "bytes": 1770
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/modules-target-1.log",
+      "sha256": "cf120722485cdfed3e4f5ccd8cb61628dc109cc58800deac70691957923fc75a",
+      "bytes": 198
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1.log",
+      "sha256": "7f8aff802f83edcc4082dc8e1f087847f8a80d5c60051d6d5302bda9b16e2dad",
+      "bytes": 29067
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-build-1.log",
+      "sha256": "bdc54e44665522a3537cd2c032adcb7dedf5beb512673e03c5401548b4871aaa",
+      "bytes": 2400
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/scenario-list.log",
+      "sha256": "0a3ef98605897d8260296bb4ccb0d3975d90137e6697acd226b191b362cfea51",
+      "bytes": 517
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-1.log",
+      "sha256": "716155470664fa3ab86af0795cd33a41d41b1a8476d5c8cff12752cf18700850",
+      "bytes": 9649
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/source-2.log",
+      "sha256": "6c64dbf67447eeae6d187748a24de369dbee0a7bdfb510b76dfe124fde62d114",
+      "bytes": 751
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire-2.log",
+      "sha256": "d88205222dc3890d02d68b9924cd9c95db500d045471a907e1fd0f53d2fb1613",
+      "bytes": 505
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire-build-2.log",
+      "sha256": "eb780f79c8c30fe6025d2d57445904ae0f8584cda04e66798e4d26693b306053",
+      "bytes": 96
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire-build.log",
+      "sha256": "d3330bc7142626358aee0d120bf6c59225b0fb4c6a73b59c777dc99029a9da55",
+      "bytes": 96
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire.log",
+      "sha256": "7f241fa56196319a2d8b187beff058f7f70c639210c02e91aee170f8c0db18d6",
+      "bytes": 354
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/typecheck-1.log",
+      "sha256": "0cfeaa8cc9432baaf66e546bd4b9e6fb34c0d715a49645949498a2a5bf68bdab",
+      "bytes": 244
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/typecheck-2.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/typecheck-3.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/typecheck-4.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/ui-rules-1.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696",
+      "bytes": 97
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/report-resource-verification.json",
+      "sha256": "4b68c09a5ed7c190f9e1ee37fd5a1240489800836851491703cbb1c48ec44c36",
+      "bytes": 448
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire.json",
+      "sha256": "5ecf52f62e83947b17d42748cb3526bb00a3066744e8c897d7247a883cd6dc65",
+      "bytes": 1606
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire.ts",
+      "sha256": "2bf74dc8d1b087ac42c15597869e4d03730d6fe9551eecd99957159856435bc9",
+      "bytes": 3729
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/thinking-wire.mjs",
+      "sha256": "00c3ed8e541539483771e1da2c36081740a5acd92ce19c98b51cdaa6400f9bbc",
+      "bytes": 14532
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/official-settings-reference.md",
+      "sha256": "f4f0cdc88e2cf36a1490741800dc34a9fdf90ddaa70c2c5848aac03cde90d53a",
+      "bytes": 418103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-KMa8bt/016-Claude核心最终状态含失败.json",
+      "sha256": "ed9d261df826440f4a8a8ec0640ef65f737d97b6b2d7437799cd1c554c1577af",
+      "bytes": 104982
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude等待汇报-source-1-20261006.png",
+        "sha256": "2ec7b123963ccb8d33f81c31ff20c0325dcdc7ef94a3f7519dcfc3663d771420",
+        "bytes": 325466
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude等待汇报-source-1-20261006.capture.json",
+        "sha256": "06fe191bbeafebac8dcc986d191a108582fd6146b0d44cfea00f2177dbaeeba7",
+        "bytes": 1685
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/024-重启后Claude群和原记录保持.native.png",
+        "sha256": "2ec7b123963ccb8d33f81c31ff20c0325dcdc7ef94a3f7519dcfc3663d771420",
+        "bytes": 325466
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-wait-report-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-l8F9SL/025-重启后Claude群和原记录保持.capture.json",
+        "sha256": "06fe191bbeafebac8dcc986d191a108582fd6146b0d44cfea00f2177dbaeeba7",
+        "bytes": 1685
+      }
+    }
+  ],
+  "nativeThinkingWireCheck": {
+    "kind": "pinned-Claude-private-parameter-wire-check",
+    "realProvider": false,
+    "modelInference": false,
+    "productWorkPersisted": false,
+    "uiVerified": false,
+    "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+    "cases": [
+      {
+        "name": "low-default-thinking",
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/v1/messages?beta=true",
+            "model": "deepseek-v4-pro",
+            "thinkingPresent": true,
+            "thinking": {
+              "type": "adaptive"
+            },
+            "outputConfig": {
+              "effort": "low"
+            },
+            "tools": [
+              "StructuredOutput"
+            ]
+          }
+        ],
+        "receipt": {
+          "receivedLines": 2,
+          "handledLines": 2,
+          "processGroupExited": true,
+          "exitCode": null,
+          "stoppedBecause": "cancelled",
+          "callbackActiveAtStop": false,
+          "pendingAtStop": 0
+        }
+      },
+      {
+        "name": "low-alwaysThinkingEnabled-false",
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/v1/messages?beta=true",
+            "model": "deepseek-v4-pro",
+            "thinkingPresent": false,
+            "outputConfig": {
+              "effort": "low"
+            },
+            "tools": [
+              "StructuredOutput"
+            ]
+          }
+        ],
+        "receipt": {
+          "receivedLines": 2,
+          "handledLines": 2,
+          "processGroupExited": true,
+          "exitCode": null,
+          "stoppedBecause": "cancelled",
+          "callbackActiveAtStop": false,
+          "pendingAtStop": 0
+        }
+      }
+    ]
+  },
+  "nativeThinkingWireNote": "alwaysThinkingEnabled false omitted thinking in the actual pinned CLI request; it did not send disabled. This synthetic endpoint check did not perform inference or verify a production off configuration.",
+  "baseline": {
+    "packageCoreOutputTokens": 16748,
+    "waitingReportOutputTokens": [
+      708,
+      7977
+    ],
+    "formatterRejections": 0,
+    "formatReminders": 0,
+    "originalLimitsUnchanged": true
+  },
+  "notes": [
+    "Parameter regression is separate from real-model cost and actual app coverage. Ordinary delivery and user-answer reports retain defaults.",
+    "All failures and incomplete evidence remain visible; current case success does not close the full LR0-LR6 matrix."
+  ]
+}

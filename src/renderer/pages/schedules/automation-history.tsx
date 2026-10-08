@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 文件证据以原交付消息入口展示，不在普通结果列表输出内部UUID；旧无消息映射记录仍可返回本次聊天核对。
+ * [OUTPUT]: 本机外部回合与API模型请求按原预算标明计量单位，追加额度保留口径和未知内部次数。
  * [INPUT]: 自动化分页历史、会话结果、DesktopApi 与共享控件。
  * [OUTPUT]: 普通补充核对所见等待版本后定位原问题，复用聊天唯一回复入口；详情只保留明确预算追加表单。单次结果仅按 occurrence 明确消息 ID 分批有界核读，活跃/清理/来源变化与迟到守卫隔离正文；数据库全量搜索/状态筛选、单次结果阅读与按需运行明细；隐藏时停止查询；监控使用独立数据检查摘要；监控结果/观测时间/规则与前后值/来源证据、冷却状态；完整待处理分页、最近结束结果优先/默认展开、摘要后历史与身份去重；到期追加额度的明确确认、累计用量和确认消息/前后限额回执；通知回执与业务交付分开展示、按消息/记录身份定位；完整执行记录的稳定分页、实际正文/证据、指定消息定位、停止与原预算补充入口。
  * [POS]: schedules 阅读区；历史分页与编辑草稿独立，刷新不扩大单次查询上限。
@@ -20,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea'
 export const occurrenceStatusLabels:Record<AutomationOccurrence['status'],string>={admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',waiting_work:'等待工作',cancelling:'正在停止',completed:'运行结束',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}
 const deliveries: Record<AutomationOccurrence['deliveryStatus'], string> = { pending: '尚待交付', delivered: '已交付', no_change: '没有变化', partial: '部分结果', blocked: '未交付', unknown: '交付待核对' }
 
+const requestUnit = (o: AutomationOccurrence) => o.budget?.callUnit === 'mixed' ? 'API／本机请求' : o.budget?.callUnit === 'external-turn' ? '本机请求' : '模型请求'
 const exhausted = (o: AutomationOccurrence) => !!o.budget && (o.budget.exhausted || Date.parse(o.budget.deadlineAt) <= Date.now() || (o.modelCalls ?? 0) >= o.budget.maxModelCalls || o.budget.runs >= o.budget.maxRuns || (o.usage?.outputTokens ?? 0) >= o.budget.maxOutputTokens)
 
 function usageLabel(o: AutomationOccurrence) {
@@ -123,9 +126,10 @@ function AutomationOccurrenceCard({ api, active, occurrence: o, expanded, onRefr
       <div className="connection-card-top"><strong>{o.name}</strong><span className="pill"><span>{occurrenceStatusLabels[o.status]}</span> · <span>{deliveries[o.deliveryStatus]}</span></span></div>
       <p>{new Date(o.startedAt).toLocaleString()} · {o.source === 'manual' ? '手动触发' : '定时触发'}</p>{o.reason && <p>{o.reason}</p>}
       <details><summary>运行明细</summary>
-      <p className="field-hint">{o.taskKind === 'monitor' ? '数据检查 · 未调用模型' : <>{o.resultMessageIds.length} 条结果 · {o.runIds.length} 条运行记录{o.modelCalls !== undefined ? ` · ${o.modelCalls} 次模型请求` : ''} · {usageLabel(o)}</>}</p>
-      {o.taskKind !== 'monitor' && o.budget && <p className="field-hint">本次累计预算：{o.modelCalls ?? 0}/{o.budget.maxModelCalls} 次模型请求 · {o.budget.runs}/{o.budget.maxRuns} 次工作执行 · 当前期限 {new Date(o.budget.deadlineAt).toLocaleString()}</p>}
-      {!!o.budget?.renewals?.length && <details><summary>额度追加记录（{o.budget.renewals.length} 次）</summary>{o.budget.renewals.map(grant => <p className="field-hint" key={grant.id}>{new Date(grant.createdAt).toLocaleString()} · 模型请求上限 {grant.before.maxModelCalls} → {grant.after.maxModelCalls} · 工作执行上限 {grant.before.maxRuns} → {grant.after.maxRuns} · 追加前已用 {grant.used.modelCalls} 次请求、{grant.used.runs} 次工作执行{grant.used.usageIncomplete ? '，用量仍不完整' : ''} · 截止 {new Date(grant.after.deadlineAt).toLocaleString()}<Button variant="ghost" size="sm" onClick={() => onConversation(o.conversationId, grant.messageId)}>定位确认消息</Button></p>)}</details>}
+      <p className="field-hint">{o.taskKind === 'monitor' ? '数据检查 · 未调用模型' : <>{o.resultMessageIds.length} 条结果 · {o.runIds.length} 条运行记录{o.modelCalls !== undefined ? ` · ${o.modelCalls} 次${requestUnit(o)}` : ''} · {usageLabel(o)}</>}</p>
+      {o.taskKind !== 'monitor' && o.budget && <p className="field-hint">本次累计预算：{o.modelCalls ?? 0}/{o.budget.maxModelCalls} 次{requestUnit(o)} · {o.budget.runs}/{o.budget.maxRuns} 次工作执行 · 当前期限 {new Date(o.budget.deadlineAt).toLocaleString()}</p>}
+      {o.budget?.callUnit && <p className="field-hint">本机请求按外部回合计数，Agent 内部模型调用次数未知；未完整返回的用量继续标记为未知。</p>}
+      {!!o.budget?.renewals?.length && <details><summary>额度追加记录（{o.budget.renewals.length} 次）</summary>{o.budget.renewals.map(grant => <p className="field-hint" key={grant.id}>{new Date(grant.createdAt).toLocaleString()} · {requestUnit(o)}上限 {grant.before.maxModelCalls} → {grant.after.maxModelCalls} · 工作执行上限 {grant.before.maxRuns} → {grant.after.maxRuns} · 追加前已用 {grant.used.modelCalls} 次请求、{grant.used.runs} 次工作执行{grant.used.usageIncomplete ? '，用量仍不完整' : ''} · 截止 {new Date(grant.after.deadlineAt).toLocaleString()}<Button variant="ghost" size="sm" onClick={() => onConversation(o.conversationId, grant.messageId)}>定位确认消息</Button></p>)}</details>}
       <NoticeReceipts notices={o.notices ?? []} legacy={o.notificationDelivered} />
       </details>
       <div className="button-row">{onOccurrence && <Button variant="ghost" size="sm" onClick={() => onOccurrence(o.id)}>查看本次结果</Button>}{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>
@@ -173,7 +177,7 @@ function AutomationResult({ api, active, occurrence, onConversation, expanded = 
       {items.filter(item => item.status === 'unavailable').map(item => <Banner key={item.messageId}>{item.reason ?? '这条明确结果暂不可用。'}</Banner>)}
       {!results.length && <p className="field-hint">本次尚无可读取的结果正文，原始请求和执行状态可在聊天中核对。</p>}
       {results.map(message => <div className="automation-result" key={message.id}><strong>{message.senderName}</strong><p className="automation-result-text">{message.content || '暂无公开内容'}</p><Button variant="secondary" size="sm" onClick={() => onConversation(occurrence.conversationId, message.id)}>定位这条结果</Button></div>)}
-      {!!occurrence.resultEvidence?.length && <ul>{occurrence.resultEvidence.map((evidence, index) => <li key={`${evidence.workId}:${index}`}>{evidence.kind === 'artifact' ? '文件' : '回答'} · {evidence.reference}{evidence.messageId && <Button variant="ghost" size="sm" onClick={() => onConversation(occurrence.conversationId, evidence.messageId)}>定位证据消息</Button>}</li>)}</ul>}
+      {!!occurrence.resultEvidence?.length && <ul>{occurrence.resultEvidence.map((evidence, index) => <li key={`${evidence.workId}:${index}`}>{evidence.kind === 'artifact' ? <>文件交付记录<Button variant="ghost" size="sm" onClick={() => onConversation(occurrence.conversationId, evidence.messageId)}>{evidence.messageId ? '查看交付消息' : '返回本次聊天核对'}</Button></> : <>回答 · {evidence.reference}{evidence.messageId && <Button variant="ghost" size="sm" onClick={() => onConversation(occurrence.conversationId, evidence.messageId)}>定位证据消息</Button>}</>}</li>)}</ul>}
     </>}
   </details>
 }
@@ -199,7 +203,7 @@ function AutomationReply({ api, occurrence, onSent, onConversation }: { api: Des
     setContent(''); setOpen(false); await onSent()
   }) }}>
     {error && <div className="full"><Banner>{error}</Banner></div>}
-    {renew && <div className="full"><p>原预算用尽后，确认将追加 {allowance.modelCalls} 次模型请求、{allowance.runs} 次工作执行和 {allowance.outputTokens} 输出 tokens，期限为确认后 {allowance.durationMs / 60000} 分钟。累计请求上限将为 {budget.maxModelCalls + allowance.modelCalls} 次；已消耗用量和未知用量继续保留。</p><p className="field-hint">同时增加 {allowance.workItems} 项工作、{allowance.retries} 次重试、{allowance.reportRefreshes} 次汇报修订和 {allowance.noProgress} 次无进展接续额度。已交付工作保持完成；存在待核对操作时不会直接续行。</p></div>}
+    {renew && <div className="full"><p>原预算用尽后，确认将追加 {allowance.modelCalls} 次{requestUnit(occurrence)}、{allowance.runs} 次工作执行和 {allowance.outputTokens} 输出 tokens，期限为确认后 {allowance.durationMs / 60000} 分钟。累计请求上限将为 {budget.maxModelCalls + allowance.modelCalls} 次；已消耗用量和未知用量继续保留。</p><p className="field-hint">同时增加 {allowance.workItems} 项工作、{allowance.retries} 次重试、{allowance.reportRefreshes} 次汇报修订和 {allowance.noProgress} 次无进展接续额度。已交付工作保持完成；存在待核对操作时不会直接续行。</p></div>}
     <Field label={renew ? '继续未完成工作的说明' : '本次运行的补充信息'} full hint={renew ? '先查看已有结果，再补充本次应继续处理的内容。' : '仅回复这一次运行，沿用原有预算和截止时间。'}><Textarea required maxLength={100000} value={content} onChange={event => setContent(event.target.value)} /></Field>
     <div className="button-row full"><Button type="submit" disabled={busy || !content.trim()}>{renew ? '确认追加额度并继续' : '提交补充'}</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => setOpen(false)}>取消</Button></div>
   </form>

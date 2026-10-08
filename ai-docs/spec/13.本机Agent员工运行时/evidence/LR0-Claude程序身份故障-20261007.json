@@ -1,0 +1,3395 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T18:23:15.609306+00:00",
+  "section": 83,
+  "scope": "Claude program changed/missing guard before provider invocation, saved verification revoked by original settings retest, exact owned bytes restored and verified, two controlled restarts preserve failures, only explicit new chat invokes the same employee.",
+  "productionChanged": false,
+  "fullGoalComplete": false,
+  "versions": {
+    "claude": "2.1.214",
+    "provider": "explicit saved DeepSeek official connection / deepseek-v4-pro",
+    "platform": "macOS arm64"
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T18:15:22.172Z",
+        "duration": 12516.755000000001,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议验证Claude程序被替换后只执行新消息",
+          "status": "failed",
+          "fault": "程序被替换",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/manifest.json",
+            "bytes": 5236,
+            "sha256": "91913076bde448e576584d00a63adf781c443c09f100fabff5c9a9f79cf24783"
+          },
+          "proof": {
+            "verificationRetestPerformed": false,
+            "failureReason": "test expected backend metadata before runtime preparation succeeded",
+            "facts": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/004-Claude程序故障最终原始状态.json",
+              "bytes": 4840,
+              "sha256": "06c215c0bf375ee8ad9f41889c83fe017d8067802f20a0db524fd367b0c76110"
+            }
+          },
+          "items": [
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/001-Claude故障仅使用本场程序副本.json",
+              "bytes": 413,
+              "sha256": "63d2cf179d2072c42f2af498921871ea70a7159e19f8eee14bcc6e22fbd68363"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/002-Claude程序核对只证明程序状态.png",
+              "bytes": 198214,
+              "sha256": "f18fd526e3194b88b2cba7b26411b9eaff314cef34f6feb9d8397ab21d5ebc00"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/003-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/004-Claude程序故障最终原始状态.json",
+              "bytes": 4840,
+              "sha256": "06c215c0bf375ee8ad9f41889c83fe017d8067802f20a0db524fd367b0c76110"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/005-第-1-次启动结束画面.png",
+              "bytes": 142931,
+              "sha256": "910afa06b935085a16169711d02efa265e6979aca968ff328b7dcc2f09c83b87"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议验证Claude程序丢失后只执行新消息",
+          "status": "failed",
+          "fault": "程序丢失",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/manifest.json",
+            "bytes": 5231,
+            "sha256": "24ee54511b774bdd8d624be8811d089e985b57759c5ae2685ffff85b37cd0a69"
+          },
+          "proof": {
+            "verificationRetestPerformed": false,
+            "failureReason": "test expected backend metadata before runtime preparation succeeded",
+            "facts": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/004-Claude程序故障最终原始状态.json",
+              "bytes": 5039,
+              "sha256": "e8276daf2c7d0ee3a3065dbeb294bb35f340a8c99c9fa04c113546e413a8a24b"
+            }
+          },
+          "items": [
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/001-Claude故障仅使用本场程序副本.json",
+              "bytes": 413,
+              "sha256": "9c0695668f05cb3e833a1b535d744fc46509237fd39c2c3ad487ece48b5d5f05"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/002-Claude程序核对只证明程序状态.png",
+              "bytes": 197837,
+              "sha256": "9931e250f3046965a35818dfeb93e86eb38e378b665940eef5341d8edfa79e2d"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/003-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/004-Claude程序故障最终原始状态.json",
+              "bytes": 5039,
+              "sha256": "e8276daf2c7d0ee3a3065dbeb294bb35f340a8c99c9fa04c113546e413a8a24b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/005-第-1-次启动结束画面.png",
+              "bytes": 143373,
+              "sha256": "d4b8c5739bd1a3a99970bbebe8b865314386a2fb729044333f5114da53ddec5e"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-1/playwright-results.json",
+        "bytes": 427487,
+        "sha256": "65626a3a762d3ba7376f966aa3d67e0271e36cb5955c134d1476dce0b056be46"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-1/build-manifest.json",
+        "bytes": 101834,
+        "sha256": "f5d7f7d07c857e606ece01a5d8fed1848762d74b399d38cc129af7c503b3dc4d"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "506a8d577c2c52977b318ac366d3ca1fe2884e0d3432547b7781c102aa8dd3cd"
+      }
+    },
+    {
+      "name": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T18:17:34.339Z",
+        "duration": 23259.289,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议验证Claude程序被替换后只执行新消息",
+          "status": "passed",
+          "fault": "程序被替换",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/manifest.json",
+            "bytes": 20293,
+            "sha256": "4b32747fac152f98846c3543e887744cefb2d9f9360c6cea5e0f812767148cc1"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "Claude程序已变化，请重新核对",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/010-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/021-Claude程序故障最终原始状态.json",
+              "bytes": 22357,
+              "sha256": "5826c520912556187109b47545c357289e74d2a691034cacd2c66c136ce88fb4"
+            }
+          },
+          "items": [
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/001-Claude故障仅使用本场程序副本.json",
+              "bytes": 413,
+              "sha256": "d8f564b6a2a18d71b8ef9d75e996b20d851ffdb3fb5ed0a6c5f6e06c69cf0865"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/002-Claude程序核对只证明程序状态.png",
+              "bytes": 199047,
+              "sha256": "a1acbdac51fc33ea494ad45d415f82dec9d93d8b2aa78bf59a3d36707a0d6b48"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/003-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/004-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5701,
+              "sha256": "85ae4ff037fdb511a0c89985467ec10f2e2adefb1342a1a0dc8e3378347d2532"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/005-程序被替换时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 142757,
+              "sha256": "2f49224546780a93a0631f47015701ef41e8c150b326a8a3db6c9282f7a64bbd"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/006-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "2583f2d30bfe99fed5e35f902752f6fb76d809ea6abc06cb770273b4e9658bdb"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/007-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 4755,
+              "sha256": "15622458a713a2830b0dbd941791a8e69ac4ff4fee1e7cc9ba85a79389928630"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/008-程序被替换的Claude原设置测试失败.native.png",
+              "bytes": 145233,
+              "sha256": "62d89ee63ec0b69db371592bbcd9215d365a8804e37c14496e7f7368db439bec"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/009-程序被替换的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "67654d753c856f27266a95acee654bed5fe839a96743ea014086ec5ed4a28eb3"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/010-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/011-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 7938,
+              "sha256": "7c3ac377f3d71850eee09209c523aa75bf7424ef41b079a35f02024609b0f3da"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/012-程序被替换修复后Claude程序重新核对.native.png",
+              "bytes": 150597,
+              "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/013-程序被替换修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "cb10ccb1f44cdc973c5bf59749bcae85bf15b6de05e23f0b3a9c748cdb94600d"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/014-第-1-次启动结束画面.png",
+              "bytes": 150597,
+              "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/015-Claude故障修复首次重启零调用.json",
+              "bytes": 7307,
+              "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/016-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 21805,
+              "sha256": "997dc701edc671ab53c39f1d4895bc51a7128ddc86f18ba33443bd780091f737"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/017-程序被替换修复后新Claude消息独立完成.native.png",
+              "bytes": 212117,
+              "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/018-程序被替换修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "788faceadbbb1396f9e627031acd8c78061930d72a51a02b16caa061a0f4b659"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/019-第-2-次启动结束画面.png",
+              "bytes": 212117,
+              "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/020-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 21728,
+              "sha256": "15039262fef2624d024dd22fcb2167bd4db332fc2366a3b13c746d7db977f0da"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/021-Claude程序故障最终原始状态.json",
+              "bytes": 22357,
+              "sha256": "5826c520912556187109b47545c357289e74d2a691034cacd2c66c136ce88fb4"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/022-第-3-次启动结束画面.png",
+              "bytes": 152830,
+              "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议验证Claude程序丢失后只执行新消息",
+          "status": "passed",
+          "fault": "程序丢失",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/manifest.json",
+            "bytes": 20240,
+            "sha256": "5f19cc91a8b15981e34c9b43792c4c511b9454b60c257de61884ad0f4edcd934"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "ENOENT: no such file or directory, lstat '/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-6i8sOX/owned-Claude-program/claude-protocol.mjs'",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/010-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7506,
+              "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/021-Claude程序故障最终原始状态.json",
+              "bytes": 22556,
+              "sha256": "8a610a420270bcbc957cce9ed134b67c5668ab5fa17a1b494ef1ebfa548ebac9"
+            }
+          },
+          "items": [
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/001-Claude故障仅使用本场程序副本.json",
+              "bytes": 413,
+              "sha256": "d5ef6a14021c16d0c0226acff0554254cd1a30de731e5f6265002728d4780df3"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/002-Claude程序核对只证明程序状态.png",
+              "bytes": 197979,
+              "sha256": "e602fb3f7da02f55a5e45115c881e327532b662e68acf1883966015864d1f463"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/003-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/004-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5886,
+              "sha256": "6f84c176c398ecb09101fbd6dadeb889830d67ad9ff577bf796a6beb94e01172"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/005-程序丢失时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 143191,
+              "sha256": "ffdd7c1a8e025576131137624f76ac26646f2cd2ac9f02094aff9ffd44eb99eb"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/006-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "f1f8914209d23c104dc8cb7c48a24801023f4277d3885c21672cf26a4d7b96e3"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/007-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 5071,
+              "sha256": "efcaa27ab84e80e82660bdeac45a2ff228a973e93db988cf1a15e4efea8bccf7"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/008-程序丢失的Claude原设置测试失败.native.png",
+              "bytes": 178259,
+              "sha256": "1eaaddee8f8c3e88042765cdeccda819cc49ac2ef612e5c25136a37cb37f35ee"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/009-程序丢失的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "eefeab0174cc5538d4fd7e9c23979ff34f6bee20e81eb4d5d17b9859856d6e24"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/010-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7506,
+              "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/011-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 8137,
+              "sha256": "c88b2834f19119a71e46a7dc7e530feaca88679087e12ba5f5fa4432c68e39d8"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/012-程序丢失修复后Claude程序重新核对.native.png",
+              "bytes": 151296,
+              "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/013-程序丢失修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "edf514dee7c7d82dc2c1385277f05638c415bf3a6000265615b78e3c171e4277"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/014-第-1-次启动结束画面.png",
+              "bytes": 151296,
+              "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/015-Claude故障修复首次重启零调用.json",
+              "bytes": 7506,
+              "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/016-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 22004,
+              "sha256": "3c53ec1ccdb6b5337cbce58fdc93d9526fac5449b4eeace829f05a32e735e4ee"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/017-程序丢失修复后新Claude消息独立完成.native.png",
+              "bytes": 212572,
+              "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/018-程序丢失修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "651d68393858d5f45ebb9c4bec9d746975245770f2afef49032fa0a650e00e8f"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/019-第-2-次启动结束画面.png",
+              "bytes": 212572,
+              "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/020-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 21927,
+              "sha256": "5e76fa31896904c5c0a515f6ef90a9c20ab6356ac0943a6cdde97607ca1e6976"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/021-Claude程序故障最终原始状态.json",
+              "bytes": 22556,
+              "sha256": "8a610a420270bcbc957cce9ed134b67c5668ab5fa17a1b494ef1ebfa548ebac9"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/022-第-3-次启动结束画面.png",
+              "bytes": 152830,
+              "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-2/playwright-results.json",
+        "bytes": 91928,
+        "sha256": "b12afa4dcca9fea94d7dcf9d3bfa989434587fdb51a460b237927551212317d6"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-2/build-manifest.json",
+        "bytes": 101834,
+        "sha256": "3d7185ba01af48f9b802fbfba0a2b445b27d0e2fb30b5e30d972881668958735"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-program-faults-20261007/offline-2/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "1e11dffdaa7376740a7c37597ad81fbb1445a00b82ebd7a2770c1f952f412ca4"
+      }
+    },
+    {
+      "name": "source-1",
+      "stats": {
+        "startTime": "2026-10-06T18:18:14.291Z",
+        "duration": 56675.998,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude验证Claude程序丢失后只执行新消息",
+          "status": "passed",
+          "fault": "程序丢失",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/manifest.json",
+            "bytes": 21290,
+            "sha256": "dcc79ef187b297fde04ca707825ed6771f9dabfe6b70b948d98c8bff1a4eb1bd"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "ENOENT: no such file or directory, lstat '/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-yog1zc/owned-Claude-program/claude'",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7480,
+              "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/023-Claude程序故障最终原始状态.json",
+              "bytes": 22675,
+              "sha256": "aa3f490f2ccf9db12dd3c02c968170a1eddd28f56a1bd6840184e29c20446c6c"
+            }
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/001-第-1-次启动结束画面.png",
+              "bytes": 104687,
+              "sha256": "10fc4fb6cdee35364a7a0984ba7af0afe9eb3e4f081b1a1d69858b516fb2bed9"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/003-Claude故障仅使用本场程序副本.json",
+              "bytes": 405,
+              "sha256": "daf5d9f9a265ffafe3b25ae4081df80cc13db834836bec4c4d8aa74ee9ec97ff"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/004-Claude程序核对只证明程序状态.png",
+              "bytes": 198119,
+              "sha256": "7ba80a680cce5c15d251fd1dd6518a048f87bfdb00e92bc93f9dd54f9bdf81ad"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/005-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/006-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5786,
+              "sha256": "06bfd223c5954fcdace64dec59631a01f50c08c429c496178bc511c53a24dd8a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/007-程序丢失时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 144538,
+              "sha256": "ced5e072cee13096120797689a0d05b62c795cd3640274af99b61d8fd8907ef7"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/008-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "cb71392bb7001a85839280f24b1cf5cff0b628bdf8a0dff047422525bcfa6cc0"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/009-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 4996,
+              "sha256": "6de7d1afe945fab9a2d8d1801b78c7b5be53a8d4fc5ab0c68b957e8d861f7a40"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/010-程序丢失的Claude原设置测试失败.native.png",
+              "bytes": 176606,
+              "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/011-程序丢失的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7480,
+              "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/013-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 8075,
+              "sha256": "a20bc9f62b6340656d90e38e81049dff1426bfcac933a56c042a747eef3f9f61"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/014-程序丢失修复后Claude程序重新核对.native.png",
+              "bytes": 153540,
+              "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/015-程序丢失修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "e201c7b2958113e7c1e9ee29c13bff5cb8d13fcbe49c53d7bbc033627ed7c128"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/016-第-2-次启动结束画面.png",
+              "bytes": 153540,
+              "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/017-Claude故障修复首次重启零调用.json",
+              "bytes": 7480,
+              "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/018-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 22245,
+              "sha256": "b5b4236dca2c5a965e516d2082c4d33c5845fdd5cf8c227698c0d2a766fd2174"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/019-程序丢失修复后新Claude消息独立完成.native.png",
+              "bytes": 229394,
+              "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/020-程序丢失修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "d0c8464486bd14a0280ed17abd2bf3dc46dd25dcb7d2dcc22cd4b29d3fd01c16"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/021-第-3-次启动结束画面.png",
+              "bytes": 229394,
+              "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 22082,
+              "sha256": "3d13a5dc9de12c2863742ecdd62087e36d12c3d81bffa8f9bb0d65db6e558b5d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/023-Claude程序故障最终原始状态.json",
+              "bytes": 22675,
+              "sha256": "aa3f490f2ccf9db12dd3c02c968170a1eddd28f56a1bd6840184e29c20446c6c"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/024-第-4-次启动结束画面.png",
+              "bytes": 153370,
+              "sha256": "c9a10f0a2f491873c073a6d8ec9bd76ec9312232cbccc8869d61dfe3e77172dd"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude验证Claude程序被替换后只执行新消息",
+          "status": "passed",
+          "fault": "程序被替换",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/manifest.json",
+            "bytes": 21344,
+            "sha256": "da63999b8c71a5dfa188bff9d284339d7cda70f838636c8b09c8773b9fe0a76d"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "Claude程序已变化，请重新核对",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/023-Claude程序故障最终原始状态.json",
+              "bytes": 22493,
+              "sha256": "4d61dc913892fe80fc9f20b025fcb74131f16b7c7c4eacdda4955c26a0ee24d8"
+            }
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/001-第-1-次启动结束画面.png",
+              "bytes": 104642,
+              "sha256": "ae030bd09cbfeb65504fec3dc4c54f0cd57bee440a3bc9b70339bd1ca18e0fe5"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/003-Claude故障仅使用本场程序副本.json",
+              "bytes": 405,
+              "sha256": "bb6a8dacf4afe6f72f0555108b730161b9ef3398e5222fb0da9c7c3dce07851d"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/004-Claude程序核对只证明程序状态.png",
+              "bytes": 197936,
+              "sha256": "52111a99c95388ee37c365a22d46a1d682c74d4b7b5cf3155e49cac8b3c50712"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/005-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/006-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5627,
+              "sha256": "ab9e447137639ce0cc344a325ea870abc3a9411971ec65c38375f6df54cac84c"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/007-程序被替换时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 144084,
+              "sha256": "0f36c0f3c364bb33c90fe445b977d6633e7e63d3e1099425ad7ba9d6a87230e9"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/008-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "90d903911a59da874cb02bf6f941960202d354ef937e205d54ef96cc555fdf86"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/009-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 4719,
+              "sha256": "33f57e4f432a97390d94333faf81d05a60a3db897d2ef67abc418a6dc0e37f94"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/010-程序被替换的Claude原设置测试失败.native.png",
+              "bytes": 148371,
+              "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/011-程序被替换的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/013-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 7902,
+              "sha256": "69604cc169715c79fe4a599450d24e820bd2ec2dda9d9ad2ee5aac99249338a1"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/014-程序被替换修复后Claude程序重新核对.native.png",
+              "bytes": 153498,
+              "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/015-程序被替换修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "9c2b8f857dae3c18544a41e0ad4107594dce5e74080918bf215711ce025a05e3"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/016-第-2-次启动结束画面.png",
+              "bytes": 153498,
+              "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/017-Claude故障修复首次重启零调用.json",
+              "bytes": 7307,
+              "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/018-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 22063,
+              "sha256": "f7c9886f35aa575d26280eeccc525d2f8147c4f3b1eb7d10bf2a06dfb5f570d1"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/019-程序被替换修复后新Claude消息独立完成.native.png",
+              "bytes": 233175,
+              "sha256": "1a36b943671ee57979c778232ed605464002488a5621d9ce0f68996814e4390b"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/020-程序被替换修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "f9e5d604660ed278d5bf3ddae2f8be3a98a9d3f28395dcb1fc25bfa5ff15e805"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/021-第-3-次启动结束画面.png",
+              "bytes": 231989,
+              "sha256": "69ed5acc6370215bc0bf753b8c6f5fff3fcc5801a5495e5cf2f7ffed24ffc83f"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 21900,
+              "sha256": "7d263f66c128c1693ef7b4e2fdeaf8c1ff69f70b4594ebe9de24ec737386e826"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/023-Claude程序故障最终原始状态.json",
+              "bytes": 22493,
+              "sha256": "4d61dc913892fe80fc9f20b025fcb74131f16b7c7c4eacdda4955c26a0ee24d8"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/024-第-4-次启动结束画面.png",
+              "bytes": 155038,
+              "sha256": "2c8cc436a422b5294f514d8a12da9c55cb1e193d9c5d5022e73c5f4495c8e4be"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/playwright-results.json",
+        "bytes": 97345,
+        "sha256": "37a55e917af94287a0df9675b593c4115b3b10a8ecece1d85818210d3f5503ce"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/build-manifest.json",
+        "bytes": 101834,
+        "sha256": "e73e70518080e9973db45577991a9dcad2f23adddc45418d1bdba78cfb7a49d2"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "730a2003bb15f0ecf04e750f650b36554b580d942f6da63b0af91a4816628da2"
+      }
+    },
+    {
+      "name": "package-1",
+      "stats": {
+        "startTime": "2026-10-06T18:20:40.605Z",
+        "duration": 61695.219000000005,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude验证Claude程序丢失后只执行新消息",
+          "status": "passed",
+          "fault": "程序丢失",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/manifest.json",
+            "bytes": 21295,
+            "sha256": "568b9ac7a98e8ba7594b5942f191b3ab1176213cfe70a5c472db2b98c3110fbd"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "ENOENT: no such file or directory, lstat '/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-awJXtk/owned-Claude-program/claude'",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7480,
+              "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/023-Claude程序故障最终原始状态.json",
+              "bytes": 22708,
+              "sha256": "357fa769ef7e7bcb8e7766bbba88e2e431f96bfaaed8217eaa89706f9688b3d4"
+            }
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/001-第-1-次启动结束画面.png",
+              "bytes": 104723,
+              "sha256": "29af51304c6a4b0022267b0eb00cd1f789db3fba0efc943f1b334f35c96196fa"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/003-Claude故障仅使用本场程序副本.json",
+              "bytes": 405,
+              "sha256": "b78caebfc0e49ef93ce6cd9fcb4e4fa8a0a5ab8dc223a270190cc98520f43735"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/004-Claude程序核对只证明程序状态.png",
+              "bytes": 198135,
+              "sha256": "477b1f8d7c19b9795b9dc5fd8027b9ece216d2debe8d76b72a4815c2691896bf"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/005-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/006-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5786,
+              "sha256": "9d732d41770e69569c52e2d0bc138440c35d2b155f6a3d1aa0183e722799b36d"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/007-程序丢失时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 144365,
+              "sha256": "9bc643b58d375939c5c22a06aba521edadd9fa31649bee06e04e775c4f8cadd6"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/008-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "9813b13df8f14b53f862acaac1fe74e5755aaff099610f627f9e9172d7c1b4c0"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/009-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 4996,
+              "sha256": "dadf8bbea0ad1e7018d3ca49577a3d04e8164b362464f2ab733ebf0cb555b307"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/010-程序丢失的Claude原设置测试失败.native.png",
+              "bytes": 177349,
+              "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/011-程序丢失的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7480,
+              "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/013-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 8075,
+              "sha256": "36f910673773991f70568543fb5601a4737267ad32595fc1777d6d2cc0031a14"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/014-程序丢失修复后Claude程序重新核对.native.png",
+              "bytes": 153139,
+              "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/015-程序丢失修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "d74c8f34c42bf2fad586dc1216233d8002c6800b5d79e78a0b3fcc1cf181b6be"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/016-第-2-次启动结束画面.png",
+              "bytes": 153139,
+              "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/017-Claude故障修复首次重启零调用.json",
+              "bytes": 7480,
+              "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/018-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 22278,
+              "sha256": "f71654f6ee06125cf3d51480ccfb16d62a1521a522a97ee166b78896a938606c"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序丢失修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/019-程序丢失修复后新Claude消息独立完成.native.png",
+              "bytes": 229764,
+              "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+            },
+            {
+              "kind": "data",
+              "label": "程序丢失修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/020-程序丢失修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "6e914cab91fef3046a5b623db19f8aec8cd7879b65cccc740b25bca9e09ebbfb"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/021-第-3-次启动结束画面.png",
+              "bytes": 229764,
+              "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 22115,
+              "sha256": "123631f0a804d40e5317940dc006f049c230048a6fc3752d38dd2e555328280b"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/023-Claude程序故障最终原始状态.json",
+              "bytes": 22708,
+              "sha256": "357fa769ef7e7bcb8e7766bbba88e2e431f96bfaaed8217eaa89706f9688b3d4"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/024-第-4-次启动结束画面.png",
+              "bytes": 153161,
+              "sha256": "fc7296de95e5b5f9bcf496c3b0b859398f9dbb7b901b8e9dcd614578bf277721"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude验证Claude程序被替换后只执行新消息",
+          "status": "passed",
+          "fault": "程序被替换",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/manifest.json",
+            "bytes": 21349,
+            "sha256": "c7f9d79ab367fa62d99d5cc01a57b21a8ab7bd7060a3ea7f849eeb2d65f9745a"
+          },
+          "proof": {
+            "gateStages": 2,
+            "failedProductRuns": 2,
+            "externalRequestsAfterExplicitNewMessage": 3,
+            "internalModelCalls": "unknown",
+            "restarts": 2,
+            "verificationError": "Claude程序已变化，请重新核对",
+            "zeroCallGateEvidence": {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+            },
+            "finalState": {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/023-Claude程序故障最终原始状态.json",
+              "bytes": 22463,
+              "sha256": "a381a47b9a0688f98aceceee1eb9fbcd4abaa41e285a1ef5b34e1615fdb728a7"
+            }
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/001-第-1-次启动结束画面.png",
+              "bytes": 104681,
+              "sha256": "82e9ef350119716ee81797a268e13f392ce7f997d55b118488e6ef6dbd82e23f"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障仅使用本场程序副本",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/003-Claude故障仅使用本场程序副本.json",
+              "bytes": 405,
+              "sha256": "2eb34c800da2df1e878582c877f65ac805ba3f3083e79c3092394d24f3fc89a7"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/004-Claude程序核对只证明程序状态.png",
+              "bytes": 198109,
+              "sha256": "550146808860bc7f3f3a3b6699dd9f5ada9f757e021bdad842da7f1e68f3788a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/005-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "data",
+              "label": "旧Claude验证不能绕过实际程序身份",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/006-旧Claude验证不能绕过实际程序身份.json",
+              "bytes": 5627,
+              "sha256": "d7969ed853446ad9fb5f5c84730e2c648be79f9cbca9a15117eb08cac04e7996"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换时旧Claude验证的新消息被阻止",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/007-程序被替换时旧Claude验证的新消息被阻止.native.png",
+              "bytes": 143937,
+              "sha256": "f9ed1fc7a38f78e98c32e926c211df47e19034ac9781cf150d37f4301a235b1c"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换时旧Claude验证的新消息被阻止 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/008-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+              "bytes": 1685,
+              "sha256": "08aeaa326c11b2e19b7e9844f29974cbe0af9b3efa7476ca3368f3393dfe3a2a"
+            },
+            {
+              "kind": "data",
+              "label": "原Claude程序测试失败撤销旧验证",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/009-原Claude程序测试失败撤销旧验证.json",
+              "bytes": 4719,
+              "sha256": "ef785d1c1583592662a0ae0239307d4fd059c65d874f51167e5a11c5d101f0e8"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换的Claude原设置测试失败",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/010-程序被替换的Claude原设置测试失败.native.png",
+              "bytes": 148709,
+              "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换的Claude原设置测试失败 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/011-程序被替换的Claude原设置测试失败.capture.json",
+              "bytes": 1685,
+              "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+            },
+            {
+              "kind": "data",
+              "label": "未验证Claude的新消息不调用API或原生会话",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/012-未验证Claude的新消息不调用API或原生会话.json",
+              "bytes": 7307,
+              "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+            },
+            {
+              "kind": "data",
+              "label": "Claude恢复原字节并明确重测不重放失败消息",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/013-Claude恢复原字节并明确重测不重放失败消息.json",
+              "bytes": 7902,
+              "sha256": "23182cd6eeb79d9099952ba425491e02d98c3185b0c712032437d3b293004ed6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后Claude程序重新核对",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/014-程序被替换修复后Claude程序重新核对.native.png",
+              "bytes": 153800,
+              "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后Claude程序重新核对 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/015-程序被替换修复后Claude程序重新核对.capture.json",
+              "bytes": 1685,
+              "sha256": "45a1f4b701a48026e60b49e39b88da6b9e8cbfedd9748e50e9a91079b07f2d6a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/016-第-2-次启动结束画面.png",
+              "bytes": 153800,
+              "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障修复首次重启零调用",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/017-Claude故障修复首次重启零调用.json",
+              "bytes": 7307,
+              "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+            },
+            {
+              "kind": "data",
+              "label": "Claude修复后只有明确新消息完成三个阶段",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/018-Claude修复后只有明确新消息完成三个阶段.json",
+              "bytes": 22033,
+              "sha256": "5857ddd4cf710af2c07ac46602a5f4507c76338653e055b64e7eeae15f5a8e80"
+            },
+            {
+              "kind": "screenshot",
+              "label": "程序被替换修复后新Claude消息独立完成",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/019-程序被替换修复后新Claude消息独立完成.native.png",
+              "bytes": 229039,
+              "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+            },
+            {
+              "kind": "data",
+              "label": "程序被替换修复后新Claude消息独立完成 · 原生截取元数据",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/020-程序被替换修复后新Claude消息独立完成.capture.json",
+              "bytes": 1685,
+              "sha256": "be086d96bb492901e41a2c940657ba0105c88cab2d87cf7ccc563a56fe00c5fd"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/021-第-3-次启动结束画面.png",
+              "bytes": 229039,
+              "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+            },
+            {
+              "kind": "data",
+              "label": "Claude故障恢复第二次重启保持旧失败与新回复",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+              "bytes": 21870,
+              "sha256": "2fdb1cd756be276f40f82b3945c719b63f7849680cfb49923b25b666d1c0d984"
+            },
+            {
+              "kind": "data",
+              "label": "Claude程序故障最终原始状态",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/023-Claude程序故障最终原始状态.json",
+              "bytes": 22463,
+              "sha256": "a381a47b9a0688f98aceceee1eb9fbcd4abaa41e285a1ef5b34e1615fdb728a7"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/024-第-4-次启动结束画面.png",
+              "bytes": 153249,
+              "sha256": "295d73c42c5b08c2f2699bf6eb8506e88125d0665783e3c01c743be83c25f5ba"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/playwright-results.json",
+        "bytes": 97428,
+        "sha256": "cfcc581581f1528dd6c69c45dbdfdd10e7abf938216fa0b917ae7b5916f85427"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/build-manifest.json",
+        "bytes": 101834,
+        "sha256": "9041fb6402ec09d55610176e0077630c06037067b3938a776481fc86e7319fcf"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "40363fae2b64d9d203a18611a1761a6daad65a773727c9b40de9d9f919ab0dfc"
+      }
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "fault": "程序丢失",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-source-1-20261007.png",
+        "bytes": 176606,
+        "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-source-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "程序丢失的Claude原设置测试失败",
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/010-程序丢失的Claude原设置测试失败.native.png",
+        "bytes": 176606,
+        "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "程序丢失的Claude原设置测试失败 · 原生截取元数据",
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/011-程序丢失的Claude原设置测试失败.capture.json",
+        "bytes": 1685,
+        "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+      },
+      "developerVisualReview": "inspected original full image, no pixel edits",
+      "humanReview": "pending"
+    },
+    {
+      "batch": "source-1",
+      "fault": "程序被替换",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-source-1-20261007.png",
+        "bytes": 148371,
+        "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-source-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "程序被替换的Claude原设置测试失败",
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/010-程序被替换的Claude原设置测试失败.native.png",
+        "bytes": 148371,
+        "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "程序被替换的Claude原设置测试失败 · 原生截取元数据",
+        "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/011-程序被替换的Claude原设置测试失败.capture.json",
+        "bytes": 1685,
+        "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+      },
+      "developerVisualReview": "inspected original full image, no pixel edits",
+      "humanReview": "pending"
+    },
+    {
+      "batch": "package-1",
+      "fault": "程序丢失",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-package-1-20261007.png",
+        "bytes": 177349,
+        "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-package-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "程序丢失的Claude原设置测试失败",
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/010-程序丢失的Claude原设置测试失败.native.png",
+        "bytes": 177349,
+        "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "程序丢失的Claude原设置测试失败 · 原生截取元数据",
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/011-程序丢失的Claude原设置测试失败.capture.json",
+        "bytes": 1685,
+        "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+      },
+      "developerVisualReview": "inspected original full image, no pixel edits",
+      "humanReview": "pending"
+    },
+    {
+      "batch": "package-1",
+      "fault": "程序被替换",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-package-1-20261007.png",
+        "bytes": 148709,
+        "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-package-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "程序被替换的Claude原设置测试失败",
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/010-程序被替换的Claude原设置测试失败.native.png",
+        "bytes": 148709,
+        "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "程序被替换的Claude原设置测试失败 · 原生截取元数据",
+        "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/011-程序被替换的Claude原设置测试失败.capture.json",
+        "bytes": 1685,
+        "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+      },
+      "developerVisualReview": "inspected original full image, no pixel edits",
+      "humanReview": "pending"
+    }
+  ],
+  "productionFilesUnchanged": 583,
+  "packageFilesUnchanged": 3405,
+  "personalProgramAfter": {
+    "path": ".local/runtime-probes/claude-2.1.214/claude",
+    "sha256": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+    "bytes": 247091504
+  },
+  "firstFailureTestChange": [
+    "tests/e2e/steps/claude-connection-fault.steps.ts"
+  ],
+  "limitations": [
+    "No personal program, login or provider connection was mutated; faults only affect owned program copies.",
+    "Failed runtime preparation has no backend metadata; product attempt counters may increment before an actual request, so zero-call proof uses profileModelCalls, budget ledger and session records plus the pre-engine program guard.",
+    "External request count is distinct from unknown CLI internal model calls.",
+    "Two controlled Desktop restarts do not prove native unsaved-close, OS shutdown or power loss.",
+    "Version incompatibility, authentication/credential failure, other providers and generic ACP capabilities remain separate pending LA-12 cases.",
+    "Complete LR0-LR6 and human effect review remain pending."
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/001-Claude故障仅使用本场程序副本.json",
+      "bytes": 413,
+      "sha256": "63d2cf179d2072c42f2af498921871ea70a7159e19f8eee14bcc6e22fbd68363"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/002-Claude程序核对只证明程序状态.png",
+      "bytes": 198214,
+      "sha256": "f18fd526e3194b88b2cba7b26411b9eaff314cef34f6feb9d8397ab21d5ebc00"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/003-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/004-Claude程序故障最终原始状态.json",
+      "bytes": 4840,
+      "sha256": "06c215c0bf375ee8ad9f41889c83fe017d8067802f20a0db524fd367b0c76110"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/005-第-1-次启动结束画面.png",
+      "bytes": 142931,
+      "sha256": "910afa06b935085a16169711d02efa265e6979aca968ff328b7dcc2f09c83b87"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-DBKzMs/manifest.json",
+      "bytes": 5236,
+      "sha256": "91913076bde448e576584d00a63adf781c443c09f100fabff5c9a9f79cf24783"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/001-Claude故障仅使用本场程序副本.json",
+      "bytes": 413,
+      "sha256": "9c0695668f05cb3e833a1b535d744fc46509237fd39c2c3ad487ece48b5d5f05"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/002-Claude程序核对只证明程序状态.png",
+      "bytes": 197837,
+      "sha256": "9931e250f3046965a35818dfeb93e86eb38e378b665940eef5341d8edfa79e2d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/003-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/004-Claude程序故障最终原始状态.json",
+      "bytes": 5039,
+      "sha256": "e8276daf2c7d0ee3a3065dbeb294bb35f340a8c99c9fa04c113546e413a8a24b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/005-第-1-次启动结束画面.png",
+      "bytes": 143373,
+      "sha256": "d4b8c5739bd1a3a99970bbebe8b865314386a2fb729044333f5114da53ddec5e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-vYBR0L/manifest.json",
+      "bytes": 5231,
+      "sha256": "24ee54511b774bdd8d624be8811d089e985b57759c5ae2685ffff85b37cd0a69"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/playwright-results.json",
+      "bytes": 427487,
+      "sha256": "65626a3a762d3ba7376f966aa3d67e0271e36cb5955c134d1476dce0b056be46"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/build-manifest.json",
+      "bytes": 101834,
+      "sha256": "f5d7f7d07c857e606ece01a5d8fed1848762d74b399d38cc129af7c503b3dc4d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "506a8d577c2c52977b318ac366d3ca1fe2884e0d3432547b7781c102aa8dd3cd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/index.html",
+      "bytes": 52201,
+      "sha256": "de15f0fd8ff58a988dbbc9c1decddcc5bfe24aee00abf0a0ac0dedda72697fef"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/checks.json",
+      "bytes": 38079,
+      "sha256": "5a3a006c87dcf3d3268eb61872de80618f8278223bb9c8823f9dd5a7484ef9a9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/manifest.json",
+      "bytes": 1242,
+      "sha256": "c8f465d732576498de94d09225a8b6f5c97fb1240f484d79327801fad4608a6f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0008-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0002-f18fd526e3194b88.png",
+      "bytes": 198214,
+      "sha256": "f18fd526e3194b88b2cba7b26411b9eaff314cef34f6feb9d8397ab21d5ebc00"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0009-e8276daf2c7d0ee3.json",
+      "bytes": 5039,
+      "sha256": "e8276daf2c7d0ee3a3065dbeb294bb35f340a8c99c9fa04c113546e413a8a24b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0006-9c0695668f05cb3e.json",
+      "bytes": 413,
+      "sha256": "9c0695668f05cb3e833a1b535d744fc46509237fd39c2c3ad487ece48b5d5f05"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0007-9931e250f3046965.png",
+      "bytes": 197837,
+      "sha256": "9931e250f3046965a35818dfeb93e86eb38e378b665940eef5341d8edfa79e2d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0003-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0004-06c215c0bf375ee8.json",
+      "bytes": 4840,
+      "sha256": "06c215c0bf375ee8ad9f41889c83fe017d8067802f20a0db524fd367b0c76110"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0001-63d2cf179d2072c4.json",
+      "bytes": 413,
+      "sha256": "63d2cf179d2072c42f2af498921871ea70a7159e19f8eee14bcc6e22fbd68363"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0005-910afa06b935085a.png",
+      "bytes": 142931,
+      "sha256": "910afa06b935085a16169711d02efa265e6979aca968ff328b7dcc2f09c83b87"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1-report/resources/0010-d4b8c5739bd1a3a9.png",
+      "bytes": 143373,
+      "sha256": "d4b8c5739bd1a3a99970bbebe8b865314386a2fb729044333f5114da53ddec5e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-1.log",
+      "bytes": 15189,
+      "sha256": "273350f8fe6d232296f37732c47352b4396dd006e2043ad29aef703117b491d6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/001-Claude故障仅使用本场程序副本.json",
+      "bytes": 413,
+      "sha256": "d8f564b6a2a18d71b8ef9d75e996b20d851ffdb3fb5ed0a6c5f6e06c69cf0865"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/002-Claude程序核对只证明程序状态.png",
+      "bytes": 199047,
+      "sha256": "a1acbdac51fc33ea494ad45d415f82dec9d93d8b2aa78bf59a3d36707a0d6b48"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/003-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/004-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5701,
+      "sha256": "85ae4ff037fdb511a0c89985467ec10f2e2adefb1342a1a0dc8e3378347d2532"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/005-程序被替换时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 142757,
+      "sha256": "2f49224546780a93a0631f47015701ef41e8c150b326a8a3db6c9282f7a64bbd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/006-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "2583f2d30bfe99fed5e35f902752f6fb76d809ea6abc06cb770273b4e9658bdb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/007-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 4755,
+      "sha256": "15622458a713a2830b0dbd941791a8e69ac4ff4fee1e7cc9ba85a79389928630"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/008-程序被替换的Claude原设置测试失败.native.png",
+      "bytes": 145233,
+      "sha256": "62d89ee63ec0b69db371592bbcd9215d365a8804e37c14496e7f7368db439bec"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/009-程序被替换的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "67654d753c856f27266a95acee654bed5fe839a96743ea014086ec5ed4a28eb3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/010-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7307,
+      "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/011-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 7938,
+      "sha256": "7c3ac377f3d71850eee09209c523aa75bf7424ef41b079a35f02024609b0f3da"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/012-程序被替换修复后Claude程序重新核对.native.png",
+      "bytes": 150597,
+      "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/013-程序被替换修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "cb10ccb1f44cdc973c5bf59749bcae85bf15b6de05e23f0b3a9c748cdb94600d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/014-第-1-次启动结束画面.png",
+      "bytes": 150597,
+      "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/015-Claude故障修复首次重启零调用.json",
+      "bytes": 7307,
+      "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/016-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 21805,
+      "sha256": "997dc701edc671ab53c39f1d4895bc51a7128ddc86f18ba33443bd780091f737"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/017-程序被替换修复后新Claude消息独立完成.native.png",
+      "bytes": 212117,
+      "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/018-程序被替换修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "788faceadbbb1396f9e627031acd8c78061930d72a51a02b16caa061a0f4b659"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/019-第-2-次启动结束画面.png",
+      "bytes": 212117,
+      "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/020-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 21728,
+      "sha256": "15039262fef2624d024dd22fcb2167bd4db332fc2366a3b13c746d7db977f0da"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/021-Claude程序故障最终原始状态.json",
+      "bytes": 22357,
+      "sha256": "5826c520912556187109b47545c357289e74d2a691034cacd2c66c136ce88fb4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/022-第-3-次启动结束画面.png",
+      "bytes": 152830,
+      "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-745a22d39f3a9f6157f8-retry0-repeat0-W0qNOy/manifest.json",
+      "bytes": 20293,
+      "sha256": "4b32747fac152f98846c3543e887744cefb2d9f9360c6cea5e0f812767148cc1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/001-Claude故障仅使用本场程序副本.json",
+      "bytes": 413,
+      "sha256": "d5ef6a14021c16d0c0226acff0554254cd1a30de731e5f6265002728d4780df3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/002-Claude程序核对只证明程序状态.png",
+      "bytes": 197979,
+      "sha256": "e602fb3f7da02f55a5e45115c881e327532b662e68acf1883966015864d1f463"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/003-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/004-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5886,
+      "sha256": "6f84c176c398ecb09101fbd6dadeb889830d67ad9ff577bf796a6beb94e01172"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/005-程序丢失时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 143191,
+      "sha256": "ffdd7c1a8e025576131137624f76ac26646f2cd2ac9f02094aff9ffd44eb99eb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/006-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "f1f8914209d23c104dc8cb7c48a24801023f4277d3885c21672cf26a4d7b96e3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/007-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 5071,
+      "sha256": "efcaa27ab84e80e82660bdeac45a2ff228a973e93db988cf1a15e4efea8bccf7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/008-程序丢失的Claude原设置测试失败.native.png",
+      "bytes": 178259,
+      "sha256": "1eaaddee8f8c3e88042765cdeccda819cc49ac2ef612e5c25136a37cb37f35ee"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/009-程序丢失的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "eefeab0174cc5538d4fd7e9c23979ff34f6bee20e81eb4d5d17b9859856d6e24"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/010-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7506,
+      "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/011-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 8137,
+      "sha256": "c88b2834f19119a71e46a7dc7e530feaca88679087e12ba5f5fa4432c68e39d8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/012-程序丢失修复后Claude程序重新核对.native.png",
+      "bytes": 151296,
+      "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/013-程序丢失修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "edf514dee7c7d82dc2c1385277f05638c415bf3a6000265615b78e3c171e4277"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/014-第-1-次启动结束画面.png",
+      "bytes": 151296,
+      "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/015-Claude故障修复首次重启零调用.json",
+      "bytes": 7506,
+      "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/016-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 22004,
+      "sha256": "3c53ec1ccdb6b5337cbce58fdc93d9526fac5449b4eeace829f05a32e735e4ee"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/017-程序丢失修复后新Claude消息独立完成.native.png",
+      "bytes": 212572,
+      "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/018-程序丢失修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "651d68393858d5f45ebb9c4bec9d746975245770f2afef49032fa0a650e00e8f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/019-第-2-次启动结束画面.png",
+      "bytes": 212572,
+      "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/020-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 21927,
+      "sha256": "5e76fa31896904c5c0a515f6ef90a9c20ab6356ac0943a6cdde97607ca1e6976"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/021-Claude程序故障最终原始状态.json",
+      "bytes": 22556,
+      "sha256": "8a610a420270bcbc957cce9ed134b67c5668ab5fa17a1b494ef1ebfa548ebac9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/022-第-3-次启动结束画面.png",
+      "bytes": 152830,
+      "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/scenarios/76620a6b86e22810b964-a98e655b4c4b424a3ff4-retry0-repeat0-GVRcft/manifest.json",
+      "bytes": 20240,
+      "sha256": "5f19cc91a8b15981e34c9b43792c4c511b9454b60c257de61884ad0f4edcd934"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/playwright-results.json",
+      "bytes": 91928,
+      "sha256": "b12afa4dcca9fea94d7dcf9d3bfa989434587fdb51a460b237927551212317d6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/build-manifest.json",
+      "bytes": 101834,
+      "sha256": "3d7185ba01af48f9b802fbfba0a2b445b27d0e2fb30b5e30d972881668958735"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "1e11dffdaa7376740a7c37597ad81fbb1445a00b82ebd7a2770c1f952f412ca4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/index.html",
+      "bytes": 282104,
+      "sha256": "21c5d7054ec4567dbfdd528c61d0dc945b28e6ecb3e422c0a5769fc06bacd88c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/checks.json",
+      "bytes": 274238,
+      "sha256": "1a215213c94f7bc553ee05ff0869a6acb1118b6e28549800c354ade14e22af5b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/manifest.json",
+      "bytes": 1242,
+      "sha256": "bcadf8914d0dda506c7b69d8aa6e3f8a99f93ee93c6969aca2e06f8b8fd40c86"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0030-1eaaddee8f8c3e88.png",
+      "bytes": 178259,
+      "sha256": "1eaaddee8f8c3e88042765cdeccda819cc49ac2ef612e5c25136a37cb37f35ee"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0011-7c3ac377f3d71850.json",
+      "bytes": 7938,
+      "sha256": "7c3ac377f3d71850eee09209c523aa75bf7424ef41b079a35f02024609b0f3da"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0002-a1acbdac51fc33ea.png",
+      "bytes": 199047,
+      "sha256": "a1acbdac51fc33ea494ad45d415f82dec9d93d8b2aa78bf59a3d36707a0d6b48"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0037-12a20711be77db86.json",
+      "bytes": 7506,
+      "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0015-a0d184eba44f0415.json",
+      "bytes": 7307,
+      "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0008-62d89ee63ec0b69d.png",
+      "bytes": 145233,
+      "sha256": "62d89ee63ec0b69db371592bbcd9215d365a8804e37c14496e7f7368db439bec"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0020-15039262fef2624d.json",
+      "bytes": 21728,
+      "sha256": "15039262fef2624d024dd22fcb2167bd4db332fc2366a3b13c746d7db977f0da"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0014-1a5b1a950d1b8bff.png",
+      "bytes": 150597,
+      "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0033-c88b2834f19119a7.json",
+      "bytes": 8137,
+      "sha256": "c88b2834f19119a71e46a7dc7e530feaca88679087e12ba5f5fa4432c68e39d8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0003-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0007-15622458a713a283.json",
+      "bytes": 4755,
+      "sha256": "15622458a713a2830b0dbd941791a8e69ac4ff4fee1e7cc9ba85a79389928630"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0021-5826c52091255618.json",
+      "bytes": 22357,
+      "sha256": "5826c520912556187109b47545c357289e74d2a691034cacd2c66c136ce88fb4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0031-eefeab0174cc5538.download",
+      "bytes": 1685,
+      "sha256": "eefeab0174cc5538d4fd7e9c23979ff34f6bee20e81eb4d5d17b9859856d6e24"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0036-9bd0d25abc8ed538.png",
+      "bytes": 151296,
+      "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0009-67654d753c856f27.download",
+      "bytes": 1685,
+      "sha256": "67654d753c856f27266a95acee654bed5fe839a96743ea014086ec5ed4a28eb3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0043-8a610a420270bcbc.json",
+      "bytes": 22556,
+      "sha256": "8a610a420270bcbc957cce9ed134b67c5668ab5fa17a1b494ef1ebfa548ebac9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0044-e277a2ccbab041ec.png",
+      "bytes": 152830,
+      "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0016-997dc701edc671ab.json",
+      "bytes": 21805,
+      "sha256": "997dc701edc671ab53c39f1d4895bc51a7128ddc86f18ba33443bd780091f737"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0027-ffdd7c1a8e025576.png",
+      "bytes": 143191,
+      "sha256": "ffdd7c1a8e025576131137624f76ac26646f2cd2ac9f02094aff9ffd44eb99eb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0040-651d68393858d5f4.download",
+      "bytes": 1685,
+      "sha256": "651d68393858d5f45ebb9c4bec9d746975245770f2afef49032fa0a650e00e8f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0001-d8f564b6a2a18d71.json",
+      "bytes": 413,
+      "sha256": "d8f564b6a2a18d71b8ef9d75e996b20d851ffdb3fb5ed0a6c5f6e06c69cf0865"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0025-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0017-ef753ba6d13a0d3a.png",
+      "bytes": 212117,
+      "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0039-c8f24793c8a05e25.png",
+      "bytes": 212572,
+      "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0023-d5ef6a14021c16d0.json",
+      "bytes": 413,
+      "sha256": "d5ef6a14021c16d0c0226acff0554254cd1a30de731e5f6265002728d4780df3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0038-3c53ec1ccdb6b533.json",
+      "bytes": 22004,
+      "sha256": "3c53ec1ccdb6b5337cbce58fdc93d9526fac5449b4eeace829f05a32e735e4ee"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0024-e602fb3f7da02f55.png",
+      "bytes": 197979,
+      "sha256": "e602fb3f7da02f55a5e45115c881e327532b662e68acf1883966015864d1f463"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0018-788faceadbbb1396.download",
+      "bytes": 1685,
+      "sha256": "788faceadbbb1396f9e627031acd8c78061930d72a51a02b16caa061a0f4b659"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0012-1a5b1a950d1b8bff.png",
+      "bytes": 150597,
+      "sha256": "1a5b1a950d1b8bff02750eb776aa6ff50ee36cf3c2b0456dd699a4cfa55feaad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0042-5e76fa31896904c5.json",
+      "bytes": 21927,
+      "sha256": "5e76fa31896904c5c0a515f6ef90a9c20ab6356ac0943a6cdde97607ca1e6976"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0028-f1f8914209d23c10.download",
+      "bytes": 1685,
+      "sha256": "f1f8914209d23c104dc8cb7c48a24801023f4277d3885c21672cf26a4d7b96e3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0004-85ae4ff037fdb511.json",
+      "bytes": 5701,
+      "sha256": "85ae4ff037fdb511a0c89985467ec10f2e2adefb1342a1a0dc8e3378347d2532"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0019-ef753ba6d13a0d3a.png",
+      "bytes": 212117,
+      "sha256": "ef753ba6d13a0d3a1c0f510cd94b610306486545deb0fdb01f16d5f5e66462d2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0032-12a20711be77db86.json",
+      "bytes": 7506,
+      "sha256": "12a20711be77db862999d2a9769662295c62e9f30772be8a7eb16c037894ce35"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0013-cb10ccb1f44cdc97.download",
+      "bytes": 1685,
+      "sha256": "cb10ccb1f44cdc973c5bf59749bcae85bf15b6de05e23f0b3a9c748cdb94600d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0005-2f49224546780a93.png",
+      "bytes": 142757,
+      "sha256": "2f49224546780a93a0631f47015701ef41e8c150b326a8a3db6c9282f7a64bbd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0035-edf514dee7c7d82d.download",
+      "bytes": 1685,
+      "sha256": "edf514dee7c7d82dc2c1385277f05638c415bf3a6000265615b78e3c171e4277"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0010-a0d184eba44f0415.json",
+      "bytes": 7307,
+      "sha256": "a0d184eba44f0415f12ec6bf2be3e1de9e6190f09055e64bbdaf4ae44d066fc6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0041-c8f24793c8a05e25.png",
+      "bytes": 212572,
+      "sha256": "c8f24793c8a05e254e9b5e4a06d4c6e524489ff2cdd9854c152ed012df138d98"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0029-efcaa27ab84e80e8.json",
+      "bytes": 5071,
+      "sha256": "efcaa27ab84e80e82660bdeac45a2ff228a973e93db988cf1a15e4efea8bccf7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0034-9bd0d25abc8ed538.png",
+      "bytes": 151296,
+      "sha256": "9bd0d25abc8ed538e6e42bbb9146f97b70131c4992b2e052d5847327a180a510"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0006-2583f2d30bfe99fe.download",
+      "bytes": 1685,
+      "sha256": "2583f2d30bfe99fed5e35f902752f6fb76d809ea6abc06cb770273b4e9658bdb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0022-e277a2ccbab041ec.png",
+      "bytes": 152830,
+      "sha256": "e277a2ccbab041ecf2f05510353bb82822b0bd734f78e8abc5aaaa90cf15d376"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2-report/resources/0026-6f84c176c398ecb0.json",
+      "bytes": 5886,
+      "sha256": "6f84c176c398ecb09101fbd6dadeb889830d67ad9ff577bf796a6beb94e01172"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/offline-2.log",
+      "bytes": 685,
+      "sha256": "92ad19bf3bbe91ca8e0d776f3a3a0673dc4d0b42fccddc58b7a2ba825778a740"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/001-第-1-次启动结束画面.png",
+      "bytes": 104687,
+      "sha256": "10fc4fb6cdee35364a7a0984ba7af0afe9eb3e4f081b1a1d69858b516fb2bed9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/003-Claude故障仅使用本场程序副本.json",
+      "bytes": 405,
+      "sha256": "daf5d9f9a265ffafe3b25ae4081df80cc13db834836bec4c4d8aa74ee9ec97ff"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/004-Claude程序核对只证明程序状态.png",
+      "bytes": 198119,
+      "sha256": "7ba80a680cce5c15d251fd1dd6518a048f87bfdb00e92bc93f9dd54f9bdf81ad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/005-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/006-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5786,
+      "sha256": "06bfd223c5954fcdace64dec59631a01f50c08c429c496178bc511c53a24dd8a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/007-程序丢失时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 144538,
+      "sha256": "ced5e072cee13096120797689a0d05b62c795cd3640274af99b61d8fd8907ef7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/008-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "cb71392bb7001a85839280f24b1cf5cff0b628bdf8a0dff047422525bcfa6cc0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/009-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 4996,
+      "sha256": "6de7d1afe945fab9a2d8d1801b78c7b5be53a8d4fc5ab0c68b957e8d861f7a40"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/010-程序丢失的Claude原设置测试失败.native.png",
+      "bytes": 176606,
+      "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/011-程序丢失的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/012-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7480,
+      "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/013-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 8075,
+      "sha256": "a20bc9f62b6340656d90e38e81049dff1426bfcac933a56c042a747eef3f9f61"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/014-程序丢失修复后Claude程序重新核对.native.png",
+      "bytes": 153540,
+      "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/015-程序丢失修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "e201c7b2958113e7c1e9ee29c13bff5cb8d13fcbe49c53d7bbc033627ed7c128"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/016-第-2-次启动结束画面.png",
+      "bytes": 153540,
+      "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/017-Claude故障修复首次重启零调用.json",
+      "bytes": 7480,
+      "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/018-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 22245,
+      "sha256": "b5b4236dca2c5a965e516d2082c4d33c5845fdd5cf8c227698c0d2a766fd2174"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/019-程序丢失修复后新Claude消息独立完成.native.png",
+      "bytes": 229394,
+      "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/020-程序丢失修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "d0c8464486bd14a0280ed17abd2bf3dc46dd25dcb7d2dcc22cd4b29d3fd01c16"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/021-第-3-次启动结束画面.png",
+      "bytes": 229394,
+      "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 22082,
+      "sha256": "3d13a5dc9de12c2863742ecdd62087e36d12c3d81bffa8f9bb0d65db6e558b5d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/023-Claude程序故障最终原始状态.json",
+      "bytes": 22675,
+      "sha256": "aa3f490f2ccf9db12dd3c02c968170a1eddd28f56a1bd6840184e29c20446c6c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/024-第-4-次启动结束画面.png",
+      "bytes": 153370,
+      "sha256": "c9a10f0a2f491873c073a6d8ec9bd76ec9312232cbccc8869d61dfe3e77172dd"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-source-1-20261007.png",
+      "bytes": 176606,
+      "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-source-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-jb6Ywy/manifest.json",
+      "bytes": 21290,
+      "sha256": "dcc79ef187b297fde04ca707825ed6771f9dabfe6b70b948d98c8bff1a4eb1bd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/001-第-1-次启动结束画面.png",
+      "bytes": 104642,
+      "sha256": "ae030bd09cbfeb65504fec3dc4c54f0cd57bee440a3bc9b70339bd1ca18e0fe5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/003-Claude故障仅使用本场程序副本.json",
+      "bytes": 405,
+      "sha256": "bb6a8dacf4afe6f72f0555108b730161b9ef3398e5222fb0da9c7c3dce07851d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/004-Claude程序核对只证明程序状态.png",
+      "bytes": 197936,
+      "sha256": "52111a99c95388ee37c365a22d46a1d682c74d4b7b5cf3155e49cac8b3c50712"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/005-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/006-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5627,
+      "sha256": "ab9e447137639ce0cc344a325ea870abc3a9411971ec65c38375f6df54cac84c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/007-程序被替换时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 144084,
+      "sha256": "0f36c0f3c364bb33c90fe445b977d6633e7e63d3e1099425ad7ba9d6a87230e9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/008-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "90d903911a59da874cb02bf6f941960202d354ef937e205d54ef96cc555fdf86"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/009-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 4719,
+      "sha256": "33f57e4f432a97390d94333faf81d05a60a3db897d2ef67abc418a6dc0e37f94"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/010-程序被替换的Claude原设置测试失败.native.png",
+      "bytes": 148371,
+      "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/011-程序被替换的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/012-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7307,
+      "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/013-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 7902,
+      "sha256": "69604cc169715c79fe4a599450d24e820bd2ec2dda9d9ad2ee5aac99249338a1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/014-程序被替换修复后Claude程序重新核对.native.png",
+      "bytes": 153498,
+      "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/015-程序被替换修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "9c2b8f857dae3c18544a41e0ad4107594dce5e74080918bf215711ce025a05e3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/016-第-2-次启动结束画面.png",
+      "bytes": 153498,
+      "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/017-Claude故障修复首次重启零调用.json",
+      "bytes": 7307,
+      "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/018-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 22063,
+      "sha256": "f7c9886f35aa575d26280eeccc525d2f8147c4f3b1eb7d10bf2a06dfb5f570d1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/019-程序被替换修复后新Claude消息独立完成.native.png",
+      "bytes": 233175,
+      "sha256": "1a36b943671ee57979c778232ed605464002488a5621d9ce0f68996814e4390b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/020-程序被替换修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "f9e5d604660ed278d5bf3ddae2f8be3a98a9d3f28395dcb1fc25bfa5ff15e805"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/021-第-3-次启动结束画面.png",
+      "bytes": 231989,
+      "sha256": "69ed5acc6370215bc0bf753b8c6f5fff3fcc5801a5495e5cf2f7ffed24ffc83f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 21900,
+      "sha256": "7d263f66c128c1693ef7b4e2fdeaf8c1ff69f70b4594ebe9de24ec737386e826"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/023-Claude程序故障最终原始状态.json",
+      "bytes": 22493,
+      "sha256": "4d61dc913892fe80fc9f20b025fcb74131f16b7c7c4eacdda4955c26a0ee24d8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/024-第-4-次启动结束画面.png",
+      "bytes": 155038,
+      "sha256": "2c8cc436a422b5294f514d8a12da9c55cb1e193d9c5d5022e73c5f4495c8e4be"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-source-1-20261007.png",
+      "bytes": 148371,
+      "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-source-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-2oUB41/manifest.json",
+      "bytes": 21344,
+      "sha256": "da63999b8c71a5dfa188bff9d284339d7cda70f838636c8b09c8773b9fe0a76d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/playwright-results.json",
+      "bytes": 97345,
+      "sha256": "37a55e917af94287a0df9675b593c4115b3b10a8ecece1d85818210d3f5503ce"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/build-manifest.json",
+      "bytes": 101834,
+      "sha256": "e73e70518080e9973db45577991a9dcad2f23adddc45418d1bdba78cfb7a49d2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "730a2003bb15f0ecf04e750f650b36554b580d942f6da63b0af91a4816628da2"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/index.html",
+      "bytes": 285306,
+      "sha256": "9fc728fa4690dfa1ab49c0903d9c75419ef6843522c00c015d8ca328a969c1e7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/checks.json",
+      "bytes": 278333,
+      "sha256": "daddc8ad3ebbcd9e352f768ee0fee54d25e9b2f79c1eccd9ce1c89c5bb7802db"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/manifest.json",
+      "bytes": 1264,
+      "sha256": "99f454f0d679afcaa2db5511dc15a32bbf5afa5398039c3323586f6d46b35003"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0007-ced5e072cee13096.png",
+      "bytes": 144538,
+      "sha256": "ced5e072cee13096120797689a0d05b62c795cd3640274af99b61d8fd8907ef7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0024-c9a10f0a2f491873.png",
+      "bytes": 153370,
+      "sha256": "c9a10f0a2f491873c073a6d8ec9bd76ec9312232cbccc8869d61dfe3e77172dd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0035-38ee2fa52da753c0.download",
+      "bytes": 1685,
+      "sha256": "38ee2fa52da753c0523cee7d7fc870a8540f6ee8703d934ad3b16ff10ef6f428"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0032-90d903911a59da87.download",
+      "bytes": 1685,
+      "sha256": "90d903911a59da874cb02bf6f941960202d354ef937e205d54ef96cc555fdf86"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0018-b5b4236dca2c5a96.json",
+      "bytes": 22245,
+      "sha256": "b5b4236dca2c5a965e516d2082c4d33c5845fdd5cf8c227698c0d2a766fd2174"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0048-2c8cc436a422b529.png",
+      "bytes": 155038,
+      "sha256": "2c8cc436a422b5294f514d8a12da9c55cb1e193d9c5d5022e73c5f4495c8e4be"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0013-a20bc9f62b634065.json",
+      "bytes": 8075,
+      "sha256": "a20bc9f62b6340656d90e38e81049dff1426bfcac933a56c042a747eef3f9f61"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0015-e201c7b2958113e7.download",
+      "bytes": 1685,
+      "sha256": "e201c7b2958113e7c1e9ee29c13bff5cb8d13fcbe49c53d7bbc033627ed7c128"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0025-ae030bd09cbfeb65.png",
+      "bytes": 104642,
+      "sha256": "ae030bd09cbfeb65504fec3dc4c54f0cd57bee440a3bc9b70339bd1ca18e0fe5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0031-0f36c0f3c364bb33.png",
+      "bytes": 144084,
+      "sha256": "0f36c0f3c364bb33c90fe445b977d6633e7e63d3e1099425ad7ba9d6a87230e9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0038-c328a751ae192c96.png",
+      "bytes": 153498,
+      "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0046-7d263f66c128c169.json",
+      "bytes": 21900,
+      "sha256": "7d263f66c128c1693ef7b4e2fdeaf8c1ff69f70b4594ebe9de24ec737386e826"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0008-cb71392bb7001a85.download",
+      "bytes": 1685,
+      "sha256": "cb71392bb7001a85839280f24b1cf5cff0b628bdf8a0dff047422525bcfa6cc0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0012-81a4ffc95e695abd.json",
+      "bytes": 7480,
+      "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0028-52111a99c95388ee.png",
+      "bytes": 197936,
+      "sha256": "52111a99c95388ee37c365a22d46a1d682c74d4b7b5cf3155e49cac8b3c50712"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0001-10fc4fb6cdee3536.png",
+      "bytes": 104687,
+      "sha256": "10fc4fb6cdee35364a7a0984ba7af0afe9eb3e4f081b1a1d69858b516fb2bed9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0041-259be602ccf2af1b.json",
+      "bytes": 7307,
+      "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0043-1a36b943671ee579.png",
+      "bytes": 233175,
+      "sha256": "1a36b943671ee57979c778232ed605464002488a5621d9ce0f68996814e4390b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0039-9c2b8f857dae3c18.download",
+      "bytes": 1685,
+      "sha256": "9c2b8f857dae3c18544a41e0ad4107594dce5e74080918bf215711ce025a05e3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0004-7ba80a680cce5c15.png",
+      "bytes": 198119,
+      "sha256": "7ba80a680cce5c15d251fd1dd6518a048f87bfdb00e92bc93f9dd54f9bdf81ad"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0010-6eb548814ce7c717.png",
+      "bytes": 176606,
+      "sha256": "6eb548814ce7c717000114bad14d5b44d084c48e3e5fa77b93713dda552e70f0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0020-d0c8464486bd14a0.download",
+      "bytes": 1685,
+      "sha256": "d0c8464486bd14a0280ed17abd2bf3dc46dd25dcb7d2dcc22cd4b29d3fd01c16"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0027-bb6a8dacf4afe6f7.json",
+      "bytes": 405,
+      "sha256": "bb6a8dacf4afe6f72f0555108b730161b9ef3398e5222fb0da9c7c3dce07851d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0019-17194dc7ea4f6780.png",
+      "bytes": 229394,
+      "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0021-17194dc7ea4f6780.png",
+      "bytes": 229394,
+      "sha256": "17194dc7ea4f6780f67377378fd800c6f0db12c841255afeb4196ca09c83121c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0014-143761bf3500d073.png",
+      "bytes": 153540,
+      "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0005-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0040-c328a751ae192c96.png",
+      "bytes": 153498,
+      "sha256": "c328a751ae192c9606834385bd14fe75902ae81fe7b36f80f55fa2324a9617d3"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0034-2d93f3447334a809.png",
+      "bytes": 148371,
+      "sha256": "2d93f3447334a809a181e9b919fdb7066e24de6fa7a73d528f559a6c62e87404"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0042-f7c9886f35aa575d.json",
+      "bytes": 22063,
+      "sha256": "f7c9886f35aa575d26280eeccc525d2f8147c4f3b1eb7d10bf2a06dfb5f570d1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0022-3d13a5dc9de12c28.json",
+      "bytes": 22082,
+      "sha256": "3d13a5dc9de12c2863742ecdd62087e36d12c3d81bffa8f9bb0d65db6e558b5d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0033-33f57e4f432a9739.json",
+      "bytes": 4719,
+      "sha256": "33f57e4f432a97390d94333faf81d05a60a3db897d2ef67abc418a6dc0e37f94"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0045-69ed5acc6370215b.png",
+      "bytes": 231989,
+      "sha256": "69ed5acc6370215bc0bf753b8c6f5fff3fcc5801a5495e5cf2f7ffed24ffc83f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0047-4d61dc913892fe80.json",
+      "bytes": 22493,
+      "sha256": "4d61dc913892fe80fc9f20b025fcb74131f16b7c7c4eacdda4955c26a0ee24d8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0011-a11a1ea3ef9a2336.download",
+      "bytes": 1685,
+      "sha256": "a11a1ea3ef9a23361e5dc2b6ea684d2de5f291ee412295c4bb58f89f97b66a3f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0023-aa3f490f2ccf9db1.json",
+      "bytes": 22675,
+      "sha256": "aa3f490f2ccf9db12dd3c02c968170a1eddd28f56a1bd6840184e29c20446c6c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0037-69604cc169715c79.json",
+      "bytes": 7902,
+      "sha256": "69604cc169715c79fe4a599450d24e820bd2ec2dda9d9ad2ee5aac99249338a1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0003-daf5d9f9a265ffaf.json",
+      "bytes": 405,
+      "sha256": "daf5d9f9a265ffafe3b25ae4081df80cc13db834836bec4c4d8aa74ee9ec97ff"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0029-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0036-259be602ccf2af1b.json",
+      "bytes": 7307,
+      "sha256": "259be602ccf2af1b5e0e3c8c115ee9e6bdda836a5cd5c3c44c60046dfe00344d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0006-06bfd223c5954fcd.json",
+      "bytes": 5786,
+      "sha256": "06bfd223c5954fcdace64dec59631a01f50c08c429c496178bc511c53a24dd8a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0026-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0030-ab9e447137639ce0.json",
+      "bytes": 5627,
+      "sha256": "ab9e447137639ce0cc344a325ea870abc3a9411971ec65c38375f6df54cac84c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0016-143761bf3500d073.png",
+      "bytes": 153540,
+      "sha256": "143761bf3500d0732b994486b9db3622758b20e38c55ae2cb751139d3dd92f73"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0009-6de7d1afe945fab9.json",
+      "bytes": 4996,
+      "sha256": "6de7d1afe945fab9a2d8d1801b78c7b5be53a8d4fc5ab0c68b957e8d861f7a40"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0044-f9e5d604660ed278.download",
+      "bytes": 1685,
+      "sha256": "f9e5d604660ed278d5bf3ddae2f8be3a98a9d3f28395dcb1fc25bfa5ff15e805"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1-report/resources/0017-81a4ffc95e695abd.json",
+      "bytes": 7480,
+      "sha256": "81a4ffc95e695abd8a7be19a5337e57f576411cbfd7a581c74fdafd3e3e3713d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/source-1.log",
+      "bytes": 686,
+      "sha256": "91ad41dfb643a32657132c041dff7442e50a7f424db90d1ed050df6af9fff3c9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/001-第-1-次启动结束画面.png",
+      "bytes": 104723,
+      "sha256": "29af51304c6a4b0022267b0eb00cd1f789db3fba0efc943f1b334f35c96196fa"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/003-Claude故障仅使用本场程序副本.json",
+      "bytes": 405,
+      "sha256": "b78caebfc0e49ef93ce6cd9fcb4e4fa8a0a5ab8dc223a270190cc98520f43735"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/004-Claude程序核对只证明程序状态.png",
+      "bytes": 198135,
+      "sha256": "477b1f8d7c19b9795b9dc5fd8027b9ece216d2debe8d76b72a4815c2691896bf"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/005-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/006-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5786,
+      "sha256": "9d732d41770e69569c52e2d0bc138440c35d2b155f6a3d1aa0183e722799b36d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/007-程序丢失时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 144365,
+      "sha256": "9bc643b58d375939c5c22a06aba521edadd9fa31649bee06e04e775c4f8cadd6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/008-程序丢失时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "9813b13df8f14b53f862acaac1fe74e5755aaff099610f627f9e9172d7c1b4c0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/009-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 4996,
+      "sha256": "dadf8bbea0ad1e7018d3ca49577a3d04e8164b362464f2ab733ebf0cb555b307"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/010-程序丢失的Claude原设置测试失败.native.png",
+      "bytes": 177349,
+      "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/011-程序丢失的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/012-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7480,
+      "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/013-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 8075,
+      "sha256": "36f910673773991f70568543fb5601a4737267ad32595fc1777d6d2cc0031a14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/014-程序丢失修复后Claude程序重新核对.native.png",
+      "bytes": 153139,
+      "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/015-程序丢失修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "d74c8f34c42bf2fad586dc1216233d8002c6800b5d79e78a0b3fcc1cf181b6be"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/016-第-2-次启动结束画面.png",
+      "bytes": 153139,
+      "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/017-Claude故障修复首次重启零调用.json",
+      "bytes": 7480,
+      "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/018-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 22278,
+      "sha256": "f71654f6ee06125cf3d51480ccfb16d62a1521a522a97ee166b78896a938606c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/019-程序丢失修复后新Claude消息独立完成.native.png",
+      "bytes": 229764,
+      "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/020-程序丢失修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "6e914cab91fef3046a5b623db19f8aec8cd7879b65cccc740b25bca9e09ebbfb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/021-第-3-次启动结束画面.png",
+      "bytes": 229764,
+      "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 22115,
+      "sha256": "123631f0a804d40e5317940dc006f049c230048a6fc3752d38dd2e555328280b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/023-Claude程序故障最终原始状态.json",
+      "bytes": 22708,
+      "sha256": "357fa769ef7e7bcb8e7766bbba88e2e431f96bfaaed8217eaa89706f9688b3d4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/024-第-4-次启动结束画面.png",
+      "bytes": 153161,
+      "sha256": "fc7296de95e5b5f9bcf496c3b0b859398f9dbb7b901b8e9dcd614578bf277721"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-package-1-20261007.png",
+      "bytes": 177349,
+      "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-missing-package-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-12b2de34afab2f147189-retry0-repeat0-zbIBe0/manifest.json",
+      "bytes": 21295,
+      "sha256": "568b9ac7a98e8ba7594b5942f191b3ab1176213cfe70a5c472db2b98c3110fbd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/001-第-1-次启动结束画面.png",
+      "bytes": 104681,
+      "sha256": "82e9ef350119716ee81797a268e13f392ce7f997d55b118488e6ef6dbd82e23f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/003-Claude故障仅使用本场程序副本.json",
+      "bytes": 405,
+      "sha256": "2eb34c800da2df1e878582c877f65ac805ba3f3083e79c3092394d24f3fc89a7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/004-Claude程序核对只证明程序状态.png",
+      "bytes": 198109,
+      "sha256": "550146808860bc7f3f3a3b6699dd9f5ada9f757e021bdad842da7f1e68f3788a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/005-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/006-旧Claude验证不能绕过实际程序身份.json",
+      "bytes": 5627,
+      "sha256": "d7969ed853446ad9fb5f5c84730e2c648be79f9cbca9a15117eb08cac04e7996"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/007-程序被替换时旧Claude验证的新消息被阻止.native.png",
+      "bytes": 143937,
+      "sha256": "f9ed1fc7a38f78e98c32e926c211df47e19034ac9781cf150d37f4301a235b1c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/008-程序被替换时旧Claude验证的新消息被阻止.capture.json",
+      "bytes": 1685,
+      "sha256": "08aeaa326c11b2e19b7e9844f29974cbe0af9b3efa7476ca3368f3393dfe3a2a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/009-原Claude程序测试失败撤销旧验证.json",
+      "bytes": 4719,
+      "sha256": "ef785d1c1583592662a0ae0239307d4fd059c65d874f51167e5a11c5d101f0e8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/010-程序被替换的Claude原设置测试失败.native.png",
+      "bytes": 148709,
+      "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/011-程序被替换的Claude原设置测试失败.capture.json",
+      "bytes": 1685,
+      "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/012-未验证Claude的新消息不调用API或原生会话.json",
+      "bytes": 7307,
+      "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/013-Claude恢复原字节并明确重测不重放失败消息.json",
+      "bytes": 7902,
+      "sha256": "23182cd6eeb79d9099952ba425491e02d98c3185b0c712032437d3b293004ed6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/014-程序被替换修复后Claude程序重新核对.native.png",
+      "bytes": 153800,
+      "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/015-程序被替换修复后Claude程序重新核对.capture.json",
+      "bytes": 1685,
+      "sha256": "45a1f4b701a48026e60b49e39b88da6b9e8cbfedd9748e50e9a91079b07f2d6a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/016-第-2-次启动结束画面.png",
+      "bytes": 153800,
+      "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/017-Claude故障修复首次重启零调用.json",
+      "bytes": 7307,
+      "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/018-Claude修复后只有明确新消息完成三个阶段.json",
+      "bytes": 22033,
+      "sha256": "5857ddd4cf710af2c07ac46602a5f4507c76338653e055b64e7eeae15f5a8e80"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/019-程序被替换修复后新Claude消息独立完成.native.png",
+      "bytes": 229039,
+      "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/020-程序被替换修复后新Claude消息独立完成.capture.json",
+      "bytes": 1685,
+      "sha256": "be086d96bb492901e41a2c940657ba0105c88cab2d87cf7ccc563a56fe00c5fd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/021-第-3-次启动结束画面.png",
+      "bytes": 229039,
+      "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/022-Claude故障恢复第二次重启保持旧失败与新回复.json",
+      "bytes": 21870,
+      "sha256": "2fdb1cd756be276f40f82b3945c719b63f7849680cfb49923b25b666d1c0d984"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/023-Claude程序故障最终原始状态.json",
+      "bytes": 22463,
+      "sha256": "a381a47b9a0688f98aceceee1eb9fbcd4abaa41e285a1ef5b34e1615fdb728a7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/024-第-4-次启动结束画面.png",
+      "bytes": 153249,
+      "sha256": "295d73c42c5b08c2f2699bf6eb8506e88125d0665783e3c01c743be83c25f5ba"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-package-1-20261007.png",
+      "bytes": 148709,
+      "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR0-Claude程序故障-changed-package-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/scenarios/76620a6b86e22810b964-a39fdb0d15481ca3e661-retry0-repeat0-R09Nec/manifest.json",
+      "bytes": 21349,
+      "sha256": "c7f9d79ab367fa62d99d5cc01a57b21a8ab7bd7060a3ea7f849eeb2d65f9745a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/playwright-results.json",
+      "bytes": 97428,
+      "sha256": "cfcc581581f1528dd6c69c45dbdfdd10e7abf938216fa0b917ae7b5916f85427"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/build-manifest.json",
+      "bytes": 101834,
+      "sha256": "9041fb6402ec09d55610176e0077630c06037067b3938a776481fc86e7319fcf"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "40363fae2b64d9d203a18611a1761a6daad65a773727c9b40de9d9f919ab0dfc"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/index.html",
+      "bytes": 285362,
+      "sha256": "26544f795823e36c853984d8f09fee0f01c3fef2e96bc76020ff4a03841e1f65"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/checks.json",
+      "bytes": 278388,
+      "sha256": "2034a8cbc6d3aa925353d167a576f0220a562908e004505d42904fbb67cfb8ef"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/manifest.json",
+      "bytes": 1266,
+      "sha256": "d7ae715cd9dd6ea78e455781fefad38c7c8f12df90ea698094459d55bfa035fb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0040-cb498c961a79711f.png",
+      "bytes": 153800,
+      "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0003-b78caebfc0e49ef9.json",
+      "bytes": 405,
+      "sha256": "b78caebfc0e49ef93ce6cd9fcb4e4fa8a0a5ab8dc223a270190cc98520f43735"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0008-9813b13df8f14b53.download",
+      "bytes": 1685,
+      "sha256": "9813b13df8f14b53f862acaac1fe74e5755aaff099610f627f9e9172d7c1b4c0"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0006-9d732d41770e6956.json",
+      "bytes": 5786,
+      "sha256": "9d732d41770e69569c52e2d0bc138440c35d2b155f6a3d1aa0183e722799b36d"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0009-dadf8bbea0ad1e70.json",
+      "bytes": 4996,
+      "sha256": "dadf8bbea0ad1e7018d3ca49577a3d04e8164b362464f2ab733ebf0cb555b307"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0012-649ac7f86c17cbb5.json",
+      "bytes": 7480,
+      "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0013-36f910673773991f.json",
+      "bytes": 8075,
+      "sha256": "36f910673773991f70568543fb5601a4737267ad32595fc1777d6d2cc0031a14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0027-2eb34c800da2df1e.json",
+      "bytes": 405,
+      "sha256": "2eb34c800da2df1e878582c877f65ac805ba3f3083e79c3092394d24f3fc89a7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0014-8aff4445fc3eb4e0.png",
+      "bytes": 153139,
+      "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0011-b6b812f178cb2e6a.download",
+      "bytes": 1685,
+      "sha256": "b6b812f178cb2e6a6e17ea42aedf2c327cc27108a93360564da8a2dbff15b2a5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0038-cb498c961a79711f.png",
+      "bytes": 153800,
+      "sha256": "cb498c961a79711f17a9aea4f52e8b4f015de11e4802943c2af6db82913f452e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0022-123631f0a804d40e.json",
+      "bytes": 22115,
+      "sha256": "123631f0a804d40e5317940dc006f049c230048a6fc3752d38dd2e555328280b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0039-45a1f4b701a48026.download",
+      "bytes": 1685,
+      "sha256": "45a1f4b701a48026e60b49e39b88da6b9e8cbfedd9748e50e9a91079b07f2d6a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0025-82e9ef350119716e.png",
+      "bytes": 104681,
+      "sha256": "82e9ef350119716ee81797a268e13f392ce7f997d55b118488e6ef6dbd82e23f"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0043-4710932b9e61e670.png",
+      "bytes": 229039,
+      "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0020-6e914cab91fef304.download",
+      "bytes": 1685,
+      "sha256": "6e914cab91fef3046a5b623db19f8aec8cd7879b65cccc740b25bca9e09ebbfb"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0041-6f3874255c549087.json",
+      "bytes": 7307,
+      "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0004-477b1f8d7c19b979.png",
+      "bytes": 198135,
+      "sha256": "477b1f8d7c19b9795b9dc5fd8027b9ece216d2debe8d76b72a4815c2691896bf"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0005-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0042-5857ddd4cf710af2.json",
+      "bytes": 22033,
+      "sha256": "5857ddd4cf710af2c07ac46602a5f4507c76338653e055b64e7eeae15f5a8e80"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0030-d7969ed853446ad9.json",
+      "bytes": 5627,
+      "sha256": "d7969ed853446ad9fb5f5c84730e2c648be79f9cbca9a15117eb08cac04e7996"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0023-357fa769ef7e7bcb.json",
+      "bytes": 22708,
+      "sha256": "357fa769ef7e7bcb8e7766bbba88e2e431f96bfaaed8217eaa89706f9688b3d4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0033-ef785d1c15835926.json",
+      "bytes": 4719,
+      "sha256": "ef785d1c1583592662a0ae0239307d4fd059c65d874f51167e5a11c5d101f0e8"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0021-1d79f9de71dac3b9.png",
+      "bytes": 229764,
+      "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0034-b1ea18363690efaf.png",
+      "bytes": 148709,
+      "sha256": "b1ea18363690efaf9dfbbd013ab66ebe5e99f39dfcba0e7026b36a30d1178a5a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0019-1d79f9de71dac3b9.png",
+      "bytes": 229764,
+      "sha256": "1d79f9de71dac3b9a90d15348d2498788acea5ca197c5824be1f0550acbaee14"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0036-6f3874255c549087.json",
+      "bytes": 7307,
+      "sha256": "6f3874255c549087ad9123f309e3473237da1cd0128fc15ac366526e5224674a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0028-550146808860bc7f.png",
+      "bytes": 198109,
+      "sha256": "550146808860bc7f3f3a3b6699dd9f5ada9f757e021bdad842da7f1e68f3788a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0045-4710932b9e61e670.png",
+      "bytes": 229039,
+      "sha256": "4710932b9e61e670a900e0033a16d4d79ca817a17ce43bdd1419ff17ac497d27"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0046-2fdb1cd756be276f.json",
+      "bytes": 21870,
+      "sha256": "2fdb1cd756be276f40f82b3945c719b63f7849680cfb49923b25b666d1c0d984"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0029-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0024-fc7296de95e5b5f9.png",
+      "bytes": 153161,
+      "sha256": "fc7296de95e5b5f9bcf496c3b0b859398f9dbb7b901b8e9dcd614578bf277721"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0048-295d73c42c5b08c2.png",
+      "bytes": 153249,
+      "sha256": "295d73c42c5b08c2f2699bf6eb8506e88125d0665783e3c01c743be83c25f5ba"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0037-23182cd6eeb79d90.json",
+      "bytes": 7902,
+      "sha256": "23182cd6eeb79d9099952ba425491e02d98c3185b0c712032437d3b293004ed6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0026-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0007-9bc643b58d375939.png",
+      "bytes": 144365,
+      "sha256": "9bc643b58d375939c5c22a06aba521edadd9fa31649bee06e04e775c4f8cadd6"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0001-29af51304c6a4b00.png",
+      "bytes": 104723,
+      "sha256": "29af51304c6a4b0022267b0eb00cd1f789db3fba0efc943f1b334f35c96196fa"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0031-f9ed1fc7a38f78e9.png",
+      "bytes": 143937,
+      "sha256": "f9ed1fc7a38f78e98c32e926c211df47e19034ac9781cf150d37f4301a235b1c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0044-be086d96bb492901.download",
+      "bytes": 1685,
+      "sha256": "be086d96bb492901e41a2c940657ba0105c88cab2d87cf7ccc563a56fe00c5fd"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0016-8aff4445fc3eb4e0.png",
+      "bytes": 153139,
+      "sha256": "8aff4445fc3eb4e06aa4dac0abad7bac66738174833fa72f4f9847f63971ee95"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0010-541d3dab669b473f.png",
+      "bytes": 177349,
+      "sha256": "541d3dab669b473fcec6a7282857d869d829b1d7078fb7fcf57a6513ccade2f9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0017-649ac7f86c17cbb5.json",
+      "bytes": 7480,
+      "sha256": "649ac7f86c17cbb567a59aef3560d97be7dbfe260727c59666e93804e8f95504"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0032-08aeaa326c11b2e1.download",
+      "bytes": 1685,
+      "sha256": "08aeaa326c11b2e19b7e9844f29974cbe0af9b3efa7476ca3368f3393dfe3a2a"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0047-a381a47b9a0688f9.json",
+      "bytes": 22463,
+      "sha256": "a381a47b9a0688f98aceceee1eb9fbcd4abaa41e285a1ef5b34e1615fdb728a7"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0018-f71654f6ee06125c.json",
+      "bytes": 22278,
+      "sha256": "f71654f6ee06125cf3d51480ccfb16d62a1521a522a97ee166b78896a938606c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0015-d74c8f34c42bf2fa.download",
+      "bytes": 1685,
+      "sha256": "d74c8f34c42bf2fad586dc1216233d8002c6800b5d79e78a0b3fcc1cf181b6be"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1-report/resources/0035-c23c4da71f053bb8.download",
+      "bytes": 1685,
+      "sha256": "c23c4da71f053bb8a9a464f10e4f70f73ff2cf4273d61d336c187f76a502f45b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/package-1.log",
+      "bytes": 685,
+      "sha256": "a624cffaea762d698b296dd1c2a5bc4ae68c6f41b860d5f7f23ec73f53f3abe9"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/collect.py",
+      "bytes": 9519,
+      "sha256": "8b9dd93fabc61cb5ea55f98e3f3d131f2021efd2b34d4e597ac9983a83fcaa29"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/report-resource-verification.json",
+      "bytes": 598,
+      "sha256": "dc149637a9ea387cdf6051c697b17afdcc04e19b08add6b5b78ab830914f7142"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/current-package-manifest.json",
+      "bytes": 600509,
+      "sha256": "a1251533c26dbfd3f2369757fcb0c005ed20140c192f3eccbe194a3074d13763"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/validation-receipts.json",
+      "bytes": 985,
+      "sha256": "766b7960fbffbc5f2168d248b0aaf2ca57e289ee20c4e78c211316c5044a756c"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/first-inputs/claude-connection-fault.steps.ts",
+      "bytes": 10558,
+      "sha256": "51562c76371b846192cf2dbe3bce6f888a7980d995dbe9ff9f99cd4cdbe0f40b"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/first-inputs/claude-employee.feature",
+      "bytes": 8994,
+      "sha256": "00b91ba9f052c02d777133947cfae1a3fe5c65e84715bf876f79340e1a23502e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/frozen-inputs/claude-connection-fault.steps.ts",
+      "bytes": 10741,
+      "sha256": "d2d26e9fe03b485a01683c9538f2873cd9585d72fe47f2bd72935125fb6131f1"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/frozen-inputs/claude-employee.feature",
+      "bytes": 8994,
+      "sha256": "00b91ba9f052c02d777133947cfae1a3fe5c65e84715bf876f79340e1a23502e"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/typecheck-1.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/typecheck-2.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/bddgen-1.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".local/feature-review/claude-program-faults-20261007/bddgen-2.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "visualReviewNotes": "Both missing-program captures show the menu fading out while the explicit ENOENT banner and unverified profile are visible. Changed-program captures show the explicit Chinese error and unverified profile. No screenshot was edited or recaptured to replace these originals."
+}

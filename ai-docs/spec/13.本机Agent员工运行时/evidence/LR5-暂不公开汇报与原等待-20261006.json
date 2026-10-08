@@ -1,0 +1,1948 @@
+{
+  "kind": "withheld-private-report-preserves-declared-wait",
+  "createdAt": "2026-10-06T10:46:43.019891+00:00",
+  "completion": "finite-increment",
+  "fullGoalComplete": false,
+  "humanReview": "pending",
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T10:25:16.318Z",
+        "duration": 11997.949,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 离线协议/合成场景",
+      "modelMode": "offline-protocol",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-YZe2j8/manifest.json",
+            "sha256": "068e576760ff8e01b3f9ab98c750903cae4cad2fc33cf936ab1b143b32c91865",
+            "bytes": 14839
+          }
+        }
+      ]
+    },
+    {
+      "name": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T10:26:57.653Z",
+        "duration": 12031.948,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 离线协议/合成场景",
+      "modelMode": "offline-protocol",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-ubMKmQ/manifest.json",
+            "sha256": "90a747f7bd4ff3b93615a3b8b27b4a8a05443730d5dc2ff5acfb4a677d53e67a",
+            "bytes": 15181
+          }
+        }
+      ]
+    },
+    {
+      "name": "offline-3",
+      "stats": {
+        "startTime": "2026-10-06T10:28:42.306Z",
+        "duration": 10554.413999999999,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 离线协议/合成场景",
+      "modelMode": "offline-protocol",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-aoU3vU/manifest.json",
+            "sha256": "3babd7cf7c452e68bc4c2f31307556d74e2e983803a9891a02bec121cefb70f9",
+            "bytes": 14873
+          }
+        }
+      ]
+    },
+    {
+      "name": "offline-4",
+      "stats": {
+        "startTime": "2026-10-06T10:29:56.756Z",
+        "duration": 12285.776000000002,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 离线协议/合成场景",
+      "modelMode": "offline-protocol",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/manifest.json",
+            "sha256": "499d9a4d080ef6f331db6aa857ddabd34582eafff7aa8a9bcd2171e0ef1554a1",
+            "bytes": 22106
+          }
+        }
+      ]
+    },
+    {
+      "name": "real-source-1",
+      "stats": {
+        "startTime": "2026-10-06T10:30:55.526Z",
+        "duration": 332206.909,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 同次真实供应商程序",
+      "modelMode": "real-provider",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-VVHfPX/manifest.json",
+            "sha256": "f697cebc2694569f90c80bcbf0e67a160b25987f40115fc7d41a8820df4b0005",
+            "bytes": 6374
+          }
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-1DBkVb/manifest.json",
+            "sha256": "b7aea8be732d4b1a27582a3bd2aff81d32c8031229eb2abee66c73a91bfb58a5",
+            "bytes": 29295
+          }
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-PSWA6A/manifest.json",
+            "sha256": "c5b400b23908ee3186a551533c88212ffdfa21ba8bc5b7fd78a49eb4b4f771dd",
+            "bytes": 19834
+          }
+        }
+      ]
+    },
+    {
+      "name": "package-1",
+      "stats": {
+        "startTime": "2026-10-06T10:37:27.506Z",
+        "duration": 377847.179,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "counts": {
+        "total": 4,
+        "passed": 3,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "desktopMode": "真实 Electron · 当前 macOS 开发构建 · 混合来源，逐场景标注",
+      "modelMode": "mixed",
+      "humanReview": "pending",
+      "frozenFiles": 879,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-8qMuO1/manifest.json",
+            "sha256": "09d87e42d36e51d8b1384b4f2dd5b13a9c34c8fee36db0e77cea615427e63a8c",
+            "bytes": 6370
+          }
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "failed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-KMa8bt/manifest.json",
+            "sha256": "39b1fc10a165e26bd987ee6cc6d1e8755a5a7bd7fcb0ffdcc94e56c2bea10612",
+            "bytes": 60282
+          }
+        },
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-gqHZAu/manifest.json",
+            "sha256": "3a45aaeee4028931734082758f70b5bd891fe62ba647cfca621de1a3a014d4c8",
+            "bytes": 22105
+          }
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/manifest.json",
+            "sha256": "3fcf82abc392b45810b2e3c5e2137dbe09b8874e0e409b65093f3dc6c542e497",
+            "bytes": 19822
+          }
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-YZe2j8/manifest.json",
+      "sha256": "068e576760ff8e01b3f9ab98c750903cae4cad2fc33cf936ab1b143b32c91865",
+      "bytes": 14839
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1/build-manifest.json",
+      "sha256": "a650fb451930d545f743830ed6ddeeed8ad547341fd0d236e25cd384bbae4bf5",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1/freeze-verification.json",
+      "sha256": "0b2667a4fe6390f2ef4f9620d31e3d63ad94ab6f65aca4d1524590dd8a64bc4b",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1/playwright-results.json",
+      "sha256": "1a1bfd6347edf89f18713b8912d3dd675d522525e6ca615c57211154fe0a218b",
+      "bytes": 386439
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/checks.json",
+      "sha256": "9a85fc7fa2982156efc69417cad9a9890168ad441951c9d94a4e144f36243981",
+      "bytes": 146236
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/manifest.json",
+      "sha256": "62784d2a0a00d61dca86888a2d5f0322e563f817dae333a3db21572cc9bb9042",
+      "bytes": 1241
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/index.html",
+      "sha256": "f047c93fdc452563612c8180593bbaed8cb846839a672937a36690b50d59def1",
+      "bytes": 160373
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0001-09ada15197a3b100.png",
+      "sha256": "09ada15197a3b1009104c43b184fb65db4df6455c7ec7660363d0671b26773b1",
+      "bytes": 196922
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0002-d6fba47c513774e9.png",
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f",
+      "bytes": 279227
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0003-e01e58e2d10659e1.png",
+      "sha256": "e01e58e2d10659e1653facec446b81d2d5b91f1e983c3ee4f0aff3f97b1d2247",
+      "bytes": 250173
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0004-7dcb535815ca96ba.download",
+      "sha256": "7dcb535815ca96ba49f66f3cd86b1745a01ac0601b8fe129ba65674c555a7a92",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0005-0ca1d5681c238fb0.json",
+      "sha256": "0ca1d5681c238fb0b323136f990f21e254c5e6685b6244d594e40364c670db29",
+      "bytes": 377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0006-e6735925343b7258.json",
+      "sha256": "e6735925343b7258a8ae1f4fc74ab39aaacf908979fd3e6d0f885407110f1f75",
+      "bytes": 32208
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0007-95932f27422bbeee.png",
+      "sha256": "95932f27422bbeee1760216dcccd3cfa5f5b8f4d99d92296c5ab4e4cca0afd94",
+      "bytes": 195655
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0008-8d86aae8baddf370.download",
+      "sha256": "8d86aae8baddf370fbcf9ec7c90858225ba8c05f616ec8ef2a6e5e31b2eb768b",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0009-279c77609ff2ee99.json",
+      "sha256": "279c77609ff2ee998644f961c528f2b800c8090280d1b90b9cc4afa449c37e72",
+      "bytes": 202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0010-7aade453d1777a86.json",
+      "sha256": "7aade453d1777a86dd6e891a8335902ec2289fed881b1739ea37378deb61954f",
+      "bytes": 75553
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0011-dca3c8683a84a7b4.png",
+      "sha256": "dca3c8683a84a7b4a768dd96b237a96c62c21a949d64e507c2d42fde02c64a15",
+      "bytes": 259580
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0012-5a47846171863fdd.download",
+      "sha256": "5a47846171863fdd353a355a9b9a30dc09cf742ad6c8535b668b6f78aa9ac71a",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-1-report/resources/0013-dca3c8683a84a7b4.png",
+      "sha256": "dca3c8683a84a7b4a768dd96b237a96c62c21a949d64e507c2d42fde02c64a15",
+      "bytes": 259580
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-ubMKmQ/manifest.json",
+      "sha256": "90a747f7bd4ff3b93615a3b8b27b4a8a05443730d5dc2ff5acfb4a677d53e67a",
+      "bytes": 15181
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2/build-manifest.json",
+      "sha256": "21f318e4896d1b697860bf5f2f98203ce4ba51e69158d3331ce4febcae7c18d8",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2/freeze-verification.json",
+      "sha256": "72217f35c2c7baf3d9c201f1c400d65771dada11a0be26fb470c4d07dc04abeb",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2/playwright-results.json",
+      "sha256": "f879fcef004dccfb7d75a046094a34e5f433b8a49324165019791ae0dbe44e49",
+      "bytes": 387286
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/checks.json",
+      "sha256": "e19f0103ce18cd75e9f2bf4071c48402cc25275f2c96d5be89a5325f619ba9c5",
+      "bytes": 148739
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/manifest.json",
+      "sha256": "9fa10cd0d2fb33ac8453e5a7102f4b7b610be276565ef56329bda20253306716",
+      "bytes": 1241
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/index.html",
+      "sha256": "bac0fce810e428456d356cafe026113a6dd9fa5344820ee1aaef8076d90c8219",
+      "bytes": 162706
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0001-1918eb4634a020e5.png",
+      "sha256": "1918eb4634a020e56b76539e261cb69575f033d879ac6bddec368063834652ab",
+      "bytes": 197976
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0002-d6fba47c513774e9.png",
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f",
+      "bytes": 279227
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0003-13f9b1d7e277d83a.png",
+      "sha256": "13f9b1d7e277d83a49e8d1ae94b2d928ddd35364a80c3270a7ae29a54b72bf04",
+      "bytes": 250007
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0004-1e4ddf4ade727d67.download",
+      "sha256": "1e4ddf4ade727d675588f10316f165c44e230ca93746f3e22acbf0d7d8b0b609",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0005-9cd9c19964aecb61.json",
+      "sha256": "9cd9c19964aecb61d5d95715cdb9000d233e1bfcf2f0ec9378bf56cce7314025",
+      "bytes": 377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0006-6847c98f2736d1b1.json",
+      "sha256": "6847c98f2736d1b18d52d7ea289799ce3a6acad0df4f0732454da45d7b4699b6",
+      "bytes": 32208
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0007-95932f27422bbeee.png",
+      "sha256": "95932f27422bbeee1760216dcccd3cfa5f5b8f4d99d92296c5ab4e4cca0afd94",
+      "bytes": 195655
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0008-8d86aae8baddf370.download",
+      "sha256": "8d86aae8baddf370fbcf9ec7c90858225ba8c05f616ec8ef2a6e5e31b2eb768b",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0009-71a15ddbbc836df2.json",
+      "sha256": "71a15ddbbc836df240800f82e8edd39d3bd788a56658dfa3b6158568706137b4",
+      "bytes": 1789
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0010-7bfe86369a5cc6d0.json",
+      "sha256": "7bfe86369a5cc6d0928988fa783b33097110e3d9542b9f53113192a491aa70bb",
+      "bytes": 202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0011-7a861f1c03350003.json",
+      "sha256": "7a861f1c03350003ec30080d0801fa6fe20b75c5f1f7f8f16735621be8ded419",
+      "bytes": 75553
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0012-e51fb8a6238acb1a.png",
+      "sha256": "e51fb8a6238acb1a4a53dc93c39f498e48cd2748a6cc3c464237ddffef59c4c3",
+      "bytes": 259442
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0013-ac8ed8ef9e9dc781.download",
+      "sha256": "ac8ed8ef9e9dc781513c2437ccad5d27f7eb43e844a4b58d549c35e396e9ecb7",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-2-report/resources/0014-e51fb8a6238acb1a.png",
+      "sha256": "e51fb8a6238acb1a4a53dc93c39f498e48cd2748a6cc3c464237ddffef59c4c3",
+      "bytes": 259442
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-aoU3vU/manifest.json",
+      "sha256": "3babd7cf7c452e68bc4c2f31307556d74e2e983803a9891a02bec121cefb70f9",
+      "bytes": 14873
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3/build-manifest.json",
+      "sha256": "6ed3a3124e54449960f98044d017ee5ee709cb23bea1a3e9ec9648dfe7bccf6a",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3/freeze-verification.json",
+      "sha256": "7b41939640c721e74bc441ab2e7cee12082786a15cd558d1aaa3c0e3ed45cdd2",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3/playwright-results.json",
+      "sha256": "0282d95738b4b4aeef7cdf7990fff42009ffd87525bb6bcdd0ff75a71ad55a6c",
+      "bytes": 398581
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/checks.json",
+      "sha256": "e0c377f38fd57ee61bca53754f73c21819d4b71c1cbffd8b21cb694b98ce0f1c",
+      "bytes": 148425
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/manifest.json",
+      "sha256": "64f6bb456d02b6ee0c457878e44b7aab93097ed262c60a6c9c66ac04c6622a51",
+      "bytes": 1241
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/index.html",
+      "sha256": "22c14233c4f69661f53a6ed1a429a4f673b9d61bcd44f09dcfe9748f31a9d1d8",
+      "bytes": 162392
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0001-09ada15197a3b100.png",
+      "sha256": "09ada15197a3b1009104c43b184fb65db4df6455c7ec7660363d0671b26773b1",
+      "bytes": 196922
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0002-d6fba47c513774e9.png",
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f",
+      "bytes": 279227
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0003-91da964ae9704c2f.png",
+      "sha256": "91da964ae9704c2fac70433c28be177efe2e9b23b65cb058ef0f49fd43fb18a9",
+      "bytes": 250090
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0004-e6666f2a769bd59e.download",
+      "sha256": "e6666f2a769bd59ee0f8310002ca171d647deaa19643d89626e194ebef54654b",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0005-6073498192c75554.json",
+      "sha256": "6073498192c75554f437420b75ec3cc3cd104d2511a6052323a598af41d55115",
+      "bytes": 377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0006-5ca619984e2766c7.json",
+      "sha256": "5ca619984e2766c79d289d84c82995d4e6b7d6ff2c3044dcd279d0e7581b8808",
+      "bytes": 32262
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0007-b1194e0d7956fbf3.png",
+      "sha256": "b1194e0d7956fbf3a839f8e0d93b9c7551ab392465d9258220a9976d6c6350bb",
+      "bytes": 203777
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0008-6dee4668ee116305.download",
+      "sha256": "6dee4668ee11630537523bfd4b6db7f897df1fd5ec3b4d8b187d95e08a84ce76",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0009-eb6e15fd98303c38.json",
+      "sha256": "eb6e15fd98303c382b1775fd1967ce8d11ab335880f84eb05b638be8e2a17163",
+      "bytes": 1872
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0010-4c6b81f3bd5338a1.json",
+      "sha256": "4c6b81f3bd5338a1d700bbd03dfd986b74e0faf8656ba47b5e4330560251f1d0",
+      "bytes": 202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0011-24f5774cda1a2c9d.json",
+      "sha256": "24f5774cda1a2c9dce0ba7bbff9da3ddd03563a58b647566ba1ab113afcd97b0",
+      "bytes": 75607
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0012-029a304c0922c266.png",
+      "sha256": "029a304c0922c26656cbfe7771daa20a0b7dea8843d739f6e482498f6891ef2a",
+      "bytes": 269244
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0013-da85356371cf2699.download",
+      "sha256": "da85356371cf269941ebfd35edf0e5430ccf5bd720bb070e8766e087d2c23a09",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-3-report/resources/0014-0cb37ef22ff27e5e.png",
+      "sha256": "0cb37ef22ff27e5e01887d9b537ebce5e487fccf43b679dff2350cea3f05bbe1",
+      "bytes": 269031
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/manifest.json",
+      "sha256": "499d9a4d080ef6f331db6aa857ddabd34582eafff7aa8a9bcd2171e0ef1554a1",
+      "bytes": 22106
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/build-manifest.json",
+      "sha256": "25e19431fa37df9b2794244a84a93b02c1fb28ea89b0b5d95bcfbf1a2d244741",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/freeze-verification.json",
+      "sha256": "2bc7a17ee695568a32ec2795f33e843b306cab5056d3b40db966fc847621ac9c",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/playwright-results.json",
+      "sha256": "782537a53caa458f2e0b9ab41845a81406f1fcdfa5e1ef4428ac156dcf00efbf",
+      "bytes": 48139
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/checks.json",
+      "sha256": "abc9e1cf0045d95d22906084a03ac4e5e3895782ad8d9e327d9fb78938127ccd",
+      "bytes": 224730
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/manifest.json",
+      "sha256": "cda2d87ef10e98918f0318b05e25c87c319bffefd7c7f7ac608d8079484fd964",
+      "bytes": 1241
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/index.html",
+      "sha256": "13a813583832a6c2e3f00860f02514b32a5257526e379aed4d35ddf13bd43a7c",
+      "bytes": 237205
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0001-51cced04f1d26884.png",
+      "sha256": "51cced04f1d26884e9565a86dc1cd132a3d3f7c229231a23f2e1aa8ea04c7d34",
+      "bytes": 196904
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0002-d6fba47c513774e9.png",
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f",
+      "bytes": 279227
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0003-d31104434525327b.png",
+      "sha256": "d31104434525327b7f652e93b210aac15ab4c6a2432f6d8f10acc8cb581c2093",
+      "bytes": 250024
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0004-e4fe9ea2cbd24e06.download",
+      "sha256": "e4fe9ea2cbd24e06d27ac7bc3c65cd80cd387dfbe8f8456207a38a3c7eae033a",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0005-abbc95b19b9423fe.json",
+      "sha256": "abbc95b19b9423feed72bb83fbbcb9d70079b140f04c62f78d700277e102189f",
+      "bytes": 377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0006-9ce84daf5681226d.json",
+      "sha256": "9ce84daf5681226d5d2e92e204d1cae142a3388fa2605a24ddd0aa937ec54ffc",
+      "bytes": 32262
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0007-5557d361aa79ce61.png",
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+      "bytes": 203772
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0008-03866afd5089f350.download",
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0009-b5a34e8c988955e7.json",
+      "sha256": "b5a34e8c988955e75e6fa67500ecbb2ee3bacf96970a7f058601ae69e06eee65",
+      "bytes": 1872
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0010-0ff585ac84ced2b6.json",
+      "sha256": "0ff585ac84ced2b649206a33c802160af411f4736e12893833b773a94ab8d981",
+      "bytes": 202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0011-a6d7e0a3dfb63b17.txt",
+      "sha256": "a6d7e0a3dfb63b17e08f4cf852d3b560dfedb7c938f36e5ac5cc439268b0e682",
+      "bytes": 144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0012-6641c00803ede8ca.txt",
+      "sha256": "6641c00803ede8ca5db62a571733032ab4862f9c0c39efa206ce54d97cbad9f7",
+      "bytes": 225
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0013-13e203b0246017c4.json",
+      "sha256": "13e203b0246017c4e063244f1a3d028930aa8c19b5d833fd0195ead8be4fba68",
+      "bytes": 63672
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0014-c3c2f7d9743a7515.png",
+      "sha256": "c3c2f7d9743a75157712a5c5911158e5b04d37e7e7c1871c902dfbb3a1c04bfe",
+      "bytes": 269639
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0015-e3158526bdb01e20.download",
+      "sha256": "e3158526bdb01e2048debb4d5361c358938b71291451565161b52a0475816dab",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0016-de33fb3c1e6a2c77.png",
+      "sha256": "de33fb3c1e6a2c77923c4acdaa7fce37edcc4ddf5e618dbf44678ff40a40b68c",
+      "bytes": 269412
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0017-3eef8b17be9d3e3d.png",
+      "sha256": "3eef8b17be9d3e3d7e2a15d2feda28f8d86dd5088e12e1b7afa9af60f61b502c",
+      "bytes": 269170
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0018-a6f714072f79d236.download",
+      "sha256": "a6f714072f79d23682b7e2df4b02efcf3c2ebd3cd69a1f9c23e05e9456bf1c81",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0019-52f4c90a56a71871.json",
+      "sha256": "52f4c90a56a718715c684b1569eaf7f0d350ec0153d8d9f026308de283a895e3",
+      "bytes": 75749
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0020-65b2f8aed844b3d3.png",
+      "sha256": "65b2f8aed844b3d3d61a6764f351236ac3bbcf0c929806952e213aa566e42028",
+      "bytes": 268992
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0021-a65ab725d75f7153.download",
+      "sha256": "a65ab725d75f715391186f5fe344bc558bc33efe60a88f80bc8d4375dfc5b99f",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4-report/resources/0022-65b2f8aed844b3d3.png",
+      "sha256": "65b2f8aed844b3d3d61a6764f351236ac3bbcf0c929806952e213aa566e42028",
+      "bytes": 268992
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-VVHfPX/manifest.json",
+      "sha256": "f697cebc2694569f90c80bcbf0e67a160b25987f40115fc7d41a8820df4b0005",
+      "bytes": 6374
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-1DBkVb/manifest.json",
+      "sha256": "b7aea8be732d4b1a27582a3bd2aff81d32c8031229eb2abee66c73a91bfb58a5",
+      "bytes": 29295
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-PSWA6A/manifest.json",
+      "sha256": "c5b400b23908ee3186a551533c88212ffdfa21ba8bc5b7fd78a49eb4b4f771dd",
+      "bytes": 19834
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/build-manifest.json",
+      "sha256": "a3a2cf24413544f79e1fc88c26c4fe59ea2d7e8b7ce1542f6601ff7f1c3672b8",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/freeze-verification.json",
+      "sha256": "0db9155748eba4e57046ac2fef72259e9f5261b0a197265c2e5e0cbd699284e6",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/playwright-results.json",
+      "sha256": "f077ee0218c01654a1c158159bf449ade359e4010b0d65ccbd4d2f5abebc1025",
+      "bytes": 123936
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/checks.json",
+      "sha256": "392a42a2c0bdf0c9c58d059be95c9763119964e126778c2af606ac9e1dd22d94",
+      "bytes": 633564
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/manifest.json",
+      "sha256": "68b8d80763fffe86e8ebc978c607976c1fd0bc422cdb2e9446cdde31caec38b1",
+      "bytes": 1273
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/index.html",
+      "sha256": "ca0eccce780295ffb9c947c72ebb1845586a925e9b8caf909606816c7dba6791",
+      "bytes": 638252
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0001-c16392fc84acd389.png",
+      "sha256": "c16392fc84acd389c1740a52d7b80bfa470a1c69f5ed1b8ca06ce1db57ede078",
+      "bytes": 194230
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0002-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0004-56691eb71d620afa.json",
+      "sha256": "56691eb71d620afaef8fda346dedb17bc29f3cc2aa5c1ff679f09af3f910ee29",
+      "bytes": 808
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0005-e0e40c927352908f.png",
+      "sha256": "e0e40c927352908faabb56254ba64ea9a4eb382d5f7552107fec9a30da437b44",
+      "bytes": 206547
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0006-c2a9e85eb22dac98.json",
+      "sha256": "c2a9e85eb22dac9888de59c16290e6298d98f931966afa921af26b9c9d3e8f30",
+      "bytes": 18627
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0007-6812da90d2068d74.png",
+      "sha256": "6812da90d2068d74f8ebe7324329dbd076ce5069f6d128be34d366383f4e1294",
+      "bytes": 256724
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0008-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0009-d0b24496a5e613ed.png",
+      "sha256": "d0b24496a5e613ed40b5a09549ea9c6a056f5f006f0ef4b31cd112e97e68539b",
+      "bytes": 303069
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0010-3bacdfc0e208539b.json",
+      "sha256": "3bacdfc0e208539b16674da3673b12f9faad4f7708cb8e76cfa839b1927af797",
+      "bytes": 39982
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0011-d0b24496a5e613ed.png",
+      "sha256": "d0b24496a5e613ed40b5a09549ea9c6a056f5f006f0ef4b31cd112e97e68539b",
+      "bytes": 303069
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0012-051b78e0edbf732c.png",
+      "sha256": "051b78e0edbf732c95324ffe05dded045ebc2c5769a9b6d39f729dc36f3d0546",
+      "bytes": 104705
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0013-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0014-70defc488124d242.png",
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+      "bytes": 197143
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0015-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0016-b500682ef715ff61.png",
+      "sha256": "b500682ef715ff61711d9e10c09c36de42c4786b315631f8c59daf8090da02b9",
+      "bytes": 292945
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0017-86c296ba1fdfdbcd.download",
+      "sha256": "86c296ba1fdfdbcd9affe24e17a3ac1732f76984f35b4b381d2e715478e5b33d",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0018-c231949f783d4d63.json",
+      "sha256": "c231949f783d4d63504f5ce3e4731e0f0feede593a3d127ed7d8ae779b4b6100",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0019-4c86c858ba02123f.png",
+      "sha256": "4c86c858ba02123f45f0770a695377986ac1fa838af660f8d9e16cc766837321",
+      "bytes": 288950
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0020-7659ddb514122fb1.download",
+      "sha256": "7659ddb514122fb1252823bbd1e041b71f23d547999424b0e063efb4873b7b12",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0021-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0022-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0023-173e478aad4ac8aa.json",
+      "sha256": "173e478aad4ac8aa6652efe632888b4ccab28ccda21e580f792465f20860ad71",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0024-1ba2917306e0ebb5.png",
+      "sha256": "1ba2917306e0ebb55df5998a648e51eb23ee9f7778a594e08a3b6d4901b45794",
+      "bytes": 133083
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0025-b8d6320bf8251287.download",
+      "sha256": "b8d6320bf8251287e82fcd289a4540c61c5c97a8b1fc812a9c9cf56c10797690",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0026-8d444492fa0edb66.json",
+      "sha256": "8d444492fa0edb66e28f706284f09c62fdf0f8ec680a3f31c4438945d96c420d",
+      "bytes": 116152
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0027-1dee90487df9e659.md",
+      "sha256": "1dee90487df9e659ffa00778af7c71792d64dd09766fb1384d985ba4968e0a1f",
+      "bytes": 15
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0028-2f8d041ed8e88905.md",
+      "sha256": "2f8d041ed8e889054011b5da31c7f14a2c75d886dfcd38b9110267d701bc92f1",
+      "bytes": 51
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0029-9a695fd87cc46c63.json",
+      "sha256": "9a695fd87cc46c63bbf860d8c89e9559c442e3686395b13d0f619a00a5546c64",
+      "bytes": 70900
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0030-9654460df58ba0ac.png",
+      "sha256": "9654460df58ba0acf959a8e74e847a083e24e7d3d2df4c5e330d090ad90d05e2",
+      "bytes": 346130
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0031-8ed00d27f07f6bd6.download",
+      "sha256": "8ed00d27f07f6bd67b3694592f4a02fd7ec6e7cee4fd50b4a8f96cbf48699b8d",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0032-68dea5df8f61f1d8.png",
+      "sha256": "68dea5df8f61f1d8d3de049783378dba4d84ac87722c94d7b12cf48ce3990dce",
+      "bytes": 344084
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0033-f29ddeca42fa424c.download",
+      "sha256": "f29ddeca42fa424c4fbc4f46aad1140c8dff9eb99682280f6cff4953ce3b56f1",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0034-67ee98d9ad1fccf8.png",
+      "sha256": "67ee98d9ad1fccf806d460ffa93caf048979fbd2d56f10c186f414c140d60da9",
+      "bytes": 345317
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0035-092c65d1e0b23b4f.png",
+      "sha256": "092c65d1e0b23b4fc795ddc5dc4a447bd8848f3fe0ac4cab21ee673c0c668b03",
+      "bytes": 340357
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0036-43e04f69c178e799.download",
+      "sha256": "43e04f69c178e79941e46736c66bbb066d1866d99a0e7612f1bc5ae10b4e2fe8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0037-8d444492fa0edb66.json",
+      "sha256": "8d444492fa0edb66e28f706284f09c62fdf0f8ec680a3f31c4438945d96c420d",
+      "bytes": 116152
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0038-a4f2e47225936601.png",
+      "sha256": "a4f2e472259366010b5a8db4ca2ef6b2bc3ac2b28731ead2bc06128162c9e29e",
+      "bytes": 340132
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0039-46f077fbf599202b.png",
+      "sha256": "46f077fbf599202bb89df517aa79694c8f1448b56674f211a5e2ac59c4521aa4",
+      "bytes": 104694
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0040-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0041-fda528c98059894b.png",
+      "sha256": "fda528c98059894b4224a1fbe5283d6dd7ace706678f1f21db55b38a081e8a96",
+      "bytes": 197011
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0042-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0043-d4ac8c5075a968ee.png",
+      "sha256": "d4ac8c5075a968ee7c53a956ebd4c185311bb7b297d60bffe32d49168799fff9",
+      "bytes": 250048
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0044-919788f2f2c33ecb.download",
+      "sha256": "919788f2f2c33ecbd70aa4209111b40c6744b02cb0d08e82f827578fe547000d",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0045-90c11db6fb2b44f3.json",
+      "sha256": "90c11db6fb2b44f3c47c6ff39e4d4becc6e035c62e023c06810ffbb612ea810b",
+      "bytes": 1020
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0046-e6c708075eac130c.json",
+      "sha256": "e6c708075eac130c15f4806aad387836018214267cbeda270a9578d0d0dc923e",
+      "bytes": 2104
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0047-0d6a6eb262bff017.json",
+      "sha256": "0d6a6eb262bff017608d3797b4f4e2d3b1e9876162a02b37365152f3e5682921",
+      "bytes": 774
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0048-7e8f440560caf3c2.md",
+      "sha256": "7e8f440560caf3c2c082e66e4d96f88b548387f5c1d582ec53a7f4e26681b680",
+      "bytes": 85
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0049-9911c814772e710d.md",
+      "sha256": "9911c814772e710d7f6e9471e90167b7d5b9aec3b59900f32fb6dbd9afd23599",
+      "bytes": 46
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0050-516929a9ad92b03f.json",
+      "sha256": "516929a9ad92b03f4979281f3ffec60d2cddd1a100ca90228e52283139fe6a67",
+      "bytes": 65294
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0051-6c7a2266698b0a20.png",
+      "sha256": "6c7a2266698b0a205f9fd4ae2f779c50a87e23ca9c87cb0428ca71865e46f53a",
+      "bytes": 299806
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0052-9bf8d0b21f891d51.download",
+      "sha256": "9bf8d0b21f891d51f48a617cdbc71d5fed76b229382173b65bbf116176006ab9",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0053-6c7a2266698b0a20.png",
+      "sha256": "6c7a2266698b0a205f9fd4ae2f779c50a87e23ca9c87cb0428ca71865e46f53a",
+      "bytes": 299806
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0054-cd04b9b2bf5d7d68.png",
+      "sha256": "cd04b9b2bf5d7d685be27350bcea9e09f7519c097d379bf7a14654d0d901d231",
+      "bytes": 299548
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0055-0f233c56787a590a.download",
+      "sha256": "0f233c56787a590aae95d84d6e79303b56259deed8474d257ae662ec4b1639c9",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0056-e92ee14588b2175a.json",
+      "sha256": "e92ee14588b2175a5c5862c1015c1d26208c904050658172bfee86370a8b2297",
+      "bytes": 75864
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0057-ed753a3606475fd1.png",
+      "sha256": "ed753a3606475fd160dbfffd91541b92c1e53676a651498cd425bd66ef0c80dc",
+      "bytes": 299375
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0058-1c95a56aae1e3ebe.download",
+      "sha256": "1c95a56aae1e3ebe2ecd7034119be16f9dc67212ba37d009c300bec43ac8c071",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1-report/resources/0059-ed753a3606475fd1.png",
+      "sha256": "ed753a3606475fd160dbfffd91541b92c1e53676a651498cd425bd66ef0c80dc",
+      "bytes": 299375
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-8qMuO1/manifest.json",
+      "sha256": "09d87e42d36e51d8b1384b4f2dd5b13a9c34c8fee36db0e77cea615427e63a8c",
+      "bytes": 6370
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-KMa8bt/manifest.json",
+      "sha256": "39b1fc10a165e26bd987ee6cc6d1e8755a5a7bd7fcb0ffdcc94e56c2bea10612",
+      "bytes": 60282
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-gqHZAu/manifest.json",
+      "sha256": "3a45aaeee4028931734082758f70b5bd891fe62ba647cfca621de1a3a014d4c8",
+      "bytes": 22105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/manifest.json",
+      "sha256": "3fcf82abc392b45810b2e3c5e2137dbe09b8874e0e409b65093f3dc6c542e497",
+      "bytes": 19822
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/build-manifest.json",
+      "sha256": "e23984199c5283e510462628d352d6168072d7df1de9814336bc9bdd2a6a6f01",
+      "bytes": 101258
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/freeze-verification.json",
+      "sha256": "7e45855fd45438af20a5ca28c2a0a632a2ca7530f02d3ec5fa6ba4c60c055ab7",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/playwright-results.json",
+      "sha256": "c559cd137d13f8fe38fe9d36866993de04686a628777a977702593dd356f6176",
+      "bytes": 839764
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/checks.json",
+      "sha256": "3ee08056ddc8a0d67725fe305f7ea4430eec4d946ffc423da89a3bc39e613cd5",
+      "bytes": 780026
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/manifest.json",
+      "sha256": "3d0a24a40abd846e97e29b634df635245361c0d227cbb1caa0f3f1bcda066d76",
+      "bytes": 1250
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/index.html",
+      "sha256": "8d08b41df5f58ce4b4f46d2b1abd726a146a911f0dc969e639b0714dbb3dca0c",
+      "bytes": 782084
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0001-dad238288588bfeb.png",
+      "sha256": "dad238288588bfeb03b74ebd2e3f81dbf6a8b4d1263bb9f5ff7a8b818ace19f4",
+      "bytes": 193613
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0002-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0004-5e7972790f79cc8e.json",
+      "sha256": "5e7972790f79cc8edebcd93f156ad492927cb740ae52cbc82722bed49af48de8",
+      "bytes": 806
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0005-ec8118172a98af9b.png",
+      "sha256": "ec8118172a98af9bc3e6466b1a467f53ff736e593be67b984c49961271f46bbe",
+      "bytes": 205179
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0006-778ae1e5b0da6c8f.json",
+      "sha256": "778ae1e5b0da6c8fdc95cca2440d37034dca20439dc4d8ddc3980493d422b29c",
+      "bytes": 18729
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0007-3514d4226cc730dc.png",
+      "sha256": "3514d4226cc730dc529f8470a89a2beab290c40caa7f9c01bff8ba70a12218e0",
+      "bytes": 254943
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0008-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0009-aa72a56632da3dd1.png",
+      "sha256": "aa72a56632da3dd16eae7f3bf83903df5145905c0c2a36e0b500e9abaa71e5a6",
+      "bytes": 302156
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0010-a04b22d231f3085f.json",
+      "sha256": "a04b22d231f3085f6d65f881c716a145bd9a743367e2cd9d65a95fcc7ba3eeb6",
+      "bytes": 40122
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0011-aa72a56632da3dd1.png",
+      "sha256": "aa72a56632da3dd16eae7f3bf83903df5145905c0c2a36e0b500e9abaa71e5a6",
+      "bytes": 302156
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0012-ae22d90ffcf47767.png",
+      "sha256": "ae22d90ffcf477673fd2131f877f91a375d678ed85f47aeebc70a508c52dd008",
+      "bytes": 104726
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0013-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0014-70defc488124d242.png",
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+      "bytes": 197143
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0015-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0016-f56f9a1a606d6c85.png",
+      "sha256": "f56f9a1a606d6c85f37861eee5a6dde3fadffdcbfde322ed4f67a0d6919c3c6c",
+      "bytes": 292917
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0017-ed4bb7fc8c876945.download",
+      "sha256": "ed4bb7fc8c8769459d061ee887a6b8cdcea258b6696524eae162069da2a1c38c",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0018-84a742a489de0954.json",
+      "sha256": "84a742a489de0954a73210ac882413f9f379587cf4aafdebb11a1941805b8565",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0019-cf0a4bde21a2681c.png",
+      "sha256": "cf0a4bde21a2681ce45512e8cc98c9e882bd639d8c2996d5f834a66b1b35fb34",
+      "bytes": 288785
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0020-49dfe887574eb3b0.download",
+      "sha256": "49dfe887574eb3b0c8900f06cfb4a1241309b50fda3b34ed6781f51fc5c09681",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0021-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0022-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0023-6603ea2bded7f201.json",
+      "sha256": "6603ea2bded7f2015ad7b90643b99c09299ce3bb97dcf3e1ae0d98582bfcc13c",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0024-9f52489a7378ec7f.png",
+      "sha256": "9f52489a7378ec7f7c646b18c371259e3749a8c122bd82a32c865167f1ed0e44",
+      "bytes": 133073
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0025-b52e1529b11ab390.download",
+      "sha256": "b52e1529b11ab390fcc74c9733462b629a6e2e8a989aebaac88ac547ca1331c9",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0026-ed9d261df826440f.json",
+      "sha256": "ed9d261df826440f4a8a8ec0640ef65f737d97b6b2d7437799cd1c554c1577af",
+      "bytes": 104982
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0027-ed9d261df826440f.json",
+      "sha256": "ed9d261df826440f4a8a8ec0640ef65f737d97b6b2d7437799cd1c554c1577af",
+      "bytes": 104982
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0028-5079e0c3e4e7bf8b.png",
+      "sha256": "5079e0c3e4e7bf8baf239ff5050083003c734ee050d50af6c9fdbb440bcac1a3",
+      "bytes": 394360
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0029-68e7fcb340c81382.png",
+      "sha256": "68e7fcb340c8138274735d29c330d83fd3aa11d5fcbeacd85f184fa2c29d4b66",
+      "bytes": 197247
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0030-d6fba47c513774e9.png",
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f",
+      "bytes": 279227
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0031-cff3ecb5f2b9c9a4.png",
+      "sha256": "cff3ecb5f2b9c9a41e91f56e450a6054345777d6702192d83643e4b6fddc4bee",
+      "bytes": 250091
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0032-1cbcc12aa99a4f73.download",
+      "sha256": "1cbcc12aa99a4f732e9d256fc9be3b746452e8fafafff8919fb898b34effa944",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0033-d2f65a1bb517e6e4.json",
+      "sha256": "d2f65a1bb517e6e48eb9abce259ccfb959b9e32a46ab4a6f5c8b572cbb373da0",
+      "bytes": 377
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0034-4012de3d0c53a156.json",
+      "sha256": "4012de3d0c53a1562796d670a71bfcc9d6a322035388d232555ad0ad36fc98da",
+      "bytes": 32262
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0035-5557d361aa79ce61.png",
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+      "bytes": 203772
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0036-03866afd5089f350.download",
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0037-28d06978880c0ca3.json",
+      "sha256": "28d06978880c0ca3883cdd53033d93eb36a1ecec034e6a9a147f07eacee196a6",
+      "bytes": 1872
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0038-709fd145f412c393.json",
+      "sha256": "709fd145f412c3938c0d39c61a3823013572bfe52a5830e36e59f9ba11b180bb",
+      "bytes": 202
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0039-aa163386e6376b6d.txt",
+      "sha256": "aa163386e6376b6d37aa414805f7f3850463a22770922addc35556c060564ba9",
+      "bytes": 144
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0040-bf4a187a9def99f8.txt",
+      "sha256": "bf4a187a9def99f83415b7ce0470f113a568a72a95b694e7856626f44e8c6065",
+      "bytes": 225
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0041-f22680cc415bee75.json",
+      "sha256": "f22680cc415bee75a05b9ef9ca5ad6912da0f27952b3dc6256aa389600e88683",
+      "bytes": 63672
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0042-c3c2f7d9743a7515.png",
+      "sha256": "c3c2f7d9743a75157712a5c5911158e5b04d37e7e7c1871c902dfbb3a1c04bfe",
+      "bytes": 269639
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0043-e3158526bdb01e20.download",
+      "sha256": "e3158526bdb01e2048debb4d5361c358938b71291451565161b52a0475816dab",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0044-44af1232b8876795.png",
+      "sha256": "44af1232b8876795d04fb74f4bd938a26349fd59ba3098e0bb880090c8901a80",
+      "bytes": 269206
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0045-00fbdc1a54e31d69.png",
+      "sha256": "00fbdc1a54e31d695fd2068c39a5b88ebb2b3797e2eea0e3c501517291425ed4",
+      "bytes": 267649
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0046-da01341ee6be3e3b.download",
+      "sha256": "da01341ee6be3e3b4d045577e369a8a7f9bab9c9b524565ed0b4e7f882ae2f5d",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0047-aa2f8fa88f328a7a.json",
+      "sha256": "aa2f8fa88f328a7af415380c1456b2ddb5caa8cc0e5b53a88fc88d48afa65512",
+      "bytes": 75749
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0048-8dd5c44e6f1898a8.png",
+      "sha256": "8dd5c44e6f1898a88dd4dbedfd1ceda1943c60f9ef2a3909878e2817b1427593",
+      "bytes": 268800
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0049-0eab20b43930a62d.download",
+      "sha256": "0eab20b43930a62d13cec5835773320acc5836db32d32e15be57c0bffe528af3",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0050-8dd5c44e6f1898a8.png",
+      "sha256": "8dd5c44e6f1898a88dd4dbedfd1ceda1943c60f9ef2a3909878e2817b1427593",
+      "bytes": 268800
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0051-a193572f30d554cc.png",
+      "sha256": "a193572f30d554cc24d92a2a49753a87c9477bbf154c4bfc320aaf4cc9e6d55e",
+      "bytes": 104702
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0052-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0053-70defc488124d242.png",
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+      "bytes": 197143
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0054-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0055-88c1ed5346ea91b4.png",
+      "sha256": "88c1ed5346ea91b4296569aaa797bafc92411e8a38f45ecf2f59355ca78a6b3d",
+      "bytes": 250038
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0056-5218f7186b96f188.download",
+      "sha256": "5218f7186b96f188fd6667ec05442e6b008630aa578ee6a50b3dcd9a2a1ca401",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0057-695ca2a7d2eeed46.json",
+      "sha256": "695ca2a7d2eeed4692903ebbe64ac5641a1a3dccbafa5b6a046fa5d634f36e3e",
+      "bytes": 1020
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0058-ac4219e8cb484854.json",
+      "sha256": "ac4219e8cb4848546adb36915a54ccd39567d303901f58b3a9c823b85ac2f0ab",
+      "bytes": 2107
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0059-0317f3b6d64e872e.json",
+      "sha256": "0317f3b6d64e872e4424a3c56224158c669c10484731a4f0842e58f974862939",
+      "bytes": 814
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0060-bec0b86242a942f3.md",
+      "sha256": "bec0b86242a942f3d94e3d42894c021309e05813eccd2979f0d5688ea3d769c7",
+      "bytes": 51
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0061-9afd9f6737f62275.md",
+      "sha256": "9afd9f6737f6227559fcc708cb82bfbfe5ca71277272dbba9a09044e6f0eb1c3",
+      "bytes": 15
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0062-6d45e0af66334012.json",
+      "sha256": "6d45e0af66334012410b4f6de03fb2ecfb0b47f653bce40749ec33e9089bcb8e",
+      "bytes": 65526
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0063-88cd987eb964dbc7.png",
+      "sha256": "88cd987eb964dbc7f63320fb4a539479975c5fcc9cf5e595daef2f8649ab640b",
+      "bytes": 299865
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0064-94e6f23fc529b711.download",
+      "sha256": "94e6f23fc529b71146d931950f465931934e4ad8b9f065ea5c62191a6111ce7b",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0065-88cd987eb964dbc7.png",
+      "sha256": "88cd987eb964dbc7f63320fb4a539479975c5fcc9cf5e595daef2f8649ab640b",
+      "bytes": 299865
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0066-77aa76c495676ff9.png",
+      "sha256": "77aa76c495676ff987af09180bc15a7739784647cc320bf309be5986bbc68a9f",
+      "bytes": 300149
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0067-0b6d08bd50844563.download",
+      "sha256": "0b6d08bd5084456395957e3468534da98575383348560846da35c4b1586530a2",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0068-12ebca833b174958.json",
+      "sha256": "12ebca833b174958f87c11f5fe91f4a91fb115026f402f01b339b3d60d32c1f6",
+      "bytes": 76095
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0069-180d0199443c4a5c.png",
+      "sha256": "180d0199443c4a5c3e622601e20eec010d54f729a0392f8e35e9132c1e75daa1",
+      "bytes": 299883
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0070-0b992af542fc78ce.download",
+      "sha256": "0b992af542fc78ce6f7851fa10362fce2649053014d4d0f22613e3517692d278",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1-report/resources/0071-180d0199443c4a5c.png",
+      "sha256": "180d0199443c4a5c3e622601e20eec010d54f729a0392f8e35e9132c1e75daa1",
+      "bytes": 299883
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/package-manifest.json",
+      "sha256": "e20ff7bf717718827f84b18dc4093681cff973985acf85fe700e024cc8c8f6ee",
+      "bytes": 869498
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/package-verification.json",
+      "sha256": "c6f873bb38504fbcd5dd84431864fe8d705a3b73d206f0ee55eed6765ec56578",
+      "bytes": 105
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/modules-1.log",
+      "sha256": "e25030635a07705297eb6b8b9440c523c13f8e5cb0303b8053094d6eaa23b8b6",
+      "bytes": 1770
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/modules-2.log",
+      "sha256": "5df3fc0bb04993ed2e8ddbdd18dd36204469f3cba33b8c0339da73e0fa8e9456",
+      "bytes": 198
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/modules-3.log",
+      "sha256": "abeea1ecf680600a0abb60e2ef7d8afe8e263d3942e7bb9ac398834e4fa67034",
+      "bytes": 1769
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/typecheck-1.log",
+      "sha256": "3e4653a702e1ee23ac691790b039f0b7b1ad5951832cdacf39bf6334364495a5",
+      "bytes": 584
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/typecheck-2.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/typecheck-3.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/bddgen-1.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/bddgen-2.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/bddgen-3.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/bddgen-4.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-build-1.log",
+      "sha256": "bdc54e44665522a3537cd2c032adcb7dedf5beb512673e03c5401548b4871aaa",
+      "bytes": 2400
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/report-resource-verification.json",
+      "sha256": "0f510d466555f230acc1e614d64400ca7c334b6a67486b5ea60783d71c10da71",
+      "bytes": 901
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/wait-withhold-red.log",
+      "sha256": "d7d5e03659814cd87b92aa3145cdc769b779695514533039bf1c6046aa645989",
+      "bytes": 4197
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/service-withhold-red.log",
+      "sha256": "d2a07ce47a7f732eda5517c2ebabe5141f875079b6196ae48c4c2ccf1c67dbe2",
+      "bytes": 3402
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/no-progress-withhold-red.log",
+      "sha256": "d438388e9510d60f4eff0152d8ac70f7c0e4567529bde9a2631ef9a6484ed905",
+      "bytes": 1715
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/withhold-green-1.log",
+      "sha256": "37b156544e0633e662255a8edaffe4bbf756352ffaf7d100995024ee2f7aa5d0",
+      "bytes": 1113
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/withhold-green-2.log",
+      "sha256": "1c810cba08e146d1a3dcf9ebdf6f72ea373621620902e8edf31a56ed3c0a6184",
+      "bytes": 211
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/comparison-1.json",
+      "sha256": "ef85062c4e90a8a80c974fd03853476bf8bad0eb83d8b83b4881d0609c4a1bc0",
+      "bytes": 215
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/comparison-2.json",
+      "sha256": "cc0592807c859f8974b19411d83c36a2e8d705ccd4ddc147c2f49f003d18444b",
+      "bytes": 363
+    },
+    {
+      "path": ".local/feature-review/claude-report-effort-20261006/comparison-3.json",
+      "sha256": "a059ee2b39df90e55487d5b3f27163c0e6dcd400e73398e075465d5d57081a70",
+      "bytes": 12602
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-1DBkVb/026-Claude核心最终状态含失败.json",
+      "sha256": "8d444492fa0edb66e28f706284f09c62fdf0f8ec680a3f31c4438945d96c420d",
+      "bytes": 116152
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-KMa8bt/016-Claude核心最终状态含失败.json",
+      "sha256": "ed9d261df826440f4a8a8ec0640ef65f737d97b6b2d7437799cd1c554c1577af",
+      "bytes": 104982
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-旧汇报暂不公开保留等待-20261006.png",
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+      "bytes": 203772
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-旧汇报暂不公开保留等待-20261006.capture.json",
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/007-原群等待未公开草稿且保留依赖.native.png",
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+      "bytes": 203772
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/008-原群等待未公开草稿且保留依赖.capture.json",
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+      "bytes": 1685
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-当前包Claude群交付重启-20261006.png",
+      "sha256": "77aa76c495676ff987af09180bc15a7739784647cc320bf309be5986bbc68a9f",
+      "bytes": 300149
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-当前包Claude群交付重启-20261006.capture.json",
+      "sha256": "0b6d08bd5084456395957e3468534da98575383348560846da35c4b1586530a2",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/016-Claude普通群重启保留原交付.native.png",
+      "sha256": "77aa76c495676ff987af09180bc15a7739784647cc320bf309be5986bbc68a9f",
+      "bytes": 300149
+    },
+    {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/017-Claude普通群重启保留原交付.capture.json",
+      "sha256": "0b6d08bd5084456395957e3468534da98575383348560846da35c4b1586530a2",
+      "bytes": 1685
+    }
+  ],
+  "package": {
+    "files": 3405,
+    "snapshot": {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/package-manifest.json",
+      "sha256": "e20ff7bf717718827f84b18dc4093681cff973985acf85fe700e024cc8c8f6ee",
+      "bytes": 869498
+    },
+    "verification": {
+      "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/package-verification.json",
+      "sha256": "c6f873bb38504fbcd5dd84431864fe8d705a3b73d206f0ee55eed6765ec56578",
+      "bytes": 105
+    }
+  },
+  "privateReportComparison": {
+    "productWorkPersisted": false,
+    "uiVerified": false,
+    "benchmarkPassed": false,
+    "attempts": [
+      {
+        "case": "published-file",
+        "effort": "default",
+        "inputHash": "b0bd39509dc41ea933bd68513cc09ea40cdd3e8187a57ac14ae6282977c9c2be",
+        "passed": true,
+        "failureCode": null,
+        "elapsedMs": 29653,
+        "resultUsage": {
+          "inputTokens": 1902,
+          "outputTokens": 3033,
+          "totalTokens": 4935
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      },
+      {
+        "case": "published-file",
+        "effort": "low",
+        "inputHash": "b0bd39509dc41ea933bd68513cc09ea40cdd3e8187a57ac14ae6282977c9c2be",
+        "passed": true,
+        "failureCode": null,
+        "elapsedMs": 6810,
+        "resultUsage": {
+          "inputTokens": 1823,
+          "outputTokens": 581,
+          "totalTokens": 2404
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      },
+      {
+        "case": "dependency-wait",
+        "effort": "default",
+        "inputHash": "392042f39d35626923e245dfbeb4be1579e1c10cf263a10387a964e86b449b56",
+        "passed": true,
+        "failureCode": null,
+        "elapsedMs": 18711,
+        "resultUsage": {
+          "inputTokens": 1583,
+          "outputTokens": 1665,
+          "totalTokens": 3248
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      },
+      {
+        "case": "dependency-wait",
+        "effort": "low",
+        "inputHash": "392042f39d35626923e245dfbeb4be1579e1c10cf263a10387a964e86b449b56",
+        "passed": false,
+        "failureCode": "semantic-check-failed",
+        "elapsedMs": 11928,
+        "resultUsage": {
+          "inputTokens": 1504,
+          "outputTokens": 1012,
+          "totalTokens": 2516
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      },
+      {
+        "case": "user-question",
+        "effort": "default",
+        "inputHash": "ab7f3324c5bcffa55dc27522e4583acc90837a342f4d49dd05177d22f6f9c23f",
+        "passed": false,
+        "failureCode": "semantic-check-failed",
+        "elapsedMs": 100153,
+        "resultUsage": {
+          "inputTokens": 1884,
+          "outputTokens": 8797,
+          "totalTokens": 10681
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      },
+      {
+        "case": "user-question",
+        "effort": "low",
+        "inputHash": "ab7f3324c5bcffa55dc27522e4583acc90837a342f4d49dd05177d22f6f9c23f",
+        "passed": true,
+        "failureCode": null,
+        "elapsedMs": 57711,
+        "resultUsage": {
+          "inputTokens": 1805,
+          "outputTokens": 5414,
+          "totalTokens": 7219
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        }
+      }
+    ],
+    "interpretation": "The legal discard did not meet the preset publish benchmark; the original failed benchmark is preserved. No production report effort change."
+  },
+  "coreReliability": [
+    {
+      "batch": "real-source-1",
+      "snapshot": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/real-source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-1DBkVb/026-Claude核心最终状态含失败.json",
+        "sha256": "8d444492fa0edb66e28f706284f09c62fdf0f8ec680a3f31c4438945d96c420d",
+        "bytes": 116152
+      },
+      "budgets": [
+        {
+          "id": "budget-65d38af1ec80c8f16c68fc84b4c79999b9f209cc94ab28e29dfd96f94ab09797",
+          "modelCalls": 13,
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "usage": {
+            "inputTokens": 160384,
+            "outputTokens": 14926,
+            "totalTokens": 175310
+          },
+          "unknownCalls": 0,
+          "usageIncomplete": false,
+          "deadlineAt": "2026-10-06T10:37:11.958Z",
+          "noProgress": 0
+        }
+      ],
+      "reports": [
+        {
+          "runId": "6bac5440-fa5d-4d39-99d4-8fdfd68fedcd",
+          "phase": "report",
+          "usage": {
+            "inputTokens": 3594,
+            "outputTokens": 671,
+            "totalTokens": 4265
+          },
+          "usageComplete": true
+        },
+        {
+          "runId": "6bac5440-fa5d-4d39-99d4-8fdfd68fedcd",
+          "phase": "report",
+          "usage": {
+            "inputTokens": 3804,
+            "outputTokens": 4537,
+            "totalTokens": 8341
+          },
+          "usageComplete": true
+        }
+      ],
+      "works": [
+        {
+          "id": "work-14b0c6b2b6169454fad76c393d6eb1874254f440dd0ea1d3f8621cccda51de0a",
+          "status": "delivered",
+          "waitRevision": 0,
+          "resultVersion": 1,
+          "requiresReview": false
+        },
+        {
+          "id": "work-616726e237485d6822ec70f41e5dbde3aa75751823ec72dd38a1cd829a63d76d",
+          "status": "delivered",
+          "waitRevision": 1,
+          "resultVersion": 2,
+          "requiresReview": false
+        },
+        {
+          "id": "work-96ea4889dcfe78ba8776cb7beb5d451f3b1a264522674765d1d6fa14958c12e8",
+          "status": "delivered",
+          "waitRevision": 0,
+          "resultVersion": 1,
+          "requiresReview": false
+        }
+      ],
+      "failedSnapshotNote": "Snapshot precedes fixture cleanup; running records are not relabelled. No restart assertions from a failed case."
+    },
+    {
+      "batch": "package-1",
+      "snapshot": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-KMa8bt/016-Claude核心最终状态含失败.json",
+        "sha256": "ed9d261df826440f4a8a8ec0640ef65f737d97b6b2d7437799cd1c554c1577af",
+        "bytes": 104982
+      },
+      "budgets": [
+        {
+          "id": "budget-cd78bcaaef771c79cef0337087ac0575b734413dc3956c48f0b67144c3be4502",
+          "modelCalls": 12,
+          "maxModelCalls": 48,
+          "maxOutputTokens": 16000,
+          "usage": {
+            "inputTokens": 111983,
+            "outputTokens": 16748,
+            "totalTokens": 128731
+          },
+          "unknownCalls": 3,
+          "usageIncomplete": true,
+          "deadlineAt": "2026-10-06T10:44:06.208Z",
+          "noProgress": 0
+        }
+      ],
+      "reports": [
+        {
+          "runId": "dcd631d7-e410-415c-b3a7-16375230c078",
+          "phase": "report",
+          "usage": {
+            "inputTokens": 3456,
+            "outputTokens": 708,
+            "totalTokens": 4164
+          },
+          "usageComplete": true
+        },
+        {
+          "runId": "dcd631d7-e410-415c-b3a7-16375230c078",
+          "phase": "report",
+          "usage": {
+            "inputTokens": 3667,
+            "outputTokens": 7977,
+            "totalTokens": 11644
+          },
+          "usageComplete": true
+        }
+      ],
+      "works": [
+        {
+          "id": "work-94a93f513e02d0305438e676a02674dd934779d68149aa6055f6ebe5631923de",
+          "status": "delivered",
+          "waitRevision": 0,
+          "resultVersion": 1,
+          "requiresReview": false
+        },
+        {
+          "id": "work-da9771996216edd3560a398fe9b5c9573d2c5ee0d7cd6e9164aaf3dc53ac9fa2",
+          "status": "cancelled",
+          "waitRevision": 1,
+          "resultVersion": 1,
+          "requiresReview": false
+        },
+        {
+          "id": "work-3052c555f1ad02ae916792c3739215a2e59e754119f439768ad6aed399fa3251",
+          "status": "delivered",
+          "waitRevision": 0,
+          "resultVersion": 1,
+          "requiresReview": false
+        }
+      ],
+      "failedSnapshotNote": "Snapshot precedes fixture cleanup; running records are not relabelled. No restart assertions from a failed case."
+    }
+  ],
+  "captures": [
+    {
+      "label": "原群等待未公开草稿且保留依赖",
+      "batch": "offline-4",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-旧汇报暂不公开保留等待-20261006.png",
+        "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+        "bytes": 203772
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-旧汇报暂不公开保留等待-20261006.capture.json",
+        "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+        "bytes": 1685
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/007-原群等待未公开草稿且保留依赖.native.png",
+        "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3",
+        "bytes": 203772
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/offline-4/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-VXv5j5/008-原群等待未公开草稿且保留依赖.capture.json",
+        "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62",
+        "bytes": 1685
+      }
+    },
+    {
+      "label": "Claude普通群重启保留原交付",
+      "batch": "package-1",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-当前包Claude群交付重启-20261006.png",
+        "sha256": "77aa76c495676ff987af09180bc15a7739784647cc320bf309be5986bbc68a9f",
+        "bytes": 300149
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-当前包Claude群交付重启-20261006.capture.json",
+        "sha256": "0b6d08bd5084456395957e3468534da98575383348560846da35c4b1586530a2",
+        "bytes": 1685
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/016-Claude普通群重启保留原交付.native.png",
+        "sha256": "77aa76c495676ff987af09180bc15a7739784647cc320bf309be5986bbc68a9f",
+        "bytes": 300149
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-wait-withhold-20261006/package-1/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-JZI2l3/017-Claude普通群重启保留原交付.capture.json",
+        "sha256": "0b6d08bd5084456395957e3468534da98575383348560846da35c4b1586530a2",
+        "bytes": 1685
+      }
+    }
+  ],
+  "collectionNotes": [
+    "First collector incorrectly assumed a PNG and its metadata shared the numeric filename prefix. It stopped before copying any capture; final export selects the same scenario and label and verifies pngSha256/bytes/dimensions. Finalized batch results were not changed."
+  ]
+}

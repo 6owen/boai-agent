@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-legacy-ui-real-1",
+  "technicalResult": "passed",
+  "desktopMode": "current macOS arm64 unpacked application",
+  "runtimeScope": {
+    "legacyACP": "offline protocol fixture, omitted protocol field",
+    "newWork": "real Codex 0.159.3 with existing login"
+  },
+  "stats": {
+    "startTime": "2026-10-05T15:44:18.941Z",
+    "duration": 92186.022,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "resources": 12,
+  "traces": 3,
+  "sourceFiles": 866,
+  "sourceVerified": true,
+  "sourceAndBuildDigest": "3f4245c56feb9c483990d551d2f627df09de69b22bee4f1d130b805d08d54083",
+  "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba",
+  "outcome": {
+    "sameEmployee": true,
+    "agentConfigVersion": 3,
+    "legacyWorkId": null,
+    "legacyUsage": null,
+    "legacyExternalInvocations": 1,
+    "newWorkCount": 1,
+    "newWorkStatus": "delivered",
+    "artifacts": 2,
+    "oldFileBytesAndMtimeUnchanged": true,
+    "oldMessagesAndRunUnchanged": true,
+    "callsForLegacyRun": 0,
+    "automaticReplay": false
+  },
+  "screenshot": {
+    "path": "LR4-旧ACP切换Codex保留原文件.png",
+    "sha256": "f80581a2706a1da8acfc1ef22275ca27e189c5e676c0331327688465a747d50e"
+  },
+  "report": "../../../../.local/feature-review/codex-legacy-ui-real-1-report/index.html",
+  "humanReview": "pending",
+  "limitations": [
+    "Legacy ACP uses a local protocol fixture; only the new Codex task uses a real provider.",
+    "Old-shaped records are created through current legacy UI and survive restart; this is not installing an older release and upgrading the binary.",
+    "Current unsigned macOS arm64 unpacked application only."
+  ]
+}

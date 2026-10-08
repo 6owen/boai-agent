@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 聊天清理同事务移除Codex/Claude各自会话映射，不复用旧外部历史。
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
  * [OUTPUT]: 另一会话仍引用的协作预算保留累计计数/期限，已清理调用只保留 hash 去重；不删另一群或员工。浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
  * [OUTPUT]: 成果先失效再 hash 安全清理，冲突阻止后续递归删除；修订/采用 cleared 回执与恢复门禁；清空/解散保留核心首发和普通消息最小 cleared 回执；撤销材料及派生记忆后只清理 hash 匹配的私有原件，冲突聊天保持门禁并在恢复时显性返回；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
@@ -109,7 +110,7 @@ export class ConversationHistory {
       const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of ['codexSessions', 'claudeSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {

@@ -1,11 +1,14 @@
 /*
+ * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
+ * [OUTPUT]: 创建弹窗区分Codex本机登录与Claude明确API来源；Claude进入原普通群选人，核心组织能力仍单独限制。
  * [INPUT]: 员工/连接快照、DesktopApi、创建完成回调和全局未保存守卫。
  * [OUTPUT]: 身份、可选/上传头像与 Prompt 的员工弹窗、搜索选人的群聊弹窗；核心助手不作为群成员候选，创建后打开真实会话。
  * [POS]: employee 的创建入口；后续能力、群名称与共享资料编辑仍由右侧编辑器负责。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useContext, useRef, useState, type FormEvent } from 'react'
-import type { Conversation, DigitalAgent, Snapshot } from '@shared/domain'
+import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
+import type { Conversation, DigitalAgent, Snapshot, LaunchProfile, ExecutionBackend } from '@shared/domain'
+import { backendProtocol, isNativeBackend } from '@shared/domain/backends'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { Avatar, Banner, colors, Field, GuardContext, useDirty, useMutation } from '@/components/common'
@@ -14,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FieldGroup, FieldLegend, FieldSet } from '@/components/ui/field'
+import { SelectField } from '@/components/ui/select-field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,7 +32,10 @@ const returnFocus = () => document.querySelector<HTMLElement>('.list-heading [ar
 
 export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated }: Props & { template?: number }) {
   const preset = template === undefined ? undefined : templates[template]
-  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
+  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', connectionId: '', modelId: '', executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
+  const [profiles, setProfiles] = useState<LaunchProfile[]>([])
+  const [profileError, setProfileError] = useState('')
+  useEffect(() => { let active = true; void api.request('listLaunchProfiles', undefined).then(value => { if (active) setProfiles(value) }, () => { if (active) setProfileError('本机连接读取失败，请重新打开员工创建窗口。') }); return () => { active = false } }, [api])
   const [uploading, setUploading] = useState(false)
   const nameInput = useRef<HTMLInputElement>(null)
   const created = useRef<DigitalAgent | null>(null)
@@ -40,7 +47,7 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
     if (!form.name.trim() || uploading) return
     void run(async () => {
       // Keep the saved employee if opening the conversation needs to be retried.
-      created.current ??= await api.request('saveAgent', { ...form, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], connectionId: snapshot.connections[0]?.id ?? '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
+      created.current ??= await api.request('saveAgent', { ...form, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], connectionId: form.executionBackend.kind === 'claude-local' ? form.connectionId : form.executionBackend.kind === 'mastra-model' ? snapshot.connections[0]?.id ?? '' : '', modelId: form.executionBackend.kind === 'claude-local' ? form.modelId : '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
       const conversation = await api.request('createConversation', { kind: 'direct', title: created.current.name, agentIds: [created.current.id] })
       await onCreated(conversation)
     })
@@ -56,6 +63,12 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
             <FieldGroup>
               <Field label="名称"><Input ref={nameInput} required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：资料研究员" /></Field>
               <Field label="角色"><Input maxLength={300} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="一句话描述这位同事的职责" /></Field>
+              <Field label="运行方式"><SelectField value={form.executionBackend.kind} onValueChange={value => { const kind = value === 'claude-local' ? 'claude-local' : 'codex-local'; setForm(current => ({ ...current, connectionId: '', modelId: '', executionBackend: value === 'mastra-model' ? { kind: 'mastra-model' } : { kind, profileId: profiles.find(p => p.protocol === backendProtocol(kind) && p.verified)?.id ?? '' } })) }} options={[{ value: 'mastra-model', label: '模型 API' }, { value: 'codex-local', label: '本机 Codex' }, { value: 'claude-local', label: '本机 Claude' }]} /></Field>
+              {isNativeBackend(form.executionBackend) && <Field label="本机连接" hint={profileError || (form.executionBackend.kind === 'claude-local' ? '选择已核对的 Claude 程序，并为它配置模型来源。支持单聊、普通群聊和文件任务。' : '在设置中添加并测试本机 Codex 后选择。当前支持连续聊天。')}><SelectField required value={form.executionBackend.profileId} onValueChange={profileId => setForm(current => isNativeBackend(current.executionBackend) ? { ...current, executionBackend: { ...current.executionBackend, profileId } } : current)} options={[{ value: '', label: '请选择本机连接' }, ...profiles.filter(p => p.protocol === backendProtocol(form.executionBackend.kind as 'codex-local' | 'claude-local')).map(p => ({ value: p.id, label: p.name + (p.verified ? '' : ' · 未测试'), disabled: !p.verified }))]} /></Field>}
+              {form.executionBackend.kind === 'claude-local' && <>
+                <Field label="模型来源" hint="由本机 Claude 使用此 API 连接；连接验证通过后再开始聊天。"><SelectField required value={form.connectionId} onValueChange={connectionId => setForm(current => ({ ...current, connectionId, modelId: '' }))} options={[{ value: '', label: '请选择模型连接' }, ...snapshot.connections.map(connection => ({ value: connection.id, label: connection.name }))]} /></Field>
+                <Field label="模型 ID" hint="留空使用所选连接的默认模型。"><Input value={form.modelId} onChange={event => setForm(current => ({ ...current, modelId: event.target.value }))} placeholder={snapshot.connections.find(connection => connection.id === form.connectionId)?.defaultModel || '使用连接默认模型'} /></Field>
+              </>}
               <Field label="Prompt"><Textarea rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></Field>
             </FieldGroup>
           </fieldset>

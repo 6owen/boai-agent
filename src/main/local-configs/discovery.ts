@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 有界配置扫描、当前扫描范围与用户选中的配置标识。
- * [OUTPUT]: 无密钥预览、重读导入 API 连接或指定登录目录的 ACP 启动项；发现不执行程序。
+ * [OUTPUT]: 无密钥预览、重读导入API连接或指定登录目录的ACP/明确原生Codex启动项；复用只读程序解析，不执行程序。
  * [POS]: main/local-configs 的模型连接用例，扫描不访问网络或修改源文件。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import { dirname } from 'node:path'
 import type { ConnectionInput, LaunchProfileInput } from '../../shared/domain'
 import { scanLocalConfigs, readScannedApiKeyConfig } from './local-config-scan'
 import { findCodexAcp, inspectCodexAcp, type CodexAcpProgram } from './codex-acp'
+import { resolveProgram } from '../../runtime/modules/backends/program'
 
 export class LocalConfigDiscovery {
   private scope: Parameters<typeof scanLocalConfigs>[0]
@@ -33,10 +34,18 @@ export class LocalConfigDiscovery {
     return result
   }
 
-  launchProfile(configId: string): LaunchProfileInput {
+  launchProfile(configId: string, protocol: 'acp' | 'codex-app-server' = 'acp'): LaunchProfileInput {
     if (!this.agents.has(configId)) throw new Error('请先扫描并选择 Codex 登录')
     const login = scanLocalConfigs(this.scope).logins.find(item => item.authType === 'oauth' && item.configId === configId)
     if (!login || !login.sourcePath) throw new Error('源登录已变化或被移除，请重新扫描')
+    if (protocol === 'codex-app-server') {
+      const program = resolveProgram('codex', this.searchPaths)
+      return {
+        name: '本机 Codex · 本地登录', protocol, executable: program.path, args: [], runtime: program.runtime,
+        codexHome: dirname(login.sourcePath), localConfigId: configId,
+        useExistingLogin: true, hostAccessAcknowledged: true,
+      }
+    }
     if (!this.program) throw new Error('未找到 codex-acp，请安装后重新扫描')
     let program: CodexAcpProgram
     try { program = inspectCodexAcp(this.program.executable) } catch { throw new Error('ACP 程序已移除，请重新扫描') }

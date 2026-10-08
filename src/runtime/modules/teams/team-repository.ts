@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 严格草稿输入、公开模型配置和 ProductStore 事务。
  * [OUTPUT]: 用户可读校验错误、可编辑方案与不可覆写的能力事实；单未结束草稿、版本比较、宿主 hash、只读恢复与取消墓碑。
  * [POS]: 团队创建 SQLite 权威状态；不在事务内调用模型或文件系统。
@@ -22,15 +23,15 @@ export function resolveTeamModel(connection: Connection | undefined, selectedMod
   if (!modelId) return teamError('MODEL_UNAVAILABLE', '请先配置有效模型')
   return { modelId, fingerprint: teamHash({ id: connection.id, provider: connection.provider, baseUrl: connection.baseUrl, api: connection.api ?? 'chat', defaultModel: connection.defaultModel, modelId }) }
 }
-export const teamInputHash = (draft: TeamDraft) => teamHash({ prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
+export const teamInputHash = (draft: TeamDraft) => teamHash({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
 export function validateTeamDraft(draft: TeamDraft) {
   draft.validationErrors = []
   if (!draft.prompt) draft.validationErrors.push('请描述团队需求')
-  if (!draft.resolvedModelId) draft.validationErrors.push('请选择有效模型连接')
+  if (!draft.resolvedModelId && !(draft.executionBackend?.kind === 'codex-local' && draft.connectionFingerprint)) draft.validationErrors.push('请选择有效模型连接')
   if (!draft.plan) draft.validationErrors.push('请先生成方案')
   if (draft.plan && draft.planInputHash !== teamInputHash(draft)) draft.validationErrors.push('需求或模型已变化，请重新生成方案')
   if (draft.createGroup && draft.plan && !draft.groupTitle) draft.validationErrors.push('请填写群名称')
-  draft.planHash = draft.plan && !draft.validationErrors.length ? teamHash({ plan: draft.plan, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint, createGroup: draft.createGroup, groupTitle: draft.createGroup ? draft.groupTitle : '' }) : undefined
+  draft.planHash = draft.plan && !draft.validationErrors.length ? teamHash({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), plan: draft.plan, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint, createGroup: draft.createGroup, groupTitle: draft.createGroup ? draft.groupTitle : '' }) : undefined
 }
 export async function readTeamDraft(tx: RecordTransaction, id: string) {
   return await tx.get<TeamDraft>('teamDrafts', id) ?? teamError('VALIDATION', '团队草稿不存在')

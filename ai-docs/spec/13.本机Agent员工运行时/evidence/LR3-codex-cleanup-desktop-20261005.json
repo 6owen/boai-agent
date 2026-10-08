@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-cleanup-real-1",
+  "technicalResult": "passed",
+  "desktopMode": "current macOS arm64 unpacked application",
+  "modelMode": "real-provider",
+  "stats": {
+    "startTime": "2026-10-05T15:08:05.856Z",
+    "duration": 92368.622,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "resources": 11,
+  "traces": 2,
+  "sourceFiles": 864,
+  "sourceAndBuildDigest": "d190a6b7f880fe88fc36397be9a60c004521b83d4186b8448954f813efba40b2",
+  "sourceVerified": true,
+  "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba",
+  "outcome": {
+    "beforeMessages": 2,
+    "clearedMessages": 0,
+    "clearedRuns": 0,
+    "clearedSessions": 0,
+    "newThreadDistinct": true,
+    "newSessionSources": 1,
+    "newSessionInputMessages": 1,
+    "newReply": "没有可用暗号",
+    "works": 0,
+    "runsAfterClearAndExplicitSend": 3
+  },
+  "screenshot": {
+    "path": "LR3-真实Codex清空后新会话.png",
+    "sha256": "22caf6abd412a1318c89d1212fa0eedf0f713bfe544c597b052ff0739bc1e3e6"
+  },
+  "report": "../../../../.local/feature-review/codex-cleanup-real-1-report/index.html",
+  "humanReview": "pending",
+  "visualReview": "Original screenshot inspected: new user request and no-available-code answer are visible.",
+  "limitations": [
+    "Product mapping and authorized context only; no inspection/deletion of user global Codex history.",
+    "No active-work clearing or material hash-conflict coverage in this scenario.",
+    "Codex 0.159.3, unsigned macOS arm64 unpacked app only."
+  ]
+}

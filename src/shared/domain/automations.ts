@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 自动化预算增加可选callUnit，旧API记录不变；本机外部请求与内部模型次数分开。
  * [INPUT]: 自动化配置、原生触发与产品执行记录。
  * [OUTPUT]: 七项创建的稳定请求身份、草稿生成合同与全历史搜索/进行中/完成筛选；结构化监控来源/规则、比较证据与成功检查点；完整历史待处理谓词/查询、每计划最近结果及计数；显式预算追加请求及累计限额/追加回执；三档通知策略、任务聊天/日历、触发来源、跨工作证据和运行/交付合同。
  * [POS]: 跨进程的自动化领域合同；旧记录由运行时迁移，不伪造历史交付。
@@ -125,7 +126,7 @@ export interface AutomationOccurrence {
   cancellationCause?: 'user' | 'budget'
   cancellationRequestedAt?: string
   budgetId?: string
-  budget?: { maxModelCalls: number; maxRuns: number; maxOutputTokens: number; deadlineAt: string; runs: number; exhausted?: boolean; renewals?: BudgetRenewal[] }
+  budget?: { callUnit?: 'external-turn' | 'mixed'; maxModelCalls: number; maxRuns: number; maxOutputTokens: number; deadlineAt: string; runs: number; exhausted?: boolean; renewals?: BudgetRenewal[] }
   resultEvidence?: { workId: string; resultVersion: number; kind: 'answer' | 'artifact'; reference: string; messageId?: string; artifactId?: string }[]
   runIds: string[]
   resultMessageIds: string[]

@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-program-faults-offline-1",
+  "technicalResult": "passed",
+  "desktopMode": "current macOS arm64 unpacked application",
+  "modelMode": "offline-protocol-or-fixture",
+  "stats": {
+    "startTime": "2026-10-05T15:49:41.465Z",
+    "duration": 25677.789,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cases": [
+    {
+      "title": "已验证的本机连接遇到程序丢失后阻止执行并明确重测",
+      "status": "passed",
+      "fault": "程序丢失",
+      "modelMode": "offline-protocol-or-fixture",
+      "resources": 8,
+      "traces": 2,
+      "finalRuns": [
+        [
+          "decision",
+          "failed",
+          "请先测试当前本机 Codex 连接"
+        ]
+      ],
+      "workCount": 0,
+      "calls": 0,
+      "sessions": 0,
+      "restoredVerifiedVersion": "0.159.3"
+    },
+    {
+      "title": "已验证的本机连接遇到程序被替换后阻止执行并明确重测",
+      "status": "passed",
+      "fault": "程序被替换",
+      "modelMode": "offline-protocol-or-fixture",
+      "resources": 8,
+      "traces": 2,
+      "finalRuns": [
+        [
+          "decision",
+          "failed",
+          "请先测试当前本机 Codex 连接"
+        ]
+      ],
+      "workCount": 0,
+      "calls": 0,
+      "sessions": 0,
+      "restoredVerifiedVersion": "0.159.3"
+    },
+    {
+      "title": "已验证的本机连接遇到协议版本变化后阻止执行并明确重测",
+      "status": "passed",
+      "fault": "协议版本变化",
+      "modelMode": "offline-protocol-or-fixture",
+      "resources": 8,
+      "traces": 2,
+      "finalRuns": [
+        [
+          "decision",
+          "failed",
+          "请先测试当前本机 Codex 连接"
+        ]
+      ],
+      "workCount": 0,
+      "calls": 0,
+      "sessions": 0,
+      "restoredVerifiedVersion": "0.159.3"
+    }
+  ],
+  "sourceFiles": 866,
+  "sourceVerified": true,
+  "sourceAndBuildDigest": "3a39e715acf5a7675273d42222fc96808ac0e0b96aa542b3bacb7a3a0e22d6b5",
+  "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba",
+  "screenshot": {
+    "path": "LR0-隔离协议版本变化拒绝执行.png",
+    "sha256": "e93cf5e57c1cc80730f7947769e4f017aed334ac3f27de8746dea614f887cfe9"
+  },
+  "report": "../../../../.local/feature-review/codex-program-faults-offline-1-report/index.html",
+  "humanReview": "pending",
+  "limitations": [
+    "All program mutations are in isolated owned protocol fixtures, not the installed Codex program.",
+    "Connection handshake version changes are injected protocol replies; Codex 0.160.0 is not declared supported.",
+    "No API/native model inference or Work is performed in these fault scenarios."
+  ]
+}

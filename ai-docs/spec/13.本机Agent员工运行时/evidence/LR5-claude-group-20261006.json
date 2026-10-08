@@ -1,0 +1,729 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-06",
+  "scope": "Claude ordinary groups; original Work and per-employee native runtime; not core organization or automation",
+  "humanReview": "pending",
+  "program": {
+    "version": "2.1.214",
+    "sha256": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+    "model": "deepseek-v4-pro",
+    "authentication": "explicit saved compatible API, encrypted isolated vault"
+  },
+  "checks": {
+    "modules3": {
+      "files": 7,
+      "passed": 146
+    },
+    "modules4": {
+      "files": 3,
+      "passed": 22
+    },
+    "typecheck": "pass after retained BDD typing failure",
+    "uiRules": "pass",
+    "build": "pass, existing chunk size warning"
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T01:55:32.483Z",
+        "duration": 11854.151,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "resources": 17,
+      "report": ".local/feature-review/claude-group-20261006/offline-1-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 862,
+        "changed": []
+      },
+      "scenarios": [
+        {
+          "title": "使用离线协议由首位Claude负责Claude与Claude的普通群分工",
+          "status": "passed",
+          "sourceMode": "offline-protocol-or-fixture",
+          "launchCount": 2,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-71d967de4d2109ee34b4ddb0714eff394bec510cf4bc92186957c0e29ca1d13f",
+            "schemaVersion": 1,
+            "modelCalls": 4,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:00:40.236Z",
+            "usage": {
+              "inputTokens": 72,
+              "outputTokens": 8,
+              "totalTokens": 80
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "5a30e26d-cec5-4984-991d-8ebb4d91b609",
+            "conversationId": "e7efd6e1-887b-4b7f-b6b9-c4e94fa2690b",
+            "callUnit": "external-turn",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "proof.txt",
+              "sha256": "45bbf214fbde7806ed272819aba3fad2994bd7ea07f8cf126e4559be191ffb79"
+            },
+            {
+              "name": "proof.txt",
+              "sha256": "f62b638365e7a2130e10fd2307e32b745aea79682b582cc23e65317fd73a61da"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-1",
+      "stats": {
+        "startTime": "2026-10-06T01:57:05.173Z",
+        "duration": 7977.046,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "resources": 3,
+      "report": ".local/feature-review/claude-group-20261006/real-1-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 860,
+        "changed": []
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude由新同事负责Claude与API的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 1
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与API的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 1
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 1
+        }
+      ],
+      "coverageGap": {
+        "omittedDistFiles": [
+          "dist/renderer/assets/shiki-highlighter-C6S5fS_y.js",
+          "dist/renderer/assets/main-BQk-vKK5.js"
+        ],
+        "reason": "manifest inherited old hashed asset filenames after build-2",
+        "fullBuildIdentityProven": false
+      }
+    },
+    {
+      "name": "real-2",
+      "stats": {
+        "startTime": "2026-10-06T01:58:34.605Z",
+        "duration": 202447.522,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "resources": 39,
+      "report": ".local/feature-review/claude-group-20261006/real-2-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 860,
+        "changed": []
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude由新同事负责Claude与API的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 2,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-e32449e38300edc554ed4f5ba3b1cf52765d003481e90b4fe1064dd9e7470162",
+            "schemaVersion": 1,
+            "modelCalls": 10,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:06:09.111Z",
+            "usage": {
+              "inputTokens": 84002,
+              "outputTokens": 2705,
+              "totalTokens": 86707
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "8f91b5e3-bdc2-4f09-b5ab-6a4c9fbe5260",
+            "conversationId": "de372f9e-caf9-4be2-bbda-0faed60d3e6d",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "3b66d47708114179e036562ae06007b74be3054ae4c793b29c8af633a2f90ba7"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "5a47f071c9487687bb60f7139a9860b3bc602117f413481e60bea316bf261570"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与API的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 2,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-c1541849b29cae755f3adaf44695ddb2750c1ba1bfc6e77393e44708828c61b5",
+            "schemaVersion": 1,
+            "modelCalls": 7,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:04:55.597Z",
+            "usage": {
+              "inputTokens": 80351,
+              "outputTokens": 3267,
+              "totalTokens": 83618
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "a5a8937b-7365-44a4-af72-96d9a7dc9580",
+            "conversationId": "37fd2dcd-7fe3-4702-98b0-25d2b5ffd74d",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "99e48e39dd703c9db2a8f47ca85548de9f90d1a71516ba6d58575c2718efd1d7"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "ab912a3570b904e8dc662f51b30b55d42d28dec6a731329ca9f7aae565379baf"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "failed",
+          "sourceMode": "real-provider",
+          "launchCount": 2,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-7c46f95347657151cd90ab5c4dcfadd8905187b6fde030d47841dbce7f11bf35",
+            "schemaVersion": 1,
+            "modelCalls": 4,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:03:46.586Z",
+            "usage": {
+              "inputTokens": 77829,
+              "outputTokens": 4070,
+              "totalTokens": 81899
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "12040b49-9b7b-4513-bed7-6ac575721fc7",
+            "conversationId": "0765d6ac-2a87-4688-aa03-1ec68b087eb0",
+            "callUnit": "external-turn",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "a613680d51c199770a86bacc9314894431d59e7cb1c2e3eb0e3b0fdcde85ac86"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "a76d777a241fddff3d9caa136f740a72da1104f0b86ba1f157d526a46a4a1893"
+            }
+          ]
+        }
+      ],
+      "coverageGap": {
+        "omittedDistFiles": [
+          "dist/renderer/assets/shiki-highlighter-C6S5fS_y.js",
+          "dist/renderer/assets/main-BQk-vKK5.js"
+        ],
+        "reason": "manifest inherited old hashed asset filenames after build-2",
+        "fullBuildIdentityProven": false
+      }
+    },
+    {
+      "name": "real-3",
+      "stats": {
+        "startTime": "2026-10-06T02:03:20.925Z",
+        "duration": 207687.412,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "resources": 56,
+      "report": ".local/feature-review/claude-group-20261006/real-3-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 860,
+        "changed": []
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude由新同事负责Claude与API的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-5ea7bf7895239afec75a9216cb9df016dbdfc8b6d239d075ab89d87d033b3673",
+            "schemaVersion": 1,
+            "modelCalls": 10,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:10:58.915Z",
+            "usage": {
+              "inputTokens": 81748,
+              "outputTokens": 2965,
+              "totalTokens": 84713
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "13d86055-45b4-48f1-82b7-f086567a0a0b",
+            "conversationId": "e70ea317-7b40-4731-9418-114c8c1e3ae5",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "14b53183429e35d70ddbb9e8a63733c8799834e1043abb6eafc1edfa0a83dadf"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "2e9931e7a02e28b1a71e340ece837de0204210133190843fa34e6bcdc51147dc"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与API的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-31203b4bb60c425e732f55c989a3fc5426e16a44a2d4160d33d8c71a48c4e7b6",
+            "schemaVersion": 1,
+            "modelCalls": 7,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:09:39.756Z",
+            "usage": {
+              "inputTokens": 81658,
+              "outputTokens": 3711,
+              "totalTokens": 85369
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "149b2cc2-9c9b-41df-b49f-ba91659b7182",
+            "conversationId": "47ec9a61-39b4-435c-9366-c5c55a896e7f",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "b1432994935889ec29ff9e93cf60fb84998d049ad0d47dad6b9ef12eab035c6d"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "1b46f51dc1594a3bfd0c3c69bc9321a0d662ccc3faa976d5b87b6e00244b71ab"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-55366c5bcfcb4a56b8f019fa6c2c2d794d60f7c7b3907f1422179460d6f8266a",
+            "schemaVersion": 1,
+            "modelCalls": 4,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:08:32.785Z",
+            "usage": {
+              "inputTokens": 77614,
+              "outputTokens": 3589,
+              "totalTokens": 81203
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "20318a42-4f1a-4f96-b37e-ded30e40d841",
+            "conversationId": "cce2dff5-1f6c-47f3-a5a9-8513b6f45ab2",
+            "callUnit": "external-turn",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "db839070dbdefcbc7f092baad89ba933e00ae82bcb7b39c9d436ca83181192e3"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "797c99192e074e998003ab2ba94771eaeb1410ec861249c213883969e14709d9"
+            }
+          ]
+        }
+      ],
+      "coverageGap": {
+        "omittedDistFiles": [
+          "dist/renderer/assets/shiki-highlighter-C6S5fS_y.js",
+          "dist/renderer/assets/main-BQk-vKK5.js"
+        ],
+        "reason": "manifest inherited old hashed asset filenames after build-2",
+        "fullBuildIdentityProven": false
+      }
+    },
+    {
+      "name": "real-4",
+      "stats": {
+        "startTime": "2026-10-06T02:07:18.004Z",
+        "duration": 192285.092,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "resources": 56,
+      "report": ".local/feature-review/claude-group-20261006/real-4-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 862,
+        "changed": [],
+        "omitted": []
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude由新同事负责Claude与API的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-51c00f959fb770b3aff42ea34d5aed37f929b35769390f5640c8d447ba62b9c4",
+            "schemaVersion": 1,
+            "modelCalls": 10,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:14:40.364Z",
+            "usage": {
+              "inputTokens": 82654,
+              "outputTokens": 3102,
+              "totalTokens": 85756
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "0938da32-d5f2-44f9-bd08-1db317ea38a6",
+            "conversationId": "15eee38b-90ac-46d6-a663-1b74c55eb828",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "1a1499ee35a0bea024a2b6a8c0ebfac50cead88884c2351bdf07d19dda47492e"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "2fe16c63388e995fb8c31d835883538eb6e1a23a6b166b8e3eeaf00debb32241"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与API的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-96d1183fa82ac80fe8452a21adca07e9456b81bf2852c11fb02fbd3c7880bcd1",
+            "schemaVersion": 1,
+            "modelCalls": 7,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:13:38.914Z",
+            "usage": {
+              "inputTokens": 79453,
+              "outputTokens": 3531,
+              "totalTokens": 82984
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "4fbe0c1c-da16-44ab-a3d9-d4094259c192",
+            "conversationId": "ef460b72-cc04-4f07-9ea0-0a333dce6de3",
+            "callUnit": "mixed",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "7c19fa22a157bf7693984bc2aea237a97394ab3e9f658684e714ce65acd08ed5"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "46ee9591db9fbd6ad304eb61fb2fcaeba6dafff63b55f494b12624235757213d"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude由首位Claude负责Claude与Claude的普通群分工",
+          "status": "passed",
+          "sourceMode": "real-provider",
+          "launchCount": 3,
+          "phaseCounts": {
+            "decision": 3,
+            "execution": 3,
+            "memory": 0,
+            "report": 0
+          },
+          "budget": {
+            "workItems": 2,
+            "retries": 0,
+            "reportRefreshes": 0,
+            "noProgress": 0,
+            "maxWorkItems": 8,
+            "maxRetries": 3,
+            "maxReportRefreshes": 4,
+            "maxNoProgress": 3,
+            "id": "budget-fe1bfb30b88ebd47053a86e177e4e2a58236eec59da0fcd328c856451fd783d2",
+            "schemaVersion": 1,
+            "modelCalls": 4,
+            "runs": 3,
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-06T02:12:29.619Z",
+            "usage": {
+              "inputTokens": 78815,
+              "outputTokens": 3410,
+              "totalTokens": 82225
+            },
+            "usageIncomplete": false,
+            "sourceMessageId": "f31ce9e9-fb38-42cd-b0a1-51cf3c53f255",
+            "conversationId": "ea715c0c-8c5a-4cf9-82d0-3a79acb2a99c",
+            "callUnit": "external-turn",
+            "accounting": "model-calls-v1",
+            "unknownCalls": 0
+          },
+          "artifactHashes": [
+            {
+              "name": "group-child.md",
+              "sha256": "3a6164e28c14be7defd45b1c4783394eb5f57fbc3ecc736a20dbd52b8cb5c806"
+            },
+            {
+              "name": "group-summary.md",
+              "sha256": "c0e71487d04196dd056c8b6e5d1788be19504714467cb3d966b3578fe55bd31d"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T02:10:51.444Z",
+        "duration": 27082.517,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "resources": 50,
+      "report": ".local/feature-review/claude-group-20261006/offline-2-report/index.html",
+      "verification": {
+        "unchanged": true,
+        "count": 862,
+        "changed": [],
+        "omitted": []
+      },
+      "scope": "original Claude single employee/files/adoption, three media types/incremental restart, ordinary group work"
+    }
+  ],
+  "retainedScreenshots": [
+    {
+      "file": "LR5-API负责Claude子工作重启交付.png",
+      "source": ".local/feature-review/claude-group-20261006/real-4/scenarios/76620a6b86e22810b964-da3576398116d2538439-retry0-repeat0-FmWfRj/014-Claude普通群重启保留原交付.native.png",
+      "sha256": "5c6a84b6d27bb502697d40355923493dd262f4637c5f7a16b82d96e1838276a3",
+      "originalPixels": "2580x1720, no transform"
+    },
+    {
+      "file": "LR5-Claude负责API子工作重启交付.png",
+      "source": ".local/feature-review/claude-group-20261006/real-4/scenarios/76620a6b86e22810b964-dd3e50a5f70f6a4a21c2-retry0-repeat0-coiodE/014-Claude普通群重启保留原交付.native.png",
+      "sha256": "d3e548a9a772cb999ed1964123b2a6a5ff9d27433cbafa8eb8fd7da423379246",
+      "originalPixels": "2580x1720, no transform"
+    },
+    {
+      "file": "LR5-双Claude普通群重启交付.png",
+      "source": ".local/feature-review/claude-group-20261006/real-4/scenarios/76620a6b86e22810b964-e8060a98a87caa612b35-retry0-repeat0-EEnFH0/014-Claude普通群重启保留原交付.native.png",
+      "sha256": "b057aef5373b34e0160695a2017b9acbc3a11731fce9c597e77d51f2bfdea13a",
+      "originalPixels": "2580x1720, no transform"
+    }
+  ],
+  "remaining": [
+    "wake-driven delivery memory is skipped by current settled hook",
+    "Claude core organization/team creation/automation remain gated",
+    "active group revocation, failures, materials, revision and Claude/Codex combinations need own evidence",
+    "model replies expose internal work/artifact IDs",
+    "current release package not rebuilt",
+    "some screenshots show only the visible portion of long cards, not the complete process",
+    "human review pending"
+  ]
+}

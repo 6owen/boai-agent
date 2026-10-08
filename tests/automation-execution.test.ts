@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 额度确认中的原未完成负责人只沿定向 Work 接续，不再次判断新任务；已交付同事仍能独立参与且不重放，普通本人消息仍正常判断。
+ * [OUTPUT]: 自动化文件证据保留已提交交付消息身份，原件未核验或原回复不匹配时不能提供文件交付导航。
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
  * [OUTPUT]: 实际执行后公开的 Work 问题与初始 ask 同样保留原等待、精确 get/补充及同轮另一员工的问题；已有工具原件不重放，原 Work/预算/期限与回执保持。
  * [OUTPUT]: 详情无固定问题版本的补充也拒绝，不再动态绑定下一轮等待；原预算追加合同保持。
@@ -56,9 +58,9 @@ it('does not label all-pass, ordinary chat, or an unverified artifact as deliver
   input.works[0].outcome!.evidence = [{ kind: 'artifact', reference: 'file' }]
   input.works[0].artifactIds = ['file']
   const artifacts = [{ id: 'file', name: 'report.txt', path: '/not-verified', size: 1, runId: 'run' }]
-  expect(aggregateAutomation(occurrence(), { ...input, artifacts })).toMatchObject({ deliveryStatus: 'blocked' })
-  expect(aggregateAutomation(occurrence(), { ...input, artifacts, verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'delivered' })
-  expect(aggregateAutomation(occurrence(), { ...input, artifacts: [{ ...artifacts[0], runId: 'another-work' }], verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'blocked' })
+  expect(aggregateAutomation(occurrence(), { ...input, artifacts })).toMatchObject({ deliveryStatus: 'blocked', resultEvidence: [] })
+  expect(aggregateAutomation(occurrence(), { ...input, artifacts, verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'delivered', resultEvidence: [{ kind: 'artifact', reference: 'file', artifactId: 'file', messageId: 'answer', workId: 'work', resultVersion: 1 }] })
+  expect(aggregateAutomation(occurrence(), { ...input, artifacts: [{ ...artifacts[0], runId: 'another-work' }], verifiedArtifactIds: new Set(['file']) })).toMatchObject({ deliveryStatus: 'blocked', resultEvidence: [] })
 })
 it('keeps an unanswered user question actionable while its work waits, until the host commits its exact continuation', () => {
   const input = resultFixture()
@@ -606,6 +608,51 @@ it('renews failed unfinished work under its original identity without repeating 
   expect(counts.get('main')).toBe(2)
   expect(after.workBudgets).toHaveLength(1)
   expect(after.workBudgets![0].runs).toBe(3)
+})
+it.each(['researcher', 'writer'])('routes a renewal only through the original unfinished owner wake while retaining peer discussion and ordinary user judgment (%s)', async ownerId => {
+  const decisions: { agentId: string; trigger: string }[] = [], executions = new Map<string, number>()
+  const confirmation = '继续原未完成工作', peerId = ownerId === 'researcher' ? 'writer' : 'researcher'
+  let originalWork: WorkItem
+  const f = await setup({ test: async () => '', decide: async context => {
+    const trigger = context.messages.find(message => message.id === context.triggerMessageId)!.content
+    decisions.push({ agentId: context.agent.id, trigger })
+    if (trigger === 'ordinary follow-up' || context.participation?.hasRespondedInTurn) return { action: 'pass', observedThroughSequence: context.messages.at(-1)!.sequence }
+    if (trigger === confirmation) return context.agent.id === ownerId
+      ? { action: 'reply', responseKind: 'task', work: { key: originalWork.key, scope: originalWork.scope, deliverable: originalWork.deliverable, workId: originalWork.id, expectedVersion: originalWork.version }, observedThroughSequence: context.messages.at(-1)!.sequence }
+      : { action: 'pass', observedThroughSequence: context.messages.at(-1)!.sequence }
+    return { action: 'reply', responseKind: 'task', work: { key: context.agent.id, scope: '本人独立工作', deliverable: '可核对结果' }, observedThroughSequence: context.messages.at(-1)!.sequence }
+  }, run: async context => {
+    executions.set(context.agent.id, (executions.get(context.agent.id) ?? 0) + 1)
+    if (context.agent.id === ownerId && executions.get(ownerId) === 1) {
+      await context.onDelta('需要本人补充标题。')
+      await context.onWorkOutcome!({ disposition: 'waiting', summary: '原工作已执行准备，等待标题', userQuestion: '需要本人补充标题。' })
+    } else await deliver(context, `${context.agent.id} 已交付`)
+  } })
+  const first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: `renewal-routing-${ownerId}` }) as AutomationOccurrence
+  await until(async () => { const d = await f.detail(); return (await f.view()).occurrences[0]?.status === 'waiting_user' && d.workItems?.length === 2 && d.runs.every(run => run.status === 'completed') })
+  const host = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
+  const before = await f.detail(), peer = before.workItems!.find(work => work.ownerAgentId === peerId)!
+  originalWork = before.workItems!.find(work => work.ownerAgentId === ownerId)!
+  await host.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString() })])
+  await host.automations.stop(first.id, '离线意图测试准备原预算到期', 'budget')
+  const stopped = (await f.view()).occurrences[0]
+  const input = { occurrenceId: first.id, content: confirmation, requestId: `grant-${ownerId}`, renewBudget: { expectedVersion: stopped.stateVersion, allowance: 'standard-v1' } }
+  const reply = await f.service.handle('replyAutomation', input) as Message
+  await until(async () => { const d = await f.detail(); return (await f.view()).occurrences[0]?.deliveryStatus === 'delivered' && d.turns!.every(turn => ['completed', 'cancelled', 'waiting_user'].includes(turn.status)) && d.runs.every(run => !['queued', 'running'].includes(run.status)) })
+  const after = await f.detail()
+  expect(decisions.filter(value => value.trigger === confirmation && value.agentId === ownerId)).toEqual([])
+  expect(decisions.some(value => value.trigger === confirmation && value.agentId === peerId)).toBe(true)
+  expect(after.runs.filter(run => run.triggerMessageId === reply.id).every(run => run.status === 'completed')).toBe(true)
+  expect(after.workItems!.find(work => work.id === peer.id)).toEqual(peer)
+  expect(after.workItems!.map(work => work.id).sort()).toEqual(before.workItems!.map(work => work.id).sort())
+  expect(executions.get(ownerId)).toBe(2); expect(executions.get(peerId)).toBe(1)
+  expect(after.workItems!.find(work => work.id === originalWork.id)).toMatchObject({ status: 'delivered', sourceMessageId: originalWork.sourceMessageId, budgetId: originalWork.budgetId, origin: originalWork.origin })
+  expect(after.workBudgets![0].renewals![0].workVersions.map(work => work.id)).toEqual([originalWork.id])
+  const acceptedCalls = decisions.length
+  expect(await f.service.handle('replyAutomation', input)).toEqual(reply)
+  expect(decisions).toHaveLength(acceptedCalls)
+  await f.service.handle('sendMessage', { conversationId: f.conversation.id, content: 'ordinary follow-up', requestId: `ordinary-${ownerId}`, mentionIds: [] })
+  await until(async () => decisions.some(value => value.trigger === 'ordinary follow-up' && value.agentId === ownerId) && decisions.some(value => value.trigger === 'ordinary follow-up' && value.agentId === peerId))
 })
 it('does not append a human message or grant after the occurrence authorization changes', async () => {
   const f = await setup(clarificationEngine()), first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'renew-authorization' }) as AutomationOccurrence

@@ -1,0 +1,2491 @@
+{
+  "kind": "legacy-acp-native-codex-migration-unknown-settings-save",
+  "fullGoalComplete": false,
+  "humanApproved": false,
+  "passedScenes": 3,
+  "initialFailures": 0,
+  "productionAndBuiltAndScriptsUnchanged": true,
+  "changedBDDInputs": [
+    "tests/e2e/features/codex-employee.feature",
+    "tests/e2e/steps/codex-employee.steps.ts",
+    "tests/e2e/steps/codex-migration.steps.ts",
+    "tests/e2e/steps/local-agent-configuration.steps.ts"
+  ],
+  "addedBDDInputs": [
+    "tests/e2e/support/agent-config-save.ts"
+  ],
+  "frozenInputs": 893,
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-07T04:31:09.485Z",
+        "duration": 22637.204,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "receipt": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/execution-receipt.json",
+        "bytes": 255,
+        "sha256": "d054831ddf06d55819bfc608549f98a944938ba42a3dd1e7033eb4f83b952405"
+      },
+      "freeze": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "57f877357f9b6ebfbbae17fd4a70e4e847297c662b91ec9f19fa9af9673dc773"
+      },
+      "manifest": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/manifest.json",
+        "bytes": 26294,
+        "sha256": "82395e3c4bd835aab49fe7faf505f13f59022460e6b63968634ed890010457b3"
+      },
+      "legacyRuntime": "offline ACP protocol fixture",
+      "targetRuntime": "offline Codex protocol fixture",
+      "launchCount": 5,
+      "controlledBusinessRestarts": 4,
+      "unknownSaveRestarts": 2,
+      "saveAttempts": 2,
+      "admittedSaveRequests": 1,
+      "proof": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/022-旧ACP未知迁移与两次重启最终核对.json",
+        "bytes": 24208,
+        "sha256": "e27db0aaed1257909368df7527fc8d0b35f8b7eceb6eb1c444f2b4f963bba63b"
+      },
+      "newFileWork": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/025-旧ACP与新Codex各自的业务事实.json",
+        "bytes": 25359,
+        "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+      },
+      "workBudgetCallCount": 3
+    },
+    {
+      "name": "source-1",
+      "stats": {
+        "startTime": "2026-10-07T04:34:06.222Z",
+        "duration": 76346.822,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "receipt": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/execution-receipt.json",
+        "bytes": 250,
+        "sha256": "ea10a211f477c2da0115111e51fa68728ddb5a1d9acbbf7346f157bcfc3412a5"
+      },
+      "freeze": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "059f9671898ea9855fb0bea2037d467c1ca9243ec558bb18909a4811d2643f29"
+      },
+      "manifest": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/manifest.json",
+        "bytes": 26242,
+        "sha256": "969f4351895d5e4552e9e6e311139294a5314d5056f2f18c263c2a3a8ac47fbe"
+      },
+      "legacyRuntime": "offline ACP protocol fixture",
+      "targetRuntime": "real Codex",
+      "launchCount": 5,
+      "controlledBusinessRestarts": 4,
+      "unknownSaveRestarts": 2,
+      "saveAttempts": 2,
+      "admittedSaveRequests": 1,
+      "proof": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/022-旧ACP未知迁移与两次重启最终核对.json",
+        "bytes": 24208,
+        "sha256": "12be4724027c630dcf0fa5020303806163bab4eab1fbeeac746ce3524075e30e"
+      },
+      "newFileWork": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/025-旧ACP与新Codex各自的业务事实.json",
+        "bytes": 26221,
+        "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+      },
+      "workBudgetCallCount": 3
+    },
+    {
+      "name": "package-1",
+      "stats": {
+        "startTime": "2026-10-07T04:40:16.194Z",
+        "duration": 89531.07299999999,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "receipt": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/execution-receipt.json",
+        "bytes": 335,
+        "sha256": "16f98ede102a537bb364bb64028a5d0fa5b3e2174aa06fe6986598f72b9d4f39"
+      },
+      "freeze": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "a2ddc9e1cdaa651c0125766caa07c83b053691b37155d463369df6f1659dc25e"
+      },
+      "manifest": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/manifest.json",
+        "bytes": 26246,
+        "sha256": "b0017733d246271ef0fb245fe6cc95ab0ad474314e24c09ad693dd77a4173927"
+      },
+      "legacyRuntime": "offline ACP protocol fixture",
+      "targetRuntime": "real Codex",
+      "launchCount": 5,
+      "controlledBusinessRestarts": 4,
+      "unknownSaveRestarts": 2,
+      "saveAttempts": 2,
+      "admittedSaveRequests": 1,
+      "proof": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/022-旧ACP未知迁移与两次重启最终核对.json",
+        "bytes": 23924,
+        "sha256": "f4269f00a736d6601338d5c166ed4b827b8a87f8a697b29189c8addaaa74a298"
+      },
+      "newFileWork": {
+        "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/025-旧ACP与新Codex各自的业务事实.json",
+        "bytes": 26088,
+        "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+      },
+      "workBudgetCallCount": 3
+    }
+  ],
+  "captures": [
+    {
+      "stage": "before",
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-before-20261007.png",
+        "bytes": 349067,
+        "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-before-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "humanApproved": false
+    },
+    {
+      "stage": "after",
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-after-20261007.png",
+        "bytes": 341313,
+        "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-after-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "humanApproved": false
+    }
+  ],
+  "packageReusedFromSection98": true,
+  "packageFiles": 3405,
+  "limitations": [
+    "Every old ACP stage is an offline protocol fixture; only target Codex stages in source/package batches are real Codex.",
+    "Draft is preserved in the original editor and explicit load; the before/after loop explicitly stages a fresh unsent draft after restart. No automatic cross-restart draft restoration is claimed.",
+    "Four controlled business restarts cover original migration and the two unknown saves; they do not prove native unsaved-close dialog choices.",
+    "Other ACP programs/versions, active core saves, second UI concurrency, other credentials and complete mixed/fault/platform matrices remain unverified.",
+    "Unsigned unpacked macOS arm64 app reused byte-identically; installer/signing/other platforms and human quality remain unverified."
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/001-本机Codex实际连接验证.png",
+      "bytes": 203736,
+      "sha256": "65b32b9e7aab67344c6800980dc76c774fb318507835f451c963592e7c388a77"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/002-创建本机Codex员工无API配置.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/003-旧ACP显式任务底部准确打开原员工配置.native.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/004-旧ACP显式任务底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/005-旧ACP显式任务底部准确打开原本机配置.native.png",
+      "bytes": 219212,
+      "sha256": "cffe2da7c0315eced4a0ddf5a5570bf9e4395993e668978e1d0f64ec2dadd554"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/006-旧ACP显式任务底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "09a43f326f3ac2803fc450dfc98e26d7a8c8f3821b7f68d5660b27888e119dd1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/007-旧ACP显式任务导航原身份与零业务调用.json",
+      "bytes": 9935,
+      "sha256": "b77eb109b6ec82334c48a3bf0484fc5d519d429fac327642214c083618e8252f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/008-旧ACP显式任务设置往返后原输入与发送语义保持.native.png",
+      "bytes": 125703,
+      "sha256": "9fbbdeb954bfe20050ddbfac91ddc44ab2ee4bad184c581b8e426e516ca1c6d5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/009-旧ACP显式任务设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "3ef6e96156dd887cad052f729f7f4cd86fd7aa5baefebd470394d7cb24500450"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/010-841d4a49-fc44-4f58-9184-8220bc6a08f5-report.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/011-切换前旧ACP事实与独立夹具声明.json",
+      "bytes": 4808,
+      "sha256": "ea28461b5bf0bac13802f58f9214fc4942f0db8e51d4584f179ae7244cafb74f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/012-旧式ACP的原回复与人工发布文件.png",
+      "bytes": 191401,
+      "sha256": "0d2b2ed19b6d53f0e79628cde877181c0e0bf32e1b8860be168b40db3268a2d7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/013-第-1-次启动结束画面.png",
+      "bytes": 207961,
+      "sha256": "d065765cb588e9eaf5732d6d94265196438a13bcb5e7824ca717ed5fa2f6fa29"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/014-旧ACP迁移before未知保存只读核对.json",
+      "bytes": 10088,
+      "sha256": "ef0835028b9e01efd721b45edaa21b604fd14bb8c70a52b73cf4d2de3d7727e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/015-旧ACP迁移before未知保存保持原草稿.native.png",
+      "bytes": 349497,
+      "sha256": "e0c38f44db230d0c0aa2bdb65df9dc68a8eb3b7de5ddffe696d5b77a33809115"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/016-旧ACP迁移before未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "ba6fc66ad12ff21754d9fae7c3b5aa97ecada0971b4c102cdabcfcfcd693ed6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/017-第-2-次启动结束画面.png",
+      "bytes": 177051,
+      "sha256": "0bf37079890d45a5160307bde0d9c9d26370cc739ab24918699222f57a1a3495"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/018-旧ACP迁移after未知保存只读核对.json",
+      "bytes": 10089,
+      "sha256": "86db702515ba43221fdc4fc3c3c8303c13ff833c19986e059ebcc60e905666f9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/019-旧ACP迁移after未知保存保持原草稿.native.png",
+      "bytes": 341942,
+      "sha256": "a35712a3fe5dc235b4c1925984d503b6fd7c9ecabbfdef08c4709ffdbef3a4ba"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/020-旧ACP迁移after未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "fa274ab01a2b9d06b92d76bd6c9387b1d234664851f1cfca487e9ff855c09ca2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/021-第-3-次启动结束画面.png",
+      "bytes": 174437,
+      "sha256": "b91be34b9df762fb783027df9e538e0fb34caddbcb332eb7782466d109dceb72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/022-旧ACP未知迁移与两次重启最终核对.json",
+      "bytes": 24208,
+      "sha256": "e27db0aaed1257909368df7527fc8d0b35f8b7eceb6eb1c444f2b4f963bba63b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/023-旧ACP未知迁移最终原状态.json",
+      "bytes": 18221,
+      "sha256": "9a59a994095eee1be1d74ffabb7119f2f391c6b4729b738af14cfc5c50be87db"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/024-7bf9ad0e-372f-4af5-a48d-c307ecd73bf3-codex-proof.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/025-旧ACP与新Codex各自的业务事实.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/026-切换本机后旧ACP原消息文件仍可查看.png",
+      "bytes": 256890,
+      "sha256": "12599f8d43e71055d222e8a7d4e23b950cd6f15d8d5ee8f73c911e66803c4d92"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/027-第-4-次启动结束画面.png",
+      "bytes": 256916,
+      "sha256": "d6a768166a0a999b7038a6bcd3351cee5a6fdbad405d59d6c520315706af7ce7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/028-旧ACP切换最终原始状态.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/029-第-5-次启动结束画面.png",
+      "bytes": 155917,
+      "sha256": "8d2ad729e8baa215ca6d3abac1b983cb68b1e92e935b61639d0cee5f40bd08b7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/execution-receipt.json",
+      "bytes": 255,
+      "sha256": "d054831ddf06d55819bfc608549f98a944938ba42a3dd1e7033eb4f83b952405"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "57f877357f9b6ebfbbae17fd4a70e4e847297c662b91ec9f19fa9af9673dc773"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/scenarios/704506bbdae38bebaafd-44c30753a815530bf570-retry0-repeat0-dvPjPN/manifest.json",
+      "bytes": 26294,
+      "sha256": "82395e3c4bd835aab49fe7faf505f13f59022460e6b63968634ed890010457b3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/001-本机Codex实际连接验证.png",
+      "bytes": 193589,
+      "sha256": "b4561c4df15f901cef162d0cba678404607c22e0fb0917542e24cfb31fc50613"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/002-创建本机Codex员工无API配置.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/003-旧ACP显式任务底部准确打开原员工配置.native.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/004-旧ACP显式任务底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/005-旧ACP显式任务底部准确打开原本机配置.native.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/006-旧ACP显式任务底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/007-旧ACP显式任务导航原身份与零业务调用.json",
+      "bytes": 9935,
+      "sha256": "0e27e91aa662e5188eaf9d316e92bf4262ce802a7f3fa603d508ad70a4f836ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/008-旧ACP显式任务设置往返后原输入与发送语义保持.native.png",
+      "bytes": 125611,
+      "sha256": "d1d167bd088ae4598f56f958aee061c2caafca0b9b27369b2d72a9f04fb48ffa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/009-旧ACP显式任务设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "ea4dcfd986d15971d73481fca4951dc207bcd6692803edf654fce4feb71e65d8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/010-dedc5752-b948-48a0-83e1-24a9c384ee3a-report.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/011-切换前旧ACP事实与独立夹具声明.json",
+      "bytes": 4788,
+      "sha256": "c9f85ca67723e48b6ad7cb9058457b05fa9a87b098b355e259fe656b54241eab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/012-旧式ACP的原回复与人工发布文件.png",
+      "bytes": 190581,
+      "sha256": "afbc260c419d3c2b0b113c5af99763b79100a18018b1554f188b89b5d262709e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/013-第-1-次启动结束画面.png",
+      "bytes": 207497,
+      "sha256": "405ac0034dfc7c2a095d023e68b8bc5737d8bb3355c43d1df5421f7076567b6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/014-旧ACP迁移before未知保存只读核对.json",
+      "bytes": 10088,
+      "sha256": "463d6d2b42c4bf6103d80d742b0bd1dde02bfbe98cd2f043b97e3be507e12fdc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/015-旧ACP迁移before未知保存保持原草稿.native.png",
+      "bytes": 348498,
+      "sha256": "cf0061626ac8d22fd6ec9486feb5f6a9ceb7d6b6da8ca951f1c5882ddf58c19e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/016-旧ACP迁移before未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "6f394cd96c4595eaafd634bcd8ae07fc718da7ed4c1726f24e299b3f1ab52b66"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/017-第-2-次启动结束画面.png",
+      "bytes": 176057,
+      "sha256": "fa1253b8bc8d5c727195287224f152dd1ef3f71b80ba602d6b0ddfe96b1d88d6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/018-旧ACP迁移after未知保存只读核对.json",
+      "bytes": 10089,
+      "sha256": "0f78327d994576625cb275a26854744344a3a6ae0caa417fd2f4247f8acd8bb0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/019-旧ACP迁移after未知保存保持原草稿.native.png",
+      "bytes": 340873,
+      "sha256": "cd786ce7df7c3d7b603ee7c3af093bc1a09d062180cd01ae3a17db243642d1ec"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/020-旧ACP迁移after未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "6427e5cb4212424f717f57032ba41600403ec7611a3978b12ad86fb6cbb9fe49"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/021-第-3-次启动结束画面.png",
+      "bytes": 173347,
+      "sha256": "5145bf6826d7ab8799b0424c74b0a8ef100a20efc30cc148080d9beb723a193b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/022-旧ACP未知迁移与两次重启最终核对.json",
+      "bytes": 24208,
+      "sha256": "12be4724027c630dcf0fa5020303806163bab4eab1fbeeac746ce3524075e30e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/023-旧ACP未知迁移最终原状态.json",
+      "bytes": 18221,
+      "sha256": "cda13f71764054a74d06eee7be8547a7e02a188597a3f4b8db55007c791c6ca3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/024-aec31a5e-efdf-43d8-979f-48c86403db7f-codex-proof.md",
+      "bytes": 15,
+      "sha256": "bd74283c5bc56313b06bd65bcb5bb4a35f91717c94d6b5e14c42dbde2956d734"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/025-旧ACP与新Codex各自的业务事实.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/026-切换本机后旧ACP原消息文件仍可查看.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/027-第-4-次启动结束画面.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/028-旧ACP切换最终原始状态.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/029-第-5-次启动结束画面.png",
+      "bytes": 158359,
+      "sha256": "798e3bc5f7f2954e8ca803ee64868dc6831d520a94c78f0645ed96331bc57ac1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/execution-receipt.json",
+      "bytes": 250,
+      "sha256": "ea10a211f477c2da0115111e51fa68728ddb5a1d9acbbf7346f157bcfc3412a5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "059f9671898ea9855fb0bea2037d467c1ca9243ec558bb18909a4811d2643f29"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-sjSfyW/manifest.json",
+      "bytes": 26242,
+      "sha256": "969f4351895d5e4552e9e6e311139294a5314d5056f2f18c263c2a3a8ac47fbe"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/001-本机Codex实际连接验证.png",
+      "bytes": 193600,
+      "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/002-创建本机Codex员工无API配置.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/003-旧ACP显式任务底部准确打开原员工配置.native.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/004-旧ACP显式任务底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/005-旧ACP显式任务底部准确打开原本机配置.native.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/006-旧ACP显式任务底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/007-旧ACP显式任务导航原身份与零业务调用.json",
+      "bytes": 9893,
+      "sha256": "30e735c52514971dce30f13fdbd3a24da78d4e6ccd0184793d965c444847bd0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/008-旧ACP显式任务设置往返后原输入与发送语义保持.native.png",
+      "bytes": 125525,
+      "sha256": "230290c3b3e2d39ba916faf265dd5961c566e67a1a234fde31508af492301d6a"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/009-旧ACP显式任务设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "5933d6c18d17d9fd418c3159c3225c83f4069ffce44bba92b71df5fce47225e3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/010-abcaf0e3-8aa3-4849-920c-eac064243adf-report.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/011-切换前旧ACP事实与独立夹具声明.json",
+      "bytes": 4717,
+      "sha256": "e73832c2b1314ff588304603e55455e63e2d2d9c07920f654c136f52685e59a6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/012-旧式ACP的原回复与人工发布文件.png",
+      "bytes": 207600,
+      "sha256": "2a86e15aad34b4115dc6d98136f128499e2c8ddc8b2c051bc08e6cd65541c8be"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/013-第-1-次启动结束画面.png",
+      "bytes": 207506,
+      "sha256": "93d39f0e801b1e1ba0df1be5a34bb9b6b7f91a89362df892e5408162cb9bfb65"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/014-旧ACP迁移before未知保存只读核对.json",
+      "bytes": 9946,
+      "sha256": "c48f410726e6709042ef33e07305c2ed0c5e4a7f8f04bff0496a6bedbd06dce2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/015-旧ACP迁移before未知保存保持原草稿.native.png",
+      "bytes": 349067,
+      "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/016-旧ACP迁移before未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/017-第-2-次启动结束画面.png",
+      "bytes": 176472,
+      "sha256": "ef3fe84b9b5987a4635fdd1f6a438d54b633fce21483f8f75f5e8b97642c2c36"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/018-旧ACP迁移after未知保存只读核对.json",
+      "bytes": 9947,
+      "sha256": "025db40b161448a3ad98b843d1c9fd29baf564f8fa15ed3a4095ec1690827004"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/019-旧ACP迁移after未知保存保持原草稿.native.png",
+      "bytes": 341313,
+      "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/020-旧ACP迁移after未知保存保持原草稿.capture.json",
+      "bytes": 1685,
+      "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/021-第-3-次启动结束画面.png",
+      "bytes": 173921,
+      "sha256": "bfdddc8e0e35b3258893ad253a83f082dc6853e8b9b13d34838dd56fe5498de5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/022-旧ACP未知迁移与两次重启最终核对.json",
+      "bytes": 23924,
+      "sha256": "f4269f00a736d6601338d5c166ed4b827b8a87f8a697b29189c8addaaa74a298"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/023-旧ACP未知迁移最终原状态.json",
+      "bytes": 18008,
+      "sha256": "a632a0a1e069d0f55a0438358f84f12ce52bdaf581ede6d44c6546bf2b209db7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/024-df931e6f-600a-4761-9fd1-0e1e17a9ec5a-codex-proof.md",
+      "bytes": 15,
+      "sha256": "bef445f11903f87bf9a1b91fef9885dbe69b040f92151e0c84540cd5df33b90d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/025-旧ACP与新Codex各自的业务事实.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/026-切换本机后旧ACP原消息文件仍可查看.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/027-第-4-次启动结束画面.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/028-旧ACP切换最终原始状态.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/029-第-5-次启动结束画面.png",
+      "bytes": 157809,
+      "sha256": "8f1ade9215ecf81413b006b342493b07b9e3aec839d1d78cc1c692542fff4aab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/execution-receipt.json",
+      "bytes": 335,
+      "sha256": "16f98ede102a537bb364bb64028a5d0fa5b3e2174aa06fe6986598f72b9d4f39"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "a2ddc9e1cdaa651c0125766caa07c83b053691b37155d463369df6f1659dc25e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/scenarios/704506bbdae38bebaafd-4b99eda6daf4a1dc030b-retry0-repeat0-hICB23/manifest.json",
+      "bytes": 26246,
+      "sha256": "b0017733d246271ef0fb245fe6cc95ab0ad474314e24c09ad693dd77a4173927"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-before-20261007.png",
+      "bytes": 349067,
+      "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-before-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-after-20261007.png",
+      "bytes": 341313,
+      "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-旧ACP未知迁移-after-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/current-copy-storage-2.json",
+      "bytes": 43946,
+      "sha256": "1c78b65550316ce2af1b1e2f38227c13b49d96a5e2070ac18a66c66ff9f72376"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/affected-closed-copy-storage.json",
+      "bytes": 52815,
+      "sha256": "c704074bc4691600dd4135722e54a8cfe3de13ad7bb8993a6346ca1ff1caa525"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/before-codex-employee.steps.ts",
+      "bytes": 92583,
+      "sha256": "d7a2bbe1756c4c320f0d533fec4915a9d39ba6aee477dc1462cc7f9992122ab8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/bddgen.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/current-transparent-text-storage.json",
+      "bytes": 2843873,
+      "sha256": "d61e7d20a80cb4731d8e04ebac7f5ecaf0d4e9b7a71d6b744f668e00bedddf18"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/run-scene.py",
+      "bytes": 2854,
+      "sha256": "d5e04a57430d0010343ea978b6a60c5c89c44ed42da2be56b4ad5d0863b68b44"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/native-desktop-preflight.json",
+      "bytes": 178,
+      "sha256": "1c040504f0818c4d8ad876df0970aca0180dd9adb622a9c3fba8bc39d9335f3a"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/compress-closed-text.py",
+      "bytes": 2097,
+      "sha256": "827ec73d33f415f5b60b84a4b28a66106e5a45ed0306f4f0f15c745e990037f0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/verify-package.py",
+      "bytes": 747,
+      "sha256": "1031872e46e6156a9969c7d26cfadeeb277bd5d9cad08976877d447c49278cb3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/before-codex-employee.feature",
+      "bytes": 21880,
+      "sha256": "a354418a8cf48ea4c82f64cce1421ab8321938c07ff458dcbb0120358795f24b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/current-copy-storage-3.json",
+      "bytes": 45168,
+      "sha256": "ff6a7cd2b3ee907c9cf47a2d1483bb9d024d574ce78f4317012e87f0b690ec7b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/previous-inputs.json",
+      "bytes": 102774,
+      "sha256": "746018965c89897a054637f1123ff7fea67df99da35acad140d291dd3bfd26eb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/ram-scratch-preparation.json",
+      "bytes": 348,
+      "sha256": "af32868ecfffb7c5d91e35292f4f9459c24173c2b539e2ef1f4a81bcbadcfd91"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/original-assertion-preservation.json",
+      "bytes": 309,
+      "sha256": "74b2142aa63875f3c1f59583c0a8de7a07e4b033226207b8a182a1817fea7b0f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/restore-affected-cow.py",
+      "bytes": 2453,
+      "sha256": "bb1fa874540e2e66d2e8f05c0fb5248b24f87b5795a56c681f83ffd7c20e6627"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/typecheck.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1.log",
+      "bytes": 470,
+      "sha256": "b11c36b3e0a671c10e4526db1f9a7acbef35ce2ad39a839e35e9caf9c9397cf0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/before-local-agent-configuration.steps.ts",
+      "bytes": 51211,
+      "sha256": "9046289b40f4293d692a4cc1c4c3255ee817972060cee68cdaecc62ab05df145"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/visual-inspection.json",
+      "bytes": 792,
+      "sha256": "3feb990ccda172136939fe4e6aaa6b2e8967f1b025f41f652558e9cba0de1e44"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/latest-goal-turn-classification.json",
+      "bytes": 427,
+      "sha256": "79791ff724851346d72df4eef1c676131fdc3c5e3c86093f36c7f5878badbb36"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/current-package-manifest.json",
+      "bytes": 600636,
+      "sha256": "36230e2f2224579099f5eafe9db25302d8e372b82ff0e000a4dc69bdceee2293"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/clone-current-storage.py",
+      "bytes": 3564,
+      "sha256": "b7267ce5bead0fb683ff81659efd8b3ab064c518fc6e90627c269fc076e698bb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/preparation-interruption.json",
+      "bytes": 534,
+      "sha256": "58e284ba584c88c44b31a55e8e9a4006b0785d6a0c321ac71ff2180eb94f4207"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1.log",
+      "bytes": 470,
+      "sha256": "589f9ae2df1f94aa8dc173907a6acb6efddcb08a112855379d5652bc72312564"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/before-codex-migration.steps.ts",
+      "bytes": 16838,
+      "sha256": "12a6b3755117b65337a42fe5533668002424686a6795c08e6b31df99fb6aeaf8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/ram-scratch-finish.json",
+      "bytes": 247,
+      "sha256": "4da7f77583d4d54afbfb4fd31a5e3411c1c86d8314bd1cac41bceffb6d60c14b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/report-resource-verification.json",
+      "bytes": 449,
+      "sha256": "b0411ee23a2489dd6b4eeb7261cc1020fdc8f39f609db8130dd98b1815a5e166"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1.log",
+      "bytes": 473,
+      "sha256": "6544ff9c40b54df6f68cb0b3703716645b7034fbf5ec31f9a233c107c94f91b5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/current-copy-storage-1.json",
+      "bytes": 42311,
+      "sha256": "a24844007ca499c2fbaa98e9bb1a4e0d4d0b4f26b76ce59bb6fba6135fe8f6c1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/previous-turn-classification.json",
+      "bytes": 414,
+      "sha256": "ef688d05ad7c5ab4d13d89e6786532d7554706bff0b265d22e2c23223c4804d2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/registration.json",
+      "bytes": 35,
+      "sha256": "b44f012ac9b7283ef84188e9389304310560e09f0b5edd796e69dc85f156c0bb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "838f3132653eba0038ce12af97827c69dee4e219e5818ded00365f2c0ce29725"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-results.json",
+      "bytes": 60487,
+      "sha256": "bbebf8471eb2b7e256b03f8be9412576c5173f3c8a5a290ab5f70aa1a71bfb4b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/index.html",
+      "bytes": 193430,
+      "sha256": "5ea9ce745cc8aac13ffc2e44f2e1d88f7664ea9f539effc0e0cd7c1001ed4cc4"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/checks.json",
+      "bytes": 182474,
+      "sha256": "66c93fe9572051deb4aed3b78c8cb82666be36efc35c450b138a5b4132990371"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/manifest.json",
+      "bytes": 1268,
+      "sha256": "f698c13c9ed6a574bce564e7da559d68ae45c9166dff6dfa6a09bc0b0d392cdf"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/registration.json",
+      "bytes": 35,
+      "sha256": "b44f012ac9b7283ef84188e9389304310560e09f0b5edd796e69dc85f156c0bb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "79d158acaa775e991259c98731f666746202cdbee0a95a3117979ff7a8e44c2d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-results.json",
+      "bytes": 60826,
+      "sha256": "67b5f38cb9907adcc9ef417af446959e8824a18aac66aebcb5cb2aefe59c3c65"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/registration.json",
+      "bytes": 32,
+      "sha256": "7ee1e469277f736caa0c5a66e55a42cb38e4b3cfdfb749c81d784b477d9caffb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "35f23ec3dead5d1f13600d2a57ece11fd1fd9a1cb8828c422dff9861ed5748e7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/package-verification.json",
+      "bytes": 204,
+      "sha256": "f14759a1e5484aac004984145056fed0040462c10e14309e7a8f4f05d275791c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-results.json",
+      "bytes": 60535,
+      "sha256": "22b11407f5723d6c30a0a6655b902530b56d39d624d4d957b7bd6810d7a18173"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/package-verification-before.json",
+      "bytes": 204,
+      "sha256": "f14759a1e5484aac004984145056fed0040462c10e14309e7a8f4f05d275791c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/index.html",
+      "bytes": 192303,
+      "sha256": "7bfb053ca2bb24a99daaed81d9de6bc205364fcf764d79adee7159e158d342ca"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/checks.json",
+      "bytes": 181346,
+      "sha256": "48551123eaa94cafa8d0c3126e9cc0c44caaf711fe7831fbeb642de1925b8db3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/manifest.json",
+      "bytes": 1284,
+      "sha256": "64240088d1e04bc43bcb10fe25542850bb030a189c1c13241db42fa912461a99"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/index.html",
+      "bytes": 191859,
+      "sha256": "1c9fbeef665adc582c35e824a7be62def999c57d143e923b60b72769db899e4b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/checks.json",
+      "bytes": 180902,
+      "sha256": "f004c0132cde071e3f5d494c48e6affbcd583845c3884b6394534028347f04bb"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/manifest.json",
+      "bytes": 1246,
+      "sha256": "6b4d49ba4090dadedff5805c6dc80331f4280624d8e5afb263b229d37f58c066"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/index.html",
+      "bytes": 560767,
+      "sha256": "32b479ebc11b3fe5e3c0ad8622044c337ac6968e318d18ecc4a9b6656663be0e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/eae43f0f3feec9998e0b3672bcbaac32583ba3f4.zip",
+      "bytes": 11458417,
+      "sha256": "d8166d2194567d45df964446113ab6169a7ac4acb6205e0136bc27da42d71f16"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/4d6729c0712dc4c065142a31035be80a6ed8c871.png",
+      "bytes": 190581,
+      "sha256": "afbc260c419d3c2b0b113c5af99763b79100a18018b1554f188b89b5d262709e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/11730465a4253d75aa2ae4f57d380971d22c033d.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/67a6884f396d1e7f572cb9edf2095b95f4a48192.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/a926b660871de425bd9b979dd4973a18e985292a.zip",
+      "bytes": 2491502,
+      "sha256": "02cbfd39df3c104874514399d48ad8d9f881f6e9229b28422e3e579264ea87e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/91391b339e9ddb85069e0c7f564b9f0ae545c7a0.png",
+      "bytes": 158359,
+      "sha256": "798e3bc5f7f2954e8ca803ee64868dc6831d520a94c78f0645ed96331bc57ac1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/7794c89de848103fdbc2e357fa2cc344c208dd44.png",
+      "bytes": 207497,
+      "sha256": "405ac0034dfc7c2a095d023e68b8bc5737d8bb3355c43d1df5421f7076567b6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/7148af867a023f83b7973710bba43a10e2462597.json",
+      "bytes": 9935,
+      "sha256": "0e27e91aa662e5188eaf9d316e92bf4262ce802a7f3fa603d508ad70a4f836ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/b3c007ad9bc97091699bfa678762f40c941a794b.png",
+      "bytes": 125611,
+      "sha256": "d1d167bd088ae4598f56f958aee061c2caafca0b9b27369b2d72a9f04fb48ffa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/95c253ea6b576467205f5472f1a452382ae5c8c1.png",
+      "bytes": 173347,
+      "sha256": "5145bf6826d7ab8799b0424c74b0a8ef100a20efc30cc148080d9beb723a193b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/b111c69576fd38c65c24a3af971a828ad1d6c280.zip",
+      "bytes": 4223120,
+      "sha256": "a0159650c94660def294ce86941db75c06b754c7051be5dcd091589e11b92f5f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/dbc2817c8d2a5d8b5c8f832951c1e5ea445fd3e0.png",
+      "bytes": 340873,
+      "sha256": "cd786ce7df7c3d7b603ee7c3af093bc1a09d062180cd01ae3a17db243642d1ec"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/b269c223ac7a80f1d347540f86416d5b77b863d7.json",
+      "bytes": 10088,
+      "sha256": "463d6d2b42c4bf6103d80d742b0bd1dde02bfbe98cd2f043b97e3be507e12fdc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/c01ecc0256bc92c4c0c581dd08b57b4e3afe03c3.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/09167548a2356afaee7ce1c1d1ccbc71674e9185.zip",
+      "bytes": 883462,
+      "sha256": "2f912f900952ad7eee015dcc0ccf2549c231204b10fa3f8ffca7e842b39b3b45"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/b1358bad897c89d393bbba941e16ee16618512c7.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/18009514224a5b98bfc09e890477966448273358.json",
+      "bytes": 4788,
+      "sha256": "c9f85ca67723e48b6ad7cb9058457b05fa9a87b098b355e259fe656b54241eab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/95249892a60ad8aa998b2f28b70c8e32dfe91388.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/cfc1a8205e767b1d420b528b94f6656d44ec1337.zip",
+      "bytes": 3970398,
+      "sha256": "c1f9d2306d016238bad8787148aa845ab2f672d6325ff1d58df1311864b56915"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/a04990c26125bfbace2a0b16ad792c2410537a5f.json",
+      "bytes": 1685,
+      "sha256": "6f394cd96c4595eaafd634bcd8ae07fc718da7ed4c1726f24e299b3f1ab52b66"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/425bf6eb9a0663cd7bc787347c677366546142c3.json",
+      "bytes": 24208,
+      "sha256": "12be4724027c630dcf0fa5020303806163bab4eab1fbeeac746ce3524075e30e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/bebf05df1b4aeececf4a8e6ccf2fc526d381021b.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/edc8cd5dea93cf97e79072e1c6e39b1f0d50e3e9.png",
+      "bytes": 193589,
+      "sha256": "b4561c4df15f901cef162d0cba678404607c22e0fb0917542e24cfb31fc50613"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/04fb84e2c8e04dc0944f1e619ea5b96e9890a0ac.md",
+      "bytes": 15,
+      "sha256": "bd74283c5bc56313b06bd65bcb5bb4a35f91717c94d6b5e14c42dbde2956d734"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/df1563d48b863f86fa2adb02313bb0f89b7dbee0.png",
+      "bytes": 348498,
+      "sha256": "cf0061626ac8d22fd6ec9486feb5f6a9ceb7d6b6da8ca951f1c5882ddf58c19e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/7964d098e5b3835167c50ac55a9c92e55c86f0b5.png",
+      "bytes": 176057,
+      "sha256": "fa1253b8bc8d5c727195287224f152dd1ef3f71b80ba602d6b0ddfe96b1d88d6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/1588f108af3a29e015b8690aeb7a19d156ae15ce.json",
+      "bytes": 10089,
+      "sha256": "0f78327d994576625cb275a26854744344a3a6ae0caa417fd2f4247f8acd8bb0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/3bfa2cd66313b2ae82c326536727e625a00a506e.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/aaac2c9cc52030212862f603a38b16c76ff29812.json",
+      "bytes": 1685,
+      "sha256": "6427e5cb4212424f717f57032ba41600403ec7611a3978b12ad86fb6cbb9fe49"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/231bc3a5dc0e822b3f22939749f2648ffde93d9d.json",
+      "bytes": 1685,
+      "sha256": "ea4dcfd986d15971d73481fca4951dc207bcd6692803edf654fce4feb71e65d8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/338b81171661638d7e862a40405b16967c5ea741.json",
+      "bytes": 18221,
+      "sha256": "cda13f71764054a74d06eee7be8547a7e02a188597a3f4b8db55007c791c6ca3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/playwright-report/data/99c4cf62852d28c7bf7b33645e2c7b390e3291be.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-1.zip",
+      "bytes": 11458417,
+      "sha256": "d8166d2194567d45df964446113ab6169a7ac4acb6205e0136bc27da42d71f16"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-3.zip",
+      "bytes": 4223120,
+      "sha256": "a0159650c94660def294ce86941db75c06b754c7051be5dcd091589e11b92f5f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-2.zip",
+      "bytes": 3970398,
+      "sha256": "c1f9d2306d016238bad8787148aa845ab2f672d6325ff1d58df1311864b56915"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-5.zip",
+      "bytes": 883462,
+      "sha256": "2f912f900952ad7eee015dcc0ccf2549c231204b10fa3f8ffca7e842b39b3b45"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-4.zip",
+      "bytes": 2491502,
+      "sha256": "02cbfd39df3c104874514399d48ad8d9f881f6e9229b28422e3e579264ea87e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-b6c240efb5783ec5ea1c070b0ce27d479a2b76f1.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-·-原生截取元数据-1aa936dcba719b751d1295d0eb4fd2d55b638d78.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-3-6fe9cdc8f87cf7c2e376b513908d43f51b6e35d0.zip",
+      "bytes": 4223120,
+      "sha256": "a0159650c94660def294ce86941db75c06b754c7051be5dcd091589e11b92f5f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-5-9a9f63f91ea937022d100bba995a04cb19a92698.zip",
+      "bytes": 883462,
+      "sha256": "2f912f900952ad7eee015dcc0ccf2549c231204b10fa3f8ffca7e842b39b3b45"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存只读核对-e5628f5c86e047c0263d370f237449b85979b0f2.json",
+      "bytes": 10088,
+      "sha256": "463d6d2b42c4bf6103d80d742b0bd1dde02bfbe98cd2f043b97e3be507e12fdc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-9b422d6f186b9f995b9279e3eea89542b1c95620.png",
+      "bytes": 340873,
+      "sha256": "cd786ce7df7c3d7b603ee7c3af093bc1a09d062180cd01ae3a17db243642d1ec"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/本机Codex实际连接验证-6238c24c986e15fcdeff34196119e9b4fdedd0e4.png",
+      "bytes": 193589,
+      "sha256": "b4561c4df15f901cef162d0cba678404607c22e0fb0917542e24cfb31fc50613"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务导航原身份与零业务调用-29cd2db2254c314509d7b8226a0451f765e75efd.json",
+      "bytes": 9935,
+      "sha256": "0e27e91aa662e5188eaf9d316e92bf4262ce802a7f3fa603d508ad70a4f836ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP与新Codex各自的业务事实-aedf985313cc7d80a38dec52fe3d1d6046e93991.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-1-次启动结束画面-a35436c6753862a950ccbd637efd6b76686719f6.png",
+      "bytes": 207497,
+      "sha256": "405ac0034dfc7c2a095d023e68b8bc5737d8bb3355c43d1df5421f7076567b6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧式ACP的原回复与人工发布文件-df45d16a12e484dcd0a8b57247f2755fcc968e9c.png",
+      "bytes": 190581,
+      "sha256": "afbc260c419d3c2b0b113c5af99763b79100a18018b1554f188b89b5d262709e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-5-次启动结束画面-26d8c7eb21d4d4acafa3899f9f463b2920c72238.png",
+      "bytes": 158359,
+      "sha256": "798e3bc5f7f2954e8ca803ee64868dc6831d520a94c78f0645ed96331bc57ac1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-3-次启动结束画面-155e1890a52b3db8499d78faa41fe39e4e1e461f.png",
+      "bytes": 173347,
+      "sha256": "5145bf6826d7ab8799b0424c74b0a8ef100a20efc30cc148080d9beb723a193b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-a6d5556252e539fa2e183220af6539b7ba6465e9.png",
+      "bytes": 125611,
+      "sha256": "d1d167bd088ae4598f56f958aee061c2caafca0b9b27369b2d72a9f04fb48ffa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-·-原生截取元数据-7a5fcd52590cd92ed59a3624ee12e4e713c4d902.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换前旧ACP事实与独立夹具声明-8ef565d16f075918aee3ed95f73c6b51c5045fc9.json",
+      "bytes": 4788,
+      "sha256": "c9f85ca67723e48b6ad7cb9058457b05fa9a87b098b355e259fe656b54241eab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换本机后旧ACP原消息文件仍可查看-7e9b1ca5fc9ff90aabaa9a34afcbfca2aedae1b6.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-7ef98c2afd2aafb042b8e0079c61316024911be4.png",
+      "bytes": 348498,
+      "sha256": "cf0061626ac8d22fd6ec9486feb5f6a9ceb7d6b6da8ca951f1c5882ddf58c19e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-·-原生截取元数据-2d764fcf9a9d484a0b9166d77ec01cbea3db1822.json",
+      "bytes": 1685,
+      "sha256": "ea4dcfd986d15971d73481fca4951dc207bcd6692803edf654fce4feb71e65d8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧式ACP人工发布的原始文件-034595d6893dd39a75101f0c665036eb69cbcacb.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存只读核对-2308605587fdfbb1406a4a26b1620bb102a07ad0.json",
+      "bytes": 10089,
+      "sha256": "0f78327d994576625cb275a26854744344a3a6ae0caa417fd2f4247f8acd8bb0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移与两次重启最终核对-e37f4eaddb6b2e94946efcc1d65b5a4fd388c3dd.json",
+      "bytes": 24208,
+      "sha256": "12be4724027c630dcf0fa5020303806163bab4eab1fbeeac746ce3524075e30e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-4-次启动结束画面-9cb12d90903d53ff377e0aee8bdfd6e7b48bf20e.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP切换最终原始状态-07285ad672658a580552d9cb77bf80bb88fa9669.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-4-5815bffa92871688572adc1c41323d7b01f21699.zip",
+      "bytes": 2491502,
+      "sha256": "02cbfd39df3c104874514399d48ad8d9f881f6e9229b28422e3e579264ea87e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-4b1d669dacb205a8aa9eb7abebec4cf56d8bd828.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换后本机Codex新工作原件-27bb87edcd19e48b928690c653086221a33fcda4.md",
+      "bytes": 15,
+      "sha256": "bd74283c5bc56313b06bd65bcb5bb4a35f91717c94d6b5e14c42dbde2956d734"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-2-次启动结束画面-c2bf3d72cafe784d1b9629a52190b0e880fd409d.png",
+      "bytes": 176057,
+      "sha256": "fa1253b8bc8d5c727195287224f152dd1ef3f71b80ba602d6b0ddfe96b1d88d6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-1-f3333e3578bf73c03a517813cb4d790beee2fd6e.zip",
+      "bytes": 11458417,
+      "sha256": "d8166d2194567d45df964446113ab6169a7ac4acb6205e0136bc27da42d71f16"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-2-8b22f9de0251c04e1d33af1890e7f266faf4eba9.zip",
+      "bytes": 3970398,
+      "sha256": "c1f9d2306d016238bad8787148aa845ab2f672d6325ff1d58df1311864b56915"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-·-原生截取元数据-167ffb1b5ee889188fc5734fcd6ecda294dedfe2.json",
+      "bytes": 1685,
+      "sha256": "6f394cd96c4595eaafd634bcd8ae07fc718da7ed4c1726f24e299b3f1ab52b66"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/创建本机Codex员工无API配置-c2d3f2ce076d89863d24d91026f57148270473e6.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-·-原生截取元数据-d651690bfdf14d4dc937129e394a85abecd8135a.json",
+      "bytes": 1685,
+      "sha256": "6427e5cb4212424f717f57032ba41600403ec7611a3978b12ad86fb6cbb9fe49"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移最终原状态-d467f753b8013790f7522120b75337304e16f428.json",
+      "bytes": 18221,
+      "sha256": "cda13f71764054a74d06eee7be8547a7e02a188597a3f4b8db55007c791c6ca3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0020-6427e5cb4212424f.download",
+      "bytes": 1685,
+      "sha256": "6427e5cb4212424f717f57032ba41600403ec7611a3978b12ad86fb6cbb9fe49"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0027-24e2952795337fa4.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0008-d1d167bd088ae459.png",
+      "bytes": 125611,
+      "sha256": "d1d167bd088ae4598f56f958aee061c2caafca0b9b27369b2d72a9f04fb48ffa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0010-e9106384b00830b7.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0026-24e2952795337fa4.png",
+      "bytes": 261341,
+      "sha256": "24e2952795337fa4439e2b9a3dcbc445fb4f6856102715f975e5fce15ff549c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0023-cda13f71764054a7.json",
+      "bytes": 18221,
+      "sha256": "cda13f71764054a74d06eee7be8547a7e02a188597a3f4b8db55007c791c6ca3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0016-6f394cd96c4595ea.download",
+      "bytes": 1685,
+      "sha256": "6f394cd96c4595eaafd634bcd8ae07fc718da7ed4c1726f24e299b3f1ab52b66"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0028-2e0df79d46c91f5f.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0005-67dd800235e6310d.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0002-4b81022900f99fc4.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0019-cd786ce7df7c3d7b.png",
+      "bytes": 340873,
+      "sha256": "cd786ce7df7c3d7b603ee7c3af093bc1a09d062180cd01ae3a17db243642d1ec"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0029-798e3bc5f7f2954e.png",
+      "bytes": 158359,
+      "sha256": "798e3bc5f7f2954e8ca803ee64868dc6831d520a94c78f0645ed96331bc57ac1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0004-c56523fdaf11fba1.download",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0022-12be4724027c630d.json",
+      "bytes": 24208,
+      "sha256": "12be4724027c630dcf0fa5020303806163bab4eab1fbeeac746ce3524075e30e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0025-2e0df79d46c91f5f.json",
+      "bytes": 26221,
+      "sha256": "2e0df79d46c91f5fa9ba9785d97218d262253cfdec463f156d996deddc11dcb9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0011-c9f85ca67723e48b.json",
+      "bytes": 4788,
+      "sha256": "c9f85ca67723e48b6ad7cb9058457b05fa9a87b098b355e259fe656b54241eab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0009-ea4dcfd986d15971.download",
+      "bytes": 1685,
+      "sha256": "ea4dcfd986d15971d73481fca4951dc207bcd6692803edf654fce4feb71e65d8"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0021-5145bf6826d7ab87.png",
+      "bytes": 173347,
+      "sha256": "5145bf6826d7ab8799b0424c74b0a8ef100a20efc30cc148080d9beb723a193b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0014-463d6d2b42c4bf61.json",
+      "bytes": 10088,
+      "sha256": "463d6d2b42c4bf6103d80d742b0bd1dde02bfbe98cd2f043b97e3be507e12fdc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0015-cf0061626ac8d22f.png",
+      "bytes": 348498,
+      "sha256": "cf0061626ac8d22fd6ec9486feb5f6a9ceb7d6b6da8ca951f1c5882ddf58c19e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0001-b4561c4df15f901c.png",
+      "bytes": 193589,
+      "sha256": "b4561c4df15f901cef162d0cba678404607c22e0fb0917542e24cfb31fc50613"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0006-561c8fdee1bb90b2.download",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0018-0f78327d99457662.json",
+      "bytes": 10089,
+      "sha256": "0f78327d994576625cb275a26854744344a3a6ae0caa417fd2f4247f8acd8bb0"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0012-afbc260c419d3c2b.png",
+      "bytes": 190581,
+      "sha256": "afbc260c419d3c2b0b113c5af99763b79100a18018b1554f188b89b5d262709e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0013-405ac0034dfc7c2a.png",
+      "bytes": 207497,
+      "sha256": "405ac0034dfc7c2a095d023e68b8bc5737d8bb3355c43d1df5421f7076567b6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0007-0e27e91aa662e518.json",
+      "bytes": 9935,
+      "sha256": "0e27e91aa662e5188eaf9d316e92bf4262ce802a7f3fa603d508ad70a4f836ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0024-bd74283c5bc56313.md",
+      "bytes": 15,
+      "sha256": "bd74283c5bc56313b06bd65bcb5bb4a35f91717c94d6b5e14c42dbde2956d734"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0003-1bcea7595d7f9e7a.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/source-1-report/resources/0017-fa1253b8bc8d5c72.png",
+      "bytes": 176057,
+      "sha256": "fa1253b8bc8d5c727195287224f152dd1ef3f71b80ba602d6b0ddfe96b1d88d6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/index.html",
+      "bytes": 559303,
+      "sha256": "97bc699d719a74930242bd26061de52173d8a633af8a73413553bce4b67485f4"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/e645567e84fd7a39a13ab4640e00e98e7f499856.png",
+      "bytes": 219212,
+      "sha256": "cffe2da7c0315eced4a0ddf5a5570bf9e4395993e668978e1d0f64ec2dadd554"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/f70846f8293b68bf739d5a13e12ea960ba0dc695.json",
+      "bytes": 10089,
+      "sha256": "86db702515ba43221fdc4fc3c3c8303c13ff833c19986e059ebcc60e905666f9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/5274cc3c503a5d04d0bcddf18d1be150b9d0d733.json",
+      "bytes": 4808,
+      "sha256": "ea28461b5bf0bac13802f58f9214fc4942f0db8e51d4584f179ae7244cafb74f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/2c3d7af330a57d27080c1b9a74ce2c260cfcaa02.json",
+      "bytes": 10088,
+      "sha256": "ef0835028b9e01efd721b45edaa21b604fd14bb8c70a52b73cf4d2de3d7727e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/11730465a4253d75aa2ae4f57d380971d22c033d.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/19b1ca96b3bf1fd5e318624d24aa951490567f51.png",
+      "bytes": 203736,
+      "sha256": "65b32b9e7aab67344c6800980dc76c774fb318507835f451c963592e7c388a77"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/052b026a77827892e6a15534fb7b735f26715227.json",
+      "bytes": 24208,
+      "sha256": "e27db0aaed1257909368df7527fc8d0b35f8b7eceb6eb1c444f2b4f963bba63b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/0a4a7e748c1929b1421e8f595fdfec0666eace02.zip",
+      "bytes": 10896353,
+      "sha256": "5e4a613cd53f61c7ddf9f6f8b29192196e439f4c95356564c0ae052f7d909bed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/b4404c4c2588d1217e99cce522fa18f493c2ccc9.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/e825911584b11af1c74fd32f8d368e588cb66d30.json",
+      "bytes": 1685,
+      "sha256": "ba6fc66ad12ff21754d9fae7c3b5aa97ecada0971b4c102cdabcfcfcd693ed6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/648d62ab03db8724d927fe4f2137b1020b980429.png",
+      "bytes": 177051,
+      "sha256": "0bf37079890d45a5160307bde0d9c9d26370cc739ab24918699222f57a1a3495"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/02171e2464dd82360bc40f5d62205b24b69d047a.png",
+      "bytes": 155917,
+      "sha256": "8d2ad729e8baa215ca6d3abac1b983cb68b1e92e935b61639d0cee5f40bd08b7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/eee073294a428e86ad0ee14bff962bac47d99484.png",
+      "bytes": 191401,
+      "sha256": "0d2b2ed19b6d53f0e79628cde877181c0e0bf32e1b8860be168b40db3268a2d7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/047493b8f9b60a448a05b0184e1197b2892dfd33.png",
+      "bytes": 125703,
+      "sha256": "9fbbdeb954bfe20050ddbfac91ddc44ab2ee4bad184c581b8e426e516ca1c6d5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/686be3a9651b4ec580a1a7b79e49784de58b622b.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/c4a752c6a79b7dc9401cc312d86e7c4957f719ba.json",
+      "bytes": 1685,
+      "sha256": "3ef6e96156dd887cad052f729f7f4cd86fd7aa5baefebd470394d7cb24500450"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/379472bd69eb5dc4e52df815bf01b1c00fd56711.png",
+      "bytes": 174437,
+      "sha256": "b91be34b9df762fb783027df9e538e0fb34caddbcb332eb7782466d109dceb72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/c01ecc0256bc92c4c0c581dd08b57b4e3afe03c3.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/b792d79faa98e52cfa913ec5f10b49a553d098cd.zip",
+      "bytes": 2364929,
+      "sha256": "3cdde217d82d525e23b7cad34905e28576617fa14a2c4f0b9470e3fb12e305d4"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/58da85766d1da82c2802147d148177184845c6c9.json",
+      "bytes": 18221,
+      "sha256": "9a59a994095eee1be1d74ffabb7119f2f391c6b4729b738af14cfc5c50be87db"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/b1358bad897c89d393bbba941e16ee16618512c7.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/95249892a60ad8aa998b2f28b70c8e32dfe91388.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/b3a2b2c1dc7c7dd182dc2b682e6de0ac2008f4cf.zip",
+      "bytes": 4317529,
+      "sha256": "8ad757d929e99b9ad10b913e5a4e770eba139cc16ba19afbb2657d443ce9b5fa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/77db919a7ad6fd316687702e375ee5dbdbeea918.json",
+      "bytes": 9935,
+      "sha256": "b77eb109b6ec82334c48a3bf0484fc5d519d429fac327642214c083618e8252f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/b4cf760336da1e64d6f2b64aafa69b7d21f37ae7.zip",
+      "bytes": 4137949,
+      "sha256": "f413dd3b8b36ad9424ff08c8212eb20d8c10e6d3b92445eb71a7a6ad0039c3ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/5849625eedc6070630d301ed66b0aad0d2d7d8df.zip",
+      "bytes": 1023571,
+      "sha256": "09c1e32868b85470b625a8a306f9300efea6348ed2927e094dedf83bfbcb552f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/87f92df8b76c94f6f5375dd2ff13dd244ed0d8bb.json",
+      "bytes": 1685,
+      "sha256": "fa274ab01a2b9d06b92d76bd6c9387b1d234664851f1cfca487e9ff855c09ca2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/117b227d083112a525003d69b874a9794f37219f.png",
+      "bytes": 341942,
+      "sha256": "a35712a3fe5dc235b4c1925984d503b6fd7c9ecabbfdef08c4709ffdbef3a4ba"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/dd1847ed66847bcaca9031e475f5238b92c559b0.png",
+      "bytes": 207961,
+      "sha256": "d065765cb588e9eaf5732d6d94265196438a13bcb5e7824ca717ed5fa2f6fa29"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/78a692e3613f320f4c59bbb00811e14a9e36974f.png",
+      "bytes": 256916,
+      "sha256": "d6a768166a0a999b7038a6bcd3351cee5a6fdbad405d59d6c520315706af7ce7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/4993e665f00701f149a71161a8dfdd77d31f3361.json",
+      "bytes": 1685,
+      "sha256": "09a43f326f3ac2803fc450dfc98e26d7a8c8f3821b7f68d5660b27888e119dd1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/00d0842bb5ae72949433a4012ed65ff0729d2809.png",
+      "bytes": 256890,
+      "sha256": "12599f8d43e71055d222e8a7d4e23b950cd6f15d8d5ee8f73c911e66803c4d92"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/playwright-report/data/11cae1a2cd4ddd8e2b2b097861b6cca9d4e212f6.png",
+      "bytes": 349497,
+      "sha256": "e0c38f44db230d0c0aa2bdb65df9dc68a8eb3b7de5ddffe696d5b77a33809115"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/desktop-1.zip",
+      "bytes": 10896353,
+      "sha256": "5e4a613cd53f61c7ddf9f6f8b29192196e439f4c95356564c0ae052f7d909bed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/desktop-3.zip",
+      "bytes": 4317529,
+      "sha256": "8ad757d929e99b9ad10b913e5a4e770eba139cc16ba19afbb2657d443ce9b5fa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/desktop-2.zip",
+      "bytes": 4137949,
+      "sha256": "f413dd3b8b36ad9424ff08c8212eb20d8c10e6d3b92445eb71a7a6ad0039c3ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/desktop-5.zip",
+      "bytes": 1023571,
+      "sha256": "09c1e32868b85470b625a8a306f9300efea6348ed2927e094dedf83bfbcb552f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/desktop-4.zip",
+      "bytes": 2364929,
+      "sha256": "3cdde217d82d525e23b7cad34905e28576617fa14a2c4f0b9470e3fb12e305d4"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-79152269613d3ce8e908d23ac99c612e53d0f88a.png",
+      "bytes": 125703,
+      "sha256": "9fbbdeb954bfe20050ddbfac91ddc44ab2ee4bad184c581b8e426e516ca1c6d5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧式ACP的原回复与人工发布文件-ce39546f0d53b2446d8ddd439363e4efbc5af0ad.png",
+      "bytes": 191401,
+      "sha256": "0d2b2ed19b6d53f0e79628cde877181c0e0bf32e1b8860be168b40db3268a2d7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存只读核对-b10a6436731022b07ff16395e039ed50b1dd7b81.json",
+      "bytes": 10089,
+      "sha256": "86db702515ba43221fdc4fc3c3c8303c13ff833c19986e059ebcc60e905666f9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/第-5-次启动结束画面-9e0927e85cac64db5843bbd5055cc6c163cc3145.png",
+      "bytes": 155917,
+      "sha256": "8d2ad729e8baa215ca6d3abac1b983cb68b1e92e935b61639d0cee5f40bd08b7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-·-原生截取元数据-9bfcc30477815d95a7c24def3a61ca4fa95e5f11.json",
+      "bytes": 1685,
+      "sha256": "fa274ab01a2b9d06b92d76bd6c9387b1d234664851f1cfca487e9ff855c09ca2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/第-2-次启动结束画面-2de467510c683acb15418ba013bef1906a52a3e6.png",
+      "bytes": 177051,
+      "sha256": "0bf37079890d45a5160307bde0d9c9d26370cc739ab24918699222f57a1a3495"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/桌面启动-1-f9bf9acc382d0c05c899469b2c390ec706352809.zip",
+      "bytes": 10896353,
+      "sha256": "5e4a613cd53f61c7ddf9f6f8b29192196e439f4c95356564c0ae052f7d909bed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务导航原身份与零业务调用-46ec092f76e6bf3dfb70ccb456281f8547ee2dc6.json",
+      "bytes": 9935,
+      "sha256": "b77eb109b6ec82334c48a3bf0484fc5d519d429fac327642214c083618e8252f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/切换本机后旧ACP原消息文件仍可查看-0ce062d702355da65ffd991a6484ee87891ce760.png",
+      "bytes": 256890,
+      "sha256": "12599f8d43e71055d222e8a7d4e23b950cd6f15d8d5ee8f73c911e66803c4d92"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-998e9e1f2c4b93ba81ddb70eb853ada6a33c68c5.png",
+      "bytes": 341942,
+      "sha256": "a35712a3fe5dc235b4c1925984d503b6fd7c9ecabbfdef08c4709ffdbef3a4ba"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移与两次重启最终核对-9abb8ad585e792d74b829673595260dfc3f1da12.json",
+      "bytes": 24208,
+      "sha256": "e27db0aaed1257909368df7527fc8d0b35f8b7eceb6eb1c444f2b4f963bba63b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP切换最终原始状态-068ffccf860204aeb866264aec5ea8c60dd26db6.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-·-原生截取元数据-284074f723511ea24854c3f2406b5b69ee4c92f3.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/第-1-次启动结束画面-ac9e6e9adf8751e0008f2c0edea20a05474bebe5.png",
+      "bytes": 207961,
+      "sha256": "d065765cb588e9eaf5732d6d94265196438a13bcb5e7824ca717ed5fa2f6fa29"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-51101da406bea4f4552284a58e555f1102ba988e.png",
+      "bytes": 349497,
+      "sha256": "e0c38f44db230d0c0aa2bdb65df9dc68a8eb3b7de5ddffe696d5b77a33809115"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存只读核对-3e08f26fe0ef3bbe3a6c23d343b791793c0d78f6.json",
+      "bytes": 10088,
+      "sha256": "ef0835028b9e01efd721b45edaa21b604fd14bb8c70a52b73cf4d2de3d7727e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧式ACP人工发布的原始文件-ad724d19275cc651c39e7aa30f42e09fb7c71699.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/第-3-次启动结束画面-946737672666344f4960b41d6a6c873b3ef7603d.png",
+      "bytes": 174437,
+      "sha256": "b91be34b9df762fb783027df9e538e0fb34caddbcb332eb7782466d109dceb72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-012a1151164d8b8adae01c95f4fc8dfb254d9221.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/本机Codex实际连接验证-4df8e41e0f94e959e08884be6da352ab00d1d9e9.png",
+      "bytes": 203736,
+      "sha256": "65b32b9e7aab67344c6800980dc76c774fb318507835f451c963592e7c388a77"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/桌面启动-5-9976379e3392f8d3a427618f9f3e13411669f14b.zip",
+      "bytes": 1023571,
+      "sha256": "09c1e32868b85470b625a8a306f9300efea6348ed2927e094dedf83bfbcb552f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP与新Codex各自的业务事实-5ad7c3cd3ab3f4bbe328a7607a9d7313d407f19c.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/桌面启动-2-ee8edce0fd4a981c79689ddf9a79826399cb475a.zip",
+      "bytes": 4137949,
+      "sha256": "f413dd3b8b36ad9424ff08c8212eb20d8c10e6d3b92445eb71a7a6ad0039c3ed"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/切换后本机Codex新工作原件-9145ef168dfeba74bec0927e70df517cd883434c.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-·-原生截取元数据-9b2f00da10886d11601b8ab75886bc78c8d19411.json",
+      "bytes": 1685,
+      "sha256": "09a43f326f3ac2803fc450dfc98e26d7a8c8f3821b7f68d5660b27888e119dd1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移最终原状态-c3135494e794628c33a2d46c59493b7b06e5e190.json",
+      "bytes": 18221,
+      "sha256": "9a59a994095eee1be1d74ffabb7119f2f391c6b4729b738af14cfc5c50be87db"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/第-4-次启动结束画面-a9c554f9e7354cd1a0b9faf21bf0cba877d98e20.png",
+      "bytes": 256916,
+      "sha256": "d6a768166a0a999b7038a6bcd3351cee5a6fdbad405d59d6c520315706af7ce7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/桌面启动-4-76ff8462946d2dac0471c9c6fbb600850c81b8c8.zip",
+      "bytes": 2364929,
+      "sha256": "3cdde217d82d525e23b7cad34905e28576617fa14a2c4f0b9470e3fb12e305d4"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/桌面启动-3-9bdf8f3cee5c179472294522e65d98dbc279ea6a.zip",
+      "bytes": 4317529,
+      "sha256": "8ad757d929e99b9ad10b913e5a4e770eba139cc16ba19afbb2657d443ce9b5fa"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/切换前旧ACP事实与独立夹具声明-bf7d5644372d586e84297eb303614f12f4fcceaf.json",
+      "bytes": 4808,
+      "sha256": "ea28461b5bf0bac13802f58f9214fc4942f0db8e51d4584f179ae7244cafb74f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-·-原生截取元数据-43ac7c09def7e1e46de9014ab29abb8198d38cc0.json",
+      "bytes": 1685,
+      "sha256": "ba6fc66ad12ff21754d9fae7c3b5aa97ecada0971b4c102cdabcfcfcd693ed6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-eef7d4cdddb06257b0eef4957db7cea54e55372f.png",
+      "bytes": 219212,
+      "sha256": "cffe2da7c0315eced4a0ddf5a5570bf9e4395993e668978e1d0f64ec2dadd554"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-·-原生截取元数据-2f3b9b71bbe639f9c650a9e1a639c9436cf969d3.json",
+      "bytes": 1685,
+      "sha256": "3ef6e96156dd887cad052f729f7f4cd86fd7aa5baefebd470394d7cb24500450"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1/test-results/codex-employee.feature-本机--1cf1a--旧ACP迁移到离线协议遇到未知配置保存后仅执行新工作/attachments/创建本机Codex员工无API配置-ed6fad93a1455337527d79a632aef96ac0721fee.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/index.html",
+      "bytes": 551427,
+      "sha256": "cc7e74020b6c52d90b51133748caee90c279d4d954e4d83ca3709474d6f43c39"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/61b5d7cdb52be702b4599815bc72825517cca799.json",
+      "bytes": 23924,
+      "sha256": "f4269f00a736d6601338d5c166ed4b827b8a87f8a697b29189c8addaaa74a298"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/05ed7c1d75bbe9dcd6ff6389731f328ee791c524.json",
+      "bytes": 1685,
+      "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/1dfc89e0d632de4642af53a65690c5272c748be7.json",
+      "bytes": 9947,
+      "sha256": "025db40b161448a3ad98b843d1c9fd29baf564f8fa15ed3a4095ec1690827004"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/506b1e4ffbeda21ff6f27744192b51ed890b8848.json",
+      "bytes": 1685,
+      "sha256": "5933d6c18d17d9fd418c3159c3225c83f4069ffce44bba92b71df5fce47225e3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/6f048ccddf1baa848e134c13a0ddc6427ac024b5.json",
+      "bytes": 9946,
+      "sha256": "c48f410726e6709042ef33e07305c2ed0c5e4a7f8f04bff0496a6bedbd06dce2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/d2be7cbdccd178f393e7164c185d6ca40411c94d.png",
+      "bytes": 349067,
+      "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/11730465a4253d75aa2ae4f57d380971d22c033d.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/364a103f2c7194035e7ddee4380d63f1271cc47b.json",
+      "bytes": 18008,
+      "sha256": "a632a0a1e069d0f55a0438358f84f12ce52bdaf581ede6d44c6546bf2b209db7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/67a6884f396d1e7f572cb9edf2095b95f4a48192.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/5827b99ef96bd50a5ca2f3511a4a5cf8fefc9d0b.png",
+      "bytes": 157809,
+      "sha256": "8f1ade9215ecf81413b006b342493b07b9e3aec839d1d78cc1c692542fff4aab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/98e4ddf01bbc93646dea73c30c2a9485ac046ded.png",
+      "bytes": 341313,
+      "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/34c49c3197562ffba515bf5dbbc6c28f1bfdd908.zip",
+      "bytes": 1025767,
+      "sha256": "39a80b8fc65086931dc40d0d01b793ea1a3d7add6fe7f74f47e815c3d1ef5bcc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/1fa2b625a0b86ddb5ce87f336167ebb88975168b.png",
+      "bytes": 207506,
+      "sha256": "93d39f0e801b1e1ba0df1be5a34bb9b6b7f91a89362df892e5408162cb9bfb65"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/098574896e33b4d1da0f0984c8bb7a76ce0792ca.zip",
+      "bytes": 3944549,
+      "sha256": "2d22fac6a0414ddd1c87786334ebd9d1afb5f5ac6a4a262e86089d0d47c08c72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/a235e1a93787bf679dc5aa13172b1da4372cd522.md",
+      "bytes": 15,
+      "sha256": "bef445f11903f87bf9a1b91fef9885dbe69b040f92151e0c84540cd5df33b90d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/1c0102f557db38101f61c736c052a033ad235b99.png",
+      "bytes": 125525,
+      "sha256": "230290c3b3e2d39ba916faf265dd5961c566e67a1a234fde31508af492301d6a"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/c01ecc0256bc92c4c0c581dd08b57b4e3afe03c3.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/0924a83afcd7868456e1a235df9236efecf0deab.png",
+      "bytes": 207600,
+      "sha256": "2a86e15aad34b4115dc6d98136f128499e2c8ddc8b2c051bc08e6cd65541c8be"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/b1358bad897c89d393bbba941e16ee16618512c7.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/95249892a60ad8aa998b2f28b70c8e32dfe91388.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/b62cbefd3e8f3c7e901999517e7482771b1afb27.zip",
+      "bytes": 12153877,
+      "sha256": "4bbb772f63eb8574fdedeef1bc45edf92c213ffc5bdbacccc186cd138415aabe"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/20588f634f42aa83ffc48059cf6ad70cbc475fb8.json",
+      "bytes": 1685,
+      "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/071b232a63b96df443ed6190f69eecb7451c3436.zip",
+      "bytes": 4634440,
+      "sha256": "5ce7311a4b3f3a85a7cdab949fd148f7c0194cc97b6b1638edb3ace1c7167af7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/3c821c687b8fda3f961cb9ec31be504a8f8260f8.json",
+      "bytes": 9893,
+      "sha256": "30e735c52514971dce30f13fdbd3a24da78d4e6ccd0184793d965c444847bd0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/3386cdeff45da3d2e52261b962a3e32f9d4074d4.png",
+      "bytes": 176472,
+      "sha256": "ef3fe84b9b5987a4635fdd1f6a438d54b633fce21483f8f75f5e8b97642c2c36"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/7db07fbbc40551f98eb91c476e2ff1925d1f418a.json",
+      "bytes": 4717,
+      "sha256": "e73832c2b1314ff588304603e55455e63e2d2d9c07920f654c136f52685e59a6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/554c9db684e017f3ffad0e84932db7d55f19570f.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/141edc39b78c17e8bca6cd899f6b24db0f2d8051.zip",
+      "bytes": 2700352,
+      "sha256": "fe15d770789e609c96c238c9bdba6254948e1edb6aefbba93308d661058b2889"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/3bfa2cd66313b2ae82c326536727e625a00a506e.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/777df7dacb3deb8793e2fb855e7159e7d4189477.png",
+      "bytes": 193600,
+      "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/793ffbe5ad815b68c8dc170d317e082c87dcb947.png",
+      "bytes": 173921,
+      "sha256": "bfdddc8e0e35b3258893ad253a83f082dc6853e8b9b13d34838dd56fe5498de5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/playwright-report/data/e26f009c858294f31421adbe477ccbda909eab0d.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-1.zip",
+      "bytes": 12153877,
+      "sha256": "4bbb772f63eb8574fdedeef1bc45edf92c213ffc5bdbacccc186cd138415aabe"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-3.zip",
+      "bytes": 4634440,
+      "sha256": "5ce7311a4b3f3a85a7cdab949fd148f7c0194cc97b6b1638edb3ace1c7167af7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-2.zip",
+      "bytes": 3944549,
+      "sha256": "2d22fac6a0414ddd1c87786334ebd9d1afb5f5ac6a4a262e86089d0d47c08c72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-5.zip",
+      "bytes": 1025767,
+      "sha256": "39a80b8fc65086931dc40d0d01b793ea1a3d7add6fe7f74f47e815c3d1ef5bcc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/desktop-4.zip",
+      "bytes": 2700352,
+      "sha256": "fe15d770789e609c96c238c9bdba6254948e1edb6aefbba93308d661058b2889"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换后本机Codex新工作原件-98c8de9a87e2670508f7565238bbe24022b19df9.md",
+      "bytes": 15,
+      "sha256": "bef445f11903f87bf9a1b91fef9885dbe69b040f92151e0c84540cd5df33b90d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-·-原生截取元数据-949bee924349e6ec54230e226b5c9036ce120090.json",
+      "bytes": 1685,
+      "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务导航原身份与零业务调用-a908f5ab592f784fbbd52d483806521d1c5c6f39.json",
+      "bytes": 9893,
+      "sha256": "30e735c52514971dce30f13fdbd3a24da78d4e6ccd0184793d965c444847bd0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP与新Codex各自的业务事实-5ffe009280920b5c8d77c5aef496571c7092dda1.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-e4313b438e3055e6da1e20423713b396396aea69.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-2-次启动结束画面-6bb01afb2e395f67d3a729e3b218a9e6dfa41d3c.png",
+      "bytes": 176472,
+      "sha256": "ef3fe84b9b5987a4635fdd1f6a438d54b633fce21483f8f75f5e8b97642c2c36"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存只读核对-f55159e97d522d96da4f4670a54b719427b16896.json",
+      "bytes": 9946,
+      "sha256": "c48f410726e6709042ef33e07305c2ed0c5e4a7f8f04bff0496a6bedbd06dce2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-3-2b7edf7b601b1ed9a25882ac13c5a22c7e03a98c.zip",
+      "bytes": 4634440,
+      "sha256": "5ce7311a4b3f3a85a7cdab949fd148f7c0194cc97b6b1638edb3ace1c7167af7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移before未知保存保持原草稿-7f6c5f411c06b7aa6263b16079b5ee128efc1951.png",
+      "bytes": 349067,
+      "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-08764292a978bd58c9e9f949d1c6c868c417e4e8.png",
+      "bytes": 125525,
+      "sha256": "230290c3b3e2d39ba916faf265dd5961c566e67a1a234fde31508af492301d6a"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧式ACP的原回复与人工发布文件-b802663b1cfdd23867e7c26092dfbb918d1e4438.png",
+      "bytes": 207600,
+      "sha256": "2a86e15aad34b4115dc6d98136f128499e2c8ddc8b2c051bc08e6cd65541c8be"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-cee62b821d9518355452d4288136310cfc776dff.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移最终原状态-a6767fc013d177e259cf65cdb7fc5205143cdf79.json",
+      "bytes": 18008,
+      "sha256": "a632a0a1e069d0f55a0438358f84f12ce52bdaf581ede6d44c6546bf2b209db7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-4-次启动结束画面-93ac87682d7e46056ddbb72cbf32a83bd9ae0bc6.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP未知迁移与两次重启最终核对-cc8478c0b2e2caf3fcd85edb4acb083287df1b98.json",
+      "bytes": 23924,
+      "sha256": "f4269f00a736d6601338d5c166ed4b827b8a87f8a697b29189c8addaaa74a298"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-5-次启动结束画面-62815a4d3795d50fe3da3246ca6422730a45ec19.png",
+      "bytes": 157809,
+      "sha256": "8f1ade9215ecf81413b006b342493b07b9e3aec839d1d78cc1c692542fff4aab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-2-8332a1a925bdbc3228272a25a6fed668daa4603c.zip",
+      "bytes": 3944549,
+      "sha256": "2d22fac6a0414ddd1c87786334ebd9d1afb5f5ac6a4a262e86089d0d47c08c72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧式ACP人工发布的原始文件-449cb0e1544df1cf381b115e0aa91f3a6ee1ed87.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换本机后旧ACP原消息文件仍可查看-0fa61a3b35904c1c2f1f8bcdc503f963f76dfc36.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-5-b461bacf0fcd772324ea5bcc32abed269e4f34c2.zip",
+      "bytes": 1025767,
+      "sha256": "39a80b8fc65086931dc40d0d01b793ea1a3d7add6fe7f74f47e815c3d1ef5bcc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-1-次启动结束画面-77a28be69878b1f9d2eb9b8e53a7705be783da5c.png",
+      "bytes": 207506,
+      "sha256": "93d39f0e801b1e1ba0df1be5a34bb9b6b7f91a89362df892e5408162cb9bfb65"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-7b31e54d40379b78a75d2935886fe75e3d3fa0a3.png",
+      "bytes": 341313,
+      "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原员工配置-·-原生截取元数据-bf5449047a9637f067eb529a1a5e27181460bea8.json",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP切换最终原始状态-f8f18e0a77c5c05826a2d2c8ce73a1e5180d657e.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/本机Codex实际连接验证-0e6174cea3f436da5a4d6374633b6ad422eb0074.png",
+      "bytes": 193600,
+      "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存只读核对-d6f1f0b4e2c2c7c06cb371b486ceba42d036327e.json",
+      "bytes": 9947,
+      "sha256": "025db40b161448a3ad98b843d1c9fd29baf564f8fa15ed3a4095ec1690827004"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/第-3-次启动结束画面-8ef04de581f6b07fe165eac7cae010348902520d.png",
+      "bytes": 173921,
+      "sha256": "bfdddc8e0e35b3258893ad253a83f082dc6853e8b9b13d34838dd56fe5498de5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-1-284710a10e2e09b7d32c0424682c2df95eefa4c3.zip",
+      "bytes": 12153877,
+      "sha256": "4bbb772f63eb8574fdedeef1bc45edf92c213ffc5bdbacccc186cd138415aabe"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP迁移after未知保存保持原草稿-·-原生截取元数据-319c8052e519c52d4e62ccc3d9ed3807a620f8c1.json",
+      "bytes": 1685,
+      "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务底部准确打开原本机配置-·-原生截取元数据-e43c37d3220086af0930ef8694c8a79bb28a662b.json",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/桌面启动-4-3b3cd21bca561695ddcb9d0ff4921a0cc893dbd4.zip",
+      "bytes": 2700352,
+      "sha256": "fe15d770789e609c96c238c9bdba6254948e1edb6aefbba93308d661058b2889"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/切换前旧ACP事实与独立夹具声明-b314b2211e9ac48f1d9632131cd5886f95c7f7bc.json",
+      "bytes": 4717,
+      "sha256": "e73832c2b1314ff588304603e55455e63e2d2d9c07920f654c136f52685e59a6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/创建本机Codex员工无API配置-ed53673b573bad1859e22279e23196a1a0e3b692.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1/test-results/codex-employee.feature-本机--ad30e-CP迁移到真实Codex遇到未知配置保存后仅执行新工作/attachments/旧ACP显式任务设置往返后原输入与发送语义保持-·-原生截取元数据-d4b2b29633384ed7f6bf30a7a668d33cd8925c5e.json",
+      "bytes": 1685,
+      "sha256": "5933d6c18d17d9fd418c3159c3225c83f4069ffce44bba92b71df5fce47225e3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0009-5933d6c18d17d9fd.download",
+      "bytes": 1685,
+      "sha256": "5933d6c18d17d9fd418c3159c3225c83f4069ffce44bba92b71df5fce47225e3"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0010-e9106384b00830b7.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0027-929346207aa2f5ee.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0022-f4269f00a736d660.json",
+      "bytes": 23924,
+      "sha256": "f4269f00a736d6601338d5c166ed4b827b8a87f8a697b29189c8addaaa74a298"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0007-30e735c52514971d.json",
+      "bytes": 9893,
+      "sha256": "30e735c52514971dce30f13fdbd3a24da78d4e6ccd0184793d965c444847bd0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0017-ef3fe84b9b5987a4.png",
+      "bytes": 176472,
+      "sha256": "ef3fe84b9b5987a4635fdd1f6a438d54b633fce21483f8f75f5e8b97642c2c36"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0011-e73832c2b1314ff5.json",
+      "bytes": 4717,
+      "sha256": "e73832c2b1314ff588304603e55455e63e2d2d9c07920f654c136f52685e59a6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0013-93d39f0e801b1e1b.png",
+      "bytes": 207506,
+      "sha256": "93d39f0e801b1e1ba0df1be5a34bb9b6b7f91a89362df892e5408162cb9bfb65"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0020-7e881b75cc99061c.download",
+      "bytes": 1685,
+      "sha256": "7e881b75cc99061c0b64fd54a1b499b880c004b1ca5ddf9800422199a6549335"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0025-797f4b36608113ce.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0005-67dd800235e6310d.png",
+      "bytes": 220047,
+      "sha256": "67dd800235e6310d32d0cdfbd80a5884e43c833168e2f273ac0ea437afe7b590"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0002-4b81022900f99fc4.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0021-bfdddc8e0e35b325.png",
+      "bytes": 173921,
+      "sha256": "bfdddc8e0e35b3258893ad253a83f082dc6853e8b9b13d34838dd56fe5498de5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0026-929346207aa2f5ee.png",
+      "bytes": 260870,
+      "sha256": "929346207aa2f5ee74f2402b2c77cfa78fc1a2a1daed1223cad74aaa93b51d9e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0004-c56523fdaf11fba1.download",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0019-7b1a82a5f9a4cdd8.png",
+      "bytes": 341313,
+      "sha256": "7b1a82a5f9a4cdd852165133e7e1fee8204354f2cb5dceb0d408aee6803bd0c9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0028-797f4b36608113ce.json",
+      "bytes": 26088,
+      "sha256": "797f4b36608113ce7d2a12fb7dae7a5a131b454fe5d9021cdda8e8f0caa2866e"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0012-2a86e15aad34b411.png",
+      "bytes": 207600,
+      "sha256": "2a86e15aad34b4115dc6d98136f128499e2c8ddc8b2c051bc08e6cd65541c8be"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0008-230290c3b3e2d39b.png",
+      "bytes": 125525,
+      "sha256": "230290c3b3e2d39ba916faf265dd5961c566e67a1a234fde31508af492301d6a"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0014-c48f410726e67090.json",
+      "bytes": 9946,
+      "sha256": "c48f410726e6709042ef33e07305c2ed0c5e4a7f8f04bff0496a6bedbd06dce2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0029-8f1ade9215ecf814.png",
+      "bytes": 157809,
+      "sha256": "8f1ade9215ecf81413b006b342493b07b9e3aec839d1d78cc1c692542fff4aab"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0016-77ae8aa5340d812a.download",
+      "bytes": 1685,
+      "sha256": "77ae8aa5340d812a5d38445bfe88c9442103533ac5b0fde1f33dbe5f5dd1bb09"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0024-bef445f11903f87b.md",
+      "bytes": 15,
+      "sha256": "bef445f11903f87bf9a1b91fef9885dbe69b040f92151e0c84540cd5df33b90d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0006-561c8fdee1bb90b2.download",
+      "bytes": 1685,
+      "sha256": "561c8fdee1bb90b2b5dc97475f00281683c21b6c2d4ab1f988e6082d807bb434"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0023-a632a0a1e069d0f5.json",
+      "bytes": 18008,
+      "sha256": "a632a0a1e069d0f55a0438358f84f12ce52bdaf581ede6d44c6546bf2b209db7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0015-0ec395571273a414.png",
+      "bytes": 349067,
+      "sha256": "0ec395571273a4142d9888d4e99c825eb3ff2ca3da3f0ccf4e4a210d647a12c6"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0001-0bac813bc05907a2.png",
+      "bytes": 193600,
+      "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0003-1bcea7595d7f9e7a.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/package-1-report/resources/0018-025db40b161448a3.json",
+      "bytes": 9947,
+      "sha256": "025db40b161448a3ad98b843d1c9fd29baf564f8fa15ed3a4095ec1690827004"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0024-9ad7a0fb0a5904b8.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0012-0d2b2ed19b6d53f0.png",
+      "bytes": 191401,
+      "sha256": "0d2b2ed19b6d53f0e79628cde877181c0e0bf32e1b8860be168b40db3268a2d7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0020-fa274ab01a2b9d06.download",
+      "bytes": 1685,
+      "sha256": "fa274ab01a2b9d06b92d76bd6c9387b1d234664851f1cfca487e9ff855c09ca2"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0010-e9106384b00830b7.txt",
+      "bytes": 28,
+      "sha256": "e9106384b00830b70786edc3ce2314f4c1c39f1b98cba0ddb2f901cb64fa1483"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0017-0bf37079890d45a5.png",
+      "bytes": 177051,
+      "sha256": "0bf37079890d45a5160307bde0d9c9d26370cc739ab24918699222f57a1a3495"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0007-b77eb109b6ec8233.json",
+      "bytes": 9935,
+      "sha256": "b77eb109b6ec82334c48a3bf0484fc5d519d429fac327642214c083618e8252f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0008-9fbbdeb954bfe200.png",
+      "bytes": 125703,
+      "sha256": "9fbbdeb954bfe20050ddbfac91ddc44ab2ee4bad184c581b8e426e516ca1c6d5"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0019-a35712a3fe5dc235.png",
+      "bytes": 341942,
+      "sha256": "a35712a3fe5dc235b4c1925984d503b6fd7c9ecabbfdef08c4709ffdbef3a4ba"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0009-3ef6e96156dd887c.download",
+      "bytes": 1685,
+      "sha256": "3ef6e96156dd887cad052f729f7f4cd86fd7aa5baefebd470394d7cb24500450"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0014-ef0835028b9e01ef.json",
+      "bytes": 10088,
+      "sha256": "ef0835028b9e01efd721b45edaa21b604fd14bb8c70a52b73cf4d2de3d7727e1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0015-e0c38f44db230d0c.png",
+      "bytes": 349497,
+      "sha256": "e0c38f44db230d0c0aa2bdb65df9dc68a8eb3b7de5ddffe696d5b77a33809115"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0026-12599f8d43e71055.png",
+      "bytes": 256890,
+      "sha256": "12599f8d43e71055d222e8a7d4e23b950cd6f15d8d5ee8f73c911e66803c4d92"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0028-94261e968394e08b.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0002-4b81022900f99fc4.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0016-ba6fc66ad12ff217.download",
+      "bytes": 1685,
+      "sha256": "ba6fc66ad12ff21754d9fae7c3b5aa97ecada0971b4c102cdabcfcfcd693ed6d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0005-cffe2da7c0315ece.png",
+      "bytes": 219212,
+      "sha256": "cffe2da7c0315eced4a0ddf5a5570bf9e4395993e668978e1d0f64ec2dadd554"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0022-e27db0aaed125790.json",
+      "bytes": 24208,
+      "sha256": "e27db0aaed1257909368df7527fc8d0b35f8b7eceb6eb1c444f2b4f963bba63b"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0004-c56523fdaf11fba1.download",
+      "bytes": 1685,
+      "sha256": "c56523fdaf11fba144395258b0632d03cdb43005e20dfe344ba68880c13d97bc"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0013-d065765cb588e9ea.png",
+      "bytes": 207961,
+      "sha256": "d065765cb588e9eaf5732d6d94265196438a13bcb5e7824ca717ed5fa2f6fa29"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0006-09a43f326f3ac280.download",
+      "bytes": 1685,
+      "sha256": "09a43f326f3ac2803fc450dfc98e26d7a8c8f3821b7f68d5660b27888e119dd1"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0011-ea28461b5bf0bac1.json",
+      "bytes": 4808,
+      "sha256": "ea28461b5bf0bac13802f58f9214fc4942f0db8e51d4584f179ae7244cafb74f"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0001-65b32b9e7aab6734.png",
+      "bytes": 203736,
+      "sha256": "65b32b9e7aab67344c6800980dc76c774fb318507835f451c963592e7c388a77"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0029-8d2ad729e8baa215.png",
+      "bytes": 155917,
+      "sha256": "8d2ad729e8baa215ca6d3abac1b983cb68b1e92e935b61639d0cee5f40bd08b7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0025-94261e968394e08b.json",
+      "bytes": 25359,
+      "sha256": "94261e968394e08b49e2c87ebd5dc5c73ecd87a224855817618cd94d735d873d"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0023-9a59a994095eee1b.json",
+      "bytes": 18221,
+      "sha256": "9a59a994095eee1be1d74ffabb7119f2f391c6b4729b738af14cfc5c50be87db"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0021-b91be34b9df762fb.png",
+      "bytes": 174437,
+      "sha256": "b91be34b9df762fb783027df9e538e0fb34caddbcb332eb7782466d109dceb72"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0018-86db702515ba4322.json",
+      "bytes": 10089,
+      "sha256": "86db702515ba43221fdc4fc3c3c8303c13ff833c19986e059ebcc60e905666f9"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0027-d6a768166a0a999b.png",
+      "bytes": 256916,
+      "sha256": "d6a768166a0a999b7038a6bcd3351cee5a6fdbad405d59d6c520315706af7ce7"
+    },
+    {
+      "path": ".local/feature-review/native-acp-migration-save-20261007/offline-1-report/resources/0003-1bcea7595d7f9e7a.png",
+      "bytes": 269194,
+      "sha256": "1bcea7595d7f9e7a6cdd90cca57efd1783b977c903c0da8b0a0a9a2eb802ea71"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 事务受理等待当前运行配置核对，失败先登记跳过，不创建聊天、预算或投递。
  * [INPUT]: 自动化定义/触发、宿主许可判断与 ProductStore 事务。
  * [OUTPUT]: 原自动化问题仅解除固定问题，原Work补充与消息/容量同事务，其他原问题保持等待；旧完成/同伴失败轮次须在同事务以确切已提交Run/Work问题核对，不重写原轮次或恢复业务。
  * [OUTPUT]: 创建请求与计划同事务去重，删除保留创建身份防止重建；监控检查点/比较证据/通知同事务提交与规则变更重建基线；以可信预算当前期限准入续行；结果/通知、聊天/触发、补充/容量/消息同事务；版本化受理、执行许可与无重放恢复。
@@ -199,7 +200,7 @@ export class AutomationRepository {
     })
   }
 
-  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>) {
+  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined | Promise<string | { reason: string; attention: 'authorization' } | undefined>, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>) {
     if (!trigger.key || trigger.key.length > 300) throw new Error('无效触发身份')
     if (!Number.isSafeInteger(trigger.scheduledAt) || !Number.isFinite(new Date(trigger.scheduledAt).getTime())) throw new Error('无法验证调度触发时间')
     return this.store.transaction(async tx => {
@@ -224,7 +225,7 @@ export class AutomationRepository {
           : trigger.scheduledAt < Date.parse(d.scheduleEffectiveAt) ? '日程已修改或恢复；不补跑此前时刻'
           : !matchesSchedule(d, trigger.scheduledAt) ? '日历规则不匹配；夏令时跳过不存在的时间' : undefined
       }
-      if (!reason) { const block = validate(d); reason = typeof block === 'string' ? block : block?.reason; if (block && typeof block !== 'string') o.attentionReason = block.attention }
+      if (!reason) { const block = await validate(d); reason = typeof block === 'string' ? block : block?.reason; if (block && typeof block !== 'string') o.attentionReason = block.attention }
       const running = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => pendingOccurrence.has(item.status))
       if (!reason && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
       if (!reason && running.some(item => item.conversationId === o.conversationId && activeOccurrence.has(item.status))) reason = '并发或会话忙碌，本次已跳过'

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 已验证兼容方案或核心 Agent 的严格团队方案、文件准备器、SQLite、通讯录分类事务与宿主生命周期/批量安装回调。
  * [OUTPUT]: 核心 Agent 按稳定请求身份独立受理、默认命名建群与浏览器可用的 Mastra 员工；认领和最终发布进入宿主临界区、文件准备允许及时持久停止；原子冻结 ID，员工/群/同名分类和回执同事务发布；实际退出等待、明确恢复/取消、文件冲突和备份门禁。
  * [POS]: 团队原子发布用例；内部准备记录不承载产品草稿，不调用成员模型、不发送消息或创建 Work。
@@ -7,18 +9,19 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
-import type { Connection, Conversation, DigitalAgent } from '../../../shared/domain'
+import type { Conversation, DigitalAgent } from '../../../shared/domain'
 import { avatarPresets } from '../../../shared/domain/avatars'
 import { TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamModelPlanSchema, teamPlanSchema, type TeamCreationOperation, type TeamDraft, type TeamGeneration } from '../../../shared/domain/team-creation'
-import { agentSchema } from '../employees/employee-service'
+import { agentSchema, backendSchema } from '../employees/employee-service'
 import { createTeamContactCategory } from '../employees/contact-list'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint } from './team-files'
-import { TeamRepository, editableTeamDraft, readTeamDraft, resolveTeamModel, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 const acceptSchema = teamVersionSchema.extend({ planHash: z.string().length(64), requestId: teamId }).strict()
-const agentPlanSchema = z.object({ plan: teamModelPlanSchema, connectionId: teamId, modelId: z.string().trim().max(300), requestId: teamId }).strict()
+const agentPlanSchema = z.object({ plan: teamModelPlanSchema, executionBackend: backendSchema.optional(), connectionId: z.string().trim().max(200), modelId: z.string().trim().max(300), requestId: teamId }).strict()
 const operationSchema = z.object({ operationId: teamId }).strict()
 export class TeamCreationService {
   private running = new Map<string, { controller: AbortController; task: Promise<void> }>()
@@ -35,9 +38,8 @@ export class TeamCreationService {
     return this.repo.store.transaction(tx => this.read(tx, operationId))
   }
   private async read(tx: RecordTransaction, id: string) { return await tx.get<TeamCreationOperation>('teamCreations', id) ?? teamError('VALIDATION', '创建记录不存在') }
-  private async config(tx: RecordTransaction, operation: Pick<TeamCreationOperation, 'connectionId' | 'modelId' | 'connectionFingerprint'>) {
-    const connection = await tx.get<Connection>('connections', operation.connectionId)
-    const resolved = resolveTeamModel(connection, operation.modelId)
+  private async config(tx: RecordTransaction, operation: Pick<TeamCreationOperation, 'connectionId' | 'modelId' | 'connectionFingerprint' | 'executionBackend'>) {
+    const resolved = await resolveEmployeeRuntime(tx, operation)
     if (resolved.fingerprint !== operation.connectionFingerprint) teamError('CONFIG_CHANGED', '模型配置已变化，请恢复原配置后继续，或放弃并重新生成')
   }
   async accept(input: unknown) {
@@ -60,14 +62,14 @@ export class TeamCreationService {
     const result = await this.repo.store.transaction(async tx => {
       const old = (await tx.list<TeamCreationOperation>('teamCreations')).find(value => value.requestId === request.requestId)
       if (old) { if (old.requestHash !== requestHash) teamError('REQUEST_CONFLICT', '请求身份已用于不同团队方案'); return { operation: old, start: false } }
-      const connection = await tx.get<Connection>('connections', request.connectionId), model = resolveTeamModel(connection, request.modelId)
+      const model = await resolveEmployeeRuntime(tx, request)
       const now = teamNow(), generationId = randomUUID()
       const draft: TeamDraft = {
         id: randomUUID(), schemaVersion: 1, version: 1, createdAt: now, updatedAt: now, status: 'open',
         prompt: request.plan.purpose, selectedConnectionId: request.connectionId, selectedModelId: request.modelId,
-        resolvedModelId: model.modelId, connectionFingerprint: model.fingerprint, createGroup: true, groupTitle: request.plan.name,
+        ...(model.executionBackend.kind !== 'mastra-model' ? { executionBackend: model.executionBackend } : {}), resolvedModelId: model.modelId, connectionFingerprint: model.fingerprint, createGroup: true, groupTitle: request.plan.name,
         generationId, generationStatus: 'succeeded', manuallyEdited: false, validationErrors: [],
-        plan: { ...request.plan, capabilityNotes: teamCapabilityNotes(request.plan.scenarioKind), plannerVersion: TEAM_PLANNER_VERSION, generationId,
+        plan: { ...request.plan, capabilityNotes: teamCapabilityNotes(request.plan.scenarioKind, model.executionBackend.kind), plannerVersion: TEAM_PLANNER_VERSION, generationId,
           members: request.plan.members.map((member, index) => ({ ...member, memberKey: randomUUID(), avatarId: avatarPresets[index % avatarPresets.length].id, color: teamColors[index % teamColors.length] })) },
       }
       draft.planInputHash = teamInputHash(draft); validateTeamDraft(draft)
@@ -81,12 +83,12 @@ export class TeamCreationService {
     const memberIds = plan.members.map(member => ({ memberKey: member.memberKey, agentId: randomUUID() }))
     const agents: DigitalAgent[] = plan.members.map((member, index) => {
       const agentId = memberIds[index].agentId
-      const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true })
+      const definition = agentSchema.parse({ name: member.name, role: member.role, instructions: member.instructions, color: member.color, avatar: { kind: 'preset', id: member.avatarId }, executionBackend: draft.executionBackend ?? { kind: 'mastra-model' }, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, skillIds: [], knowledgeIds: [], allowBrowser: !draft.executionBackend || draft.executionBackend.kind === 'mastra-model', allowCommands: false, active: true })
       return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource: { kind: 'team-planner', operationId: id, memberKey: member.memberKey, plannerVersion: plan.plannerVersion } }
     })
     const conversationId = draft.createGroup ? randomUUID() : undefined
     const conversation: Conversation | undefined = conversationId ? { id: conversationId, kind: 'group', title: draft.groupTitle, agentIds: agents.map(agent => agent.id), mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource: { kind: 'team-planner', operationId: id, plannerVersion: plan.plannerVersion }, teamSetup: { purpose: plan.purpose, collaborationGuide: plan.collaborationGuide, scenarioKind: plan.scenarioKind } } : undefined
-    const operation: TeamCreationOperation = { id, requestId, requestHash, draftId: draft.id, acceptedDraftVersion: draft.version, payloadHash: draft.planHash!, version: 1, status: 'accepted', createdAt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, connectionFingerprint: draft.connectionFingerprint!, agents, conversation, memberIds, conversationId, files: [], directories: [] }
+    const operation: TeamCreationOperation = { id, requestId, requestHash, draftId: draft.id, acceptedDraftVersion: draft.version, payloadHash: draft.planHash!, version: 1, status: 'accepted', createdAt, ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, connectionFingerprint: draft.connectionFingerprint!, agents, conversation, memberIds, conversationId, files: [], directories: [] }
     await this.config(tx, operation)
     Object.assign(operation, teamFileLog(operation, this.homes))
     draft.creationOperationId = operation.id; draft.version++; draft.updatedAt = teamNow()

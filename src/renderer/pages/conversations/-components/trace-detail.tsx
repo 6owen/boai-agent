@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 同一轮次的原生 Span、运行记录和员工筛选。
+ * [OUTPUT]: Codex外部阶段标为本机Agent，不将其伪装为Mastra内部模型调用。
  * [OUTPUT]: Trace折叠箭头固定12px并旋转，节点标签保留打开详情职责；可折叠调用树、相对时间线及锚定节点的浮层输入输出详情；未结束节点保留真实状态。
  * [POS]: 会话执行过程视图；不将 Span 完成解释为业务交付。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronRight, X } from '@/components/icons'
 
 const phaseLabels: Record<string, string> = { decision: '参与判断', execution: '回复与执行', memory: '记忆整理', report: '整理汇报' }
-const typeLabels: Record<string, string> = { agent_run: '员工运行', model_generation: '模型调用', model_step: '模型步骤', model_inference: '模型推理', tool_call: '工具调用', generic: '请求数据' }
+const typeLabels: Record<string, string> = { agent_run: '员工运行', model_generation: '模型调用', model_step: '模型步骤', model_inference: '模型推理', tool_call: '工具调用', generic: '请求数据', external_agent: '本机 Agent' }
 const duration = (ms: number) => ms < 1000 ? `${Math.max(0, Math.round(ms))} ms` : `${(ms / 1000).toFixed(2)} s`
 
 export function TraceDetail({ spans, runs }: { spans: StoredTraceSpan[]; runs: AgentRun[] }) {

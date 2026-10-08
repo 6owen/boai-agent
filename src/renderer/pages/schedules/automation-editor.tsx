@@ -1,11 +1,14 @@
 /*
+ * [OUTPUT]: Claude自动化沿原七项表单选择已核对程序及明确API来源，命令关闭与宿主最终指纹复核保持。
+ * [OUTPUT]: 七项表单支持已验证本机Codex员工，无需API连接；命令权限仍关闭，最终准入由宿主核验。
  * [INPUT]: 固定计划/草稿身份、快照、日程预览/创建回执 IPC 与现有详情标签守卫。
  * [OUTPUT]: 七项精简表单、上下文执行对象/时间/监控编辑、明确 Agent 回填版本与持久创建重试身份；编辑保留旧偏好和暂停状态。
  * [POS]: 定时任务右侧常驻标签；复用 DetailTabSession/EditorFrame，保存仍走唯一自动化服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import type { AutomationDefinition, AutomationInput, Snapshot } from '@shared/domain'
+import type { AutomationDefinition, AutomationInput, LaunchProfile, Snapshot } from '@shared/domain'
+import { backendProtocol, isNativeBackend } from '@shared/domain/backends'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, EditorFrame, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -56,6 +59,17 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
     timezone: definition?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'important_only') }))
   const [assistant, setAssistant] = useState(mode === 'assistant' && !definition), [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
   const [unknown, setUnknown] = useState(!!pending), [targetQuery, setTargetQuery] = useState('')
+  const [profiles, setProfiles] = useState<LaunchProfile[]>([])
+  const [profileError, setProfileError] = useState('')
+  const nativeBindings = snapshot.agents.filter(a => isNativeBackend(a.executionBackend)).map(a => `${a.id}:${a.configVersion}:${isNativeBackend(a.executionBackend) ? a.executionBackend.profileId : ''}`).join(',')
+  useEffect(() => {
+    let live = true
+    setProfiles([]); setProfileError('')
+    if (nativeBindings) void api.request('listLaunchProfiles', undefined)
+      .then(value => { if (live) setProfiles(value) })
+      .catch(error => { if (live) setProfileError(errorText(error)) })
+    return () => { live = false }
+  }, [api, nativeBindings])
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext), clean = useDirty(form)
   const rule = form.frequency === 'daily' ? 'daily' : JSON.stringify(form.daysOfWeek) === '[1,2,3,4,5]' ? 'workdays' : 'weekly'
   const [preview, setPreview] = useState<{ nextTimes: string[]; timezone?: string; error?: string; pending: boolean }>({ nextTimes: [], pending: true })
@@ -74,7 +88,13 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
   }, [api, form.frequency, form.time, form.weekday, daysKey, form.timezone])
   const eligible = (id: string) => {
     const a = snapshot.agents.find(a => a.id === id), c = snapshot.connections.find(c => c.id === a?.connectionId)
-    return !!(a?.active && !a.allowCommands && a.executionBackend?.kind !== 'acp-local' && c && (a.modelId || c.defaultModel))
+    if (!a?.active || a.allowCommands || a.executionBackend?.kind === 'acp-local') return false
+    if (isNativeBackend(a.executionBackend)) {
+      const { profileId, kind } = a.executionBackend
+      return profiles.some(profile => profile.id === profileId && profile.protocol === backendProtocol(kind) && profile.verified)
+        && (kind !== 'claude-local' || !!(c?.hasApiKey && (a.modelId || c.defaultModel)))
+    }
+    return !!(c && (a.modelId || c.defaultModel))
   }
   const conversation = snapshot.conversations.find(c => c.id === form.conversationId)
   const memberIds = form.conversationPolicy === 'new-conversation' ? form.employeeIds ?? [] : conversation?.agentIds ?? []
@@ -107,7 +127,8 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
           <Setting label="运行于" value={targetLabel}>
             <SelectField aria-label="聊天方式" disabled={form.taskKind === 'monitor'} value={form.conversationPolicy} onValueChange={value => change({ conversationPolicy: value as Form['conversationPolicy'], conversationId: undefined, employeeIds: undefined })} options={[{ value: 'new-conversation', label: '新任务聊天' }, { value: 'existing-conversation', label: '指定聊天' }]} />
             {form.conversationPolicy === 'new-conversation' ? <Field label="执行员工"><SelectField value={form.employeeIds?.[0] ?? ''} onValueChange={value => change({ employeeIds: value ? [value] : undefined })} options={[{ value: '', label: '选择员工' }, ...snapshot.agents.map(a => ({ value: a.id, label: `${a.name}${eligible(a.id) ? '' : ' · 配置或权限不可用'}`, disabled: !eligible(a.id) }))]} /></Field> : <><Input aria-label="搜索已有聊天" placeholder="搜索已有聊天" value={targetQuery} onChange={e => setTargetQuery(e.target.value)} /><Field label="目标会话"><SelectField value={form.conversationId ?? ''} onValueChange={value => change({ conversationId: value || undefined, ...(form.monitor ? { monitor: { ...form.monitor, source: { ...form.monitor.source, conversationId: value } } } : {}) })} options={[{ value: '', label: '选择会话' }, ...snapshot.conversations.filter(c => c.id === form.conversationId || c.title.includes(targetQuery)).map(c => ({ value: c.id, label: `${c.title} · ${c.kind === 'group' ? '群聊' : '单聊'}`, disabled: !c.agentIds.length || !c.agentIds.every(eligible) }))]} /></Field></>}
-            <p className="field-hint">只支持已启用、模型可用且关闭命令权限的 API 员工。没有可用对象时，请在通讯录和设置中配置；草稿会保留。</p>
+            <p className="field-hint">选择已启用、连接可用且关闭命令权限的模型 API、本机 Codex 或 Claude 员工。Claude 还需明确模型来源。没有可用对象时，请在通讯录和设置中配置；草稿会保留。</p>
+            {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
           </Setting>
         </div>
         {!validTarget && <p className="field-hint" role="status">请在「运行于」明确选择可用员工或聊天。</p>}

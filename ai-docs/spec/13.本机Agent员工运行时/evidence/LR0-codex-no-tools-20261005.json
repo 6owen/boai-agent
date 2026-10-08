@@ -1,0 +1,26 @@
+{
+  "sourceHashes": {
+    "client.ts": "1984076c071a59376730d614d40821caf6330304c9bd51349995014f6b315d12",
+    "policy.ts": "f0646820258fc9590df687a8c4614e1183bc86e2ee9ad64e3733e3a29598a366",
+    "turn.ts": "d92154cde80197f0344294d56e1b51ab6c75279efeb922d3cc9f135bc4e20a2c"
+  },
+  "createdAt": "2026-10-05T07:28:33.948Z",
+  "platform": "darwin",
+  "kind": "actual-cli-local-inference-fixture",
+  "realModel": false,
+  "requests": [
+    {
+      "model": "gpt-6.1-sol",
+      "tools": [],
+      "toolChoice": "auto"
+    }
+  ],
+  "program": {
+    "name": "Codex",
+    "version": "0.159.3",
+    "protocolVersion": 2,
+    "checkedAt": "2026-10-05T07:28:34.076Z"
+  },
+  "expectedFailure": "Codex本轮执行失败，没有成功完成",
+  "passed": true
+}

@@ -1,0 +1,315 @@
+{
+  "date": "2026-10-06",
+  "desktopMode": "current macOS arm64 unpacked application",
+  "humanReview": "pending",
+  "batches": [
+    {
+      "batch": "codex-membership-offline-1",
+      "report": "../../../../.local/feature-review/codex-membership-offline-1-report/index.html",
+      "stats": {
+        "startTime": "2026-10-05T16:12:58.871Z",
+        "duration": 39736.329000000005,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议移除群成员后材料只在当前授权上下文使用",
+          "status": "failed",
+          "modelMode": "offline-protocol-or-fixture",
+          "launchCount": 1,
+          "gaps": [],
+          "resources": 8,
+          "traces": 1
+        }
+      ],
+      "sourceFiles": 868,
+      "sourceVerified": true,
+      "sourceAndBuildDigest": "fa299436598408f1bb95e32d792ac9e538258319a012e1ac8e89d3ba1e6e124b",
+      "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba"
+    },
+    {
+      "batch": "codex-membership-offline-2",
+      "report": "../../../../.local/feature-review/codex-membership-offline-2-report/index.html",
+      "stats": {
+        "startTime": "2026-10-05T16:14:15.856Z",
+        "duration": 13230.658,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议移除群成员后材料只在当前授权上下文使用",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "launchCount": 2,
+          "gaps": [],
+          "resources": 11,
+          "traces": 2,
+          "initialMembers": [
+            "504fa54e-78e5-44bf-bca3-c52fafbfbac2",
+            "6b307b9f-298a-43e5-91ef-20b7cdeb33a7"
+          ],
+          "finalMembers": [
+            "6b307b9f-298a-43e5-91ef-20b7cdeb33a7"
+          ],
+          "removedEmployeeGroupRunsUnchanged": true,
+          "groupReplyCount": 3,
+          "directReply": [
+            "没有可用暗号"
+          ],
+          "sessions": [
+            {
+              "id": "a3f398955ad0adf61f1a3b5ba41c9327eae9491b1518d2b7e4c30e0d2974b240",
+              "conversationId": "671089b4-f3dd-44a9-9f14-964f4010e878",
+              "agentId": "504fa54e-78e5-44bf-bca3-c52fafbfbac2",
+              "sourceVersion": 2,
+              "fingerprint": "3b4b5447dbc1eefbf6d088e189e41cc24867b6cd4e18e9785720bc1b8080779f",
+              "runId": "fbcbe352-f362-431c-92e3-4db28f39084e",
+              "state": "completed",
+              "memories": [],
+              "materials": [
+                {
+                  "id": "91017ad8-6685-41fb-80b2-5327d47ec751",
+                  "hash": "000ac4b3bb6a6b2730fa8c0b689c5772413ef2939dd0071d912235cedc224223"
+                }
+              ],
+              "sources": [
+                {
+                  "id": "584ccc14-ca0f-4e77-9fac-4e4e6c58f9c8",
+                  "hash": "5946349e860d11ea9eeaeb812a837ded1d1e1a0497139dd9b380498dcdedf368"
+                }
+              ],
+              "inputMessageIds": [
+                "584ccc14-ca0f-4e77-9fac-4e4e6c58f9c8"
+              ],
+              "threadId": "8e65b0d5-b025-4755-a896-123467183f07",
+              "turnId": "fixture-turn",
+              "outputHash": "c60ff504805cd38970d3957f2e33ca322f6d0b1825554f3e01fbc491dff1ec95"
+            },
+            {
+              "id": "d328c6d3e1661178c3b5e2180874b076a4fcef8cbcb2dbad07d239afaafa7a25",
+              "conversationId": "671089b4-f3dd-44a9-9f14-964f4010e878",
+              "agentId": "6b307b9f-298a-43e5-91ef-20b7cdeb33a7",
+              "sourceVersion": 2,
+              "fingerprint": "ac730bc35ecbd43086b924e50293dbe51f814d6e9205637387887459103e6d4c",
+              "runId": "adc4463c-a852-4616-872b-469af114b9d3",
+              "state": "completed",
+              "memories": [
+                {
+                  "id": "observation:b4a97727-1ef4-4107-b8b1-7170cd9990eb:584ccc14-ca0f-4e77-9fac-4e4e6c58f9c8",
+                  "hash": "d42889bc88a63ce5283e3757b01c03389c97152d1053804660f7b08b33cad2aa"
+                },
+                {
+                  "id": "observation:b4a97727-1ef4-4107-b8b1-7170cd9990eb:f8a9bcc1-a01c-42c4-b37e-09e629c49c62",
+                  "hash": "70f5906f5ef3cb7abaa523931371562b1862d76882e02dcacc1f8eb6c31e99a0"
+                }
+              ],
+              "materials": [
+                {
+                  "id": "91017ad8-6685-41fb-80b2-5327d47ec751",
+                  "hash": "000ac4b3bb6a6b2730fa8c0b689c5772413ef2939dd0071d912235cedc224223"
+                }
+              ],
+              "sources": [
+                {
+                  "id": "584ccc14-ca0f-4e77-9fac-4e4e6c58f9c8",
+                  "hash": "5946349e860d11ea9eeaeb812a837ded1d1e1a0497139dd9b380498dcdedf368"
+                },
+                {
+                  "id": "f8a9bcc1-a01c-42c4-b37e-09e629c49c62",
+                  "hash": "c8d3f494e9676ab22ca0f2cdf55a7842ec7f7b7b460223954a3fd0f2cc60357c"
+                },
+                {
+                  "id": "d998eda9-8d16-4a62-a8de-1f63aa959728",
+                  "hash": "24d065585f71b1b0e54186f32069846aff9063aeeb4548b243be3d1bd0a89fb0"
+                }
+              ],
+              "inputMessageIds": [
+                "d998eda9-8d16-4a62-a8de-1f63aa959728"
+              ],
+              "threadId": "bc574d5c-16b5-466d-80ef-5fb713938dce",
+              "turnId": "fixture-turn",
+              "outputHash": "c60ff504805cd38970d3957f2e33ca322f6d0b1825554f3e01fbc491dff1ec95"
+            },
+            {
+              "id": "d04a9bb56937ea9ff60c0e8365d1e0199190319a631853c5233099cd71e2fb91",
+              "conversationId": "cf88cd55-0c13-418f-953d-b9dc2df78180",
+              "agentId": "504fa54e-78e5-44bf-bca3-c52fafbfbac2",
+              "sourceVersion": 2,
+              "fingerprint": "9847e7f4229f620f04540d59103265609eb3a402f73f851d006864fd86c01416",
+              "runId": "da622bd4-afb6-48ed-9517-b4c2356e68bc",
+              "state": "completed",
+              "memories": [],
+              "materials": [],
+              "sources": [
+                {
+                  "id": "ccfd782a-624b-402a-a883-50319529ed8d",
+                  "hash": "6a7f85773e71f582ac0b1672eef1d43fb895989f24e21d493f0f36779ef9b7eb"
+                }
+              ],
+              "inputMessageIds": [
+                "ccfd782a-624b-402a-a883-50319529ed8d"
+              ],
+              "threadId": "0f8d62aa-5c8a-4b33-8f37-e27c1ffd4141",
+              "turnId": "fixture-turn",
+              "outputHash": "d146fce645fd25048b0e798abf37ba5cdb0a0db143ca0c31f8a191192335a5d1"
+            }
+          ],
+          "workCount": 0
+        }
+      ],
+      "sourceFiles": 868,
+      "sourceVerified": true,
+      "sourceAndBuildDigest": "99d731372e07215bcb71e7a2faf50dd937e7b2fb75fbc903f1bced78d6f5277d",
+      "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba"
+    },
+    {
+      "batch": "codex-membership-real-1",
+      "report": "../../../../.local/feature-review/codex-membership-real-1-report/index.html",
+      "stats": {
+        "startTime": "2026-10-05T16:14:55.035Z",
+        "duration": 140573.006,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Codex移除群成员后材料只在当前授权上下文使用",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "launchCount": 2,
+          "gaps": [],
+          "resources": 11,
+          "traces": 2,
+          "initialMembers": [
+            "960f482e-fa37-47b7-aeb6-f1a4df2647c8",
+            "4051f7d9-33e1-4e43-939a-d40d25fa0ba8"
+          ],
+          "finalMembers": [
+            "4051f7d9-33e1-4e43-939a-d40d25fa0ba8"
+          ],
+          "removedEmployeeGroupRunsUnchanged": true,
+          "groupReplyCount": 3,
+          "directReply": [
+            "没有可用暗号"
+          ],
+          "sessions": [
+            {
+              "id": "e4f9912ee2818d1010f3236adadc6a68b109ce569aff91ae9a40b727d02d7e4a",
+              "conversationId": "51d5d96c-3598-43b6-95ef-b1430b89e8b7",
+              "agentId": "4051f7d9-33e1-4e43-939a-d40d25fa0ba8",
+              "sourceVersion": 2,
+              "fingerprint": "8017570c071acd449b92468da92fa316a879cf8cdb71e37bc67169b276ce1e90",
+              "runId": "8bfacfee-2783-4068-8caf-0d4a80fff521",
+              "state": "completed",
+              "memories": [
+                {
+                  "id": "4c1df9b0-f531-42b1-afcf-323f705462bc",
+                  "hash": "0ac46b77d34b2cebff900cf860e474592911bdb3eee6d60b1661ea005be1098a"
+                }
+              ],
+              "materials": [
+                {
+                  "id": "e095e9b3-6c35-4e6b-9305-993f8604ec1e",
+                  "hash": "f480547d747b3a1979b1b149d8c762b612119a21eadc578fbbae25a77e154233"
+                }
+              ],
+              "sources": [
+                {
+                  "id": "7867328f-3064-4462-938c-1d68ed00cb10",
+                  "hash": "a48209ac9ba571389aa963f422c5a4eebbfb29fde7ddc5191bc1e86c81b8891f"
+                },
+                {
+                  "id": "61f118ae-ceb0-4bf1-a4fe-a5ccc7b76b4c",
+                  "hash": "6fbf6b5f8c35e06c13423cd679f9f55dbfee5fb21ef1af2760cad9c9d96c38ab"
+                },
+                {
+                  "id": "26b4725c-13dd-4df3-8090-5272d7c4dfe1",
+                  "hash": "ad86c08515e6b355785adff8751de8f0e3d4b611ecd794a6df259b0ff93ddc0c"
+                }
+              ],
+              "inputMessageIds": [
+                "26b4725c-13dd-4df3-8090-5272d7c4dfe1"
+              ],
+              "threadId": "01a10cd9-1c49-7b00-a22b-7ebf97ef8728",
+              "turnId": "01a10cd9-d83a-7a51-a8b1-bda278930586",
+              "outputHash": "b48ce0437815348c1fe5012860a3d09142070825a8a200f90674b20e5de1ceeb"
+            },
+            {
+              "id": "a2c23518437de0077fcd14433a3c4882a9b5de7bb8363ff34ded8044a0f77d5b",
+              "conversationId": "51d5d96c-3598-43b6-95ef-b1430b89e8b7",
+              "agentId": "960f482e-fa37-47b7-aeb6-f1a4df2647c8",
+              "sourceVersion": 2,
+              "fingerprint": "7a4d09938b509794d5d125b56f0629004811867db1e5bd827a50c3c0f3883f93",
+              "runId": "6a481d0e-d8dc-444c-9584-1fe0ae2ccfff",
+              "state": "completed",
+              "memories": [],
+              "materials": [
+                {
+                  "id": "e095e9b3-6c35-4e6b-9305-993f8604ec1e",
+                  "hash": "f480547d747b3a1979b1b149d8c762b612119a21eadc578fbbae25a77e154233"
+                }
+              ],
+              "sources": [
+                {
+                  "id": "7867328f-3064-4462-938c-1d68ed00cb10",
+                  "hash": "a48209ac9ba571389aa963f422c5a4eebbfb29fde7ddc5191bc1e86c81b8891f"
+                }
+              ],
+              "inputMessageIds": [
+                "7867328f-3064-4462-938c-1d68ed00cb10"
+              ],
+              "threadId": "01a10cd9-2061-7a73-96f6-873f8ab6baab",
+              "turnId": "01a10cd9-20ea-7172-9a6e-b5e772c51f51",
+              "outputHash": "b48ce0437815348c1fe5012860a3d09142070825a8a200f90674b20e5de1ceeb"
+            },
+            {
+              "id": "381ae20f9a023f2e01b58ac59fbbe9849fea70c38249904934fc50db9b0cd26c",
+              "conversationId": "1763bd80-779d-4e35-963d-856aaa96f797",
+              "agentId": "960f482e-fa37-47b7-aeb6-f1a4df2647c8",
+              "sourceVersion": 2,
+              "fingerprint": "4987d0b2e9e427597137ec468418a5a96f49e5997448eabaabcb2a9ee01078f3",
+              "runId": "147ae12a-bee0-44ab-bfd8-1badce9fad35",
+              "state": "completed",
+              "memories": [],
+              "materials": [],
+              "sources": [
+                {
+                  "id": "36c8dbba-3686-4aef-8e70-bfc57a1e065b",
+                  "hash": "b935ee1a7dcf125986165c44b46f6a19fe204292292512a02d1d5afb03fbba93"
+                }
+              ],
+              "inputMessageIds": [
+                "36c8dbba-3686-4aef-8e70-bfc57a1e065b"
+              ],
+              "threadId": "01a10cda-634f-7633-ab3b-a6f5e5aee727",
+              "turnId": "01a10cda-63d8-7a91-bbed-a7059b50a44e",
+              "outputHash": "d146fce645fd25048b0e798abf37ba5cdb0a0db143ca0c31f8a191192335a5d1"
+            }
+          ],
+          "workCount": 0,
+          "screenshot": {
+            "path": "LR3-真实Codex离群员工私聊来源隔离.png",
+            "sha256": "04043f21e98274950755a0faa1bb94cf17d5a066d191599e3665985d18eb5a23"
+          }
+        }
+      ],
+      "sourceFiles": 868,
+      "sourceVerified": true,
+      "sourceAndBuildDigest": "99d731372e07215bcb71e7a2faf50dd937e7b2fb75fbc903f1bced78d6f5277d",
+      "appAsar": "92b8d64f23d1ff0fd2b758720990ce0e9d4b31b395ffad0330ffe5e5e2ac0bba"
+    }
+  ],
+  "limitations": [
+    "Verifies removal after completed turns, not cancellation during a native operation.",
+    "New member admission, historical explicit grants, and rejoining are separate remaining cases.",
+    "Retained native mappings are historical records; no claim of remote history deletion."
+  ]
+}

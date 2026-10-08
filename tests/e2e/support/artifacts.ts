@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可独立准备原有文件协议端点，供 UI 新员工贯穿场景复用；可选确定聊天回复，默认成果场景行为保持。
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
  * [OUTPUT]: 已有宿主明确接续时模型协议交付，不再对已回答原问题重复固定ask；执行期问题先真实write_file再report_work等待，原草稿单次副作用可核对。
  * [OUTPUT]: 真实Markdown/代码 write_file/publish_artifact/report_work 往返、D5原问题补充、普通聊天不接续等待、宿主授权修订身份、材料来源及丢回执核对。
@@ -33,7 +34,8 @@ function sendTool(response: ServerResponse, name: string, args: unknown, index: 
   response.end('data: [DONE]\n\n')
 }
 
-export async function prepareArtifactsDesktop(runtime: Desktop, options: { askForSupplement?: boolean; askDuringExecution?: boolean; file?: { name: string; fileName: string; content: string } } = {}) {
+interface ArtifactProtocolOptions { askForSupplement?: boolean; askDuringExecution?: boolean; file?: { name: string; fileName: string; content: string }; chatReplies?: Record<string, string> }
+export async function prepareArtifactProtocol(runtime: Desktop, options: ArtifactProtocolOptions = {}) {
   const errors: string[] = [], runs = new Map<string, number>(), replacements: { runId: string; revisionRequestId: string }[] = []
   const executionQuestions: { runId: string; path: string; content: string; writeRequests: number }[] = []
   const endpoint = await teamEndpoint((body, response, index) => {
@@ -42,6 +44,7 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
         const current = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)
+        if (current && options.chatReplies?.[current.content]) { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
         if (current?.content === '这条是日常问候，请不要作为文件任务补充。') { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
         sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: options.askForSupplement && !data.continuation?.replyToTurnIds?.length ? 'ask' : 'reply', responseKind: 'task', work: { key: `artifact-${data.originalUserRequestId}`, scope: '按明确请求发布可检查报告', deliverable: 'Markdown 报告和真实来源' } }); return
       }
@@ -51,6 +54,8 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
       }
       const tools = body.tools as ModelTool[] | undefined, writer = tools?.find(value => value.function.name === 'write_file')
       const currentRequest = [...messages].reverse().find(value => value.role === 'user' && contentText(value.content).includes('[CURRENT TURN USER REQUEST;'))
+      const chatReply = currentRequest && Object.entries(options.chatReplies ?? {}).find(([request]) => contentText(currentRequest.content).includes(request))?.[1]
+      if (chatReply) { sendTeamOutput(response, chatReply); return }
       if (!tools?.length && currentRequest && contentText(currentRequest.content).includes('这条是日常问候，请不要作为文件任务补充。')) { sendTeamOutput(response, '收到问候，原文件任务仍等待明确关联的补充。'); return }
       if (options.askForSupplement && !tools?.length) { sendTeamOutput(response, '请明确报告交付给谁？'); return }
       if (!writer) throw new Error('成果任务没有获得真实 write_file 工具')
@@ -81,6 +86,11 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: { askFo
     } catch (error) { errors.push(String(error)); if (!response.headersSent) response.writeHead(500); response.end(String(error)) }
   })
   runtime.trackServer(endpoint.server)
+  return { endpoint, errors, replacements, executionQuestions }
+}
+
+export async function prepareArtifactsDesktop(runtime: Desktop, options: ArtifactProtocolOptions = {}) {
+  const { endpoint, errors, replacements, executionQuestions } = await prepareArtifactProtocol(runtime, options)
   const sourceRoot = join(await realpath(runtime.root), 'artifact-sources'); await mkdir(sourceRoot)
   const source = join(sourceRoot, '依据.txt'), materialText = '材料第一行\nARTIFACT_MATERIAL_EVIDENCE：真实原文依据。\n材料第三行\n'; await writeFile(source, materialText)
   await runtime.start()

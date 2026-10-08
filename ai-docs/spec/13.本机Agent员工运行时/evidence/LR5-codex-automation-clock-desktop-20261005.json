@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-automation-clock-real-2",
+  "technicalResult": "passed",
+  "seconds": 197.277644,
+  "modelMode": "real-provider",
+  "trigger": "schedule",
+  "runtimeVersion": "0.159.3",
+  "sourceFiles": 711,
+  "sourceAndBuildDigest": "993db3c8ef64808d5547bef01ce053124ed6e8cea546f760e3edd8eadb9e7d27",
+  "frozenFilesVerified": true,
+  "evidenceCount": 11,
+  "traces": 2,
+  "humanReview": "pending",
+  "scope": "Actual wall-clock Mastra schedule, native employee and independent task chat, original Work/budget and file, restart without replay",
+  "occurrences": [
+    {
+      "id": "35044418e697c5e0598c71e82714d33c9686631f353bfcd121fb9d0bc4c06660",
+      "source": "schedule",
+      "scheduledFor": "2026-10-05T13:22:00.000Z",
+      "admittedAt": "2026-10-05T13:22:07.200Z",
+      "nativeRunId": "sched_schedule_boai-682037ac-c921-41b2-bbbf-b5e38cee2fca_1791206520000",
+      "status": "completed",
+      "deliveryStatus": "delivered",
+      "budgetId": "automation-budget-35044418e697c5e0598c71e82714d33c9686631f353bfcd121fb9d0bc4c06660",
+      "conversationId": "43f99250-3459-468a-8149-61fe73534c5f",
+      "modelCalls": 3,
+      "usageIncomplete": false
+    }
+  ],
+  "budgets": [
+    {
+      "workItems": 1,
+      "retries": 0,
+      "reportRefreshes": 0,
+      "noProgress": 0,
+      "maxWorkItems": 8,
+      "maxRetries": 3,
+      "maxReportRefreshes": 4,
+      "maxNoProgress": 3,
+      "id": "automation-budget-35044418e697c5e0598c71e82714d33c9686631f353bfcd121fb9d0bc4c06660",
+      "schemaVersion": 1,
+      "modelCalls": 3,
+      "runs": 1,
+      "maxModelCalls": 24,
+      "maxRuns": 8,
+      "maxOutputTokens": 16000,
+      "deadlineAt": "2026-10-05T13:27:07.203Z",
+      "usage": {
+        "inputTokens": 59607,
+        "outputTokens": 492,
+        "totalTokens": 60099
+      },
+      "usageIncomplete": false,
+      "origin": {
+        "kind": "automation",
+        "automationId": "682037ac-c921-41b2-bbbf-b5e38cee2fca",
+        "occurrenceId": "35044418e697c5e0598c71e82714d33c9686631f353bfcd121fb9d0bc4c06660",
+        "name": "本机每日交付",
+        "authorizedFingerprint": "bb52635f751224d1454e116ebc5d54102c236d930b5aaf3a6dfbcde6d977aa90"
+      },
+      "conversationId": "43f99250-3459-468a-8149-61fe73534c5f",
+      "accounting": "model-calls-v1",
+      "unknownCalls": 0,
+      "callUnit": "mixed"
+    }
+  ],
+  "calls": [
+    {
+      "id": "c643f479-c256-4752-b51c-8bda60f93062",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 8561,
+        "outputTokens": 95,
+        "totalTokens": 8656
+      },
+      "usageComplete": true
+    },
+    {
+      "id": "6cf0eb97-7f35-464c-8880-9f791149d0e8",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 41516,
+        "outputTokens": 388,
+        "totalTokens": 41904
+      },
+      "usageComplete": true
+    },
+    {
+      "id": "f9f5f40e-72f5-4d38-9688-0fcc64e1da39",
+      "phase": "memory",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 9530,
+        "outputTokens": 9,
+        "totalTokens": 9539
+      },
+      "usageComplete": true
+    }
+  ],
+  "artifact": {
+    "bytes": 15,
+    "sha256": "c3d4bfbb39c1ad57d3b2c15ec0eac2a3146c8be4720b9df77bbd3d7ed359d593",
+    "content": "海星-ac4e5e28"
+  },
+  "screenshot": "LR5-真实Codex日历触发交付.png",
+  "report": "../../../../.local/feature-review/codex-automation-clock-real-2-report/index.html",
+  "limitations": [
+    "Earlier connection failure retained independently",
+    "Real clarification, budget renewal, stop and mixed automation need separate batches",
+    "Full LR5/LR6 and packaged evidence remain incomplete; human review pending"
+  ]
+}

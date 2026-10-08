@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 复制共享原件前等待宿主持久准备记录，准备失败不创建原件；完成登记后才返回发布结果。
  * [INPUT]: 当前员工会话工作区、宿主材料来源授权门禁与真实文件请求。
  * [OUTPUT]: 首次共享目录并发创建仅接受EEXIST后核验的真实目录，链接/文件/其他IO故障仍拒绝；发布真实字节 hash、明确宿主修订请求，失败只删除本次未外改原件；拒绝路径/链接越界、按当前来源授权核对内建文件访问，并仅在私有源和共享目标均获准时发布真实产物。
  * [POS]: runtime/modules/workspaces 的逻辑路径、授权检查和真实文件副作用边界。
@@ -138,7 +139,7 @@ export async function initializeWorkspace(context: Pick<EngineContext, 'workspac
   if ((await lstat(normalized.sharedPath)).isSymbolicLink()) throw new Error('Shared workspace cannot be a symbolic link')
   return normalized
 }
-export async function publishArtifact(context: Pick<EngineContext, 'onArtifact' | 'signal' | 'agent' | 'runId' | 'materialRefs' | 'canAccessTaskPath' | 'artifactRevision'>, workspace: SessionWorkspace, source: string, name?: string, revisionRequestId?: string) {
+export async function publishArtifact(context: Pick<EngineContext, 'onArtifactPreparing' | 'onArtifact' | 'signal' | 'agent' | 'runId' | 'materialRefs' | 'canAccessTaskPath' | 'artifactRevision'>, workspace: SessionWorkspace, source: string, name?: string, revisionRequestId?: string) {
   if (!context.onArtifact) throw new Error('Artifact publication is not configured by the host')
   if (revisionRequestId && context.artifactRevision?.id !== revisionRequestId) throw new Error('Artifact revision publication is not authorized by the host')
   const location = logicalPath(workspace, source)
@@ -161,13 +162,14 @@ export async function publishArtifact(context: Pick<EngineContext, 'onArtifact' 
     const after = await input.stat()
     if (bytesRead !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) throw new Error('Artifact changed while publishing; retry after it finishes writing')
     contentHash = createHash('sha256').update(bytes.subarray(0, bytesRead)).digest('hex')
+    const artifact: Artifact = { id, name: filename, path: target, size: bytesRead, ownerAgentId: context.agent.id, runId: context.runId, sourcePath, contentHash, ...(revisionRequestId ? { revisionRequestId } : {}), publishedAt: new Date().toISOString() }
+    await context.onArtifactPreparing?.(artifact)
     await assertTaskPathAccess(context, sourcePath, 'publish')
     await assertTaskPathAccess(context, target, 'publish')
     const output = await open(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600)
     created = true
     try { await output.writeFile(bytes.subarray(0, bytesRead)) } finally { await output.close() }
     check(context.signal)
-    const artifact: Artifact = { id, name: filename, path: target, size: bytesRead, ownerAgentId: context.agent.id, runId: context.runId, sourcePath, contentHash, ...(revisionRequestId ? { revisionRequestId } : {}), publishedAt: new Date().toISOString() }
     await context.onArtifact(artifact)
     return { artifact, sharedPath: `shared:/${destination.split(path.sep).join('/')}` }
   } catch (error) {

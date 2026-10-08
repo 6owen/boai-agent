@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 八状态目标预置保留完成式原文，不伪造文件/消息结果；只读核对原Work、模型调用/预算/成果及触发账本。
  * [INPUT]: 隔离Electron/真实宿主API、显式SQLite预置关系/规模与离线真实工具协议。
  * [OUTPUT]: 根子/独立依赖和五列75项的明确预置；实际全来源Work/失败触发/ACP对照；有界查询、耗时及进程内存原样记录。
  * [POS]: WV-T03/T07/T08支撑；预置状态不冒充运行成功，不替换查询或调度。
@@ -18,7 +19,7 @@ function source(id: string, conversationId: string): Message { return { id, conv
 function historicalWork(id: string, conversation: Conversation, ownerAgentId: string, changes: Partial<WorkItem> = {}): WorkItem {
   return { id, schemaVersion: 2, conversationId: conversation.id, sourceMessageId: `scope-source-${conversation.id}`, key: id, scope: '明确预置的历史工作状态，仅验收读取', deliverable: `预置工作 ${id}`, ownerAgentId, version: 1, status: 'ready', budgetId: 'scope-historical-budget', rootWorkId: id, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, resultMessageIds: [], artifactIds: [], resultVersion: 0, requiresReview: false, createdAt: fixedTime, updatedAt: fixedTime, ...changes }
 }
-export async function prepareScopeHistory(runtime: Desktop, kind: 'relationships' | 'scale') {
+export async function prepareScopeHistory(runtime: Desktop, kind: 'relationships' | 'scale' | 'goals') {
   await runtime.start()
   const setup = await runtime.page.evaluate(async () => {
     const snapshot = await window.boai.request('snapshot', undefined)
@@ -30,7 +31,7 @@ export async function prepareScopeHistory(runtime: Desktop, kind: 'relationships
     historicalWork('scope-root', setup.group, 'researcher', { status: 'waiting', deliverable: '预置甲根：等待独立结果', dependsOnWorkIds: ['scope-independent'], requiredResults: [{ workId: 'scope-independent', resultVersion: 1 }], nextStep: '等待另一独立根，不取得其父子归属' }),
     historicalWork('scope-child', setup.group, 'writer', { status: 'running', deliverable: '预置乙子：执行自身子工作', parentWorkId: 'scope-root', rootWorkId: 'scope-root' }),
     historicalWork('scope-independent', setup.group, 'researcher', { status: 'delivered', deliverable: '预置独立根：历史交付事实', resultVersion: 1, outcome: { disposition: 'delivered', summary: '此为预置历史状态，未在本场景执行工具' } }),
-  ] : Array.from({ length: 375 }, (_, index) => {
+  ] : kind === 'goals' ? (['ready', 'running', 'waiting', 'blocked', 'delivered', 'failed', 'cancelled', 'interrupted'] as const).map(status => historicalWork(`scope-goal-${status}`, setup.group, 'researcher', { status, deliverable: '全部文件已写完并正式发布', ...(status === 'delivered' ? { resultVersion: 1, outcome: { disposition: 'delivered', summary: '明确预置的旧交付记录，无可检查文件，不宣称本场执行成功。' } } : {}) })) : Array.from({ length: 375 }, (_, index) => {
     const group = Math.floor(index / 75), status: WorkItem['status'] = ['ready', 'running', 'waiting', 'delivered', 'failed'][group] as WorkItem['status']
     const conversation = index % 2 ? setup.direct : setup.group
     return historicalWork(`scope-scale-${String(index).padStart(4, '0')}`, conversation, index % 3 ? 'researcher' : 'writer', { status, deliverable: `预置规模 ${group} 组 ${String(index % 75).padStart(3, '0')}`, ...(status === 'delivered' ? { outcome: { disposition: 'delivered', summary: '预置历史交付，不宣称本场景真实执行成功' }, resultVersion: 1 } : {}) })
@@ -146,7 +147,7 @@ export async function createActualNoWorkSources(runtime: Desktop) {
 }
 export async function scopeRecords(dataPath: string) {
   const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite'))
-  try { return { works: await store.load<WorkItem>('workItems'), runs: await store.load<AgentRun>('runs'), occurrences: await store.load('automationOccurrences') } }
+  try { return { works: await store.load<WorkItem>('workItems'), runs: await store.load<AgentRun>('runs'), occurrences: await store.load('automationOccurrences'), calls: await store.load('budgetModelCalls'), profileCalls: await store.load('profileModelCalls'), budgets: await store.load('workBudgets'), artifacts: await store.load('artifacts') } }
   finally { await store.close() }
 }
 export async function seedUnknownWorkHistory(runtime: Desktop, dataPath: string, conversation: Conversation) {

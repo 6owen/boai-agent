@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: Mastra 适配器、消息投影、执行合同、真实附件图片与本地协议服务。
  * [OUTPUT]: 用户图片穿透实际SDK到原生image_url，历史获准图可用于后续交流；外会话/非用户图不投影，Trace只保留实际字节hash摘要。
  * [OUTPUT]: 实际 SDK 判断与 bobo 工具任务不依赖旧 allowBrowser；停用/ACP/自动化/组织/普通 chat/无 Work 仍不提供 task 浏览器。
@@ -435,7 +436,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     })
     const { ctx, additionalCalls, deltas, tools } = await context(mock.url)
     const capacity = new ModelCapacity(1, [1]), engine = new MastraEngine()
-    const decision = await capacity.run(ctx.connection.id, ctx.signal, () => engine.decide(ctx), { retryRateLimit: true, reserveRetry: ctx.onAdditionalModelCall })
+    const decision = await capacity.run(ctx.connection!.id, ctx.signal, () => engine.decide(ctx), { retryRateLimit: true, reserveRetry: ctx.onAdditionalModelCall })
     expect(decision.action).toBe('pass')
     expect(mock.requests).toHaveLength(2)
     expect(additionalCalls).toHaveLength(1)

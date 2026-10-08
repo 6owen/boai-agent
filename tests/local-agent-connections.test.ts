@@ -1,5 +1,7 @@
 /*
+ * [OUTPUT]: 删除仅持久移除产品配置并保留员工绑定/聊天/外部文件；已保存和编辑草稿测试期间拒绝删除，避免迟到验证恢复已删配置。
  * [INPUT]: 本地扫描、真实 ACP 客户端、AppService 与隔离登录/可执行夹具。
+ * [OUTPUT]: 明确原生Codex目录载入不依赖ACP程序、不执行程序或复制凭据；同账号双协议独立持久化，刷新登录稳定、换账号拒绝。
  * [OUTPUT]: 只读启动项状态即时拒借外改/缺失程序与失效登录目录，保留原配置/验证/工作事实且不调用模型或握手。
  * [OUTPUT]: 短命令自动解析/Node 识别、无执行保存、参数边界/空参数保留、固定路径跨 PATH 变化与重启、拒绝 shell/相对路径；草稿验证继承、失败与未授权隔离、登录来源及会话认证回归。
  * [POS]: tests/local-agent-connections.test.ts；不读取真实登录或调用付费模型。
@@ -13,8 +15,9 @@ import { pathToFileURL } from 'node:url'
 import { LocalConfigDiscovery } from '../src/main/local-configs/discovery'
 import { AppService } from '../src/runtime/service'
 import { runAcp } from '../src/runtime/adapters/acp/client'
+import * as acpClient from '../src/runtime/adapters/acp/client'
 import { inspectProgram, resolveProgram } from '../src/runtime/modules/backends/program'
-import type { LaunchProfile, LaunchProfileStatus } from '../src/shared/domain'
+import type { Conversation, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '../src/shared/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.unstubAllEnvs(); for (const close of cleanup.splice(0).reverse()) await close() })
@@ -74,6 +77,50 @@ it('only uses a selected installed program and rejects missing programs, empty c
   await writeFile(f.authPath, JSON.stringify({ auth_mode: 'chatgpt', tokens: {} }))
   expect(f.scan().logins).toEqual([])
   expect(() => f.discovery.launchProfile(id)).toThrow('先扫描')
+})
+
+it('keeps an explicitly selected native Codex login without codex-acp or executing the installed program', async () => {
+  const f = await fixture(), native = join(f.bin, 'codex')
+  await writeFile(native, '#!/usr/bin/env node\nthrow new Error("DIRECTORY_SELECTION_MUST_NOT_EXECUTE")\n')
+  await chmod(native, 0o755); await rm(f.executable)
+  const scanned = f.scan(), id = scanned.logins[0].configId, source = await readFile(f.authPath, 'utf8')
+  expect(scanned.logins[0]).not.toHaveProperty('acp')
+  const draft = f.discovery.launchProfile(id, 'codex-app-server')
+  expect(draft).toMatchObject({ protocol: 'codex-app-server', executable: native, runtime: 'node', args: [], codexHome: f.directory, localConfigId: id, useExistingLogin: true })
+  expect(JSON.stringify(draft)).not.toMatch(/private-access|private-refresh/)
+  const saved = await f.service.handle('saveLaunchProfile', draft) as LaunchProfile
+  expect(saved).toMatchObject({ protocol: 'codex-app-server', executable: native, codexHome: f.directory })
+  expect(saved.verified).toBeUndefined()
+  expect(await readFile(f.authPath, 'utf8')).toBe(source)
+  expect(await readdir(f.directory)).toEqual(['auth.json'])
+  expect((await f.service.handle('snapshot', undefined) as { conversations: unknown[] }).conversations).toEqual([])
+})
+
+it('keeps ACP and native profiles separate for one account and rechecks the selected native account after token refresh', async () => {
+  const f = await fixture(), native = join(f.bin, 'codex')
+  await writeFile(native, '#!/usr/bin/env node\nthrow new Error("SAVE_MUST_NOT_EXECUTE")\n'); await chmod(native, 0o755)
+  const id = f.scan().logins[0].configId
+  const acp = await f.service.handle('saveLaunchProfile', f.discovery.launchProfile(id)) as LaunchProfile
+  await f.login('fixture-account', 'refreshed-native-access')
+  const draft = f.discovery.launchProfile(id, 'codex-app-server')
+  expect(draft.localConfigId).toBe(id)
+  expect(JSON.stringify(draft)).not.toContain('refreshed-native-access')
+  const saved = await f.service.handle('saveLaunchProfile', draft) as LaunchProfile
+  expect(saved.id).not.toBe(acp.id)
+  expect(saved.protocol).toBe('codex-app-server')
+  expect(await f.service.handle('saveLaunchProfile', f.discovery.launchProfile(id))).toEqual(acp)
+  expect(await f.service.handle('saveLaunchProfile', draft)).toEqual(saved)
+  await f.restart()
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([acp, saved])
+  await f.login('changed-native-account')
+  expect(() => f.discovery.launchProfile(id, 'codex-app-server')).toThrow('源登录已变化')
+})
+
+it('does not fall back to an installed ACP program when the explicitly chosen native Codex is unavailable', async () => {
+  const f = await fixture(), id = f.scan().logins[0].configId
+  expect(() => f.discovery.launchProfile(id, 'codex-app-server')).toThrow('未找到 codex')
+  expect(f.discovery.launchProfile(id).executable).toBe(f.executable)
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([])
 })
 
 it('tests a session using the selected login directory without a prompt, then executes through the same Node adapter', async () => {
@@ -185,4 +232,47 @@ it('reports an unavailable configured login directory read-only without clearing
   const status = await f.service.handle('getLaunchProfileStatus', { id: saved.id }) as LaunchProfileStatus
   expect(status.status).toBe('unavailable'); expect(status.profile).toEqual(verified)
   expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([verified])
+})
+
+it('deletes only the saved launch profile, retaining employee identity, chats and external files across restart', async () => {
+  const f = await fixture(), input = f.discovery.launchProfile(f.scan().logins[0].configId)
+  const saved = await f.service.handle('saveLaunchProfile', input) as LaunchProfile
+  const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
+  const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agentInput } = snapshot.agents[0]
+  const employee = await f.service.handle('saveAgent', { ...agentInput, connectionId: '', executionBackend: { kind: 'acp-local', profileId: saved.id } }) as DigitalAgent
+  const conversation = await f.service.handle('createConversation', { kind: 'direct', title: '保留原聊天', agentIds: [employee.id] }) as Conversation
+  const program = await readFile(f.executable, 'utf8'), login = await readFile(f.authPath, 'utf8')
+  await f.service.handle('deleteLaunchProfile', { id: saved.id })
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([])
+  expect(await readFile(f.executable, 'utf8')).toBe(program)
+  expect(await readFile(f.authPath, 'utf8')).toBe(login)
+  await expect(f.service.handle('saveLaunchProfile', { ...input, id: saved.id, expectedRevision: saved.revision })).rejects.toThrow('启动项')
+  await expect(f.service.handle('testLaunchProfile', { id: saved.id })).rejects.toThrow('启动项')
+  await expect(f.service.handle('sendExternalTask', { conversationId: conversation.id, content: '不能继续使用已删除配置', requestId: 'deleted-profile' })).rejects.toThrow('启动项')
+  await f.restart()
+  const restored = await f.service.handle('snapshot', undefined) as Snapshot
+  expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([])
+  expect(restored.agents.find(agent => agent.id === employee.id)).toEqual(employee)
+  expect(restored.conversations.find(chat => chat.id === conversation.id)).toMatchObject({ id: conversation.id, agentIds: [employee.id] })
+})
+
+it.each(['saved', 'draft'] as const)('rejects deletion while the same profile has an active %s test', async kind => {
+  const f = await fixture(), input = f.discovery.launchProfile(f.scan().logins[0].configId)
+  const saved = await f.service.handle('saveLaunchProfile', input) as LaunchProfile
+  let finish!: () => void, started!: () => void
+  const startedPromise = new Promise<void>(resolve => { started = resolve })
+  const pending = new Promise<void>(resolve => { finish = resolve })
+  const verified = { name: 'controlled-test', version: '1', protocolVersion: 1, checkedAt: new Date().toISOString() }
+  const probe = vi.spyOn(acpClient, 'runAcp').mockImplementationOnce(async () => { started(); await pending; return { text: '', verified, sessionId: 'controlled-session' } })
+  try {
+    const testing = kind === 'saved'
+      ? f.service.handle('testLaunchProfile', { id: saved.id })
+      : f.service.handle('testLaunchProfileDraft', { ...input, id: saved.id, expectedRevision: saved.revision })
+    await startedPromise
+    await expect(f.service.handle('deleteLaunchProfile', { id: saved.id })).rejects.toThrow('正在测试')
+    expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([saved])
+    finish(); await testing
+    await f.service.handle('deleteLaunchProfile', { id: saved.id })
+    expect(await f.service.handle('listLaunchProfiles', undefined)).toEqual([])
+  } finally { finish(); probe.mockRestore() }
 })

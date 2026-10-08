@@ -1,10 +1,13 @@
 <!--
+[OUTPUT]: 第13组承接本机Agent完整员工化，仍待实施；本篇保留协议研究与当前受限ACP事实。
 [INPUT]: 2026-09-27协议研究及当前受控本地ACP源码、后端契约和后续连接范围。
 [OUTPUT]: 当前本地ACP接入与历史Mastra封装研究的明确区分；A2A/MCP和反向服务仍为后续设计。
 [POS]: ai-docs/spec/5.Mastra能力扩展/05-ACP与A2A及MCP连接.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
 # ACP、A2A 与 MCP 连接
+
+2026-10-05 后续落地见[第13组本机Agent员工运行时](../13.本机Agent员工运行时/README.md)：Codex/Claude专用接入与通用ACP按能力并存，IM和业务权威保留；当前仅规格，06为唯一新进度。该方案不表示普通聊天、群协作、自动化或MCP业务桥已开放。
 
 当前状态核对（2026-10-02）：项目已用 `@agentclientprotocol/sdk` 接入受控本地 ACP，见 [客户端](../../../src/runtime/adapters/acp/client.ts)、[启动项](../../../src/runtime/modules/backends/profiles.ts)和[实现记录](../2.已实现功能与代码现状/16-主题外部Agent与自动化实现.md)。它保持单聊显式任务、新 session、外部自有工具和未知用量边界，不等于采用下文研究的 `@mastra/acp` 包，也不支持自主群聊或自动化。A2A、MCP、SDK Agent adapter 和反向服务仍未接入。
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 宿主冻结的原核心请求、真实员工配置和 bobo 的有界组织方案。
  * [OUTPUT]: 既有/新员工、独立群与真实开场消息的组织账本和无私有配置的发现/回执；模式与预算只由原 Work 授权。
  * [POS]: bobo 群协作跨进程合同；员工身份不属于群生命周期。
@@ -41,6 +42,7 @@ export interface BoboCollaborationOperation {
   /** Only new employees owned by this operation. Existing workspaces are never prepared or cleaned. */
   agents: DigitalAgent[]
   existingConnectionFingerprints: { agentId: string; fingerprint: string }[]
+  executionBackend?: import('./backends').ExecutionBackend
   connectionId: string; modelId: string; connectionFingerprint: string
   groupConversationId?: string; conversation?: Conversation; announcement?: Message
   announcementSource: { runId: string; modelCallId?: string; toolCallId: string }

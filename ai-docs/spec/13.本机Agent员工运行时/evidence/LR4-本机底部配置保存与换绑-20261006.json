@@ -1,0 +1,1541 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-06",
+  "scope": "Original local employee configuration opened from the IM bottom menu; normal saves, before/after-admission lost answers, explicit read/load, backend round-trip, actual Codex and restart.",
+  "productionChange": false,
+  "humanReview": "pending",
+  "limits": [
+    "The original save uses expectedConfigVersion and conservative reconciliation, not a newly introduced stable request receipt.",
+    "The API return leg uses the original Contacts editor; no API inference occurs.",
+    "The active-rebind test covers a pending command approval, SIGKILL of the runtime service and two restarts; it does not claim all active work or failure combinations.",
+    "Claude/core/ACP save faults, concurrent editors, pending unknown save across restart and all platforms remain outside this increment.",
+    "The first offline batch failed at test locator scopes and initial chat selection after restart; its raw outcomes remain preserved.",
+    "The complete spec13 scope and prior core cost/timeout reliability remain unfinished."
+  ],
+  "validation": [
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/typecheck-1.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/typecheck-2.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/bddgen-1.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/bddgen-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/modules-1.log",
+      "sha256": "56efd49e4242bb67bea5aac6f51c5a5ddee882e0536d9bf3b0561bfa59d2497b",
+      "bytes": 196
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/production-lineage.json",
+      "sha256": "71eba0d47e9452e30e09b7af8dcc21d4a541cf51800e0dedc3974754920bf385",
+      "bytes": 132
+    },
+    {
+      "path": "../../../../.local/feature-review/local-agent-configuration-20261006/report-resource-verification.json",
+      "sha256": "a4ce03c65761d9ac798222b11dbd2a650a8dd1f6be844743ec5ee1e13f396982",
+      "bytes": 601
+    }
+  ],
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T09:47:19.772Z",
+        "duration": 79715.589,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "offline-protocol",
+      "frozenFiles": 879,
+      "resources": 24,
+      "evidence": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/build-manifest.json",
+          "sha256": "44d7bb92834a911b64d9174848f5c8f6174df91eb04a7af0fd52a49b2d90c3df",
+          "bytes": 101258
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/freeze-verification.json",
+          "sha256": "16ffaf92833c657d0db4a991ceb1e3e31aa4c993f63000b72f3533116cd3ee9b",
+          "bytes": 103
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/playwright-results.json",
+          "sha256": "03960288d3857a7661b638aa9ca7ef9906f0ca8beeedc14853e2da8098c0c2e4",
+          "bytes": 609902
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1-report/checks.json",
+          "sha256": "2aa54c042e7ecdfbb4880c57b836d06f07180f3312609b91099e15aba8d5682e",
+          "bytes": 127745
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1-report/manifest.json",
+          "sha256": "bb8db302a4bfe6c771e17081f8adf33d05cb695c538c10a68a22e9ba2187cf9a",
+          "bytes": 1246
+        }
+      ],
+      "cases": [
+        {
+          "title": "使用离线协议从聊天底部保存原员工并核对丢失答复",
+          "status": "failed"
+        },
+        {
+          "title": "使用离线协议在原消息处理待批准时服务退出且旧审批不执行",
+          "status": "failed"
+        }
+      ],
+      "snapshots": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-sb2ksS/011-底部配置保存最终原状态.json",
+            "sha256": "3cf6317c64aae51e2d0f2ae0dca6746f9514559096d0c4b9e0197fa92cf51e0f",
+            "bytes": 22224
+          },
+          "kind": "configuration",
+          "messages": 2,
+          "works": [],
+          "budgets": [],
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "87e0b07d-ca1d-4c42-9874-cdb96598992f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "87e0b07d-ca1d-4c42-9874-cdb96598992f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "87e0b07d-ca1d-4c42-9874-cdb96598992f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-gO8rhk/011-本机审批最终原始状态.json",
+            "sha256": "59b75ddfe2d49a9fdff3791f2b369136ed26a924646b42ee71479da0fc83d548",
+            "bytes": 11499
+          },
+          "kind": "approval",
+          "messages": null,
+          "works": [
+            {
+              "id": "work-92ca380902279d6a516f42c15cc39ce3777178daf64d2bd174f1f9d40485e8e9",
+              "status": "interrupted",
+              "requiresReview": true
+            }
+          ],
+          "budgets": null,
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "14c94193-5a50-4bba-b973-2d390092d484",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "interrupted",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "14c94193-5a50-4bba-b973-2d390092d484",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              }
+            }
+          ],
+          "modelCallRecords": 2,
+          "unknownCallRecords": 1,
+          "budgetEvidence": "Not included in this final export; see original configuration/work-unchanged snapshots. Unknown calls are not zero."
+        }
+      ],
+      "lostAnswers": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-sb2ksS/008-底部保存after原草稿与提交事实.json",
+            "sha256": "6740f4ce9987877bf2709907ead2fcea71a0f77a6874ac9277272fb619cd6c46",
+            "bytes": 11782
+          },
+          "beforeVersion": 2,
+          "committedVersion": 3,
+          "draftRole": "受理后失联的已提交职责",
+          "committedRole": "受理后失联的已提交职责",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            },
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 2
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-sb2ksS/005-底部保存before原草稿与提交事实.json",
+            "sha256": "f4d1286dbbaeb42a4aa302d2873e733b6f47491953bce56c9ac92ee73cefe974",
+            "bytes": 11689
+          },
+          "beforeVersion": 2,
+          "committedVersion": 2,
+          "draftRole": "受理前失联的未保存职责",
+          "committedRole": "通过底部保存的独立聊天员工",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            }
+          ]
+        }
+      ],
+      "rebindRefusals": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-1/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-gO8rhk/006-原命令待批准时原配置及工作未变.json",
+          "sha256": "4645878723e43ccaef0e391fd2549f02e5a9038ee58899767c66c485e18a55e9",
+          "bytes": 12301
+        }
+      ]
+    },
+    {
+      "name": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T09:49:28.390Z",
+        "duration": 26395.12,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "offline-protocol",
+      "frozenFiles": 879,
+      "resources": 39,
+      "evidence": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/build-manifest.json",
+          "sha256": "579724109ef31369a7c45a89ef1ff8839dacf3fddb4be2d942c0ee27f561482d",
+          "bytes": 101258
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/freeze-verification.json",
+          "sha256": "172fdea3201ca2a94c4984fd18d5af6e3e837add79ad22217b8f8c978daa7400",
+          "bytes": 103
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/playwright-results.json",
+          "sha256": "693698aa75f38df6ebda008451af74324a5a24439752798cf30f31125ace3ab8",
+          "bytes": 77003
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2-report/checks.json",
+          "sha256": "65d438e80f8b655df257a6691f82bde8348f32052d7bc4b95e9c9bc979982597",
+          "bytes": 269274
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2-report/manifest.json",
+          "sha256": "cfe68111d0dcd6a82b5cf1508883c4e53b347f0e3d515befe7d46d6ce216e853",
+          "bytes": 1246
+        }
+      ],
+      "cases": [
+        {
+          "title": "使用离线协议从聊天底部保存原员工并核对丢失答复",
+          "status": "passed"
+        },
+        {
+          "title": "使用离线协议在原消息处理待批准时服务退出且旧审批不执行",
+          "status": "passed"
+        }
+      ],
+      "snapshots": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-d8cgc8/019-本机审批最终原始状态.json",
+            "sha256": "79f2b287d596ba743bb501a6185467eca0204728a9c1c7bcf44174f1fccac0ca",
+            "bytes": 11499
+          },
+          "kind": "approval",
+          "messages": null,
+          "works": [
+            {
+              "id": "work-fe0d41e6de033565bb9dcfc764643af9cb6963bd592f43f12431040ee1e38d2a",
+              "status": "interrupted",
+              "requiresReview": true
+            }
+          ],
+          "budgets": null,
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "2c0241ae-7963-4d3b-ad43-e77ae4c58ca2",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "interrupted",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "2c0241ae-7963-4d3b-ad43-e77ae4c58ca2",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              }
+            }
+          ],
+          "modelCallRecords": 2,
+          "unknownCallRecords": 1,
+          "budgetEvidence": "Not included in this final export; see original configuration/work-unchanged snapshots. Unknown calls are not zero."
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-kLTVN8/018-底部配置保存最终原状态.json",
+            "sha256": "ddf83ecbabe13a47a224e4b64215c36c327cf0c04e4495d272655f52bc844e8f",
+            "bytes": 45778
+          },
+          "kind": "configuration",
+          "messages": 4,
+          "works": [],
+          "budgets": [],
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "54c9918aa82b40f5066d0cda2ecaf3829b7f1822ef9f0b4f827f2f0c9a6484d1"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            }
+          ]
+        }
+      ],
+      "configurationProof": {
+        "source": {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-kLTVN8/011-底部配置往返只保存原员工不执行业务.json",
+          "sha256": "5aaa442870ed7912cf25dc03cb79c2adf59685f94479c22139de2f87fdbf838e",
+          "bytes": 13834
+        },
+        "calls": [
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 1
+          },
+          {
+            "method": "saveAgent",
+            "admitted": false,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 3
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 4
+          }
+        ],
+        "originalAgent": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f"
+          },
+          "name": "本机 Codex 同事",
+          "role": "使用原生 Codex 的独立聊天员工",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "7d896e14-3b17-4655-86e0-278a2c626e1f",
+          "configVersion": 1,
+          "workspaceRef": "agents/7d896e14-3b17-4655-86e0-278a2c626e1f/workspace",
+          "memoryNamespace": "employee:7d896e14-3b17-4655-86e0-278a2c626e1f",
+          "policyVersion": 2
+        },
+        "saved": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "00b5a27c-46ad-46d6-b651-0d66a4a3ce2f"
+          },
+          "name": "本机 Codex 同事",
+          "role": "受理后失联的已提交职责",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "7d896e14-3b17-4655-86e0-278a2c626e1f",
+          "configVersion": 5,
+          "workspaceRef": "agents/7d896e14-3b17-4655-86e0-278a2c626e1f/workspace",
+          "memoryNamespace": "employee:7d896e14-3b17-4655-86e0-278a2c626e1f",
+          "policyVersion": 2
+        },
+        "facts": {
+          "conversations": 1,
+          "messages": 2,
+          "turns": 1,
+          "runs": 3,
+          "works": 0,
+          "budgets": 0,
+          "calls": 0,
+          "artifacts": 0
+        }
+      },
+      "lostAnswers": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-kLTVN8/008-底部保存after原草稿与提交事实.json",
+            "sha256": "3b8b57a7d0f068b1ebce3b0894211a127f3526af90174a8bd6c51e72f613b4cd",
+            "bytes": 11782
+          },
+          "beforeVersion": 2,
+          "committedVersion": 3,
+          "draftRole": "受理后失联的已提交职责",
+          "committedRole": "受理后失联的已提交职责",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            },
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 2
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-6deb553d14fcd56a26fa-retry0-repeat0-kLTVN8/005-底部保存before原草稿与提交事实.json",
+            "sha256": "c6f8d1e9ff93adeb65ca389fc95ac578f93d2ba7cc1a66be53db6b6d0e2a8e8b",
+            "bytes": 11689
+          },
+          "beforeVersion": 2,
+          "committedVersion": 2,
+          "draftRole": "受理前失联的未保存职责",
+          "committedRole": "通过底部保存的独立聊天员工",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            }
+          ]
+        }
+      ],
+      "rebindRefusals": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-d8cgc8/016-再次重启核对后原配置及工作未变.json",
+          "sha256": "bacb21dbd35ace8b91198a51bf2af55febcda95c9865cac5fb9695a833aee3cb",
+          "bytes": 12466
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-d8cgc8/006-原命令待批准时原配置及工作未变.json",
+          "sha256": "627f09592600b6c467e122d849046e4a85a4d92562a8638cb98749db3c51a75b",
+          "bytes": 12301
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/offline-2/scenarios/704506bbdae38bebaafd-e5d1b3f6179e8a63333a-retry0-repeat0-d8cgc8/011-服务退出并重启后原配置及工作未变.json",
+          "sha256": "bacb21dbd35ace8b91198a51bf2af55febcda95c9865cac5fb9695a833aee3cb",
+          "bytes": 12466
+        }
+      ]
+    },
+    {
+      "name": "real-1",
+      "stats": {
+        "startTime": "2026-10-06T09:50:06.964Z",
+        "duration": 130859.13799999999,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "real-provider",
+      "frozenFiles": 879,
+      "resources": 39,
+      "evidence": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/build-manifest.json",
+          "sha256": "60391c4cc8f91ae9fe4e7d15cc03383e25b2e7fc250d9515d3f01c6ad1cdc465",
+          "bytes": 101258
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/freeze-verification.json",
+          "sha256": "5a04d4b04ddfc704afb310e6849fa2a9fef961d5dab58a8f269c6812aba86375",
+          "bytes": 103
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/playwright-results.json",
+          "sha256": "78974519dc21ea9563c3c2e60b51ee0a54dbf7df07186ae9049d4ccb51211c42",
+          "bytes": 76252
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1-report/checks.json",
+          "sha256": "cb0290d751a792bfb8a89e907f4816b7043a97dcbbc57ccd5c5cbd6cc33fac2e",
+          "bytes": 270410
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1-report/manifest.json",
+          "sha256": "a96221e64fbf0909a7c7fda69fd19f0eafb4ad780b9ace2a3a7382b39d572d4f",
+          "bytes": 1264
+        }
+      ],
+      "cases": [
+        {
+          "title": "使用真实Codex从聊天底部保存原员工并核对丢失答复",
+          "status": "passed"
+        },
+        {
+          "title": "使用真实Codex在原消息处理待批准时服务退出且旧审批不执行",
+          "status": "passed"
+        }
+      ],
+      "snapshots": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-NMNr1M/018-底部配置保存最终原状态.json",
+            "sha256": "1a9a678a57d1f9bd1caa895a03bd2c3778e215fce2549b88878bb3d4941e460d",
+            "bytes": 44015
+          },
+          "kind": "configuration",
+          "messages": 4,
+          "works": [],
+          "budgets": [],
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-tPa3GA/019-本机审批最终原始状态.json",
+            "sha256": "458b9a7617eacedfa5d627d51d6b68dc4dca9bdd2a033c70c6436ad2c24e5cb0",
+            "bytes": 12445
+          },
+          "kind": "approval",
+          "messages": null,
+          "works": [
+            {
+              "id": "work-d2f0e859146f600272192a639e45b95f032cf99511d5f8226dc728410418684a",
+              "status": "interrupted",
+              "requiresReview": true
+            }
+          ],
+          "budgets": null,
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "f6fa02b7-ba2d-4d11-ad05-364665835a74",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "interrupted",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "f6fa02b7-ba2d-4d11-ad05-364665835a74",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              }
+            }
+          ],
+          "modelCallRecords": 2,
+          "unknownCallRecords": 1,
+          "budgetEvidence": "Not included in this final export; see original configuration/work-unchanged snapshots. Unknown calls are not zero."
+        }
+      ],
+      "configurationProof": {
+        "source": {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-NMNr1M/011-底部配置往返只保存原员工不执行业务.json",
+          "sha256": "bc2536db6c6d511c14bdf5c07b82ea07245282dca0b12ae6435bd06739a514c0",
+          "bytes": 13890
+        },
+        "calls": [
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 1
+          },
+          {
+            "method": "saveAgent",
+            "admitted": false,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 3
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 4
+          }
+        ],
+        "originalAgent": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e"
+          },
+          "name": "本机 Codex 同事",
+          "role": "使用原生 Codex 的独立聊天员工",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "511b6ed8-ed55-4c56-827f-1a70641c7075",
+          "configVersion": 1,
+          "workspaceRef": "agents/511b6ed8-ed55-4c56-827f-1a70641c7075/workspace",
+          "memoryNamespace": "employee:511b6ed8-ed55-4c56-827f-1a70641c7075",
+          "policyVersion": 2
+        },
+        "saved": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "d68de8b4-f5f4-4240-beea-088277317f7e"
+          },
+          "name": "本机 Codex 同事",
+          "role": "受理后失联的已提交职责",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "511b6ed8-ed55-4c56-827f-1a70641c7075",
+          "configVersion": 5,
+          "workspaceRef": "agents/511b6ed8-ed55-4c56-827f-1a70641c7075/workspace",
+          "memoryNamespace": "employee:511b6ed8-ed55-4c56-827f-1a70641c7075",
+          "policyVersion": 2
+        },
+        "facts": {
+          "conversations": 1,
+          "messages": 2,
+          "turns": 1,
+          "runs": 3,
+          "works": 0,
+          "budgets": 0,
+          "calls": 0,
+          "artifacts": 0
+        }
+      },
+      "lostAnswers": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-NMNr1M/008-底部保存after原草稿与提交事实.json",
+            "sha256": "f609419d5ae351956b84735da11ab38c87bf85fdd6caec64ee49018ca1ff4cd9",
+            "bytes": 11790
+          },
+          "beforeVersion": 2,
+          "committedVersion": 3,
+          "draftRole": "受理后失联的已提交职责",
+          "committedRole": "受理后失联的已提交职责",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            },
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 2
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-NMNr1M/005-底部保存before原草稿与提交事实.json",
+            "sha256": "059684d15387b74db20e89d65a800a55efa9267ad7522051b43cf0a8d5c0034e",
+            "bytes": 11697
+          },
+          "beforeVersion": 2,
+          "committedVersion": 2,
+          "draftRole": "受理前失联的未保存职责",
+          "committedRole": "通过底部保存的独立聊天员工",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            }
+          ]
+        }
+      ],
+      "rebindRefusals": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-tPa3GA/016-再次重启核对后原配置及工作未变.json",
+          "sha256": "8f5649845c9fc659424583d690110bd6d0991b0d5caab623fc46be15cabadc77",
+          "bytes": 13251
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-tPa3GA/006-原命令待批准时原配置及工作未变.json",
+          "sha256": "8ad6356bf11f0c0dad4efbc6bfca053146e1ff19bb6a67ff1b04ccd299079687",
+          "bytes": 13086
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-tPa3GA/011-服务退出并重启后原配置及工作未变.json",
+          "sha256": "8f5649845c9fc659424583d690110bd6d0991b0d5caab623fc46be15cabadc77",
+          "bytes": 13251
+        }
+      ]
+    },
+    {
+      "name": "package-real-1",
+      "stats": {
+        "startTime": "2026-10-06T09:52:27.929Z",
+        "duration": 135311.867,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "real-provider",
+      "frozenFiles": 879,
+      "resources": 39,
+      "evidence": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/build-manifest.json",
+          "sha256": "2d4799b69dda3057c32b4e7d5f03ef4eca5ebae5471afa43ee06b0ba698e5ec2",
+          "bytes": 101258
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/freeze-verification.json",
+          "sha256": "fae8326483ea0593c02f7b7ec9672bf893eecad104310bc09662e8c2e21488a8",
+          "bytes": 103
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/playwright-results.json",
+          "sha256": "2ca5e90a001089951ca5281e953d1b266030777eaa6db0ade0390f2e66ca9ab3",
+          "bytes": 76666
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/package-manifest.json",
+          "sha256": "daac3d7d2efa1e9c113fafd7ddf609320034cb8b28d4306e3e170dec0163f819",
+          "bytes": 712822
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/package-verification.json",
+          "sha256": "1b68ec37835e14eb285ad6cba5b944c10da525a05be20d06b8098aff33cf02c0",
+          "bytes": 105
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1-report/checks.json",
+          "sha256": "fb4aa71ef5ed74ba54a6b7e198d48370acedf17e87e661ff396883ed6ffcfe6e",
+          "bytes": 269997
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1-report/manifest.json",
+          "sha256": "b8505454e44466d59fc69646da56cfbc4d9bc1082f7e2b8b61cf51d8cb76683c",
+          "bytes": 1280
+        }
+      ],
+      "cases": [
+        {
+          "title": "使用真实Codex从聊天底部保存原员工并核对丢失答复",
+          "status": "passed"
+        },
+        {
+          "title": "使用真实Codex在原消息处理待批准时服务退出且旧审批不执行",
+          "status": "passed"
+        }
+      ],
+      "snapshots": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-hoDKEk/019-本机审批最终原始状态.json",
+            "sha256": "d429c84260290b5fd2495b9b74519a47b57c550937425d8540105f7ba93d0683",
+            "bytes": 12399
+          },
+          "kind": "approval",
+          "messages": null,
+          "works": [
+            {
+              "id": "work-68b5b71d2b29afad1ed07d236dea2a40258abdc3f958a6f1f10281a1059e024e",
+              "status": "interrupted",
+              "requiresReview": true
+            }
+          ],
+          "budgets": null,
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "8f87df8e-5c71-42db-969e-b240593531c3",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "interrupted",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "8f87df8e-5c71-42db-969e-b240593531c3",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              }
+            }
+          ],
+          "modelCallRecords": 2,
+          "unknownCallRecords": 1,
+          "budgetEvidence": "Not included in this final export; see original configuration/work-unchanged snapshots. Unknown calls are not zero."
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/018-底部配置保存最终原状态.json",
+            "sha256": "727206a06de78fc92bcd6897444bcc2016cdd2b2743056689cc8662f503efe8f",
+            "bytes": 44038
+          },
+          "kind": "configuration",
+          "messages": 4,
+          "works": [],
+          "budgets": [],
+          "phases": [
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "decision",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "execution",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "scoped",
+                "toolControl": "none"
+              }
+            },
+            {
+              "phase": "memory",
+              "status": "completed",
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              }
+            }
+          ]
+        }
+      ],
+      "configurationProof": {
+        "source": {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/011-底部配置往返只保存原员工不执行业务.json",
+          "sha256": "35c1f6c7270254a885665c5de61780058ad916e319073409c3f0ad9129b994f6",
+          "bytes": 13892
+        },
+        "calls": [
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 1
+          },
+          {
+            "method": "saveAgent",
+            "admitted": false,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 2
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 3
+          },
+          {
+            "method": "saveAgent",
+            "admitted": true,
+            "expectedConfigVersion": 4
+          }
+        ],
+        "originalAgent": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9"
+          },
+          "name": "本机 Codex 同事",
+          "role": "使用原生 Codex 的独立聊天员工",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "b70054b6-3ce9-40be-8cec-4ccc692c6ed3",
+          "configVersion": 1,
+          "workspaceRef": "agents/b70054b6-3ce9-40be-8cec-4ccc692c6ed3/workspace",
+          "memoryNamespace": "employee:b70054b6-3ce9-40be-8cec-4ccc692c6ed3",
+          "policyVersion": 2
+        },
+        "saved": {
+          "avatar": {
+            "kind": "preset",
+            "id": "bear"
+          },
+          "executionBackend": {
+            "kind": "codex-local",
+            "profileId": "680e09de-968f-42f4-87b2-87f2bd039ec9"
+          },
+          "name": "本机 Codex 同事",
+          "role": "受理后失联的已提交职责",
+          "instructions": "用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。",
+          "color": "#6675a4",
+          "connectionId": "",
+          "modelId": "",
+          "skillIds": [],
+          "knowledgeIds": [],
+          "allowCommands": false,
+          "active": true,
+          "allowBrowser": false,
+          "id": "b70054b6-3ce9-40be-8cec-4ccc692c6ed3",
+          "configVersion": 5,
+          "workspaceRef": "agents/b70054b6-3ce9-40be-8cec-4ccc692c6ed3/workspace",
+          "memoryNamespace": "employee:b70054b6-3ce9-40be-8cec-4ccc692c6ed3",
+          "policyVersion": 2
+        },
+        "facts": {
+          "conversations": 1,
+          "messages": 2,
+          "turns": 1,
+          "runs": 3,
+          "works": 0,
+          "budgets": 0,
+          "calls": 0,
+          "artifacts": 0
+        }
+      },
+      "lostAnswers": [
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/008-底部保存after原草稿与提交事实.json",
+            "sha256": "d1377d4f42b22944d48a0d5fc0690c83b5d5384edd8f090b259f34b43564e406",
+            "bytes": 11792
+          },
+          "beforeVersion": 2,
+          "committedVersion": 3,
+          "draftRole": "受理后失联的已提交职责",
+          "committedRole": "受理后失联的已提交职责",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            },
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 2
+            }
+          ]
+        },
+        {
+          "source": {
+            "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/005-底部保存before原草稿与提交事实.json",
+            "sha256": "ea69d8d0935fd4cb4ac3b4eba0df111c6ca2b5f13f1f1dcc58fa1c1d1c5ffd0e",
+            "bytes": 11699
+          },
+          "beforeVersion": 2,
+          "committedVersion": 2,
+          "draftRole": "受理前失联的未保存职责",
+          "committedRole": "通过底部保存的独立聊天员工",
+          "calls": [
+            {
+              "method": "saveAgent",
+              "admitted": true,
+              "expectedConfigVersion": 1
+            },
+            {
+              "method": "saveAgent",
+              "admitted": false,
+              "expectedConfigVersion": 2
+            }
+          ]
+        }
+      ],
+      "rebindRefusals": [
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-hoDKEk/016-再次重启核对后原配置及工作未变.json",
+          "sha256": "52d2304eb5c5d4bd3eaecdf473de8cd051fea941aa166ce11e6fabb469148369",
+          "bytes": 13181
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-hoDKEk/006-原命令待批准时原配置及工作未变.json",
+          "sha256": "b5cd9e6e5d8ab25ab80e31c21e77e3a6d45d47fd485c34e4b2ba0fdfb78d0613",
+          "bytes": 13016
+        },
+        {
+          "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-1aceab7d04d2812e2707-retry0-repeat0-hoDKEk/011-服务退出并重启后原配置及工作未变.json",
+          "sha256": "52d2304eb5c5d4bd3eaecdf473de8cd051fea941aa166ce11e6fabb469148369",
+          "bytes": 13181
+        }
+      ]
+    }
+  ],
+  "images": [
+    {
+      "source": {
+        "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/006-底部保存before答复丢失后只读核对且草稿保留.native.png",
+        "sha256": "f81644040e6f161e1dab52d06fad331f61a2cab2d431377085c1ed79eef79174",
+        "bytes": 333897
+      },
+      "copy": {
+        "path": "LR4-Codex底部保存-受理前失联-20261006.png",
+        "sha256": "f81644040e6f161e1dab52d06fad331f61a2cab2d431377085c1ed79eef79174",
+        "bytes": 333897
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "pixelTransform": "none",
+      "capture": {
+        "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/007-底部保存before答复丢失后只读核对且草稿保留.capture.json",
+        "sha256": "c076d86e27263287537b9a9eff9fdef458d663117731e535e8ece808f781f646",
+        "bytes": 1685
+      }
+    },
+    {
+      "source": {
+        "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/009-底部保存after答复丢失后只读核对且草稿保留.native.png",
+        "sha256": "742576b6282a6d7ca33aba116b275ee21cb229e67427c4d2e81343dd9d366f5e",
+        "bytes": 328043
+      },
+      "copy": {
+        "path": "LR4-Codex底部保存-受理后失联-20261006.png",
+        "sha256": "742576b6282a6d7ca33aba116b275ee21cb229e67427c4d2e81343dd9d366f5e",
+        "bytes": 328043
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "pixelTransform": "none",
+      "capture": {
+        "path": "../../../../.local/feature-review/local-agent-configuration-20261006/package-real-1/scenarios/704506bbdae38bebaafd-9050795ed8a3c169bcd7-retry0-repeat0-el4WMT/010-底部保存after答复丢失后只读核对且草稿保留.capture.json",
+        "sha256": "818675d52f48729f02b550a23de4403e53758ca867c549db1c38066294d0f3d6",
+        "bytes": 1685
+      }
+    }
+  ]
+}

@@ -1,0 +1,427 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-automation-continuation-real-1",
+  "technicalResult": "passed",
+  "runtimeVersion": "0.159.3",
+  "sourceFiles": 711,
+  "sourceAndBuildDigest": "d4456e30f78a4a849953da70c2f23b85cd5e1442dd17cd55a8de28d9f90a1925",
+  "frozenFilesVerified": true,
+  "humanReview": "pending",
+  "report": "../../../../.local/feature-review/codex-automation-continuation-real-1-report/index.html",
+  "scenarios": [
+    {
+      "title": "使用真实Codex让定时员工等待补充并通过追加到期额度完成原工作",
+      "status": "passed",
+      "modelMode": "real-provider",
+      "seconds": 394.037,
+      "evidenceCount": 14,
+      "traces": 2,
+      "expiryMode": "actual-original-deadline",
+      "budgetBefore": {
+        "workItems": 1,
+        "retries": 0,
+        "reportRefreshes": 0,
+        "noProgress": 1,
+        "maxWorkItems": 8,
+        "maxRetries": 3,
+        "maxReportRefreshes": 4,
+        "maxNoProgress": 3,
+        "id": "automation-budget-285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+        "schemaVersion": 1,
+        "modelCalls": 2,
+        "runs": 1,
+        "maxModelCalls": 24,
+        "maxRuns": 8,
+        "maxOutputTokens": 16000,
+        "deadlineAt": "2026-10-05T13:40:26.294Z",
+        "usage": {
+          "inputTokens": 70453,
+          "outputTokens": 570,
+          "totalTokens": 71023
+        },
+        "usageIncomplete": false,
+        "origin": {
+          "kind": "automation",
+          "automationId": "4ee282a5-ddfb-4b60-8090-9ebf9b014fb3",
+          "occurrenceId": "285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+          "name": "本机等待补充",
+          "authorizedFingerprint": "9de7046d0098def68bae5c04ffc2825405592b310f970f2a4633d818558a4022"
+        },
+        "conversationId": "7d0d22e7-ed9b-4492-a478-2a1a8f36ece5",
+        "accounting": "model-calls-v1",
+        "unknownCalls": 0,
+        "callUnit": "mixed"
+      },
+      "budgetAfter": {
+        "workItems": 1,
+        "retries": 0,
+        "reportRefreshes": 0,
+        "noProgress": 1,
+        "maxWorkItems": 16,
+        "maxRetries": 6,
+        "maxReportRefreshes": 8,
+        "maxNoProgress": 6,
+        "id": "automation-budget-285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+        "schemaVersion": 1,
+        "modelCalls": 4,
+        "runs": 2,
+        "maxModelCalls": 48,
+        "maxRuns": 16,
+        "maxOutputTokens": 32000,
+        "deadlineAt": "2026-10-05T13:45:27.546Z",
+        "usage": {
+          "inputTokens": 269077,
+          "outputTokens": 1555,
+          "totalTokens": 270632
+        },
+        "usageIncomplete": false,
+        "origin": {
+          "kind": "automation",
+          "automationId": "4ee282a5-ddfb-4b60-8090-9ebf9b014fb3",
+          "occurrenceId": "285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+          "name": "本机等待补充",
+          "authorizedFingerprint": "9de7046d0098def68bae5c04ffc2825405592b310f970f2a4633d818558a4022"
+        },
+        "conversationId": "7d0d22e7-ed9b-4492-a478-2a1a8f36ece5",
+        "accounting": "model-calls-v1",
+        "unknownCalls": 0,
+        "callUnit": "mixed",
+        "renewals": [
+          {
+            "id": "32f44ad6-14ba-4e24-90f0-f85a99cc4f31",
+            "requestId": "a07535ce-e5ba-43ee-b8b0-c4bf5645989f",
+            "messageId": "1e205af8-5cf9-4fdd-89cd-3e8b295db211",
+            "turnId": "24a01a71-9bde-4011-92fa-c928946ad610",
+            "createdAt": "2026-10-05T13:40:27.546Z",
+            "before": {
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "deadlineAt": "2026-10-05T13:40:26.294Z"
+            },
+            "after": {
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "deadlineAt": "2026-10-05T13:45:27.546Z"
+            },
+            "used": {
+              "modelCalls": 2,
+              "runs": 1,
+              "usage": {
+                "inputTokens": 70453,
+                "outputTokens": 570,
+                "totalTokens": 71023
+              },
+              "usageIncomplete": false,
+              "unknownCalls": 0,
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1
+            },
+            "previousStatus": "cancelled",
+            "previousReason": "达到本次自动化的时间预算",
+            "cancellationRequestedAt": "2026-10-05T13:40:26.311Z",
+            "workVersions": [
+              {
+                "id": "work-c7de580d0a51a1de2f90d775576f9c6fe842514fc51f6e77a9ff337a2084620e",
+                "version": 5,
+                "status": "cancelled"
+              }
+            ]
+          }
+        ]
+      },
+      "calls": [
+        {
+          "id": "579e676e-c3e5-4ad9-ba09-4d1f8cec82e9",
+          "phase": "decision",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 27208,
+            "outputTokens": 140,
+            "totalTokens": 27348
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "ff9485a9-780f-4520-ad63-13d226db0485",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 43245,
+            "outputTokens": 430,
+            "totalTokens": 43675
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "a6d85f64-ebfa-40c3-8375-97bd00cbc922",
+          "phase": "decision",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 29323,
+            "outputTokens": 164,
+            "totalTokens": 29487
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "2771151a-5183-44d3-bc97-f2bbef3a9df8",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 169301,
+            "outputTokens": 821,
+            "totalTokens": 170122
+          },
+          "usageComplete": true
+        }
+      ],
+      "workIds": [
+        "work-c7de580d0a51a1de2f90d775576f9c6fe842514fc51f6e77a9ff337a2084620e"
+      ],
+      "occurrence": {
+        "id": "285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+        "status": "completed",
+        "deliveryStatus": "delivered",
+        "budgetId": "automation-budget-285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+        "modelCalls": 4,
+        "usageIncomplete": false,
+        "finishedAt": "2026-10-05T13:41:47.478Z"
+      },
+      "artifactOriginals": [
+        {
+          "bytes": 44,
+          "sha256": "384e9f71c06a4fbf8852a1b559373ac44c72e2986ce721b046a6ff49f1de82f2",
+          "content": "# 海星-7a820726\n\n标题：海星-7a820726\n"
+        }
+      ],
+      "screenshot": "LR5-真实Codex到期追加交付.png",
+      "expiry": {
+        "stopped": {
+          "schemaVersion": 1,
+          "id": "285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+          "stateVersion": 13,
+          "automationId": "4ee282a5-ddfb-4b60-8090-9ebf9b014fb3",
+          "revision": 2,
+          "executionRevision": 1,
+          "scheduleGeneration": 1,
+          "name": "本机等待补充",
+          "source": "manual",
+          "taskKind": "report",
+          "scheduledFor": "2026-10-05T13:35:26.291Z",
+          "admittedAt": "2026-10-05T13:35:26.292Z",
+          "startedAt": "2026-10-05T13:35:26.297Z",
+          "status": "cancelled",
+          "deliveryStatus": "blocked",
+          "conversationId": "7d0d22e7-ed9b-4492-a478-2a1a8f36ece5",
+          "runIds": [
+            "00c99ea6-6976-408a-bcb2-ddea24b617fd",
+            "eccb191c-6c95-4164-bb2f-ef72adb33e1b"
+          ],
+          "resultMessageIds": [
+            "d7638dfd-156f-4b30-bf88-59d28966f0cf"
+          ],
+          "usageIncomplete": false,
+          "manualRequestId": "2a511eb7-85ef-46c4-9c50-7a8c718c2ad5",
+          "budgetId": "automation-budget-285233b9b3427843575ee72a62120bb230877ff028326d98f935b10d9d7ad7e4",
+          "budget": {
+            "callUnit": "mixed",
+            "maxModelCalls": 24,
+            "maxRuns": 8,
+            "maxOutputTokens": 16000,
+            "deadlineAt": "2026-10-05T13:40:26.294Z",
+            "runs": 1,
+            "exhausted": true
+          },
+          "messageId": "27564284-38f6-450e-afbc-d17265099761",
+          "turnId": "3cc9117b-ca8f-4cee-9494-ee5ae93e46e8",
+          "turnIds": [
+            "3cc9117b-ca8f-4cee-9494-ee5ae93e46e8"
+          ],
+          "waitingTurnIds": [
+            "3cc9117b-ca8f-4cee-9494-ee5ae93e46e8"
+          ],
+          "workIds": [
+            "work-c7de580d0a51a1de2f90d775576f9c6fe842514fc51f6e77a9ff337a2084620e"
+          ],
+          "rootWorkIds": [
+            "work-c7de580d0a51a1de2f90d775576f9c6fe842514fc51f6e77a9ff337a2084620e"
+          ],
+          "resultEvidence": [],
+          "modelCalls": 2,
+          "usage": {
+            "inputTokens": 70453,
+            "outputTokens": 570,
+            "totalTokens": 71023
+          },
+          "reason": "达到本次自动化的时间预算",
+          "cancellationCause": "budget",
+          "cancellationRequestedAt": "2026-10-05T13:40:26.311Z",
+          "finishedAt": "2026-10-05T13:40:26.312Z"
+        },
+        "actualWallClock": true
+      }
+    },
+    {
+      "title": "使用真实Codex让定时员工等待补充并通过回复原问题完成原工作",
+      "status": "passed",
+      "modelMode": "real-provider",
+      "seconds": 134.102,
+      "evidenceCount": 12,
+      "traces": 2,
+      "expiryMode": "not-expired",
+      "budgetBefore": {
+        "workItems": 1,
+        "retries": 0,
+        "reportRefreshes": 0,
+        "noProgress": 1,
+        "maxWorkItems": 8,
+        "maxRetries": 3,
+        "maxReportRefreshes": 4,
+        "maxNoProgress": 3,
+        "id": "automation-budget-be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+        "schemaVersion": 1,
+        "modelCalls": 2,
+        "runs": 1,
+        "maxModelCalls": 24,
+        "maxRuns": 8,
+        "maxOutputTokens": 16000,
+        "deadlineAt": "2026-10-05T13:38:11.157Z",
+        "usage": {
+          "inputTokens": 79347,
+          "outputTokens": 702,
+          "totalTokens": 80049
+        },
+        "usageIncomplete": false,
+        "origin": {
+          "kind": "automation",
+          "automationId": "ea3d20e5-6b13-47d8-a1f0-8f5a2a9b46b7",
+          "occurrenceId": "be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+          "name": "本机等待补充",
+          "authorizedFingerprint": "e138d36150b2410e27c0b3d2fa95c821acf4ad9ca480132d38e578c86a9da1ae"
+        },
+        "conversationId": "7bf81e7a-5241-4dc6-9091-a57a0cf0443c",
+        "accounting": "model-calls-v1",
+        "unknownCalls": 0,
+        "callUnit": "mixed"
+      },
+      "budgetAfter": {
+        "workItems": 1,
+        "retries": 0,
+        "reportRefreshes": 0,
+        "noProgress": 1,
+        "maxWorkItems": 8,
+        "maxRetries": 3,
+        "maxReportRefreshes": 4,
+        "maxNoProgress": 3,
+        "id": "automation-budget-be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+        "schemaVersion": 1,
+        "modelCalls": 4,
+        "runs": 2,
+        "maxModelCalls": 24,
+        "maxRuns": 8,
+        "maxOutputTokens": 16000,
+        "deadlineAt": "2026-10-05T13:38:11.157Z",
+        "usage": {
+          "inputTokens": 233109,
+          "outputTokens": 1557,
+          "totalTokens": 234666
+        },
+        "usageIncomplete": false,
+        "origin": {
+          "kind": "automation",
+          "automationId": "ea3d20e5-6b13-47d8-a1f0-8f5a2a9b46b7",
+          "occurrenceId": "be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+          "name": "本机等待补充",
+          "authorizedFingerprint": "e138d36150b2410e27c0b3d2fa95c821acf4ad9ca480132d38e578c86a9da1ae"
+        },
+        "conversationId": "7bf81e7a-5241-4dc6-9091-a57a0cf0443c",
+        "accounting": "model-calls-v1",
+        "unknownCalls": 0,
+        "callUnit": "mixed"
+      },
+      "calls": [
+        {
+          "id": "400cfbfb-6abd-4877-bb36-b35a6c9049b3",
+          "phase": "decision",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 10020,
+            "outputTokens": 142,
+            "totalTokens": 10162
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "b76456f6-aa5e-4274-a886-84982b2411f4",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 69327,
+            "outputTokens": 560,
+            "totalTokens": 69887
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "715f6102-8188-4644-a137-2e259060eb38",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 117616,
+            "outputTokens": 731,
+            "totalTokens": 118347
+          },
+          "usageComplete": true
+        },
+        {
+          "id": "6264cc84-ac7b-4b8a-b259-cc2985ce9374",
+          "phase": "memory",
+          "callUnit": "external-turn",
+          "usage": {
+            "inputTokens": 36146,
+            "outputTokens": 124,
+            "totalTokens": 36270
+          },
+          "usageComplete": true
+        }
+      ],
+      "workIds": [
+        "work-055d98baf5f98e6d9ab4a878883c304cf5bf6720caf879d7b9d0b3558e2524df"
+      ],
+      "occurrence": {
+        "id": "be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+        "status": "completed",
+        "deliveryStatus": "delivered",
+        "budgetId": "automation-budget-be8fe7bdff603cf4c8085779edaf3174ea0769ce7919b0bafd6fa41bc4298f22",
+        "modelCalls": 4,
+        "usageIncomplete": false,
+        "finishedAt": "2026-10-05T13:35:13.535Z"
+      },
+      "artifactOriginals": [
+        {
+          "bytes": 53,
+          "sha256": "6a66ddd7f511cc8ceb2b0b3c1de8baee694039e00a6cec09eaf5fd7584baad0f",
+          "content": "# 海星-aa7cfb75\n\n文件标题：海星-aa7cfb75。\n"
+        }
+      ],
+      "screenshot": "LR5-真实Codex原问题接续.png"
+    }
+  ],
+  "limitations": [
+    "Module fixture mixed automation is separately validated; this batch uses native employees only",
+    "Does not replace full fault/platform or packaged verification",
+    "Runtime-switch guard changed after this frozen batch; no attribution of this batch to that later change"
+  ]
+}

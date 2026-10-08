@@ -1,0 +1,189 @@
+{
+  "status": "passed",
+  "runtime": "Codex 0.159.3",
+  "platform": "macOS arm64",
+  "execution": "source Electron UI",
+  "modelMode": "real-provider",
+  "humanReview": "pending",
+  "originalReport": ".local/feature-review/codex-incremental-real-1/playwright-results.json",
+  "report": ".local/feature-review/codex-incremental-real-1-report/index.html",
+  "durationMs": 96943.37000000001,
+  "resources": 11,
+  "frozenFiles": 709,
+  "sourceAndBuildDigest": "0099950639aca8e52713715eb60177ff46437547a269dbda57e3e127ca2d5e7c",
+  "frozenFilesUnchanged": true,
+  "sameThreadAfterRestart": true,
+  "before": [
+    {
+      "id": "cc0fc8f9851fbc89d7454d62b2e2945aa18720611228bf7b9c1462ee31496c7f",
+      "conversationId": "4c7e5b10-ca48-4ee5-bc73-cc27822a55f8",
+      "agentId": "4b133b55-7a9c-4eed-b68b-95c3ba738f87",
+      "sourceVersion": 2,
+      "fingerprint": "3c9bf5caac9febe437545c72fb989292455da70ae95ab56cdda76dfad4b386bb",
+      "runId": "98bf714d-db47-4976-b14f-b3d5ff1cf3b4",
+      "state": "completed",
+      "memories": [],
+      "materials": [],
+      "sources": [
+        {
+          "id": "1f5370c2-1899-432e-ad42-4a098e54d7f5",
+          "hash": "06dc2c4e463b70d76c68923b1113f6bde7c09e6728978d64ff44430b92b3fa54"
+        }
+      ],
+      "inputMessageIds": [
+        "1f5370c2-1899-432e-ad42-4a098e54d7f5"
+      ],
+      "threadId": "01a10ba5-b97f-71c3-b1df-99f5d2ff9523",
+      "turnId": "01a10ba5-ba13-72c3-ba36-1db86658c337",
+      "outputHash": "9310adc2060b4484f14c4ba2a4f04dbce059febea27fba81bc751d7f18cefa69"
+    }
+  ],
+  "after": [
+    {
+      "id": "cc0fc8f9851fbc89d7454d62b2e2945aa18720611228bf7b9c1462ee31496c7f",
+      "conversationId": "4c7e5b10-ca48-4ee5-bc73-cc27822a55f8",
+      "agentId": "4b133b55-7a9c-4eed-b68b-95c3ba738f87",
+      "sourceVersion": 2,
+      "fingerprint": "3c9bf5caac9febe437545c72fb989292455da70ae95ab56cdda76dfad4b386bb",
+      "runId": "503f4044-ef43-4f59-a74e-24c30577b492",
+      "state": "completed",
+      "memories": [
+        {
+          "id": "710b7d1c-f11f-4da1-a54c-7d034d6a93b1",
+          "hash": "7b38dc14bc9df125fb682bad3f4da0476f4300fc7fd4da3289fd3af84953c8f9"
+        }
+      ],
+      "materials": [],
+      "sources": [
+        {
+          "id": "1f5370c2-1899-432e-ad42-4a098e54d7f5",
+          "hash": "06dc2c4e463b70d76c68923b1113f6bde7c09e6728978d64ff44430b92b3fa54"
+        },
+        {
+          "id": "5de15c6a-5f5d-4c8b-9d55-168996ab811d",
+          "hash": "55ee47b6e5194c1d9739097dd9322c5b8ad26c683a739ea27b8aea476281c249"
+        },
+        {
+          "id": "130a0ea7-a08f-4843-b75d-b8cb2a9c5f58",
+          "hash": "c41ab0b8a28348cac1f8c0c0fa11801983bfff41dcafbc6880ae0571d24c692f"
+        }
+      ],
+      "inputMessageIds": [
+        "130a0ea7-a08f-4843-b75d-b8cb2a9c5f58"
+      ],
+      "threadId": "01a10ba5-b97f-71c3-b1df-99f5d2ff9523",
+      "turnId": "01a10ba6-3edd-7262-9345-25911ed1d707",
+      "outputHash": "9310adc2060b4484f14c4ba2a4f04dbce059febea27fba81bc751d7f18cefa69"
+    }
+  ],
+  "messages": [
+    {
+      "id": "1f5370c2-1899-432e-ad42-4a098e54d7f5",
+      "senderType": "user",
+      "content": "这是一次普通聊天。请记住暗号“海星-12561936”，只回复暗号，不执行任何工作。",
+      "status": "completed"
+    },
+    {
+      "id": "5de15c6a-5f5d-4c8b-9d55-168996ab811d",
+      "senderType": "agent",
+      "content": "海星-12561936",
+      "status": "completed"
+    },
+    {
+      "id": "130a0ea7-a08f-4843-b75d-b8cb2a9c5f58",
+      "senderType": "user",
+      "content": "刚才的暗号是什么？仅回复暗号。",
+      "status": "completed"
+    },
+    {
+      "id": "81176228-18bc-410d-af63-b525b1df5914",
+      "senderType": "agent",
+      "content": "海星-12561936",
+      "status": "completed"
+    }
+  ],
+  "supplierRuns": [
+    {
+      "id": "fe57112b-f5a6-43b4-803b-36ec802af7ab",
+      "phase": "decision",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 29235,
+        "outputTokens": 37,
+        "totalTokens": 29272
+      }
+    },
+    {
+      "id": "98bf714d-db47-4976-b14f-b3d5ff1cf3b4",
+      "phase": "execution",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 7878,
+        "outputTokens": 10,
+        "totalTokens": 7888
+      }
+    },
+    {
+      "id": "3fd7000f-c6c0-4489-829a-66acbfba8fea",
+      "phase": "memory",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 10431,
+        "outputTokens": 67,
+        "totalTokens": 10498
+      }
+    },
+    {
+      "id": "2ba85393-81f2-404f-a58d-88a50f3faa34",
+      "phase": "decision",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 13653,
+        "outputTokens": 27,
+        "totalTokens": 13680
+      }
+    },
+    {
+      "id": "503f4044-ef43-4f59-a74e-24c30577b492",
+      "phase": "execution",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 8464,
+        "outputTokens": 10,
+        "totalTokens": 8474
+      }
+    },
+    {
+      "id": "2e4ed4f2-82c1-46d1-ab28-30943af5d56b",
+      "phase": "memory",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 9523,
+        "outputTokens": 9,
+        "totalTokens": 9532
+      }
+    }
+  ],
+  "apiConnections": [],
+  "workItems": [],
+  "evidence": [
+    {
+      "path": ".local/feature-review/codex-incremental-real-1/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-sH7Ubc/010-本机运行时会话连续性.json",
+      "sha256": "8e03734aef7c73115d58becbf9608b4375e96276e4c4d9867fce0f3c5f70a564"
+    },
+    {
+      "path": ".local/feature-review/codex-incremental-real-1/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-sH7Ubc/008-第2轮原始消息与运行.json",
+      "sha256": "860505b8c4a4b94240f9cfbadcd863ed7aa8d4c9c1c5aa6ae0ab6192c94c74c8"
+    },
+    {
+      "path": ".local/feature-review/codex-incremental-real-1/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-sH7Ubc/009-第2轮实际Codex员工IM回复.png",
+      "sha256": "dc4e3222411abe45f83dbf8ece2fc66b18d17ca3bd30d5e513855c7adc9fa70c"
+    }
+  ],
+  "limits": [
+    "Ordinary two-turn chat only, not the complete multi-employee or lifecycle matrix.",
+    "Native transcript and authorized BoAI memory both exist; this run does not claim recall came exclusively from native history.",
+    "The final screenshot is not a replacement for the complete two-launch trace and process evidence.",
+    "Not a packaged-app run or human quality approval."
+  ]
+}

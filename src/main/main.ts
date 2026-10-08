@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 按已保存ID删除本机启动配置通过既有typed白名单，不接外部程序或登录目录清理参数。
+ * [OUTPUT]: 目录登录预填与新草稿来源重核携明确ACP/原生Codex协议；旧ACP导入保持，不运行程序。
  * [OUTPUT]: 已保存启动项ID的当前程序只读状态列入typed白名单，零外部执行。
  * [OUTPUT]: 放行工作/文件只读有界查询和精确原目标解析，沿唯一runtime请求桥。
  * [OUTPUT]: 聊天附件准备缺省按当前聊天发送，短期来源失效仅核对原发送范围与稳定回执；旧显式名单只保留兼容。
@@ -80,7 +82,7 @@ const browsers = new BrowserService({
     } else await requestRuntime('browserControl', { action })
   },
 })
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'deleteLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
 for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
@@ -317,12 +319,15 @@ function registerIpc() {
       return requestRuntime(method === 'testLocalConnection' ? 'testConnectionDraft' : 'saveConnection', localConfigs.connection(selected.configId, selected.model))
     }
     if (method === 'saveLaunchProfile' || method === 'testLaunchProfileDraft') {
-      const source = z.object({ id: z.string().optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional() }).passthrough().parse(input)
-      if (!source.id && source.localConfigId) localConfigs.launchProfile(source.localConfigId)
+      const source = z.object({ id: z.string().optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), protocol: z.enum(['acp', 'codex-app-server', 'claude-cli']).optional() }).passthrough().parse(input)
+      if (!source.id && source.localConfigId) {
+        if (source.protocol === 'claude-cli') throw new Error('Claude程序配置不接受Codex登录来源')
+        localConfigs.launchProfile(source.localConfigId, source.protocol)
+      }
     }
     if (method === 'prepareLocalAgent') {
-      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/) }).strict().parse(input)
-      const { hostAccessAcknowledged: _, ...draft } = localConfigs.launchProfile(selected.configId)
+      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), protocol: z.enum(['acp', 'codex-app-server']).optional() }).strict().parse(input)
+      const { hostAccessAcknowledged: _, ...draft } = localConfigs.launchProfile(selected.configId, selected.protocol)
       return draft
     }
     if (method === 'importLocalAgent') {

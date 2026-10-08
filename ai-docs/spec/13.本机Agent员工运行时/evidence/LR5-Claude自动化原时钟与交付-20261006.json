@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 1,
+  "scope": "Claude automation in original product with actual native schedule",
+  "humanReview": "pending",
+  "runtime": {
+    "claude": "2.1.214",
+    "provider": "explicit saved DeepSeek API, not Claude subscription"
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "scope": "source-electron",
+      "stats": {
+        "startTime": "2026-10-06T03:39:42.500Z",
+        "duration": 36668.509,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T03:40:30.429045+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-1/build-manifest.json",
+        "sha256": "1af67b3d92ee04b1387aabf1c7af826a0de47bae75aeacc3dea0f8a876d4f901",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-1/playwright-results.json",
+        "sha256": "852571b6e00e7f581e5e5c5c2080e2f90d16860394bee06b1c94ea81f501b008",
+        "bytes": 440406
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-1-report/manifest.json",
+        "sha256": "aec3bb7aecaa3753ab2be6fc1ea6ca0a8bd86784135f1a2be3b2f2657e9dede1",
+        "bytes": 1237
+      }
+    },
+    {
+      "name": "offline-2",
+      "scope": "source-electron",
+      "stats": {
+        "startTime": "2026-10-06T03:41:27.811Z",
+        "duration": 10449.734,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T03:42:46.308699+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-2/build-manifest.json",
+        "sha256": "8c7487e8b91208a071ab5e26b0628f8a37cc1c56cb4d07cd4e3e6f1bba239e6a",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-2/playwright-results.json",
+        "sha256": "f18589297aa0691d0e899d05d94e6671bf0a11f249bb9986708a91e16e0b5945",
+        "bytes": 39221
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/offline-2-report/manifest.json",
+        "sha256": "506e39b330ec638eb809100a1c60d8b8182983e5a26c3c5f669de8291c4692bb",
+        "bytes": 1238
+      }
+    },
+    {
+      "name": "real-1",
+      "scope": "source-electron",
+      "stats": {
+        "startTime": "2026-10-06T03:43:16.289Z",
+        "duration": 192065.21399999998,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "freeze": {
+        "checkedAt": "2026-10-06T03:47:02.056938+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/real-1/build-manifest.json",
+        "sha256": "88b1e14c4ec26e45e56a482af5aff7fefd020b7ed1dd3ae67c66991efec0cc61",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-automation-20261006/real-1/playwright-results.json",
+        "sha256": "a61eef36503c0c38fd2bae0eeed3ef3a48048a9dff2196c3a01eb68bd241df19",
+        "bytes": 81298
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-automation-20261006/real-1-report/manifest.json",
+        "sha256": "cd112befc3da0ac393f89048146929893fd19673dfaf7af0f70bc75178e8be43",
+        "bytes": 1256
+      }
+    }
+  ],
+  "actual": [
+    {
+      "source": "schedule",
+      "status": "completed",
+      "scheduledFor": "2026-10-06T03:46:00.000Z",
+      "startedAt": "2026-10-06T03:46:04.936Z",
+      "nativeRunId": "sched_schedule_boai-569ce391-5776-43cb-8952-aa7bf8f59663_1791258360000",
+      "deliveryStatus": "delivered",
+      "budgets": [
+        {
+          "workItems": 1,
+          "retries": 0,
+          "reportRefreshes": 0,
+          "noProgress": 0,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "id": "automation-budget-262b73781b5b8cfc9e1d7e0547cc221ae315512214576ce5fd5ef37201a7c248",
+          "schemaVersion": 1,
+          "modelCalls": 3,
+          "runs": 1,
+          "maxModelCalls": 24,
+          "maxRuns": 8,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-06T03:51:04.797Z",
+          "usage": {
+            "inputTokens": 28900,
+            "outputTokens": 1154,
+            "totalTokens": 30054
+          },
+          "usageIncomplete": false,
+          "origin": {
+            "kind": "automation",
+            "automationId": "569ce391-5776-43cb-8952-aa7bf8f59663",
+            "occurrenceId": "262b73781b5b8cfc9e1d7e0547cc221ae315512214576ce5fd5ef37201a7c248",
+            "name": "Claude每日交付",
+            "authorizedFingerprint": "92d954063ad8a94c3ea2691e5ef6db859411f751cafe9e8789df366852d9c6cd"
+          },
+          "conversationId": "77acebbc-4e7b-4017-b212-93d0245c905e",
+          "accounting": "model-calls-v1",
+          "unknownCalls": 0,
+          "callUnit": "mixed"
+        }
+      ],
+      "calls": [
+        {
+          "id": "5d7436b1-5cf9-4bf0-a2d1-9ca8375d9645",
+          "phase": "decision",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 2711,
+            "outputTokens": 505,
+            "totalTokens": 3216
+          },
+          "budgetId": "automation-budget-262b73781b5b8cfc9e1d7e0547cc221ae315512214576ce5fd5ef37201a7c248"
+        },
+        {
+          "id": "c5bdd7ee-f8da-48b6-b945-2e177dc99ab4",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 19683,
+            "outputTokens": 456,
+            "totalTokens": 20139
+          },
+          "budgetId": "automation-budget-262b73781b5b8cfc9e1d7e0547cc221ae315512214576ce5fd5ef37201a7c248"
+        },
+        {
+          "id": "7202be4c-1185-4356-abe8-cd22068e80a2",
+          "phase": "memory",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 6506,
+            "outputTokens": 193,
+            "totalTokens": 6699
+          },
+          "budgetId": "automation-budget-262b73781b5b8cfc9e1d7e0547cc221ae315512214576ce5fd5ef37201a7c248"
+        }
+      ]
+    },
+    {
+      "source": "manual",
+      "status": "completed",
+      "scheduledFor": "2026-10-06T03:43:25.344Z",
+      "startedAt": "2026-10-06T03:43:25.638Z",
+      "nativeRunId": null,
+      "deliveryStatus": "delivered",
+      "budgets": [
+        {
+          "workItems": 1,
+          "retries": 0,
+          "reportRefreshes": 0,
+          "noProgress": 0,
+          "maxWorkItems": 8,
+          "maxRetries": 3,
+          "maxReportRefreshes": 4,
+          "maxNoProgress": 3,
+          "id": "automation-budget-6f6cc7171694fd32aefc0983dcb999915c8c9ee3d127dcb864328fd9a2e88164",
+          "schemaVersion": 1,
+          "modelCalls": 3,
+          "runs": 1,
+          "maxModelCalls": 24,
+          "maxRuns": 8,
+          "maxOutputTokens": 16000,
+          "deadlineAt": "2026-10-06T03:48:25.493Z",
+          "usage": {
+            "inputTokens": 25522,
+            "outputTokens": 1268,
+            "totalTokens": 26790
+          },
+          "usageIncomplete": false,
+          "origin": {
+            "kind": "automation",
+            "automationId": "b9088fbf-8803-459c-9f04-9a4c066552bc",
+            "occurrenceId": "6f6cc7171694fd32aefc0983dcb999915c8c9ee3d127dcb864328fd9a2e88164",
+            "name": "Claude每日交付",
+            "authorizedFingerprint": "81b9264bdcfbff5e1ea9d041059413fefcba4d832bf15dfc1db88d8d7f51b249"
+          },
+          "conversationId": "2647a8f9-6863-41f3-9c59-40c39d877508",
+          "accounting": "model-calls-v1",
+          "unknownCalls": 0,
+          "callUnit": "mixed"
+        }
+      ],
+      "calls": [
+        {
+          "id": "57ec4970-605f-4b16-a2c6-7dbdd19873fc",
+          "phase": "decision",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 2713,
+            "outputTokens": 370,
+            "totalTokens": 3083
+          },
+          "budgetId": "automation-budget-6f6cc7171694fd32aefc0983dcb999915c8c9ee3d127dcb864328fd9a2e88164"
+        },
+        {
+          "id": "5e8583f2-e1ca-4a83-aa3e-ce2d6f731a54",
+          "phase": "execution",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 19647,
+            "outputTokens": 405,
+            "totalTokens": 20052
+          },
+          "budgetId": "automation-budget-6f6cc7171694fd32aefc0983dcb999915c8c9ee3d127dcb864328fd9a2e88164"
+        },
+        {
+          "id": "7d4d3769-5ce8-47e1-941f-b48e9d0b912f",
+          "phase": "memory",
+          "callUnit": "external-turn",
+          "usageComplete": true,
+          "usage": {
+            "inputTokens": 3162,
+            "outputTokens": 493,
+            "totalTokens": 3655
+          },
+          "budgetId": "automation-budget-6f6cc7171694fd32aefc0983dcb999915c8c9ee3d127dcb864328fd9a2e88164"
+        }
+      ]
+    }
+  ],
+  "images": [
+    {
+      "source": {
+        "path": ".local/feature-review/claude-automation-20261006/real-1/scenarios/76620a6b86e22810b964-6265fffb8021414cc007-retry0-repeat0-yeU0Hx/012-Claude自动化原任务聊天与成果.native.png",
+        "sha256": "cfe2f34fde8a4e319945993a65ea3c830ed504201ae324a4c439dbc0bfcfe4b0",
+        "bytes": 238700
+      },
+      "archived": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude自动化日历交付-20261006.png",
+        "sha256": "cfe2f34fde8a4e319945993a65ea3c830ed504201ae324a4c439dbc0bfcfe4b0",
+        "bytes": 238700
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    },
+    {
+      "source": {
+        "path": ".local/feature-review/claude-automation-20261006/real-1/scenarios/76620a6b86e22810b964-78e22842d0fb42b89d19-retry0-repeat0-ksCSLV/012-Claude自动化原任务聊天与成果.native.png",
+        "sha256": "92a937758424cf5b81be5244544655f931e98208ba93707bdf88c37275013a87",
+        "bytes": 230930
+      },
+      "archived": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude自动化手动交付-20261006.png",
+        "sha256": "92a937758424cf5b81be5244544655f931e98208ba93707bdf88c37275013a87",
+        "bytes": 230930
+      },
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    }
+  ],
+  "moduleSuite": {
+    "files": 100,
+    "tests": 1722,
+    "passed": 1722,
+    "durationSeconds": 53.26,
+    "log": {
+      "path": ".local/feature-review/claude-automation-20261006/modules-full-1.log",
+      "sha256": "ff49f911ff6cc138d5bb997a5d213b925d250b67d2fb773e99f07cb2f4447938",
+      "bytes": 1770
+    }
+  },
+  "checks": [
+    {
+      "path": ".local/feature-review/claude-automation-20261006/typecheck-4.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-automation-20261006/ui-1.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696",
+      "bytes": 97
+    },
+    {
+      "path": ".local/feature-review/claude-automation-20261006/build-1.log",
+      "sha256": "8c9cceca353915110c2fa66ec9a68a1e2a0118ee6b4226f1914f7aad132ddc5f",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-automation-20261006/bddgen-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "reportVerification": [
+    {
+      "report": "offline-1-report",
+      "copiedResources": 6,
+      "hashedReferences": 7,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "offline-2-report",
+      "copiedResources": 16,
+      "hashedReferences": 18,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "real-1-report",
+      "copiedResources": 36,
+      "hashedReferences": 42,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    }
+  ],
+  "limitations": [
+    "source Electron; package validation is a separate later batch",
+    "manual and scheduled happy paths do not prove all waiting/renewal/fault/mixed-runtime scenarios",
+    "published replies still expose internal artifact IDs; technical passing does not imply polished user experience",
+    "no overall spec13 completion or human approval"
+  ]
+}

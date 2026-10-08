@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧ACP按run停止入口不接管原生Codex的Work生命周期。
  * [INPUT]: 固定会话/消息/员工身份、桌面 Trace 查询和事件。
  * [OUTPUT]: 历史轮次下拉使用宿主有界当前来源请求摘要，所选旧轮继续原ID核读；无正文轮次元信息，按固定入口/轮次触发/运行消息 ID 分批核读，不回拉全历史；下拉字段统一使用 shadcn Select；轮次与员工筛选、异步刷新、原生调用树和折叠运行诊断；切换会话不漂移；ACP可直接停止所选原运行并等待执行器退出。
  * [POS]: 执行过程标签的数据边界。
@@ -74,7 +75,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
     <p className="trace-trigger">{round.trigger?.content}</p>
     {runs.filter(run => run.traceError).map(run => <Banner key={run.id}>部分执行记录未能保存：{run.traceError}</Banner>)}
     {spans.length ? <TraceDetail key={`${round.id}:${employee}`} spans={spans} runs={runs} /> : <p className="field-hint">{runs.some(run => ['running', 'queued'].includes(run.status)) ? '执行记录正在生成…' : runs.some(run => run.backend) ? '外部员工未提供 Mastra Trace，可展开运行摘要。' : '这次执行没有采集到 Trace，可展开运行摘要。'}</p>}
-    {runs.filter(run => run.backend && ['queued', 'running', 'waiting_approval'].includes(run.status)).map(run => <Button key={run.id} variant="secondary" size="sm" disabled={busy} onClick={() => onStop(run.id)}>停止此外部任务</Button>)}
+    {runs.filter(run => run.backend?.kind === 'acp-local' && ['queued', 'running', 'waiting_approval'].includes(run.status)).map(run => <Button key={run.id} variant="secondary" size="sm" disabled={busy} onClick={() => onStop(run.id)}>停止此外部任务</Button>)}
     <details className="trace-run-summary soft-divider-top"><summary>运行摘要与错误</summary><RoundDetail round={{ ...round, runs }} detail={filtered} snapshot={snapshot} busy={busy} onRetry={onRetry} historical={round.id !== rounds[0]?.id} /></details>
   </div>
 }

@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-automation-real-1",
+  "technicalResult": "passed",
+  "seconds": 129.515863,
+  "modelMode": "real-provider",
+  "trigger": "manual",
+  "runtimeVersion": "0.159.3",
+  "sourceFiles": 711,
+  "sourceAndBuildDigest": "aa0d8e8e382fd3fee8c4c5ee8534bb822f1ed48860f5aacf441e4d8a24b72408",
+  "frozenFilesVerified": true,
+  "evidenceCount": 11,
+  "traces": 2,
+  "humanReview": "pending",
+  "scope": "UI connection and employee creation, seven-field native plan, manual production occurrence, original Work/artifact and ledger, restart without replay",
+  "budgets": [
+    {
+      "workItems": 1,
+      "retries": 0,
+      "reportRefreshes": 0,
+      "noProgress": 0,
+      "maxWorkItems": 8,
+      "maxRetries": 3,
+      "maxReportRefreshes": 4,
+      "maxNoProgress": 3,
+      "id": "automation-budget-ef0fa398dcd767f4ae5b4b298d0d5329cae9de7a67a54c3a32b7e8099fc5501a",
+      "schemaVersion": 1,
+      "modelCalls": 3,
+      "runs": 1,
+      "maxModelCalls": 24,
+      "maxRuns": 8,
+      "maxOutputTokens": 16000,
+      "deadlineAt": "2026-10-05T13:15:43.242Z",
+      "usage": {
+        "inputTokens": 160622,
+        "outputTokens": 500,
+        "totalTokens": 161122
+      },
+      "usageIncomplete": false,
+      "origin": {
+        "kind": "automation",
+        "automationId": "e55c26d0-96ed-482e-bde1-bb7b9c84c3c7",
+        "occurrenceId": "ef0fa398dcd767f4ae5b4b298d0d5329cae9de7a67a54c3a32b7e8099fc5501a",
+        "name": "本机每日交付",
+        "authorizedFingerprint": "f728c2acdb19aad3a968cc072a51ebe9123e17998f270fe9a6251b70db00ff96"
+      },
+      "conversationId": "07a39a34-d926-4431-ac62-270adedf8621",
+      "accounting": "model-calls-v1",
+      "unknownCalls": 0,
+      "callUnit": "mixed"
+    }
+  ],
+  "occurrences": [
+    {
+      "id": "ef0fa398dcd767f4ae5b4b298d0d5329cae9de7a67a54c3a32b7e8099fc5501a",
+      "source": "manual",
+      "status": "completed",
+      "deliveryStatus": "delivered",
+      "budgetId": "automation-budget-ef0fa398dcd767f4ae5b4b298d0d5329cae9de7a67a54c3a32b7e8099fc5501a",
+      "conversationId": "07a39a34-d926-4431-ac62-270adedf8621",
+      "modelCalls": 3,
+      "usageIncomplete": false
+    }
+  ],
+  "calls": [
+    {
+      "id": "51927db6-4ffa-4bda-a68b-680e3fd7521d",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 29804,
+        "outputTokens": 94,
+        "totalTokens": 29898
+      },
+      "usageComplete": true
+    },
+    {
+      "id": "04810387-6b7b-47f5-94a7-912fe7da799b",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 120265,
+        "outputTokens": 397,
+        "totalTokens": 120662
+      },
+      "usageComplete": true
+    },
+    {
+      "id": "b948af26-b024-47c4-8d05-392a23f2c8ed",
+      "phase": "memory",
+      "callUnit": "external-turn",
+      "usage": {
+        "inputTokens": 10553,
+        "outputTokens": 9,
+        "totalTokens": 10562
+      },
+      "usageComplete": true
+    }
+  ],
+  "artifact": {
+    "bytes": 15,
+    "sha256": "121330542cab837cc9a9de817e791816a2249cefbac9167493a7793ee410d6b5",
+    "content": "海星-c384a84c"
+  },
+  "screenshot": "LR5-真实Codex定时任务交付.png",
+  "report": "../../../../.local/feature-review/codex-automation-real-1-report/index.html",
+  "limitations": [
+    "manual trigger is not a wall-clock scheduled trigger",
+    "native clarification/stop/renewal and mixed employee automation still need additional real/provider/package evidence",
+    "technical completion is not human quality acceptance"
+  ]
+}

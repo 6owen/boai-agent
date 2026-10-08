@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API判断提示复用wait非空依赖的共享合同；上下文/来源核验、旧解析及原有预算修复边界保持。
  * [INPUT]: Mastra 阶段工厂、授权消息、协作投递引用与宿主调用预算。
  * [OUTPUT]: 回答阶段透传真实授权图片，无视觉配置门禁；媒体沿既有Trace摘要，不进入持久聊天正文。
  * [OUTPUT]: 判断默认看见当前有效内置模型员工的宿主浏览器能力，旧 false/缺字段兼容；ACP/停用及组织/自动化仍不广告。
@@ -7,6 +8,7 @@
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { prepareMemoryExtraction } from '../../modules/employees/memory-extraction'
 import { summarizeMedia } from '../../modules/browser/media'
 import { automationDraftCandidateSchema } from '../../modules/automations/automation-draft'
 import { Agent } from '@mastra/core/agent'
@@ -14,7 +16,7 @@ import { z } from 'zod'
 import type { Connection, MemoryCandidate, ModelUsage, ParticipationDecision, ToolEvent, WorkDraft, WorkReport } from '../../../shared/domain'
 import { isBrowserCapableAgent } from '../../../shared/domain'
 import type { AgentEngine, EngineContext, AutomationDraftContext } from '../../contracts'
-import { PARTICIPATION_TIMEOUT_MS } from '../../contracts'
+import { assertApiContext, PARTICIPATION_TIMEOUT_MS } from '../../contracts'
 import { thinkingProviderOptions, decisionProviderOptions, modelConfig } from './model-config'
 import { supportsThinkingControl } from '../../../shared/domain/model-preferences'
 import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
@@ -70,41 +72,12 @@ export interface MastraEngineOptions {
 }
 
 import { workIntentSchema, modelWorkReportSchema } from '../../modules/collaboration/work-protocol'
-const decisionSchema = z.object({
-  work: workIntentSchema.optional(),
-  action: z.enum(['reply', 'pass', 'wait', 'ask', 'request_handoff']),
-  responseKind: z.enum(['chat', 'task']).optional(),
-  replyToMessageId: z.string().optional(),
-  recipientAgentIds: z.array(z.string()).max(20).optional(),
-  purpose: z.string().max(500).optional(),
-  dependencyMessageIds: z.array(z.string()).max(20).optional(),
-  proposedContribution: z.object({ key: z.literal('main'), purpose: z.string().min(1).max(500) }).strict().optional(),
-  dependsOnContributions: z.array(z.object({ agentId: z.string(), key: z.literal('main') }).strict()).max(20).optional(),
-  observedThroughSequence: z.number().int().nonnegative(),
-}).strict()
-const decisionModelSchema = decisionSchema.omit({ observedThroughSequence: true })
-// New decisions use durable work. Continue accepting legacy fields from older callers,
-// but do not present the competing contribution protocol to the model.
-const decisionPromptSchema = decisionModelSchema.omit({ proposedContribution: true, dependsOnContributions: true })
-const memorySchema = z.object({ candidates: z.array(z.object({
-  content: z.string().trim().min(1).max(400),
-  sourceMessageIds: z.array(z.string()).min(1).max(4),
-  sourceResourceIds: z.array(z.string()).max(4).optional(),
-  kind: z.enum(['long_term', 'experience', 'temporary']).optional(),
-  evidence: z.enum(['fact', 'preference', 'decision', 'claim', 'inference']).optional(),
-  useScope: z.literal('conversation').optional(),
-  contextRef: z.object({ kind: z.enum(['conversation', 'work']), id: z.string().min(1).max(200) }).strict().optional(),
-  expiresAt: z.iso.datetime().optional(),
-  supersedes: z.array(z.object({ id: z.string().min(1).max(200), version: z.number().int().positive() }).strict()).max(4).optional(),
-}).strict()).max(6) }).strict()
-
-function parseJson(text: string): unknown {
-  return JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))
-}
+import { decisionJsonSchema, decisionModelSchema, decisionPromptSchema, memorySchema, parseJson } from '../../modules/employees/phase-protocol'
 export class MastraEngine implements AgentEngine {
   constructor(private readonly options: MastraEngineOptions = {}) {}
 
   async run(context: EngineContext): Promise<void> {
+    assertApiContext(context)
     const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.runTimeoutMs ?? 10 * 60_000)])
     const ctx = { ...context, signal }
     // A clarification or handoff is only a public request; it never opens task capabilities.
@@ -204,6 +177,7 @@ export class MastraEngine implements AgentEngine {
   }
 
   async report(context: EngineContext, draft: WorkDraft): Promise<WorkReport> {
+    assertApiContext(context)
     const schema = modelWorkReportSchema({ organization: !!context.work?.organization, waiting: !!context.pendingWorkWait, artifactIds: context.work?.artifactIds ?? [], collaborationIds: context.committedCollaborationIds ?? [] })
     const stage = await createStageAgent('report', context)
     try {
@@ -218,6 +192,7 @@ export class MastraEngine implements AgentEngine {
   }
 
   async decide(context: EngineContext): Promise<ParticipationDecision> {
+    assertApiContext(context)
     const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.connectionTimeoutMs ?? PARTICIPATION_TIMEOUT_MS)])
     const messages = visibleMessages(context)
     if (!messages.length) throw new Error('没有可用于成员判断的消息')
@@ -247,7 +222,7 @@ export class MastraEngine implements AgentEngine {
       historicalBackground: turn.history.map(message => decisionMessageData(message)),
       currentTurnMessages: turn.current.map(message => decisionMessageData(message, source.id)),
     }
-    const schema = z.toJSONSchema(promptSchema)
+    const schema = decisionJsonSchema(promptSchema)
     const usage = new UsageRecorder()
     let repair: { invalidOutput: string; validationError: string } | undefined
     try {
@@ -296,31 +271,12 @@ export class MastraEngine implements AgentEngine {
   }
 
   async extractMemory(context: EngineContext): Promise<MemoryCandidate[]> {
+    assertApiContext(context)
     const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.connectionTimeoutMs ?? 30_000)])
-    const window = visibleMessages(context)
-    const turn = partitionTurn(window, context.triggerMessageId, context.turnId)
-    // Maintenance records this turn's delta, not a fresh summary of old introductions.
-    // Legacy callers without a turn snapshot retain their supplied completed-message scope.
-    const messages = context.turnId || context.triggerMessageId ? turn.current : window
-    if (!messages.length) return []
-    const messageIds = new Set(messages.map(message => message.id))
-    const resources = context.resources.filter(resource => (!resource.ownerAgentId || resource.ownerAgentId === context.agent.id) && (context.agent.skillIds.includes(resource.id) || context.agent.knowledgeIds.includes(resource.id) || context.conversation.sharedKnowledgeIds.includes(resource.id)))
-    const resourceIds = new Set(resources.map(resource => resource.id))
-    const retained = (context.memory?.entries ?? []).filter(entry => !entry.id.startsWith('observation:') && !entry.deletedAt && entry.ownerAgentId === context.agent.id && (context.memory?.recall?.conversationId === context.conversation.id || entry.scope === 'profile' || entry.conversationId === context.conversation.id))
-    const bootstrap = bootstrapInstructions(context)
+    const extraction = prepareMemoryExtraction(context)
+    if (!extraction) return []
+    const { data } = extraction
     const { agent, dispose } = await createStageAgent('memory', { ...context, signal })
-    const data = {
-      currentTurn: { id: turn.id ?? null, rootMessageId: turn.root?.id },
-      currentTurnMessages: messages.map(message => messageData(message, turn.root?.id)),
-      // Bootstrap may contain only a bounded memory projection. Keep all remaining
-      // authorized facts intact, without repeating those already present in full.
-      retainedVersions: retained.filter(entry => !entry.id.startsWith('observation:')).map(entry => ({ id: entry.id, version: entry.version })),
-      additionalRetainedFacts: retained.filter(entry => !bootstrap.includes(entry.content)).map(entry => ({ id: entry.id, version: entry.version, content: entry.content })),
-      authorizedContexts: context.memoryContexts ?? [],
-      currentMemoryPolicy: { defaultUseScope: context.conversation.memoryScope ?? 'employee', linkedContext: context.conversation.memoryContextRef ?? null },
-      retainedFactsInstruction: 'Existing facts are deduplication context, never candidate evidence. Only explicit current user correction may supersede an authorized retained version.',
-      validResourceReferences: resources.map(resource => ({ id: resource.id, name: resource.name })),
-    }
     const schema = z.toJSONSchema(memorySchema)
     const usage = new UsageRecorder()
     let repair: { invalidOutput: string; validationError: string } | undefined
@@ -355,13 +311,8 @@ export class MastraEngine implements AgentEngine {
           continue
         }
         if (!candidates) throw new Error('记忆候选解析未完成')
-        // Invalid evidence is a hard rejection, not a repair invitation to launder a fact.
-        for (const candidate of candidates) {
-          if (candidate.sourceMessageIds.some(id => !messageIds.has(id)) || candidate.sourceResourceIds?.some(id => !resourceIds.has(id))) throw new Error('记忆候选包含未授权或不存在的来源')
-          if (context.apiKey && candidate.content.includes(context.apiKey)) throw new Error('记忆候选不能包含模型凭据')
-        }
-        const existing = new Set(retained.map(entry => entry.content.trim()))
-        return candidates.filter(candidate => { const content = candidate.content.trim(); if (existing.has(content)) return false; existing.add(content); return true }).map(candidate => ({ ...candidate, content: candidate.content.trim(), sourceMessageIds: [...new Set(candidate.sourceMessageIds)], sourceResourceIds: [...new Set(candidate.sourceResourceIds ?? [])] }))
+        // Invalid evidence is a hard rejection, never a protocol repair.
+        return extraction.validate(candidates)
       }
       throw new Error('记忆整理未完成')
     } catch (error) { throw new Error(redact(`记忆整理失败：${errorText(error)}`, context.apiKey), { cause: error }) } finally { await dispose() }
@@ -388,6 +339,7 @@ export class MastraEngine implements AgentEngine {
   }
 
   private async observeCall(context: EngineContext, callId: string, phase: 'chat' | 'task' | 'decision' | 'memory' | 'report') {
+    assertApiContext(context)
     const options = thinkingProviderOptions(context.connection, context.agent.modelId, context.agent.thinkingLevel, phase)
     const thinking = options?.openai.thinking.type === 'disabled' ? 'off' : options?.openai.reasoningEffort
     await context.onModelCallStarted?.(callId, phase, thinking)

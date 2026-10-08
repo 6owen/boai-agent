@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: deleteLaunchProfile仅接已保存配置ID，删除产品配置并保留外部程序和业务历史。
+ * [OUTPUT]: prepareLocalAgent以明确可选ACP/原生Codex协议保留目录选择意图，省略仍沿旧ACP。
  * [OUTPUT]: 工作/文件有界查询和精确原目标解析沿类型化IPC；不增加执行或路径读取权限。
  * [OUTPUT]: getLaunchProfileStatus仅按已保存启动项ID只读核对当前程序，不接受路径或启动验证。
  * [OUTPUT]: 新 prepareMaterial 不携收件人名单，附件随当前聊天消息发送；旧显式名单/撤权方法只供历史兼容。
@@ -149,6 +151,7 @@ export interface Methods {
   listLaunchProfiles: { input: undefined; output: LaunchProfile[] }
   getLaunchProfileStatus: { input: { id: string }; output: LaunchProfileStatus }
   saveLaunchProfile: { input: LaunchProfileInput; output: LaunchProfile }
+  deleteLaunchProfile: { input: { id: string }; output: void }
   testLaunchProfile: { input: { id: string }; output: LaunchProfile }
   testLaunchProfileDraft: { input: LaunchProfileInput; output: NonNullable<LaunchProfile['verified']> }
   sendExternalTask: { input: { conversationId: string; content: string; requestId: string }; output: Message }
@@ -165,7 +168,7 @@ export interface Methods {
   importLocalConnection: { input: { configId: string; model?: string }; output: Connection }
   testLocalConnection: { input: { configId: string; model?: string }; output: { text: string } }
   importLocalAgent: { input: { configId: string; hostAccessAcknowledged: true }; output: LaunchProfile }
-  prepareLocalAgent: { input: { configId: string }; output: Omit<LaunchProfileInput, 'hostAccessAcknowledged'> }
+  prepareLocalAgent: { input: { configId: string; protocol?: 'acp' | 'codex-app-server' }; output: Omit<LaunchProfileInput, 'hostAccessAcknowledged'> }
   saveConnection: { input: ConnectionInput; output: Connection }
   getConnectionApiKey: { input: { id: string }; output: string }
   deleteConnection: { input: { id: string }; output: void }

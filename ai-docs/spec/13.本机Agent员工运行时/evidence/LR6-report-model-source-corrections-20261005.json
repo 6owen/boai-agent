@@ -1,0 +1,228 @@
+{
+  "date": "2026-10-05",
+  "reason": "Report ignored per-scenario modelMode and defaulted an unregistered batch to offline.",
+  "testResultAndRawEvidenceChanged": false,
+  "humanReview": "pending",
+  "correctedReports": [
+    {
+      "report": "codex-cleanup-real-1-report",
+      "input": "codex-cleanup-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-cleanup-real-1-review-v2",
+      "originalChecksSha256": "5162cbe8b2663ecac1fabac5daec5a00a001790d1e14aa146dbc8b35e029ee19",
+      "correctedChecksSha256": "1ea3a269b7b244a75767f77c1e66f5c44e27b32f40b1e1d1f316b78090b221ec",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-group-real-1-report",
+      "input": "codex-group-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-group-real-1-review-v2",
+      "originalChecksSha256": "ee4fc23c9c80bf39d3513bf75d4e31d0a9c0bb3bf9b04bd6a8166a370f9a7b0d",
+      "correctedChecksSha256": "7643aecec129e66f15d2d164126a53d16226d607d7abc937a1c806da2afae61a",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-packaged-real-2-report",
+      "input": "codex-packaged-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-packaged-real-2-review-v2",
+      "originalChecksSha256": "59d6508f454452f3d7ccfb8ac4be5b5d48c2e8fea559e0245d42e5e228f3a054",
+      "correctedChecksSha256": "bc7c849d29cefe25ed2192e6de3f12f34c18e3dbcbd8bc33137f76a5c2192c30",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-clock-real-1-report",
+      "input": "codex-automation-clock-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-clock-real-1-review-v2",
+      "originalChecksSha256": "c735af5af8c721ad63b678730d3f0f2338b018bb34e29d14435479fac3513813",
+      "correctedChecksSha256": "eb83e8252653c5f59fbb639c26e665b78e29555b18914bdc3d133768baeb6b10",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-bobo-real-2-report",
+      "input": "codex-bobo-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-bobo-real-2-review-v2",
+      "originalChecksSha256": "4d6b46727305dceda4b9bfb3c0c083aed8eb472cd9a8f92a91567e10d88e9f55",
+      "correctedChecksSha256": "413d2fa35362ed04e9c9724324562943ff806b842799f05be49a7d5172ced346",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-conversation-isolation-real-2-report",
+      "input": "codex-conversation-isolation-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-conversation-isolation-real-2-review-v2",
+      "originalChecksSha256": "d2e57e97ecc5bc1f950964bd882f2e672cbf1820a7fe1c80399659e98f83d153",
+      "correctedChecksSha256": "1feab7ebaf82232c7dc4167dc7ab61ab25b4413a9820fe5fcd56ff12db0dde64",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-migration-real-1-report",
+      "input": "codex-migration-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-migration-real-1-review-v2",
+      "originalChecksSha256": "fe7fe09f2e2617ef15c63b6aca37dd36e413ec407952de1cb129578ffedc0b96",
+      "correctedChecksSha256": "d5e92facafdc73b7b4a75e7f108f069381541b1d6688bf2a686d5cb6125cc96e",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-packaged-stop-real-1-report",
+      "input": "codex-packaged-stop-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-packaged-stop-real-1-review-v2",
+      "originalChecksSha256": "a0bfa1fbfdae2ccf59f577e1492aa54392e2eac2d0c8957735822b0f38cd6922",
+      "correctedChecksSha256": "6796a0a2286c5eea511732d6b26a027daa8fa64b31748985c0bbe8d38c72a5f5",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-stop-real-2-report",
+      "input": "codex-automation-stop-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-stop-real-2-review-v2",
+      "originalChecksSha256": "5e88e607e65fdc60b341c58cd5dec8fa51a8c112754e7f7bd0600ab9f71c0261",
+      "correctedChecksSha256": "93fd07b5881b1aa0e41709e2ffed35e17b8b7c59103de030d24f11234ea032c8",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-approval-real-1-report",
+      "input": "codex-approval-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-approval-real-1-review-v2",
+      "originalChecksSha256": "0c06752d4bb532a0b5baf4a456ea9b8d7ed73d963dca797318b2b6d885ebd95c",
+      "correctedChecksSha256": "ecc840dbf2e920e973287a1f2a412c2ce651136a70faf8857f1d2bf77a9ba8b7",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-continuation-real-1-report",
+      "input": "codex-automation-continuation-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-continuation-real-1-review-v2",
+      "originalChecksSha256": "1be9ba5dc01a5a8acc8901a7bb510b1aa45a367f48c4f7a561a4b4e4e569848b",
+      "correctedChecksSha256": "3aafdeae6f8408fcebf108eee4c42fbe96a1d884f9e376775dc6df2c01ce4f0f",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-bobo-real-1-report",
+      "input": "codex-bobo-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-bobo-real-1-review-v2",
+      "originalChecksSha256": "9ea068da570c6c90bbd96e048340ad6ec5999d4b809acfecb4bf1982eb9b88e4",
+      "correctedChecksSha256": "c1c93ae2970539c283bb24e4a9517c36f28729658b0636b0e5267aac160dfe69",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-pending-switch-real-1-report",
+      "input": "codex-pending-switch-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-pending-switch-real-1-review-v2",
+      "originalChecksSha256": "b11f4bf871a5ef1b1b082f3461f1965db9800fa0baf391656491ec57a3a0904d",
+      "correctedChecksSha256": "6bb3dff4f97b412780a1b85065b26908e110bda981989a7fcab678faa65ebe48",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-clock-real-2-report",
+      "input": "codex-automation-clock-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-clock-real-2-review-v2",
+      "originalChecksSha256": "e740bde5a0ccf9e45d479a2b77f24112c879f747f20ae2fb81d3e448fad94df5",
+      "correctedChecksSha256": "0de478697f94f81a5e2bbc3b6e1532bb4cb8e76efd6945099244cdfb6ac14db6",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-packaged-real-1-report",
+      "input": "codex-packaged-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-packaged-real-1-review-v2",
+      "originalChecksSha256": "16a4197af4110f06acd2ec957e4e8dcf581bb701f60c01111ac6e002ba9f95dc",
+      "correctedChecksSha256": "9959a7669f2edb6fe9967095ec84191474eb07d19c6c57be36955f2df0d8c4ae",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-packaged-stop-real-2-report",
+      "input": "codex-packaged-stop-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-packaged-stop-real-2-review-v2",
+      "originalChecksSha256": "5f3bac1cf94e7f4ff5cd3dcd2a37d4b140229b67a2c929eeae79581611293ebf",
+      "correctedChecksSha256": "ef741868d459ea5c520e16777c640d1d91943b9758a5d94c3a6a16fcf2a37cf3",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-stop-real-1-report",
+      "input": "codex-automation-stop-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-stop-real-1-review-v2",
+      "originalChecksSha256": "25b292f7583c89fe52e6f0b5f6fa49d5e6ddfe55d9859c134b49d38af28de665",
+      "correctedChecksSha256": "8f9df04961c1f55acb2fdf3e2c5207fd0fcb751138d368ca81f5555b649a8bf8",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-migration-real-2-report",
+      "input": "codex-migration-real-2",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-migration-real-2-review-v2",
+      "originalChecksSha256": "849d87bc68b609f5e4934d1ad4b29ef4e03ce4e4404d46163d4254cab81be821",
+      "correctedChecksSha256": "d962074d85b52a4ca971af5913de0bce9bcf1c9c883f14045cf7eb4ea8fc205b",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-automation-real-1-report",
+      "input": "codex-automation-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-automation-real-1-review-v2",
+      "originalChecksSha256": "1ebfca6d083b26655a2d85d7c44fd323d90aefe41c2103988bbe4f673066ab4f",
+      "correctedChecksSha256": "d820ae71cb8a9b8197c7740d50a42a26b3a5434ac085a2d96d92cf2d55c4848f",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    },
+    {
+      "report": "codex-conversation-isolation-real-1-report",
+      "input": "codex-conversation-isolation-real-1",
+      "mode": "offline-protocol",
+      "correctedReport": "codex-conversation-isolation-real-1-review-v2",
+      "originalChecksSha256": "9cc91b4c9dc2effa2cbdbca19b732b21c29856680147a3b7b68382d05c5710c5",
+      "correctedChecksSha256": "a364a39a49638bc8732e62166f4eb25c379ca844e44f67609cdc7c110530625d",
+      "summaryUnchanged": true,
+      "originalEvidenceUnchanged": true,
+      "reportGeneratorSha256": "3f9daee253815d7cc4ad81e7c0c4bd941ec9e0690d5e838d411a3071cbc2628c"
+    }
+  ]
+}

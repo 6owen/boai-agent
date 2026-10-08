@@ -1,0 +1,3311 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-07T17:12:37.860116+00:00",
+  "kind": "strict-same-attempt-codex-private-file-preparation-transaction-composite",
+  "scope": "three independent terminal product scenes at one precise uncommitted preparePublication boundary; no cross-attempt success stitching",
+  "technicalCounts": {
+    "actualProductScenes": 3,
+    "passed": 3,
+    "failed": 0,
+    "offlineProtocolProductScenes": 1,
+    "realProviderProductScenes": 2,
+    "realProviderExternalPhases": 4,
+    "offlineExternalPhaseRecords": 2,
+    "allExternalPhaseRecords": 6,
+    "resources": 78,
+    "resourcePlusTraceHashReferences": 87,
+    "rawTraces": 9,
+    "actualHashComputationsOriginalAndCopyAndTrace": 165,
+    "fixtureLaunches": 9,
+    "businessRestarts": 6,
+    "automaticRetries": 0
+  },
+  "countingMeaning": "78 original archived resources with78 matched report copies; each original/copy pair counted once plus9 raw traces =87 references; verifying both resource paths and traces performs165 hashes. Counts are not specification-clause coverage.",
+  "humanReview": "pending",
+  "fullGoalComplete": false,
+  "productUnchanged": true,
+  "newApplicationBuilt": false,
+  "moduleTestsRerun": false,
+  "broadTestsOrModelsRerunByThisBuilder": false,
+  "wholePackageVerifierConsumed": true,
+  "wholePackageVerifierReference": {
+    "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/preparation-transaction-whole-package-after-1.json",
+    "bytes": 1690,
+    "sha256": "b4f1fd4e098a4bd112fa0b05a117908dd324c7631d75b65e5ff44e641253c8a6"
+  },
+  "inputs": {
+    "currentHarnessInputs": 897,
+    "productionBindings": 566,
+    "generatedBddInputs": 47,
+    "originalSection108BuildInputs": 895,
+    "productionHashesEqualOriginalBuild": true,
+    "current897And47ByteHashesMatchFreeze": true,
+    "currentHarnessNotOriginalBuildCohort": true,
+    "harnessManifest": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/harness-manifest-1.json",
+      "bytes": 176123,
+      "sha256": "849174cb859e42e89de9359c1df453cb287ea9c21229d73bb85f0aa5db826fd6"
+    },
+    "originalBuild": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/build-manifest.json",
+      "bytes": 103134,
+      "sha256": "82c2486328573432bf6d07d3969498e6f75f6330fe1a133a88fb71b0214a2b3d"
+    },
+    "originalExistingPackageManifest": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/current-package-manifest.json",
+      "bytes": 11893925,
+      "sha256": "a17827b19e4b6f54b501db59a38c7a74f01342faed32968bace18c0f61fc5288"
+    },
+    "existingStaticCandidateChecks": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/candidate-checks-2.json",
+      "bytes": 1554,
+      "sha256": "c290c7a61bc3d5e2b3a19d52dd4152d2b4b9ccc28be2c7e3750a79cf3cc5cc96"
+    },
+    "noNewApplicationOrProductionRuntimeChange": true
+  },
+  "batches": [
+    {
+      "batch": "offline-source-2",
+      "target": "source",
+      "modelMode": "offline-protocol",
+      "originalFixtureModelMode": "offline-protocol-or-fixture",
+      "realProviderVerified": false,
+      "sameAttemptId": "704506bbdae38bebaafd-3930803645034d9cecd4",
+      "sameAttemptDirectory": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp",
+      "title": "使用离线协议在复制前准备事务内部退出后两次重启不重放",
+      "startedAt": "2026-10-07T16:56:47.324Z",
+      "completedAt": "2026-10-07T16:56:56.830Z",
+      "technicalStatus": "passed",
+      "fixtureAppLaunches": 3,
+      "businessRestartsAfterTargetCrash": 2,
+      "automaticRetries": 0,
+      "humanReview": "pending",
+      "fullGoalComplete": false,
+      "helperFailures": {
+        "gaps": [],
+        "cleanupErrors": [],
+        "testErrors": []
+      },
+      "preciseBoundary": {
+        "hit": {
+          "boundary": "复制前准备事务未提交",
+          "processId": 22337,
+          "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/dist/runtime/worker.mjs",
+          "scriptSha256": "923010bb7c65b4989c04e9e15a24c92f4b9423da410bdb46c10baac4520c96cd",
+          "sourceLine": "}",
+          "sourcePreviousLine": "await tx.put(record3(\"artifactPublicationIntents\", intent));",
+          "line": 3269,
+          "breakpointId": "4:3268:2:126",
+          "actualLocation": {
+            "scriptId": "126",
+            "lineNumber": 3268,
+            "columnNumber": 2
+          },
+          "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+          "reason": "other",
+          "frames": [
+            {
+              "functionName": "preparePublication",
+              "location": {
+                "scriptId": "126",
+                "lineNumber": 3268,
+                "columnNumber": 2
+              }
+            }
+          ]
+        },
+        "noSourceReplacement": true,
+        "noCallFrameEvaluation": true,
+        "independentCommittedIntents": 0,
+        "independentCommittedArtifacts": 0,
+        "preparationTransactionNotCommitted": true,
+        "copyDestinationEmpty": true,
+        "copiedOrRegisteredArtifactNotClaimed": true
+      },
+      "originalWork": {
+        "workId": "work-3f1a40dc2e6b4c8d06734203531aa9f823947a9c025ac0967e31fe2e99d79aad",
+        "runId": "666956a3-06ef-4120-b4df-0debef58fcbe",
+        "agentId": "0fa62229-d878-4ea8-bb6f-7870f97c3364",
+        "conversationId": "e29dbe08-9b23-4d3a-a254-c419433a6705",
+        "beforeStatus": "running",
+        "afterStatus": "interrupted",
+        "publicationStatus": "running-unknown-at-crash-not-completed",
+        "writeReceipts": [
+          {
+            "id": "host-request-1",
+            "name": "write_file",
+            "status": "completed",
+            "createdAt": "2026-10-07T16:56:52.045Z",
+            "detail": "{\"path\":\"self:/runs/666956a3-06ef-4120-b4df-0debef58fcbe/codex-proof.md\",\"bytes\":31,\"published\":false}"
+          }
+        ],
+        "fixedPrivateOriginal": {
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-ydy4DE/v2/agents/0fa62229-d878-4ea8-bb6f-7870f97c3364/workspace/sessions/e29dbe08-9b23-4d3a-a254-c419433a6705/runs/666956a3-06ef-4120-b4df-0debef58fcbe/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353921826,
+          "size": 31,
+          "mtimeMs": 1791392212050.273
+        },
+        "finalPostExitFixedPath": {
+          "exitVerified": true,
+          "workId": "work-3f1a40dc2e6b4c8d06734203531aa9f823947a9c025ac0967e31fe2e99d79aad",
+          "runId": "666956a3-06ef-4120-b4df-0debef58fcbe",
+          "agentId": "0fa62229-d878-4ea8-bb6f-7870f97c3364",
+          "conversationId": "e29dbe08-9b23-4d3a-a254-c419433a6705",
+          "relative": "agents/0fa62229-d878-4ea8-bb6f-7870f97c3364/workspace/sessions/e29dbe08-9b23-4d3a-a254-c419433a6705/runs/666956a3-06ef-4120-b4df-0debef58fcbe/codex-proof.md",
+          "writeReceipts": [
+            {
+              "id": "host-request-1",
+              "name": "write_file",
+              "status": "completed",
+              "createdAt": "2026-10-07T16:56:52.045Z",
+              "detail": "{\"path\":\"self:/runs/666956a3-06ef-4120-b4df-0debef58fcbe/codex-proof.md\",\"bytes\":31,\"published\":false}"
+            }
+          ],
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-ydy4DE/v2/agents/0fa62229-d878-4ea8-bb6f-7870f97c3364/workspace/sessions/e29dbe08-9b23-4d3a-a254-c419433a6705/runs/666956a3-06ef-4120-b4df-0debef58fcbe/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353921826,
+          "size": 31,
+          "mtimeMs": 1791392212050.273,
+          "presence": "observed-file"
+        },
+        "sameBytesHashInodeSizeMtimeRecordedAcrossCrashRestartsAndExit": true,
+        "sourceTempAlreadyCleanedMeaning": "original file stats are same-attempt observed metadata; current rehash checks archived originals/report copies, not deleted product temporary path",
+        "destinationBefore": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-ydy4DE/v2/workspaces/e29dbe08-9b23-4d3a-a254-c419433a6705/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfter": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-ydy4DE/v2/workspaces/e29dbe08-9b23-4d3a-a254-c419433a6705/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfterTwoRestarts": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-ydy4DE/v2/workspaces/e29dbe08-9b23-4d3a-a254-c419433a6705/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "implicitArtifactImport": false
+      },
+      "budget": {
+        "id": "budget-af6205e75c7fcf18e272c540d44fe828e6021c9c3a4d7ed56403309c78589117",
+        "maxModelCalls": 24,
+        "maxOutputTokens": 16000,
+        "absoluteDeadline": "2026-10-07T17:01:51.679Z",
+        "callUnit": "external-turn",
+        "accounting": "model-calls-v1",
+        "modelCalls": 2,
+        "unknownCalls": 1,
+        "usageIncomplete": true,
+        "cumulativeKnownUsage": {
+          "inputTokens": 5,
+          "outputTokens": 4,
+          "totalTokens": 9
+        },
+        "sameOriginalBudgetAfterCrashAndRestarts": true,
+        "unfinishedTaskCallNeverZeroOrFullySettled": true,
+        "allowanceScope": "ordinary Work; not48 bobo organization"
+      },
+      "externalPhaseRecords": 2,
+      "realProviderExternalPhases": 0,
+      "callRecords": [
+        {
+          "id": "03b4fec8-a71b-48f1-b25f-041fe00e11de",
+          "runId": "6e569b53-e182-49d8-81b7-bc3c63e05177",
+          "phase": "decision",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 4,
+            "totalTokens": 9
+          },
+          "usageComplete": true,
+          "settledAt": "2026-10-07T16:56:51.876Z"
+        },
+        {
+          "id": "26102481-3c68-4703-857f-15c64c84b4ec",
+          "runId": "666956a3-06ef-4120-b4df-0debef58fcbe",
+          "phase": "execution",
+          "usage": {},
+          "usageComplete": false,
+          "settledAt": null
+        }
+      ],
+      "recovery": {
+        "comparedCollections": [
+          "works",
+          "runs",
+          "artifacts",
+          "messages",
+          "calls",
+          "budgets",
+          "intents",
+          "executions",
+          "sessions",
+          "traces",
+          "profileCalls",
+          "turns",
+          "agents",
+          "launchProfiles"
+        ],
+        "collectionsComparedExactly": 14,
+        "changedAfterCrash": [
+          "works",
+          "runs",
+          "executions",
+          "turns"
+        ],
+        "killedEqualsAfterTwoBusinessRestarts": true,
+        "afterTwoRestartsEqualsFinalPrecloseAndPostclose": true,
+        "childrenAtOriginalFault": [
+          22341
+        ],
+        "originalChildrenActuallyExited": true,
+        "finalActualExitReceipt": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T16:56:56.813Z",
+          "owned": [
+            {
+              "pid": 22382,
+              "parent": 22378,
+              "group": 22378,
+              "started": "Thu Oct  8 00:56:55 2026    "
+            }
+          ],
+          "groups": [],
+          "reason": "本场结束正常关闭；不重启、不续行、不重放；不修改原场景通过或失败"
+        },
+        "noNewRunsCallsProfilesTracesArtifactsOrIntentsOnRestart": true,
+        "executionBefore": {
+          "callUnit": "external-turn",
+          "id": "666956a3-06ef-4120-b4df-0debef58fcbe",
+          "workId": "work-3f1a40dc2e6b4c8d06734203531aa9f823947a9c025ac0967e31fe2e99d79aad",
+          "budgetId": "budget-af6205e75c7fcf18e272c540d44fe828e6021c9c3a4d7ed56403309c78589117",
+          "agentId": "0fa62229-d878-4ea8-bb6f-7870f97c3364",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "active",
+          "pendingEffects": 1
+        },
+        "executionAfter": {
+          "callUnit": "external-turn",
+          "id": "666956a3-06ef-4120-b4df-0debef58fcbe",
+          "workId": "work-3f1a40dc2e6b4c8d06734203531aa9f823947a9c025ac0967e31fe2e99d79aad",
+          "budgetId": "budget-af6205e75c7fcf18e272c540d44fe828e6021c9c3a4d7ed56403309c78589117",
+          "agentId": "0fa62229-d878-4ea8-bb6f-7870f97c3364",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "released",
+          "pendingEffects": 1
+        },
+        "launchMeaning": "initial app plus two business restarts; idle Utility inspector enablement is not fourth app fixture or model replay"
+      },
+      "resourceCopyChecks": [
+        {
+          "label": "本机Codex实际连接验证",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/001-本机Codex实际连接验证.png",
+            "bytes": 204785,
+            "sha256": "bff3afb925705a33179823aa9a55e927435e1486a0e3c1c73767e23358cafbec"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0001-bff3afb925705a33.png",
+            "bytes": 204785,
+            "sha256": "bff3afb925705a33179823aa9a55e927435e1486a0e3c1c73767e23358cafbec"
+          }
+        },
+        {
+          "label": "创建本机Codex员工无API配置",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/002-创建本机Codex员工无API配置.png",
+            "bytes": 242144,
+            "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0002-931526d0f03564ac.png",
+            "bytes": 242144,
+            "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+          }
+        },
+        {
+          "label": "复制前准备事务精确故障准备",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/003-复制前准备事务精确故障准备.json",
+            "bytes": 699,
+            "sha256": "c54f0db2dff64da146eb12f96bd205a93ac2df286592f2a00aa2791f177c2022"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0003-c54f0db2dff64da1.json",
+            "bytes": 699,
+            "sha256": "c54f0db2dff64da146eb12f96bd205a93ac2df286592f2a00aa2791f177c2022"
+          }
+        },
+        {
+          "label": "复制前事务未提交的真实工作原件",
+          "launch": 1,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/004-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0004-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "preparePublication写入后未提交的独立读状态",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/005-preparePublication写入后未提交的独立读状态.json",
+            "bytes": 22613,
+            "sha256": "a7e167da3049b9d9f24da72342cc6a4283af2a2ebc2c250ffda056846c15a49b"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0005-a7e167da3049b9d9.json",
+            "bytes": 22613,
+            "sha256": "a7e167da3049b9d9f24da72342cc6a4283af2a2ebc2c250ffda056846c15a49b"
+          }
+        },
+        {
+          "label": "准备事务内实际退出后的回滚与未知回执",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/006-准备事务内实际退出后的回滚与未知回执.json",
+            "bytes": 21572,
+            "sha256": "35f26caa874e5285abaed174ecfb2195330bc7e28dd5f86442bc2caf0515ba85"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0006-35f26caa874e5285.json",
+            "bytes": 21572,
+            "sha256": "35f26caa874e5285abaed174ecfb2195330bc7e28dd5f86442bc2caf0515ba85"
+          }
+        },
+        {
+          "label": "第 1 次启动结束画面",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/007-第-1-次启动结束画面.png",
+            "bytes": 198623,
+            "sha256": "24a2e2af85c1274c9844df982739aaa3fff6cc56adada72c97af04108d6fa28b"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0007-24a2e2af85c1274c.png",
+            "bytes": 198623,
+            "sha256": "24a2e2af85c1274c9844df982739aaa3fff6cc56adada72c97af04108d6fa28b"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 146749,
+            "sha256": "a639bb3ddc69fda87431ab95bc8aaa8c2c3330f514c75cc184839f80d72dbfa3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0008-a639bb3ddc69fda8.png",
+            "bytes": 146749,
+            "sha256": "a639bb3ddc69fda87431ab95bc8aaa8c2c3330f514c75cc184839f80d72dbfa3"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "26e930ce4d6bc956620b888e4d25655d88e64fcc98e87593942ef4eebe1e46fc"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0009-26e930ce4d6bc956.download",
+            "bytes": 1685,
+            "sha256": "26e930ce4d6bc956620b888e4d25655d88e64fcc98e87593942ef4eebe1e46fc"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 111071,
+            "sha256": "246fa469bfc70b9cbe2915b3f7ff4ffd8ca2b3ae89c5f553b690fb1e84786de7"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0010-246fa469bfc70b9c.png",
+            "bytes": 111071,
+            "sha256": "246fa469bfc70b9cbe2915b3f7ff4ffd8ca2b3ae89c5f553b690fb1e84786de7"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "7b54011dcbbe5ad4c74dd464634a1a95de9bdac5ecfe833167119e76359c8b79"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0011-7b54011dcbbe5ad4.download",
+            "bytes": 1685,
+            "sha256": "7b54011dcbbe5ad4c74dd464634a1a95de9bdac5ecfe833167119e76359c8b79"
+          }
+        },
+        {
+          "label": "第 2 次启动结束画面",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/012-第-2-次启动结束画面.png",
+            "bytes": 111240,
+            "sha256": "99822f66603800382fffdff4673d654af703b397d069dae8ab4f7af44a931b13"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0012-99822f6660380038.png",
+            "bytes": 111240,
+            "sha256": "99822f66603800382fffdff4673d654af703b397d069dae8ab4f7af44a931b13"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0013-ed02ccbc7bcf15dd.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "152785ac3419c65e34053b1e017d3917e101c70f7b98928512e9b0c9eadb2e62"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0014-152785ac3419c65e.download",
+            "bytes": 1685,
+            "sha256": "152785ac3419c65e34053b1e017d3917e101c70f7b98928512e9b0c9eadb2e62"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0015-339ff254a87dcdc3.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "320cc9227ef9fab844d1785a3ab87401f5f3e0108eae3785c2921a088790a4f3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0016-320cc9227ef9fab8.download",
+            "bytes": 1685,
+            "sha256": "320cc9227ef9fab844d1785a3ab87401f5f3e0108eae3785c2921a088790a4f3"
+          }
+        },
+        {
+          "label": "准备事务故障两次重启零重放",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/017-准备事务故障两次重启零重放.json",
+            "bytes": 21547,
+            "sha256": "a4553d3d57486c945e8558a28b43e77fcad2e0fba8aad5273dfa6be8730ca95f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0017-a4553d3d57486c94.json",
+            "bytes": 21547,
+            "sha256": "a4553d3d57486c945e8558a28b43e77fcad2e0fba8aad5273dfa6be8730ca95f"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/018-复制前准备事务场景结束退出前实际状态.json",
+            "bytes": 19781,
+            "sha256": "625e3fb80b901877342c57a9bcb60292fc064d82cce37e27ad07f41ff21b51ed"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0018-625e3fb80b901877.json",
+            "bytes": 19781,
+            "sha256": "625e3fb80b901877342c57a9bcb60292fc064d82cce37e27ad07f41ff21b51ed"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 111329,
+            "sha256": "3dc43848e1374c68d80ad9b82d89348300cb3a09e30b890b68f3c0f8be0d035e"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0019-3dc43848e1374c68.png",
+            "bytes": 111329,
+            "sha256": "3dc43848e1374c68d80ad9b82d89348300cb3a09e30b890b68f3c0f8be0d035e"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "efed6665d0ac060b4729e32e096f0cb9fcfa607b7cffb9b4a1305657add3f081"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0020-efed6665d0ac060b.download",
+            "bytes": 1685,
+            "sha256": "efed6665d0ac060b4729e32e096f0cb9fcfa607b7cffb9b4a1305657add3f081"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前进程身份",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/021-复制前准备事务场景结束退出前进程身份.json",
+            "bytes": 161,
+            "sha256": "1ecca9d5c3f58b127c3c4d6f065bdd8ee584d43618e70593f4faa64cfeeb1044"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0021-1ecca9d5c3f58b12.json",
+            "bytes": 161,
+            "sha256": "1ecca9d5c3f58b127c3c4d6f065bdd8ee584d43618e70593f4faa64cfeeb1044"
+          }
+        },
+        {
+          "label": "第 3 次启动结束画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/022-第-3-次启动结束画面.png",
+            "bytes": 110996,
+            "sha256": "f0d37ef45692b123e13a64a3913eba2e88303be0568e92ff462a19c7f4f6757b"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0022-f0d37ef45692b123.png",
+            "bytes": 110996,
+            "sha256": "f0d37ef45692b123e13a64a3913eba2e88303be0568e92ff462a19c7f4f6757b"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束实际退出核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/023-复制前准备事务场景结束实际退出核对.json",
+            "bytes": 360,
+            "sha256": "a1a5f62fa0742c636bd6f041c24837f9a468ce3821d28bf3221587cde9c62874"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0023-a1a5f62fa0742c63.json",
+            "bytes": 360,
+            "sha256": "a1a5f62fa0742c636bd6f041c24837f9a468ce3821d28bf3221587cde9c62874"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出后实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/024-复制前准备事务场景结束退出后实际状态.json",
+            "bytes": 20938,
+            "sha256": "bb90aaa4085186cc4ad959835880b7d6069eb18483e67391f6df095d03c64a9f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0024-bb90aaa4085186cc.json",
+            "bytes": 20938,
+            "sha256": "bb90aaa4085186cc4ad959835880b7d6069eb18483e67391f6df095d03c64a9f"
+          }
+        },
+        {
+          "label": "准备事务场景结束时固定工作原件",
+          "launch": 3,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/025-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0025-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "准备事务结束时固定原件实件核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/026-准备事务结束时固定原件实件核对.json",
+            "bytes": 1163,
+            "sha256": "ffe9783c7044ad35ee46013e167224d822a903c4f530943780d3ff75bde57623"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0026-ffe9783c7044ad35.json",
+            "bytes": 1163,
+            "sha256": "ffe9783c7044ad35ee46013e167224d822a903c4f530943780d3ff75bde57623"
+          }
+        }
+      ],
+      "traceHashChecks": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/test-results/codex-employee.feature-本机--11a1a--使用离线协议在复制前准备事务内部退出后两次重启不重放/desktop-1.zip",
+          "bytes": 6265528,
+          "sha256": "72b7fa8923720d2cb226d8ec3d6a9b7b0404d49956abe0fef117b666be7e59a7",
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/test-results/codex-employee.feature-本机--11a1a--使用离线协议在复制前准备事务内部退出后两次重启不重放/desktop-2.zip",
+          "bytes": 1307552,
+          "sha256": "0a7e0aaa9150e0c96f4685f3a3fc0a4da6ce786e978c268440ec3f55c88b3360",
+          "launch": 2
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/test-results/codex-employee.feature-本机--11a1a--使用离线协议在复制前准备事务内部退出后两次重启不重放/desktop-3.zip",
+          "bytes": 1334044,
+          "sha256": "a07cf8db2417fecb166716a592160855f8e764abc759433941711be6916217c1",
+          "launch": 3
+        }
+      ],
+      "resourcePlusTraceHashReferences": 29,
+      "actualOriginalAndCopyAndTraceHashComputations": 55,
+      "nativeFrames": [
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 146749,
+            "sha256": "a639bb3ddc69fda87431ab95bc8aaa8c2c3330f514c75cc184839f80d72dbfa3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0008-a639bb3ddc69fda8.png",
+            "bytes": 146749,
+            "sha256": "a639bb3ddc69fda87431ab95bc8aaa8c2c3330f514c75cc184839f80d72dbfa3"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "26e930ce4d6bc956620b888e4d25655d88e64fcc98e87593942ef4eebe1e46fc"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 111071,
+            "sha256": "246fa469bfc70b9cbe2915b3f7ff4ffd8ca2b3ae89c5f553b690fb1e84786de7"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0010-246fa469bfc70b9c.png",
+            "bytes": 111071,
+            "sha256": "246fa469bfc70b9cbe2915b3f7ff4ffd8ca2b3ae89c5f553b690fb1e84786de7"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "7b54011dcbbe5ad4c74dd464634a1a95de9bdac5ecfe833167119e76359c8b79"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0013-ed02ccbc7bcf15dd.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "152785ac3419c65e34053b1e017d3917e101c70f7b98928512e9b0c9eadb2e62"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0015-339ff254a87dcdc3.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "320cc9227ef9fab844d1785a3ab87401f5f3e0108eae3785c2921a088790a4f3"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 111329,
+            "sha256": "3dc43848e1374c68d80ad9b82d89348300cb3a09e30b890b68f3c0f8be0d035e"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0019-3dc43848e1374c68.png",
+            "bytes": 111329,
+            "sha256": "3dc43848e1374c68d80ad9b82d89348300cb3a09e30b890b68f3c0f8be0d035e"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "efed6665d0ac060b4729e32e096f0cb9fcfa607b7cffb9b4a1305657add3f081"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "secondRestartFrames": [
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0013-ed02ccbc7bcf15dd.png",
+            "bytes": 146965,
+            "sha256": "ed02ccbc7bcf15dd85e0676f5f588d4090aad4b9ff5e51c56f33039d2aafa890"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "152785ac3419c65e34053b1e017d3917e101c70f7b98928512e9b0c9eadb2e62"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/resources/0015-339ff254a87dcdc3.png",
+            "bytes": 111082,
+            "sha256": "339ff254a87dcdc37a1c9d2eefc564e318a569b9c4493c099e591c2b8511eb63"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "320cc9227ef9fab844d1785a3ab87401f5f3e0108eae3785c2921a088790a4f3"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "independentReview": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-offline-review-1.json",
+        "bytes": 37170,
+        "sha256": "d6d035ba5f241aa4fccc2985b9d38e8b4886dccb9a53b47ef1ac4849ac0354df"
+      },
+      "evidenceReferences": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/registration.json",
+          "bytes": 349,
+          "sha256": "d07ed0dc4d45db876f63c92a692b316ef4919d9cb9872eb89b2ed8e1c1acd18f"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/build-manifest.json",
+          "bytes": 103575,
+          "sha256": "6324979ca81684e7761e28778fc502c8d51627a2269b088a26764f1ef46014a7"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/execution-receipt.json",
+          "bytes": 1006,
+          "sha256": "5998de7e2acb27ef7403ff29f719d00d512a6bb8512009c880e194faf8d3a9cb"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/final-receipt.json",
+          "bytes": 381,
+          "sha256": "d612a74c8bf1cf6854f76c9c145c8ae53099601a977e9e2d7a161a5046e7a3e2"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/playwright-results.json",
+          "bytes": 56275,
+          "sha256": "12064ecef44c94e86ad3fedd32face997699f6d045b3f837e0e059ec4d54b192"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2/scenarios/704506bbdae38bebaafd-3930803645034d9cecd4-retry0-repeat0-gpdHgp/manifest.json",
+          "bytes": 24508,
+          "sha256": "e1968c4177a944f759906dfac3efee48e32f973ca2360fefa31f5dc187bfda82"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/manifest.json",
+          "bytes": 1206,
+          "sha256": "774c66ca35a1fe525d386f38cb397ede2c26b61b80d4535bf68f7158d5eea872"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-2-report/checks.json",
+          "bytes": 157279,
+          "sha256": "ba163af5090f10e9814517edd0abe873f553e821324fadf7ae3e525759cbdc50"
+        }
+      ]
+    },
+    {
+      "batch": "real-source-1",
+      "target": "source",
+      "modelMode": "real-provider",
+      "originalFixtureModelMode": "real-provider",
+      "realProviderVerified": true,
+      "sameAttemptId": "704506bbdae38bebaafd-782918a40d6faf515640",
+      "sameAttemptDirectory": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW",
+      "title": "使用真实Codex在复制前准备事务内部退出后两次重启不重放",
+      "startedAt": "2026-10-07T16:57:59.085Z",
+      "completedAt": "2026-10-07T16:59:24.096Z",
+      "technicalStatus": "passed",
+      "fixtureAppLaunches": 3,
+      "businessRestartsAfterTargetCrash": 2,
+      "automaticRetries": 0,
+      "humanReview": "pending",
+      "fullGoalComplete": false,
+      "helperFailures": {
+        "gaps": [],
+        "cleanupErrors": [],
+        "testErrors": []
+      },
+      "preciseBoundary": {
+        "hit": {
+          "boundary": "复制前准备事务未提交",
+          "processId": 22794,
+          "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/dist/runtime/worker.mjs",
+          "scriptSha256": "923010bb7c65b4989c04e9e15a24c92f4b9423da410bdb46c10baac4520c96cd",
+          "sourceLine": "}",
+          "sourcePreviousLine": "await tx.put(record3(\"artifactPublicationIntents\", intent));",
+          "line": 3269,
+          "breakpointId": "4:3268:2:126",
+          "actualLocation": {
+            "scriptId": "126",
+            "lineNumber": 3268,
+            "columnNumber": 2
+          },
+          "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+          "reason": "other",
+          "frames": [
+            {
+              "functionName": "preparePublication",
+              "location": {
+                "scriptId": "126",
+                "lineNumber": 3268,
+                "columnNumber": 2
+              }
+            }
+          ]
+        },
+        "noSourceReplacement": true,
+        "noCallFrameEvaluation": true,
+        "independentCommittedIntents": 0,
+        "independentCommittedArtifacts": 0,
+        "preparationTransactionNotCommitted": true,
+        "copyDestinationEmpty": true,
+        "copiedOrRegisteredArtifactNotClaimed": true
+      },
+      "originalWork": {
+        "workId": "work-f049901c73f0ab4177dbc7b9ac8655a391523a8168a7878174997bee247b66fe",
+        "runId": "4c51a551-527f-4c9c-9f0f-4b043a53dee9",
+        "agentId": "5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a",
+        "conversationId": "bd21cf68-2903-4aad-b1cd-9adeb9313c61",
+        "beforeStatus": "running",
+        "afterStatus": "interrupted",
+        "publicationStatus": "running-unknown-at-crash-not-completed",
+        "writeReceipts": [
+          {
+            "id": "call_f310c7247b66406bb24d39dc348f828b",
+            "name": "write_file",
+            "status": "completed",
+            "createdAt": "2026-10-07T16:58:53.367Z",
+            "detail": "{\"path\":\"self:/runs/4c51a551-527f-4c9c-9f0f-4b043a53dee9/codex-proof.md\",\"bytes\":31,\"published\":false}"
+          }
+        ],
+        "fixedPrivateOriginal": {
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-x3biBj/v2/agents/5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a/workspace/sessions/bd21cf68-2903-4aad-b1cd-9adeb9313c61/runs/4c51a551-527f-4c9c-9f0f-4b043a53dee9/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353926947,
+          "size": 31,
+          "mtimeMs": 1791392333382.874
+        },
+        "finalPostExitFixedPath": {
+          "exitVerified": true,
+          "workId": "work-f049901c73f0ab4177dbc7b9ac8655a391523a8168a7878174997bee247b66fe",
+          "runId": "4c51a551-527f-4c9c-9f0f-4b043a53dee9",
+          "agentId": "5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a",
+          "conversationId": "bd21cf68-2903-4aad-b1cd-9adeb9313c61",
+          "relative": "agents/5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a/workspace/sessions/bd21cf68-2903-4aad-b1cd-9adeb9313c61/runs/4c51a551-527f-4c9c-9f0f-4b043a53dee9/codex-proof.md",
+          "writeReceipts": [
+            {
+              "id": "call_f310c7247b66406bb24d39dc348f828b",
+              "name": "write_file",
+              "status": "completed",
+              "createdAt": "2026-10-07T16:58:53.367Z",
+              "detail": "{\"path\":\"self:/runs/4c51a551-527f-4c9c-9f0f-4b043a53dee9/codex-proof.md\",\"bytes\":31,\"published\":false}"
+            }
+          ],
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-x3biBj/v2/agents/5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a/workspace/sessions/bd21cf68-2903-4aad-b1cd-9adeb9313c61/runs/4c51a551-527f-4c9c-9f0f-4b043a53dee9/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353926947,
+          "size": 31,
+          "mtimeMs": 1791392333382.874,
+          "presence": "observed-file"
+        },
+        "sameBytesHashInodeSizeMtimeRecordedAcrossCrashRestartsAndExit": true,
+        "sourceTempAlreadyCleanedMeaning": "original file stats are same-attempt observed metadata; current rehash checks archived originals/report copies, not deleted product temporary path",
+        "destinationBefore": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-x3biBj/v2/workspaces/bd21cf68-2903-4aad-b1cd-9adeb9313c61/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfter": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-x3biBj/v2/workspaces/bd21cf68-2903-4aad-b1cd-9adeb9313c61/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfterTwoRestarts": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-x3biBj/v2/workspaces/bd21cf68-2903-4aad-b1cd-9adeb9313c61/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "implicitArtifactImport": false
+      },
+      "budget": {
+        "id": "budget-38f4983943d30362959a6fc386b72571d485704796aa6a7f7e415452940fd135",
+        "maxModelCalls": 24,
+        "maxOutputTokens": 16000,
+        "absoluteDeadline": "2026-10-07T17:03:13.339Z",
+        "callUnit": "external-turn",
+        "accounting": "model-calls-v1",
+        "modelCalls": 2,
+        "unknownCalls": 1,
+        "usageIncomplete": true,
+        "cumulativeKnownUsage": {
+          "inputTokens": 83554,
+          "outputTokens": 357,
+          "totalTokens": 83911
+        },
+        "sameOriginalBudgetAfterCrashAndRestarts": true,
+        "unfinishedTaskCallNeverZeroOrFullySettled": true,
+        "allowanceScope": "ordinary Work; not48 bobo organization"
+      },
+      "externalPhaseRecords": 2,
+      "realProviderExternalPhases": 2,
+      "callRecords": [
+        {
+          "id": "2c6f172c-a231-4d45-89ad-a32c34b847e1",
+          "runId": "4b8e96d9-6759-4cee-9c32-a14d96fc95c6",
+          "phase": "decision",
+          "usage": {
+            "inputTokens": 15723,
+            "outputTokens": 130,
+            "totalTokens": 15853
+          },
+          "usageComplete": true,
+          "settledAt": "2026-10-07T16:58:35.113Z"
+        },
+        {
+          "id": "8e433897-a432-43d2-bd45-d3ab192415c7",
+          "runId": "4c51a551-527f-4c9c-9f0f-4b043a53dee9",
+          "phase": "execution",
+          "usage": {
+            "inputTokens": 67831,
+            "outputTokens": 227,
+            "totalTokens": 68058
+          },
+          "usageComplete": false,
+          "settledAt": "2026-10-07T16:58:53.659Z"
+        }
+      ],
+      "recovery": {
+        "comparedCollections": [
+          "works",
+          "runs",
+          "artifacts",
+          "messages",
+          "calls",
+          "budgets",
+          "intents",
+          "executions",
+          "sessions",
+          "traces",
+          "profileCalls",
+          "turns",
+          "agents",
+          "launchProfiles"
+        ],
+        "collectionsComparedExactly": 14,
+        "changedAfterCrash": [
+          "works",
+          "runs",
+          "executions",
+          "turns"
+        ],
+        "killedEqualsAfterTwoBusinessRestarts": true,
+        "afterTwoRestartsEqualsFinalPrecloseAndPostclose": true,
+        "childrenAtOriginalFault": [
+          23250,
+          23251,
+          23338,
+          23371,
+          23377,
+          23423,
+          23559,
+          23604,
+          23605
+        ],
+        "originalChildrenActuallyExited": true,
+        "finalActualExitReceipt": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T16:59:24.058Z",
+          "owned": [
+            {
+              "pid": 23781,
+              "parent": 23777,
+              "group": 23777,
+              "started": "Thu Oct  8 00:59:22 2026    "
+            }
+          ],
+          "groups": [],
+          "reason": "本场结束正常关闭；不重启、不续行、不重放；不修改原场景通过或失败"
+        },
+        "noNewRunsCallsProfilesTracesArtifactsOrIntentsOnRestart": true,
+        "executionBefore": {
+          "callUnit": "external-turn",
+          "id": "4c51a551-527f-4c9c-9f0f-4b043a53dee9",
+          "workId": "work-f049901c73f0ab4177dbc7b9ac8655a391523a8168a7878174997bee247b66fe",
+          "budgetId": "budget-38f4983943d30362959a6fc386b72571d485704796aa6a7f7e415452940fd135",
+          "agentId": "5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "active",
+          "pendingEffects": 1
+        },
+        "executionAfter": {
+          "callUnit": "external-turn",
+          "id": "4c51a551-527f-4c9c-9f0f-4b043a53dee9",
+          "workId": "work-f049901c73f0ab4177dbc7b9ac8655a391523a8168a7878174997bee247b66fe",
+          "budgetId": "budget-38f4983943d30362959a6fc386b72571d485704796aa6a7f7e415452940fd135",
+          "agentId": "5efdd6b8-e0c5-4f25-8ed3-a89491d14f5a",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "released",
+          "pendingEffects": 1
+        },
+        "launchMeaning": "initial app plus two business restarts; idle Utility inspector enablement is not fourth app fixture or model replay"
+      },
+      "resourceCopyChecks": [
+        {
+          "label": "本机Codex实际连接验证",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/001-本机Codex实际连接验证.png",
+            "bytes": 194204,
+            "sha256": "fa9456377f8608780c5f4536f9c13057de9d398ddbdc2308ef63511c33860de3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0001-fa9456377f860878.png",
+            "bytes": 194204,
+            "sha256": "fa9456377f8608780c5f4536f9c13057de9d398ddbdc2308ef63511c33860de3"
+          }
+        },
+        {
+          "label": "创建本机Codex员工无API配置",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/002-创建本机Codex员工无API配置.png",
+            "bytes": 242144,
+            "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0002-931526d0f03564ac.png",
+            "bytes": 242144,
+            "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+          }
+        },
+        {
+          "label": "复制前准备事务精确故障准备",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/003-复制前准备事务精确故障准备.json",
+            "bytes": 696,
+            "sha256": "d6b5953b93ab8ff5519965bde5553f2013e728a4dbeae751668a048e47a99432"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0003-d6b5953b93ab8ff5.json",
+            "bytes": 696,
+            "sha256": "d6b5953b93ab8ff5519965bde5553f2013e728a4dbeae751668a048e47a99432"
+          }
+        },
+        {
+          "label": "复制前事务未提交的真实工作原件",
+          "launch": 1,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/004-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0004-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "preparePublication写入后未提交的独立读状态",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/005-preparePublication写入后未提交的独立读状态.json",
+            "bytes": 24391,
+            "sha256": "802800eb71b582632ae07640c659a749b217fa5bdfc57f75aacd21f5803e670a"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0005-802800eb71b58263.json",
+            "bytes": 24391,
+            "sha256": "802800eb71b582632ae07640c659a749b217fa5bdfc57f75aacd21f5803e670a"
+          }
+        },
+        {
+          "label": "准备事务内实际退出后的回滚与未知回执",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/006-准备事务内实际退出后的回滚与未知回执.json",
+            "bytes": 23262,
+            "sha256": "906464ad8f8b68740201af38aadf8aee51058758d5806328ce5dba8484856187"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0006-906464ad8f8b6874.json",
+            "bytes": 23262,
+            "sha256": "906464ad8f8b68740201af38aadf8aee51058758d5806328ce5dba8484856187"
+          }
+        },
+        {
+          "label": "第 1 次启动结束画面",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/007-第-1-次启动结束画面.png",
+            "bytes": 167513,
+            "sha256": "65071550bcd23cfb256357754f794d3911079070b9b90af88ef143795405e5ed"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0007-65071550bcd23cfb.png",
+            "bytes": 167513,
+            "sha256": "65071550bcd23cfb256357754f794d3911079070b9b90af88ef143795405e5ed"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 161640,
+            "sha256": "dd7f06df6998e7818dc7be111f159aa20c381efe5e41da5c29899561db9b55a2"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0008-dd7f06df6998e781.png",
+            "bytes": 161640,
+            "sha256": "dd7f06df6998e7818dc7be111f159aa20c381efe5e41da5c29899561db9b55a2"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "de44d6a83c3d8d5fab5a8ea15bc14a7bb936e9898bf0b0c18a729f43428e17b4"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0009-de44d6a83c3d8d5f.download",
+            "bytes": 1685,
+            "sha256": "de44d6a83c3d8d5fab5a8ea15bc14a7bb936e9898bf0b0c18a729f43428e17b4"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 111140,
+            "sha256": "f502763fac22f3c64b1f9f3730304cafbc47d5ad778b84011fb1248aa650a413"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0010-f502763fac22f3c6.png",
+            "bytes": 111140,
+            "sha256": "f502763fac22f3c64b1f9f3730304cafbc47d5ad778b84011fb1248aa650a413"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "cb0cc14ccfeb6797642b20c287e3507869766d4dbe8752012b10659053e7d95c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0011-cb0cc14ccfeb6797.download",
+            "bytes": 1685,
+            "sha256": "cb0cc14ccfeb6797642b20c287e3507869766d4dbe8752012b10659053e7d95c"
+          }
+        },
+        {
+          "label": "第 2 次启动结束画面",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/012-第-2-次启动结束画面.png",
+            "bytes": 111390,
+            "sha256": "7f3433fdf3412b162afe7b3fb8c99c8a1ad6c5a3fa7f03542dd3d079deaffdca"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0012-7f3433fdf3412b16.png",
+            "bytes": 111390,
+            "sha256": "7f3433fdf3412b162afe7b3fb8c99c8a1ad6c5a3fa7f03542dd3d079deaffdca"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0013-1987114e87f2ba10.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0014-9c9f68a549cea1f6.download",
+            "bytes": 1685,
+            "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0015-24ecf2f5bf1b4996.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0016-649878d291de27da.download",
+            "bytes": 1685,
+            "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+          }
+        },
+        {
+          "label": "准备事务故障两次重启零重放",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/017-准备事务故障两次重启零重放.json",
+            "bytes": 23237,
+            "sha256": "a66a27f634ee08df81164ad9fc0bd60b1338d18cd779a2d3ed8782344582d62e"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0017-a66a27f634ee08df.json",
+            "bytes": 23237,
+            "sha256": "a66a27f634ee08df81164ad9fc0bd60b1338d18cd779a2d3ed8782344582d62e"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/018-复制前准备事务场景结束退出前实际状态.json",
+            "bytes": 21389,
+            "sha256": "10a098536ff175c878bc04331f53f58d82b12b403ca63ad35bb3335bac46a8c4"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0018-10a098536ff175c8.json",
+            "bytes": 21389,
+            "sha256": "10a098536ff175c878bc04331f53f58d82b12b403ca63ad35bb3335bac46a8c4"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 111398,
+            "sha256": "239b296887e9d8a77c3c87b1905a5dfd9af36294e388dafdeb279d31c4597209"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0019-239b296887e9d8a7.png",
+            "bytes": 111398,
+            "sha256": "239b296887e9d8a77c3c87b1905a5dfd9af36294e388dafdeb279d31c4597209"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "9493aa2ec7545366e66bc08f451732f871d7627201f18b0089dbae98149b9ddf"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0020-9493aa2ec7545366.download",
+            "bytes": 1685,
+            "sha256": "9493aa2ec7545366e66bc08f451732f871d7627201f18b0089dbae98149b9ddf"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前进程身份",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/021-复制前准备事务场景结束退出前进程身份.json",
+            "bytes": 161,
+            "sha256": "49a90dd399ff2a49175c2ad85c22586b28c24a00be708e0417ed25ff7e801b73"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0021-49a90dd399ff2a49.json",
+            "bytes": 161,
+            "sha256": "49a90dd399ff2a49175c2ad85c22586b28c24a00be708e0417ed25ff7e801b73"
+          }
+        },
+        {
+          "label": "第 3 次启动结束画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/022-第-3-次启动结束画面.png",
+            "bytes": 111053,
+            "sha256": "2db9fe760900c36ee33fb99d3d53b9cc8b87bc9471318b5093d76f4cb3cb0869"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0022-2db9fe760900c36e.png",
+            "bytes": 111053,
+            "sha256": "2db9fe760900c36ee33fb99d3d53b9cc8b87bc9471318b5093d76f4cb3cb0869"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束实际退出核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/023-复制前准备事务场景结束实际退出核对.json",
+            "bytes": 360,
+            "sha256": "1d5570cd2f188d2f8aea573147e6813dd5ff6f1829034ca9ec1f49f1e81a425f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0023-1d5570cd2f188d2f.json",
+            "bytes": 360,
+            "sha256": "1d5570cd2f188d2f8aea573147e6813dd5ff6f1829034ca9ec1f49f1e81a425f"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出后实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/024-复制前准备事务场景结束退出后实际状态.json",
+            "bytes": 22628,
+            "sha256": "ab19c9f589da5788c35e84995c39ce3c59425b09dfa326e288f5403628cd4e00"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0024-ab19c9f589da5788.json",
+            "bytes": 22628,
+            "sha256": "ab19c9f589da5788c35e84995c39ce3c59425b09dfa326e288f5403628cd4e00"
+          }
+        },
+        {
+          "label": "准备事务场景结束时固定工作原件",
+          "launch": 3,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/025-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0025-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "准备事务结束时固定原件实件核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/026-准备事务结束时固定原件实件核对.json",
+            "bytes": 1186,
+            "sha256": "b171f8b0c8af7917112ceb9f0efe5f1c5800bd7fbfb8546d2290e749612b8134"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0026-b171f8b0c8af7917.json",
+            "bytes": 1186,
+            "sha256": "b171f8b0c8af7917112ceb9f0efe5f1c5800bd7fbfb8546d2290e749612b8134"
+          }
+        }
+      ],
+      "traceHashChecks": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-1.zip",
+          "bytes": 5914814,
+          "sha256": "f1707fd72c6a2df5f33ee04f30608a2e460842410adff2c5e53a240ed58bfad7",
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-2.zip",
+          "bytes": 1361750,
+          "sha256": "c248faa9f258a290cd8834f2cc0574fe40f9ce8ce4fd3c2798b62a59c1629ae5",
+          "launch": 2
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-3.zip",
+          "bytes": 1349087,
+          "sha256": "79ff560fb067417ecdc6a0f1cab0412920f01cb430786f32cb35fefdd859163b",
+          "launch": 3
+        }
+      ],
+      "resourcePlusTraceHashReferences": 29,
+      "actualOriginalAndCopyAndTraceHashComputations": 55,
+      "nativeFrames": [
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 161640,
+            "sha256": "dd7f06df6998e7818dc7be111f159aa20c381efe5e41da5c29899561db9b55a2"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0008-dd7f06df6998e781.png",
+            "bytes": 161640,
+            "sha256": "dd7f06df6998e7818dc7be111f159aa20c381efe5e41da5c29899561db9b55a2"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "de44d6a83c3d8d5fab5a8ea15bc14a7bb936e9898bf0b0c18a729f43428e17b4"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 111140,
+            "sha256": "f502763fac22f3c64b1f9f3730304cafbc47d5ad778b84011fb1248aa650a413"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0010-f502763fac22f3c6.png",
+            "bytes": 111140,
+            "sha256": "f502763fac22f3c64b1f9f3730304cafbc47d5ad778b84011fb1248aa650a413"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "cb0cc14ccfeb6797642b20c287e3507869766d4dbe8752012b10659053e7d95c"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0013-1987114e87f2ba10.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0015-24ecf2f5bf1b4996.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 111398,
+            "sha256": "239b296887e9d8a77c3c87b1905a5dfd9af36294e388dafdeb279d31c4597209"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0019-239b296887e9d8a7.png",
+            "bytes": 111398,
+            "sha256": "239b296887e9d8a77c3c87b1905a5dfd9af36294e388dafdeb279d31c4597209"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "9493aa2ec7545366e66bc08f451732f871d7627201f18b0089dbae98149b9ddf"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "secondRestartFrames": [
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0013-1987114e87f2ba10.png",
+            "bytes": 161643,
+            "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0015-24ecf2f5bf1b4996.png",
+            "bytes": 111140,
+            "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "independentReview": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-real-source-review-1.json",
+        "bytes": 39209,
+        "sha256": "503df2d983becb4a8528fdeb740a8f619678edf1f8ae7802b4afb8835231f515"
+      },
+      "evidenceReferences": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/registration.json",
+          "bytes": 331,
+          "sha256": "ecc8f8adc87d4ae47249e2e2630e029b90c29c33302d2836166fc66f72993836"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/build-manifest.json",
+          "bytes": 103575,
+          "sha256": "6324979ca81684e7761e28778fc502c8d51627a2269b088a26764f1ef46014a7"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/execution-receipt.json",
+          "bytes": 999,
+          "sha256": "4c0aac7ddb97848d988f01389ea238f8ca0fdd5d38b8974124b8f9dc44c43628"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/final-receipt.json",
+          "bytes": 380,
+          "sha256": "5dac1c9f76440879f6cb02b7d334ee6aeeaafb9f7036e6129800c39b71e086f6"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/playwright-results.json",
+          "bytes": 55845,
+          "sha256": "0edb413e53c7a1a25450c5d1782867d5baa3c5e61a32be4c85a09962a31032c2"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/manifest.json",
+          "bytes": 24459,
+          "sha256": "104561a19170fa792b9993e35c46465340e98f22874878f3cdf8833b20027f24"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/manifest.json",
+          "bytes": 1224,
+          "sha256": "48e7eb22d31b01f6d5b49d6cf356578ea28e1b68dbb0ba152f0284b5ee5a90a1"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/checks.json",
+          "bytes": 166353,
+          "sha256": "3caec370bf9236caa30c2fca31c42dd55539c47b142de815c4cd66270e65f6b9"
+        }
+      ]
+    },
+    {
+      "batch": "real-package-1",
+      "target": "package",
+      "modelMode": "real-provider",
+      "originalFixtureModelMode": "real-provider",
+      "realProviderVerified": true,
+      "sameAttemptId": "704506bbdae38bebaafd-782918a40d6faf515640",
+      "sameAttemptDirectory": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E",
+      "title": "使用真实Codex在复制前准备事务内部退出后两次重启不重放",
+      "startedAt": "2026-10-07T17:01:03.266Z",
+      "completedAt": "2026-10-07T17:02:47.024Z",
+      "technicalStatus": "passed",
+      "fixtureAppLaunches": 3,
+      "businessRestartsAfterTargetCrash": 2,
+      "automaticRetries": 0,
+      "humanReview": "pending",
+      "fullGoalComplete": false,
+      "helperFailures": {
+        "gaps": [],
+        "cleanupErrors": [],
+        "testErrors": []
+      },
+      "preciseBoundary": {
+        "hit": {
+          "boundary": "复制前准备事务未提交",
+          "processId": 24256,
+          "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-stream-counters-20261007/new-package/mac-arm64/BoAI%20Agent.app/Contents/Resources/app.asar/dist/runtime/worker.mjs",
+          "scriptSha256": "923010bb7c65b4989c04e9e15a24c92f4b9423da410bdb46c10baac4520c96cd",
+          "sourceLine": "}",
+          "sourcePreviousLine": "await tx.put(record3(\"artifactPublicationIntents\", intent));",
+          "line": 3269,
+          "breakpointId": "4:3268:2:126",
+          "actualLocation": {
+            "scriptId": "126",
+            "lineNumber": 3268,
+            "columnNumber": 2
+          },
+          "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+          "reason": "other",
+          "frames": [
+            {
+              "functionName": "preparePublication",
+              "location": {
+                "scriptId": "126",
+                "lineNumber": 3268,
+                "columnNumber": 2
+              }
+            }
+          ]
+        },
+        "noSourceReplacement": true,
+        "noCallFrameEvaluation": true,
+        "independentCommittedIntents": 0,
+        "independentCommittedArtifacts": 0,
+        "preparationTransactionNotCommitted": true,
+        "copyDestinationEmpty": true,
+        "copiedOrRegisteredArtifactNotClaimed": true
+      },
+      "originalWork": {
+        "workId": "work-38c37616389a37144c7c6d2e80c8d0cfe4d8ccd5a9b9f0ed53f939434903da5c",
+        "runId": "9301c8df-d98d-4fc4-aa91-56a2d3482fbe",
+        "agentId": "92065321-cd23-4aac-94aa-2ef1234bc75b",
+        "conversationId": "c67d9de7-960c-46d1-965c-dbc60e77e56c",
+        "beforeStatus": "running",
+        "afterStatus": "interrupted",
+        "publicationStatus": "running-unknown-at-crash-not-completed",
+        "writeReceipts": [
+          {
+            "id": "call_78df6e811aac47f49514742ab44c823c",
+            "name": "write_file",
+            "status": "completed",
+            "createdAt": "2026-10-07T17:02:10.438Z",
+            "detail": "{\"path\":\"self:/runs/9301c8df-d98d-4fc4-aa91-56a2d3482fbe/codex-proof.md\",\"bytes\":31,\"published\":false}"
+          }
+        ],
+        "fixedPrivateOriginal": {
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-0T4MjI/v2/agents/92065321-cd23-4aac-94aa-2ef1234bc75b/workspace/sessions/c67d9de7-960c-46d1-965c-dbc60e77e56c/runs/9301c8df-d98d-4fc4-aa91-56a2d3482fbe/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353932674,
+          "size": 31,
+          "mtimeMs": 1791392530449.4336
+        },
+        "finalPostExitFixedPath": {
+          "exitVerified": true,
+          "workId": "work-38c37616389a37144c7c6d2e80c8d0cfe4d8ccd5a9b9f0ed53f939434903da5c",
+          "runId": "9301c8df-d98d-4fc4-aa91-56a2d3482fbe",
+          "agentId": "92065321-cd23-4aac-94aa-2ef1234bc75b",
+          "conversationId": "c67d9de7-960c-46d1-965c-dbc60e77e56c",
+          "relative": "agents/92065321-cd23-4aac-94aa-2ef1234bc75b/workspace/sessions/c67d9de7-960c-46d1-965c-dbc60e77e56c/runs/9301c8df-d98d-4fc4-aa91-56a2d3482fbe/codex-proof.md",
+          "writeReceipts": [
+            {
+              "id": "call_78df6e811aac47f49514742ab44c823c",
+              "name": "write_file",
+              "status": "completed",
+              "createdAt": "2026-10-07T17:02:10.438Z",
+              "detail": "{\"path\":\"self:/runs/9301c8df-d98d-4fc4-aa91-56a2d3482fbe/codex-proof.md\",\"bytes\":31,\"published\":false}"
+            }
+          ],
+          "path": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-0T4MjI/v2/agents/92065321-cd23-4aac-94aa-2ef1234bc75b/workspace/sessions/c67d9de7-960c-46d1-965c-dbc60e77e56c/runs/9301c8df-d98d-4fc4-aa91-56a2d3482fbe/codex-proof.md",
+          "hash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+          "ino": 353932674,
+          "size": 31,
+          "mtimeMs": 1791392530449.4336,
+          "presence": "observed-file"
+        },
+        "sameBytesHashInodeSizeMtimeRecordedAcrossCrashRestartsAndExit": true,
+        "sourceTempAlreadyCleanedMeaning": "original file stats are same-attempt observed metadata; current rehash checks archived originals/report copies, not deleted product temporary path",
+        "destinationBefore": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-0T4MjI/v2/workspaces/c67d9de7-960c-46d1-965c-dbc60e77e56c/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfter": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-0T4MjI/v2/workspaces/c67d9de7-960c-46d1-965c-dbc60e77e56c/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "destinationAfterTwoRestarts": {
+          "directory": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-0T4MjI/v2/workspaces/c67d9de7-960c-46d1-965c-dbc60e77e56c/artifacts",
+          "presence": "empty-directory",
+          "files": []
+        },
+        "implicitArtifactImport": false
+      },
+      "budget": {
+        "id": "budget-99f82980a38b3cbfa53c72601d9502abb329774c7e6150fb34caab989586ea9d",
+        "maxModelCalls": 24,
+        "maxOutputTokens": 16000,
+        "absoluteDeadline": "2026-10-07T17:06:12.478Z",
+        "callUnit": "external-turn",
+        "accounting": "model-calls-v1",
+        "modelCalls": 2,
+        "unknownCalls": 1,
+        "usageIncomplete": true,
+        "cumulativeKnownUsage": {
+          "inputTokens": 65676,
+          "outputTokens": 404,
+          "totalTokens": 66080
+        },
+        "sameOriginalBudgetAfterCrashAndRestarts": true,
+        "unfinishedTaskCallNeverZeroOrFullySettled": true,
+        "allowanceScope": "ordinary Work; not48 bobo organization"
+      },
+      "externalPhaseRecords": 2,
+      "realProviderExternalPhases": 2,
+      "callRecords": [
+        {
+          "id": "3b755dad-2f2f-4c73-a98a-7c4498f74ae8",
+          "runId": "136b3956-9096-4a76-83af-21cc652183b0",
+          "phase": "decision",
+          "usage": {
+            "inputTokens": 33974,
+            "outputTokens": 122,
+            "totalTokens": 34096
+          },
+          "usageComplete": true,
+          "settledAt": "2026-10-07T17:01:45.664Z"
+        },
+        {
+          "id": "b0237ced-b655-4e0a-b3ea-a37e13fb65ae",
+          "runId": "9301c8df-d98d-4fc4-aa91-56a2d3482fbe",
+          "phase": "execution",
+          "usage": {
+            "inputTokens": 31702,
+            "outputTokens": 282,
+            "totalTokens": 31984
+          },
+          "usageComplete": false,
+          "settledAt": "2026-10-07T17:02:10.660Z"
+        }
+      ],
+      "recovery": {
+        "comparedCollections": [
+          "works",
+          "runs",
+          "artifacts",
+          "messages",
+          "calls",
+          "budgets",
+          "intents",
+          "executions",
+          "sessions",
+          "traces",
+          "profileCalls",
+          "turns",
+          "agents",
+          "launchProfiles"
+        ],
+        "collectionsComparedExactly": 14,
+        "changedAfterCrash": [
+          "works",
+          "runs",
+          "executions",
+          "turns"
+        ],
+        "killedEqualsAfterTwoBusinessRestarts": true,
+        "afterTwoRestartsEqualsFinalPrecloseAndPostclose": true,
+        "childrenAtOriginalFault": [
+          25171,
+          25172,
+          25193,
+          25240
+        ],
+        "originalChildrenActuallyExited": true,
+        "finalActualExitReceipt": {
+          "observed": true,
+          "exitVerified": true,
+          "checkedAt": "2026-10-07T17:02:46.981Z",
+          "owned": [
+            {
+              "pid": 25480,
+              "parent": 25476,
+              "group": 25476,
+              "started": "Thu Oct  8 01:02:45 2026    "
+            }
+          ],
+          "groups": [],
+          "reason": "本场结束正常关闭；不重启、不续行、不重放；不修改原场景通过或失败"
+        },
+        "noNewRunsCallsProfilesTracesArtifactsOrIntentsOnRestart": true,
+        "executionBefore": {
+          "callUnit": "external-turn",
+          "id": "9301c8df-d98d-4fc4-aa91-56a2d3482fbe",
+          "workId": "work-38c37616389a37144c7c6d2e80c8d0cfe4d8ccd5a9b9f0ed53f939434903da5c",
+          "budgetId": "budget-99f82980a38b3cbfa53c72601d9502abb329774c7e6150fb34caab989586ea9d",
+          "agentId": "92065321-cd23-4aac-94aa-2ef1234bc75b",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "active",
+          "pendingEffects": 1
+        },
+        "executionAfter": {
+          "callUnit": "external-turn",
+          "id": "9301c8df-d98d-4fc4-aa91-56a2d3482fbe",
+          "workId": "work-38c37616389a37144c7c6d2e80c8d0cfe4d8ccd5a9b9f0ed53f939434903da5c",
+          "budgetId": "budget-99f82980a38b3cbfa53c72601d9502abb329774c7e6150fb34caab989586ea9d",
+          "agentId": "92065321-cd23-4aac-94aa-2ef1234bc75b",
+          "claimVersion": 2,
+          "modelCalls": 1,
+          "usage": {},
+          "status": "released",
+          "pendingEffects": 1
+        },
+        "launchMeaning": "initial app plus two business restarts; idle Utility inspector enablement is not fourth app fixture or model replay"
+      },
+      "resourceCopyChecks": [
+        {
+          "label": "本机Codex实际连接验证",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/001-本机Codex实际连接验证.png",
+            "bytes": 193600,
+            "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0001-0bac813bc05907a2.png",
+            "bytes": 193600,
+            "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930"
+          }
+        },
+        {
+          "label": "创建本机Codex员工无API配置",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/002-创建本机Codex员工无API配置.png",
+            "bytes": 242332,
+            "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0002-4b81022900f99fc4.png",
+            "bytes": 242332,
+            "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+          }
+        },
+        {
+          "label": "复制前准备事务精确故障准备",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/003-复制前准备事务精确故障准备.json",
+            "bytes": 817,
+            "sha256": "3c44553ffbe351c0a720be1352f4f56dbdb3f7422ebf73c5ab22a33395b855e3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0003-3c44553ffbe351c0.json",
+            "bytes": 817,
+            "sha256": "3c44553ffbe351c0a720be1352f4f56dbdb3f7422ebf73c5ab22a33395b855e3"
+          }
+        },
+        {
+          "label": "复制前事务未提交的真实工作原件",
+          "launch": 1,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/004-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0004-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "preparePublication写入后未提交的独立读状态",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/005-preparePublication写入后未提交的独立读状态.json",
+            "bytes": 24429,
+            "sha256": "bb085b8af4772978dec9f3dbe0e374eb27fc312969aaab850dfed69d29ec0ca0"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0005-bb085b8af4772978.json",
+            "bytes": 24429,
+            "sha256": "bb085b8af4772978dec9f3dbe0e374eb27fc312969aaab850dfed69d29ec0ca0"
+          }
+        },
+        {
+          "label": "准备事务内实际退出后的回滚与未知回执",
+          "launch": 1,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/006-准备事务内实际退出后的回滚与未知回执.json",
+            "bytes": 23234,
+            "sha256": "8e13f84f72337ba4f81cfc45fdd17c9e9a62baff00570fa9c022c6231ed81490"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0006-8e13f84f72337ba4.json",
+            "bytes": 23234,
+            "sha256": "8e13f84f72337ba4f81cfc45fdd17c9e9a62baff00570fa9c022c6231ed81490"
+          }
+        },
+        {
+          "label": "第 1 次启动结束画面",
+          "launch": 1,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/007-第-1-次启动结束画面.png",
+            "bytes": 197308,
+            "sha256": "3639f64941f043fd7853d8b3c109b22e98c77705e5d38a110f1618abf34115c3"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0007-3639f64941f043fd.png",
+            "bytes": 197308,
+            "sha256": "3639f64941f043fd7853d8b3c109b22e98c77705e5d38a110f1618abf34115c3"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 156129,
+            "sha256": "3cd11190bd264575cbe617e72608cb936640b66220425046a0e6d470e3bc2c72"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0008-3cd11190bd264575.png",
+            "bytes": 156129,
+            "sha256": "3cd11190bd264575cbe617e72608cb936640b66220425046a0e6d470e3bc2c72"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启原工作未交付 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "2ded52acb469bc2da2ae897a6dec7bdba83893aa244854f1ddf2aec1cce77e5b"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0009-2ded52acb469bc2d.download",
+            "bytes": 1685,
+            "sha256": "2ded52acb469bc2da2ae897a6dec7bdba83893aa244854f1ddf2aec1cce77e5b"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 110518,
+            "sha256": "c23aeaa217feea4171844214a99fbd3dd3c76fe62d0d6d4e15d756291cf84f63"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0010-c23aeaa217feea41.png",
+            "bytes": 110518,
+            "sha256": "c23aeaa217feea4171844214a99fbd3dd3c76fe62d0d6d4e15d756291cf84f63"
+          }
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 2,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "7f58e79360265861be0459960e8361609590d17a8e443b857628d2cb1620339f"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0011-7f58e79360265861.download",
+            "bytes": 1685,
+            "sha256": "7f58e79360265861be0459960e8361609590d17a8e443b857628d2cb1620339f"
+          }
+        },
+        {
+          "label": "第 2 次启动结束画面",
+          "launch": 2,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/012-第-2-次启动结束画面.png",
+            "bytes": 110444,
+            "sha256": "ac90266b152ef4efe97317b0136e27ab402d26fb1966caaa9e7a205a3da2411d"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0012-ac90266b152ef4ef.png",
+            "bytes": 110444,
+            "sha256": "ac90266b152ef4efe97317b0136e27ab402d26fb1966caaa9e7a205a3da2411d"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0013-c6978a0eb79fa7eb.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0014-ef0763ed64b8ebb0.download",
+            "bytes": 1685,
+            "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0015-d252ffef4cbfdbd1.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          }
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1684,
+            "sha256": "3ccd22fe7c42ac6b6dbd93cf3c5d15e036c5a3591f43f2118647f1a81f2dc848"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0016-3ccd22fe7c42ac6b.download",
+            "bytes": 1684,
+            "sha256": "3ccd22fe7c42ac6b6dbd93cf3c5d15e036c5a3591f43f2118647f1a81f2dc848"
+          }
+        },
+        {
+          "label": "准备事务故障两次重启零重放",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/017-准备事务故障两次重启零重放.json",
+            "bytes": 23209,
+            "sha256": "159dfd06d6c4f24e93b62755368dc47bca70cb7c5d79b4450ab4416c1a400455"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0017-159dfd06d6c4f24e.json",
+            "bytes": 23209,
+            "sha256": "159dfd06d6c4f24e93b62755368dc47bca70cb7c5d79b4450ab4416c1a400455"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/018-复制前准备事务场景结束退出前实际状态.json",
+            "bytes": 21360,
+            "sha256": "cd48fe7fa5b74cddddc689e9a6d20915f63e017634e4dcfceb528402b45f0278"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0018-cd48fe7fa5b74cdd.json",
+            "bytes": 21360,
+            "sha256": "cd48fe7fa5b74cddddc689e9a6d20915f63e017634e4dcfceb528402b45f0278"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 110703,
+            "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0019-bb519d57ff509820.png",
+            "bytes": 110703,
+            "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面 · 原生截取元数据",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "332c3a7ad0cf6eeace4a8fbe5582559c61f435d92605f3539f9e0fae4ea1779e"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0020-332c3a7ad0cf6eea.download",
+            "bytes": 1685,
+            "sha256": "332c3a7ad0cf6eeace4a8fbe5582559c61f435d92605f3539f9e0fae4ea1779e"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出前进程身份",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/021-复制前准备事务场景结束退出前进程身份.json",
+            "bytes": 161,
+            "sha256": "18491614a7f6031d87081835d879fdca1eedd33d2cbe50e574f11fee3c7b56db"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0021-18491614a7f6031d.json",
+            "bytes": 161,
+            "sha256": "18491614a7f6031d87081835d879fdca1eedd33d2cbe50e574f11fee3c7b56db"
+          }
+        },
+        {
+          "label": "第 3 次启动结束画面",
+          "launch": 3,
+          "kind": "screenshot",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/022-第-3-次启动结束画面.png",
+            "bytes": 110422,
+            "sha256": "32e068d2d68f66e58203e2148a2e81eff4c974eb3a7446806f4e87441d6a78ee"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0022-32e068d2d68f66e5.png",
+            "bytes": 110422,
+            "sha256": "32e068d2d68f66e58203e2148a2e81eff4c974eb3a7446806f4e87441d6a78ee"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束实际退出核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/023-复制前准备事务场景结束实际退出核对.json",
+            "bytes": 360,
+            "sha256": "8e1080f959682ac8bda2692c7780dcc21620303338d1ed901e2bdb6caca9572d"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0023-8e1080f959682ac8.json",
+            "bytes": 360,
+            "sha256": "8e1080f959682ac8bda2692c7780dcc21620303338d1ed901e2bdb6caca9572d"
+          }
+        },
+        {
+          "label": "复制前准备事务场景结束退出后实际状态",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/024-复制前准备事务场景结束退出后实际状态.json",
+            "bytes": 22599,
+            "sha256": "b68bd413ef8a5a5d62790c795d1059a1e4e753240d2df4d5a05ecc32ffed0b7a"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0024-b68bd413ef8a5a5d.json",
+            "bytes": 22599,
+            "sha256": "b68bd413ef8a5a5d62790c795d1059a1e4e753240d2df4d5a05ecc32ffed0b7a"
+          }
+        },
+        {
+          "label": "准备事务场景结束时固定工作原件",
+          "launch": 3,
+          "kind": "file",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/025-codex-proof.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0025-9ad7a0fb0a5904b8.md",
+            "bytes": 31,
+            "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+          }
+        },
+        {
+          "label": "准备事务结束时固定原件实件核对",
+          "launch": 3,
+          "kind": "data",
+          "original": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/026-准备事务结束时固定原件实件核对.json",
+            "bytes": 1187,
+            "sha256": "91f1278e0da9d5453e7ef9a3b17603d3acc07fc0a9747ac05ae48bc2eb9ffecd"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0026-91f1278e0da9d545.json",
+            "bytes": 1187,
+            "sha256": "91f1278e0da9d5453e7ef9a3b17603d3acc07fc0a9747ac05ae48bc2eb9ffecd"
+          }
+        }
+      ],
+      "traceHashChecks": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-1.zip",
+          "bytes": 5888651,
+          "sha256": "3bc461426c9c1172d4a8a9c40a8bf2c03bc5361f65da7d1cce0413ccc1f34694",
+          "launch": 1
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-2.zip",
+          "bytes": 1519976,
+          "sha256": "f450f8d00c1fb57f696b7e75044f5424f84e93e0f7a7f144b1b4990b7d176462",
+          "launch": 2
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/test-results/codex-employee.feature-本机--482dd-真实Codex在复制前准备事务内部退出后两次重启不重放/desktop-3.zip",
+          "bytes": 1493064,
+          "sha256": "028eb9a647fd0dea9dbb1babd93f4d8a6373a2de6478fb021fcc97153284cd70",
+          "launch": 3
+        }
+      ],
+      "resourcePlusTraceHashReferences": 29,
+      "actualOriginalAndCopyAndTraceHashComputations": 55,
+      "nativeFrames": [
+        {
+          "label": "准备事务故障第1次重启原工作未交付",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/008-准备事务故障第1次重启原工作未交付.native.png",
+            "bytes": 156129,
+            "sha256": "3cd11190bd264575cbe617e72608cb936640b66220425046a0e6d470e3bc2c72"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0008-3cd11190bd264575.png",
+            "bytes": 156129,
+            "sha256": "3cd11190bd264575cbe617e72608cb936640b66220425046a0e6d470e3bc2c72"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/009-准备事务故障第1次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "2ded52acb469bc2da2ae897a6dec7bdba83893aa244854f1ddf2aec1cce77e5b"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第1次重启没有隐式文件导入",
+          "launch": 2,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/010-准备事务故障第1次重启没有隐式文件导入.native.png",
+            "bytes": 110518,
+            "sha256": "c23aeaa217feea4171844214a99fbd3dd3c76fe62d0d6d4e15d756291cf84f63"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0010-c23aeaa217feea41.png",
+            "bytes": 110518,
+            "sha256": "c23aeaa217feea4171844214a99fbd3dd3c76fe62d0d6d4e15d756291cf84f63"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/011-准备事务故障第1次重启没有隐式文件导入.capture.json",
+            "bytes": 1685,
+            "sha256": "7f58e79360265861be0459960e8361609590d17a8e443b857628d2cb1620339f"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0013-c6978a0eb79fa7eb.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0015-d252ffef4cbfdbd1.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1684,
+            "sha256": "3ccd22fe7c42ac6b6dbd93cf3c5d15e036c5a3591f43f2118647f1a81f2dc848"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "复制前准备事务场景结束退出前原生画面",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/019-复制前准备事务场景结束退出前原生画面.native.png",
+            "bytes": 110703,
+            "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0019-bb519d57ff509820.png",
+            "bytes": 110703,
+            "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/020-复制前准备事务场景结束退出前原生画面.capture.json",
+            "bytes": 1685,
+            "sha256": "332c3a7ad0cf6eeace4a8fbe5582559c61f435d92605f3539f9e0fae4ea1779e"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "secondRestartFrames": [
+        {
+          "label": "准备事务故障第2次重启原工作未交付",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/013-准备事务故障第2次重启原工作未交付.native.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0013-c6978a0eb79fa7eb.png",
+            "bytes": 156081,
+            "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/014-准备事务故障第2次重启原工作未交付.capture.json",
+            "bytes": 1685,
+            "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        },
+        {
+          "label": "准备事务故障第2次重启没有隐式文件导入",
+          "launch": 3,
+          "png": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          },
+          "reportCopy": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0015-d252ffef4cbfdbd1.png",
+            "bytes": 92089,
+            "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+          },
+          "captureMetadata": {
+            "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+            "bytes": 1684,
+            "sha256": "3ccd22fe7c42ac6b6dbd93cf3c5d15e036c5a3591f43f2118647f1a81f2dc848"
+          },
+          "width": 2580,
+          "height": 1720,
+          "method": "Electron.webContents.capturePage()",
+          "rect": null,
+          "pixelTransform": "none",
+          "nativeBeforeAfterEqual": true,
+          "viewportCSS": [
+            1290,
+            860
+          ],
+          "rendererDPR": 2,
+          "zoomFactor": 1,
+          "fullWebContentsViewport": true,
+          "includesMacOSWindowChrome": false,
+          "visualApproval": "pending"
+        }
+      ],
+      "independentReview": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-real-package-review-1.json",
+        "bytes": 41187,
+        "sha256": "4d822b9fd7321d2cdbaa6b76dad525960c49d0c09b01f87771e0243b57c32b40"
+      },
+      "evidenceReferences": [
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/registration.json",
+          "bytes": 329,
+          "sha256": "795f8842e5d953c330a672db2b7141d9f4caab823dddc6e9a7d5ef713b770769"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/build-manifest.json",
+          "bytes": 103575,
+          "sha256": "6324979ca81684e7761e28778fc502c8d51627a2269b088a26764f1ef46014a7"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/execution-receipt.json",
+          "bytes": 1001,
+          "sha256": "efa291f29b8b45cc1210fd4a6b8712a487f920712c753c925d442e034093078e"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/final-receipt.json",
+          "bytes": 380,
+          "sha256": "5dac1c9f76440879f6cb02b7d334ee6aeeaafb9f7036e6129800c39b71e086f6"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/playwright-results.json",
+          "bytes": 55890,
+          "sha256": "545d1f65a52292033ed2178d07a3be1ec3758fdc5dbe2cf76c116be7d409b77b"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/manifest.json",
+          "bytes": 24461,
+          "sha256": "2cd12315fe4cd033d8fcacf6676439e8429ce0dc661a45659bf6fdeeaf195a70"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/manifest.json",
+          "bytes": 1240,
+          "sha256": "078def3e8de1f40ed9a97c306c825cb1f9f4a1a847fa5fad0e69ae2923b39d80"
+        },
+        {
+          "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/checks.json",
+          "bytes": 166423,
+          "sha256": "3ba2715cd039ed473ab03d39d3d36abcea2cc94ff21b9333d910368fd4833b4f"
+        }
+      ]
+    }
+  ],
+  "independentReviewReferences": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-offline-review-1.json",
+      "bytes": 37170,
+      "sha256": "d6d035ba5f241aa4fccc2985b9d38e8b4886dccb9a53b47ef1ac4849ac0354df"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-real-source-review-1.json",
+      "bytes": 39209,
+      "sha256": "503df2d983becb4a8528fdeb740a8f619678edf1f8ae7802b4afb8835231f515"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/independent-real-package-review-1.json",
+      "bytes": 41187,
+      "sha256": "4d822b9fd7321d2cdbaa6b76dad525960c49d0c09b01f87771e0243b57c32b40"
+    }
+  ],
+  "nativeSecondRestartOriginalFrames": [
+    {
+      "batch": "real-source-1",
+      "label": "准备事务故障第2次重启原工作未交付",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/013-准备事务故障第2次重启原工作未交付.native.png",
+        "bytes": 161643,
+        "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0013-1987114e87f2ba10.png",
+        "bytes": 161643,
+        "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/014-准备事务故障第2次重启原工作未交付.capture.json",
+        "bytes": 1685,
+        "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending"
+    },
+    {
+      "batch": "real-source-1",
+      "label": "准备事务故障第2次重启没有隐式文件导入",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+        "bytes": 111140,
+        "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0015-24ecf2f5bf1b4996.png",
+        "bytes": 111140,
+        "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+        "bytes": 1685,
+        "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending"
+    },
+    {
+      "batch": "real-package-1",
+      "label": "准备事务故障第2次重启原工作未交付",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/013-准备事务故障第2次重启原工作未交付.native.png",
+        "bytes": 156081,
+        "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0013-c6978a0eb79fa7eb.png",
+        "bytes": 156081,
+        "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/014-准备事务故障第2次重启原工作未交付.capture.json",
+        "bytes": 1685,
+        "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending"
+    },
+    {
+      "batch": "real-package-1",
+      "label": "准备事务故障第2次重启没有隐式文件导入",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+        "bytes": 92089,
+        "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0015-d252ffef4cbfdbd1.png",
+        "bytes": 92089,
+        "sha256": "d252ffef4cbfdbd1981e5b8307cac9e587e0cfac1dcbce27a8b9223ec736c900"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+        "bytes": 1684,
+        "sha256": "3ccd22fe7c42ac6b6dbd93cf3c5d15e036c5a3591f43f2118647f1a81f2dc848"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending"
+    }
+  ],
+  "parentPublicationNativeFrames": [
+    {
+      "batch": "real-source-1",
+      "label": "准备事务故障第2次重启原工作未交付",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/013-准备事务故障第2次重启原工作未交付.native.png",
+        "bytes": 161643,
+        "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0013-1987114e87f2ba10.png",
+        "bytes": 161643,
+        "sha256": "1987114e87f2ba10e96f49684c283cdfc74e6dad3fe36f25e5e11b4840502492"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/014-准备事务故障第2次重启原工作未交付.capture.json",
+        "bytes": 1685,
+        "sha256": "9c9f68a549cea1f622d909caa1b3a905177a5012fc05b18f9f78f77b1c315533"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending",
+      "rootAgentVisualFinding": "work remains undelivered",
+      "humanQualityApproval": "pending"
+    },
+    {
+      "batch": "real-source-1",
+      "label": "准备事务故障第2次重启没有隐式文件导入",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/015-准备事务故障第2次重启没有隐式文件导入.native.png",
+        "bytes": 111140,
+        "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1-report/resources/0015-24ecf2f5bf1b4996.png",
+        "bytes": 111140,
+        "sha256": "24ecf2f5bf1b4996e8d416e82a4674d171035577b769ed0b6a01d79a2112726f"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-source-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-9mk7nW/016-准备事务故障第2次重启没有隐式文件导入.capture.json",
+        "bytes": 1685,
+        "sha256": "649878d291de27dac38ae86a91f4bf791c394b2136e1d95ed526b9e5034f037a"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending",
+      "rootAgentVisualFinding": "completed file UI shows loaded0/0 and no matching files",
+      "humanQualityApproval": "pending"
+    },
+    {
+      "batch": "real-package-1",
+      "label": "准备事务故障第2次重启原工作未交付",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/013-准备事务故障第2次重启原工作未交付.native.png",
+        "bytes": 156081,
+        "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0013-c6978a0eb79fa7eb.png",
+        "bytes": 156081,
+        "sha256": "c6978a0eb79fa7eba5ed4c3a8a42a8409f0b3246ff619946d3da6127974962b9"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/014-准备事务故障第2次重启原工作未交付.capture.json",
+        "bytes": 1685,
+        "sha256": "ef0763ed64b8ebb0854d05b9f91b59e7c63d950611c6f9822fc99ac23ce0849c"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending",
+      "rootAgentVisualFinding": "work remains undelivered",
+      "humanQualityApproval": "pending"
+    },
+    {
+      "batch": "real-package-1",
+      "label": "复制前准备事务场景结束退出前原生画面",
+      "launch": 3,
+      "png": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/019-复制前准备事务场景结束退出前原生画面.native.png",
+        "bytes": 110703,
+        "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+      },
+      "reportCopy": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1-report/resources/0019-bb519d57ff509820.png",
+        "bytes": 110703,
+        "sha256": "bb519d57ff5098203edb1b4be3cf7f7a0abae00c1d8a423acdd178efc1bd04f6"
+      },
+      "captureMetadata": {
+        "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/real-package-1/scenarios/704506bbdae38bebaafd-782918a40d6faf515640-retry0-repeat0-BO4Y6E/020-复制前准备事务场景结束退出前原生画面.capture.json",
+        "bytes": 1685,
+        "sha256": "332c3a7ad0cf6eeace4a8fbe5582559c61f435d92605f3539f9e0fae4ea1779e"
+      },
+      "width": 2580,
+      "height": 1720,
+      "method": "Electron.webContents.capturePage()",
+      "rect": null,
+      "pixelTransform": "none",
+      "nativeBeforeAfterEqual": true,
+      "viewportCSS": [
+        1290,
+        860
+      ],
+      "rendererDPR": 2,
+      "zoomFactor": 1,
+      "fullWebContentsViewport": true,
+      "includesMacOSWindowChrome": false,
+      "visualApproval": "pending",
+      "rootAgentVisualFinding": "completed file UI shows loaded0/0 and no matching files",
+      "humanQualityApproval": "pending"
+    }
+  ],
+  "nativeTransientLimitation": {
+    "package015": "loading transient seen by root agent; cannot label final empty file list",
+    "packageFinalEmptyUI": "same-attempt019 native image plus020 metadata, after two restarts before final close; not a new scene",
+    "rootAgentVisualReadingIsNotHumanApproval": true
+  },
+  "initialNoTests": {
+    "batch": "offline-source-1",
+    "exitCode": 1,
+    "error": "No tests found",
+    "fixtureAppLaunches": 0,
+    "actualProductScenes": 0,
+    "productFailures": 0,
+    "classification": "retained runner-selection failure before fixture/business; source2 is fresh corrected selection, not replay/retry of a prior product attempt",
+    "originalResults": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-1/playwright-results.json",
+      "bytes": 2208,
+      "sha256": "8eb7117eb470a72d7bbf47228bccc8a9a6859eb2883c2ae9f7640e3f3c69eb78"
+    },
+    "originalFinalReceipt": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/offline-source-1/final-receipt.json",
+      "bytes": 192,
+      "sha256": "db7b6095744657b51fecc3d33b5979db946fc4927043eb1e0e8db06ad3b99e85"
+    },
+    "runnerSelectionRepair": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/runner-selection-repair-1.json",
+      "bytes": 1082,
+      "sha256": "c621834261823776b3891612d78832fa5ce5bf4a178218a3eff053f7b994978a"
+    },
+    "exactInverse": true,
+    "businessChanged": false,
+    "freshNextAttempt": "offline-source-2"
+  },
+  "privateFormatterProbesSeparateScope": {
+    "notCountedAsProductPass": true,
+    "localActualCLIPhases": 3,
+    "localBaselineExpectedNegative": "missing-matching-confirmed-formatter",
+    "localCandidatePositivePhases": 2,
+    "realProviderPrivatePhaseAttempts": 2,
+    "realOriginalAndCandidateEachSucceeded": true,
+    "localEvidence": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-private-formatter-choice-20261008/evidence.json",
+      "bytes": 24354,
+      "sha256": "28bca73763f4b0386ccb222cd04b068cee6d60fa11dbe3641caf96e734e71020"
+    },
+    "localReceipt": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-private-formatter-choice-20261008/local-probe-receipt.json",
+      "bytes": 3202,
+      "sha256": "d917572eabab24d54dacc5cce32a7a47c01747f9d010711d8a172262d63f99d7"
+    },
+    "realEvidence": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-private-formatter-choice-20261008/real-provider-1/evidence.json",
+      "bytes": 11857,
+      "sha256": "a366eb5de4407f2cbce3a7317efbc920d264df27bee644f2db9bdef9fcbae51a"
+    },
+    "realReceipt": {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/claude-private-formatter-choice-20261008/real-provider-1/final-receipt.json",
+      "bytes": 3443,
+      "sha256": "6663e7817a8026a3cb708f4c2164046ef9ed9b24a4b97073a2deed376e92ebb7"
+    },
+    "boundary": "bounded private decision probes do not retroprove oldsource3 choice, reliable correction, cost improvement or product Work/UI; local original negative retained"
+  },
+  "limitations": [
+    "Only this precise transaction-before-commit macOSCodex0.159.3 boundary is verified, not complete LA-07/LR0–LR6 or all suppliers/platforms.",
+    "Private run file persisted while no committed publication intent/copy/artifact became visible; preparation metadata or tool running is not delivery.",
+    "Task partial usage remains unknown1 in every scene; known usage is not full task usage.",
+    "Original-child same-attempt exit assertions and separately observed final Utility PID/start/group do not establish unobserved historical escaped processes or physical close/power loss.",
+    "Native PNG hashes/dimensions establish retained full webContents viewport bytes, not human approval or OS window border capture.",
+    "Separate whole-package checker was read only after root confirmed terminal exit0; reference remains distinct from per-scene proof."
+  ],
+  "builder": {
+    "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/build-preparation-summary-3.py",
+    "bytes": 19130,
+    "sha256": "3588f9a0d93b20f1b9c2cd39de38e63996901b66d1419b1ea00b9a9a6f978ebc"
+  },
+  "retainedBuilderFailures": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/preparation-summary-builder-failure-1.json",
+      "bytes": 345,
+      "sha256": "f17f1f0c50c43299eaff19181bdcedeee1ae582fb2a3fc5929e97c10998fd98b"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/feature-review/codex-preparation-transaction-20261008/preparation-summary-builder-failure-2.json",
+      "bytes": 380,
+      "sha256": "6360a6cb666399ce0e60a224dbb519157e084f65d3d389f0fff04f239ade4aba"
+    }
+  ]
+}

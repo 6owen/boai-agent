@@ -1,5 +1,6 @@
 /*
- * [INPUT]: 显式 BOAI_REVIEW_RUN_DIR、Playwright 场景身份、真实窗口与本场景隔离目录内的明确文件/白名单数据。
+ * [OUTPUT]: 必需原件按期望hash归档，失败保留缺口并拒绝调用；后续留证队列继续执行。
+ * [INPUT]: 显式 BOAI_REVIEW_RUN_DIR、Playwright 场景身份/逐场景模型来源声明、真实窗口与隔离目录内明确原件。
  * [OUTPUT]: 不覆盖旧尝试的原始截图、原件字节/hash、有限 JSON、trace 索引及显式证据缺口；Playwright与原生整幅capturePage画面分源保留，原生PNG仅读头部维度并记录原窗口/zoom/图像代表元数据，不处理像素；不扫描应用库或浏览器登录资料。
  * [POS]: Electron BDD 可选留证器；技术结果与人工待审阅分开，普通测试不启用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -135,7 +136,7 @@ export class FeatureReview {
       expectedStatus: this.info.expectedStatus,
       resultPhase: this.completedAt ? 'desktop-fixture-teardown' : 'running',
       humanReview: 'pending',
-      modelMode: 'offline-protocol-or-fixture',
+      modelMode: this.info.annotations.some(annotation => annotation.type === 'model-mode' && annotation.description === 'real-provider') ? 'real-provider' : 'offline-protocol-or-fixture',
       launchCount: this.launchCount,
       evidence: this.evidence,
       traces: this.traces,
@@ -153,15 +154,16 @@ export class FeatureReview {
     } catch (error) { this.gap('保存场景清单', error) }
   }
 
-  private capture(label: string, action: () => Promise<void>) {
+  private capture(label: string, action: () => Promise<void>, required = false) {
+    let failure: unknown, failed = false
     this.queue = this.queue.then(async () => {
       try {
         if (!this.directory) throw new Error('场景留证目录不可用')
         await action()
-      } catch (error) { this.gap(label, error) }
+      } catch (error) { failed = true; failure = error; this.gap(label, error) }
       await this.saveManifest()
     })
-    return this.queue
+    return this.queue.then(() => { if (required && failed) throw failure })
   }
 
   private async store(kind: ReviewEvidence['kind'], label: string, bytes: Buffer, filename: string, contentType: string, extra: Partial<ReviewEvidence> = {}) {
@@ -193,11 +195,12 @@ export class FeatureReview {
     })
   }
 
-  file(label: string, path: string) {
+  file(label: string, path: string, options: { required?: boolean; expectedSha256?: string } = {}) {
     return this.capture(label, async () => {
       const { bytes, source } = await readScenarioFile(this.root, path)
+      if (options.expectedSha256 !== undefined && digest(bytes) !== options.expectedSha256) throw new Error('审阅原件hash与已登记版本不一致')
       await this.store('file', label, bytes, basename(path), 'application/octet-stream', { source })
-    })
+    }, options.required)
   }
 
   data(label: string, value: unknown) {

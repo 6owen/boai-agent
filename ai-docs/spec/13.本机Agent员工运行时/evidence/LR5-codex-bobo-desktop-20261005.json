@@ -1,0 +1,157 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-bobo-real-1",
+  "technicalResult": "passed",
+  "seconds": 260.844579,
+  "modelMode": "real-provider",
+  "runtimeVersion": "0.159.3",
+  "sourceFiles": 711,
+  "frozenFilesVerified": true,
+  "evidenceCount": 11,
+  "traces": 2,
+  "gaps": [],
+  "humanReview": "pending",
+  "qualityFinding": "员工在无工具chat阶段误报文件系统只读/无法发布，bobo随后引用该过时说明；后续真实Work及文件交付完成。保留原过程，阶段说明修正后另批重跑。",
+  "works": [
+    {
+      "id": "work-25555ae6e712b33d7d072f333cb078664c0d3b02096e8e2541cd83877ac1c53f",
+      "ownerAgentId": "bobo",
+      "parentWorkId": null,
+      "budgetId": "budget-ef76a0e5618fb419551cc956c26476fbc9c053670e9c3b3174ec82a589951ca1",
+      "status": "delivered",
+      "resultVersion": 1
+    },
+    {
+      "id": "work-1c46dfa09aa517129796f8fa57febf8091d5bdc5d6b16b82bf391c8a8c25fb30",
+      "ownerAgentId": "bobo",
+      "parentWorkId": null,
+      "budgetId": "budget-ef76a0e5618fb419551cc956c26476fbc9c053670e9c3b3174ec82a589951ca1",
+      "status": "delivered",
+      "resultVersion": 2
+    },
+    {
+      "id": "work-c84463cf6a4e2380314645660082dbd5fcce9fcd7b1968703d7eb960baddb7d5",
+      "ownerAgentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "parentWorkId": "work-1c46dfa09aa517129796f8fa57febf8091d5bdc5d6b16b82bf391c8a8c25fb30",
+      "budgetId": "budget-ef76a0e5618fb419551cc956c26476fbc9c053670e9c3b3174ec82a589951ca1",
+      "status": "delivered",
+      "resultVersion": 1
+    }
+  ],
+  "budgets": [
+    {
+      "workItems": 3,
+      "retries": 0,
+      "reportRefreshes": 2,
+      "noProgress": 0,
+      "maxWorkItems": 8,
+      "maxRetries": 3,
+      "maxReportRefreshes": 4,
+      "maxNoProgress": 3,
+      "id": "budget-ef76a0e5618fb419551cc956c26476fbc9c053670e9c3b3174ec82a589951ca1",
+      "schemaVersion": 1,
+      "modelCalls": 13,
+      "runs": 4,
+      "maxModelCalls": 48,
+      "maxRuns": 8,
+      "maxOutputTokens": 16000,
+      "deadlineAt": "2026-10-05T12:33:57.299Z",
+      "usage": {
+        "inputTokens": 490304,
+        "outputTokens": 7135,
+        "totalTokens": 497439
+      },
+      "usageIncomplete": false,
+      "collaborationRequestId": "bobo-collaboration:d834c394-f9d1-44d5-a47c-f04632877ef9",
+      "conversationId": "d0a1066a-429e-412b-af96-5cd270bbcaa7",
+      "accounting": "model-calls-v1",
+      "unknownCalls": 0,
+      "callUnit": "mixed"
+    }
+  ],
+  "calls": [
+    {
+      "agentId": "bobo",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "memory",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "report",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "report",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "decision",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "bobo",
+      "phase": "execution",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    },
+    {
+      "agentId": "f95a19ed-a8f8-4394-a42c-a837b7052d5d",
+      "phase": "memory",
+      "callUnit": "external-turn",
+      "usageComplete": true
+    }
+  ],
+  "screenshot": {
+    "file": "LR5-真实Codex核心组织首批.png",
+    "sha256": "23009c42f041721230ec0894398244ece30c2fa8e355514be834bd531b05893f"
+  },
+  "report": "../../../../.local/feature-review/codex-bobo-real-1-report/index.html"
+}

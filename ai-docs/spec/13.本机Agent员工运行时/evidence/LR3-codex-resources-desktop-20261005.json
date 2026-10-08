@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-05",
+  "batch": "codex-lr3-real-1",
+  "runtime": "Codex 0.159.3",
+  "platform": "macOS arm64",
+  "modelMode": "real-provider",
+  "desktopMode": "source",
+  "stats": {
+    "startTime": "2026-10-05T09:55:42.006Z",
+    "duration": 201504.537,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "humanReview": "pending",
+  "scenario": "原UI新建Codex员工→绑定技能/知识→发送Markdown与原生图片→实际工具交付→来源关联记忆",
+  "expected": {
+    "textToken": "TEXT_PROOF_1f692246-4de8-435a-9118-d32ab53ad363",
+    "skillToken": "SKILL_PROOF_e7aec63b-b30b-4c56-bf1e-5865674bdfd7",
+    "knowledgeToken": "KNOWLEDGE_PROOF_63268c55-4313-4d1d-a73a-f11bf3058745",
+    "imageOrder": "紫色,绿色,橙色",
+    "realSupplier": true,
+    "humanReview": "pending"
+  },
+  "artifacts": [
+    {
+      "id": "7ca30e47-da84-4096-a6cc-db60c7a1e966",
+      "name": "codex-proof.md",
+      "contentVersion": 1,
+      "contentHash": "b690a3eefb5c7bd69dbb3caa19f3f17dd66841cc6046fcdf1c799cc52114ef2b",
+      "sourceWorkId": "work-72386b1b4f1ff12b2170c2be719404cc5c75fd149549d8609f7f2e50f637bfba"
+    }
+  ],
+  "artifactBytesHash": "b690a3eefb5c7bd69dbb3caa19f3f17dd66841cc6046fcdf1c799cc52114ef2b",
+  "works": [
+    {
+      "id": "work-72386b1b4f1ff12b2170c2be719404cc5c75fd149549d8609f7f2e50f637bfba",
+      "status": "delivered",
+      "budgetId": "budget-a60cd9dd6c85d4263b8bc563640cd9d38d72148e1a562bf2a4e2d231357d38dd",
+      "sourceMessageId": "0537304b-2914-44f0-9e7f-d69ac1a778f4",
+      "artifactIds": [
+        "7ca30e47-da84-4096-a6cc-db60c7a1e966"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "phase": "decision",
+      "status": "completed",
+      "createdAt": "2026-10-05T09:55:51.013Z",
+      "finishedAt": "2026-10-05T09:56:06.906Z",
+      "usage": {
+        "inputTokens": 29699,
+        "outputTokens": 151,
+        "totalTokens": 29850
+      }
+    },
+    {
+      "phase": "execution",
+      "status": "completed",
+      "createdAt": "2026-10-05T09:56:06.910Z",
+      "finishedAt": "2026-10-05T09:57:36.982Z",
+      "usage": {
+        "inputTokens": 98633,
+        "outputTokens": 1871,
+        "totalTokens": 100504
+      }
+    },
+    {
+      "phase": "memory",
+      "status": "completed",
+      "createdAt": "2026-10-05T09:57:36.997Z",
+      "finishedAt": "2026-10-05T09:59:01.749Z",
+      "usage": {
+        "inputTokens": 29057,
+        "outputTokens": 73,
+        "totalTokens": 29130
+      }
+    }
+  ],
+  "completedTools": [
+    "skill",
+    "skill_read",
+    "search_knowledge",
+    "write_file",
+    "read_file",
+    "publish_artifact",
+    "report_work"
+  ],
+  "memory": [
+    {
+      "content": "用户的长期写作偏好：报告标题使用紫色。",
+      "kind": "long_term",
+      "origin": "model",
+      "useScope": "conversation",
+      "sourceMessageIds": [
+        "0537304b-2914-44f0-9e7f-d69ac1a778f4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "技能说明",
+      "path": "003-SKILL.md",
+      "sha256": "0c06f8084e8baffbfb7296585eccf44c1621cf659df79c2aea4bf390eb721b9b",
+      "bytes": 224
+    },
+    {
+      "label": "技能参考原件",
+      "path": "004-proof.md",
+      "sha256": "ea4b00deeefbd5331504513cf34457add8869b0f00d80f146775f80005c4a05a",
+      "bytes": 48
+    },
+    {
+      "label": "知识原件",
+      "path": "005-知识.md",
+      "sha256": "091b646b8735abe5400d45b516a49a40e31098b75d4a536a1ad6cbb6396f9376",
+      "bytes": 69
+    },
+    {
+      "label": "材料原件",
+      "path": "006-材料.md",
+      "sha256": "7a615914e1eab952ca2a112913ab30b050341958dd0d40d808499bb95b6f0749",
+      "bytes": 66
+    },
+    {
+      "label": "图片原件",
+      "path": "007-色块.png",
+      "sha256": "a72df4f8f82fb00109eef0d02d245d0f441f0f6727bf528662cba8ed2802d0b9",
+      "bytes": 728
+    },
+    {
+      "label": "本机员工资源交付原件",
+      "path": "011-7ca30e47-da84-4096-a6cc-db60c7a1e966-codex-proof.md",
+      "sha256": "b690a3eefb5c7bd69dbb3caa19f3f17dd66841cc6046fcdf1c799cc52114ef2b",
+      "bytes": 994
+    }
+  ],
+  "report": "../../../../.local/feature-review/codex-lr3-real-1-report/index.html",
+  "frozenFiles": 706,
+  "changedSinceFreeze": [],
+  "limitations": [
+    "非发行包",
+    "人工效果待评审，记忆存储不代表标题渲染已验收",
+    "完整来源/取消/清理/备份与预算矩阵未完成",
+    "场景manifest的modelMode为历史固定离线字样；本批registration明确真实供应商，实际程序/用量/工具/原件共同核对，原清单保留不改写"
+  ]
+}

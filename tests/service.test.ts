@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 独立长短任务以长任务实际进入屏障后发布短结果，原并行/草稿/次序/零重放断言保持；不以短结果可见猜测另一适配器已开始。
+ * [OUTPUT]: 原群新消息后的三种汇报退出沿实际AppService保留等待，子工作仅唤醒原负责人，共原预算/期限且已确认工具只执行一次。
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
  * [OUTPUT]: 核心会话仅标题及更新时间的严格保存、非法输入零写/隐藏与普通会话拒绝、写失败内存不污染和重启保留原配置/历史/工作/记忆且零模型；用明确 writer 开始屏障验证流式起始/完成乱序与只汇报补判；真实不可覆盖发布/内容 hash 随备份搬迁的验证；清空后旧发送请求拒绝重放、新请求仍可从序号一开始；核心预置身份与普通员工场景隔离，保留原业务断言；显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
@@ -347,6 +349,60 @@ describe('local product service', () => {
     expect(engine.decisions.filter(context => result.turns?.some(turn => turn.wakeId && turn.id === context.turnId))).toHaveLength(0)
   })
 
+  it.each(['discard', 'unsupported', 'limit'])('preserves the original dependency wait when a stale private report is withheld by %s', async mode => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    let releaseParent!: () => void, releaseChild!: () => void, childId = '', effects = 0, reports = 0
+    const parentHeld = new Promise<void>(resolve => { releaseParent = resolve }), childHeld = new Promise<void>(resolve => { releaseChild = resolve })
+    engine.decisionHandler = async context => ({ action: context.agent.id === 'researcher' && context.messages.find(message => message.id === context.triggerMessageId)?.content === '原任务' && context.participation!.isFirstDecision ? 'reply' : 'pass', responseKind: 'task', work: { key: 'withheld-wait', scope: '检查后汇总', deliverable: '汇总数字' }, observedThroughSequence: context.participation!.observedThroughSequence })
+    engine.report = mode === 'unsupported' ? undefined : async context => {
+      reports++
+      expect(context.pendingWorkWait).toEqual({ dependencies: [{ workId: childId, resultVersion: 1 }], nextStep: '根据检查结果汇总' })
+      expect(context.delegateWork).toBeUndefined(); expect(context.waitForWork).toBeUndefined(); expect(context.beforeEffect).toBeUndefined()
+      return mode === 'discard' ? { action: 'discard' } : { action: 'publish', text: '错误的旧汇报', outcome: { disposition: 'progress', summary: '错误地解除等待' } }
+    }
+    engine.handler = async context => {
+      if (context.work!.parentWorkId) {
+        await childHeld
+        await context.onWorkOutcome!({ disposition: 'delivered', summary: '检查已交付', evidence: [{ kind: 'answer', reference: '检查结果为 42' }] })
+        await context.onDelta('检查结果为 42'); return
+      }
+      if (!context.work!.waitRevision) {
+        await context.beforeEffect!(); effects++; await context.afterEffect!()
+        await context.onTool({ id: 'known-effect', name: 'write_file', status: 'completed', detail: '已写入 self:/work/input.md', createdAt: new Date().toISOString() })
+        const child = await context.delegateWork!({ key: 'check', ownerAgentId: 'writer', scope: '检查数据', deliverable: '数据检查结果' }); childId = child.id
+        await context.waitForWork!({ dependencies: [{ workId: childId, resultVersion: 1 }], nextStep: '根据检查结果汇总' })
+        await context.onDelta('基于旧输入的等待草稿'); await parentHeld; return
+      }
+      expect(context.agent.id).toBe('researcher'); expect(context.work!.nextStep).toBe('根据检查结果汇总')
+      expect(context.workItems!.find(work => work.id === childId)?.status).toBe('delivered')
+      expect(context.completedWorkTools?.flatMap(item => item.tools)).toEqual([expect.objectContaining({ id: 'known-effect' })])
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '已汇总', evidence: [{ kind: 'answer', reference: '汇总：42' }] })
+      await context.onDelta('汇总：42')
+    }
+    try {
+      const source = await send(service, group, '原任务', `withheld-wait-${mode}`, ['researcher'])
+      await until(async () => !!childId && (await detail(service, group)).workItems!.some(work => work.dependsOnWorkIds.includes(childId)))
+      const before = await detail(service, group), original = before.workItems!.find(work => !work.parentWorkId)!, budget = before.workBudgets![0]
+      await send(service, group, '补充：完成后只汇总数字', `withheld-wait-change-${mode}`, [])
+      releaseParent()
+      await until(async () => (await detail(service, group)).runs.some(run => run.workId === original.id && run.draft?.status === 'withheld'))
+      const waiting = await detail(service, group)
+      expect(waiting.workItems!.find(work => work.id === original.id)).toMatchObject({ status: 'waiting', waitRevision: 1, requiresReview: false, requiredResults: [{ workId: childId, resultVersion: 1 }], resultVersion: 0, resultMessageIds: [], sourceMessageId: source.id })
+      expect(waiting.runs.find(run => run.workId === original.id && run.phase === 'execution')).toMatchObject({ status: 'completed', disposition: 'waiting', draft: { status: 'withheld', text: mode === 'limit' ? '错误的旧汇报' : '基于旧输入的等待草稿', revisions: reports } })
+      expect(waiting.messages.some(message => message.content === '基于旧输入的等待草稿' || message.content === '错误的旧汇报')).toBe(false)
+      releaseChild(); await idle(service, group, 3)
+      const result = await detail(service, group), parent = result.workItems!.find(work => work.id === original.id)!
+      expect(parent).toMatchObject({ status: 'delivered', waitRevision: 1, resultVersion: 1, sourceMessageId: source.id, budgetId: budget.id, ownerAgentId: 'researcher' })
+      expect(result.workBudgets).toHaveLength(1); expect(result.workBudgets![0]).toMatchObject({ id: budget.id, deadlineAt: budget.deadlineAt, runs: 3, workItems: 2, modelCalls: 3 + reports, reportRefreshes: reports })
+      expect(reports).toBe(mode === 'discard' ? 1 : mode === 'limit' ? 2 : 0); expect(effects).toBe(1)
+      expect(engine.contexts.map(context => context.agent.id)).toEqual(['researcher', 'writer', 'researcher'])
+      expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['检查结果为 42', '汇总：42'])
+      expect(result.workWakes?.map(wake => wake.status)).toEqual(['consumed', 'consumed'])
+      expect(engine.decisions.filter(context => result.turns?.some(turn => turn.wakeId && turn.id === context.turnId))).toHaveLength(0)
+    } finally { releaseParent(); releaseChild() }
+  })
+
   it('lets an independent delegated short task finish while its sibling is still running', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await service.handle('createConversation', { kind: 'group', title: '并行子工作', agentIds: ['researcher', 'writer', 'reviewer'] }) as Conversation
@@ -486,9 +542,13 @@ describe('local product service', () => {
   it('lets independent short and long tasks publish without invalidating each other or replaying execution', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
-    let release!: () => void, reports = 0
+    let release!: () => void, started!: () => void, reports = 0
     const held = new Promise<void>(resolve => { release = resolve })
-    engine.handler = async context => { if (context.agent.id === 'researcher') await held; await context.onDelta(context.agent.id === 'researcher' ? '长任务结果' : '独立短任务结果') }
+    const longStarted = new Promise<void>(resolve => { started = resolve })
+    engine.handler = async context => {
+      if (context.agent.id === 'researcher') { started(); await held } else await longStarted
+      await context.onDelta(context.agent.id === 'researcher' ? '长任务结果' : '独立短任务结果')
+    }
     engine.report = async (context, draft) => {
       reports++; expect(context.messages.some(message => message.content === '独立短任务结果')).toBe(true)
       return { action: 'publish', text: draft.text }

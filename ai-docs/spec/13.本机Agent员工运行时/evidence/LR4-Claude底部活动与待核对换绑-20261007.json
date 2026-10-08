@@ -1,0 +1,3198 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-06T17:40:38.747532+00:00",
+  "section": 81,
+  "scope": "Claude bottom employee settings reject backend switching during actual file execution, after actual stop/service crash, and after restart; original configuration, Work, accounting, and unpublished file remain.",
+  "productionChanged": false,
+  "fullGoalComplete": false,
+  "versions": {
+    "claude": "2.1.214",
+    "provider": "explicit saved DeepSeek official connection / deepseek-v4-pro",
+    "platform": "macOS arm64"
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T17:35:42.787Z",
+        "duration": 30324.715,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议在Claude定时工作写入文件后运行服务意外退出并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/manifest.json",
+            "bytes": 19040,
+            "sha256": "8c480bc8d6f0acb9d155ea5a071ab31cedaa8c08610f3dca953b3ea189d4f73c"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/004-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 36023,
+              "sha256": "4ebf4481dc82b5cc102a050c15dcb1388119225c8beadd8ad27d96c7b9fb02db"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/010-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36401,
+              "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36401,
+              "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/020-Claude自动化停止最终原始状态.json",
+            "bytes": 12527,
+            "sha256": "4883d5bfadf5592fe74642cfd60a83be4c9ca187e5313f85745c1c8a62098f56"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/007-停止前实际运行与本场子进程.json",
+            "bytes": 13928,
+            "sha256": "c5c40642e2692f3659a46a6b4fafcd2a6dfb39d54c5de7159e7967e28fc37577"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/022-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/001-Claude程序核对只证明程序状态.png",
+              "bytes": 197147,
+              "sha256": "2344a4931ba32d08923426f4796e2a19b4b7b1ba122949d59dec51e563f6e9cd"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/002-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/003-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/004-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 36023,
+              "sha256": "4ebf4481dc82b5cc102a050c15dcb1388119225c8beadd8ad27d96c7b9fb02db"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/005-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 290425,
+              "sha256": "20454fc45df1b46c5d51e4b0bf63ce5ce488034cf2be84f40e2fc292cf305690"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/006-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "f45a2dc268eeb9f724fbe0ed70594d5fd89253ac294c359e15a23236f81610fe"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/007-停止前实际运行与本场子进程.json",
+              "bytes": 13928,
+              "sha256": "c5c40642e2692f3659a46a6b4fafcd2a6dfb39d54c5de7159e7967e28fc37577"
+            },
+            {
+              "kind": "screenshot",
+              "label": "运行服务意外退出后的原界面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/008-运行服务意外退出后的原界面.png",
+              "bytes": 189106,
+              "sha256": "14d2760bcdb76622deb9aa246ad9fd2252c6bc259757396d21b4ea772008842a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/009-第-1-次启动结束画面.png",
+              "bytes": 206194,
+              "sha256": "1be4bb33e8f2d3664d8e496138fa82cb1eb65de4e15eda624231595b996ab819"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/010-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36401,
+              "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+            },
+            {
+              "kind": "screenshot",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/011-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294637,
+              "sha256": "9fddaa036866bae276fbfb479bbca28370afab407b249eb94ede15a989ef3b6a"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/012-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "6ad711edbc13c538e6921f21398daf06437e7c1940c80c301b65b4c0fbb090e3"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/013-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/014-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 262931,
+              "sha256": "237a8a1f5036e8888135b33ff9dc25ef9cbf9e491c70d0c9b03a35df38d1ea4a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/015-第-2-次启动结束画面.png",
+              "bytes": 262447,
+              "sha256": "37923584e70ac49cb6d29b4b991290f5a5faed1d57067cbd50b8e0c756f5a053"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36401,
+              "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294872,
+              "sha256": "841a4ac44aed7a1fb9b5cc60fd48c4550af4ebc0cee4a270fb4635fe7cd2944b"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "c734ed95bfcf77fe154e7dfcdbb0dabb136ee06ef7893a4240e2ac5e93988d2b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/019-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 204449,
+              "sha256": "ee4e41fe41211760141cbf33bcb3c705b9e2a345d70ab99cdca599a69253d1c4"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/020-Claude自动化停止最终原始状态.json",
+              "bytes": 12527,
+              "sha256": "4883d5bfadf5592fe74642cfd60a83be4c9ca187e5313f85745c1c8a62098f56"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/021-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/022-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/023-第-3-次启动结束画面.png",
+              "bytes": 204186,
+              "sha256": "ff66a92e25e139e1eb7bc4528b0ffd3b5428625b8ec6ea16213cd121ffd1bdc3"
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议在Claude定时工作写入文件后停止本次并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/manifest.json",
+            "bytes": 17797,
+            "sha256": "f970dda87a828c50491ab6b59e2a66e42bec075651b8c8736967ac70c3aded81"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/004-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 36023,
+              "sha256": "bb68bfa7ad9cc81fad4bccb50a03611b624fc96ba7e79b4b9c6631353231426e"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/008-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 36639,
+              "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/014-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36639,
+              "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/018-Claude自动化停止最终原始状态.json",
+            "bytes": 12725,
+            "sha256": "2f7b391bb59e36d2d4fae6a3c6a05b97c144b787b752e400b3414cf67b0c6276"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/007-停止前实际运行与本场子进程.json",
+            "bytes": 13916,
+            "sha256": "8c5a8781fb8f11c7961e54d1ef88c99fc91633acdea7f1a24e855731672541f3"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/020-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/001-Claude程序核对只证明程序状态.png",
+              "bytes": 197151,
+              "sha256": "1f4e3c009724c60f26326418fddafa9984707825d49ec3efc2541ca307ab4158"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/002-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279227,
+              "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/003-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/004-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 36023,
+              "sha256": "bb68bfa7ad9cc81fad4bccb50a03611b624fc96ba7e79b4b9c6631353231426e"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/005-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 290335,
+              "sha256": "a5e1a6f11df932640d7180024d0a756d3919a326884e41b2a5fe8c41feec5bb0"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/006-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "3b7ba44998182d3ccb095ee417edd51ec543f94e27b9767d646a8f9cb52ed942"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/007-停止前实际运行与本场子进程.json",
+              "bytes": 13916,
+              "sha256": "8c5a8781fb8f11c7961e54d1ef88c99fc91633acdea7f1a24e855731672541f3"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/008-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 36639,
+              "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+            },
+            {
+              "kind": "screenshot",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/009-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294594,
+              "sha256": "3933986a472a59acb6496f2497d2d13a8e17e79beb894cab922e12b509d33b9f"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/010-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "ef444e4562af0f3db67b5931828948c055e07d17dcf7ee585f997a48a15cf282"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/011-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/012-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 250758,
+              "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/013-第-1-次启动结束画面.png",
+              "bytes": 250758,
+              "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/014-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 36639,
+              "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/015-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294613,
+              "sha256": "10cc12108be6ab161679ec48568fecae23b488a410cab356e9a97897987a3bbc"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/016-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "ffde9d4a5794312d74cc0aa6b0c23525c9d5d796bee7fe3e68798fa325fe4ccd"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/017-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 191227,
+              "sha256": "0e85d109954486bd96297dbbeebae1a652e13f3d7d1b0bcb469cdfaa496fea42"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/018-Claude自动化停止最终原始状态.json",
+              "bytes": 12725,
+              "sha256": "2f7b391bb59e36d2d4fae6a3c6a05b97c144b787b752e400b3414cf67b0c6276"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/019-proof.txt",
+              "bytes": 24,
+              "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/020-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/021-第-2-次启动结束画面.png",
+              "bytes": 190843,
+              "sha256": "700c377a2ba28fb5ffbe8d320d29ffdfe6192fbcec52f805fb8e65f42b7ac903"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/playwright-results.json",
+        "bytes": 87045,
+        "sha256": "ff76faac40af2e6f13f42b3c71fd01b7190a7ac0e4eddb8aa1f14f78b7db0fa9"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "87860d6b6b091375c1be05a25381c9795e11d8cbc538700d902b81c8727d455a"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/build-manifest.json",
+        "bytes": 101710,
+        "sha256": "751c643b0fc7810690078124bd2f1ab7382e3d2b2ff80dfbc2efb3bb46f6b327"
+      }
+    },
+    {
+      "name": "source-1",
+      "stats": {
+        "startTime": "2026-10-06T17:37:08.282Z",
+        "duration": 56023.914,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude在Claude定时工作写入文件后运行服务意外退出并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/manifest.json",
+            "bytes": 20068,
+            "sha256": "3a942fcbe9e30af39276746757d4fe638ebb6480ef0cc7a0c53f4d58c6da10cb"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38929,
+              "sha256": "a583d2e89a5564ba1a346bfba7175ad5ea8a3315399fb45ccb3f975d85ea955c"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/012-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39935,
+              "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/018-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39935,
+              "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/022-Claude自动化停止最终原始状态.json",
+            "bytes": 13398,
+            "sha256": "8f0446beaa845e009c6cdc47cc69ba93054f4cbd06702635693c480707a00316"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/009-停止前实际运行与本场子进程.json",
+            "bytes": 15594,
+            "sha256": "96dd938acc7dfac7904c7b7329e8145fb2e434c1d4d8c0def390712875d9e40e"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/024-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/001-第-1-次启动结束画面.png",
+              "bytes": 104690,
+              "sha256": "0d17d5385136915dc3151e3aa27ebe6c11c34c0773de2d6cf911e1eed6cf583b"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/003-Claude程序核对只证明程序状态.png",
+              "bytes": 196948,
+              "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/004-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/005-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38929,
+              "sha256": "a583d2e89a5564ba1a346bfba7175ad5ea8a3315399fb45ccb3f975d85ea955c"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 290288,
+              "sha256": "1ff13130ba7470f3dffdbb9d16c4fbc1c573867310ed16759734f82ec1523bf9"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "0d1d829405ec77dad5da245f91130edd7349f993325421dbce086c1e27c168d1"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/009-停止前实际运行与本场子进程.json",
+              "bytes": 15594,
+              "sha256": "96dd938acc7dfac7904c7b7329e8145fb2e434c1d4d8c0def390712875d9e40e"
+            },
+            {
+              "kind": "screenshot",
+              "label": "运行服务意外退出后的原界面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/010-运行服务意外退出后的原界面.png",
+              "bytes": 240384,
+              "sha256": "02c99711063fee8f8a74586f410fe6c27afaf0dc5547511dab4d907d470cf661"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/011-第-2-次启动结束画面.png",
+              "bytes": 260377,
+              "sha256": "8a34eb68d4cb11bfc8089960f16ebd240ef535147bad06120e7934cfd6a51924"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/012-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39935,
+              "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+            },
+            {
+              "kind": "screenshot",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293467,
+              "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/015-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/016-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 307290,
+              "sha256": "9c5f78663c53eec788a9660a86807aedc28e5ee4c5a9b7967391d873630add49"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/017-第-3-次启动结束画面.png",
+              "bytes": 306923,
+              "sha256": "480342758467f1b8a28f162c59cf27d33326f8b2aea9882dc4855816714a40a8"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/018-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39935,
+              "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/019-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293168,
+              "sha256": "632a060175d8c04c884dc7de2fb8a42cc2b8c703369e9ea50f78f33332a734db"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/020-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "27964ec8077225982a8bb9ff55e80b7519b4cc76411101ae72d1172f59da5063"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/021-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 255414,
+              "sha256": "5bd8413508cf884541412f3f21932b384f319b7269c940ed7d516ff4d6a9770d"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/022-Claude自动化停止最终原始状态.json",
+              "bytes": 13398,
+              "sha256": "8f0446beaa845e009c6cdc47cc69ba93054f4cbd06702635693c480707a00316"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/023-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/024-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/025-第-4-次启动结束画面.png",
+              "bytes": 255070,
+              "sha256": "b7e7aca8b4f1728e9388496be4a0f1ddedcb0fb495d1aa7afa5a0a7a2ca1e72a"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude在Claude定时工作写入文件后停止本次并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/manifest.json",
+            "bytes": 18824,
+            "sha256": "1a3bd0b04287bed45a7300b528f79fdab9d30affc8d4e27c3c7c6a566b814ab7"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38575,
+              "sha256": "abafee4153f86448d8f8bf0b13b82f9a32d95df0e9bd5485654b223a3487364a"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/010-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 39191,
+              "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39191,
+              "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/020-Claude自动化停止最终原始状态.json",
+            "bytes": 13259,
+            "sha256": "0c84db7ac86d0797f92e2bc29cd20f020cda9778f081b66b52d27e441d9862c5"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/009-停止前实际运行与本场子进程.json",
+            "bytes": 15405,
+            "sha256": "915d87e617b144af79740ba70b72860bc7547e2bb6ffd363071f88384884c311"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/022-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/001-第-1-次启动结束画面.png",
+              "bytes": 104652,
+              "sha256": "5eea54f01d6914b0a8f322839a7851036f16295d73583b23ebc7c8a4e0b1ccf8"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/003-Claude程序核对只证明程序状态.png",
+              "bytes": 196948,
+              "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/004-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/005-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38575,
+              "sha256": "abafee4153f86448d8f8bf0b13b82f9a32d95df0e9bd5485654b223a3487364a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 291433,
+              "sha256": "9d0b443ad7c36eda8a23539b682d00a6d1ecef64cecea4ee01fd31f22d686e43"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "f6c7d26d08aa187c062f0c84fc79ce3ba0551dfb8bf1f7f3e1b560e212daec6c"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/009-停止前实际运行与本场子进程.json",
+              "bytes": 15405,
+              "sha256": "915d87e617b144af79740ba70b72860bc7547e2bb6ffd363071f88384884c311"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/010-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 39191,
+              "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+            },
+            {
+              "kind": "screenshot",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294145,
+              "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/013-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/014-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 295272,
+              "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/015-第-2-次启动结束画面.png",
+              "bytes": 295272,
+              "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39191,
+              "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293473,
+              "sha256": "2a142597f7fa89d80f96d6821fd318f8d664ca6f34358b9bf3191631de9ce9e7"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "a36d76d05ac2a34240ed23f79448efd2490b7cfec33b2cdb3660c6659ccd19ef"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/019-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 242580,
+              "sha256": "3743d04c721ed3c080bf944c0df6f37816f4f749f2f69581f18e61f4f087aee5"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/020-Claude自动化停止最终原始状态.json",
+              "bytes": 13259,
+              "sha256": "0c84db7ac86d0797f92e2bc29cd20f020cda9778f081b66b52d27e441d9862c5"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/021-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/022-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/023-第-3-次启动结束画面.png",
+              "bytes": 242163,
+              "sha256": "af86bf5acecd1f0f2d60835f8f5c05ec9562f94e29edf48daffce7be6375e04a"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/playwright-results.json",
+        "bytes": 93063,
+        "sha256": "5f8953ee28c0cab18120816b2cfc89cf5a8e914efe48aff142683407faf0bda1"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "a932832bacbde76eb2a25420e70c37cf7e46e6348fb19289618d04f7d5ba452e"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/build-manifest.json",
+        "bytes": 101710,
+        "sha256": "1eb56d90d27a8f8249bd719044997485c24070c4a5329ed98851e4863a803783"
+      }
+    },
+    {
+      "name": "package-1",
+      "stats": {
+        "startTime": "2026-10-06T17:38:40.057Z",
+        "duration": 60744.813,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude在Claude定时工作写入文件后运行服务意外退出并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/manifest.json",
+            "bytes": 20072,
+            "sha256": "7cad27393bf8aab24f1eeff7a58e30fadb1737b9597bef233a41ba33c3232aab"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38997,
+              "sha256": "e2dc39a9e1d977d65ab9cc6dd76264b0b1b58161a9290f52b468ce731ddf37e2"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/012-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39997,
+              "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/018-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39997,
+              "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/022-Claude自动化停止最终原始状态.json",
+            "bytes": 13467,
+            "sha256": "bd488888ae278387140f456cde7a35f756ddc6be27370f6890c328238c29404f"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/009-停止前实际运行与本场子进程.json",
+            "bytes": 15627,
+            "sha256": "8b9c9a219d4c3dd30588ca181030344c5cfd3d749716e4bb342d939ad41a5f50"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/024-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/001-第-1-次启动结束画面.png",
+              "bytes": 104694,
+              "sha256": "23f26056e2ea25cd0ffabb88b273cc8b1c0ec3300c5291e5aab07382b0a06b36"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/003-Claude程序核对只证明程序状态.png",
+              "bytes": 196948,
+              "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/004-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/005-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38997,
+              "sha256": "e2dc39a9e1d977d65ab9cc6dd76264b0b1b58161a9290f52b468ce731ddf37e2"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 290212,
+              "sha256": "dde76e658da17d3fb12faf0ad9b7412a095318d98c5d6303de87ac4d5f3708f4"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "8da846185719103dc21de17152ca545e30a1a664ef463b7ca3208014e7197b7e"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/009-停止前实际运行与本场子进程.json",
+              "bytes": 15627,
+              "sha256": "8b9c9a219d4c3dd30588ca181030344c5cfd3d749716e4bb342d939ad41a5f50"
+            },
+            {
+              "kind": "screenshot",
+              "label": "运行服务意外退出后的原界面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/010-运行服务意外退出后的原界面.png",
+              "bytes": 243196,
+              "sha256": "c58c93e12e64318f609942b12c5df4ea0f63a990ae7f929eef9fd037d30dc645"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/011-第-2-次启动结束画面.png",
+              "bytes": 263156,
+              "sha256": "db610387792aec87c0014b945384bffbff337ec1f7686080b07cda6e5c2636d7"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/012-故障首次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39997,
+              "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+            },
+            {
+              "kind": "screenshot",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293804,
+              "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+            },
+            {
+              "kind": "data",
+              "label": "故障首次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/015-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/016-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 318756,
+              "sha256": "b0394f55a66dd7fab993833a713475452b33971c23a3ea778ecee3dc458f0e49"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/017-第-3-次启动结束画面.png",
+              "bytes": 319106,
+              "sha256": "2a68e5655c023a2ab393906b13462cd60401693525a0efd531ddc73618dcc99c"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/018-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 39997,
+              "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/019-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293419,
+              "sha256": "efa881dfea1aa7d2468ed1ae58714ed51b53760e698beabbf90c32123a40c03d"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/020-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "bdf092f20f6f646983245dd980a75179f4992cca1b38e590ba7f56f9ece9217a"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/021-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 257348,
+              "sha256": "30febd2f1ec304bcf858a42c47034611f6d9bf10f8100c5715ed53dc6a51f04f"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/022-Claude自动化停止最终原始状态.json",
+              "bytes": 13467,
+              "sha256": "bd488888ae278387140f456cde7a35f756ddc6be27370f6890c328238c29404f"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/023-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/024-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 4 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/025-第-4-次启动结束画面.png",
+              "bytes": 257005,
+              "sha256": "5b0988988efed9db35994c861c8d2f5cc4cc2436b792cf293fb07148b324d1fc"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude在Claude定时工作写入文件后停止本次并拒绝底部换绑且保持原记录",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "cleanupErrors": [],
+          "manifest": {
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/manifest.json",
+            "bytes": 18827,
+            "sha256": "9c67229e4d8f5d619954c6c6b1ae8d830cc5e6e540f089727bf7ae08865bf174"
+          },
+          "gateEvidence": [
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38933,
+              "sha256": "f888f14d61cb8bbe255a79278cc46cbdb3e6282512d5890aed61ceacda541727"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/010-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 40171,
+              "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 40171,
+              "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+            }
+          ],
+          "finalState": {
+            "kind": "data",
+            "label": "Claude自动化停止最终原始状态",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/020-Claude自动化停止最终原始状态.json",
+            "bytes": 13607,
+            "sha256": "489c417d53feb2595c7432d8c8019c23ecf6406e563a733f564fec0aeb9d0448"
+          },
+          "processEvidence": {
+            "kind": "data",
+            "label": "停止前实际运行与本场子进程",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/009-停止前实际运行与本场子进程.json",
+            "bytes": 15578,
+            "sha256": "0c9cc5b5dde2b3c0bc943a642c228a675caf76f80685e7915981ee7a6494446a"
+          },
+          "testCleanup": {
+            "kind": "data",
+            "label": "故障场景人工清理进程不计产品通过",
+            "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/022-故障场景人工清理进程不计产品通过.json",
+            "bytes": 19,
+            "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+          },
+          "items": [
+            {
+              "kind": "screenshot",
+              "label": "第 1 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/001-第-1-次启动结束画面.png",
+              "bytes": 104745,
+              "sha256": "05c92ebddbaa5cd359985e4323eb8c6bb5b6d54eb976be5249b372c2526eed0f"
+            },
+            {
+              "kind": "data",
+              "label": "真实模型使用产品系统加密",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/002-真实模型使用产品系统加密.json",
+              "bytes": 71,
+              "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude程序核对只证明程序状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/003-Claude程序核对只证明程序状态.png",
+              "bytes": 197011,
+              "sha256": "fda528c98059894b4224a1fbe5283d6dd7ace706678f1f21db55b38a081e8a96"
+            },
+            {
+              "kind": "screenshot",
+              "label": "新员工明确选择Claude程序与模型来源",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/004-新员工明确选择Claude程序与模型来源.png",
+              "bytes": 279016,
+              "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+            },
+            {
+              "kind": "file",
+              "label": "故障前已写但未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/005-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/006-文件执行中底部拒绝换绑及原事实.json",
+              "bytes": 38933,
+              "sha256": "f888f14d61cb8bbe255a79278cc46cbdb3e6282512d5890aed61ceacda541727"
+            },
+            {
+              "kind": "screenshot",
+              "label": "文件执行中底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+              "bytes": 290282,
+              "sha256": "d2874ad10e0f7ff5363fa6bbfaf7291ffc77ae4bc7eaf898676cb5e9ae4518c3"
+            },
+            {
+              "kind": "data",
+              "label": "文件执行中底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "f119950abd16213f8b12c755650efdc339738d15ae2294bbcc852aa5273f3f99"
+            },
+            {
+              "kind": "data",
+              "label": "停止前实际运行与本场子进程",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/009-停止前实际运行与本场子进程.json",
+              "bytes": 15578,
+              "sha256": "0c9cc5b5dde2b3c0bc943a642c228a675caf76f80685e7915981ee7a6494446a"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/010-实际停止退出后底部拒绝换绑及原事实.json",
+              "bytes": 40171,
+              "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+            },
+            {
+              "kind": "screenshot",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 294650,
+              "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+            },
+            {
+              "kind": "data",
+              "label": "实际停止退出后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+            },
+            {
+              "kind": "file",
+              "label": "停止前已写但未发布的原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/013-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+            },
+            {
+              "kind": "screenshot",
+              "label": "Claude自动化停止后保留未知用量且未交付",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/014-Claude自动化停止后保留未知用量且未交付.png",
+              "bytes": 297910,
+              "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 2 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/015-第-2-次启动结束画面.png",
+              "bytes": 297910,
+              "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝换绑及原事实",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/016-再次重启后底部拒绝换绑及原事实.json",
+              "bytes": 40171,
+              "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+            },
+            {
+              "kind": "screenshot",
+              "label": "再次重启后底部拒绝切换Claude运行方式",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+              "bytes": 293627,
+              "sha256": "e9600d049c3bb962899c95677b1fedea49ab95d08b3b3b159808422bb0e56667"
+            },
+            {
+              "kind": "data",
+              "label": "再次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+              "bytes": 1685,
+              "sha256": "b38e10e92931299d7201f59438dab04266b3e207d2a508814b0392def218ae4f"
+            },
+            {
+              "kind": "screenshot",
+              "label": "停止后重启没有恢复执行或发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/019-停止后重启没有恢复执行或发布原件.png",
+              "bytes": 244662,
+              "sha256": "b573620ce608ff7307297d7ed6617c71389102812e49fa72f01f78aa93c53c03"
+            },
+            {
+              "kind": "data",
+              "label": "Claude自动化停止最终原始状态",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/020-Claude自动化停止最终原始状态.json",
+              "bytes": 13607,
+              "sha256": "489c417d53feb2595c7432d8c8019c23ecf6406e563a733f564fec0aeb9d0448"
+            },
+            {
+              "kind": "file",
+              "label": "故障最终未发布原件",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/021-stop-proof.txt",
+              "bytes": 15,
+              "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+            },
+            {
+              "kind": "data",
+              "label": "故障场景人工清理进程不计产品通过",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/022-故障场景人工清理进程不计产品通过.json",
+              "bytes": 19,
+              "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+            },
+            {
+              "kind": "screenshot",
+              "label": "第 3 次启动结束画面",
+              "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/023-第-3-次启动结束画面.png",
+              "bytes": 244363,
+              "sha256": "902471d8005a485e54b4d189d032d02390bb9ff2a964bd9da5949e9445dd6001"
+            }
+          ]
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/playwright-results.json",
+        "bytes": 93128,
+        "sha256": "78bdff20319bbf5248c9586b86cb0d72afabc840de02d261a9b0843b02bdee75"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "c2715ebaeeff973816c1f20793c25906b32fbe43ac774a2ca5624dd1cbc55f15"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/build-manifest.json",
+        "bytes": 101710,
+        "sha256": "af9be7c36e4bcc06f644838ec1dc3eeef1e28b2e22097e8cc47c4a8555e3153e"
+      }
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "ending": "crash",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-source-1-20261007.png",
+        "bytes": 293467,
+        "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-source-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "故障首次重启后底部拒绝切换Claude运行方式",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+        "bytes": 293467,
+        "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "故障首次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+        "bytes": 1685,
+        "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+      },
+      "developerVisualReview": "checked",
+      "humanReview": "pending",
+      "developerObservation": "Full native capture shows the original Claude employee/direct chat, unchanged bottom native source, blocked API draft, pending-Work error, unchanged configuration version 1, explicit recheck/reload controls, and disabled save."
+    },
+    {
+      "batch": "source-1",
+      "ending": "stop",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-source-1-20261007.png",
+        "bytes": 294145,
+        "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-source-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "实际停止退出后底部拒绝切换Claude运行方式",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+        "bytes": 294145,
+        "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "实际停止退出后底部拒绝切换Claude运行方式 · 原生截取元数据",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+        "bytes": 1685,
+        "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+      },
+      "developerVisualReview": "checked",
+      "humanReview": "pending",
+      "developerObservation": "Full native capture shows the original Claude employee/direct chat, unchanged bottom native source, blocked API draft, pending-Work error, unchanged configuration version 1, explicit recheck/reload controls, and disabled save."
+    },
+    {
+      "batch": "package-1",
+      "ending": "crash",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-package-1-20261007.png",
+        "bytes": 293804,
+        "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-package-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "故障首次重启后底部拒绝切换Claude运行方式",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+        "bytes": 293804,
+        "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "故障首次重启后底部拒绝切换Claude运行方式 · 原生截取元数据",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+        "bytes": 1685,
+        "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+      },
+      "developerVisualReview": "checked",
+      "humanReview": "pending",
+      "developerObservation": "Full native capture shows the original Claude employee/direct chat, unchanged bottom native source, blocked API draft, pending-Work error, unchanged configuration version 1, explicit recheck/reload controls, and disabled save."
+    },
+    {
+      "batch": "package-1",
+      "ending": "stop",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-package-1-20261007.png",
+        "bytes": 294650,
+        "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-package-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+      },
+      "sourceImage": {
+        "kind": "screenshot",
+        "label": "实际停止退出后底部拒绝切换Claude运行方式",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+        "bytes": 294650,
+        "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+      },
+      "sourceMetadata": {
+        "kind": "data",
+        "label": "实际停止退出后底部拒绝切换Claude运行方式 · 原生截取元数据",
+        "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+        "bytes": 1685,
+        "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+      },
+      "developerVisualReview": "checked",
+      "humanReview": "pending",
+      "developerObservation": "Full native capture shows the original Claude employee/direct chat, unchanged bottom native source, blocked API draft, pending-Work error, unchanged configuration version 1, explicit recheck/reload controls, and disabled save."
+    }
+  ],
+  "productionFilesUnchanged": 583,
+  "packageFilesUnchanged": 3405,
+  "changesFromSection80": [
+    "tests/e2e/features/claude-employee.feature",
+    "tests/e2e/steps/claude-stop.steps.ts"
+  ],
+  "limitations": [
+    "The task continues legitimate file-tool observations while the editor is open; active proof checks fixed execution/work/call identities rather than freezing normal tool progress.",
+    "The attempted switch is Claude to API via the original employee direct chat while the original Work belongs to its automation chat. Other local profiles, model sources, runtime kinds, and mixed-group/approval cases are not proved.",
+    "Each restart uses the controlled Desktop lifecycle and does not prove native unsaved-close modal choices, OS shutdown or power loss.",
+    "No production fix or provider reliability conclusion is inferred; complete LR0-LR6 and human review remain outstanding."
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/001-Claude程序核对只证明程序状态.png",
+      "bytes": 197147,
+      "sha256": "2344a4931ba32d08923426f4796e2a19b4b7b1ba122949d59dec51e563f6e9cd"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/002-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/003-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/004-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 36023,
+      "sha256": "4ebf4481dc82b5cc102a050c15dcb1388119225c8beadd8ad27d96c7b9fb02db"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/005-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 290425,
+      "sha256": "20454fc45df1b46c5d51e4b0bf63ce5ce488034cf2be84f40e2fc292cf305690"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/006-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "f45a2dc268eeb9f724fbe0ed70594d5fd89253ac294c359e15a23236f81610fe"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/007-停止前实际运行与本场子进程.json",
+      "bytes": 13928,
+      "sha256": "c5c40642e2692f3659a46a6b4fafcd2a6dfb39d54c5de7159e7967e28fc37577"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/008-运行服务意外退出后的原界面.png",
+      "bytes": 189106,
+      "sha256": "14d2760bcdb76622deb9aa246ad9fd2252c6bc259757396d21b4ea772008842a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/009-第-1-次启动结束画面.png",
+      "bytes": 206194,
+      "sha256": "1be4bb33e8f2d3664d8e496138fa82cb1eb65de4e15eda624231595b996ab819"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/010-故障首次重启后底部拒绝换绑及原事实.json",
+      "bytes": 36401,
+      "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/011-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294637,
+      "sha256": "9fddaa036866bae276fbfb479bbca28370afab407b249eb94ede15a989ef3b6a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/012-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "6ad711edbc13c538e6921f21398daf06437e7c1940c80c301b65b4c0fbb090e3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/013-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/014-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 262931,
+      "sha256": "237a8a1f5036e8888135b33ff9dc25ef9cbf9e491c70d0c9b03a35df38d1ea4a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/015-第-2-次启动结束画面.png",
+      "bytes": 262447,
+      "sha256": "37923584e70ac49cb6d29b4b991290f5a5faed1d57067cbd50b8e0c756f5a053"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/016-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 36401,
+      "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294872,
+      "sha256": "841a4ac44aed7a1fb9b5cc60fd48c4550af4ebc0cee4a270fb4635fe7cd2944b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "c734ed95bfcf77fe154e7dfcdbb0dabb136ee06ef7893a4240e2ac5e93988d2b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/019-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 204449,
+      "sha256": "ee4e41fe41211760141cbf33bcb3c705b9e2a345d70ab99cdca599a69253d1c4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/020-Claude自动化停止最终原始状态.json",
+      "bytes": 12527,
+      "sha256": "4883d5bfadf5592fe74642cfd60a83be4c9ca187e5313f85745c1c8a62098f56"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/021-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/022-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/023-第-3-次启动结束画面.png",
+      "bytes": 204186,
+      "sha256": "ff66a92e25e139e1eb7bc4528b0ffd3b5428625b8ec6ea16213cd121ffd1bdc3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-4c732a4cf50b2923d4ad-retry0-repeat0-x4cqkB/manifest.json",
+      "bytes": 19040,
+      "sha256": "8c480bc8d6f0acb9d155ea5a071ab31cedaa8c08610f3dca953b3ea189d4f73c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/001-Claude程序核对只证明程序状态.png",
+      "bytes": 197151,
+      "sha256": "1f4e3c009724c60f26326418fddafa9984707825d49ec3efc2541ca307ab4158"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/002-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/003-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/004-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 36023,
+      "sha256": "bb68bfa7ad9cc81fad4bccb50a03611b624fc96ba7e79b4b9c6631353231426e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/005-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 290335,
+      "sha256": "a5e1a6f11df932640d7180024d0a756d3919a326884e41b2a5fe8c41feec5bb0"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/006-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "3b7ba44998182d3ccb095ee417edd51ec543f94e27b9767d646a8f9cb52ed942"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/007-停止前实际运行与本场子进程.json",
+      "bytes": 13916,
+      "sha256": "8c5a8781fb8f11c7961e54d1ef88c99fc91633acdea7f1a24e855731672541f3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/008-实际停止退出后底部拒绝换绑及原事实.json",
+      "bytes": 36639,
+      "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/009-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294594,
+      "sha256": "3933986a472a59acb6496f2497d2d13a8e17e79beb894cab922e12b509d33b9f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/010-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "ef444e4562af0f3db67b5931828948c055e07d17dcf7ee585f997a48a15cf282"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/011-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/012-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 250758,
+      "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/013-第-1-次启动结束画面.png",
+      "bytes": 250758,
+      "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/014-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 36639,
+      "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/015-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294613,
+      "sha256": "10cc12108be6ab161679ec48568fecae23b488a410cab356e9a97897987a3bbc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/016-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "ffde9d4a5794312d74cc0aa6b0c23525c9d5d796bee7fe3e68798fa325fe4ccd"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/017-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 191227,
+      "sha256": "0e85d109954486bd96297dbbeebae1a652e13f3d7d1b0bcb469cdfaa496fea42"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/018-Claude自动化停止最终原始状态.json",
+      "bytes": 12725,
+      "sha256": "2f7b391bb59e36d2d4fae6a3c6a05b97c144b787b752e400b3414cf67b0c6276"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/019-proof.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/020-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/021-第-2-次启动结束画面.png",
+      "bytes": 190843,
+      "sha256": "700c377a2ba28fb5ffbe8d320d29ffdfe6192fbcec52f805fb8e65f42b7ac903"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/scenarios/76620a6b86e22810b964-d331552a72da0a4d7ca7-retry0-repeat0-mHPZLX/manifest.json",
+      "bytes": 17797,
+      "sha256": "f970dda87a828c50491ab6b59e2a66e42bec075651b8c8736967ac70c3aded81"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/playwright-results.json",
+      "bytes": 87045,
+      "sha256": "ff76faac40af2e6f13f42b3c71fd01b7190a7ac0e4eddb8aa1f14f78b7db0fa9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "87860d6b6b091375c1be05a25381c9795e11d8cbc538700d902b81c8727d455a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "751c643b0fc7810690078124bd2f1ab7382e3d2b2ff80dfbc2efb3bb46f6b327"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/index.html",
+      "bytes": 355332,
+      "sha256": "15ffca23f04c7bf18a1035805a1e875339cc594d3d847ecf2cf940430146651b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/checks.json",
+      "bytes": 347424,
+      "sha256": "980b4e3041c5ca7a04607c9a7cee65afcc5b0dbcb3b6b82fe63d04ae63c0197d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/manifest.json",
+      "bytes": 1247,
+      "sha256": "d06429ef44dfe5d30e3cae29832e4c1c5b76e12470a8b78cb62fb6bf44b4bf00"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0043-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0003-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0042-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0034-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0002-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0005-20454fc45df1b46c.png",
+      "bytes": 290425,
+      "sha256": "20454fc45df1b46c5d51e4b0bf63ce5ce488034cf2be84f40e2fc292cf305690"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0006-f45a2dc268eeb9f7.download",
+      "bytes": 1685,
+      "sha256": "f45a2dc268eeb9f724fbe0ed70594d5fd89253ac294c359e15a23236f81610fe"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0026-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0007-c5c40642e2692f36.json",
+      "bytes": 13928,
+      "sha256": "c5c40642e2692f3659a46a6b4fafcd2a6dfb39d54c5de7159e7967e28fc37577"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0041-2f7b391bb59e36d2.json",
+      "bytes": 12725,
+      "sha256": "2f7b391bb59e36d2d4fae6a3c6a05b97c144b787b752e400b3414cf67b0c6276"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0008-14d2760bcdb76622.png",
+      "bytes": 189106,
+      "sha256": "14d2760bcdb76622deb9aa246ad9fd2252c6bc259757396d21b4ea772008842a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0016-1bad421ba503d3fb.json",
+      "bytes": 36401,
+      "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0033-ef444e4562af0f3d.download",
+      "bytes": 1685,
+      "sha256": "ef444e4562af0f3db67b5931828948c055e07d17dcf7ee585f997a48a15cf282"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0040-0e85d109954486bd.png",
+      "bytes": 191227,
+      "sha256": "0e85d109954486bd96297dbbeebae1a652e13f3d7d1b0bcb469cdfaa496fea42"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0009-1be4bb33e8f2d366.png",
+      "bytes": 206194,
+      "sha256": "1be4bb33e8f2d3664d8e496138fa82cb1eb65de4e15eda624231595b996ab819"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0039-ffde9d4a5794312d.download",
+      "bytes": 1685,
+      "sha256": "ffde9d4a5794312d74cc0aa6b0c23525c9d5d796bee7fe3e68798fa325fe4ccd"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0010-1bad421ba503d3fb.json",
+      "bytes": 36401,
+      "sha256": "1bad421ba503d3fbd216c4faa73476af11ce26cdb99e05cba911d61522c364e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0011-9fddaa036866bae2.png",
+      "bytes": 294637,
+      "sha256": "9fddaa036866bae276fbfb479bbca28370afab407b249eb94ede15a989ef3b6a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0038-10cc12108be6ab16.png",
+      "bytes": 294613,
+      "sha256": "10cc12108be6ab161679ec48568fecae23b488a410cab356e9a97897987a3bbc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0032-3933986a472a59ac.png",
+      "bytes": 294594,
+      "sha256": "3933986a472a59acb6496f2497d2d13a8e17e79beb894cab922e12b509d33b9f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0035-e9de241fd914e8de.png",
+      "bytes": 250758,
+      "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0029-3b7ba44998182d3c.download",
+      "bytes": 1685,
+      "sha256": "3b7ba44998182d3ccb095ee417edd51ec543f94e27b9767d646a8f9cb52ed942"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0020-4883d5bfadf5592f.json",
+      "bytes": 12527,
+      "sha256": "4883d5bfadf5592fe74642cfd60a83be4c9ca187e5313f85745c1c8a62098f56"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0012-6ad711edbc13c538.download",
+      "bytes": 1685,
+      "sha256": "6ad711edbc13c538e6921f21398daf06437e7c1940c80c301b65b4c0fbb090e3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0036-e9de241fd914e8de.png",
+      "bytes": 250758,
+      "sha256": "e9de241fd914e8de90c4e27fbdb669cb821fd80c98add5867365e048bc794788"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0021-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0001-2344a4931ba32d08.png",
+      "bytes": 197147,
+      "sha256": "2344a4931ba32d08923426f4796e2a19b4b7b1ba122949d59dec51e563f6e9cd"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0025-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0013-24bdac5795bfc5a5.txt",
+      "bytes": 24,
+      "sha256": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0015-37923584e70ac49c.png",
+      "bytes": 262447,
+      "sha256": "37923584e70ac49cb6d29b4b991290f5a5faed1d57067cbd50b8e0c756f5a053"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0004-4ebf4481dc82b5cc.json",
+      "bytes": 36023,
+      "sha256": "4ebf4481dc82b5cc102a050c15dcb1388119225c8beadd8ad27d96c7b9fb02db"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0037-2ad5f8705251ded7.json",
+      "bytes": 36639,
+      "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0023-ff66a92e25e139e1.png",
+      "bytes": 204186,
+      "sha256": "ff66a92e25e139e1eb7bc4528b0ffd3b5428625b8ec6ea16213cd121ffd1bdc3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0024-1f4e3c009724c60f.png",
+      "bytes": 197151,
+      "sha256": "1f4e3c009724c60f26326418fddafa9984707825d49ec3efc2541ca307ab4158"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0044-700c377a2ba28fb5.png",
+      "bytes": 190843,
+      "sha256": "700c377a2ba28fb5ffbe8d320d29ffdfe6192fbcec52f805fb8e65f42b7ac903"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0017-841a4ac44aed7a1f.png",
+      "bytes": 294872,
+      "sha256": "841a4ac44aed7a1fb9b5cc60fd48c4550af4ebc0cee4a270fb4635fe7cd2944b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0028-a5e1a6f11df93264.png",
+      "bytes": 290335,
+      "sha256": "a5e1a6f11df932640d7180024d0a756d3919a326884e41b2a5fe8c41feec5bb0"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0031-2ad5f8705251ded7.json",
+      "bytes": 36639,
+      "sha256": "2ad5f8705251ded7c542387ec40bb7f84677f6063d2af82d8c7fcb8b0a133aec"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0014-237a8a1f5036e888.png",
+      "bytes": 262931,
+      "sha256": "237a8a1f5036e8888135b33ff9dc25ef9cbf9e491c70d0c9b03a35df38d1ea4a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0030-8c5a8781fb8f11c7.json",
+      "bytes": 13916,
+      "sha256": "8c5a8781fb8f11c7961e54d1ef88c99fc91633acdea7f1a24e855731672541f3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0019-ee4e41fe41211760.png",
+      "bytes": 204449,
+      "sha256": "ee4e41fe41211760141cbf33bcb3c705b9e2a345d70ab99cdca599a69253d1c4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0018-c734ed95bfcf77fe.download",
+      "bytes": 1685,
+      "sha256": "c734ed95bfcf77fe154e7dfcdbb0dabb136ee06ef7893a4240e2ac5e93988d2b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0027-bb68bfa7ad9cc81f.json",
+      "bytes": 36023,
+      "sha256": "bb68bfa7ad9cc81fad4bccb50a03611b624fc96ba7e79b4b9c6631353231426e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1-report/resources/0022-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/offline-1.log",
+      "bytes": 877,
+      "sha256": "bb2d58d9e7552a97051ce7d9226c85ff7915cadfdb1e672d20caae2ffd9547d5"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/001-第-1-次启动结束画面.png",
+      "bytes": 104690,
+      "sha256": "0d17d5385136915dc3151e3aa27ebe6c11c34c0773de2d6cf911e1eed6cf583b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/003-Claude程序核对只证明程序状态.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/005-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/006-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 38929,
+      "sha256": "a583d2e89a5564ba1a346bfba7175ad5ea8a3315399fb45ccb3f975d85ea955c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 290288,
+      "sha256": "1ff13130ba7470f3dffdbb9d16c4fbc1c573867310ed16759734f82ec1523bf9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "0d1d829405ec77dad5da245f91130edd7349f993325421dbce086c1e27c168d1"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/009-停止前实际运行与本场子进程.json",
+      "bytes": 15594,
+      "sha256": "96dd938acc7dfac7904c7b7329e8145fb2e434c1d4d8c0def390712875d9e40e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/010-运行服务意外退出后的原界面.png",
+      "bytes": 240384,
+      "sha256": "02c99711063fee8f8a74586f410fe6c27afaf0dc5547511dab4d907d470cf661"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/011-第-2-次启动结束画面.png",
+      "bytes": 260377,
+      "sha256": "8a34eb68d4cb11bfc8089960f16ebd240ef535147bad06120e7934cfd6a51924"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/012-故障首次重启后底部拒绝换绑及原事实.json",
+      "bytes": 39935,
+      "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293467,
+      "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/015-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/016-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 307290,
+      "sha256": "9c5f78663c53eec788a9660a86807aedc28e5ee4c5a9b7967391d873630add49"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/017-第-3-次启动结束画面.png",
+      "bytes": 306923,
+      "sha256": "480342758467f1b8a28f162c59cf27d33326f8b2aea9882dc4855816714a40a8"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/018-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 39935,
+      "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/019-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293168,
+      "sha256": "632a060175d8c04c884dc7de2fb8a42cc2b8c703369e9ea50f78f33332a734db"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/020-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "27964ec8077225982a8bb9ff55e80b7519b4cc76411101ae72d1172f59da5063"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/021-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 255414,
+      "sha256": "5bd8413508cf884541412f3f21932b384f319b7269c940ed7d516ff4d6a9770d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/022-Claude自动化停止最终原始状态.json",
+      "bytes": 13398,
+      "sha256": "8f0446beaa845e009c6cdc47cc69ba93054f4cbd06702635693c480707a00316"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/023-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/024-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/025-第-4-次启动结束画面.png",
+      "bytes": 255070,
+      "sha256": "b7e7aca8b4f1728e9388496be4a0f1ddedcb0fb495d1aa7afa5a0a7a2ca1e72a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-ijzwDe/manifest.json",
+      "bytes": 20068,
+      "sha256": "3a942fcbe9e30af39276746757d4fe638ebb6480ef0cc7a0c53f4d58c6da10cb"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-source-1-20261007.png",
+      "bytes": 293467,
+      "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-source-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/001-第-1-次启动结束画面.png",
+      "bytes": 104652,
+      "sha256": "5eea54f01d6914b0a8f322839a7851036f16295d73583b23ebc7c8a4e0b1ccf8"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/003-Claude程序核对只证明程序状态.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/005-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/006-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 38575,
+      "sha256": "abafee4153f86448d8f8bf0b13b82f9a32d95df0e9bd5485654b223a3487364a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 291433,
+      "sha256": "9d0b443ad7c36eda8a23539b682d00a6d1ecef64cecea4ee01fd31f22d686e43"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "f6c7d26d08aa187c062f0c84fc79ce3ba0551dfb8bf1f7f3e1b560e212daec6c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/009-停止前实际运行与本场子进程.json",
+      "bytes": 15405,
+      "sha256": "915d87e617b144af79740ba70b72860bc7547e2bb6ffd363071f88384884c311"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/010-实际停止退出后底部拒绝换绑及原事实.json",
+      "bytes": 39191,
+      "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294145,
+      "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/013-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/014-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 295272,
+      "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/015-第-2-次启动结束画面.png",
+      "bytes": 295272,
+      "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/016-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 39191,
+      "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293473,
+      "sha256": "2a142597f7fa89d80f96d6821fd318f8d664ca6f34358b9bf3191631de9ce9e7"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "a36d76d05ac2a34240ed23f79448efd2490b7cfec33b2cdb3660c6659ccd19ef"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/019-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 242580,
+      "sha256": "3743d04c721ed3c080bf944c0df6f37816f4f749f2f69581f18e61f4f087aee5"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/020-Claude自动化停止最终原始状态.json",
+      "bytes": 13259,
+      "sha256": "0c84db7ac86d0797f92e2bc29cd20f020cda9778f081b66b52d27e441d9862c5"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/021-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/022-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/023-第-3-次启动结束画面.png",
+      "bytes": 242163,
+      "sha256": "af86bf5acecd1f0f2d60835f8f5c05ec9562f94e29edf48daffce7be6375e04a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-w5TSZ3/manifest.json",
+      "bytes": 18824,
+      "sha256": "1a3bd0b04287bed45a7300b528f79fdab9d30affc8d4e27c3c7c6a566b814ab7"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-source-1-20261007.png",
+      "bytes": 294145,
+      "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-source-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/playwright-results.json",
+      "bytes": 93063,
+      "sha256": "5f8953ee28c0cab18120816b2cfc89cf5a8e914efe48aff142683407faf0bda1"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "a932832bacbde76eb2a25420e70c37cf7e46e6348fb19289618d04f7d5ba452e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "1eb56d90d27a8f8249bd719044997485c24070c4a5329ed98851e4863a803783"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/index.html",
+      "bytes": 381053,
+      "sha256": "a0bcc926e6a2d6235001d999ac6dc7bcfa2197ff6b5ce0d818b8cbf9ed91cab6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/checks.json",
+      "bytes": 374038,
+      "sha256": "b28c00c302bed162cc300a77ff3355e76f96ec50c8e928ba8a1468c6901787af"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/manifest.json",
+      "bytes": 1269,
+      "sha256": "58af19bef25294f38c191f4345dfe898b3136b6b8e2cf9f41e0dc23546acdd81"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0006-a583d2e89a5564ba.json",
+      "bytes": 38929,
+      "sha256": "a583d2e89a5564ba1a346bfba7175ad5ea8a3315399fb45ccb3f975d85ea955c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0036-e08b5ff532e98f8c.png",
+      "bytes": 294145,
+      "sha256": "e08b5ff532e98f8cf5975a5c240970b7f3ef11049f9b9cc5c68f5c5b28fefaa9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0007-1ff13130ba7470f3.png",
+      "bytes": 290288,
+      "sha256": "1ff13130ba7470f3dffdbb9d16c4fbc1c573867310ed16759734f82ec1523bf9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0016-9c5f78663c53eec7.png",
+      "bytes": 307290,
+      "sha256": "9c5f78663c53eec788a9660a86807aedc28e5ee4c5a9b7967391d873630add49"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0043-a36d76d05ac2a342.download",
+      "bytes": 1685,
+      "sha256": "a36d76d05ac2a34240ed23f79448efd2490b7cfec33b2cdb3660c6659ccd19ef"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0026-5eea54f01d6914b0.png",
+      "bytes": 104652,
+      "sha256": "5eea54f01d6914b0a8f322839a7851036f16295d73583b23ebc7c8a4e0b1ccf8"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0034-915d87e617b144af.json",
+      "bytes": 15405,
+      "sha256": "915d87e617b144af79740ba70b72860bc7547e2bb6ffd363071f88384884c311"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0005-ed9c3843c50603eb.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0041-742d8eb8cabba3c2.json",
+      "bytes": 39191,
+      "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0031-abafee4153f86448.json",
+      "bytes": 38575,
+      "sha256": "abafee4153f86448d8f8bf0b13b82f9a32d95df0e9bd5485654b223a3487364a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0038-1c636382320fbef4.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0009-96dd938acc7dfac7.json",
+      "bytes": 15594,
+      "sha256": "96dd938acc7dfac7904c7b7329e8145fb2e434c1d4d8c0def390712875d9e40e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0047-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0008-0d1d829405ec77da.download",
+      "bytes": 1685,
+      "sha256": "0d1d829405ec77dad5da245f91130edd7349f993325421dbce086c1e27c168d1"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0020-27964ec807722598.download",
+      "bytes": 1685,
+      "sha256": "27964ec8077225982a8bb9ff55e80b7519b4cc76411101ae72d1172f59da5063"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0027-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0021-5bd8413508cf8845.png",
+      "bytes": 255414,
+      "sha256": "5bd8413508cf884541412f3f21932b384f319b7269c940ed7d516ff4d6a9770d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0035-742d8eb8cabba3c2.json",
+      "bytes": 39191,
+      "sha256": "742d8eb8cabba3c231656c7ccb8360ea165f58c6c8171b3d6cd79fa154b8cb69"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0017-480342758467f1b8.png",
+      "bytes": 306923,
+      "sha256": "480342758467f1b8a28f162c59cf27d33326f8b2aea9882dc4855816714a40a8"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0024-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0014-59bf0d22015c090b.download",
+      "bytes": 1685,
+      "sha256": "59bf0d22015c090b68637d3a1db81e933fb457e656efcd3a5488bfd1f6d31124"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0044-3743d04c721ed3c0.png",
+      "bytes": 242580,
+      "sha256": "3743d04c721ed3c080bf944c0df6f37816f4f749f2f69581f18e61f4f087aee5"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0013-b4483eb182704799.png",
+      "bytes": 293467,
+      "sha256": "b4483eb182704799f8e2ef508072bfa24cc2a2fab218da41360a8d971644dc15"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0011-8a34eb68d4cb11bf.png",
+      "bytes": 260377,
+      "sha256": "8a34eb68d4cb11bfc8089960f16ebd240ef535147bad06120e7934cfd6a51924"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0019-632a060175d8c04c.png",
+      "bytes": 293168,
+      "sha256": "632a060175d8c04c884dc7de2fb8a42cc2b8c703369e9ea50f78f33332a734db"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0015-ed9c3843c50603eb.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0022-8f0446beaa845e00.json",
+      "bytes": 13398,
+      "sha256": "8f0446beaa845e009c6cdc47cc69ba93054f4cbd06702635693c480707a00316"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0032-9d0b443ad7c36eda.png",
+      "bytes": 291433,
+      "sha256": "9d0b443ad7c36eda8a23539b682d00a6d1ecef64cecea4ee01fd31f22d686e43"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0003-2af097f8e3f33af0.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0029-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0042-2a142597f7fa89d8.png",
+      "bytes": 293473,
+      "sha256": "2a142597f7fa89d80f96d6821fd318f8d664ca6f34358b9bf3191631de9ce9e7"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0033-f6c7d26d08aa187c.download",
+      "bytes": 1685,
+      "sha256": "f6c7d26d08aa187c062f0c84fc79ce3ba0551dfb8bf1f7f3e1b560e212daec6c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0010-02c99711063fee8f.png",
+      "bytes": 240384,
+      "sha256": "02c99711063fee8f8a74586f410fe6c27afaf0dc5547511dab4d907d470cf661"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0001-0d17d5385136915d.png",
+      "bytes": 104690,
+      "sha256": "0d17d5385136915dc3151e3aa27ebe6c11c34c0773de2d6cf911e1eed6cf583b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0028-2af097f8e3f33af0.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0037-a950eb87dcde8e21.download",
+      "bytes": 1685,
+      "sha256": "a950eb87dcde8e21a7634296d899adfee4cb475bdd5d0ddb435e1329264b120d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0018-e28204c78d3d43f5.json",
+      "bytes": 39935,
+      "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0040-102381de6a3efa90.png",
+      "bytes": 295272,
+      "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0039-102381de6a3efa90.png",
+      "bytes": 295272,
+      "sha256": "102381de6a3efa90efb045fa78f40a8db810d7ec7ff5a5873b09ba30ebf15ead"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0046-1c636382320fbef4.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0025-b7e7aca8b4f1728e.png",
+      "bytes": 255070,
+      "sha256": "b7e7aca8b4f1728e9388496be4a0f1ddedcb0fb495d1aa7afa5a0a7a2ca1e72a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0012-e28204c78d3d43f5.json",
+      "bytes": 39935,
+      "sha256": "e28204c78d3d43f53bb57b9e069ee918c96a5dc3f96b727e6f703a6d26f0bdf3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0023-ed9c3843c50603eb.txt",
+      "bytes": 15,
+      "sha256": "ed9c3843c50603ebaab054cd9045f542f9eedd73bf04d3041806581db6f47d87"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0045-0c84db7ac86d0797.json",
+      "bytes": 13259,
+      "sha256": "0c84db7ac86d0797f92e2bc29cd20f020cda9778f081b66b52d27e441d9862c5"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0048-af86bf5acecd1f0f.png",
+      "bytes": 242163,
+      "sha256": "af86bf5acecd1f0f2d60835f8f5c05ec9562f94e29edf48daffce7be6375e04a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1-report/resources/0030-1c636382320fbef4.txt",
+      "bytes": 15,
+      "sha256": "1c636382320fbef41b1893e40dffd7fd006bfd700cb2f3de40d92e520db931eb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/source-1.log",
+      "bytes": 877,
+      "sha256": "6f2cb378288fb0c85e4b4fa057394843e017d86f9630b8fe7c5d7b04a5b2b531"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/001-第-1-次启动结束画面.png",
+      "bytes": 104694,
+      "sha256": "23f26056e2ea25cd0ffabb88b273cc8b1c0ec3300c5291e5aab07382b0a06b36"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/003-Claude程序核对只证明程序状态.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/005-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/006-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 38997,
+      "sha256": "e2dc39a9e1d977d65ab9cc6dd76264b0b1b58161a9290f52b468ce731ddf37e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 290212,
+      "sha256": "dde76e658da17d3fb12faf0ad9b7412a095318d98c5d6303de87ac4d5f3708f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "8da846185719103dc21de17152ca545e30a1a664ef463b7ca3208014e7197b7e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/009-停止前实际运行与本场子进程.json",
+      "bytes": 15627,
+      "sha256": "8b9c9a219d4c3dd30588ca181030344c5cfd3d749716e4bb342d939ad41a5f50"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/010-运行服务意外退出后的原界面.png",
+      "bytes": 243196,
+      "sha256": "c58c93e12e64318f609942b12c5df4ea0f63a990ae7f929eef9fd037d30dc645"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/011-第-2-次启动结束画面.png",
+      "bytes": 263156,
+      "sha256": "db610387792aec87c0014b945384bffbff337ec1f7686080b07cda6e5c2636d7"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/012-故障首次重启后底部拒绝换绑及原事实.json",
+      "bytes": 39997,
+      "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/013-故障首次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293804,
+      "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/014-故障首次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/015-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/016-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 318756,
+      "sha256": "b0394f55a66dd7fab993833a713475452b33971c23a3ea778ecee3dc458f0e49"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/017-第-3-次启动结束画面.png",
+      "bytes": 319106,
+      "sha256": "2a68e5655c023a2ab393906b13462cd60401693525a0efd531ddc73618dcc99c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/018-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 39997,
+      "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/019-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293419,
+      "sha256": "efa881dfea1aa7d2468ed1ae58714ed51b53760e698beabbf90c32123a40c03d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/020-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "bdf092f20f6f646983245dd980a75179f4992cca1b38e590ba7f56f9ece9217a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/021-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 257348,
+      "sha256": "30febd2f1ec304bcf858a42c47034611f6d9bf10f8100c5715ed53dc6a51f04f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/022-Claude自动化停止最终原始状态.json",
+      "bytes": 13467,
+      "sha256": "bd488888ae278387140f456cde7a35f756ddc6be27370f6890c328238c29404f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/023-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/024-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/025-第-4-次启动结束画面.png",
+      "bytes": 257005,
+      "sha256": "5b0988988efed9db35994c861c8d2f5cc4cc2436b792cf293fb07148b324d1fc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-3b64ebf1cc5c752d9aa7-retry0-repeat0-aW7HMW/manifest.json",
+      "bytes": 20072,
+      "sha256": "7cad27393bf8aab24f1eeff7a58e30fadb1737b9597bef233a41ba33c3232aab"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-package-1-20261007.png",
+      "bytes": 293804,
+      "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-crash-package-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/001-第-1-次启动结束画面.png",
+      "bytes": 104745,
+      "sha256": "05c92ebddbaa5cd359985e4323eb8c6bb5b6d54eb976be5249b372c2526eed0f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197011,
+      "sha256": "fda528c98059894b4224a1fbe5283d6dd7ace706678f1f21db55b38a081e8a96"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/005-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/006-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 38933,
+      "sha256": "f888f14d61cb8bbe255a79278cc46cbdb3e6282512d5890aed61ceacda541727"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/007-文件执行中底部拒绝切换Claude运行方式.native.png",
+      "bytes": 290282,
+      "sha256": "d2874ad10e0f7ff5363fa6bbfaf7291ffc77ae4bc7eaf898676cb5e9ae4518c3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/008-文件执行中底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "f119950abd16213f8b12c755650efdc339738d15ae2294bbcc852aa5273f3f99"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/009-停止前实际运行与本场子进程.json",
+      "bytes": 15578,
+      "sha256": "0c9cc5b5dde2b3c0bc943a642c228a675caf76f80685e7915981ee7a6494446a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/010-实际停止退出后底部拒绝换绑及原事实.json",
+      "bytes": 40171,
+      "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/011-实际停止退出后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 294650,
+      "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/012-实际停止退出后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/013-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/014-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 297910,
+      "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/015-第-2-次启动结束画面.png",
+      "bytes": 297910,
+      "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/016-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 40171,
+      "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/017-再次重启后底部拒绝切换Claude运行方式.native.png",
+      "bytes": 293627,
+      "sha256": "e9600d049c3bb962899c95677b1fedea49ab95d08b3b3b159808422bb0e56667"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/018-再次重启后底部拒绝切换Claude运行方式.capture.json",
+      "bytes": 1685,
+      "sha256": "b38e10e92931299d7201f59438dab04266b3e207d2a508814b0392def218ae4f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/019-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 244662,
+      "sha256": "b573620ce608ff7307297d7ed6617c71389102812e49fa72f01f78aa93c53c03"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/020-Claude自动化停止最终原始状态.json",
+      "bytes": 13607,
+      "sha256": "489c417d53feb2595c7432d8c8019c23ecf6406e563a733f564fec0aeb9d0448"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/021-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/022-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/023-第-3-次启动结束画面.png",
+      "bytes": 244363,
+      "sha256": "902471d8005a485e54b4d189d032d02390bb9ff2a964bd9da5949e9445dd6001"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/scenarios/76620a6b86e22810b964-de8388f5d14a8b99f43b-retry0-repeat0-5b8vhL/manifest.json",
+      "bytes": 18827,
+      "sha256": "9c67229e4d8f5d619954c6c6b1ae8d830cc5e6e540f089727bf7ae08865bf174"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-package-1-20261007.png",
+      "bytes": 294650,
+      "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude底部换绑-stop-package-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/playwright-results.json",
+      "bytes": 93128,
+      "sha256": "78bdff20319bbf5248c9586b86cb0d72afabc840de02d261a9b0843b02bdee75"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "c2715ebaeeff973816c1f20793c25906b32fbe43ac774a2ca5624dd1cbc55f15"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "af9be7c36e4bcc06f644838ec1dc3eeef1e28b2e22097e8cc47c4a8555e3153e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/index.html",
+      "bytes": 384420,
+      "sha256": "338e212e3a82425bd4193e9e72332326dfb2f461e7236b5c733914e6cedbb0a9"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/checks.json",
+      "bytes": 377404,
+      "sha256": "f0f664e2c75c1454a9cb2c06ad08592867d1b6c559360281c24c179f1b11a89e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/manifest.json",
+      "bytes": 1271,
+      "sha256": "4475359a487cb9e07851a9dc5490ac25b4852f8333f86bb8df5c3e65e660f72d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0006-e2dc39a9e1d977d6.json",
+      "bytes": 38997,
+      "sha256": "e2dc39a9e1d977d65ab9cc6dd76264b0b1b58161a9290f52b468ce731ddf37e2"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0031-f888f14d61cb8bbe.json",
+      "bytes": 38933,
+      "sha256": "f888f14d61cb8bbe255a79278cc46cbdb3e6282512d5890aed61ceacda541727"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0015-65d67cd892acb313.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0008-8da846185719103d.download",
+      "bytes": 1685,
+      "sha256": "8da846185719103dc21de17152ca545e30a1a664ef463b7ca3208014e7197b7e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0001-23f26056e2ea25cd.png",
+      "bytes": 104694,
+      "sha256": "23f26056e2ea25cd0ffabb88b273cc8b1c0ec3300c5291e5aab07382b0a06b36"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0039-edd79f9594bd3b43.png",
+      "bytes": 297910,
+      "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0040-edd79f9594bd3b43.png",
+      "bytes": 297910,
+      "sha256": "edd79f9594bd3b43fdafae4531abda57f8100bce00eb9ffb159244545d341f5e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0011-db610387792aec87.png",
+      "bytes": 263156,
+      "sha256": "db610387792aec87c0014b945384bffbff337ec1f7686080b07cda6e5c2636d7"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0022-bd488888ae278387.json",
+      "bytes": 13467,
+      "sha256": "bd488888ae278387140f456cde7a35f756ddc6be27370f6890c328238c29404f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0023-65d67cd892acb313.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0012-aeb8b8d07b9c854e.json",
+      "bytes": 39997,
+      "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0042-e9600d049c3bb962.png",
+      "bytes": 293627,
+      "sha256": "e9600d049c3bb962899c95677b1fedea49ab95d08b3b3b159808422bb0e56667"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0028-fda528c98059894b.png",
+      "bytes": 197011,
+      "sha256": "fda528c98059894b4224a1fbe5283d6dd7ace706678f1f21db55b38a081e8a96"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0045-489c417d53feb259.json",
+      "bytes": 13607,
+      "sha256": "489c417d53feb2595c7432d8c8019c23ecf6406e563a733f564fec0aeb9d0448"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0047-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0014-bc028a5e8da693c6.download",
+      "bytes": 1685,
+      "sha256": "bc028a5e8da693c62fa680078ce7c46a4d82fc85e09b9727cdc0ef237a575229"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0027-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0048-902471d8005a485e.png",
+      "bytes": 244363,
+      "sha256": "902471d8005a485e54b4d189d032d02390bb9ff2a964bd9da5949e9445dd6001"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0044-b573620ce608ff73.png",
+      "bytes": 244662,
+      "sha256": "b573620ce608ff7307297d7ed6617c71389102812e49fa72f01f78aa93c53c03"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0007-dde76e658da17d3f.png",
+      "bytes": 290212,
+      "sha256": "dde76e658da17d3fb12faf0ad9b7412a095318d98c5d6303de87ac4d5f3708f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0043-b38e10e92931299d.download",
+      "bytes": 1685,
+      "sha256": "b38e10e92931299d7201f59438dab04266b3e207d2a508814b0392def218ae4f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0018-aeb8b8d07b9c854e.json",
+      "bytes": 39997,
+      "sha256": "aeb8b8d07b9c854e6d715315d328f2d95e024fb8263daab889a04c7e73628cdc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0038-b99795ffa8b0acef.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0024-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0021-30febd2f1ec304bc.png",
+      "bytes": 257348,
+      "sha256": "30febd2f1ec304bcf858a42c47034611f6d9bf10f8100c5715ed53dc6a51f04f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0010-c58c93e12e64318f.png",
+      "bytes": 243196,
+      "sha256": "c58c93e12e64318f609942b12c5df4ea0f63a990ae7f929eef9fd037d30dc645"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0005-65d67cd892acb313.txt",
+      "bytes": 15,
+      "sha256": "65d67cd892acb31332d857f8932a570a038d363caa026f571f295f3629bd5f9d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0009-8b9c9a219d4c3dd3.json",
+      "bytes": 15627,
+      "sha256": "8b9c9a219d4c3dd30588ca181030344c5cfd3d749716e4bb342d939ad41a5f50"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0019-efa881dfea1aa7d2.png",
+      "bytes": 293419,
+      "sha256": "efa881dfea1aa7d2468ed1ae58714ed51b53760e698beabbf90c32123a40c03d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0003-2af097f8e3f33af0.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0036-58323a51cbcf01a6.png",
+      "bytes": 294650,
+      "sha256": "58323a51cbcf01a690de1f6211be42e9a9d27298cf1854cfa1b93e76b1e61444"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0016-b0394f55a66dd7fa.png",
+      "bytes": 318756,
+      "sha256": "b0394f55a66dd7fab993833a713475452b33971c23a3ea778ecee3dc458f0e49"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0041-a3d1392de5e1e1c7.json",
+      "bytes": 40171,
+      "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0029-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0030-b99795ffa8b0acef.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0033-f119950abd16213f.download",
+      "bytes": 1685,
+      "sha256": "f119950abd16213f8b12c755650efdc339738d15ae2294bbcc852aa5273f3f99"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0032-d2874ad10e0f7ff5.png",
+      "bytes": 290282,
+      "sha256": "d2874ad10e0f7ff5363fa6bbfaf7291ffc77ae4bc7eaf898676cb5e9ae4518c3"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0017-2a68e5655c023a2a.png",
+      "bytes": 319106,
+      "sha256": "2a68e5655c023a2ab393906b13462cd60401693525a0efd531ddc73618dcc99c"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0026-05c92ebddbaa5cd3.png",
+      "bytes": 104745,
+      "sha256": "05c92ebddbaa5cd359985e4323eb8c6bb5b6d54eb976be5249b372c2526eed0f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0046-b99795ffa8b0acef.txt",
+      "bytes": 15,
+      "sha256": "b99795ffa8b0acef2764192735839b56df872bfabfbdbb663b13babb9303801e"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0025-5b0988988efed9db.png",
+      "bytes": 257005,
+      "sha256": "5b0988988efed9db35994c861c8d2f5cc4cc2436b792cf293fb07148b324d1fc"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0013-8198da5af023f6bb.png",
+      "bytes": 293804,
+      "sha256": "8198da5af023f6bbb6ed794484ed0aa1e7b7a84caccb25fb8f731a672bb97bbb"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0020-bdf092f20f6f6469.download",
+      "bytes": 1685,
+      "sha256": "bdf092f20f6f646983245dd980a75179f4992cca1b38e590ba7f56f9ece9217a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0034-0c9cc5b5dde2b3c0.json",
+      "bytes": 15578,
+      "sha256": "0c9cc5b5dde2b3c0bc943a642c228a675caf76f80685e7915981ee7a6494446a"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0037-bed95698a0af952b.download",
+      "bytes": 1685,
+      "sha256": "bed95698a0af952b7fbbf6dea65e2c6752242029f25644e83e0b6b8295aec82f"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1-report/resources/0035-a3d1392de5e1e1c7.json",
+      "bytes": 40171,
+      "sha256": "a3d1392de5e1e1c70cc200926a6a4865ccbe6a01219a7d4e601acf4e6792e3f4"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/package-1.log",
+      "bytes": 876,
+      "sha256": "15ba83a5118e91f8224a83f13a66f1150e652227988fdc678ab7ca045bfa8ec8"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/bddgen-1.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/validation-receipts.json",
+      "bytes": 303,
+      "sha256": "9142708b2f0ca2c25a7df581c64721d20b0a63df15cccc2578f375f7d03e2c74"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/current-package-manifest.json",
+      "bytes": 600509,
+      "sha256": "a1251533c26dbfd3f2369757fcb0c005ed20140c192f3eccbe194a3074d13763"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/report-resource-verification.json",
+      "bytes": 449,
+      "sha256": "e3e8acc70917e30e53f2cd702d6098c9913572cc7349058d63564f7ff645be77"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/collect.py",
+      "bytes": 8247,
+      "sha256": "35ee158f09f21e4b0b6c4a75c53b4f24430b27e46a7d3c0f19ad2bb669ca91f1"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/frozen-inputs/claude-employee.feature",
+      "bytes": 7794,
+      "sha256": "f95ad4486aa91fe9ca67ec4b635fc948658df8739ca4865d8441718228779cbf"
+    },
+    {
+      "path": ".local/feature-review/claude-configuration-gates-20261007/frozen-inputs/claude-stop.steps.ts",
+      "bytes": 15450,
+      "sha256": "9813142dc0bd8305327d35a3269806051eb99a4b199c9c6c3eaf36b20325ca20"
+    }
+  ]
+}

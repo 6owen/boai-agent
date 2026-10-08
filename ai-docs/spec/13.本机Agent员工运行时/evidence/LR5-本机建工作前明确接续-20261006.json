@@ -1,0 +1,1068 @@
+{
+  "schemaVersion": 1,
+  "kind": "native-pre-work-continuation",
+  "humanReview": "pending",
+  "changes": [
+    "Forward the host-validated continuation into native private decisions.",
+    "Explain ask/chat vs reply/chat in the shared decision contract."
+  ],
+  "validation": [
+    {
+      "path": ".local/feature-review/native-continuation-20261006/red.log",
+      "sha256": "a9f58b0bab8cc3befe3698ca81706df048766ce74c39fb4753916c6c923ae6fa"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/red-2.log",
+      "sha256": "9f7433a704bf27588ea6bfbeec2b0130ebe444c17911407ed6bbffc84ba25da6"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/green-1.log",
+      "sha256": "40b2d16a0646991b44796875377276f6a9eb1859c26e6d720f89970872e45ea0"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/modules-1.log",
+      "sha256": "b3d4dccfd0e4080d3c5f380ecd39fc1e4b064c75dd5ed92c43b372054c0d4887"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/modules-full.log",
+      "sha256": "57dd8e9d907a23d7da69513b71fea4a222a8318c667563488bfcdd53462a14c7"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/modules-full-2.log",
+      "sha256": "eb129c45bb720ab045c159b4da691ce3639238656eb559e9914eb8b5c96cce05"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/typecheck-3.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/build-2.log",
+      "sha256": "6b4a37a76fe6e4af62d03fb16f9a342a31e8b3531e467d55eaf71977f94bb59a"
+    },
+    {
+      "path": ".local/feature-review/native-continuation-20261006/bddgen.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    }
+  ],
+  "firstDecisionReadOnly": {
+    "path": ".local/feature-review/native-continuation-20261006/codex-first-decision-readonly.json",
+    "sha256": "af8cfe1e34f74f07c5b43a55919b3015bb2c06ddc68981e6629a0e828bb72f4c"
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "stats": {
+        "startTime": "2026-10-06T08:32:32.798Z",
+        "duration": 22459.564,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "offline-protocol",
+      "resources": 32,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1/build-manifest.json",
+          "sha256": "adeec41cc043a494ce0edfb6ed16e46c10eefde666d2d379e84c3d8526fcd11d"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1/freeze-verification.json",
+          "sha256": "1aa5a4e3d2f0ab2de37797b6319f0ddfa9fbc469b7a14cbae6e3afe2288c7bde"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1/playwright-results.json",
+          "sha256": "3946020e60df96923a7d6a5d1accf61c5baad6a45846b82c7e5d34059a2588fc"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1-report/checks.json",
+          "sha256": "e6dd6ae9022a88c984711fd2174aebbc4f5477638f7eaff98117af4b911cdf35"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1-report/manifest.json",
+          "sha256": "a5d921312c0bd3154d7adedb2048bf2d2a7d4e650c8348b905ad0ef583e96ea3"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-8IqIMP/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "86ed3a1de35e27b98153a3174c6a9aa25dce9e7c8b9d3ba0b5fd7f1a05245715"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-1ddd4d7b716449a5873b1acff433a0a089ead4b9ee7baac612defc60c7a336d0",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:37:40.259Z",
+              "usage": {
+                "inputTokens": 108,
+                "outputTokens": 12,
+                "totalTokens": 120
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "6e666064-c975-4352-bf0e-4d4b876b60d9",
+                "occurrenceId": "1ddd4d7b716449a5873b1acff433a0a089ead4b9ee7baac612defc60c7a336d0",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "c1a8dae53d25c6a6453664e82d1e2a8ab27d474328c5a13930ad77558700d24a"
+              },
+              "conversationId": "299e5882-14fd-4aeb-9adb-503fdbe32983",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-1/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-fwWxO9/012-建工作前明确接续最终状态含失败.json",
+            "sha256": "e34d3d6e995dc539e21420a99ee2bc79157bffdd5478db95992b747f57995b7a"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-e775bf4091a852739260d7154f67675428598cad7f4b142fc6006be479416dcf",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:37:51.774Z",
+              "usage": {
+                "inputTokens": 30,
+                "outputTokens": 24,
+                "totalTokens": 54
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "b096cd0f-8025-468b-b9ae-b987f91bf4a9",
+                "occurrenceId": "e775bf4091a852739260d7154f67675428598cad7f4b142fc6006be479416dcf",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "e42e93e546b81875704466719cc7f91abc47a079e6eec2768e6c7cf1490fbeab"
+              },
+              "conversationId": "06361be8-87f0-4af5-9c8e-0cfcccbd2898",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-8IqIMP/003-建工作前问题原请求.json",
+          "sha256": "6100d9f30da64c72a35a8d707cacb7129b3671f66f6cc04fc670cc429d735b34"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-1/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-fwWxO9/003-建工作前问题原请求.json",
+          "sha256": "bae3c26439e78d3e04ccd067cd2b3b342023225cd3a9d2e3f6a79f282d9886e6"
+        }
+      ]
+    },
+    {
+      "name": "offline-2",
+      "stats": {
+        "startTime": "2026-10-06T08:34:26.258Z",
+        "duration": 20772.439000000002,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "offline-protocol",
+      "resources": 40,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2/build-manifest.json",
+          "sha256": "5d69d959175b1c2e1060fe02c217777ce357f84f09edc56ff35c6a3bc30d7f10"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2/freeze-verification.json",
+          "sha256": "b24c780a7f1eb1e3b22ac9e7badda3e7d6f3f8745bc0fd4cc87e96475d0d0fd6"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2/playwright-results.json",
+          "sha256": "86e118eff5df826fcbe64271894e5d1dd39eab7c916f41e46fbb5df85127a02f"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2-report/checks.json",
+          "sha256": "36490ce72ecde67cd2fac02748572f8cb771a1460cd3804789ecbc9aa0572c17"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2-report/manifest.json",
+          "sha256": "aa52511dca1c4d27d7b98a8c645e199495b911734efe54c44c462a113a57fd33"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-2/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-F2mKo0/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "3df0f3ac523463a730cca7e7c28caeefc4f582c76ddaf8ac2936b6e95a498f69"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-7333ecbee7a1b2f0d7bbfee7cbec553fa81ef698a94975620a630324d39d9053",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:39:41.897Z",
+              "usage": {
+                "inputTokens": 30,
+                "outputTokens": 24,
+                "totalTokens": 54
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "0592a371-869f-4586-8d37-dc908144f274",
+                "occurrenceId": "7333ecbee7a1b2f0d7bbfee7cbec553fa81ef698a94975620a630324d39d9053",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "a040a09d2f4791f521d8ac9739cda4fae3948c21a8b338e99bcc2f568ecb5e08"
+              },
+              "conversationId": "9683d9cb-5f65-4b03-b801-78a00e64af08",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-iwZAnR/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "82ca6753027d57f1fb5880466161e61b5b81dc7c1cf2d4aeda56a7c2df6d4b11"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-2fbed08416bc49736c1818e1bf05951a17310c0a2e4cb8dc17d8963c26f50ef6",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:39:32.968Z",
+              "usage": {
+                "inputTokens": 108,
+                "outputTokens": 12,
+                "totalTokens": 120
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "72e92eb2-9bf4-4ff5-89a0-901e74bb9a7c",
+                "occurrenceId": "2fbed08416bc49736c1818e1bf05951a17310c0a2e4cb8dc17d8963c26f50ef6",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "0f1ed0d726a6cd81a339a6d726e944fa26f47e70e60dec9d146f4d0f76cc67db"
+              },
+              "conversationId": "13ce5f3f-f30a-4bce-9007-3b6e30b9d8e5",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-F2mKo0/003-建工作前问题原请求.json",
+          "sha256": "bae3c26439e78d3e04ccd067cd2b3b342023225cd3a9d2e3f6a79f282d9886e6"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-iwZAnR/003-建工作前问题原请求.json",
+          "sha256": "6100d9f30da64c72a35a8d707cacb7129b3671f66f6cc04fc670cc429d735b34"
+        }
+      ]
+    },
+    {
+      "name": "offline-3",
+      "stats": {
+        "startTime": "2026-10-06T08:45:05.219Z",
+        "duration": 27014.899,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "offline-protocol",
+      "resources": 40,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3/build-manifest.json",
+          "sha256": "78d8447e71b1d6c3cf3f2677716bb37fa7a069899e8e1750a82ec888dfb61b32"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3/freeze-verification.json",
+          "sha256": "e94aa544cbfbcafdebf637d1ab4fe16699d64d259e735e8ed6f3e7a4f99e475c"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3/playwright-results.json",
+          "sha256": "14ec99914791553a6ded473a466f44b8c59b8ed7eb4415a141ff447d302f9ff5"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3-report/checks.json",
+          "sha256": "a8cd400327fcdd6b282a8a4614663314f270938acd0c35a0bc1c73baabaa3626"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3-report/manifest.json",
+          "sha256": "140c4b8cc2d064c39f765563e0ea5d8a50e7df5084502e71cde69daedb757e4e"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-3/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-spvl84/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "3da51f6739ca4583380e8d07e2aa8f66b3cb38989c3fa8e0b9e2ae2e0de5774f"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-8c6b8c2ab2065f7571a84497ede1b8ee2ec03a1de1a718c326de992be563986c",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:50:26.037Z",
+              "usage": {
+                "inputTokens": 30,
+                "outputTokens": 24,
+                "totalTokens": 54
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "218a5110-7609-4961-93c1-71ae761a5815",
+                "occurrenceId": "8c6b8c2ab2065f7571a84497ede1b8ee2ec03a1de1a718c326de992be563986c",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "7266abeea14e9150eee6c9214616a86e3f7940c17549bb1f59c530c2b22b0990"
+              },
+              "conversationId": "dd85296b-9bcd-430f-93ce-6a6a8db82701",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-1QDFxz/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "2b8996a5a3de1b959ad56e8ef09c0c020075998d5d2f0a96ea6d9514ce9770f3"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-656f86eac5adb9dedcb2bdcf63a8241b58736f2ca648a008e962d20a9f7bbdd2",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:50:13.519Z",
+              "usage": {
+                "inputTokens": 108,
+                "outputTokens": 12,
+                "totalTokens": 120
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "8bb63f83-38ab-4e08-9eb4-0de9b3411169",
+                "occurrenceId": "656f86eac5adb9dedcb2bdcf63a8241b58736f2ca648a008e962d20a9f7bbdd2",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "2c3ebd28f43c22540a2d7da2042c7e163a819705fb8701ac873c3acad07f9b20"
+              },
+              "conversationId": "7f68f19a-7021-4651-b405-3ddb19af1a3e",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3/scenarios/704506bbdae38bebaafd-8c36cbd40480312adb29-retry0-repeat0-spvl84/003-建工作前问题原请求.json",
+          "sha256": "bae3c26439e78d3e04ccd067cd2b3b342023225cd3a9d2e3f6a79f282d9886e6"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-4b0cf9591953f50a3ea8-retry0-repeat0-1QDFxz/003-建工作前问题原请求.json",
+          "sha256": "6100d9f30da64c72a35a8d707cacb7129b3671f66f6cc04fc670cc429d735b34"
+        }
+      ]
+    },
+    {
+      "name": "real-1",
+      "stats": {
+        "startTime": "2026-10-06T08:35:20.977Z",
+        "duration": 503407.859,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "real-provider",
+      "resources": 16,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1/build-manifest.json",
+          "sha256": "7fcebb8f8036e106cbf73e4399dd0ac424e1c4f5f223a525b53359ecde2245bd"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1/freeze-verification.json",
+          "sha256": "6a1bd97b11cf139e56e5bedb8f565e2c68f090c383002205dc67ae4068f45a3e"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1/playwright-results.json",
+          "sha256": "86419d2f9565a26dbd8ef8e3451c09e34cee20e99ad487ccee440ebba0ccaf3d"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1-report/checks.json",
+          "sha256": "06fb935ed1510bfe0c26dd71c615783d8e92778128db16c0143dc270d286160e"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1-report/manifest.json",
+          "sha256": "172d1905b39753df53574b77dce2c1a795799377a60ccce19a52ee2547b0cdc9"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-EUXnO9/008-建工作前明确接续最终状态含失败.json",
+            "sha256": "15a17c40128fdfe4f1c7421af5b2f30cfb5578be3f6541f273606bbe43109383"
+          },
+          "workStates": [],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "unknown"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 0,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-2085bc20ff5dff7b3b7dcd3aae52af791bcab51b6c44197c95a4360b4d7f65a7",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 0,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:40:29.845Z",
+              "usage": {
+                "inputTokens": 7427,
+                "outputTokens": 665,
+                "totalTokens": 8092
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "0db4d8db-6e27-4f0e-85d4-98abcae3fc23",
+                "occurrenceId": "2085bc20ff5dff7b3b7dcd3aae52af791bcab51b6c44197c95a4360b4d7f65a7",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "0e8dc1056a0ddbd29df0bd4a3f907979cc4e6e18ebb478397514381e17253363"
+              },
+              "conversationId": "f0eebf55-6448-4ff7-9790-122708274dd0",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 0,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-1/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-mEyOrL/006-建工作前明确接续最终状态含失败.json",
+            "sha256": "8410eca61081889b82ba5c7489d6dd46b8bf3cec4ee83c8af8e044e527a50460"
+          },
+          "workStates": [],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "unknown"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 0,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-c41e597b2f24ce2407e5664fd2602779fdd52ca0a3ac7c350e28d08ef9da1ab3",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 0,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:44:44.453Z",
+              "usage": {
+                "inputTokens": 57284,
+                "outputTokens": 57,
+                "totalTokens": 57341
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "a78ee9ca-ce09-4748-8651-b4ed3da48418",
+                "occurrenceId": "c41e597b2f24ce2407e5664fd2602779fdd52ca0a3ac7c350e28d08ef9da1ab3",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "e1ea7f7ed1248fff02488b8d3a532044a52d6c1b9bff92c7fa6b5c28f99d5d66"
+              },
+              "conversationId": "2e82a210-fce0-490c-b498-9c1e5db5542f",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 0,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-EUXnO9/005-建工作前问题原请求.json",
+          "sha256": "6e032bd5b86157c4c7ded3fd8adbcf133fe7016a68ba50b549e9cf096a72dd27"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-1/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-mEyOrL/003-建工作前问题原请求.json",
+          "sha256": "f010af651b461a6f1ef3c57de9b2cfd0132599e8911fe9769d7bfdce05fa8ad5"
+        }
+      ]
+    },
+    {
+      "name": "real-2",
+      "stats": {
+        "startTime": "2026-10-06T08:45:43.353Z",
+        "duration": 124252.778,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "real-provider",
+      "resources": 30,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2/build-manifest.json",
+          "sha256": "89b56c194f290ea8b9fe12ead804a8f54e685f4fad4f0d406cd60f1699089141"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2/freeze-verification.json",
+          "sha256": "34ce3d804050f8d257881e4f61ed038c475f3a78a711ffdb00fb807da1f6b883"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2/playwright-results.json",
+          "sha256": "992cfcb63a9ce331e1e6f4f01af20dfb6edddb64f39e7688641ea18082c938aa"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2-report/checks.json",
+          "sha256": "e033f63072efb6a185d2959266d550a81c365d57535daa9f9962a865e7ed534b"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2-report/manifest.json",
+          "sha256": "c408625aa9cc32bc7be9e79acd6a1f06502318944f658f6055092b40ceba29b1"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-2/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-gRVmDB/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "c326963ca28d07992a4e22970e5a134ac169f73453021da9194cff6fc37a1f38"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-e595709a4fadf0dfb32c4ff759ba219f67b5752980d20f5b42c7a3fd9a9bd2ae",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:51:14.966Z",
+              "usage": {
+                "inputTokens": 212407,
+                "outputTokens": 694,
+                "totalTokens": 213101
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "39fcf301-a9d1-4542-8d1c-6620ee7aab9d",
+                "occurrenceId": "e595709a4fadf0dfb32c4ff759ba219f67b5752980d20f5b42c7a3fd9a9bd2ae",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "9292c5d85b98c135335bfb464405cb66176c689dd95b255a45a53823ad63e0e3"
+              },
+              "conversationId": "6be0234b-1511-460e-af4e-9c80825fd331",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-XYOeXm/009-建工作前明确接续最终状态含失败.json",
+            "sha256": "816a064485a4ddcbe06fb824fcdb20c92c332a34bd5fc280ed944f8e5bcedb30"
+          },
+          "workStates": [
+            "waiting"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "waiting_user",
+              "delivery": "pending"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-2f5e47482ac8e06d87bb061ccc476fd72179597fdd6c32d7cda8c2c7b6f98418",
+              "schemaVersion": 1,
+              "modelCalls": 2,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:50:52.670Z",
+              "usage": {
+                "inputTokens": 4849,
+                "outputTokens": 323,
+                "totalTokens": 5172
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "7c433f12-18c0-4c2e-a85e-7dd41eedd4d2",
+                "occurrenceId": "2f5e47482ac8e06d87bb061ccc476fd72179597fdd6c32d7cda8c2c7b6f98418",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "11bdc83ab6e5131cfa2f46377d5c589ccd9724840ac18852b74b3432d5695172"
+              },
+              "conversationId": "83066f62-1e0f-4366-8161-85983d195899",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 0,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-gRVmDB/003-建工作前问题原请求.json",
+          "sha256": "f010af651b461a6f1ef3c57de9b2cfd0132599e8911fe9769d7bfdce05fa8ad5"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-XYOeXm/005-建工作前问题原请求.json",
+          "sha256": "6e032bd5b86157c4c7ded3fd8adbcf133fe7016a68ba50b549e9cf096a72dd27"
+        }
+      ]
+    },
+    {
+      "name": "real-3",
+      "stats": {
+        "startTime": "2026-10-06T08:48:32.389Z",
+        "duration": 149694.797,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "modelMode": "real-provider",
+      "resources": 42,
+      "filesFrozen": 874,
+      "evidence": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3/build-manifest.json",
+          "sha256": "896efb53b15a46cc96c827ab89185b8c82b7ada5d306d035d44114fe236bcd82"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3/freeze-verification.json",
+          "sha256": "248082348b57ac6aa017e8f542e082497b02307368cf0f07cc4ba1351348d458"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3/playwright-results.json",
+          "sha256": "401196d3aa1a29b88cde5ac90a91e205315a9dddc17e285f89256e2c98e84fbd"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3-report/checks.json",
+          "sha256": "b74176148e06d7b4bc0afcf5aa68c14754103ef72a2783658130ebd76db35dab"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3-report/manifest.json",
+          "sha256": "2924a5f77d527c25f7606d901ef5dece55d3baf666b25f060fe518f0ecc71f9b"
+        }
+      ],
+      "checkpoints": [
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-lai2cP/018-建工作前明确接续最终状态含失败.json",
+            "sha256": "1db7a72cf60ee91dea471555eaf789beb108ad74fbf88ea263569bdf2902c258"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-f71ee31b55e3f30235a177c60a36f5fb46869c1d3f4afc8ed244e8da610ed88f",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:54:24.515Z",
+              "usage": {
+                "inputTokens": 205287,
+                "outputTokens": 729,
+                "totalTokens": 206016
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "91d5fe8b-2d2a-4a28-96fd-ffe15a4aad5b",
+                "occurrenceId": "f71ee31b55e3f30235a177c60a36f5fb46869c1d3f4afc8ed244e8da610ed88f",
+                "name": "Codex先确认标题",
+                "authorizedFingerprint": "a3c9f4c451b1c75ea4923c766a56335635ee327a8b5b40d9d76052ad032f2b32"
+              },
+              "conversationId": "c74c9eaa-bd15-4ff1-bceb-675fe5e48b71",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        },
+        {
+          "source": {
+            "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-KMWzTF/020-建工作前明确接续最终状态含失败.json",
+            "sha256": "3c664156a0509d49118f59eb390c615b3c5e29696a30f7a420fbecb8a5d28bc0"
+          },
+          "workStates": [
+            "delivered"
+          ],
+          "occurrenceStates": [
+            {
+              "status": "completed",
+              "delivery": "delivered"
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-af8e0101c0d3a8e465614efaa49e5e8189106a17cde4a5e1ffdc3fe5fdd3ef73",
+              "schemaVersion": 1,
+              "modelCalls": 6,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T08:53:41.637Z",
+              "usage": {
+                "inputTokens": 38724,
+                "outputTokens": 1558,
+                "totalTokens": 40282
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "e5d98c9c-7f84-426a-a67a-31393205de61",
+                "occurrenceId": "af8e0101c0d3a8e465614efaa49e5e8189106a17cde4a5e1ffdc3fe5fdd3ef73",
+                "name": "Claude先确认标题",
+                "authorizedFingerprint": "eba3bd9ad2f6e27788d546ecee283d4cc63692e276af896bd2729e0df34faa8f"
+              },
+              "conversationId": "580d0154-6fb8-4e11-aaed-967993412735",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "artifactCount": 1,
+          "allRunsTerminal": true
+        }
+      ],
+      "requests": [
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-lai2cP/003-建工作前问题原请求.json",
+          "sha256": "75769253ed56662f4297e645189dbc3034f173daa296d489dce058442e3a7a4c"
+        },
+        {
+          "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-KMWzTF/005-建工作前问题原请求.json",
+          "sha256": "231193016b8830d3243225b0f4fd049720691d2f724684419008c4c3546f56ac"
+        }
+      ]
+    }
+  ],
+  "images": [
+    {
+      "source": {
+        "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/704506bbdae38bebaafd-dd08ac33ddfda842ddbf-retry0-repeat0-lai2cP/016-重启保留原问题和首次文件交付.native.png",
+        "sha256": "08bdaf3c957f598ed8b4ea47c73dd6ca47d5a275473473d91f1b1baa35cdfec2"
+      },
+      "retained": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Codex建工作前明确接续-20261006.png",
+        "sha256": "08bdaf3c957f598ed8b4ea47c73dd6ca47d5a275473473d91f1b1baa35cdfec2"
+      },
+      "width": 2580,
+      "height": 1720,
+      "edited": false
+    },
+    {
+      "source": {
+        "path": ".local/feature-review/native-continuation-20261006/real-3/scenarios/76620a6b86e22810b964-dc4997136452bddeebab-retry0-repeat0-KMWzTF/018-重启保留原问题和首次文件交付.native.png",
+        "sha256": "03009fb41f1348e3674655b958fc6a345df2a3fef459484f88f9c9e0a13e4b1e"
+      },
+      "retained": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude建工作前明确接续-20261006.png",
+        "sha256": "03009fb41f1348e3674655b958fc6a345df2a3fef459484f88f9c9e0a13e4b1e"
+      },
+      "width": 2580,
+      "height": 1720,
+      "edited": false
+    }
+  ],
+  "limitations": [
+    "Initial red.log contains harness failures; red-2.log reproduces the missing continuation in four actual protocol inputs.",
+    "Module renewal uses explicit expiry injection, not elapsed wall-clock evidence.",
+    "The first offline Codex attempt had the wrong fixture-body expectation and did not export its artifact before cleanup.",
+    "First real attempts ended after a public question without registering a waiting state; they did not test continuation delivery.",
+    "The second real Claude attempt selected the supported ask/task path, so the pre-Work scenario did not pass; a new stricter request is recorded separately.",
+    "Shared decision instructions guide model classification; bounded successful samples do not guarantee all future model choices.",
+    "No new packaged-app, other-platform, provider, complete failure-matrix or previous core-budget reliability conclusion is made."
+  ],
+  "resourceVerification": {
+    "path": ".local/feature-review/native-continuation-20261006/report-resource-verification.json",
+    "sha256": "d76188f379d183d4eff829dadb6cc2ad998b13d55b4cc517dc698b1118f5b9fd"
+  }
+}

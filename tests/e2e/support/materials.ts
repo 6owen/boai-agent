@@ -1,7 +1,9 @@
 /*
+ * [OUTPUT]: 消息故障可定向阻断受理前或丢失受理后IPC回复，重启后仅观测原请求与回执。
  * [INPUT]: 场景独立 Desktop、真实本机文本文件、共享 Mastra 兼容 HTTP fixture 与生产原生 IPC。
  * [OUTPUT]: Markdown/TypeScript/HTML真实预览原件、通用PDF/超过20MiB夹具；同名来源/严格文本失败、原生File授权及准备/发送失联观测；资源随场景回收。
  * [OUTPUT]: 取证读取使用已有库只读连接，不执行启动迁移或使正文索引失效；真实移走/恢复同字节原件验证显式核对。
+ * [OUTPUT]: 旧材料名单仅在应用停止后准备，可指定实际创建的员工；原消息和受管原件保持，不模拟旧版二进制升级。
  * [POS]: D1 材料桌面验收支撑；文件路径只交给原生选择端，不进入公开 prepareMaterial 输入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -17,7 +19,7 @@ import type { Methods } from '../../../src/shared/ipc'
 type PreparationInput = Methods['prepareMaterial']['input']
 type SendInput = Methods['sendMessage']['input']
 interface ReplyState { preparations: PreparationInput[]; lookups: string[]; committedIds: string[]; lostReplies: number; unavailableLookups: number; lookupUnavailable: boolean }
-interface SendReplyState { sends: SendInput[]; lookups: string[]; committedMessages: Message[]; lostReplies: number; unavailableLookups: number; lookupUnavailable: boolean }
+interface SendReplyState { rejectedBeforeAdmission: number; sends: SendInput[]; lookups: string[]; committedMessages: Message[]; lostReplies: number; unavailableLookups: number; lookupUnavailable: boolean }
 interface NativeDrop { path: string; selectionId: string; name: string }
 type MaterialGlobals = typeof globalThis & { __boaiMaterialReplyFault: ReplyState; __boaiMaterialSendReplyFault: SendReplyState; __boaiMaterialNativeDrops: NativeDrop[] }
 
@@ -172,18 +174,19 @@ export async function forgedMaterialRequests(runtime: Desktop, conversationId: s
   }, { conversationId, path })
 }
 
-/** Preserve real sendMessage association/round/model execution and lose only its committed IPC reply. */
-export async function materialSendReplyFault(runtime: Desktop) {
-  await runtime.app.evaluate(({ ipcMain }) => {
+/** Observe real sends; optionally reject before admission or lose only the committed IPC reply. */
+export async function materialSendReplyFault(runtime: Desktop, mode: 'after' | 'before' | 'observe' = 'after') {
+  await runtime.app.evaluate(({ ipcMain }, mode) => {
     const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
     const original = handlers.get('boai:request')!
-    const state: SendReplyState = { sends: [], lookups: [], committedMessages: [], lostReplies: 0, unavailableLookups: 0, lookupUnavailable: true }
+    const state: SendReplyState = { rejectedBeforeAdmission: 0, sends: [], lookups: [], committedMessages: [], lostReplies: 0, unavailableLookups: 0, lookupUnavailable: mode !== 'observe' }
     Object.assign(globalThis, { __boaiMaterialSendReplyFault: state })
-    let loseReply = true
+    let loseReply = mode === 'after', rejectBefore = mode === 'before'
     ipcMain.removeHandler('boai:request')
     ipcMain.handle('boai:request', async (event, payload) => {
       if (payload.method === 'sendMessage') state.sends.push(structuredClone(payload.input))
       if (payload.method === 'getMessageReceipt') state.lookups.push(payload.input.requestId)
+      if (payload.method === 'sendMessage' && rejectBefore) { rejectBefore = false; state.lookupUnavailable = true; state.rejectedBeforeAdmission++; throw new Error('验收：发送未进入宿主受理事务') }
       const result = await original(event, payload)
       if (payload.method === 'sendMessage') {
         state.committedMessages.push(structuredClone(result as Message))
@@ -192,7 +195,7 @@ export async function materialSendReplyFault(runtime: Desktop) {
       if (payload.method === 'getMessageReceipt' && state.lookupUnavailable) { state.unavailableLookups++; throw new Error('验收：消息回执暂不可读') }
       return result
     })
-  })
+  }, mode)
   return {
     inspect: () => runtime.app.evaluate(() => structuredClone((globalThis as MaterialGlobals).__boaiMaterialSendReplyFault)),
     allowLookup: () => runtime.app.evaluate(() => { (globalThis as MaterialGlobals).__boaiMaterialSendReplyFault.lookupUnavailable = false }),
@@ -200,13 +203,13 @@ export async function materialSendReplyFault(runtime: Desktop) {
 }
 
 /** Prepare an old persisted explicit grant while the app is stopped; current UI never offers this setting. */
-export async function legacyMaterialGrant(runtime: Desktop, dataPath: string, id: string) {
+export async function legacyMaterialGrant(runtime: Desktop, dataPath: string, id: string, authorizedAgentIds = ['researcher']) {
   await runtime.close()
   const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
   try {
     const material = (await store.load<ConversationMaterial>('materials')).find(value => value.id === id)!
     const { deliveryScope, ...legacy } = material
-    await store.write([{ collection: 'materials', id, value: { ...legacy, authorizedAgentIds: ['researcher'] } }])
+    await store.write([{ collection: 'materials', id, value: { ...legacy, authorizedAgentIds } }])
   } finally { await store.close() }
   await runtime.start()
 }

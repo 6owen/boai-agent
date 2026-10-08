@@ -1,0 +1,3596 @@
+{
+  "schemaVersion": 1,
+  "scope": "Shared public delivery presentation and Claude original question/explicit deadline renewal; Codex packaged employee regression separately recorded",
+  "humanReview": "pending",
+  "runtime": {
+    "claude": "2.1.214 + explicit saved DeepSeek API",
+    "codex": "0.159.3",
+    "currentPolicyVersion": 5
+  },
+  "batches": [
+    {
+      "name": "offline-1",
+      "policyVersion": 4,
+      "stats": {
+        "startTime": "2026-10-06T04:04:03.691Z",
+        "duration": 36008.498,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "source-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:05:03.606106+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-1/build-manifest.json",
+        "sha256": "051fb0eb898a5d0f0c136ebb1cdb8ce9e3ac7bad4c17d24b57af90077935c55b",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-1/playwright-results.json",
+        "sha256": "9c863dc2db4404c866a0d315c2ca656b829f7447a8cb069c361c0aa680b30a34",
+        "bytes": 133920
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-1-report/manifest.json",
+        "sha256": "bcd2f3702ed3ced92190ce34883d35776f9197a0b00fc491704d4833e0764c4f",
+        "bytes": 1240
+      },
+      "scenarios": [
+        {
+          "title": "使用离线协议以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-jCCLQb/manifest.json",
+            "sha256": "b58947d62117d9a8e5ca4f56782bfa9a37975ceb1dc34115a0e859cca5eab399",
+            "bytes": 21516
+          },
+          "startedAt": "2026-10-06T04:04:16.743Z",
+          "completedAt": "2026-10-06T04:04:27.073Z",
+          "evidenceCount": 20,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-jCCLQb/019-Claude原问题接续最终状态含失败.json",
+            "sha256": "11c46ee42cc69b4ee960e5714d83cfe0268e8da913fad62423d8676da71e9e5c",
+            "bytes": 26923
+          },
+          "occurrences": [
+            {
+              "id": "5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:04:22.268Z",
+              "finishedAt": "2026-10-06T04:04:23.582Z",
+              "budgetId": "automation-budget-5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-d53a6cfcaa8c35ef66725e1e52673239c098c85d83374f393fa4bff9f7b49ae7",
+              "status": "delivered",
+              "budgetId": "automation-budget-5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+              "origin": {
+                "kind": "automation",
+                "automationId": "bae3b4bd-5765-4309-b569-60b8d7c9e7be",
+                "occurrenceId": "5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "f6c8a24509c383b088e9180a2d84a40f6867193e1a1a0002ad919b66de160c81"
+              },
+              "artifactIds": [
+                "991abd60-2226-4e93-93fb-ef55f43c4d85"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:09:22.265Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "bae3b4bd-5765-4309-b569-60b8d7c9e7be",
+                "occurrenceId": "5a296ef9bd1060a256bcfe5641a95918888aad65db23cd1032ce9e0f51689421",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "f6c8a24509c383b088e9180a2d84a40f6867193e1a1a0002ad919b66de160c81"
+              },
+              "conversationId": "a910be27-0f4c-41c6-8e5b-aefb31382724",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 1,
+              "execution": 2,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "991abd60-2226-4e93-93fb-ef55f43c4d85",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议以追加到期额度继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-8Vdbsp/manifest.json",
+            "sha256": "2d427b9cd8c24f2647548ec2c2afe040b84b91fba5fedd179c9ea209f3fb88a2",
+            "bytes": 24874
+          },
+          "startedAt": "2026-10-06T04:04:27.083Z",
+          "completedAt": "2026-10-06T04:04:39.658Z",
+          "evidenceCount": 23,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-8Vdbsp/022-Claude原问题接续最终状态含失败.json",
+            "sha256": "7f418b391c813ac18ef707cd76a0bb4d928fd9f75b6186c32899a4d1f40e7fc5",
+            "bytes": 34908
+          },
+          "occurrences": [
+            {
+              "id": "e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:04:32.663Z",
+              "finishedAt": "2026-10-06T04:04:34.709Z",
+              "budgetId": "automation-budget-e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-9876b2c0d66d78741bd83342c5f3dd7c22bb95189562ef1a47957fdf815906be",
+              "status": "delivered",
+              "budgetId": "automation-budget-e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+              "origin": {
+                "kind": "automation",
+                "automationId": "ba9627ce-9b6a-4679-a3a2-70a039ebfca4",
+                "occurrenceId": "e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "b53e73688b9508422061f7e0eed748a69ca10af2da43daccd0641eb8fdbac7f6"
+              },
+              "artifactIds": [
+                "c01a3086-0cf3-4176-8778-a11a12406d3e"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "id": "automation-budget-e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "deadlineAt": "2026-10-06T04:09:34.284Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "ba9627ce-9b6a-4679-a3a2-70a039ebfca4",
+                "occurrenceId": "e98cbe9db36fa6d1b7345dc9715054619baf12e77ef02ca95ec57eb90c513b70",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "b53e73688b9508422061f7e0eed748a69ca10af2da43daccd0641eb8fdbac7f6"
+              },
+              "conversationId": "4b6168e5-4039-4524-9592-2665c9b0fe7c",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed",
+              "renewals": [
+                {
+                  "id": "350534c2-d75f-46d4-bc66-0fc7f992b792",
+                  "requestId": "ca36a7cb-5a58-4d79-930a-1542de37960e",
+                  "messageId": "f05af851-709b-482d-841a-e5db1132bad3",
+                  "turnId": "8528198f-8eca-40d3-b674-2348a51971ff",
+                  "createdAt": "2026-10-06T04:04:34.284Z",
+                  "before": {
+                    "maxModelCalls": 24,
+                    "maxRuns": 8,
+                    "maxOutputTokens": 16000,
+                    "maxWorkItems": 8,
+                    "maxRetries": 3,
+                    "maxReportRefreshes": 4,
+                    "maxNoProgress": 3,
+                    "deadlineAt": "1970-01-01T00:00:00.000Z"
+                  },
+                  "after": {
+                    "maxModelCalls": 48,
+                    "maxRuns": 16,
+                    "maxOutputTokens": 32000,
+                    "maxWorkItems": 16,
+                    "maxRetries": 6,
+                    "maxReportRefreshes": 8,
+                    "maxNoProgress": 6,
+                    "deadlineAt": "2026-10-06T04:09:34.284Z"
+                  },
+                  "used": {
+                    "modelCalls": 2,
+                    "runs": 1,
+                    "usage": {
+                      "inputTokens": 36,
+                      "outputTokens": 4,
+                      "totalTokens": 40
+                    },
+                    "usageIncomplete": false,
+                    "unknownCalls": 0,
+                    "workItems": 1,
+                    "retries": 0,
+                    "reportRefreshes": 0,
+                    "noProgress": 1
+                  },
+                  "previousStatus": "cancelled",
+                  "previousReason": "达到本次自动化的时间预算",
+                  "cancellationRequestedAt": "2026-10-06T04:04:33.830Z",
+                  "workVersions": [
+                    {
+                      "id": "work-9876b2c0d66d78741bd83342c5f3dd7c22bb95189562ef1a47957fdf815906be",
+                      "version": 3,
+                      "status": "waiting"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 2,
+              "execution": 2
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "c01a3086-0cf3-4176-8778-a11a12406d3e",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议让Claude员工以手动触发完成原定时文件工作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-AWmdYg/manifest.json",
+            "sha256": "f92c4779ed9d6c588e327a43a949f891987979b2d35825a71820e2a5e2b13f9b",
+            "bytes": 17652
+          },
+          "startedAt": "2026-10-06T04:04:05.707Z",
+          "completedAt": "2026-10-06T04:04:16.733Z",
+          "evidenceCount": 16,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-1/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-AWmdYg/015-Claude自动化最终状态含失败.json",
+            "sha256": "2d0e9577c3fbdd083d2b7b53378df80e018b437a4ba3e95fcba9d30341e0142f",
+            "bytes": 21620
+          },
+          "occurrences": [
+            {
+              "id": "c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:04:12.175Z",
+              "finishedAt": "2026-10-06T04:04:12.803Z",
+              "budgetId": "automation-budget-c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-ac9b60ccefb77a021c57c62ceb4b3e420e885838340db652c61e5ed7d3cf215d",
+              "status": "delivered",
+              "budgetId": "automation-budget-c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+              "origin": {
+                "kind": "automation",
+                "automationId": "6d58aa4d-2506-4e0d-8824-fe210dc92fe9",
+                "occurrenceId": "c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "dcc913db2e8fbd8a910c883d203fbc658448bf3d23633c9886b871c67aa4e3f5"
+              },
+              "artifactIds": [
+                "c4352853-8bf6-4633-b036-2a1e4d2ea862"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:09:12.173Z",
+              "usage": {
+                "inputTokens": 54,
+                "outputTokens": 6,
+                "totalTokens": 60
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "6d58aa4d-2506-4e0d-8824-fe210dc92fe9",
+                "occurrenceId": "c97e9f0552f7b3aaabf14b42bd9f14a72fa9db6035708e0307a76fd9d5594665",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "dcc913db2e8fbd8a910c883d203fbc658448bf3d23633c9886b871c67aa4e3f5"
+              },
+              "conversationId": "bf3c4eed-a433-4b9a-918b-3e5a933738fb",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 3,
+            "phases": {
+              "decision": 1,
+              "execution": 1,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 3
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "c4352853-8bf6-4633-b036-2a1e4d2ea862",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "offline-2",
+      "policyVersion": 4,
+      "stats": {
+        "startTime": "2026-10-06T04:09:06.437Z",
+        "duration": 29921.467,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "source-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:10:12.429006+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-2/build-manifest.json",
+        "sha256": "04cdfd3caccb9b2d6ea105e5a248f33830fe49c846075a2ad1655003fe811db8",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-2/playwright-results.json",
+        "sha256": "ffd9693bb71e72940787ecb61e799bc634917511db87747896d092a858e4f875",
+        "bytes": 133918
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-2-report/manifest.json",
+        "sha256": "7736d7a10358768560820224c15bf300bcc5d159651b5873466fd53a08f320e2",
+        "bytes": 1240
+      },
+      "scenarios": [
+        {
+          "title": "使用离线协议以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-hDSpOu/manifest.json",
+            "sha256": "c16de2cd12752b35019d331d264fb44c0dc1659b00c689b8b16a2cdc2469f044",
+            "bytes": 21515
+          },
+          "startedAt": "2026-10-06T04:09:17.429Z",
+          "completedAt": "2026-10-06T04:09:26.285Z",
+          "evidenceCount": 20,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-hDSpOu/019-Claude原问题接续最终状态含失败.json",
+            "sha256": "ce5edd0fe3228d0f1f9c8c1bfe2acab0a0463486f6e9701844984e037bea61ae",
+            "bytes": 26984
+          },
+          "occurrences": [
+            {
+              "id": "b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:09:22.303Z",
+              "finishedAt": "2026-10-06T04:09:23.380Z",
+              "budgetId": "automation-budget-b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-e67e64e99539e051c6814473360c6a5f5cad2cd02479d5e12b001af04160a17b",
+              "status": "delivered",
+              "budgetId": "automation-budget-b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+              "origin": {
+                "kind": "automation",
+                "automationId": "e3329ae9-0379-4eef-991b-9ea59f14f595",
+                "occurrenceId": "b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "138ea7ac36731350738226aa160c296c1785185c82deb200777da62df33c1ab6"
+              },
+              "artifactIds": [
+                "63f52e18-0c50-4bbc-9f11-b3a957c3eca3"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:14:22.299Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "e3329ae9-0379-4eef-991b-9ea59f14f595",
+                "occurrenceId": "b00b3168bb4ffe19597a2c2e95463f1f4a3e6752218ff84ecb858609b4a5f11a",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "138ea7ac36731350738226aa160c296c1785185c82deb200777da62df33c1ab6"
+              },
+              "conversationId": "c6df4e8f-18fd-4508-bcfc-966ba7e37376",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 1,
+              "execution": 2,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "63f52e18-0c50-4bbc-9f11-b3a957c3eca3",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议以追加到期额度继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-iv5Y7e/manifest.json",
+            "sha256": "05d08c83645b2785cceb29e9555e4df9b6ea0ac5d94b1318e39715b56cadcab2",
+            "bytes": 24874
+          },
+          "startedAt": "2026-10-06T04:09:26.293Z",
+          "completedAt": "2026-10-06T04:09:36.341Z",
+          "evidenceCount": 23,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-iv5Y7e/022-Claude原问题接续最终状态含失败.json",
+            "sha256": "be3e0f3d52d2766e6cee1c126138e48d5367cd28301f40cd67ff73d2c79224b0",
+            "bytes": 34969
+          },
+          "occurrences": [
+            {
+              "id": "f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:09:31.390Z",
+              "finishedAt": "2026-10-06T04:09:32.664Z",
+              "budgetId": "automation-budget-f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-2242b62762f43fe0bae24c01c7f738a27ebc72fff6a4708d89168f1669648751",
+              "status": "delivered",
+              "budgetId": "automation-budget-f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+              "origin": {
+                "kind": "automation",
+                "automationId": "c1474cc6-cf34-4bab-948b-fa1685ceac5d",
+                "occurrenceId": "f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "f90784f16aa1b61e43f736bdf68b6f315f0034ec4fb696f81569ef7d958de7e3"
+              },
+              "artifactIds": [
+                "78bd2ed3-8a4a-48fa-9b2f-6b83f105156e"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "id": "automation-budget-f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "deadlineAt": "2026-10-06T04:14:32.337Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "c1474cc6-cf34-4bab-948b-fa1685ceac5d",
+                "occurrenceId": "f08cb8aa295b278ce16a7ca468b49e48d4946d62e05043cdc6b0e77a8939bcda",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "f90784f16aa1b61e43f736bdf68b6f315f0034ec4fb696f81569ef7d958de7e3"
+              },
+              "conversationId": "60a5a7a7-0366-41e0-91dd-1695fea25c76",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed",
+              "renewals": [
+                {
+                  "id": "edfa7ba3-ff07-4cb0-8044-efac3bc08da8",
+                  "requestId": "9cad36ef-4a4d-48b1-acf3-691052189c62",
+                  "messageId": "8aa94c8b-40fa-4a4a-a574-107caf845685",
+                  "turnId": "aa13711a-bc9a-42f9-b6cd-b99ac82fe93c",
+                  "createdAt": "2026-10-06T04:09:32.337Z",
+                  "before": {
+                    "maxModelCalls": 24,
+                    "maxRuns": 8,
+                    "maxOutputTokens": 16000,
+                    "maxWorkItems": 8,
+                    "maxRetries": 3,
+                    "maxReportRefreshes": 4,
+                    "maxNoProgress": 3,
+                    "deadlineAt": "1970-01-01T00:00:00.000Z"
+                  },
+                  "after": {
+                    "maxModelCalls": 48,
+                    "maxRuns": 16,
+                    "maxOutputTokens": 32000,
+                    "maxWorkItems": 16,
+                    "maxRetries": 6,
+                    "maxReportRefreshes": 8,
+                    "maxNoProgress": 6,
+                    "deadlineAt": "2026-10-06T04:14:32.337Z"
+                  },
+                  "used": {
+                    "modelCalls": 2,
+                    "runs": 1,
+                    "usage": {
+                      "inputTokens": 36,
+                      "outputTokens": 4,
+                      "totalTokens": 40
+                    },
+                    "usageIncomplete": false,
+                    "unknownCalls": 0,
+                    "workItems": 1,
+                    "retries": 0,
+                    "reportRefreshes": 0,
+                    "noProgress": 1
+                  },
+                  "previousStatus": "cancelled",
+                  "previousReason": "达到本次自动化的时间预算",
+                  "cancellationRequestedAt": "2026-10-06T04:09:31.974Z",
+                  "workVersions": [
+                    {
+                      "id": "work-2242b62762f43fe0bae24c01c7f738a27ebc72fff6a4708d89168f1669648751",
+                      "version": 3,
+                      "status": "waiting"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 2,
+              "execution": 2
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "78bd2ed3-8a4a-48fa-9b2f-6b83f105156e",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议让Claude员工以手动触发完成原定时文件工作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-bPlb2k/manifest.json",
+            "sha256": "f40741c9681e9777af541202ee02984d4c0c1be61cb432f7ace61fc2afaa819c",
+            "bytes": 17651
+          },
+          "startedAt": "2026-10-06T04:09:07.777Z",
+          "completedAt": "2026-10-06T04:09:17.422Z",
+          "evidenceCount": 16,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-2/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-bPlb2k/015-Claude自动化最终状态含失败.json",
+            "sha256": "b323eacabfe614fd22459e0466919a9d9568cd9d2222cf8264dfc142eef62db3",
+            "bytes": 21681
+          },
+          "occurrences": [
+            {
+              "id": "2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:09:13.251Z",
+              "finishedAt": "2026-10-06T04:09:13.671Z",
+              "budgetId": "automation-budget-2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-b5522aa9b5e82044c74141f8986e81c40ec2c13cd892fa499fde941f75ea7113",
+              "status": "delivered",
+              "budgetId": "automation-budget-2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+              "origin": {
+                "kind": "automation",
+                "automationId": "40c47ea1-ca63-4440-b2fa-924cc45738da",
+                "occurrenceId": "2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "a6cfce716813b54858caefa80e1c9c64e109a1480f7531df4763578ea5eec228"
+              },
+              "artifactIds": [
+                "7176861a-f92a-460e-8428-d402fbb9b8a9"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:14:13.248Z",
+              "usage": {
+                "inputTokens": 54,
+                "outputTokens": 6,
+                "totalTokens": 60
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "40c47ea1-ca63-4440-b2fa-924cc45738da",
+                "occurrenceId": "2b876736459ce5e6978b68242e447699cd1c1b1a0c6c52cce07e3eb2e21021a5",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "a6cfce716813b54858caefa80e1c9c64e109a1480f7531df4763578ea5eec228"
+              },
+              "conversationId": "a4e5f4e6-c10c-4613-8685-5505d262e57a",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 3,
+            "phases": {
+              "decision": 1,
+              "execution": 1,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 3
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "7176861a-f92a-460e-8428-d402fbb9b8a9",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "offline-3",
+      "policyVersion": 5,
+      "stats": {
+        "startTime": "2026-10-06T04:30:45.299Z",
+        "duration": 29821.675,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "source-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:31:45.583600+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-3/build-manifest.json",
+        "sha256": "f0dafd8144ee524a13384c927fb0694266c72c5530ed1b061e54a0cef863cc4e",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-3/playwright-results.json",
+        "sha256": "fe6fd509a88f59e86aaa8c35a7b475aaf780f328a82cc3c45162b15c20320d54",
+        "bytes": 133917
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/offline-3-report/manifest.json",
+        "sha256": "7d7b87f979a2b7c06c51864175f0ec166b8c3c8695851507efed9a77c217b4e5",
+        "bytes": 1240
+      },
+      "scenarios": [
+        {
+          "title": "使用离线协议以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-c9Kif5/manifest.json",
+            "sha256": "58775772aeae02e61a5a6b2323026656535da4e5350e305e20d647e6ed2dc379",
+            "bytes": 21515
+          },
+          "startedAt": "2026-10-06T04:30:56.267Z",
+          "completedAt": "2026-10-06T04:31:05.286Z",
+          "evidenceCount": 20,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-1a0187e480aae8f522b9-retry0-repeat0-c9Kif5/019-Claude原问题接续最终状态含失败.json",
+            "sha256": "5c0af0b23655d4a4d2c6dac249bb79f5229d586439c522554052469ff0101cd8",
+            "bytes": 26985
+          },
+          "occurrences": [
+            {
+              "id": "06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:31:01.340Z",
+              "finishedAt": "2026-10-06T04:31:02.444Z",
+              "budgetId": "automation-budget-06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-8f459604ce6f6a249f0f679d27833222cb0437c0d92c3f4d5179dd2fed7d2577",
+              "status": "delivered",
+              "budgetId": "automation-budget-06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+              "origin": {
+                "kind": "automation",
+                "automationId": "f7cbcc74-e4d5-4c9f-8aa8-a19609129394",
+                "occurrenceId": "06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "000c01a0212493be2461e505dc1eabbf181c4111444da27105e05fd37e1010c0"
+              },
+              "artifactIds": [
+                "5c70e539-2505-48ec-adaa-21fac73fd461"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:36:01.337Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "f7cbcc74-e4d5-4c9f-8aa8-a19609129394",
+                "occurrenceId": "06de29574dc29b520200819e5c1294dbf277a99b41e7fd7251836ce5d7eea821",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "000c01a0212493be2461e505dc1eabbf181c4111444da27105e05fd37e1010c0"
+              },
+              "conversationId": "7b316908-a834-4532-976b-e18af315bf0e",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 1,
+              "execution": 2,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "5c70e539-2505-48ec-adaa-21fac73fd461",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议以追加到期额度继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-xWQxxz/manifest.json",
+            "sha256": "5a0f014c3ef0d9287da1b5bbe119b1e5db64dc4462dfbdaf36d35af99b931526",
+            "bytes": 24874
+          },
+          "startedAt": "2026-10-06T04:31:05.292Z",
+          "completedAt": "2026-10-06T04:31:15.103Z",
+          "evidenceCount": 23,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-8369d35ae8d1a3434cf4-retry0-repeat0-xWQxxz/022-Claude原问题接续最终状态含失败.json",
+            "sha256": "f93298ae89c182408e2d0683f1bf53317a2e90069eb371540010b93f6b4d1010",
+            "bytes": 34969
+          },
+          "occurrences": [
+            {
+              "id": "aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:31:10.139Z",
+              "finishedAt": "2026-10-06T04:31:11.431Z",
+              "budgetId": "automation-budget-aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-b8d9e82397fb0640b556ab9dc2ef353485641efd2190ed55ab0f58c290833c45",
+              "status": "delivered",
+              "budgetId": "automation-budget-aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+              "origin": {
+                "kind": "automation",
+                "automationId": "4a0936c7-56e0-456f-b228-bf28c4824988",
+                "occurrenceId": "aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "ae38d9366c0d21082b6cbb3472367f87ad0bfe776001eb1f887fb4ef369ffb0c"
+              },
+              "artifactIds": [
+                "a70ede33-2d53-492b-a01d-fe8fc9077566"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "id": "automation-budget-aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "deadlineAt": "2026-10-06T04:36:11.111Z",
+              "usage": {
+                "inputTokens": 72,
+                "outputTokens": 8,
+                "totalTokens": 80
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "4a0936c7-56e0-456f-b228-bf28c4824988",
+                "occurrenceId": "aec0915317aec3146f10af472d85f3eab09878ed410783914d58cb4228caf1d9",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "ae38d9366c0d21082b6cbb3472367f87ad0bfe776001eb1f887fb4ef369ffb0c"
+              },
+              "conversationId": "d8fdb9af-ddda-4f8d-b095-029fca7cbea8",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed",
+              "renewals": [
+                {
+                  "id": "660a5bc2-c0e2-4f10-99db-7c958be32387",
+                  "requestId": "86465b4c-9fbc-46d5-8bd7-5910aaa29150",
+                  "messageId": "834b017c-969f-4729-b397-a24c483fa427",
+                  "turnId": "6fbccd07-00f9-421f-af02-f7d90396cfee",
+                  "createdAt": "2026-10-06T04:31:11.111Z",
+                  "before": {
+                    "maxModelCalls": 24,
+                    "maxRuns": 8,
+                    "maxOutputTokens": 16000,
+                    "maxWorkItems": 8,
+                    "maxRetries": 3,
+                    "maxReportRefreshes": 4,
+                    "maxNoProgress": 3,
+                    "deadlineAt": "1970-01-01T00:00:00.000Z"
+                  },
+                  "after": {
+                    "maxModelCalls": 48,
+                    "maxRuns": 16,
+                    "maxOutputTokens": 32000,
+                    "maxWorkItems": 16,
+                    "maxRetries": 6,
+                    "maxReportRefreshes": 8,
+                    "maxNoProgress": 6,
+                    "deadlineAt": "2026-10-06T04:36:11.111Z"
+                  },
+                  "used": {
+                    "modelCalls": 2,
+                    "runs": 1,
+                    "usage": {
+                      "inputTokens": 36,
+                      "outputTokens": 4,
+                      "totalTokens": 40
+                    },
+                    "usageIncomplete": false,
+                    "unknownCalls": 0,
+                    "workItems": 1,
+                    "retries": 0,
+                    "reportRefreshes": 0,
+                    "noProgress": 1
+                  },
+                  "previousStatus": "cancelled",
+                  "previousReason": "达到本次自动化的时间预算",
+                  "cancellationRequestedAt": "2026-10-06T04:31:10.729Z",
+                  "workVersions": [
+                    {
+                      "id": "work-b8d9e82397fb0640b556ab9dc2ef353485641efd2190ed55ab0f58c290833c45",
+                      "version": 3,
+                      "status": "waiting"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 2,
+              "execution": 2
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "a70ede33-2d53-492b-a01d-fe8fc9077566",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        },
+        {
+          "title": "使用离线协议让Claude员工以手动触发完成原定时文件工作",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-eEawxc/manifest.json",
+            "sha256": "1106dfb1b486f3b8c80ee55c39c0cee60c21b562d5cd45d36b56ae1e83c5423c",
+            "bytes": 17651
+          },
+          "startedAt": "2026-10-06T04:30:46.671Z",
+          "completedAt": "2026-10-06T04:30:56.260Z",
+          "evidenceCount": 16,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/offline-3/scenarios/76620a6b86e22810b964-b8380abc3df1225bae68-retry0-repeat0-eEawxc/015-Claude自动化最终状态含失败.json",
+            "sha256": "ead1a75d0f72a7de853e1c5adb645d30e2e1884a785967216efe563c57849cc7",
+            "bytes": 21681
+          },
+          "occurrences": [
+            {
+              "id": "c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:30:52.143Z",
+              "finishedAt": "2026-10-06T04:30:52.565Z",
+              "budgetId": "automation-budget-c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-218cb94a51fb6645ff6cd17069ef4f7f425130530678b1bd4c05f8e72ec34dd1",
+              "status": "delivered",
+              "budgetId": "automation-budget-c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+              "origin": {
+                "kind": "automation",
+                "automationId": "6b21fb77-440c-477a-8a8c-e3e355b553c8",
+                "occurrenceId": "c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "762b83cf85ec7686fe3cd496a415d02a0be58e1c4b4ef202f558496e5f4c1c71"
+              },
+              "artifactIds": [
+                "a5165f4d-6243-4442-bb6f-49ec24b75bc4"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:35:52.140Z",
+              "usage": {
+                "inputTokens": 54,
+                "outputTokens": 6,
+                "totalTokens": 60
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "6b21fb77-440c-477a-8a8c-e3e355b553c8",
+                "occurrenceId": "c0c54a0914c6d4b4c57e212260b0c97f71f7e6ad528be689bb71fa6a0a5f6986",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "762b83cf85ec7686fe3cd496a415d02a0be58e1c4b4ef202f558496e5f4c1c71"
+              },
+              "conversationId": "c05bc7b7-f90c-47d5-b7a6-bffa1fd9eedf",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 3,
+            "phases": {
+              "decision": 1,
+              "execution": 1,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 3
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "a5165f4d-6243-4442-bb6f-49ec24b75bc4",
+              "name": "proof.txt",
+              "contentHash": "24bdac5795bfc5a55ea0fc66c575936e6583ec87688555c2781c38c4a878296b",
+              "size": 24
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-1",
+      "policyVersion": 4,
+      "stats": {
+        "startTime": "2026-10-06T04:10:13.549Z",
+        "duration": 428857.66,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "scope": "source-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:17:34.291470+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-1/build-manifest.json",
+        "sha256": "fd910fd0b5377445f2123a29010d388b0d4381149b202f7a57941cee4712a312",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-1/playwright-results.json",
+        "sha256": "1451583c5714859702162509a33ebd9d3f1e4a8e5ca58886f6976958408f3fad",
+        "bytes": 913971
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-1-report/manifest.json",
+        "sha256": "84bbb722edfb0cafa28f86c05a93203cbe2de9e2f7b76ca7600566fe4d3bc68d",
+        "bytes": 1258
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude让Claude员工以手动触发完成原定时文件工作",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-78e22842d0fb42b89d19-retry0-repeat0-YyjWLM/manifest.json",
+            "sha256": "a50c4b606dc733a4ba392a72ff0b1a83ac9f294bc109a6fa7b60c83fe8341370",
+            "bytes": 18720
+          },
+          "startedAt": "2026-10-06T04:10:14.926Z",
+          "completedAt": "2026-10-06T04:10:45.604Z",
+          "evidenceCount": 18,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-78e22842d0fb42b89d19-retry0-repeat0-YyjWLM/017-Claude自动化最终状态含失败.json",
+            "sha256": "55ad15af9f739c0eb5c9a67031e914d7e51235bd895ab9859187ba9b97bb3126",
+            "bytes": 22421
+          },
+          "occurrences": [
+            {
+              "id": "bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:10:22.692Z",
+              "finishedAt": "2026-10-06T04:10:41.766Z",
+              "budgetId": "automation-budget-bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-e44948e8b8c75c1b5c8cbaac0eb486e3bcd79c6c0ca5cd6f2696178ba2380e17",
+              "status": "delivered",
+              "budgetId": "automation-budget-bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+              "origin": {
+                "kind": "automation",
+                "automationId": "489cf5c5-89b0-44d9-a6bf-1104dbda5ab9",
+                "occurrenceId": "bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "b319bfd269753f97afb1d22ca9b81898866b3b8bb10bf117a238667e2ce298e3"
+              },
+              "artifactIds": [
+                "5abda451-95c5-418b-bfea-abf5023ef872"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:15:22.547Z",
+              "usage": {
+                "inputTokens": 30282,
+                "outputTokens": 1268,
+                "totalTokens": 31550
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "489cf5c5-89b0-44d9-a6bf-1104dbda5ab9",
+                "occurrenceId": "bc534ef60d860f546221f13750bb164d55128a2f58843139629b82ee8821003f",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "b319bfd269753f97afb1d22ca9b81898866b3b8bb10bf117a238667e2ce298e3"
+              },
+              "conversationId": "f5b1b612-6737-4a58-bf56-97bc1fde0797",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 3,
+            "phases": {
+              "decision": 1,
+              "execution": 1,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 3
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "5abda451-95c5-418b-bfea-abf5023ef872",
+              "name": "claude-proof.md",
+              "contentHash": "7826b524ce80a73da21f1639739e245eaa570ec644ded10c88916fed905e8677",
+              "size": 15
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude以追加到期额度继续Claude原定时工作且不重复操作",
+          "status": "failed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-klGybf/manifest.json",
+            "sha256": "857ecee5f036db4c3a2aef7ba354fcd8894dbf20420bd3d0bc91b37a3498bb31",
+            "bytes": 18358
+          },
+          "startedAt": "2026-10-06T04:11:42.953Z",
+          "completedAt": "2026-10-06T04:17:22.406Z",
+          "evidenceCount": 16,
+          "errors": [
+            {
+              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: not \u001b[32m\"f4b1dde7-a86e-40e8-9db7-3d9e09bccdd8\"\u001b[39m\nReceived string:        \u001b[31m\"已完成第一步：用宿主文件工具在 `self:/work/prepared.txt` 写入了内容 `prepared-once`（13 字节），文件已确认写入成功。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m现在等待你的补充说明，在收到之前我不会创建或发布最终文件。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m最终文件标题用什么？\u001b[39m\n\u001b[31m交付完成。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m- 已按补充标题「月桂-8d5ffc50」创建 `claude-proof.md`（168 字节），正文包含该标题，并正式发布成功。\u001b[39m\n\u001b[31m- `prepared.txt` 保留未重写，内容仍为 `prepared-once`（已确认）。\u001b[39m\n\u001b[31m- 正式发布证据（artifact ID）：`\u001b[7mf4b1dde7-a86e-40e8-9db7-3d9e09bccdd8\u001b[27m`。\"\u001b[39m",
+              "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: not \u001b[32m\"f4b1dde7-a86e-40e8-9db7-3d9e09bccdd8\"\u001b[39m\nReceived string:        \u001b[31m\"已完成第一步：用宿主文件工具在 `self:/work/prepared.txt` 写入了内容 `prepared-once`（13 字节），文件已确认写入成功。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m现在等待你的补充说明，在收到之前我不会创建或发布最终文件。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m最终文件标题用什么？\u001b[39m\n\u001b[31m交付完成。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m- 已按补充标题「月桂-8d5ffc50」创建 `claude-proof.md`（168 字节），正文包含该标题，并正式发布成功。\u001b[39m\n\u001b[31m- `prepared.txt` 保留未重写，内容仍为 `prepared-once`（已确认）。\u001b[39m\n\u001b[31m- 正式发布证据（artifact ID）：`\u001b[7mf4b1dde7-a86e-40e8-9db7-3d9e09bccdd8\u001b[27m`。\"\u001b[39m\n    at expectReadableDelivery (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/claude-automation.steps.ts:24:28)\n    at Object.<anonymous> (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/claude-automation.steps.ts:201:47)\n    at BddStepInvoker.runWithAfterStepHooks (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)\n    at BddStepInvoker.invoke (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)\n    at /Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/claude-employee.feature.spec.js:143:7"
+            }
+          ],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-klGybf/015-Claude原问题接续最终状态含失败.json",
+            "sha256": "f7181ac0041029a9af9a1df01fdf053269b3073d91b2fabe626db75eaa6e9060",
+            "bytes": 38640
+          },
+          "occurrences": [
+            {
+              "id": "754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:11:50.765Z",
+              "finishedAt": "2026-10-06T04:17:20.252Z",
+              "budgetId": "automation-budget-754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-a712d9dc00ef13e78026d00d9a0dcf81813af380a1195f61f2e4992f64139930",
+              "status": "delivered",
+              "budgetId": "automation-budget-754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+              "origin": {
+                "kind": "automation",
+                "automationId": "d71fe7fb-57b2-4eb0-aed5-63826008f920",
+                "occurrenceId": "754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "8676eb7e36cfc90feb3efdf1db92544511d09ead98a13502a856cc4734b52ce0"
+              },
+              "artifactIds": [
+                "f4b1dde7-a86e-40e8-9db7-3d9e09bccdd8"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "id": "automation-budget-754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "deadlineAt": "2026-10-06T04:21:55.315Z",
+              "usage": {
+                "inputTokens": 56340,
+                "outputTokens": 4535,
+                "totalTokens": 60875
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "d71fe7fb-57b2-4eb0-aed5-63826008f920",
+                "occurrenceId": "754cc0e668bf2b84076cb63723cf2c9709a294ac6364dabd1106920d35c8c626",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "8676eb7e36cfc90feb3efdf1db92544511d09ead98a13502a856cc4734b52ce0"
+              },
+              "conversationId": "44428b7c-b645-4f17-baee-4af318ab2485",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed",
+              "renewals": [
+                {
+                  "id": "b27588d3-6021-4229-a5ea-fb61d88694e9",
+                  "requestId": "4b882686-d21e-42c9-9ee4-5d7448694876",
+                  "messageId": "77d5c9ef-fff0-4943-9850-618a34994017",
+                  "turnId": "d0c78d03-9d4e-4613-94ee-a460ae3159f7",
+                  "createdAt": "2026-10-06T04:16:55.315Z",
+                  "before": {
+                    "maxModelCalls": 24,
+                    "maxRuns": 8,
+                    "maxOutputTokens": 16000,
+                    "maxWorkItems": 8,
+                    "maxRetries": 3,
+                    "maxReportRefreshes": 4,
+                    "maxNoProgress": 3,
+                    "deadlineAt": "2026-10-06T04:16:50.617Z"
+                  },
+                  "after": {
+                    "maxModelCalls": 48,
+                    "maxRuns": 16,
+                    "maxOutputTokens": 32000,
+                    "maxWorkItems": 16,
+                    "maxRetries": 6,
+                    "maxReportRefreshes": 8,
+                    "maxNoProgress": 6,
+                    "deadlineAt": "2026-10-06T04:21:55.315Z"
+                  },
+                  "used": {
+                    "modelCalls": 2,
+                    "runs": 1,
+                    "usage": {
+                      "inputTokens": 18140,
+                      "outputTokens": 2329,
+                      "totalTokens": 20469
+                    },
+                    "usageIncomplete": false,
+                    "unknownCalls": 0,
+                    "workItems": 1,
+                    "retries": 0,
+                    "reportRefreshes": 0,
+                    "noProgress": 1
+                  },
+                  "previousStatus": "cancelled",
+                  "previousReason": "达到本次自动化的时间预算",
+                  "cancellationRequestedAt": "2026-10-06T04:16:50.648Z",
+                  "workVersions": [
+                    {
+                      "id": "work-a712d9dc00ef13e78026d00d9a0dcf81813af380a1195f61f2e4992f64139930",
+                      "version": 5,
+                      "status": "cancelled"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 2,
+              "execution": 2
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "f4b1dde7-a86e-40e8-9db7-3d9e09bccdd8",
+              "name": "claude-proof.md",
+              "contentHash": "c34ee30b60e4e4dd518409d3f4075093c9b0f0b0fe54a31f4a453fbefb60f5e3",
+              "size": 168
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "failed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-Lf5NI3/manifest.json",
+            "sha256": "ac73785c339b909a20aa6779990a1874576db8f100b8a1a935127511af47d0e7",
+            "bytes": 17640
+          },
+          "startedAt": "2026-10-06T04:10:45.611Z",
+          "completedAt": "2026-10-06T04:11:41.636Z",
+          "evidenceCount": 15,
+          "errors": [
+            {
+              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: not \u001b[32m\"self:/\"\u001b[39m\nReceived string:        \u001b[31m\"已完成第一步：在 `\u001b[7mself:/\u001b[27mwork/prepared.txt` 写入了内容 `prepared-once`。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m在收到你的补充之前，我不会创建或发布最终文件。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m最终文件标题用什么？\u001b[39m\n\u001b[31m已完成交付。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m- 保留了 `prepared.txt`（内容仍为 `prepared-once`，未重写）。\u001b[39m\n\u001b[31m- 创建了 `claude-proof.md`，正文为标题“月桂-e5444298”。\u001b[39m\n\u001b[31m- 已正式发布该文件，共享工件：`claude-proof.md`。\"\u001b[39m",
+              "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mnot\u001b[2m.\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: not \u001b[32m\"self:/\"\u001b[39m\nReceived string:        \u001b[31m\"已完成第一步：在 `\u001b[7mself:/\u001b[27mwork/prepared.txt` 写入了内容 `prepared-once`。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m在收到你的补充之前，我不会创建或发布最终文件。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m最终文件标题用什么？\u001b[39m\n\u001b[31m已完成交付。\u001b[39m\n\u001b[31m\u001b[39m\n\u001b[31m- 保留了 `prepared.txt`（内容仍为 `prepared-once`，未重写）。\u001b[39m\n\u001b[31m- 创建了 `claude-proof.md`，正文为标题“月桂-e5444298”。\u001b[39m\n\u001b[31m- 已正式发布该文件，共享工件：`claude-proof.md`。\"\u001b[39m\n    at expectReadableDelivery (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/claude-automation.steps.ts:27:26)\n    at Object.<anonymous> (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/claude-automation.steps.ts:201:47)\n    at BddStepInvoker.runWithAfterStepHooks (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)\n    at BddStepInvoker.invoke (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)\n    at /Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/claude-employee.feature.spec.js:137:7"
+            }
+          ],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-1/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-Lf5NI3/014-Claude原问题接续最终状态含失败.json",
+            "sha256": "557eb5eb93dadfad9e63be42fe6f56c2c92a6c507032f862072eb117bbcceaea",
+            "bytes": 28545
+          },
+          "occurrences": [
+            {
+              "id": "2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:10:53.334Z",
+              "finishedAt": "2026-10-06T04:11:40.499Z",
+              "budgetId": "automation-budget-2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-84203a5f4d78de6019eefcdc62f077620be4496bc4b22dfddc77fa081a9a7c25",
+              "status": "delivered",
+              "budgetId": "automation-budget-2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+              "origin": {
+                "kind": "automation",
+                "automationId": "720abc1e-14c7-4fb4-9cfa-d0ee0ce446d0",
+                "occurrenceId": "2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "bd5a21aff2836cf67d2e5234c86b65bb836fee04c4abc315d1e8669e6cf807cc"
+              },
+              "artifactIds": [
+                "4bc7ed39-8520-4958-81b1-6e8d497676eb"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:15:53.185Z",
+              "usage": {
+                "inputTokens": 52300,
+                "outputTokens": 3499,
+                "totalTokens": 55799
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "720abc1e-14c7-4fb4-9cfa-d0ee0ce446d0",
+                "occurrenceId": "2bbd0e64acc7c43f0dbfb153b6befd0d517cb42e8b24dd8146427773cdd5e3d8",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "bd5a21aff2836cf67d2e5234c86b65bb836fee04c4abc315d1e8669e6cf807cc"
+              },
+              "conversationId": "5f891f86-0520-48fb-8647-63572ab8b55b",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 1,
+              "execution": 2,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "4bc7ed39-8520-4958-81b1-6e8d497676eb",
+              "name": "claude-proof.md",
+              "contentHash": "b627d413fca9d5d258006c86a0b7e8c9ae2e8acd934283ccb09286c17604e1f8",
+              "size": 18
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-2",
+      "policyVersion": 5,
+      "stats": {
+        "startTime": "2026-10-06T04:31:46.655Z",
+        "duration": 418412.013,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "source-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:38:55.328517+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-2/build-manifest.json",
+        "sha256": "68152080f72c63f46118b6d223669a2ffc444bad6a6baf6806488a66de6b8b50",
+        "bytes": 100211
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-2/playwright-results.json",
+        "sha256": "bdc892029c2a95728f13b525e27608e6cbe5c4923335ca29f1748ea203c735ed",
+        "bytes": 142498
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/real-2-report/manifest.json",
+        "sha256": "1a437503b7c90dc5050e65e226006e39ced2153a6289ba77b35f0b615f62aa6a",
+        "bytes": 1258
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Claude让Claude员工以手动触发完成原定时文件工作",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-78e22842d0fb42b89d19-retry0-repeat0-OFYdlh/manifest.json",
+            "sha256": "e7f5a3585bcfc2fc201766b56ecc7809c9f24af9840869cd16f177f2203e6d93",
+            "bytes": 18720
+          },
+          "startedAt": "2026-10-06T04:31:47.963Z",
+          "completedAt": "2026-10-06T04:32:17.474Z",
+          "evidenceCount": 18,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-78e22842d0fb42b89d19-retry0-repeat0-OFYdlh/017-Claude自动化最终状态含失败.json",
+            "sha256": "6cd27f1ca430641465ae518a4472559c34d805ee6524093a5b875866e9966a4d",
+            "bytes": 22409
+          },
+          "occurrences": [
+            {
+              "id": "e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:31:55.790Z",
+              "finishedAt": "2026-10-06T04:32:13.801Z",
+              "budgetId": "automation-budget-e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-342bb5cd5e472ed1342acb52c74a93ff4d413faaadecb0c69cfb329e36fbafe8",
+              "status": "delivered",
+              "budgetId": "automation-budget-e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+              "origin": {
+                "kind": "automation",
+                "automationId": "bc9c9e9e-a845-4e0c-8dd1-7843b08e5e05",
+                "occurrenceId": "e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "7dd743598acc6fe8e3333b05b9339fd53b5e4673383cfaeb415e60b13ca316a6"
+              },
+              "artifactIds": [
+                "7b752aa1-9f10-4ee0-8e7e-7dc1e3b51822"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 0,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+              "schemaVersion": 1,
+              "modelCalls": 3,
+              "runs": 1,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:36:55.646Z",
+              "usage": {
+                "inputTokens": 30537,
+                "outputTokens": 1189,
+                "totalTokens": 31726
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "bc9c9e9e-a845-4e0c-8dd1-7843b08e5e05",
+                "occurrenceId": "e514c2f9f8800f1568b42f255423d3bdc52ab9e97a98e4df6215d6592b2de22c",
+                "name": "Claude每日交付",
+                "authorizedFingerprint": "7dd743598acc6fe8e3333b05b9339fd53b5e4673383cfaeb415e60b13ca316a6"
+              },
+              "conversationId": "c2a3076c-4842-47f7-866e-2c181cdb9ce5",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 3,
+            "phases": {
+              "decision": 1,
+              "execution": 1,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 3
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "7b752aa1-9f10-4ee0-8e7e-7dc1e3b51822",
+              "name": "claude-proof.md",
+              "contentHash": "0dcff5fd327086ed6ce14ad599ddab1f25f30df47259eb31229de8b220bd965d",
+              "size": 15
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude以追加到期额度继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-DAQYpL/manifest.json",
+            "sha256": "3e45dc7db2daa49471ec915d000efb096009e0375c98e8b06c74087440a547ea",
+            "bytes": 25960
+          },
+          "startedAt": "2026-10-06T04:33:09.134Z",
+          "completedAt": "2026-10-06T04:38:45.054Z",
+          "evidenceCount": 25,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-DAQYpL/024-Claude原问题接续最终状态含失败.json",
+            "sha256": "047b874aab6a7d03de1c1f9425fedab16bebc37c53ff4051e3f479d7b9c7ec8a",
+            "bytes": 37855
+          },
+          "occurrences": [
+            {
+              "id": "a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:33:16.678Z",
+              "finishedAt": "2026-10-06T04:38:40.096Z",
+              "budgetId": "automation-budget-a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-260e89f3884c9b2df9b425ed3f938e81706933f09bfa23fec6d14a195d56af77",
+              "status": "delivered",
+              "budgetId": "automation-budget-a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+              "origin": {
+                "kind": "automation",
+                "automationId": "8569b1b4-c734-46ad-b094-034257fc6182",
+                "occurrenceId": "a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "34ec2d5e03655f0d2652a331530f5e992e5139e02ec0b97f3fb47424ce99c34a"
+              },
+              "artifactIds": [
+                "c881c0f2-c756-45b6-9d98-463d3d502adc"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 16,
+              "maxRetries": 6,
+              "maxReportRefreshes": 8,
+              "maxNoProgress": 6,
+              "id": "automation-budget-a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 48,
+              "maxRuns": 16,
+              "maxOutputTokens": 32000,
+              "deadlineAt": "2026-10-06T04:43:20.225Z",
+              "usage": {
+                "inputTokens": 54704,
+                "outputTokens": 3294,
+                "totalTokens": 57998
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "8569b1b4-c734-46ad-b094-034257fc6182",
+                "occurrenceId": "a7d2f573dd5b1b3ef5b54eafa4e5fa919d458392dea87e7f1f13e95d1015ab06",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "34ec2d5e03655f0d2652a331530f5e992e5139e02ec0b97f3fb47424ce99c34a"
+              },
+              "conversationId": "ab620d6a-577f-4259-b263-484bc9b285a5",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed",
+              "renewals": [
+                {
+                  "id": "838ae90a-614b-4feb-97f6-9999f11bd584",
+                  "requestId": "0f929540-9189-4562-8b45-546221514a41",
+                  "messageId": "82bfbd0c-de81-4a63-a789-17948930b2f1",
+                  "turnId": "67ca4e70-95a0-4e7f-8daf-d3e9ef1c7cb3",
+                  "createdAt": "2026-10-06T04:38:20.225Z",
+                  "before": {
+                    "maxModelCalls": 24,
+                    "maxRuns": 8,
+                    "maxOutputTokens": 16000,
+                    "maxWorkItems": 8,
+                    "maxRetries": 3,
+                    "maxReportRefreshes": 4,
+                    "maxNoProgress": 3,
+                    "deadlineAt": "2026-10-06T04:38:16.532Z"
+                  },
+                  "after": {
+                    "maxModelCalls": 48,
+                    "maxRuns": 16,
+                    "maxOutputTokens": 32000,
+                    "maxWorkItems": 16,
+                    "maxRetries": 6,
+                    "maxReportRefreshes": 8,
+                    "maxNoProgress": 6,
+                    "deadlineAt": "2026-10-06T04:43:20.225Z"
+                  },
+                  "used": {
+                    "modelCalls": 2,
+                    "runs": 1,
+                    "usage": {
+                      "inputTokens": 18242,
+                      "outputTokens": 1731,
+                      "totalTokens": 19973
+                    },
+                    "usageIncomplete": false,
+                    "unknownCalls": 0,
+                    "workItems": 1,
+                    "retries": 0,
+                    "reportRefreshes": 0,
+                    "noProgress": 1
+                  },
+                  "previousStatus": "cancelled",
+                  "previousReason": "达到本次自动化的时间预算",
+                  "cancellationRequestedAt": "2026-10-06T04:38:16.547Z",
+                  "workVersions": [
+                    {
+                      "id": "work-260e89f3884c9b2df9b425ed3f938e81706933f09bfa23fec6d14a195d56af77",
+                      "version": 4,
+                      "status": "cancelled"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 2,
+              "execution": 2
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "c881c0f2-c756-45b6-9d98-463d3d502adc",
+              "name": "claude-proof.md",
+              "contentHash": "b9736db05d66ce64c53321abf06b88663c936a860cc47eb3de359e0edf50f909",
+              "size": 15
+            }
+          ]
+        },
+        {
+          "title": "使用真实Claude以回复原问题继续Claude原定时工作且不重复操作",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-0lD4It/manifest.json",
+            "sha256": "8f0199dadc4fe791653e4be7131bb196f269bcec6f3f914547ec55c0b0fb2e84",
+            "bytes": 22596
+          },
+          "startedAt": "2026-10-06T04:32:17.481Z",
+          "completedAt": "2026-10-06T04:33:09.128Z",
+          "evidenceCount": 22,
+          "errors": [],
+          "finalState": {
+            "path": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-0lD4It/021-Claude原问题接续最终状态含失败.json",
+            "sha256": "c5399c00bce048ced255e094c20d91cef675b1c8da06ff6371a338f9a3d6edcb",
+            "bytes": 28281
+          },
+          "occurrences": [
+            {
+              "id": "a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+              "status": "completed",
+              "deliveryStatus": "delivered",
+              "cancellationCause": null,
+              "startedAt": "2026-10-06T04:32:25.228Z",
+              "finishedAt": "2026-10-06T04:33:05.354Z",
+              "budgetId": "automation-budget-a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+              "usageIncomplete": false
+            }
+          ],
+          "workStates": [
+            {
+              "id": "work-ee9f7e61c29cd476e4d21a44800d7d8504814db69b8c4108c560bdfa008badfa",
+              "status": "delivered",
+              "budgetId": "automation-budget-a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+              "origin": {
+                "kind": "automation",
+                "automationId": "d7d9a3d9-b7a5-422d-ae83-d25e4912e133",
+                "occurrenceId": "a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "0653e3c961687888470bc8fbefd498e9ad3444deb9fdba09653dcb7636551269"
+              },
+              "artifactIds": [
+                "fcac54bb-513a-4e20-8574-8bb49cc4bca4"
+              ]
+            }
+          ],
+          "budgets": [
+            {
+              "workItems": 1,
+              "retries": 0,
+              "reportRefreshes": 0,
+              "noProgress": 1,
+              "maxWorkItems": 8,
+              "maxRetries": 3,
+              "maxReportRefreshes": 4,
+              "maxNoProgress": 3,
+              "id": "automation-budget-a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+              "schemaVersion": 1,
+              "modelCalls": 4,
+              "runs": 2,
+              "maxModelCalls": 24,
+              "maxRuns": 8,
+              "maxOutputTokens": 16000,
+              "deadlineAt": "2026-10-06T04:37:25.081Z",
+              "usage": {
+                "inputTokens": 50789,
+                "outputTokens": 2875,
+                "totalTokens": 53664
+              },
+              "usageIncomplete": false,
+              "origin": {
+                "kind": "automation",
+                "automationId": "d7d9a3d9-b7a5-422d-ae83-d25e4912e133",
+                "occurrenceId": "a8d613a3b826b53d641586a4bfe85609bf93a6dbaaa6de6c3031c348fe0b70dc",
+                "name": "Claude等待补充",
+                "authorizedFingerprint": "0653e3c961687888470bc8fbefd498e9ad3444deb9fdba09653dcb7636551269"
+              },
+              "conversationId": "0bcf1888-5795-43dc-a4c5-fdeded229ac9",
+              "accounting": "model-calls-v1",
+              "unknownCalls": 0,
+              "callUnit": "mixed"
+            }
+          ],
+          "requests": {
+            "count": 4,
+            "phases": {
+              "decision": 1,
+              "execution": 2,
+              "memory": 1
+            },
+            "units": {
+              "external-turn": 4
+            },
+            "allUsageComplete": true
+          },
+          "artifacts": [
+            {
+              "id": "fcac54bb-513a-4e20-8574-8bb49cc4bca4",
+              "name": "claude-proof.md",
+              "contentHash": "1d5c2718ac01515b5b4f97a5b83632555f334bd09a2b1bc9ed20044ca90f9dcc",
+              "size": 17
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "codex-package-1",
+      "policyVersion": 5,
+      "stats": {
+        "startTime": "2026-10-06T04:40:12.097Z",
+        "duration": 86518.002,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "packaged-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:41:56.895355+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-1/build-manifest.json",
+        "sha256": "12ddbc614ca96594f75c13c2a5f61b7b8bbc1a9753ce1693fa5dfe1545f6e491",
+        "bytes": 100259
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-1/playwright-results.json",
+        "sha256": "a3274ddc78028f0795d69598f0cbf7a4ec6cd6074ef4c8a11b44726147b6a4c6",
+        "bytes": 21453
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-1-report/manifest.json",
+        "sha256": "fd5a56d33a7e0cf67ee3b8e0ada0fce398d0b07e50affe4820a561c7f5fbd171",
+        "bytes": 1276
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Codex从设置接入本机运行时并在原 IM 中创建员工连续对话",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/codex-package-1/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-PfndDz/manifest.json",
+            "sha256": "a80924250da48da183aa00ad31807aabb977feb76986ad2db290caa8c4e0db2e",
+            "bytes": 6416
+          },
+          "startedAt": "2026-10-06T04:40:13.486Z",
+          "completedAt": "2026-10-06T04:41:38.596Z",
+          "evidenceCount": 11,
+          "errors": []
+        }
+      ],
+      "package-verification.json": {
+        "files": 3405,
+        "changed": [],
+        "omitted": []
+      },
+      "packaged-dist-verification.json": {
+        "archive": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI Agent.app/Contents/Resources/app.asar",
+        "files": [
+          {
+            "path": "dist/main/browser-LICENSE.txt",
+            "equal": true,
+            "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c"
+          },
+          {
+            "path": "dist/main/browser-NOTICE.txt",
+            "equal": true,
+            "sha256": "3d44b282cf994f791eff21456e871f4f3d43c1ba444fa9727cf8f5ed04c5406e"
+          },
+          {
+            "path": "dist/main/browser-source-manifest.json",
+            "equal": true,
+            "sha256": "4e8b6a3efcade79b2c660c652f8a2590ba6b218a5cf8a53ea3e07b2e1eb97cee"
+          },
+          {
+            "path": "dist/main/browser-toolbar-preload.cjs",
+            "equal": true,
+            "sha256": "ef61c26c19995e2bdc968044050586215b0487a64dfbc6752acafe0995584ac2"
+          },
+          {
+            "path": "dist/main/local-configs-LICENSE.txt",
+            "equal": true,
+            "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c"
+          },
+          {
+            "path": "dist/main/local-configs-NOTICE.txt",
+            "equal": true,
+            "sha256": "433e2cc04a512ef6f9b3e601751b883bf8bc7b2066b647d11062f3006698b265"
+          },
+          {
+            "path": "dist/main/main.cjs",
+            "equal": true,
+            "sha256": "de43a7486d06fa31d8412c4b6191cab4e85c2f24dcfa9912114112d528c87c86"
+          },
+          {
+            "path": "dist/main/main.cjs.map",
+            "equal": true,
+            "sha256": "96a615e2333b82b0bcc91fb053f865dbc2c6363d8e0bd156f5306b8df790c921"
+          },
+          {
+            "path": "dist/main/preload.cjs",
+            "equal": true,
+            "sha256": "a50d40b7d17dc1391ae1c74fc3bfc5cd1751094ed12ecdc89e6dec32fa43580c"
+          },
+          {
+            "path": "dist/renderer/BASE46-LICENSE.txt",
+            "equal": true,
+            "sha256": "c2531f07b5ca1c1b5d5c702d0a09bafe9bf92894c96e590b6f59c59c5dd449d9"
+          },
+          {
+            "path": "dist/renderer/Geist-OFL.txt",
+            "equal": true,
+            "sha256": "942560b236adfa83745b2c64e5fc09ebaf91cb331751b1157eb92187e5d6e930"
+          },
+          {
+            "path": "dist/renderer/LobeIcons-LICENSE.txt",
+            "equal": true,
+            "sha256": "add9d7531d1b21646317a8958e38fc727506fa39d24bdecb44154d943c82753a"
+          },
+          {
+            "path": "dist/renderer/assets/Geist-DPGgOCY9.woff2",
+            "equal": true,
+            "sha256": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1"
+          },
+          {
+            "path": "dist/renderer/assets/blue-moon-BYik7ezO.webp",
+            "equal": true,
+            "sha256": "c176dc84e6e84285adf1097f1a6c3912d8cc088082db953e1eebf1796e06ec1e"
+          },
+          {
+            "path": "dist/renderer/assets/browser-ui-BCBS8-uY.css",
+            "equal": true,
+            "sha256": "4f5da057f8b9b9bdd0423fe0d0ee612e46cd26acf6a023b0dc69a0ad1a6abb32"
+          },
+          {
+            "path": "dist/renderer/assets/browserEmptyState-Bz6Cn2oG.js",
+            "equal": true,
+            "sha256": "651b5a3e58278456a0937461c3e29de8d11fbaf4c475237a5fc0d0ccaef5d877"
+          },
+          {
+            "path": "dist/renderer/assets/browserToolbar-BgxXpJOq.js",
+            "equal": true,
+            "sha256": "d69234aa74bfac5bcb3fdaf9cc7164d4d9908b009635e4c61642827cd19bbdee"
+          },
+          {
+            "path": "dist/renderer/assets/c-DWGmR78Y.js",
+            "equal": true,
+            "sha256": "22762d1d12310f7565bd9189dd7fd2439f4bb3363f74b5f82f4a3ec98f31e308"
+          },
+          {
+            "path": "dist/renderer/assets/c-SSSlmE39.js",
+            "equal": true,
+            "sha256": "8a47e5202177d44f8fc37125867a0e824ebb8296f173bdba98324de528145a33"
+          },
+          {
+            "path": "dist/renderer/assets/cmake-Bj61d0ZC.js",
+            "equal": true,
+            "sha256": "297bcccb380fd8394d99100d51e7cb1090648f9f1bceda5a58fa357439c592c7"
+          },
+          {
+            "path": "dist/renderer/assets/connection-configure-BjVMgCkS.webp",
+            "equal": true,
+            "sha256": "5e01db5f3e9765418121772153b0397a42287e77851637c8aa537a2e994572b9"
+          },
+          {
+            "path": "dist/renderer/assets/connection-select-Cmwxqdkf.webp",
+            "equal": true,
+            "sha256": "de9feb713a13c4e30013d9a2a39cebea282dbd7cf1fa8883f2acd5821e0bf0cb"
+          },
+          {
+            "path": "dist/renderer/assets/contact-companions-pYFc2qB0.webp",
+            "equal": true,
+            "sha256": "6ff0e6f8a1865a2ea4fce16d3d55537ffa13633faf1e8c5218fdaed2db80ce5f"
+          },
+          {
+            "path": "dist/renderer/assets/conversation-companions-BaMxkCT-.webp",
+            "equal": true,
+            "sha256": "31468760a93819967f1e7ef72c0f42f03880724631f753013e1611c026d22d98"
+          },
+          {
+            "path": "dist/renderer/assets/coral-headphones-wmbcMU5r.webp",
+            "equal": true,
+            "sha256": "4a54e04786eda34ed7bedf21bae93d232fb190aafbe53cdd33f12b2ad8cbec91"
+          },
+          {
+            "path": "dist/renderer/assets/cpp-CJIxL8VH.js",
+            "equal": true,
+            "sha256": "1d435d6c4190e2fde47b9a6feca01e74a4e2e2bb1766884c9f828add8e0a5566"
+          },
+          {
+            "path": "dist/renderer/assets/cpp-Cts1PyIS.js",
+            "equal": true,
+            "sha256": "2edb411b24edba87dbcd3759988411ff5e60f5baee0cc05c98a68df874bf7814"
+          },
+          {
+            "path": "dist/renderer/assets/csharp-oqKa8noW.js",
+            "equal": true,
+            "sha256": "3e00ef56588e872dce4531d4b62f0bda2e854f66073297deb435dc0011f8b35e"
+          },
+          {
+            "path": "dist/renderer/assets/css-CdtkT07m.js",
+            "equal": true,
+            "sha256": "9451580afcc2ca79c3bfc470915117bdba45ad58b667f46df03dd77f49a8c5ca"
+          },
+          {
+            "path": "dist/renderer/assets/css-LbU1hoFO.js",
+            "equal": true,
+            "sha256": "d0480b06b91117ef935c7b06085ca759fc1746746c85bd71e6a9a31f2d9b120a"
+          },
+          {
+            "path": "dist/renderer/assets/csv-Dx-8-gkx.js",
+            "equal": true,
+            "sha256": "e33c4e7598db66e7ccc2f4d9035f44d1443eae54961f057bce30c363329943df"
+          },
+          {
+            "path": "dist/renderer/assets/dart-CnvKMtbv.js",
+            "equal": true,
+            "sha256": "f1dda1ea804f0d482bf43304957a7891c20a107cfe93a3a21c32a99432503625"
+          },
+          {
+            "path": "dist/renderer/assets/diff-woXpYk--.js",
+            "equal": true,
+            "sha256": "80befa61827dedd8e1a37e5521dd2ef55fad173bbbd9f36db966fc0b088079e6"
+          },
+          {
+            "path": "dist/renderer/assets/dockerfile-IyjqRm3v.js",
+            "equal": true,
+            "sha256": "fd5a25a8e77b37e179bd8356b2b64e71c02393e2a7a0e68349d2b9d91b1535b8"
+          },
+          {
+            "path": "dist/renderer/assets/dog-C1i7QwZG.webp",
+            "equal": true,
+            "sha256": "bdc522501d7a22fcd7c5d47b8b77838a44a538fd7f6f5045877a61e0842e1142"
+          },
+          {
+            "path": "dist/renderer/assets/dotenv-_5a1GRtc.js",
+            "equal": true,
+            "sha256": "53e43b54d31fbd73d1c9c00a3e46c18f98abc049b5bc2fdfe187c7ad4401becc"
+          },
+          {
+            "path": "dist/renderer/assets/dragon-AWS08-D5.webp",
+            "equal": true,
+            "sha256": "55573ce597e1946723441949560a59f598e31ccb504ec505b376f3568a71298c"
+          },
+          {
+            "path": "dist/renderer/assets/fish-BJitypiv.js",
+            "equal": true,
+            "sha256": "d7e3366523a700914a2e41df69abafe4a33b6fa3db8ef7df072dee516a5ad114"
+          },
+          {
+            "path": "dist/renderer/assets/github-dark-C-LZuMrd.js",
+            "equal": true,
+            "sha256": "4b20a66425669986c784d2f948aab0f38add042b7b167a2245d0c86a781706e1"
+          },
+          {
+            "path": "dist/renderer/assets/github-light-EUqPIrTm.js",
+            "equal": true,
+            "sha256": "b41057cac4d9e62754f5d64f241ec9153a0c3d53f5eaa2464d3acf9a644e8852"
+          },
+          {
+            "path": "dist/renderer/assets/global-Cyjw7CnK.js",
+            "equal": true,
+            "sha256": "2b29bcf6cb36dca33738c5d62191e2e1a39ede16e2ae2aa08a45443c2b79e578"
+          },
+          {
+            "path": "dist/renderer/assets/global-DqQ4wp6B.css",
+            "equal": true,
+            "sha256": "3aebd3752ad415ce9d1f7c66fae2fffa14b2b556a321dde286a9eb97fd51e9b1"
+          },
+          {
+            "path": "dist/renderer/assets/go-rLFTqkRN.js",
+            "equal": true,
+            "sha256": "ee035f34de70dac3319923bcfa0415cc576769462e60f09183c352f305de335e"
+          },
+          {
+            "path": "dist/renderer/assets/goat-BQRFQmxJ.webp",
+            "equal": true,
+            "sha256": "71bf94410a2f010ac61f1268d1826124c619d686ae9bf1613370a9868d608b15"
+          },
+          {
+            "path": "dist/renderer/assets/graphql-D5qRqMLb.js",
+            "equal": true,
+            "sha256": "cb4a03537c0a4c89e4173e1f1f0a6215a7889e7a19299898a6ed914dd1d5c9ba"
+          },
+          {
+            "path": "dist/renderer/assets/graphql-f69H1Mm0.js",
+            "equal": true,
+            "sha256": "64f617dcfc6bf1eca5124cdc3506413e38e3e02cd8d941ae42cc599e272b9273"
+          },
+          {
+            "path": "dist/renderer/assets/horse-DRmpCsAs.webp",
+            "equal": true,
+            "sha256": "da3ae1bc71068e2974bb39c1f55d46c271768f55ab375def6ee757abb4c27ccd"
+          },
+          {
+            "path": "dist/renderer/assets/html-BcACZWSP.js",
+            "equal": true,
+            "sha256": "09f30877ad34db9c57acc50d71a4fec7e27cdaccdd7684fa694699a714b24863"
+          },
+          {
+            "path": "dist/renderer/assets/html-DDNsd9lV.js",
+            "equal": true,
+            "sha256": "da8c35f625cd727bd8e6cad5fe6a1276ebf43eb6caf91d2e44e12e2d7de84577"
+          },
+          {
+            "path": "dist/renderer/assets/ini-B5eOa1yu.js",
+            "equal": true,
+            "sha256": "e192d3a30c17886e1366926606314b37568768ff6c7790d71b58c8cd2ae68f4d"
+          },
+          {
+            "path": "dist/renderer/assets/java-BtIQNnN0.js",
+            "equal": true,
+            "sha256": "b73f5ca0242e405d0dfe083e33c2b857519ea118720d484ec91896f2a35c0ebd"
+          },
+          {
+            "path": "dist/renderer/assets/java-DxlWrXwe.js",
+            "equal": true,
+            "sha256": "714b3b50bf9b1adae8050224e319f629002ab658f0449c7672734e099b14ce2b"
+          },
+          {
+            "path": "dist/renderer/assets/javascript-BzbQS41l.js",
+            "equal": true,
+            "sha256": "4914f43c4495fd0c8375e5d78993533a679e0579010f602fb75cc33a763e6f1c"
+          },
+          {
+            "path": "dist/renderer/assets/javascript-Yelw-5ZN.js",
+            "equal": true,
+            "sha256": "16073092b867887388250261625dbed60f0c476fef6ef8d4f13d8a454a733b05"
+          },
+          {
+            "path": "dist/renderer/assets/json-B88Oqtu5.js",
+            "equal": true,
+            "sha256": "6d3fc2664a24125736406be52510d22c97636a6fb5233c7cb5b43d5a6485338b"
+          },
+          {
+            "path": "dist/renderer/assets/json-CaljABEy.js",
+            "equal": true,
+            "sha256": "decf4cd8cf3685363f2201f9b7c8e4c976029e929941c90e3055359c9939ce16"
+          },
+          {
+            "path": "dist/renderer/assets/jsonc-CYpm1nAK.js",
+            "equal": true,
+            "sha256": "60b006733ee4e7b7d220af80da422980966b9527c91438aec90040c9dbde1088"
+          },
+          {
+            "path": "dist/renderer/assets/jsx-D3KKoC5L.js",
+            "equal": true,
+            "sha256": "54fdc05a5d7560d33e045c250da76ec475a1dcd29d4500da1061b3c0ef44e1e7"
+          },
+          {
+            "path": "dist/renderer/assets/jsx-hEbJ82HF.js",
+            "equal": true,
+            "sha256": "38b300c0ce15c80f589e217c80878131dd3d0bc0a17c1781d6aaeddfa726f098"
+          },
+          {
+            "path": "dist/renderer/assets/kotlin-DhhofPvG.js",
+            "equal": true,
+            "sha256": "26daf37ac3c38cb6385e619be24b677a4277d90bb885632d856479c1d6ea95de"
+          },
+          {
+            "path": "dist/renderer/assets/latex-DtlJgIBt.js",
+            "equal": true,
+            "sha256": "0a0ce4c56bf563f371c10d5c5a6627e2bf1964cf40b77ccc737b061606971391"
+          },
+          {
+            "path": "dist/renderer/assets/less-DVTAwKKz.js",
+            "equal": true,
+            "sha256": "eaae91cdf46dc79d5a386af2a1513267af2f6ecfb82ca935bb25c19fd36e3987"
+          },
+          {
+            "path": "dist/renderer/assets/local-agent-configure-Ch4V3M7n.webp",
+            "equal": true,
+            "sha256": "a8725e9283eab70588cf21f7004a5e9609f0494d8cc5080216e4a741faaf1c07"
+          },
+          {
+            "path": "dist/renderer/assets/local-agent-select-BFE6RTo-.webp",
+            "equal": true,
+            "sha256": "a4f504cab709d0ed62828d890b94ac542c8a18649dbbf085cbbb210179d739d2"
+          },
+          {
+            "path": "dist/renderer/assets/log-BNLmms1o.js",
+            "equal": true,
+            "sha256": "ec646556cf65c5240590590b79cbdf3cdd29fabfb6dfa1d3d8a64c897f78376e"
+          },
+          {
+            "path": "dist/renderer/assets/lua-BJObVtAx.js",
+            "equal": true,
+            "sha256": "1672d076ad8c460b7a07badfb1dbccb4cc1385cef7db76ab6fa9c8fbcb494b18"
+          },
+          {
+            "path": "dist/renderer/assets/lua-DjuecEsk.js",
+            "equal": true,
+            "sha256": "2e88ceaa6c7c3a2ddea37cb8337654e2df4cdfa8ea2f53ba1d82b9ca048e709f"
+          },
+          {
+            "path": "dist/renderer/assets/main-Bn8jIS4R.js",
+            "equal": true,
+            "sha256": "0ac87638615212cc28947f0026734a03cf5e1e2fec34ef27aecefbe102fd326d"
+          },
+          {
+            "path": "dist/renderer/assets/makefile-Dixweg8N.js",
+            "equal": true,
+            "sha256": "da64e0fe46f9082eb68771e104d68863bd8eb61080821caecfd68edb2eaf4c9c"
+          },
+          {
+            "path": "dist/renderer/assets/markdown-BYOwaDjH.js",
+            "equal": true,
+            "sha256": "024bf1ea6f860d9477d5ef72a2553f1ae4b0ff3d07f5d24d2e270e4f4f5a9b95"
+          },
+          {
+            "path": "dist/renderer/assets/mint-cap-pE3unHm3.webp",
+            "equal": true,
+            "sha256": "43ba287785a416ab5a3f4478ff7314fcee14b21250c8d8f73a84d819ae4b498c"
+          },
+          {
+            "path": "dist/renderer/assets/mint-ring-MqDMHJGY.webp",
+            "equal": true,
+            "sha256": "44b8a276a9d494b270ba37103ba01ec1155deeabe71d72b95c97513ef3c83e94"
+          },
+          {
+            "path": "dist/renderer/assets/monkey-DNNLRgEZ.webp",
+            "equal": true,
+            "sha256": "48512541ef2249e68849fe07bfa0273569ab41a9a69d4cafd1de5e9fd053bd80"
+          },
+          {
+            "path": "dist/renderer/assets/ox-3dsCogc1.webp",
+            "equal": true,
+            "sha256": "96d25248f35913ebfd91c361168f97e13e80430314eceeca41d2f24eaf502578"
+          },
+          {
+            "path": "dist/renderer/assets/perl-C4NAnH_t.js",
+            "equal": true,
+            "sha256": "5a73bf2170f6585cb1e5d0d3da0d1c4771c97f9904cbbd157b0356876c909606"
+          },
+          {
+            "path": "dist/renderer/assets/php-CQT4wx5i.js",
+            "equal": true,
+            "sha256": "5551e4da21bee904e0eaef0c34d71a93bcf9513a0c2226d288543d62ea3a1150"
+          },
+          {
+            "path": "dist/renderer/assets/pig-GfNEWM-6.webp",
+            "equal": true,
+            "sha256": "af5222f5a731a49c77a429893acb0607e1713a82aa72e38c9eee4997e83a52c1"
+          },
+          {
+            "path": "dist/renderer/assets/pink-beret-DND3YPkS.webp",
+            "equal": true,
+            "sha256": "81f02d1452920afc81b87aadf1e41594219772d57149a9c65c6c197fc3ec75e0"
+          },
+          {
+            "path": "dist/renderer/assets/powershell-CCSX75yM.js",
+            "equal": true,
+            "sha256": "adf005b48d4c8f9fb96e88c5bb97bc7844cb43664a6a974e370ba6b010005b96"
+          },
+          {
+            "path": "dist/renderer/assets/purple-scarf-pRMwcDg-.webp",
+            "equal": true,
+            "sha256": "d9485eaaa89fb7c2a61eb5e95bbebcd98d64ae7f1a8f3e96fa5f6ce90f286a5b"
+          },
+          {
+            "path": "dist/renderer/assets/purple-star-YtHPrvHs.webp",
+            "equal": true,
+            "sha256": "655ca59dcb9f7aaf19046f7861ccadae6f7bbeef26c5b6f58cee5fd13ed714bb"
+          },
+          {
+            "path": "dist/renderer/assets/python-gzcpVVnB.js",
+            "equal": true,
+            "sha256": "be0bae300e9d8dbae905d9faa24b84adc622796c87170848bf0460d01ad4049c"
+          },
+          {
+            "path": "dist/renderer/assets/r-DWzjseEo.js",
+            "equal": true,
+            "sha256": "fa536a62fd9031d4d7f3f4bdfaf907dea5547983296add9df5c53135f182603d"
+          },
+          {
+            "path": "dist/renderer/assets/r-Dr1JUpHl.js",
+            "equal": true,
+            "sha256": "93084129b36d5773ebc71a3191fcbb3fa6af3bc81e424f1732296ae96a895e80"
+          },
+          {
+            "path": "dist/renderer/assets/rabbit-Dnyky_L5.webp",
+            "equal": true,
+            "sha256": "4d1f01ad664b3d51afeabd2f0e34c36442350a0016d050bdbf84ad6293b7dcf0"
+          },
+          {
+            "path": "dist/renderer/assets/rat-DnAC_DqT.webp",
+            "equal": true,
+            "sha256": "16d57aa40b63cd154cffb1619faa8535582c1bcba58acb3d7e7efa4cfb7eaaa3"
+          },
+          {
+            "path": "dist/renderer/assets/react-D6dhJSS8.js",
+            "equal": true,
+            "sha256": "43c07156d921562b46cae5af7ad167e92037c604b9f2c6434a0575aa5a186588"
+          },
+          {
+            "path": "dist/renderer/assets/red-mushroom-gF2qQ8M-.webp",
+            "equal": true,
+            "sha256": "f90b31e33a5b377fb048ac94c7d5890f479f041b0dff44f81cc23283c02552c5"
+          },
+          {
+            "path": "dist/renderer/assets/rooster-BZM70PV5.webp",
+            "equal": true,
+            "sha256": "63836095ed285dee8eb74c6953905fc7bfb3b1e2acea218d0066dab210bd29bb"
+          },
+          {
+            "path": "dist/renderer/assets/ruby-B4QPJ8tT.js",
+            "equal": true,
+            "sha256": "204a7ff33df0275cdd783f10b5b152b0fc7cf54495f384b82ab22b130700c8ae"
+          },
+          {
+            "path": "dist/renderer/assets/rust-Cfkwpbl8.js",
+            "equal": true,
+            "sha256": "8fedcfe76b25574d9afbb86db6b972ab86d8231284e91fe3b10779a30129a5a5"
+          },
+          {
+            "path": "dist/renderer/assets/schedule-companion-l2V9RkeC.webp",
+            "equal": true,
+            "sha256": "7a4b10ef22cc2ccfe710f8431093dae67a223d9fb8be00f9d323868705e0f47a"
+          },
+          {
+            "path": "dist/renderer/assets/scss-DHtrkMkT.js",
+            "equal": true,
+            "sha256": "51c991b0d906995616ade75ff86ea5ac1fa05f6a7825980b11dca09af94beaac"
+          },
+          {
+            "path": "dist/renderer/assets/shellscript-BiGZg9Om.js",
+            "equal": true,
+            "sha256": "3a18971357e7c0eae73ce340cd8ba04397b8786d2d67b8e76db2ad1f91037b6b"
+          },
+          {
+            "path": "dist/renderer/assets/shellscript-CqHdAlCp.js",
+            "equal": true,
+            "sha256": "b277ff21ef7079c7afb321dd2b92375209fa761eaf8f468a29bf978c5984faf8"
+          },
+          {
+            "path": "dist/renderer/assets/shiki-highlighter-DMFR-0lh.js",
+            "equal": true,
+            "sha256": "ea40faf65fee9fdc0dceec02b0ffe8166ed3f936bca4fc18435a82c079759b1b"
+          },
+          {
+            "path": "dist/renderer/assets/skill-companion-C7WmdVwd.webp",
+            "equal": true,
+            "sha256": "3460405de69d5497ff69581a3e64d27b81e1a47a1c43b8c9fe74d1c276018d36"
+          },
+          {
+            "path": "dist/renderer/assets/snake-4aanfk64.webp",
+            "equal": true,
+            "sha256": "aa5f803b5619ae482961f28d363f758edcf0993ab047b32b3e32c7928fe9a7a2"
+          },
+          {
+            "path": "dist/renderer/assets/sql-0Qcw9ht3.js",
+            "equal": true,
+            "sha256": "53e809f9426fc7403d744b45d1f21805aeb6c5d14905e08f0501443de08d9333"
+          },
+          {
+            "path": "dist/renderer/assets/sql-CP0rg-5b.js",
+            "equal": true,
+            "sha256": "ce900a0c940773c3ace57416a1f3973d2a7388aaaca40897d8caa76044055c25"
+          },
+          {
+            "path": "dist/renderer/assets/svelte-BUVJxsYv.js",
+            "equal": true,
+            "sha256": "f4f9a9ac99eb50525c07c5aa76d789603d8c242b76c2b08f5d665706b7f7fc92"
+          },
+          {
+            "path": "dist/renderer/assets/swift-CyEgAFGc.js",
+            "equal": true,
+            "sha256": "17c2179fc022acc48683a5cab6feee30b7e482741b57361c817ec6c55fe1b791"
+          },
+          {
+            "path": "dist/renderer/assets/tiger-Cb0ZFAQ1.webp",
+            "equal": true,
+            "sha256": "6dfdf634c9cabb49d0bd19e36979acb65145432d514cc1e795ead3a693f25ec7"
+          },
+          {
+            "path": "dist/renderer/assets/toml-CcmNWLt0.js",
+            "equal": true,
+            "sha256": "94ca31c8af75679cb84cc087aaaeb024df25dd9cf20c75e7a4e6b26914ec4c9e"
+          },
+          {
+            "path": "dist/renderer/assets/tsx-5f3ulCja.js",
+            "equal": true,
+            "sha256": "f8e5fbe4af8d8ec2adb0bf2882935d1d8440f4b45299770d95754c0a6d5bb745"
+          },
+          {
+            "path": "dist/renderer/assets/tsx-BOvsFOI6.js",
+            "equal": true,
+            "sha256": "e9fdeb6accaaa20c7b80fd6f19fe85ed456364b31729dcd592e7872962969535"
+          },
+          {
+            "path": "dist/renderer/assets/typescript-Utq2Cl8c.js",
+            "equal": true,
+            "sha256": "fda9dfccc050494bcc491f3add1cb5753c1134225aeae3b8d4487cf412ed8ada"
+          },
+          {
+            "path": "dist/renderer/assets/typescript-j_1H8WHN.js",
+            "equal": true,
+            "sha256": "f0257899f1a3a73cfb04623b644621757fc2e62cc29127bf4af46fea7d3861a8"
+          },
+          {
+            "path": "dist/renderer/assets/vue-BcFuTOIy.js",
+            "equal": true,
+            "sha256": "4c87507335b6ec608e16d878caf3f45ea4b50005b453704354910c5ca22af4e7"
+          },
+          {
+            "path": "dist/renderer/assets/xml-CoDIzWF0.js",
+            "equal": true,
+            "sha256": "593e5930ac5d01007b94f07dcaa17ca058d3fb18eaf8979c010be590a33613ba"
+          },
+          {
+            "path": "dist/renderer/assets/xml-WY0zc4PG.js",
+            "equal": true,
+            "sha256": "cabb09028991b0b8d4f623751da0931ac0255daedde72996a9063d5ac1b30025"
+          },
+          {
+            "path": "dist/renderer/assets/yaml-CxbubiML.js",
+            "equal": true,
+            "sha256": "b660a0ae7d0d537622f8c3914ca7732d41cd21e6a7314fe8907dcb10214cd51f"
+          },
+          {
+            "path": "dist/renderer/assets/yaml-DijMHRDA.js",
+            "equal": true,
+            "sha256": "959fff0b1aac1f78535da1469c3d5722937e2e67fb1f1373164b3a26688022ef"
+          },
+          {
+            "path": "dist/renderer/assets/yellow-square-_oGZxraS.webp",
+            "equal": true,
+            "sha256": "0c582f1b9e962562f9a952a096de5929e891201426084ab09ee8f99b354662c2"
+          },
+          {
+            "path": "dist/renderer/browser-empty-state.html",
+            "equal": true,
+            "sha256": "fb8d7c98a57c8522f81ae0866fc801e4fad7b2924dc65410a006c546131473a2"
+          },
+          {
+            "path": "dist/renderer/browser-toolbar.html",
+            "equal": true,
+            "sha256": "9cb99ff44888b6d471583e4ade8685d4003663502f600fefe17895c106168d0a"
+          },
+          {
+            "path": "dist/renderer/index.html",
+            "equal": true,
+            "sha256": "ce0cfa54068345d2d7d9d8bce273667ce225ab1005f75679ae26eb49c0390911"
+          },
+          {
+            "path": "dist/runtime/worker.mjs",
+            "equal": true,
+            "sha256": "0e827de31622facfda2c2a473e10d7678b82de96735a21ce774a7639177a1036"
+          },
+          {
+            "path": "dist/runtime/worker.mjs.map",
+            "equal": true,
+            "sha256": "b32cd67401e8c63c736b21687b177bfc325f11c02c874d0372444b860cc8f16d"
+          }
+        ],
+        "matched": 119,
+        "mismatches": []
+      }
+    },
+    {
+      "name": "codex-package-2",
+      "policyVersion": 5,
+      "stats": {
+        "startTime": "2026-10-06T04:43:51.053Z",
+        "duration": 79954.38,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scope": "packaged-electron",
+      "freeze": {
+        "checkedAt": "2026-10-06T04:45:20.487811+00:00",
+        "files": 870,
+        "changed": [],
+        "omitted": []
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-2/build-manifest.json",
+        "sha256": "269736c9cfec94ae70ced06e26887475ae08df44cbb4760821b0fd914bbc2965",
+        "bytes": 100259
+      },
+      "rawResults": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-2/playwright-results.json",
+        "sha256": "e04697b7193ebee3fcf3a192a8bb6df7cf62c9ac2cf35756e83235a50b7e96b5",
+        "bytes": 21451
+      },
+      "reportManifest": {
+        "path": ".local/feature-review/claude-continuation-20261006/codex-package-2-report/manifest.json",
+        "sha256": "3c891bc0a13c51a1f69e9994a3f49a4abe9d84a8e7acdf3108ea5e2a32e16405",
+        "bytes": 1276
+      },
+      "scenarios": [
+        {
+          "title": "使用真实Codex从设置接入本机运行时并在原 IM 中创建员工连续对话",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "manifest": {
+            "path": ".local/feature-review/claude-continuation-20261006/codex-package-2/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-g4I7Xk/manifest.json",
+            "sha256": "af338edf339161f8c57c7e5e368c29dc4721157057e457eeeb165cbe5cd8cb04",
+            "bytes": 6416
+          },
+          "startedAt": "2026-10-06T04:43:52.451Z",
+          "completedAt": "2026-10-06T04:45:10.990Z",
+          "evidenceCount": 11,
+          "errors": []
+        }
+      ],
+      "package-verification.json": {
+        "files": 3405,
+        "changed": [],
+        "omitted": []
+      },
+      "packaged-dist-verification.json": {
+        "archive": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI Agent.app/Contents/Resources/app.asar",
+        "files": [
+          {
+            "path": "dist/main/browser-LICENSE.txt",
+            "equal": true,
+            "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c"
+          },
+          {
+            "path": "dist/main/browser-NOTICE.txt",
+            "equal": true,
+            "sha256": "3d44b282cf994f791eff21456e871f4f3d43c1ba444fa9727cf8f5ed04c5406e"
+          },
+          {
+            "path": "dist/main/browser-source-manifest.json",
+            "equal": true,
+            "sha256": "4e8b6a3efcade79b2c660c652f8a2590ba6b218a5cf8a53ea3e07b2e1eb97cee"
+          },
+          {
+            "path": "dist/main/browser-toolbar-preload.cjs",
+            "equal": true,
+            "sha256": "ef61c26c19995e2bdc968044050586215b0487a64dfbc6752acafe0995584ac2"
+          },
+          {
+            "path": "dist/main/local-configs-LICENSE.txt",
+            "equal": true,
+            "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c"
+          },
+          {
+            "path": "dist/main/local-configs-NOTICE.txt",
+            "equal": true,
+            "sha256": "433e2cc04a512ef6f9b3e601751b883bf8bc7b2066b647d11062f3006698b265"
+          },
+          {
+            "path": "dist/main/main.cjs",
+            "equal": true,
+            "sha256": "de43a7486d06fa31d8412c4b6191cab4e85c2f24dcfa9912114112d528c87c86"
+          },
+          {
+            "path": "dist/main/main.cjs.map",
+            "equal": true,
+            "sha256": "96a615e2333b82b0bcc91fb053f865dbc2c6363d8e0bd156f5306b8df790c921"
+          },
+          {
+            "path": "dist/main/preload.cjs",
+            "equal": true,
+            "sha256": "a50d40b7d17dc1391ae1c74fc3bfc5cd1751094ed12ecdc89e6dec32fa43580c"
+          },
+          {
+            "path": "dist/renderer/BASE46-LICENSE.txt",
+            "equal": true,
+            "sha256": "c2531f07b5ca1c1b5d5c702d0a09bafe9bf92894c96e590b6f59c59c5dd449d9"
+          },
+          {
+            "path": "dist/renderer/Geist-OFL.txt",
+            "equal": true,
+            "sha256": "942560b236adfa83745b2c64e5fc09ebaf91cb331751b1157eb92187e5d6e930"
+          },
+          {
+            "path": "dist/renderer/LobeIcons-LICENSE.txt",
+            "equal": true,
+            "sha256": "add9d7531d1b21646317a8958e38fc727506fa39d24bdecb44154d943c82753a"
+          },
+          {
+            "path": "dist/renderer/assets/Geist-DPGgOCY9.woff2",
+            "equal": true,
+            "sha256": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1"
+          },
+          {
+            "path": "dist/renderer/assets/blue-moon-BYik7ezO.webp",
+            "equal": true,
+            "sha256": "c176dc84e6e84285adf1097f1a6c3912d8cc088082db953e1eebf1796e06ec1e"
+          },
+          {
+            "path": "dist/renderer/assets/browser-ui-BCBS8-uY.css",
+            "equal": true,
+            "sha256": "4f5da057f8b9b9bdd0423fe0d0ee612e46cd26acf6a023b0dc69a0ad1a6abb32"
+          },
+          {
+            "path": "dist/renderer/assets/browserEmptyState-Bz6Cn2oG.js",
+            "equal": true,
+            "sha256": "651b5a3e58278456a0937461c3e29de8d11fbaf4c475237a5fc0d0ccaef5d877"
+          },
+          {
+            "path": "dist/renderer/assets/browserToolbar-BgxXpJOq.js",
+            "equal": true,
+            "sha256": "d69234aa74bfac5bcb3fdaf9cc7164d4d9908b009635e4c61642827cd19bbdee"
+          },
+          {
+            "path": "dist/renderer/assets/c-DWGmR78Y.js",
+            "equal": true,
+            "sha256": "22762d1d12310f7565bd9189dd7fd2439f4bb3363f74b5f82f4a3ec98f31e308"
+          },
+          {
+            "path": "dist/renderer/assets/c-SSSlmE39.js",
+            "equal": true,
+            "sha256": "8a47e5202177d44f8fc37125867a0e824ebb8296f173bdba98324de528145a33"
+          },
+          {
+            "path": "dist/renderer/assets/cmake-Bj61d0ZC.js",
+            "equal": true,
+            "sha256": "297bcccb380fd8394d99100d51e7cb1090648f9f1bceda5a58fa357439c592c7"
+          },
+          {
+            "path": "dist/renderer/assets/connection-configure-BjVMgCkS.webp",
+            "equal": true,
+            "sha256": "5e01db5f3e9765418121772153b0397a42287e77851637c8aa537a2e994572b9"
+          },
+          {
+            "path": "dist/renderer/assets/connection-select-Cmwxqdkf.webp",
+            "equal": true,
+            "sha256": "de9feb713a13c4e30013d9a2a39cebea282dbd7cf1fa8883f2acd5821e0bf0cb"
+          },
+          {
+            "path": "dist/renderer/assets/contact-companions-pYFc2qB0.webp",
+            "equal": true,
+            "sha256": "6ff0e6f8a1865a2ea4fce16d3d55537ffa13633faf1e8c5218fdaed2db80ce5f"
+          },
+          {
+            "path": "dist/renderer/assets/conversation-companions-BaMxkCT-.webp",
+            "equal": true,
+            "sha256": "31468760a93819967f1e7ef72c0f42f03880724631f753013e1611c026d22d98"
+          },
+          {
+            "path": "dist/renderer/assets/coral-headphones-wmbcMU5r.webp",
+            "equal": true,
+            "sha256": "4a54e04786eda34ed7bedf21bae93d232fb190aafbe53cdd33f12b2ad8cbec91"
+          },
+          {
+            "path": "dist/renderer/assets/cpp-CJIxL8VH.js",
+            "equal": true,
+            "sha256": "1d435d6c4190e2fde47b9a6feca01e74a4e2e2bb1766884c9f828add8e0a5566"
+          },
+          {
+            "path": "dist/renderer/assets/cpp-Cts1PyIS.js",
+            "equal": true,
+            "sha256": "2edb411b24edba87dbcd3759988411ff5e60f5baee0cc05c98a68df874bf7814"
+          },
+          {
+            "path": "dist/renderer/assets/csharp-oqKa8noW.js",
+            "equal": true,
+            "sha256": "3e00ef56588e872dce4531d4b62f0bda2e854f66073297deb435dc0011f8b35e"
+          },
+          {
+            "path": "dist/renderer/assets/css-CdtkT07m.js",
+            "equal": true,
+            "sha256": "9451580afcc2ca79c3bfc470915117bdba45ad58b667f46df03dd77f49a8c5ca"
+          },
+          {
+            "path": "dist/renderer/assets/css-LbU1hoFO.js",
+            "equal": true,
+            "sha256": "d0480b06b91117ef935c7b06085ca759fc1746746c85bd71e6a9a31f2d9b120a"
+          },
+          {
+            "path": "dist/renderer/assets/csv-Dx-8-gkx.js",
+            "equal": true,
+            "sha256": "e33c4e7598db66e7ccc2f4d9035f44d1443eae54961f057bce30c363329943df"
+          },
+          {
+            "path": "dist/renderer/assets/dart-CnvKMtbv.js",
+            "equal": true,
+            "sha256": "f1dda1ea804f0d482bf43304957a7891c20a107cfe93a3a21c32a99432503625"
+          },
+          {
+            "path": "dist/renderer/assets/diff-woXpYk--.js",
+            "equal": true,
+            "sha256": "80befa61827dedd8e1a37e5521dd2ef55fad173bbbd9f36db966fc0b088079e6"
+          },
+          {
+            "path": "dist/renderer/assets/dockerfile-IyjqRm3v.js",
+            "equal": true,
+            "sha256": "fd5a25a8e77b37e179bd8356b2b64e71c02393e2a7a0e68349d2b9d91b1535b8"
+          },
+          {
+            "path": "dist/renderer/assets/dog-C1i7QwZG.webp",
+            "equal": true,
+            "sha256": "bdc522501d7a22fcd7c5d47b8b77838a44a538fd7f6f5045877a61e0842e1142"
+          },
+          {
+            "path": "dist/renderer/assets/dotenv-_5a1GRtc.js",
+            "equal": true,
+            "sha256": "53e43b54d31fbd73d1c9c00a3e46c18f98abc049b5bc2fdfe187c7ad4401becc"
+          },
+          {
+            "path": "dist/renderer/assets/dragon-AWS08-D5.webp",
+            "equal": true,
+            "sha256": "55573ce597e1946723441949560a59f598e31ccb504ec505b376f3568a71298c"
+          },
+          {
+            "path": "dist/renderer/assets/fish-BJitypiv.js",
+            "equal": true,
+            "sha256": "d7e3366523a700914a2e41df69abafe4a33b6fa3db8ef7df072dee516a5ad114"
+          },
+          {
+            "path": "dist/renderer/assets/github-dark-C-LZuMrd.js",
+            "equal": true,
+            "sha256": "4b20a66425669986c784d2f948aab0f38add042b7b167a2245d0c86a781706e1"
+          },
+          {
+            "path": "dist/renderer/assets/github-light-EUqPIrTm.js",
+            "equal": true,
+            "sha256": "b41057cac4d9e62754f5d64f241ec9153a0c3d53f5eaa2464d3acf9a644e8852"
+          },
+          {
+            "path": "dist/renderer/assets/global-Cyjw7CnK.js",
+            "equal": true,
+            "sha256": "2b29bcf6cb36dca33738c5d62191e2e1a39ede16e2ae2aa08a45443c2b79e578"
+          },
+          {
+            "path": "dist/renderer/assets/global-DqQ4wp6B.css",
+            "equal": true,
+            "sha256": "3aebd3752ad415ce9d1f7c66fae2fffa14b2b556a321dde286a9eb97fd51e9b1"
+          },
+          {
+            "path": "dist/renderer/assets/go-rLFTqkRN.js",
+            "equal": true,
+            "sha256": "ee035f34de70dac3319923bcfa0415cc576769462e60f09183c352f305de335e"
+          },
+          {
+            "path": "dist/renderer/assets/goat-BQRFQmxJ.webp",
+            "equal": true,
+            "sha256": "71bf94410a2f010ac61f1268d1826124c619d686ae9bf1613370a9868d608b15"
+          },
+          {
+            "path": "dist/renderer/assets/graphql-D5qRqMLb.js",
+            "equal": true,
+            "sha256": "cb4a03537c0a4c89e4173e1f1f0a6215a7889e7a19299898a6ed914dd1d5c9ba"
+          },
+          {
+            "path": "dist/renderer/assets/graphql-f69H1Mm0.js",
+            "equal": true,
+            "sha256": "64f617dcfc6bf1eca5124cdc3506413e38e3e02cd8d941ae42cc599e272b9273"
+          },
+          {
+            "path": "dist/renderer/assets/horse-DRmpCsAs.webp",
+            "equal": true,
+            "sha256": "da3ae1bc71068e2974bb39c1f55d46c271768f55ab375def6ee757abb4c27ccd"
+          },
+          {
+            "path": "dist/renderer/assets/html-BcACZWSP.js",
+            "equal": true,
+            "sha256": "09f30877ad34db9c57acc50d71a4fec7e27cdaccdd7684fa694699a714b24863"
+          },
+          {
+            "path": "dist/renderer/assets/html-DDNsd9lV.js",
+            "equal": true,
+            "sha256": "da8c35f625cd727bd8e6cad5fe6a1276ebf43eb6caf91d2e44e12e2d7de84577"
+          },
+          {
+            "path": "dist/renderer/assets/ini-B5eOa1yu.js",
+            "equal": true,
+            "sha256": "e192d3a30c17886e1366926606314b37568768ff6c7790d71b58c8cd2ae68f4d"
+          },
+          {
+            "path": "dist/renderer/assets/java-BtIQNnN0.js",
+            "equal": true,
+            "sha256": "b73f5ca0242e405d0dfe083e33c2b857519ea118720d484ec91896f2a35c0ebd"
+          },
+          {
+            "path": "dist/renderer/assets/java-DxlWrXwe.js",
+            "equal": true,
+            "sha256": "714b3b50bf9b1adae8050224e319f629002ab658f0449c7672734e099b14ce2b"
+          },
+          {
+            "path": "dist/renderer/assets/javascript-BzbQS41l.js",
+            "equal": true,
+            "sha256": "4914f43c4495fd0c8375e5d78993533a679e0579010f602fb75cc33a763e6f1c"
+          },
+          {
+            "path": "dist/renderer/assets/javascript-Yelw-5ZN.js",
+            "equal": true,
+            "sha256": "16073092b867887388250261625dbed60f0c476fef6ef8d4f13d8a454a733b05"
+          },
+          {
+            "path": "dist/renderer/assets/json-B88Oqtu5.js",
+            "equal": true,
+            "sha256": "6d3fc2664a24125736406be52510d22c97636a6fb5233c7cb5b43d5a6485338b"
+          },
+          {
+            "path": "dist/renderer/assets/json-CaljABEy.js",
+            "equal": true,
+            "sha256": "decf4cd8cf3685363f2201f9b7c8e4c976029e929941c90e3055359c9939ce16"
+          },
+          {
+            "path": "dist/renderer/assets/jsonc-CYpm1nAK.js",
+            "equal": true,
+            "sha256": "60b006733ee4e7b7d220af80da422980966b9527c91438aec90040c9dbde1088"
+          },
+          {
+            "path": "dist/renderer/assets/jsx-D3KKoC5L.js",
+            "equal": true,
+            "sha256": "54fdc05a5d7560d33e045c250da76ec475a1dcd29d4500da1061b3c0ef44e1e7"
+          },
+          {
+            "path": "dist/renderer/assets/jsx-hEbJ82HF.js",
+            "equal": true,
+            "sha256": "38b300c0ce15c80f589e217c80878131dd3d0bc0a17c1781d6aaeddfa726f098"
+          },
+          {
+            "path": "dist/renderer/assets/kotlin-DhhofPvG.js",
+            "equal": true,
+            "sha256": "26daf37ac3c38cb6385e619be24b677a4277d90bb885632d856479c1d6ea95de"
+          },
+          {
+            "path": "dist/renderer/assets/latex-DtlJgIBt.js",
+            "equal": true,
+            "sha256": "0a0ce4c56bf563f371c10d5c5a6627e2bf1964cf40b77ccc737b061606971391"
+          },
+          {
+            "path": "dist/renderer/assets/less-DVTAwKKz.js",
+            "equal": true,
+            "sha256": "eaae91cdf46dc79d5a386af2a1513267af2f6ecfb82ca935bb25c19fd36e3987"
+          },
+          {
+            "path": "dist/renderer/assets/local-agent-configure-Ch4V3M7n.webp",
+            "equal": true,
+            "sha256": "a8725e9283eab70588cf21f7004a5e9609f0494d8cc5080216e4a741faaf1c07"
+          },
+          {
+            "path": "dist/renderer/assets/local-agent-select-BFE6RTo-.webp",
+            "equal": true,
+            "sha256": "a4f504cab709d0ed62828d890b94ac542c8a18649dbbf085cbbb210179d739d2"
+          },
+          {
+            "path": "dist/renderer/assets/log-BNLmms1o.js",
+            "equal": true,
+            "sha256": "ec646556cf65c5240590590b79cbdf3cdd29fabfb6dfa1d3d8a64c897f78376e"
+          },
+          {
+            "path": "dist/renderer/assets/lua-BJObVtAx.js",
+            "equal": true,
+            "sha256": "1672d076ad8c460b7a07badfb1dbccb4cc1385cef7db76ab6fa9c8fbcb494b18"
+          },
+          {
+            "path": "dist/renderer/assets/lua-DjuecEsk.js",
+            "equal": true,
+            "sha256": "2e88ceaa6c7c3a2ddea37cb8337654e2df4cdfa8ea2f53ba1d82b9ca048e709f"
+          },
+          {
+            "path": "dist/renderer/assets/main-Bn8jIS4R.js",
+            "equal": true,
+            "sha256": "0ac87638615212cc28947f0026734a03cf5e1e2fec34ef27aecefbe102fd326d"
+          },
+          {
+            "path": "dist/renderer/assets/makefile-Dixweg8N.js",
+            "equal": true,
+            "sha256": "da64e0fe46f9082eb68771e104d68863bd8eb61080821caecfd68edb2eaf4c9c"
+          },
+          {
+            "path": "dist/renderer/assets/markdown-BYOwaDjH.js",
+            "equal": true,
+            "sha256": "024bf1ea6f860d9477d5ef72a2553f1ae4b0ff3d07f5d24d2e270e4f4f5a9b95"
+          },
+          {
+            "path": "dist/renderer/assets/mint-cap-pE3unHm3.webp",
+            "equal": true,
+            "sha256": "43ba287785a416ab5a3f4478ff7314fcee14b21250c8d8f73a84d819ae4b498c"
+          },
+          {
+            "path": "dist/renderer/assets/mint-ring-MqDMHJGY.webp",
+            "equal": true,
+            "sha256": "44b8a276a9d494b270ba37103ba01ec1155deeabe71d72b95c97513ef3c83e94"
+          },
+          {
+            "path": "dist/renderer/assets/monkey-DNNLRgEZ.webp",
+            "equal": true,
+            "sha256": "48512541ef2249e68849fe07bfa0273569ab41a9a69d4cafd1de5e9fd053bd80"
+          },
+          {
+            "path": "dist/renderer/assets/ox-3dsCogc1.webp",
+            "equal": true,
+            "sha256": "96d25248f35913ebfd91c361168f97e13e80430314eceeca41d2f24eaf502578"
+          },
+          {
+            "path": "dist/renderer/assets/perl-C4NAnH_t.js",
+            "equal": true,
+            "sha256": "5a73bf2170f6585cb1e5d0d3da0d1c4771c97f9904cbbd157b0356876c909606"
+          },
+          {
+            "path": "dist/renderer/assets/php-CQT4wx5i.js",
+            "equal": true,
+            "sha256": "5551e4da21bee904e0eaef0c34d71a93bcf9513a0c2226d288543d62ea3a1150"
+          },
+          {
+            "path": "dist/renderer/assets/pig-GfNEWM-6.webp",
+            "equal": true,
+            "sha256": "af5222f5a731a49c77a429893acb0607e1713a82aa72e38c9eee4997e83a52c1"
+          },
+          {
+            "path": "dist/renderer/assets/pink-beret-DND3YPkS.webp",
+            "equal": true,
+            "sha256": "81f02d1452920afc81b87aadf1e41594219772d57149a9c65c6c197fc3ec75e0"
+          },
+          {
+            "path": "dist/renderer/assets/powershell-CCSX75yM.js",
+            "equal": true,
+            "sha256": "adf005b48d4c8f9fb96e88c5bb97bc7844cb43664a6a974e370ba6b010005b96"
+          },
+          {
+            "path": "dist/renderer/assets/purple-scarf-pRMwcDg-.webp",
+            "equal": true,
+            "sha256": "d9485eaaa89fb7c2a61eb5e95bbebcd98d64ae7f1a8f3e96fa5f6ce90f286a5b"
+          },
+          {
+            "path": "dist/renderer/assets/purple-star-YtHPrvHs.webp",
+            "equal": true,
+            "sha256": "655ca59dcb9f7aaf19046f7861ccadae6f7bbeef26c5b6f58cee5fd13ed714bb"
+          },
+          {
+            "path": "dist/renderer/assets/python-gzcpVVnB.js",
+            "equal": true,
+            "sha256": "be0bae300e9d8dbae905d9faa24b84adc622796c87170848bf0460d01ad4049c"
+          },
+          {
+            "path": "dist/renderer/assets/r-DWzjseEo.js",
+            "equal": true,
+            "sha256": "fa536a62fd9031d4d7f3f4bdfaf907dea5547983296add9df5c53135f182603d"
+          },
+          {
+            "path": "dist/renderer/assets/r-Dr1JUpHl.js",
+            "equal": true,
+            "sha256": "93084129b36d5773ebc71a3191fcbb3fa6af3bc81e424f1732296ae96a895e80"
+          },
+          {
+            "path": "dist/renderer/assets/rabbit-Dnyky_L5.webp",
+            "equal": true,
+            "sha256": "4d1f01ad664b3d51afeabd2f0e34c36442350a0016d050bdbf84ad6293b7dcf0"
+          },
+          {
+            "path": "dist/renderer/assets/rat-DnAC_DqT.webp",
+            "equal": true,
+            "sha256": "16d57aa40b63cd154cffb1619faa8535582c1bcba58acb3d7e7efa4cfb7eaaa3"
+          },
+          {
+            "path": "dist/renderer/assets/react-D6dhJSS8.js",
+            "equal": true,
+            "sha256": "43c07156d921562b46cae5af7ad167e92037c604b9f2c6434a0575aa5a186588"
+          },
+          {
+            "path": "dist/renderer/assets/red-mushroom-gF2qQ8M-.webp",
+            "equal": true,
+            "sha256": "f90b31e33a5b377fb048ac94c7d5890f479f041b0dff44f81cc23283c02552c5"
+          },
+          {
+            "path": "dist/renderer/assets/rooster-BZM70PV5.webp",
+            "equal": true,
+            "sha256": "63836095ed285dee8eb74c6953905fc7bfb3b1e2acea218d0066dab210bd29bb"
+          },
+          {
+            "path": "dist/renderer/assets/ruby-B4QPJ8tT.js",
+            "equal": true,
+            "sha256": "204a7ff33df0275cdd783f10b5b152b0fc7cf54495f384b82ab22b130700c8ae"
+          },
+          {
+            "path": "dist/renderer/assets/rust-Cfkwpbl8.js",
+            "equal": true,
+            "sha256": "8fedcfe76b25574d9afbb86db6b972ab86d8231284e91fe3b10779a30129a5a5"
+          },
+          {
+            "path": "dist/renderer/assets/schedule-companion-l2V9RkeC.webp",
+            "equal": true,
+            "sha256": "7a4b10ef22cc2ccfe710f8431093dae67a223d9fb8be00f9d323868705e0f47a"
+          },
+          {
+            "path": "dist/renderer/assets/scss-DHtrkMkT.js",
+            "equal": true,
+            "sha256": "51c991b0d906995616ade75ff86ea5ac1fa05f6a7825980b11dca09af94beaac"
+          },
+          {
+            "path": "dist/renderer/assets/shellscript-BiGZg9Om.js",
+            "equal": true,
+            "sha256": "3a18971357e7c0eae73ce340cd8ba04397b8786d2d67b8e76db2ad1f91037b6b"
+          },
+          {
+            "path": "dist/renderer/assets/shellscript-CqHdAlCp.js",
+            "equal": true,
+            "sha256": "b277ff21ef7079c7afb321dd2b92375209fa761eaf8f468a29bf978c5984faf8"
+          },
+          {
+            "path": "dist/renderer/assets/shiki-highlighter-DMFR-0lh.js",
+            "equal": true,
+            "sha256": "ea40faf65fee9fdc0dceec02b0ffe8166ed3f936bca4fc18435a82c079759b1b"
+          },
+          {
+            "path": "dist/renderer/assets/skill-companion-C7WmdVwd.webp",
+            "equal": true,
+            "sha256": "3460405de69d5497ff69581a3e64d27b81e1a47a1c43b8c9fe74d1c276018d36"
+          },
+          {
+            "path": "dist/renderer/assets/snake-4aanfk64.webp",
+            "equal": true,
+            "sha256": "aa5f803b5619ae482961f28d363f758edcf0993ab047b32b3e32c7928fe9a7a2"
+          },
+          {
+            "path": "dist/renderer/assets/sql-0Qcw9ht3.js",
+            "equal": true,
+            "sha256": "53e809f9426fc7403d744b45d1f21805aeb6c5d14905e08f0501443de08d9333"
+          },
+          {
+            "path": "dist/renderer/assets/sql-CP0rg-5b.js",
+            "equal": true,
+            "sha256": "ce900a0c940773c3ace57416a1f3973d2a7388aaaca40897d8caa76044055c25"
+          },
+          {
+            "path": "dist/renderer/assets/svelte-BUVJxsYv.js",
+            "equal": true,
+            "sha256": "f4f9a9ac99eb50525c07c5aa76d789603d8c242b76c2b08f5d665706b7f7fc92"
+          },
+          {
+            "path": "dist/renderer/assets/swift-CyEgAFGc.js",
+            "equal": true,
+            "sha256": "17c2179fc022acc48683a5cab6feee30b7e482741b57361c817ec6c55fe1b791"
+          },
+          {
+            "path": "dist/renderer/assets/tiger-Cb0ZFAQ1.webp",
+            "equal": true,
+            "sha256": "6dfdf634c9cabb49d0bd19e36979acb65145432d514cc1e795ead3a693f25ec7"
+          },
+          {
+            "path": "dist/renderer/assets/toml-CcmNWLt0.js",
+            "equal": true,
+            "sha256": "94ca31c8af75679cb84cc087aaaeb024df25dd9cf20c75e7a4e6b26914ec4c9e"
+          },
+          {
+            "path": "dist/renderer/assets/tsx-5f3ulCja.js",
+            "equal": true,
+            "sha256": "f8e5fbe4af8d8ec2adb0bf2882935d1d8440f4b45299770d95754c0a6d5bb745"
+          },
+          {
+            "path": "dist/renderer/assets/tsx-BOvsFOI6.js",
+            "equal": true,
+            "sha256": "e9fdeb6accaaa20c7b80fd6f19fe85ed456364b31729dcd592e7872962969535"
+          },
+          {
+            "path": "dist/renderer/assets/typescript-Utq2Cl8c.js",
+            "equal": true,
+            "sha256": "fda9dfccc050494bcc491f3add1cb5753c1134225aeae3b8d4487cf412ed8ada"
+          },
+          {
+            "path": "dist/renderer/assets/typescript-j_1H8WHN.js",
+            "equal": true,
+            "sha256": "f0257899f1a3a73cfb04623b644621757fc2e62cc29127bf4af46fea7d3861a8"
+          },
+          {
+            "path": "dist/renderer/assets/vue-BcFuTOIy.js",
+            "equal": true,
+            "sha256": "4c87507335b6ec608e16d878caf3f45ea4b50005b453704354910c5ca22af4e7"
+          },
+          {
+            "path": "dist/renderer/assets/xml-CoDIzWF0.js",
+            "equal": true,
+            "sha256": "593e5930ac5d01007b94f07dcaa17ca058d3fb18eaf8979c010be590a33613ba"
+          },
+          {
+            "path": "dist/renderer/assets/xml-WY0zc4PG.js",
+            "equal": true,
+            "sha256": "cabb09028991b0b8d4f623751da0931ac0255daedde72996a9063d5ac1b30025"
+          },
+          {
+            "path": "dist/renderer/assets/yaml-CxbubiML.js",
+            "equal": true,
+            "sha256": "b660a0ae7d0d537622f8c3914ca7732d41cd21e6a7314fe8907dcb10214cd51f"
+          },
+          {
+            "path": "dist/renderer/assets/yaml-DijMHRDA.js",
+            "equal": true,
+            "sha256": "959fff0b1aac1f78535da1469c3d5722937e2e67fb1f1373164b3a26688022ef"
+          },
+          {
+            "path": "dist/renderer/assets/yellow-square-_oGZxraS.webp",
+            "equal": true,
+            "sha256": "0c582f1b9e962562f9a952a096de5929e891201426084ab09ee8f99b354662c2"
+          },
+          {
+            "path": "dist/renderer/browser-empty-state.html",
+            "equal": true,
+            "sha256": "fb8d7c98a57c8522f81ae0866fc801e4fad7b2924dc65410a006c546131473a2"
+          },
+          {
+            "path": "dist/renderer/browser-toolbar.html",
+            "equal": true,
+            "sha256": "9cb99ff44888b6d471583e4ade8685d4003663502f600fefe17895c106168d0a"
+          },
+          {
+            "path": "dist/renderer/index.html",
+            "equal": true,
+            "sha256": "ce0cfa54068345d2d7d9d8bce273667ce225ab1005f75679ae26eb49c0390911"
+          },
+          {
+            "path": "dist/runtime/worker.mjs",
+            "equal": true,
+            "sha256": "0e827de31622facfda2c2a473e10d7678b82de96735a21ce774a7639177a1036"
+          },
+          {
+            "path": "dist/runtime/worker.mjs.map",
+            "equal": true,
+            "sha256": "b32cd67401e8c63c736b21687b177bfc325f11c02c874d0372444b860cc8f16d"
+          }
+        ],
+        "matched": 119,
+        "mismatches": []
+      }
+    }
+  ],
+  "logs": [
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/bddgen-1.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/bddgen-2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/bddgen-3.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/bddgen-4.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/build-1.log",
+      "sha256": "b9af4af0048c38c75dc42f98aeed5998a6b013c253d902c13ba71750fd5fedab",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/build-2.log",
+      "sha256": "4890ba99e25ac3d6cfc0ce849f59f9804751b7017ccbb8cb7bc62ae990777e23",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/build-3.log",
+      "sha256": "9abe7aab0d60e62215935f56eb7cd02c3f41fe0419709742aa7ac53e7b5b1eed",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-1.log",
+      "sha256": "8cc0a34b4d62303f0d4f5d0873e0f2e72e005d4c2710b1f463763fc9e8eded90",
+      "bytes": 1365
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-2.log",
+      "sha256": "4665141a4f46a3b8f01340c7bdc1bf49b89dfd8f28e87c37e29f8fe2b091723c",
+      "bytes": 198
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-diagnostic.log",
+      "sha256": "59a8aa6dc445430b7940f48b4542ae80b62c790c8285b0cc5f2705364be83645",
+      "bytes": 1342
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-full-1.log",
+      "sha256": "69619e497c34392eeaceb908a75662bd921aeff76a3950a788497771b7d7cc82",
+      "bytes": 2896
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-full-2.log",
+      "sha256": "73732c818b84bbd03f5a0311accbd90f1df81bf7c08da7f91eedd59bc6406d59",
+      "bytes": 1770
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-full-3.log",
+      "sha256": "4c1d50c50f57673b15a3a5efd86d8b502ac2c005c56c045b3d188b782699e0f2",
+      "bytes": 1770
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/modules-full-4.log",
+      "sha256": "968a1bfae04df42fbd28dfa00af567c707d931b4a2dd6c6eef54c5dbe816180a",
+      "bytes": 1768
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/package-1.log",
+      "sha256": "b7cd11bac6e493a41192cb5ce360c344492776ecd091e3b76e67012c5a265bd7",
+      "bytes": 12199
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/typecheck-1.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/typecheck-2.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/typecheck-3.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/typecheck-4.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/ui-1.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696",
+      "bytes": 97
+    },
+    {
+      "path": ".local/feature-review/claude-continuation-20261006/ui-2.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696",
+      "bytes": 97
+    }
+  ],
+  "limitations": [
+    "Per-batch source and packaged app evidence are independent.",
+    "Offline expiry is seeded; actual provider renewal waits for the original product deadline.",
+    "Failed trials and screenshot defects remain; passing samples do not establish every runtime capability.",
+    "Full spec13 and human review remain incomplete."
+  ],
+  "reportVerification": [
+    {
+      "report": "offline-1-report",
+      "copiedResources": 59,
+      "hashedReferences": 65,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "offline-2-report",
+      "copiedResources": 59,
+      "hashedReferences": 65,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "offline-3-report",
+      "copiedResources": 59,
+      "hashedReferences": 65,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "real-1-report",
+      "copiedResources": 49,
+      "hashedReferences": 56,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "real-2-report",
+      "copiedResources": 65,
+      "hashedReferences": 74,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "codex-package-1-report",
+      "copiedResources": 11,
+      "hashedReferences": 13,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    },
+    {
+      "report": "codex-package-2-report",
+      "copiedResources": 11,
+      "hashedReferences": 13,
+      "hashErrors": [],
+      "missingLinkTargets": []
+    }
+  ],
+  "retainedScreenshots": [
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-0lD4It/010-Claude原消息等待明确问题补充.native.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude原问题等待-20261006.png",
+      "sha256": "826bb37f209fe04f64d892aec6d46d409175bf21aa1802dd0e3123473572e85d",
+      "bytes": 266530,
+      "scope": "real-provider/source-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    },
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-bf716c4612842a76ea79-retry0-repeat0-0lD4It/019-Claude原问题接续重启零重放.native.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude原问题接续重启-20261006.png",
+      "sha256": "fa61458603f1fa1360d94e572a446404ed49eb5f9dcc4e36196d0177dfa67f7d",
+      "bytes": 332426,
+      "scope": "real-provider/source-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    },
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-DAQYpL/017-Claude明确追加后的累计账本.native.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude实际到期追加账本-20261006.png",
+      "sha256": "be0fe580fa077fcaa5148e726674f3d123bba67827b002baf51c6fd633d71d79",
+      "bytes": 313819,
+      "scope": "real-provider/source-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    },
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/real-2/scenarios/76620a6b86e22810b964-91c5b427a343bae51fe6-retry0-repeat0-DAQYpL/022-Claude原问题接续重启零重放.native.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude实际到期追加重启-20261006.png",
+      "sha256": "68e6af6e5fe79d6e9e4172b7dcf6d240f42d39fe4d62941515eca0f478e268ce",
+      "bytes": 304245,
+      "scope": "real-provider/source-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false
+    },
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/codex-package-1/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-PfndDz/009-第2轮实际Codex员工IM回复.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR6-v5应用包Codex新员工续聊-20261006.png",
+      "sha256": "a2f2b33fdf39478959f756daa37f958754580bedec424e995a49fd32772e44d6",
+      "bytes": 175571,
+      "scope": "real-provider/packaged-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false,
+      "capturePhase": "Second public reply; sidebar still reads 处理中. Settled runtime records are separate; final sidebar presentation not verified in this first batch."
+    },
+    {
+      "source": ".local/feature-review/claude-continuation-20261006/codex-package-2/scenarios/704506bbdae38bebaafd-2cc713526cddd3e87f1d-retry0-repeat0-g4I7Xk/009-第2轮实际Codex员工IM回复.png",
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR6-v5应用包Codex续聊状态核对-20261006.png",
+      "sha256": "2581b9aa735fb63f9461500496c957b99dc668957ab52b2b44358ea55cea35b9",
+      "bytes": 174193,
+      "scope": "real-provider/packaged-electron",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "edited": false,
+      "capturePhase": "second public reply after explicit runtime completion and sidebar-not-processing checks"
+    }
+  ]
+}

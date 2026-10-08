@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 宿主在成果复制前持久登记准备身份，正式成果与准备记录清除共用提交事务。
+ * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
+ * [OUTPUT]: 外部阶段用量区分中途观测与已确认终态；只有终态可关闭原请求的未知用量。
+ * [OUTPUT]: 本机进程目录独立于任务文件能力，补充问题/只读汇报仍可启动无工具阶段。
+ * [OUTPUT]: 执行上下文区分模型 API 与本机配置；API 适配器在构造模型前明确校验，外部员工不制造虚假连接。
  * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
  * [OUTPUT]: 图片附件仅在当前获准上下文以内存媒体交给模型，不进入持久消息或运行快照。
  * [OUTPUT]: 核心组织阶段的有界员工摘要、宿主原工作授权及已提交真实组织回执 ID；群中 bobo 不持管理工具。
@@ -10,7 +15,7 @@
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
 import type { TeamPlannerOutput } from '../shared/domain/team-creation'
 import type { TraceSpan } from '../shared/domain/traces'
-import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait } from '../shared/domain'
+import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait, WorkBudget } from '../shared/domain'
 
 // The host and adapter share one phase budget, including the bounded JSON repair.
 export const PARTICIPATION_TIMEOUT_MS = 30_000
@@ -41,7 +46,10 @@ export interface EngineContext {
   /** Registered shared artifacts return the same bytes that the host validated, with no second filesystem read. */
   readTaskFile?(path: string): Promise<{ content: string } | null>
   agent: DigitalAgent
-  connection: Connection
+  connection?: Connection
+  runtimeProfile?: import('../shared/domain/backends').LaunchProfile
+  /** Process home survives no-tool question phases; this grants no workspace tool capability. */
+  runtimeDirectory?: { cwd: string; privateHome: string }
   apiKey: string
   conversation: Conversation
   messages: Message[]
@@ -60,6 +68,8 @@ export interface EngineContext {
   contributions?: Contribution[]
   workItems?: WorkItem[]
   work?: WorkItem
+  /** Host snapshot for routing only; the repository rechecks every reservation transaction. */
+  workBudget?: WorkBudget
   /** Exact logical files of delivered, currently authorized dependency results; reads still recheck sources. */
   dependencyArtifacts?: { artifactId: string; name: string; logicalPath: string; contentHash: string; workId: string; resultVersion: number }[]
   /** Host-verified committed organization receipts; model outcome references are not proof. */
@@ -86,7 +96,9 @@ export interface EngineContext {
   onModelCallStarted?(callId: string, phase: 'chat' | 'task' | 'decision' | 'memory' | 'report', thinking?: string): Promise<void>
   onSkillActivated?(toolCallId: string, skill: { id: string; name: string }): Promise<void>
   /** Raw per-request usage, never the SDK's zero-filled or cumulative aggregate. */
-  onModelCallUsage?(callId: string, usage: ModelUsage): Promise<void>
+  onModelCallUsage?(callId: string, usage: ModelUsage, externalComplete?: boolean): Promise<void>
+  /** Persist the exact publication identity before copying its shared original. */
+  onArtifactPreparing?(artifact: Artifact): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
   onTrace?(span: TraceSpan): Promise<void>
@@ -112,4 +124,9 @@ export interface AgentEngine {
   extractMemory?(context: EngineContext): Promise<MemoryCandidate[]>
   plan?(context: Omit<EngineContext, 'onDelta' | 'onTool' | 'approveCommand'>, members: DigitalAgent[]): Promise<string[]>
   test(connection: Connection, apiKey: string): Promise<string>
+}
+
+/** API adapters reject local runtime contexts before constructing a model. */
+export function assertApiContext(context: EngineContext): asserts context is EngineContext & { connection: Connection } {
+  if (!context.connection || context.runtimeProfile) throw new Error('此执行上下文不属于模型 API')
 }

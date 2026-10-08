@@ -1,0 +1,199 @@
+<!doctype html>
+<!--
+[INPUT]: 2026-10-08当前源码与实施记录、用户明确要求的20项人工验证清单和本机路线暂停决定；本人在此页填写的验证记录。
+[OUTPUT]: 可离线打开的单文件HTML；步骤、预期、状态、备注、浏览器本地保存、反馈导出及携带记录的HTML副本；初始全部待验证，不生成产品验收成绩。
+[POS]: ai-docs/reviews/2026-10-08-manual-validation/index.html，独立人工验证文档，不属于BoAI生产界面。
+[PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>BoAI · 功能人工验证清单</title>
+<style>
+:root{--paper:#f5f5f1;--white:#fff;--ink:#222c29;--muted:#64706a;--line:#dfe4de;--accent:#245b43;--soft:#eaf2ec;--orange:#9b4f24;--orange-soft:#fff1e7;--rail:#172c24;--radius:16px;--shadow:0 3px 16px #172c2405}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}button,input,select,textarea{font:inherit}button,a,input,select,textarea,summary{outline-offset:4px}button{cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #76a488}a{color:var(--accent);text-underline-offset:4px}button{border:1px solid var(--line);border-radius:9px;background:var(--white);color:var(--ink);padding:8px 13px}button:hover{background:#f1f5f1}button.primary{background:var(--accent);border-color:var(--accent);color:white}button.primary:hover{background:#1b4934}button:disabled{cursor:default;opacity:.6}input,select,textarea{color:var(--ink);background:var(--white);border:1px solid #cdd6cf;border-radius:8px;padding:10px 12px;max-width:100%}input:focus,select:focus,textarea:focus{outline:2px solid #aec5b5;outline-offset:1px}textarea{width:100%;resize:vertical;min-height:90px;line-height:1.6}label{font-size:13px;font-weight:600}.shell{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:100vh}.rail{background:var(--rail);color:#f0f5f1;padding:35px 25px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;font-size:21px;letter-spacing:-.6px;font-weight:700}.brandmark{width:32px;height:32px;border:1px solid #739c83;border-radius:10px;display:grid;place-items:center;font-size:17px;color:#b0d4b8}.edition{font-size:11px;letter-spacing:1.7px;color:#a2b8aa;margin:20px 0 4px}.rail h2{font-size:16px;font-weight:500;margin:0 0 30px}.rail nav{display:grid;gap:7px}.rail nav button{border:0;background:transparent;color:#c2d0c7;text-align:left;padding:11px 12px;display:flex;justify-content:space-between;gap:10px;font-size:14px}.rail nav button:hover,.rail nav button[aria-pressed=true]{background:#2c4437;color:white}.rail nav small{font-size:11px;color:#a1bda9;padding-top:2px}.rail a{color:#c2d0c7;font-size:13px;text-decoration:none;padding:12px}.rail a:hover{color:white}.rail-bottom{margin-top:auto;padding-top:35px;font-size:12px;color:#aec0b4}.rail-bottom strong{display:block;color:#e5eee8;font-size:13px;margin-bottom:6px}.rail-bottom p{margin:0}.content{max-width:1195px;width:100%;margin:auto;padding:44px 50px 55px;min-width:0}.topline{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:17px;font-size:12px;color:var(--muted)}.eyebrow{font-size:11px;letter-spacing:1.7px;color:var(--accent);font-weight:700}.date{white-space:nowrap}.hero h1{font-size:clamp(28px,3vw,40px);line-height:1.25;letter-spacing:-1.2px;margin:0 0 15px;font-weight:700}.hero p{max-width:710px;margin:0;color:var(--muted);font-size:15px}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:23px 0 12px}.save-line{font-size:12px;color:var(--muted);min-height:20px}.save-line.error{color:#a74626}.notice{border-left:3px solid #a8bead;background:#edf1ea;padding:13px 16px;margin:23px 0;font-size:13px;color:#46574b;border-radius:0 8px 8px 0}.notice strong{font-weight:600;color:#244c36}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:25px 0}.metric{background:white;border:1px solid var(--line);border-radius:12px;padding:15px 19px}.metric span{display:block;font-size:12px;color:var(--muted)}.metric b{display:block;font-size:28px;line-height:1.35;font-weight:650;margin:5px 0 2px}.metric.pass b{color:var(--accent)}.metric.issue b{color:var(--orange)}.overall-progress{height:4px;overflow:hidden;background:#e1e8e0;border-radius:6px;margin-top:7px}.overall-progress div{height:100%;width:0;background:var(--accent)}.setup{border:1px solid var(--line);border-radius:12px;padding:17px 20px;margin-bottom:26px;background:#fafbf8}.setup summary{font-size:14px;font-weight:600;cursor:pointer}.setup small{color:var(--muted);font-weight:400;margin-left:8px}.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 18px;margin-top:16px}.setup label{display:grid;gap:5px}.setup-grid input{width:100%;font-weight:400}.setup p{font-size:12px;color:var(--muted);margin-bottom:0}.section-title{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 14px}.section-title h2{font-size:19px;margin:0;letter-spacing:-.3px}.section-title small{color:var(--muted);font-size:12px}.section-title button{padding:6px 10px;font-size:12px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.search{flex:1 1 245px;position:relative}.search input{width:100%;font-size:13px;padding-left:35px;height:40px}.search svg{position:absolute;left:12px;top:12px;color:#8a978e;width:16px;height:16px}.toolbar select{font-size:13px;height:40px;padding:6px 32px 6px 12px}.cards{display:grid;gap:11px}.card{background:white;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;scroll-margin-top:20px}.card[hidden]{display:none}.card summary{display:flex;align-items:center;gap:15px;padding:20px 23px;cursor:pointer;list-style:none}.card summary::-webkit-details-marker{display:none}.number{flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;width:34px;height:34px;border-radius:10px;background:#f1f3ef;color:#637466}.core .number{background:#e6efe8;color:#285c40}.summary-text{flex:1;min-width:0}.summary-text h3{font-size:16px;line-height:1.4;margin:0 0 4px;font-weight:600}.entry{font-size:12px;color:var(--muted);line-height:1.5}.badge{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;line-height:1.4;background:#f1f3f0;color:#6b756d;padding:5px 9px;border-radius:20px}.badge.pass{color:#246140;background:#e9f4eb}.badge.issue{color:#9b4f24;background:var(--orange-soft)}.badge.skip{color:#616377;background:#eeeef6}.chevron{width:15px;height:15px;flex-shrink:0;transition:transform .15s;color:#89958c}.card[open] .chevron{transform:rotate(180deg)}.card-body{border-top:1px solid #edf0eb;padding:22px 23px 23px}.card-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:25px}.mini-label{font-size:11px;font-weight:600;letter-spacing:.7px;color:var(--muted);margin:0 0 11px}.step-list{list-style:none;padding:0;margin:0;display:grid;gap:11px}.step-list label{display:flex;align-items:flex-start;gap:9px;font-size:13px;font-weight:400;cursor:pointer;line-height:1.7}.step-list input{margin:5px 0 0;flex-shrink:0;width:15px;height:15px;accent-color:var(--accent);padding:0}.expected{background:#f5f8f2;padding:14px 16px;border-radius:10px;font-size:13px;color:#435b46;align-self:start}.expected .mini-label{color:#567b55;margin-bottom:7px}.expected p{margin:0}.example{padding:11px 14px;background:#f7f7f4;border-radius:8px;font-size:12px;color:#5d6b60;margin-top:15px}.example strong{display:block;font-weight:600;color:#536854;margin-bottom:4px}.boundary{font-size:12px;color:#776755;margin:16px 0 0;padding:10px 0 0;border-top:1px dashed #e6e5dc}.record{display:grid;grid-template-columns:160px 1fr;gap:16px;margin-top:20px;padding-top:17px;border-top:1px solid #edf0eb}.record label{display:grid;gap:6px;align-content:start;font-size:12px}.record select{font-size:13px;min-width:0;width:100%}.record textarea{font-size:13px;font-weight:400}.record-help{font-size:11px;font-weight:400;color:var(--muted);line-height:1.6}.empty{padding:50px;text-align:center;color:var(--muted);background:white;border:1px dashed var(--line);border-radius:12px}.later{margin-top:40px;padding-top:30px;border-top:1px solid var(--line);scroll-margin-top:20px}.later h2,.sources h2{font-size:19px;margin:0 0 10px}.later>p,.sources>p{font-size:13px;color:var(--muted);margin:0 0 19px}.later-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.later-card{background:#ecefe9;border-radius:12px;padding:17px 19px}.later-card strong{font-size:14px;font-weight:600}.later-card span{display:block;font-size:11px;color:#7a6d56;margin:3px 0 6px}.later-card p{font-size:12px;color:#5c675d;margin:0}.boundary-list{margin:21px 0 0;padding:0;list-style:none;font-size:12px;color:var(--muted);display:grid;gap:8px}.boundary-list li::before{content:'—';margin-right:9px;color:#a1afa3}.sources{margin-top:30px;padding-top:25px;border-top:1px solid var(--line)}.sources ul{padding-left:18px;font-size:13px;display:grid;gap:8px}.footer{display:flex;justify-content:space-between;gap:15px;margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size:11px;color:#778679}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:90vw;border-radius:9px;background:#203b2a;color:white;padding:11px 18px;font-size:13px;box-shadow:0 5px 25px #16251a22;z-index:3}.print-note{display:none}noscript{display:block;padding:30px;color:#933}
+@media(min-width:1550px){.content{padding-top:55px}.rail{padding-left:32px;padding-right:32px}.shell{grid-template-columns:270px minmax(0,1fr)}}
+@media(max-width:1050px){.shell{grid-template-columns:205px minmax(0,1fr)}.rail{padding:28px 18px}.content{padding:32px 27px}.card-grid{grid-template-columns:1fr;gap:19px}}
+@media(max-width:760px){.shell{display:block}.rail{position:static;height:auto;padding:20px}.rail .edition,.rail h2,.rail-bottom,.rail>a{display:none}.rail nav{display:flex;gap:4px;overflow:auto;margin-top:15px}.rail nav button{flex-shrink:0;font-size:12px;padding:8px}.rail nav small{display:none}.content{padding:28px 18px}.hero h1{font-size:29px}.hero p{font-size:14px}.metrics{grid-template-columns:repeat(2,1fr)}.setup-grid,.later-grid{grid-template-columns:1fr}.setup small{display:block;margin:5px 0 0}.card summary{padding:17px 14px;gap:10px}.summary-text h3{font-size:14px}.entry{font-size:11px}.card-body{padding:19px 16px}.record{grid-template-columns:1fr}.record select{max-width:190px}.number{width:28px;height:28px;border-radius:8px}.badge{padding:4px 7px;font-size:10px}.chevron{display:none}.actions button{font-size:12px}.footer{flex-wrap:wrap}.toolbar select{flex:1}.topline{font-size:11px}.section-title h2{font-size:18px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{body{background:white;font-size:12px}.shell{display:block}.rail,.actions,.save-line,.toolbar,.section-title button,.chevron,.toast,.record textarea,.record select,.record-help{display:none!important}.content{padding:0;max-width:none}.hero h1{font-size:27px}.card{break-inside:avoid;box-shadow:none;border-radius:7px;margin-bottom:10px}.card-body{padding:15px}.card summary{padding:14px}.card-grid{grid-template-columns:1fr 1fr;gap:20px}.print-note{display:block;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:400}.record{grid-template-columns:130px 1fr}.sources{break-inside:avoid}input{border-color:#aaa}.later-card{background:white;border:1px solid #ddd}.footer{margin-top:20px}.setup{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="shell">
+ <aside class="rail">
+  <div class="brand"><span class="brandmark" aria-hidden="true">b</span>BoAI</div>
+  <div class="edition">PRODUCT REVIEW / 2026.10</div><h2>功能人工验证</h2>
+  <nav aria-label="功能分组">
+   <button type="button" data-group="all" aria-pressed="true">全部功能<small>20</small></button>
+   <button type="button" data-group="core" aria-pressed="false">先走通主线<small>01—06</small></button>
+   <button type="button" data-group="work" aria-pressed="false">材料与协作<small>07—12</small></button>
+   <button type="button" data-group="tools" aria-pressed="false">自动化与工具<small>13—18</small></button>
+   <button type="button" data-group="settings" aria-pressed="false">个人与数据<small>19—20</small></button>
+  </nav>
+  <a href="#later">暂停与后续事项 ↗</a><a href="#sources">依据与使用说明 ↗</a>
+  <div class="rail-bottom"><strong>当前主线 · Mastra / API</strong><p>先体验已有功能，记录实际问题。<br>本机 Agent 路线继续暂停。</p></div>
+ </aside>
+ <main class="content">
+  <header class="hero">
+   <div class="topline"><span class="eyebrow">BOAI · MANUAL VALIDATION</span><span class="date">功能盘点基线 · 2026 年 10 月 8 日</span></div>
+   <h1>把功能，真正用一遍。</h1>
+   <p>20 项已有功能，按入口逐项体验。先完成创建员工到文件修订、重启的主线，再检查协作和工具。遇到问题，直接写下实际表现与希望的修改。</p>
+   <div class="actions"><button type="button" class="primary" id="export-feedback">导出反馈记录</button><button type="button" id="save-html">保存已填写的 HTML</button><button type="button" id="print">打印 / 存为 PDF</button></div>
+   <div id="save-status" class="save-line" role="status" aria-live="polite">正在载入验证记录…</div>
+  </header>
+  <div class="notice"><strong>已有实现 ≠ 已完成人工验收。</strong>最新 Mastra 单员工闭环通过了实际 Electron 与离线协议模型验证；真实供应商效果和该轮发行包仍待验。此页初始全部为“待验证”，不会沿用历史测试成绩替你勾选。</div>
+  <div class="metrics" aria-label="全部20项的人工验证进度">
+   <div class="metric"><span>已给出结论 / 全部</span><b id="reviewed-count">0 / 20</b><div class="overall-progress"><div id="progress-fill"></div></div></div>
+   <div class="metric pass"><span>通过</span><b id="pass-count">0</b><span>符合你的使用预期</span></div>
+   <div class="metric issue"><span>需修改</span><b id="issue-count">0</b><span>保留现象与修改意见</span></div>
+   <div class="metric"><span>待验证</span><b id="pending-count">20</b><span id="skip-count">暂跳过 0 项，单独计数</span></div>
+  </div>
+  <details class="setup" open><summary>本次验证环境 <small>记录你实际打开的版本，便于之后定位问题</small></summary>
+   <div class="setup-grid"><label>应用版本 / 启动方式<input id="env-version" data-env="version" placeholder="例如：v0.2.2 · 源码开发版 / 已安装应用"></label><label>模型连接 / 模型名称<input id="env-model" data-env="model" placeholder="只填名称，不填写 API Key"></label><label>验证人<input id="env-reviewer" data-env="reviewer" placeholder="你的名字或简称"></label><label>本次备注<input id="env-note" data-env="note" placeholder="例如：MacBook，先验证文件交付"></label></div>
+   <p>建议使用专门的测试员工和会话。已安装应用是否与当前源码一致，尚未核对；记录版本后再判断差异。勾选步骤只表示做过该动作，最终结论需单独选择。</p>
+  </details>
+  <section aria-labelledby="list-title">
+   <div class="section-title"><div><h2 id="list-title">已有功能 · 验证清单</h2><small id="visible-count">显示 20 项</small></div><button type="button" id="expand-all">展开当前全部</button></div>
+   <div class="toolbar"><label class="search"><span hidden>搜索功能</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="search" aria-label="搜索功能、入口或验证内容" placeholder="搜索功能、入口或验证内容…"></label><select id="status-filter" aria-label="按验证状态筛选"><option value="all">全部状态</option><option value="pending">待验证</option><option value="pass">通过</option><option value="issue">需修改</option><option value="skip">暂跳过</option></select></div>
+   <div class="cards" id="cards"></div><div class="empty" id="empty" hidden>没有符合当前条件的功能。可以调整搜索词或筛选条件。</div>
+  </section>
+  <section class="later" id="later" aria-labelledby="later-title"><h2 id="later-title">暂停与后续事项</h2><p>以下事项保留记录，不计入上面的 20 项验证进度，也不会因为打开或填写此页而恢复实施。</p>
+   <div class="later-grid">
+    <div class="later-card"><strong>本机 Codex / Claude</strong><span>已有部分实现 · 后续开发与兼容验收暂停</span><p>员工绑定、连续聊天、文件交付和群协作等已有接线及分批证据。完整稳定性与故障矩阵尚未完成；代码、入口、配置、历史和原成功/失败证据保留。</p></div>
+    <div class="later-card"><strong>Pi 与 A2A 外部委托</strong><span>尚未完成接入 · 延后</span><p>Pi 没有独立员工后端。A2A 尚无完整产品接线，后续再考虑由 Mastra 委托外部服务；当前没有自建 Claude / Codex 包装服务。</p></div>
+    <div class="later-card"><strong>五类模型阶段简化</strong><span>优化方向 · 尚未实施</span><p>判断、聊天、执行、汇报、记忆阶段仍保留。暂停本机路线不会自动减少 Mastra 的调用阶段，需依据实际体验再决定怎么简化。</p></div>
+    <div class="later-card"><strong>代码项目与远程扩展</strong><span>独立后续功能 · 当前未完成</span><p>Git 项目、worktree、PR / 合并、专门 AI 审查、远程机器、手机端及对外 MCP / API，不属于当前已完成的产品功能。</p></div>
+   </div>
+   <ul class="boundary-list"><li>PDF / Office 可作为文件接收和保存，未接正文解析、OCR 或页码引用；图片理解依赖模型能力。</li><li>MCP 连接管理、独立 Web Search、Computer、LSP 不能列作已完成入口；本地全文搜索不等于互联网搜索。</li><li>bobo 明确复用指定已有群属于后续扩展；当前组织流程建立新群。</li><li>资料库主页面、独立待处理页面和专用狼人杀已退役；相关现有操作以当前聊天、技能和任务入口为准。</li></ul>
+  </section>
+  <section class="sources" id="sources"><h2>依据与使用说明</h2><p>本页整理既有能力，供本次人工体验记录使用；不会调用模型、操作 BoAI 或改写项目验收状态。页面可离线使用。状态与备注尝试保存在当前浏览器本地；移动文件、换浏览器或清理浏览器数据后，请使用“保存已填写的 HTML”保留副本。导出反馈记录可直接交给 Codex 继续修改。</p>
+   <ul><li><a href="../../spec/5.Mastra能力扩展/10-Mastra主线收口与外部Agent延期.md" target="_blank" rel="noopener">当前 Mastra 主线、验证口径与暂停边界</a></li><li><a href="../../../README.md" target="_blank" rel="noopener">项目使用说明与已有功能</a></li><li><a href="../../spec/2.已实现功能与代码现状/29-员工协作工作视图实施.md" target="_blank" rel="noopener">任务 / 文件 / 员工工作视图</a></li><li><a href="../../spec/13.本机Agent员工运行时/09-Todos目录对照与待补能力.md" target="_blank" rel="noopener">后续独立扩展与能力差异</a></li></ul><p>依据链接指向同仓库的文档；单独拷贝此 HTML 后，清单和记录仍可用，原文链接需保留仓库目录结构。</p>
+  </section>
+  <footer class="footer"><span>BoAI · 人工功能验证 / 2026-10-08</span><span>技术通过、人工结论与后续计划分别记录</span></footer>
+ </main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<noscript>此清单需要浏览器启用 JavaScript 才能展示各项验证内容并保存记录。请在支持 JavaScript 的常规浏览器打开。</noscript>
+<script type="application/json" id="saved-state">{}</script>
+<script>
+'use strict';
+const ITEMS = [
+ {id:1,group:'core',title:'API 模型连接',entry:'设置 → 模型连接',steps:['添加或选择一条可用的 API 连接，填写默认模型。','为测试员工选择该连接及模型，保存配置。','发送一条普通问候，确认能获得实际回复。'],expected:'连接和模型选择可保存；员工使用所选模型回复。失败时给出可理解的信息。',boundary:'本轮选择 Mastra / API 员工。本机 Codex、Claude 连接不属于本轮主线。'},
+ {id:2,group:'core',title:'员工与通讯录管理',entry:'通讯录 → 新建员工 / 编辑配置',steps:['创建一个测试员工，填写姓名、职责并选择 API 模型。','修改头像或职责，保存后检查列表与员工详情。','给员工添加标签，再从通讯录点击“发消息”。'],expected:'员工配置一致显示，能打开对应私聊；标签不会创建重复员工。',example:'测试员工：文档助手；职责：根据材料整理简短说明并交付 Markdown 文件。'},
+ {id:3,group:'core',title:'连续单聊',entry:'会话 → 员工私聊',steps:['发送一个明确问题，观察流式回复。','继续追问上轮内容，不重复提供全部背景。','切换其他页面再返回，检查消息顺序、历史和输入草稿。'],expected:'同一会话能衔接上下文；历史消息不会作为新请求重复办理，回复与当前问题相符。',example:'第一轮：帮我想三个读书会名称。第二轮：采用第二个，再写一句介绍。'},
+ {id:4,group:'core',title:'实际文件交付',entry:'员工私聊 → 文件卡片 → 右侧预览',steps:['明确要求制作并交付一份 Markdown 文件。','等待员工回复，找到对应文件卡片。','打开预览，核对正文是否符合要求，并在会话“文件”中找到它。'],expected:'交付对应真实文件，消息、任务与文件内容一致；Markdown、代码或普通文本按适用格式显示。',example:'请制作并正式交付 welcome.md：包含标题“读书会”、一段简介和三条参与规则。'},
+ {id:5,group:'core',title:'文件修订与采用',entry:'原交付消息的文件卡片 → 修改 / 采用',steps:['从第 4 项的原文件卡发起修改，确认输入框明确引用该版本。','发送具体修改要求，等待新版交付。','查看新旧版本，确认旧版保留，再明确采用需要的版本。'],expected:'新版本符合修改要求；原文件与原消息仍可查阅，采用针对明确版本。只打开预览不会自动采用。',example:'保留标题和简介，将第三条规则改为“每周日分享一段读书笔记”。',boundary:'修订、采用在原聊天办理。右侧文件详情用于查看正文、版本和来源。'},
+ {id:6,group:'core',title:'重启后继续使用',entry:'完整退出应用 → 重新打开 → 原会话',steps:['完成前面的交付和修订，记下当前员工、文件版本与消息。','使用应用“退出”或 Command-Q 完整退出，再重新打开。','检查原记录与版本，再发一条明确新消息继续交流。'],expected:'员工、历史、任务和成果可读；打开历史不会自动重复执行，新消息可以正常继续。',boundary:'macOS 关闭窗口通常不会退出应用。本项重点验证已经完成工作的保留，未完成工作不因重启自动重放。'},
+ {id:7,group:'work',title:'聊天附件与图片',entry:'聊天输入框 → 添加文件 / 图片',steps:['添加一份 TXT / Markdown 和一张图片，检查预览与删除操作。','把附件随消息发给测试员工，要求简述材料中的内容。','在聊天或文件视图重新打开已发送材料。'],expected:'附件与这条消息对应；图片预览和删除可用，正文读取及图像理解与模型能力相符。',boundary:'通用文件可保存和显示卡片；PDF / Office 正文解析与 OCR 尚未接入。'},
+ {id:8,group:'work',title:'任务与文件视图',entry:'会话 → 聊天 / 任务 / 文件；左栏 → 任务',steps:['在完成交付的会话内切换三种视图，检查原草稿与阅读位置。','在全局任务看板或列表按员工、会话、状态筛选。','打开工作、成果或来源消息，核对是否定位正确。'],expected:'展示真实工作目标、状态及文件；存在父子工作时可查看关系。浏览视图不发起新工作。',boundary:'工作详情主要只读。审批、问题补充、文件采用与修订仍回到原消息。'},
+ {id:9,group:'work',title:'普通群聊与协作',entry:'会话 / 通讯录 → 新建群聊',steps:['选择两名 API 员工组成测试群，发送一个共同话题。','用 @ 或引用明确指定其中一名员工回复。','安排一项有先后依赖的小工作，观察分工、文件共享和交付。'],expected:'员工保留独立身份，按当前消息和分工参与；后续工作能依据同伴真实成果完成。',boundary:'群聊不固定要求每名员工回复。普通手动建群不能任意加入核心助手 bobo。'},
+ {id:10,group:'work',title:'bobo 创建团队、组织协作',entry:'bobo 会话；通讯录 → 创建团队',steps:['与 bobo 讨论一个需要分工的需求。','明确要求它组织人员建立新群并开展工作。','检查成员、目标、分工、员工交付与 bobo 汇总，返回原 bobo 会话查看历史。'],expected:'能寻找已有员工或补齐缺员，并建立独立协作群；成员仍在通讯录中独立存在，原 bobo 会话保留。',example:'请组织一名资料整理员和一名写作者，做一份读书会活动方案，在新群中分工并交付 Markdown 文件。',boundary:'已有员工路径有真实完整单例；缺员路径的完整真实效果仍待验。明确复用指定已有群尚属后续扩展。'},
+ {id:11,group:'work',title:'问题补充与命令审批',entry:'原聊天 → 员工问题卡 / 命令审批卡',steps:['遇到员工待补充的问题，选择“回复此问题”并在同一输入框回答。','检查工作是否沿原问题继续，普通新消息是否保持独立。','在测试任务产生命令审批时，查看完整请求并选择允许或拒绝。'],expected:'补充进入对应工作；批准和拒绝结果可追踪，拒绝不会执行该命令。',boundary:'命令执行默认关闭；开启后仍逐次批准。此项不要求为了验证而运行有破坏性的命令。'},
+ {id:12,group:'work',title:'停止与执行过程查看',entry:'员工回复旁执行过程；会话执行 / 工作记录',steps:['让测试员工执行一项可观察过程的工作。','打开执行过程，检查对应员工、轮次、步骤和错误。','通过原执行入口停止一次进行中的测试工作，观察最终状态。'],expected:'过程与所选工作对应；停止最终结束执行，已有交付不会被错误重复发布。',boundary:'普通发送新消息不主动取消当前工作。缺失过程或用量应保持未知，不显示为完整采集或零消耗。'},
+ {id:13,group:'tools',title:'定时任务',entry:'左栏 → 定时任务',steps:['用七项表单手动创建计划，或让 Agent 生成草稿后明确确认。','检查编辑、暂停、日程预览和手动运行。','查看执行历史、结果定位；如需补充信息，从原问题继续。'],expected:'草稿与正式计划分开；一次运行可找到对应记录、任务聊天和结果，暂停阻止后续触发。',boundary:'当前不包含云端、一次性或每月调度。完整退出或休眠后的行为不能按持续在线云服务理解。'},
+ {id:14,group:'tools',title:'数据变化监控与通知',entry:'定时任务 → 检查数据变化 / 通知偏好',steps:['选择指定会话中已发布的同名 JSON 成果，配置变化条件或数值阈值。','用无变化和有符合条件变化的版本分别检查结果。','检查“重要更新 / 每次结果 / 静音”及执行历史中的变化证据。'],expected:'按配置比较真实 JSON 内容；默认无变化时安静，满足条件时记录变化并按通知偏好处理。',boundary:'监控不是任意网站抓取。通知提交回执不等于系统通知已实际送达。'},
+ {id:15,group:'tools',title:'技能管理与员工绑定',entry:'技能 → 本地 / 收藏 / 商城；员工配置 → 技能',steps:['搜索、预览并收藏一项技能，检查收藏分组。','体验目录 / ZIP / 链接导入、更新预览或导出技能库。','到已保存员工的配置中明确绑定技能，再发一项适合该技能的任务。'],expected:'技能内容、来源和收藏可查；明确绑定后才用于对应员工，更新和导出有清楚结果。',boundary:'安装到本机全局技能目录，不自动绑定员工。商城查询与远程安装需要网络。'},
+ {id:16,group:'tools',title:'员工记忆与工作规则',entry:'员工详情 → 记忆 / 系统文件 / 工作区',steps:['查看并编辑工作规则或表达风格，保存后用新消息观察效果。','查看记忆的内容、来源、范围、事项和有效期。','对测试记忆执行编辑、固定或忘记，再检查列表和相关交流。'],expected:'工作规则保存可见；记忆有明确归属与使用范围，忘记后不会继续作为有效记忆使用。',boundary:'不是任意私聊信息都能自动进入群聊；旧记忆范围不会因当前操作自动扩大。'},
+ {id:17,group:'tools',title:'本地全文搜索',entry:'顶栏 → 搜索',steps:['搜索一段已发送聊天的关键词。','用 TXT / Markdown 材料或成果正文中特有的词搜索，再试多个空格分隔的中文词。','添加员工、会话、时间或类型条件，点击结果核对原消息与文件版本。'],expected:'可搜索获准范围内的聊天、消息、材料和成果；命中内容与定位一致，固定旧版不会被新版替代。',boundary:'这是本地关键词搜索，不是互联网搜索或向量语义搜索；超限或尚未索引正文可能不命中。'},
+ {id:18,group:'tools',title:'内置浏览器',entry:'顶栏 → 浏览器；员工网页任务',steps:['从顶栏打开浏览器，正常导航、打开网页和关闭窗口。','需要时在测试网站登录，关闭重开后检查登录保持。','向 API 员工明确提出一项网页任务，观察实际操作与成果来源。'],expected:'应用级浏览器可正常使用和复用；员工网页动作与当前任务相符，成果有可检查来源。',boundary:'人工浏览与真实模型完成网页工作的效果分别判断；登录资料不按员工或会话分配。'},
+ {id:19,group:'settings',title:'个人资料与外观',entry:'左下头像 → 个人资料 / 分享 / 设置 → 外观',steps:['编辑本人名称和头像，检查消息展示。','查看活动统计，尝试保存或复制分享卡片。','切换浅色 / 深色、字体、缩放或背景，检查主要页面阅读和布局。'],expected:'资料保存一致，分享生成本地图片；统计如实说明未知用量，外观在主要页面可正常显示。',boundary:'分享不会自动发布到外部平台。旧消息发送时名称不回写；“快速模式”尚不支持。'},
+ {id:20,group:'settings',title:'数据备份与清理',entry:'设置 → 数据与备份；会话 / 通讯录菜单',steps:['在没有进行中或等待审批的工作时导出备份，检查文件及恢复说明。','对专用测试会话执行清空或删除，核对提示、列表和内容。','对测试群体验解散，检查员工是否仍保留在通讯录。'],expected:'备份可生成且附恢复说明；清空、删除、解散按各自范围生效，其他员工和会话不被误清理。',boundary:'仅用测试数据检查删除；恢复是独立操作，不要求本轮覆盖个人数据。备份不包含 API Key，恢复后需重新配置。'}
+];
+const LABELS = {pending:'待验证',pass:'通过',issue:'需修改',skip:'暂跳过'};
+const STORAGE_KEY = 'boai-manual-validation-20261008-v1:' + location.pathname;
+const $ = id => document.getElementById(id);
+const all = selector => Array.from(document.querySelectorAll(selector));
+const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const blankState = () => ({schema:1,updatedAt:null,env:{version:'',model:'',reviewer:'',note:''},items:{}});
+function normalize(raw) {
+ const out = blankState();
+ if(!raw || raw.schema !== 1) return out;
+ out.updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : null;
+ for(const name of Object.keys(out.env)) if(typeof raw.env?.[name] === 'string') out.env[name] = raw.env[name];
+ for(const item of ITEMS) {
+  const saved=raw.items?.[item.id];
+  out.items[item.id]={status:Object.hasOwn(LABELS,saved?.status) ? saved.status : 'pending',notes:typeof saved?.notes==='string'?saved.notes:'',steps:item.steps.map((_,index)=>saved?.steps?.[index]===true)};
+ }
+ return out;
+}
+let storageAvailable=true, local=null, embedded=null;
+try {embedded=JSON.parse($('saved-state').textContent);}catch{}
+try {local=JSON.parse(localStorage.getItem(STORAGE_KEY));}catch {storageAvailable=false;}
+const embeddedTime=Date.parse(embedded?.updatedAt)||0, localTime=Date.parse(local?.updatedAt)||0;
+let state=normalize(local?.schema===1 && localTime>=embeddedTime ? local : embedded);
+for(const item of ITEMS) state.items[item.id] ||= {status:'pending',notes:'',steps:item.steps.map(()=>false)};
+let currentGroup='all', toastTimer;
+function save() {
+ state.updatedAt=new Date().toISOString();
+ try {localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageAvailable=true;}catch {storageAvailable=false;}
+ showSaveStatus();
+}
+function showSaveStatus() {
+ $('save-status').classList.toggle('error',!storageAvailable);
+ $('save-status').textContent=storageAvailable ? (state.updatedAt ? '已保存到当前浏览器 · '+new Date(state.updatedAt).toLocaleString('zh-CN',{timeZone:'Asia/Singapore',hour12:false})+'（新加坡时间）' : '尚未填写 · 修改后自动保存在当前浏览器，也可保存为独立 HTML 副本') : '浏览器本地保存不可用；当前填写仍在页面中，请用“保存已填写的 HTML”保留记录。';
+}
+function toast(message) {$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
+function renderCards() {
+ $('cards').innerHTML=ITEMS.map(item=>{
+  const saved=state.items[item.id];
+  return `<details class="card ${item.group==='core'?'core':''}" data-id="${item.id}" ${item.id===1?'open':''}><summary><span class="number">${String(item.id).padStart(2,'0')}</span><div class="summary-text"><h3>${escapeHTML(item.title)}</h3><div class="entry">${escapeHTML(item.entry)}</div></div><span class="badge ${saved.status}" data-badge="${item.id}">${LABELS[saved.status]}</span><svg class="chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg></summary><div class="card-body"><div class="card-grid"><div><p class="mini-label">试着这样操作</p><ul class="step-list">${item.steps.map((step,index)=>`<li><label><input type="checkbox" data-item="${item.id}" data-step="${index}" ${saved.steps[index]?'checked':''}><span>${escapeHTML(step)}</span></label></li>`).join('')}</ul></div><div class="expected"><p class="mini-label">应该看到什么</p><p>${escapeHTML(item.expected)}</p></div></div>${item.example?`<div class="example"><strong>可直接使用的示例</strong>${escapeHTML(item.example)}</div>`:''}${item.boundary?`<p class="boundary">范围说明 · ${escapeHTML(item.boundary)}</p>`:''}<div class="record"><label>我的结论<select data-item="${item.id}" data-field="status" aria-label="${escapeHTML(item.title)}：验证结论">${Object.entries(LABELS).map(([value,label])=>`<option value="${value}" ${saved.status===value?'selected':''}>${label}</option>`).join('')}</select><span class="print-note" data-print-status="${item.id}">${LABELS[saved.status]}</span><span class="record-help">勾选步骤不会自动标记通过。<br>“暂跳过”不计入已给出结论。</span></label><label>问题 / 希望怎么改<textarea data-item="${item.id}" data-field="notes" aria-label="${escapeHTML(item.title)}：问题与修改意见" placeholder="实际表现：…&#10;希望改成：…&#10;可补充截图文件名或消息内容">${escapeHTML(saved.notes)}</textarea><span class="print-note" data-print-notes="${item.id}">${escapeHTML(saved.notes||'未填写')}</span></label></div></div></details>`;
+ }).join('');
+ for(const field of all('[data-env]')) field.value=state.env[field.dataset.env];
+}
+function updateMetrics() {
+ const counts={pending:0,pass:0,issue:0,skip:0};
+ for(const item of ITEMS) counts[state.items[item.id].status]++;
+ $('reviewed-count').textContent=`${counts.pass+counts.issue} / ${ITEMS.length}`;
+ $('pass-count').textContent=counts.pass;$('issue-count').textContent=counts.issue;$('pending-count').textContent=counts.pending;
+ $('skip-count').textContent=`暂跳过 ${counts.skip} 项，单独计数`;
+ $('progress-fill').style.width=`${(counts.pass+counts.issue)/ITEMS.length*100}%`;
+}
+function updateExpandLabel(){const cards=all('.card:not([hidden])');$('expand-all').textContent=cards.length && cards.every(card=>card.open)?'收起当前全部':'展开当前全部';$('expand-all').disabled=!cards.length;}
+function applyFilters() {
+ const query=$('search').value.trim().toLocaleLowerCase(), status=$('status-filter').value;
+ let count=0;
+ for(const item of ITEMS){const haystack=[item.id,item.title,item.entry,...item.steps,item.expected,item.boundary||'',item.example||'',state.items[item.id].notes].join(' ').toLocaleLowerCase();const visible=(currentGroup==='all'||item.group===currentGroup)&&(status==='all'||state.items[item.id].status===status)&&(!query||haystack.includes(query));document.querySelector(`.card[data-id="${item.id}"]`).hidden=!visible;if(visible)count++;}
+ $('visible-count').textContent=`显示 ${count} / ${ITEMS.length} 项 · 上方进度统计全部功能`;$('empty').hidden=count!==0;updateExpandLabel();
+}
+function download(content,type,name) {
+ const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+function exportFeedback() {
+ const counts={pending:0,pass:0,issue:0,skip:0};for(const item of ITEMS)counts[state.items[item.id].status]++;
+ const lines=['# BoAI 功能人工验证记录','','功能盘点基线：2026-10-08','导出时间：'+new Date().toLocaleString('zh-CN',{timeZone:'Asia/Singapore',hour12:false})+'（新加坡时间）','','以下是本人填写的人工结论，不替代技术测试或项目验收状态。','',`通过 ${counts.pass} 项；需修改 ${counts.issue} 项；待验证 ${counts.pending} 项；暂跳过 ${counts.skip} 项。`,'','## 验证环境','',`- 版本 / 启动方式：${state.env.version||'未填写'}`,`- 模型：${state.env.model||'未填写'}`,`- 验证人：${state.env.reviewer||'未填写'}`,`- 备注：${state.env.note||'未填写'}`,''];
+ const issues=ITEMS.filter(item=>state.items[item.id].status==='issue');
+ if(issues.length){lines.push('## 优先处理的问题','');for(const item of issues)lines.push(`### ${String(item.id).padStart(2,'0')} ${item.title}`,'',state.items[item.id].notes||'已标记需修改，尚未填写详情。','');}
+ lines.push('## 全部功能记录','');
+ for(const item of ITEMS){const saved=state.items[item.id];lines.push(`### ${String(item.id).padStart(2,'0')} ${item.title} · ${LABELS[saved.status]}`,'',`入口：${item.entry}`,'');item.steps.forEach((step,index)=>lines.push(`- [${saved.steps[index]?'x':' '}] ${step}`));lines.push('',`预期：${item.expected}`,'',`问题 / 修改意见：${saved.notes||'未填写'}`,'');if(item.boundary)lines.push(`范围说明：${item.boundary}`,'');}
+ lines.push('## 暂停与后续范围','','- 本机 Codex / Claude：已有部分实现，后续开发与兼容验收暂停，配置和历史保留。','- Pi：尚无独立后端；A2A：未完成产品接线，延期。','- 五类模型阶段简化：尚未实施。','- Git 项目、worktree、PR / 合并、专门 AI 审查、远程机器、手机端、对外 MCP / API：后续独立扩展。','- PDF / Office 正文解析、OCR、独立 Web Search / Computer / LSP 等不计为已实现。','');
+ download(lines.join('\n'),'text/markdown;charset=utf-8','BoAI-人工验证反馈-2026-10-08.md');toast('已生成反馈文件，请查看浏览器下载记录。');
+}
+function exportHTML() {
+ save();
+ const clone=document.documentElement.cloneNode(true);
+ clone.querySelector('#saved-state').textContent=JSON.stringify(state).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+ clone.querySelector('#toast').hidden=true;
+ const header=Array.from(document.childNodes).filter(node=>node.nodeType===8).map(node=>'<!--'+node.textContent+'-->').join('\n');
+ download('<!doctype html>\n'+header+'\n'+clone.outerHTML,'text/html;charset=utf-8','BoAI-人工验证清单-已填写.html');toast('已生成包含当前记录的 HTML 副本。');
+}
+$('cards').addEventListener('change',event=>{const el=event.target;if(!el.dataset.item)return;const id=Number(el.dataset.item),saved=state.items[id];if(el.dataset.step!==undefined)saved.steps[Number(el.dataset.step)]=el.checked;if(el.dataset.field==='status'){saved.status=el.value;const badge=document.querySelector(`[data-badge="${id}"]`);badge.textContent=LABELS[el.value];badge.className='badge '+el.value;document.querySelector(`[data-print-status="${id}"]`).textContent=LABELS[el.value];updateMetrics();applyFilters();}save();});
+$('cards').addEventListener('input',event=>{const el=event.target;if(el.dataset.field!=='notes')return;state.items[el.dataset.item].notes=el.value;document.querySelector(`[data-print-notes="${el.dataset.item}"]`).textContent=el.value||'未填写';save();});
+for(const field of all('[data-env]'))field.addEventListener('input',()=>{state.env[field.dataset.env]=field.value;save();});
+for(const button of all('[data-group]'))button.addEventListener('click',()=>{currentGroup=button.dataset.group;for(const other of all('[data-group]'))other.setAttribute('aria-pressed',String(other===button));applyFilters();});
+$('search').addEventListener('input',applyFilters);$('status-filter').addEventListener('change',applyFilters);
+$('expand-all').addEventListener('click',()=>{const cards=all('.card:not([hidden])'),open=!cards.every(card=>card.open);for(const card of cards)card.open=open;updateExpandLabel();});
+$('cards').addEventListener('toggle',updateExpandLabel,true);
+$('export-feedback').addEventListener('click',exportFeedback);$('save-html').addEventListener('click',exportHTML);
+let printState;
+window.addEventListener('beforeprint',()=>{printState=all('details').map(card=>({card,open:card.open,hidden:card.hidden}));for(const {card} of printState){card.open=true;card.hidden=false;}$('empty').hidden=true;});
+window.addEventListener('afterprint',()=>{if(!printState)return;for(const item of printState){item.card.open=item.open;item.card.hidden=item.hidden;}printState=null;applyFilters();});
+$('print').addEventListener('click',()=>window.print());
+renderCards();updateMetrics();applyFilters();
+try {const probe=STORAGE_KEY+':probe';localStorage.setItem(probe,'1');localStorage.removeItem(probe);}catch{storageAvailable=false;}
+showSaveStatus();
+</script>
+</body>
+</html>

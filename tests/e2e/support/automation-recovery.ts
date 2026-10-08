@@ -1,9 +1,11 @@
 /*
  * [INPUT]: 独立 Desktop、生产运行时与本地模型协议。
- * [OUTPUT]: 实际写文件后挂起的模型响应、精确结束本场景 utility process 的故障注入。
+ * [OUTPUT]: 实际写文件后挂起、精确结束本场景utility的故障注入及本场子进程退出核对；只读取PID关系，不读取命令行或凭据。
  * [POS]: 自动化中断恢复的隔离支撑；不修改产品调度、存储或工具实现。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { createServer, type ServerResponse } from 'node:http'
 import type { Desktop } from './desktop'
 
@@ -50,4 +52,30 @@ export async function crashAutomationRuntime(runtime: Desktop) {
     if (!worker || worker.type !== 'Utility') throw new Error('The current desktop runtime was not found')
     process.kill(worker.pid, 'SIGKILL')
   })
+}
+
+/** Capture only descendants of this scenario's utility process; never inspect command lines or credentials. */
+export async function runtimeChildProcessIds(runtime: Desktop) {
+  const owner = await runtime.app.evaluate(({ app }) => {
+    const worker = app.getAppMetrics().find(value => value.name === 'BoAI Agent Runtime')
+    if (!worker || worker.type !== 'Utility') throw new Error('本场景 runtime 不存在')
+    return worker.pid
+  })
+  const { stdout } = await promisify(execFile)('ps', ['-axo', 'pid=,ppid='])
+  const rows = stdout.trim().split('\n').map(line => line.trim().split(/\s+/).map(Number))
+  const descendants = new Set([owner])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [pid, parent] of rows) if (descendants.has(parent) && !descendants.has(pid)) { descendants.add(pid); changed = true }
+  }
+  descendants.delete(owner)
+  return [...descendants]
+}
+
+export function processIsRunning(pid: number) {
+  try { process.kill(pid, 0); return true } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false
+    throw error
+  }
 }

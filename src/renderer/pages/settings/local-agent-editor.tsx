@@ -1,5 +1,9 @@
 /*
- * [INPUT]: 扫描预填或已有 ACP 配置草稿、目录加载/来源详情插槽、DesktopApi、未保存守卫和统一兼容接口表单布局。
+ * [OUTPUT]: 本机运行许可归入高级设置并默认勾选；折叠箭头仅使用共享展开旋转，收起向右、展开向下。
+ * [OUTPUT]: 明确原生Codex命令占位使用codex，旧ACP/Claude占位与协议绑定各自保留。
+ * [OUTPUT]: Claude受管参数和无个人登录；测试只显示程序核对，不冒充供应商认证或实际调用成功。
+ * [OUTPUT]: 保留原生Codex协议身份和固定启动参数，复用测试/保存和明确本机授权。
+ * [INPUT]: 扫描预填或已有ACP/明确原生配置草稿、目录加载/来源详情插槽、DesktopApi、未保存守卫和统一兼容接口表单布局。
  * [OUTPUT]: 手动添加仅名称/命令/可选参数列表；扫描配置默认折叠启动信息，登录/来源归入高级设置；自动运行方式、简短显式授权与草稿测试/保存。
  * [POS]: 模型连接页本机 Agent 向导的第二步，不提供独立设置页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -22,7 +26,7 @@ export type LocalAgentDraft = Omit<LaunchProfileInput, 'hostAccessAcknowledged'>
 export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, leading, details, manual = false, pending = false }: {
   api: DesktopApi; initial: LocalAgentDraft; onBack: () => void; onSaved: () => Promise<void>; onWorking: (busy: boolean) => void; leading?: ReactNode; details?: ReactNode; manual?: boolean; pending?: boolean
 }) {
-  const [form, setForm] = useState({ name: initial.name, executable: initial.executable, args: initial.args, codexHome: initial.codexHome ?? '', useExistingLogin: initial.useExistingLogin, acknowledged: Boolean(initial.id) })
+  const [form, setForm] = useState({ name: initial.name, executable: initial.executable, args: initial.args, codexHome: initial.codexHome ?? '', useExistingLogin: initial.useExistingLogin, acknowledged: true })
   const [advanced, setAdvanced] = useState(false)
   const showCommand = manual || !initial.executable
   const codexConfig = !!form.codexHome || /codex/i.test(form.executable)
@@ -37,7 +41,7 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
   const input = (): LaunchProfileInput => {
     if (!form.executable.trim()) { setAdvanced(true); throw new Error('请填写启动命令。') }
     if (!form.acknowledged) throw new Error('请先确认允许此 Agent 在本机运行。')
-    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: initial.localConfigId, name: form.name.trim(), executable: form.executable.trim(), args: form.args, runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin: form.useExistingLogin, codexHome: form.useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
+    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: initial.localConfigId, protocol: initial.protocol, name: form.name.trim(), executable: form.executable.trim(), args: form.args, runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin: form.useExistingLogin, codexHome: form.useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
   }
   const submit = (operation: 'test' | 'save') => {
     if (working || !editor.current?.reportValidity()) return
@@ -47,7 +51,7 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
         const draft = input()
         if (operation === 'test') {
           const verified = await api.request('testLaunchProfileDraft', draft)
-          setFeedback(`测试成功 · ${verified.name} ${verified.version}`)
+          setFeedback(`${initial.protocol === 'claude-cli' ? '程序已核对' : '测试成功'} · ${verified.name} ${verified.version}`)
         } else {
           await api.request('saveLaunchProfile', draft)
           await onSaved()
@@ -56,8 +60,8 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
     })
   }
   const commandFields = <>
-    <ConnectionSettingRow label="启动命令" htmlFor={`${fieldId}-executable`} icon={<Terminal />} hint="填写已安装的 ACP 程序名称或绝对路径，运行方式会自动识别。"><Input id={`${fieldId}-executable`} required value={form.executable} onChange={event => set('executable', event.target.value)} placeholder="例如 codex-acp、claude-code-acp" /></ConnectionSettingRow>
-    <ConnectionSettingRow label="启动参数" icon={<List />} hint="可选；每项为一个参数，可包含空格，无需添加引号。">
+    <ConnectionSettingRow label="启动命令" htmlFor={`${fieldId}-executable`} icon={<Terminal />} hint="填写已安装程序的名称或绝对路径，运行方式会自动识别。"><Input id={`${fieldId}-executable`} required value={form.executable} onChange={event => set('executable', event.target.value)} placeholder={initial.protocol === 'claude-cli' ? '例如 claude，或程序绝对路径' : initial.protocol === 'codex-app-server' ? '例如 codex，或程序绝对路径' : '例如 codex-acp、claude-code-acp'} /></ConnectionSettingRow>
+    {(!initial.protocol || initial.protocol === 'acp') && <ConnectionSettingRow label="启动参数" icon={<List />} hint="可选；每项为一个参数，可包含空格，无需添加引号。">
       <div className="flex min-w-0 flex-col items-start gap-2">
         {form.args.map((arg, index) => <InputGroup key={index}>
           <InputGroupInput aria-label={`参数 ${index + 1}`} value={arg} onChange={event => set('args', form.args.map((value, i) => i === index ? event.target.value : value))} placeholder="例如 --experimental-acp" />
@@ -65,7 +69,7 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
         </InputGroup>)}
         <Button type="button" variant="ghost" size="sm" disabled={form.args.length >= 32} onClick={() => set('args', [...form.args, ''])}><Plus />添加参数</Button>
       </div>
-    </ConnectionSettingRow>
+    </ConnectionSettingRow>}
   </>
   return <ConnectionForm ref={editor} disabled={working} onSubmit={event => { event.preventDefault(); submit('save') }} footer={<>
       <Button type="button" variant="ghost" disabled={working} onClick={() => guard.navigate(onBack, { resetOnDiscard: false })}><ArrowLeft />返回</Button>
@@ -80,19 +84,19 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
     <ConnectionSettingRow label="Agent 名称" htmlFor={`${fieldId}-name`} icon={<Pencil />}><Input id={`${fieldId}-name`} autoFocus required maxLength={100} value={form.name} onChange={event => set('name', event.target.value)} placeholder="为这个 Agent 起个名字" /></ConnectionSettingRow>
     {showCommand && commandFields}
     <Collapsible open={advanced} onOpenChange={setAdvanced}>
-      <CollapsibleTrigger render={<Button type="button" variant="ghost" className="w-full justify-between px-0" />} disabled={working}>高级设置<ChevronRight className={advanced ? 'rotate-90' : undefined} /></CollapsibleTrigger>
+      <CollapsibleTrigger render={<Button type="button" variant="ghost" className="w-full justify-between px-0" />} disabled={working}>高级设置<ChevronRight /></CollapsibleTrigger>
       <CollapsibleContent><div className="soft-divide-y">
         {!showCommand && commandFields}
-        <ConnectionSettingRow label="登录与配置" htmlFor={`${fieldId}-login`} icon={<Key />}>
+        {initial.protocol === 'claude-cli' ? <p className="field-hint py-3">这里只核对程序版本，不读取订阅登录或调用模型。创建员工时选择兼容API连接与模型。</p> : <ConnectionSettingRow label="登录与配置" htmlFor={`${fieldId}-login`} icon={<Key />}>
           <label className="flex min-h-9 items-center gap-2"><Checkbox id={`${fieldId}-login`} checked={form.useExistingLogin} onCheckedChange={checked => set('useExistingLogin', checked)} /><span>使用本机已有配置</span></label>
-        </ConnectionSettingRow>
+        </ConnectionSettingRow>}
         {form.useExistingLogin && codexConfig && <ConnectionSettingRow label="Codex 配置目录" htmlFor={`${fieldId}-home`} icon={<FolderOpen />} hint="仅 Codex 需要；留空使用默认目录，扫描时会自动填写。"><Input id={`${fieldId}-home`} value={form.codexHome} onChange={event => set('codexHome', event.target.value)} placeholder="使用默认目录" /></ConnectionSettingRow>}
         {details}
+        <div className="flex items-center gap-2 py-3">
+          <label className="flex items-center gap-2 text-sm"><Checkbox id={`${fieldId}-access`} required checked={form.acknowledged} onCheckedChange={checked => set('acknowledged', checked)} /><span>允许此 Agent 在本机运行</span></label>
+          <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="本机运行说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>可访问本机文件、网络和自己的工具；BoAI 仅能审批程序通过协议发来的请求。</TooltipContent></Tooltip>
+        </div>
       </div></CollapsibleContent>
     </Collapsible>
-    <div className="flex items-center gap-2 py-3">
-      <label className="flex items-center gap-2 text-sm"><Checkbox id={`${fieldId}-access`} required checked={form.acknowledged} onCheckedChange={checked => set('acknowledged', checked)} /><span>允许此 Agent 在本机运行</span></label>
-      <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="本机运行说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>可访问本机文件、网络和自己的工具；BoAI 仅能审批程序通过协议发来的请求。</TooltipContent></Tooltip>
-    </div>
   </ConnectionForm>
 }

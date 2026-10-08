@@ -1,9 +1,13 @@
 /*
+ * [OUTPUT]: Claude成果修订使用同一版本/请求合同，受理前核对明确API来源和已验证本机程序。
+ * [OUTPUT]: 未提交发布保留精确相对路径/hash/来源指纹，禁止历史导入；登记与准备记录清除同事务，清理沿原hash门禁。
+ * [OUTPUT]: 原生Codex修订沿原成果版本与新根Work，事务核对已验证连接；旧ACP仍保持任务限制。
  * [INPUT]: 宿主复制时 hash 的已发布原件/明确来源绑定、ProductStore 事务、用户修订/采用/显式待验收与事务内材料来源校验。
  * [OUTPUT]: 修订目标沿固定核心身份复用未选择连接时的首个有效默认，显式失效选择不回退；发布保留宿主真实浏览器有界来源； 正文索引保持严格 UTF-8 TXT/MD，独立预览核对同次 hash 字节支持 Markdown/代码/纯文本；固定本人/版/hash 的显式待验收资格与原事务终结/最小清理回执；独立成果链、核验字节供工具读取、用户修订/幂等采用及安全清理与仅核对恢复。
  * [POS]: workspaces 的成果持久权威；不按同名关联，不改 Work 结果/预算，不执行模型或继承旧审核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { resolveClaudeRuntime } from '../backends/runtime-config'
 import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, open, realpath, unlink } from 'node:fs/promises'
@@ -11,6 +15,7 @@ import { isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import { isCoreAgent } from '../../../shared/domain/core-agent'
 import type { AgentRun, Connection, Conversation, DigitalAgent, Message, WorkItem } from '../../../shared/domain'
 import type { MaterialReadRef } from '../../../shared/domain/materials'
+import type { LaunchProfile } from '../../../shared/domain/backends'
 import { previewFile } from '../../../shared/domain/file-preview'
 import { ARTIFACT_LIMITS, type ArtifactAcceptance, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAcceptanceStatus, type ArtifactAdoptionCurrent, type ArtifactAdoptionEvent, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactAdoptionState, type ArtifactPreview, type ArtifactPublication, type ArtifactRegistration, type ArtifactRevisionInput, type ArtifactRevisionPrepared, type ArtifactRevisionRequest, type ArtifactRevisionSource, type ArtifactVersion } from '../../../shared/domain/artifacts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
@@ -19,6 +24,7 @@ import { contained, MAX_FILE_BYTES } from './file-access'
 interface Tombstone { id: string; conversationId: string; fingerprint: string; cleared?: boolean }
 type StoredArtifact = ArtifactPublication & Partial<ArtifactVersion>
 interface Cleanup { id: string; conversationId: string; managedRelativePath: string; contentHash: string; status: 'pending' | 'conflict'; error?: string }
+interface PublicationIntent { id: string; conversationId: string; managedRelativePath: string; contentHash: string; fingerprint: string }
 interface Options {
   validateSources?(refs: MaterialReadRef[], agentId: string | undefined, conversationId: string, tx: RecordTransaction): Promise<void>
   checkpoint?(stage: 'after-read' | 'before-adoption-commit' | 'before-acceptance-commit' | 'before-cleanup', id: string): Promise<void>
@@ -69,6 +75,15 @@ export class ArtifactRepository {
     const conversation = await this.conversation(tx, conversationId), agent = await tx.get<DigitalAgent>('agents', identifier(agentId))
     if (!agent?.active || !conversation.agentIds.includes(agent.id)) throw new Error('请明确选择当前聊天中可执行的员工')
     if (agent.executionBackend?.kind === 'acp-local') throw new Error('首批成果修订不支持外部 ACP 员工')
+    if (agent.executionBackend?.kind === 'claude-local') {
+      resolveClaudeRuntime(agent, await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId), await tx.get<Connection>('connections', agent.connectionId))
+      return agent
+    }
+    if (agent.executionBackend?.kind === 'codex-local') {
+      const profile = await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId)
+      if (profile?.protocol !== 'codex-app-server' || !profile.verified) throw new Error('请先测试修订员工的本机 Codex 连接')
+      return agent
+    }
     const connection = !agent.connectionId && isCoreAgent(agent)
       ? (await tx.list<Connection>('connections')).find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))
       : await tx.get<Connection>('connections', agent.connectionId)
@@ -150,6 +165,28 @@ export class ArtifactRepository {
     })
   }
 
+  private publicationFingerprint(publication: ArtifactPublication, binding: ArtifactRegistration, managedRelativePath: string) {
+    return digest(JSON.stringify([publication.id, binding.conversationId, managedRelativePath, publication.name, publication.contentHash, publication.size, publication.ownerAgentId, publication.runId ?? null, binding.sourceWorkId, binding.sourceMessageId, binding.revisionRequestId]))
+  }
+
+  async preparePublication(tx: RecordTransaction, publication: ArtifactPublication, binding: ArtifactRegistration): Promise<void> {
+    const conversation = await this.conversation(tx, binding.conversationId), id = identifier(publication.id ?? '')
+    if (publication.conversationId && publication.conversationId !== conversation.id) throw new Error('成果发布聊天不一致')
+    if (!publication.contentHash || !/^[0-9a-f]{64}$/.test(publication.contentHash)) throw new Error('成果发布缺少宿主复制时的内容身份')
+    const author = publication.ownerAgentId ? await tx.get<DigitalAgent>('agents', identifier(publication.ownerAgentId)) : undefined
+    if (!author?.active || !conversation.agentIds.includes(author.id)) throw new Error('成果作者不是当前聊天中的有效成员')
+    const location = await this.location(conversation.id, publication.path, undefined, true)
+    const intent: PublicationIntent = { id, conversationId: conversation.id, managedRelativePath: location.managedRelativePath, contentHash: publication.contentHash, fingerprint: this.publicationFingerprint(publication, binding, location.managedRelativePath) }
+    if (await tx.get('artifacts', id)) throw new Error('成果发布身份已经提交')
+    const existing = await tx.get<PublicationIntent>('artifactPublicationIntents', id)
+    if (existing && existing.fingerprint !== intent.fingerprint) throw new Error('成果发布准备身份已用于不同内容或来源')
+    await tx.put(record('artifactPublicationIntents', intent))
+  }
+
+  async pendingPublicationPaths(conversationId: string): Promise<Set<string>> {
+    return new Set((await this.store.load<PublicationIntent>('artifactPublicationIntents')).filter(value => value.conversationId === identifier(conversationId)).map(value => value.managedRelativePath))
+  }
+
   async register(tx: RecordTransaction, publication: ArtifactPublication, binding: ArtifactRegistration): Promise<ArtifactVersion> {
     const conversation = await this.conversation(tx, binding.conversationId), artifactId = identifier(publication.id ?? randomUUID())
     if (publication.conversationId && publication.conversationId !== conversation.id) throw new Error('成果发布聊天不一致')
@@ -179,6 +216,8 @@ export class ArtifactRepository {
     }
     const actual = await this.bytes(conversation.id, artifactId, publication.path)
     if (publication.contentHash !== actual.contentHash) throw new ContentError('成果发布后已被外部修改，原文件已保留')
+    const intent = await tx.get<PublicationIntent>('artifactPublicationIntents', artifactId)
+    if (intent && intent.fingerprint !== this.publicationFingerprint(publication, binding, actual.managedRelativePath)) throw new Error('成果与复制前登记的发布身份不一致')
     const existing = await tx.get<StoredArtifact>('artifacts', artifactId)
     if (existing?.conversationId && existing.conversationId !== conversation.id) throw new Error('成果发布身份已属于另一聊天')
     if (existing && known(existing)) {
@@ -193,6 +232,7 @@ export class ArtifactRepository {
     const filePreview = previewFile(artifact.name, actual.bytes)
     if (filePreview.kind === 'unsupported') { artifact.contentStatus = 'unsupported'; artifact.contentError = filePreview.reason }
     await tx.put(record('artifacts', artifact))
+    await tx.remove('artifactPublicationIntents', artifactId)
     if (previous) await this.finishFamilyAcceptances(tx, logicalArtifactId, 'superseded')
     return clone(artifact)
   }
@@ -202,6 +242,7 @@ export class ArtifactRepository {
     if (!publication.name || /[\\/:\0]/.test(publication.name)) throw new Error('成果名称无效')
     // Keep bounded historical metadata visible even when its original is now a link or missing.
     const location = await this.location(conversationId, publication.path, undefined, true, false)
+    if ((await tx.list<PublicationIntent>('artifactPublicationIntents')).some(value => value.conversationId === conversationId && value.managedRelativePath === location.managedRelativePath)) throw new Error('未提交的发布原件不能登记为历史成果')
     const existing = publication.id ? await tx.get<StoredArtifact>('artifacts', identifier(publication.id)) : (await tx.list<StoredArtifact>('artifacts')).find(value => value.conversationId === conversationId && value.managedRelativePath === location.managedRelativePath)
     if (existing?.conversationId && existing.conversationId !== conversationId) throw new Error('历史成果身份已属于另一聊天')
     if (existing && known(existing)) { if (existing.managedRelativePath !== location.managedRelativePath) throw new Error('历史成果身份已绑定另一原件'); return clone(existing) }
@@ -461,6 +502,10 @@ export class ArtifactRepository {
 
   async invalidateConversation(tx: RecordTransaction, conversationId: string): Promise<void> {
     identifier(conversationId)
+    for (const intent of (await tx.list<PublicationIntent>('artifactPublicationIntents')).filter(value => value.conversationId === conversationId)) {
+      await tx.put(record('artifactCleanups', { id: intent.id, conversationId, managedRelativePath: intent.managedRelativePath, contentHash: intent.contentHash, status: 'pending' } satisfies Cleanup))
+      await tx.remove('artifactPublicationIntents', intent.id)
+    }
     for (const artifact of (await tx.list<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId)) {
       if (known(artifact) && artifact.contentHash && artifact.managedRelativePath) await tx.put(record('artifactCleanups', { id: artifact.id, conversationId, managedRelativePath: artifact.managedRelativePath, contentHash: artifact.contentHash, status: 'pending' } satisfies Cleanup))
       await tx.remove('artifacts', artifact.id)

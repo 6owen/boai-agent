@@ -1,0 +1,1346 @@
+{
+  "kind": "Claude-current-dependency-private-report-explicit-off",
+  "createdAt": "2026-10-06T12:02:13.617881+00:00",
+  "fullGoalComplete": false,
+  "humanReview": "pending",
+  "policyVersion": 10,
+  "originalLimits": {
+    "maxOutputTokens": 16000,
+    "privatePhaseMs": 120000
+  },
+  "batches": [
+    {
+      "name": "source-1",
+      "counts": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T11:51:47.912Z",
+        "duration": 246779.81999999998,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "frozenFiles": 881,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-SbPKXF/manifest.json",
+            "sha256": "79573af30a4755576fd59c867c34748f7265adbea0f437abb0c3086b7dc1040c",
+            "bytes": 6699
+          },
+          "gaps": []
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/manifest.json",
+            "sha256": "08990657266b67fbddf160cc07d322e43d66a7533418af402aa7e583db56db77",
+            "bytes": 29275
+          },
+          "gaps": [],
+          "actualState": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/026-Claude核心最终状态含失败.json",
+            "sha256": "5d88814bf56255b2bf2bf0d883980ff1f2438352c941aebc656bf0dd78029281",
+            "bytes": 93435
+          },
+          "budgets": [
+            {
+              "id": "budget-2b6711d073b6c616470f7c3db0ec1a3b5dbd060ff65470572eb1b7b9429bdc1e",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 128561,
+                "outputTokens": 12294,
+                "totalTokens": 140855
+              },
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T11:56:58.368Z"
+            }
+          ],
+          "works": [
+            {
+              "id": "work-24c0ceb126b271e99e226ce7bc96a8b969d8a4d6fd58b821c14a3785e0c81ff5",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-0388e8aa9ab309325434842c45057ceda76291421a9721ebb77c841485dc83ad",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-75d2b5b47860944f8e1edf28859af3b0b36df629faffe9ebdf11540481970349",
+              "status": "delivered",
+              "ownerAgentId": "3ee9a069-dc32-422a-ae7f-02a0056e48b7",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "reports": [
+            {
+              "id": "7bffca87-499f-4eb3-9b8f-4c2e1c9bbf60",
+              "runId": "70daa3a9-b393-4b1e-8af3-ebda42e14ef1",
+              "usage": {
+                "inputTokens": 4068,
+                "outputTokens": 2487,
+                "totalTokens": 6555
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "snapshotNote": "Original exported state. A failed case does not prove restart; pre-cleanup running records stay running."
+        }
+      ]
+    },
+    {
+      "name": "package-1",
+      "counts": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T11:56:17.858Z",
+        "duration": 346066.152,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "frozenFiles": 881,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-HnCs2H/manifest.json",
+            "sha256": "7aee349808274d3d613e065b98d9eb2d5abefdbd6aa51f08ec4505199709bbdb",
+            "bytes": 6700
+          },
+          "gaps": []
+        },
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "manifest": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/manifest.json",
+            "sha256": "55a5489a3c6e7ce1e58f435ca93fa70c2422a72ce74214b86e441f637bfa7b0f",
+            "bytes": 29278
+          },
+          "gaps": [],
+          "actualState": {
+            "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/026-Claude核心最终状态含失败.json",
+            "sha256": "cb06c9e12a50e57bebfd08a7bd48274208070a19b21d757b4b0e206a060252b1",
+            "bytes": 96284
+          },
+          "budgets": [
+            {
+              "id": "budget-4e4443424f98fcf473a1c8cef1d253f23f4e99267794be31816bc1e8ba3b4775",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 142565,
+                "outputTokens": 10706,
+                "totalTokens": 153271
+              },
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T12:01:31.707Z"
+            }
+          ],
+          "works": [
+            {
+              "id": "work-17aa66195d6c1aeecacbdc40d56ae53fdbe78373697e234d01a65c934b82a0a9",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-4dabab2744a5110265caff82ce818d4326d4b5cca758a7736a9b43520c8b0c24",
+              "status": "delivered",
+              "ownerAgentId": "bobo",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-15ac2938bae7c4714c260d6a4005171842691eb37841900fdec5adfcac627cfd",
+              "status": "delivered",
+              "ownerAgentId": "25eb0dcb-ba8d-4ae9-a175-e086ea8deb45",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "reports": [
+            {
+              "id": "103457a9-dc14-4930-a628-87d10441105c",
+              "runId": "7685b745-756e-415f-a564-6c53d89c065f",
+              "usage": {
+                "inputTokens": 4173,
+                "outputTokens": 686,
+                "totalTokens": 4859
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "snapshotNote": "Original exported state. A failed case does not prove restart; pre-cleanup running records stay running."
+        }
+      ],
+      "packageFiles": 3405
+    }
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-SbPKXF/manifest.json",
+      "sha256": "79573af30a4755576fd59c867c34748f7265adbea0f437abb0c3086b7dc1040c",
+      "bytes": 6699
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/manifest.json",
+      "sha256": "08990657266b67fbddf160cc07d322e43d66a7533418af402aa7e583db56db77",
+      "bytes": 29275
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/026-Claude核心最终状态含失败.json",
+      "sha256": "5d88814bf56255b2bf2bf0d883980ff1f2438352c941aebc656bf0dd78029281",
+      "bytes": 93435
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-source-1-20261006.png",
+      "sha256": "50a6333d59ba6ec55b133bed7e808bbc114800c8118f3c64244081769a29e1b4",
+      "bytes": 313144
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-source-1-20261006.capture.json",
+      "sha256": "c56757a8a68bc54a233712ebf21027e39c4527e0126e307412fa1dc13d544362",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/024-重启后Claude群和原记录保持.native.png",
+      "sha256": "50a6333d59ba6ec55b133bed7e808bbc114800c8118f3c64244081769a29e1b4",
+      "bytes": 313144
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/025-重启后Claude群和原记录保持.capture.json",
+      "sha256": "c56757a8a68bc54a233712ebf21027e39c4527e0126e307412fa1dc13d544362",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/build-manifest.json",
+      "sha256": "1bdddb2cd89194442c6efcec40a05bde0fa13b0fa949eb063c39ea66532d77ad",
+      "bytes": 101485
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/freeze-verification.json",
+      "sha256": "764e41aaac8191de759d82ba6c4ef816c49bb8146a5da0abfe3f63b707b4423e",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1/playwright-results.json",
+      "sha256": "e3dafad64020aebf7b725cac9e9e9628b78b2e1911bdff5a8e3505f06cb03c68",
+      "bytes": 81960
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/checks.json",
+      "sha256": "e6c703ca03be9bbea0eade114887fc6be3315b043aaf17cda6d6f8de5612da4a",
+      "bytes": 427219
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/manifest.json",
+      "sha256": "6121568acc2fc28c86c654a596d0abb52100ede9b21ce7046fe14e3778e7476f",
+      "bytes": 1262
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/index.html",
+      "sha256": "87335877d9577a72da3314605dd3652d911c95c12e87e02a71ee1f4c098853da",
+      "bytes": 436126
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0001-0bac813bc05907a2.png",
+      "sha256": "0bac813bc05907a2bc9b3bb00c666a195d697ab7173060a39bee72f923152930",
+      "bytes": 193600
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0002-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0004-fe42932010480dfc.json",
+      "sha256": "fe42932010480dfcb723b203634cdc96515a77a17c06b847bfcb01e77b840756",
+      "bytes": 808
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0005-feee2a8625e32e35.png",
+      "sha256": "feee2a8625e32e352ff8bccdf34a988cfa208896d920bc966bc10be7e60df0db",
+      "bytes": 205106
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0006-3916120a174a060b.json",
+      "sha256": "3916120a174a060b35d2c02eb9a12c3ac2c68968b47f53caabb962e00b5ab0b2",
+      "bytes": 18695
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0007-c289bd2e597ea7d7.json",
+      "sha256": "c289bd2e597ea7d7423086fe844adbe70c2f486c43e13b2fd01de5a90064251f",
+      "bytes": 33974
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0008-a77e41080ed7d08c.png",
+      "sha256": "a77e41080ed7d08c45a5f179b30902f76abd9c4753467d20bac74832214fca90",
+      "bytes": 254918
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0009-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0010-3068bc9454a2b7a2.png",
+      "sha256": "3068bc9454a2b7a2b3beba6cd20cf50c18362d124ba42297457a6b43a3a4c962",
+      "bytes": 301922
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0011-01a079461e54f5b0.json",
+      "sha256": "01a079461e54f5b0ad9d91ef3fba1ed7f42bd4d25eb1f5963752e32844df0819",
+      "bytes": 40392
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0012-3068bc9454a2b7a2.png",
+      "sha256": "3068bc9454a2b7a2b3beba6cd20cf50c18362d124ba42297457a6b43a3a4c962",
+      "bytes": 301922
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0013-50ad21c368ee7d53.png",
+      "sha256": "50ad21c368ee7d53647b25a5ad86693b37916277f082c85eb03082be03a44c48",
+      "bytes": 104684
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0014-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0015-38e7cffb7058ebc7.png",
+      "sha256": "38e7cffb7058ebc7560cf69b83b412e3328c3b12b15cd320f530ab8645c1a5f2",
+      "bytes": 197026
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0016-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0017-79a27dcc8c8468be.png",
+      "sha256": "79a27dcc8c8468beac1359d70e74e73552d0397bb82acd33fa3cee83949b4f8a",
+      "bytes": 292800
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0018-9df994c8bd5dcc22.download",
+      "sha256": "9df994c8bd5dcc22431079a19b04c19f2d85afb31a5283ef4622f8fc805ef750",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0019-747d11520354e828.json",
+      "sha256": "747d11520354e82802f256e88319063f4d526ac48362f980127d5836af159f1b",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0020-f07f7fa046325932.png",
+      "sha256": "f07f7fa046325932355d9c10a2aa71c150c87e3c078874e6946f3b65eb97c172",
+      "bytes": 288852
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0021-d41ed012ab30f2e2.download",
+      "sha256": "d41ed012ab30f2e2e595e8d8545ff200d721b2270cdf136ffc9ab82bd649eba8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0022-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0023-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0024-ba9cf796f7c8bcbf.json",
+      "sha256": "ba9cf796f7c8bcbf5d062c75778d7e9ab077a44264300381cea75d1e654a8e95",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0025-d9d8465f3a87245d.png",
+      "sha256": "d9d8465f3a87245de607ba9f7cad57886d5cb635ea2eabc318295220f768ca82",
+      "bytes": 133090
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0026-a1cafe1c444285d8.download",
+      "sha256": "a1cafe1c444285d87c94fe14eaf33081f8032bb39b7c709be4097db50c41844d",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0027-5d88814bf56255b2.json",
+      "sha256": "5d88814bf56255b2bf2bf0d883980ff1f2438352c941aebc656bf0dd78029281",
+      "bytes": 93435
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0028-34609e3348b84fec.md",
+      "sha256": "34609e3348b84fec0b18bb20c5b947944c57cd2cce05965f463ea22719569a9e",
+      "bytes": 15
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0029-9e13ab260be076bf.md",
+      "sha256": "9e13ab260be076bf53f375084e566775b78fbee9feda9aa4653df0187395a92b",
+      "bytes": 51
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0030-837aabeb5911cbd2.json",
+      "sha256": "837aabeb5911cbd2fab81f16f59ba0650c1d00eefc9bbefb60dc59a453330831",
+      "bytes": 55321
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0031-538627ff653a1835.png",
+      "sha256": "538627ff653a183507bdc005c75f1645c00e9e7ea8022d3f6338ca942cbacb11",
+      "bytes": 383661
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0032-7f024859e16017f0.download",
+      "sha256": "7f024859e16017f01736a7c1850c365826acde2df450ba39636447896d1967a0",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0033-a71c4d42d2ec61f2.png",
+      "sha256": "a71c4d42d2ec61f28e1a1dfae46b788357e997743da75b5663cf165c6ad2a719",
+      "bytes": 317128
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0034-728f91691ba85b71.download",
+      "sha256": "728f91691ba85b71ffb65c8d9a48b5bed8d78a0794a83b7b97f24d309becb042",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0035-72c092f31e49021f.png",
+      "sha256": "72c092f31e49021fbaf50b910f9e896b1156b0e3148ed0129fd4524dc46ec023",
+      "bytes": 317152
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0036-50a6333d59ba6ec5.png",
+      "sha256": "50a6333d59ba6ec55b133bed7e808bbc114800c8118f3c64244081769a29e1b4",
+      "bytes": 313144
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0037-c56757a8a68bc54a.download",
+      "sha256": "c56757a8a68bc54a233712ebf21027e39c4527e0126e307412fa1dc13d544362",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0038-5d88814bf56255b2.json",
+      "sha256": "5d88814bf56255b2bf2bf0d883980ff1f2438352c941aebc656bf0dd78029281",
+      "bytes": 93435
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1-report/resources/0039-5b46ce1688b8312e.png",
+      "sha256": "5b46ce1688b8312e3b4aae8e46f8d9d5abcc873e75f974e0855a8eb5d29c6d41",
+      "bytes": 312983
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-HnCs2H/manifest.json",
+      "sha256": "7aee349808274d3d613e065b98d9eb2d5abefdbd6aa51f08ec4505199709bbdb",
+      "bytes": 6700
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/manifest.json",
+      "sha256": "55a5489a3c6e7ce1e58f435ca93fa70c2422a72ce74214b86e441f637bfa7b0f",
+      "bytes": 29278
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/026-Claude核心最终状态含失败.json",
+      "sha256": "cb06c9e12a50e57bebfd08a7bd48274208070a19b21d757b4b0e206a060252b1",
+      "bytes": 96284
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-package-1-20261006.png",
+      "sha256": "0b58e82d1287f51e4731e9fb382c37ddb0b90fad1728891ec3eb9016d110e1ec",
+      "bytes": 342601
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-package-1-20261006.capture.json",
+      "sha256": "0dfa7644a5572bf66615f1ba1cee2e1861c7c66e0565174dcc702ad12d7b9f27",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/024-重启后Claude群和原记录保持.native.png",
+      "sha256": "0b58e82d1287f51e4731e9fb382c37ddb0b90fad1728891ec3eb9016d110e1ec",
+      "bytes": 342601
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/025-重启后Claude群和原记录保持.capture.json",
+      "sha256": "0dfa7644a5572bf66615f1ba1cee2e1861c7c66e0565174dcc702ad12d7b9f27",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/build-manifest.json",
+      "sha256": "4c21afab8f11443b43a768f53b4df05b16252a7f37956a7e1445eb05041c9a6d",
+      "bytes": 101485
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/freeze-verification.json",
+      "sha256": "76560558a2b30c4d04ba820fe5710bd8da416d6425fa0dee1b361506339f50c4",
+      "bytes": 103
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/playwright-results.json",
+      "sha256": "4b81cac46f218e59f28e87257fd40387a0b62352767c1d8de473e3d0ba5390fd",
+      "bytes": 82004
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/checks.json",
+      "sha256": "79ddd1fec70597afe5e8074018b01f8fde7bf4e44e5f8b63925e62af21b6e02f",
+      "bytes": 433749
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/manifest.json",
+      "sha256": "a341415d671d0a6599ac27b22aa129bb66b261b736666f48d78600360cb080b9",
+      "bytes": 1264
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/index.html",
+      "sha256": "bc772d296eb8484ab9784aed671777632c698f90f0fe998f626f04372489a359",
+      "bytes": 442657
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0001-6ff1c93c38ed1808.png",
+      "sha256": "6ff1c93c38ed180888afeb21b3cb529f4ec48a408a23a9f4834c1625573998d5",
+      "bytes": 193711
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0002-931526d0f03564ac.png",
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee",
+      "bytes": 242144
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+      "bytes": 31
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0004-22b5d82d18f0e3e3.json",
+      "sha256": "22b5d82d18f0e3e3f906e6debbe1d0ae445b9a666e8ce1b2543d946f09d536eb",
+      "bytes": 808
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0005-5fe12fadd8da55e9.png",
+      "sha256": "5fe12fadd8da55e9d88d5eb23431871e0b3866d47dbde7f2eda8a610b1b62efd",
+      "bytes": 204873
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0006-5dfd89ac0ec65b73.json",
+      "sha256": "5dfd89ac0ec65b730ea4d56a5f60a3f5e7ee7c4388ed147a026c588637c8eb9a",
+      "bytes": 18691
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0007-010b025d8f6b9488.json",
+      "sha256": "010b025d8f6b9488e06c94d625ecf50bc5951038164904efabdba5e6586acc18",
+      "bytes": 33972
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0008-f4de1bcb7fc18f46.png",
+      "sha256": "f4de1bcb7fc18f464e8579ff45f58726eadcaf228b75be130fcc8643ffd3f87d",
+      "bytes": 254728
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0009-4d5e4dc3163b83c6.md",
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af",
+      "bytes": 38
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0010-a268c84c14a177d8.png",
+      "sha256": "a268c84c14a177d87c15dcf0782f5b45d19cb7579eab4ca809abf5c8084ed7a2",
+      "bytes": 298730
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0011-b788520f10c8993e.json",
+      "sha256": "b788520f10c8993ec6deb41ac72303aca683cc9693869aff1e44709c1bc05933",
+      "bytes": 40031
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0012-a268c84c14a177d8.png",
+      "sha256": "a268c84c14a177d87c15dcf0782f5b45d19cb7579eab4ca809abf5c8084ed7a2",
+      "bytes": 298730
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0013-3c11f2e109d61af1.png",
+      "sha256": "3c11f2e109d61af15eacfbb2c12c71567ffcab552ffc935c6da72e910d4d03cc",
+      "bytes": 104758
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0014-9664532b21f856f5.json",
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b",
+      "bytes": 71
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0015-70defc488124d242.png",
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2",
+      "bytes": 197143
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0016-9a31bae2312de4b9.png",
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4",
+      "bytes": 279016
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0017-2925a5fdf9a48b07.png",
+      "sha256": "2925a5fdf9a48b07b14674b3e64887b4abaf10763b3a892bef5ed4c15bd606fe",
+      "bytes": 292839
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0018-873236f203d3e6ce.download",
+      "sha256": "873236f203d3e6ce384fa47114a77b0bec0a1351e346a465b09c7e20210b4b71",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0019-e4944f19be1d0469.json",
+      "sha256": "e4944f19be1d04696db6052f27a263a8d4f756fd9fc60fc44c223dd4cb4d93bf",
+      "bytes": 699
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0020-a9a48cf0cc8e0e38.png",
+      "sha256": "a9a48cf0cc8e0e38cf93b66eb8e4121948e0f0d3c35979a5b53a3e635eb5c71c",
+      "bytes": 289195
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0021-5ba9fab1401c50ec.download",
+      "sha256": "5ba9fab1401c50ec25bd37d3dbbd659aac426b73a9ddd8ee69a703ad843ff343",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0022-b67431dce59ba313.png",
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b",
+      "bytes": 203105
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0023-6f434a926d8d59bf.download",
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0024-6e1e920ae9977b67.json",
+      "sha256": "6e1e920ae9977b67fcfa0da7e0a407b1138b9c247b56000d9180b1f6e2a087c7",
+      "bytes": 10746
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0025-e4cd6e43e6e9e3c5.png",
+      "sha256": "e4cd6e43e6e9e3c535c80fc3f32f89a2a89858381acd125991bf292d73a1fed9",
+      "bytes": 133001
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0026-38ca180a08110e5e.download",
+      "sha256": "38ca180a08110e5e131c813d6f0670e90aabca243de294fd76a7e1eb7cc6a8e4",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0027-cb06c9e12a50e57b.json",
+      "sha256": "cb06c9e12a50e57bebfd08a7bd48274208070a19b21d757b4b0e206a060252b1",
+      "bytes": 96284
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0028-cf47dcbd224cb804.md",
+      "sha256": "cf47dcbd224cb8045d8060ee39ed41f59b1fdfc68a46d9af415aa86f7d4e7631",
+      "bytes": 16
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0029-03e34c2985d5f1b0.md",
+      "sha256": "03e34c2985d5f1b0c4dfb0cb0e357e3bcafdabe67488db183b037ea5825757c6",
+      "bytes": 49
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0030-587b4bbe58f89959.json",
+      "sha256": "587b4bbe58f89959f72fbe112471b122fd8c991bf2dc5c1f7fad0e4bc37673cb",
+      "bytes": 56196
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0031-19fe634ff478eaf3.png",
+      "sha256": "19fe634ff478eaf320f9864740a9cce666948e3dab317a3be3b5207d01f274ac",
+      "bytes": 378888
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0032-51e9bb655b0357bc.download",
+      "sha256": "51e9bb655b0357bc5bcb6955d91127b411d782ec0a4a32cfb71e507903a50441",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0033-637ced73d8948573.png",
+      "sha256": "637ced73d8948573a5ccce2fa915066f80c76cfde6f996d91010978ed8ea005e",
+      "bytes": 346556
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0034-b9f069a66f1b1fde.download",
+      "sha256": "b9f069a66f1b1fde785a2f7d39689774bb35a08fb6a87328dcec8e904c9f6be2",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0035-d9fac0849c82821b.png",
+      "sha256": "d9fac0849c82821b6fe1a0e37700d5acd4f3e87586f4ca425744453fcbf0bb55",
+      "bytes": 346494
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0036-0b58e82d1287f51e.png",
+      "sha256": "0b58e82d1287f51e4731e9fb382c37ddb0b90fad1728891ec3eb9016d110e1ec",
+      "bytes": 342601
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0037-0dfa7644a5572bf6.download",
+      "sha256": "0dfa7644a5572bf66615f1ba1cee2e1861c7c66e0565174dcc702ad12d7b9f27",
+      "bytes": 1685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0038-cb06c9e12a50e57b.json",
+      "sha256": "cb06c9e12a50e57bebfd08a7bd48274208070a19b21d757b4b0e206a060252b1",
+      "bytes": 96284
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1-report/resources/0039-df14f199da39d5e7.png",
+      "sha256": "df14f199da39d5e797bc38fd816a9348cb30851342e3f959e736c40ee8bf0c55",
+      "bytes": 342427
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/package-manifest.json",
+      "sha256": "11bbe5ff5dad715a666e679f51bdaf66071475ae0662ed000934dc65950577c1",
+      "bytes": 869549
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1/package-verification.json",
+      "sha256": "08d4c12be2dbd5f03b81442058a06431fc774ffa2ef66b881f88f49c2ea148c2",
+      "bytes": 105
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/bddgen-1.log",
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d",
+      "bytes": 88
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/bridge-wire.log",
+      "sha256": "e4638e8eceac0a1775ebe03b0b72b9d7f19d21d83b211768f534a6d07eac0611",
+      "bytes": 662
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/build-1.log",
+      "sha256": "f2b02972ac275faa3773c35241128c7e8dfacf8e49e7800a32c69a2d764c8128",
+      "bytes": 9685
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.log",
+      "sha256": "a361a91e422f377ece98780f38ae976749a4f154b852db60636f2dc48f2dbb85",
+      "bytes": 447
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/modules-full-1.log",
+      "sha256": "0bc80d2296d8381e596fce2d5601d4912ce904cfd18856d5c5025eea24b04afa",
+      "bytes": 1769
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/modules-target-1.log",
+      "sha256": "aba8066e5224daa0c4e73cba454c69a130ec9376a6ece9595e005081f59e723e",
+      "bytes": 1357
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/modules-target-2.log",
+      "sha256": "e055c275ffe9b2cb5123038571b74e7693d63b6e5e985d8ff557457fd9f9e055",
+      "bytes": 195
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-1.log",
+      "sha256": "201fce6e398a469685fe95dc48c3c5f6da1572ead761819907f5bd9b270ae448",
+      "bytes": 748
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/package-build-1.log",
+      "sha256": "bdc54e44665522a3537cd2c032adcb7dedf5beb512673e03c5401548b4871aaa",
+      "bytes": 2400
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/private-request-green.log",
+      "sha256": "ea28809689322f6cd0d393538f3e3b839d53ffd84e4556ca95533192af3477d0",
+      "bytes": 220
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/private-request-red-2.log",
+      "sha256": "a2bb26f9aee1c0439b8e7824c07b3417a86f9e1c9b206514726b4a397b0c6ea7",
+      "bytes": 926
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/private-request-red.log",
+      "sha256": "22aeb9063cc7ada10eb18066301ee4005182f848d26af171e3c3072996b28412",
+      "bytes": 1382
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/source-1.log",
+      "sha256": "d48b9354cd744e98edf81b3a35bfc6b1e3a6ffe2305100cc160a36445e2dfd75",
+      "bytes": 748
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/typecheck-1.log",
+      "sha256": "1b877ed0920d1f93545eebab2aeee388dc3fb5e8a6c8cc1e774c7efadaecf3f5",
+      "bytes": 727
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/typecheck-2.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+      "bytes": 92
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/ui-rules-1.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696",
+      "bytes": 97
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/wire-build.log",
+      "sha256": "b1e2c387baa90e12bf53fab43aead54248854a465c06ba613b04278f8fa85990",
+      "bytes": 97
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/wire.log",
+      "sha256": "63e168786d8846e9c755a30fe0e7148884a152e9b3c7ad6e1b0af27326111439",
+      "bytes": 742
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/report-resource-verification.json",
+      "sha256": "b30f4afb9032cf4cb1f94bdd52acc6c50533e60d45cecabcf4f454d7480e290f",
+      "bytes": 300
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/thinking-wire.json",
+      "sha256": "5ea44341e9a5332c37da08c1ec6b7e0cb9025641707c08c1d6aae0c554c9c17d",
+      "bytes": 2240
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/thinking-wire.ts",
+      "sha256": "2bcd686b20a66ae943672ddf8d198b3d65ad1e35d05273d611efc855cf1dc607",
+      "bytes": 3821
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/thinking-wire.mjs",
+      "sha256": "9e391c14ee9b9d4b82bb17610687796342a802df269773c56198e9cd63d5d78a",
+      "bytes": 14635
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/bridge-wire.json",
+      "sha256": "9c21809263a54ce6a7abf6bf8e30237eea884e5045023265622921b5e85cb37a",
+      "bytes": 1368
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/bridge-wire.ts",
+      "sha256": "faa6b5ff43873a87774de3c6b4b2da51577fc2f540c65a1b75e5b3dd38e4ceb0",
+      "bytes": 3532
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/bridge-wire.mjs",
+      "sha256": "569c5143e23d13d9a7a44a8a1e2a3e1081af43a07828df321e8b5646b35eab45",
+      "bytes": 53001
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/official-deepseek-thinking.html",
+      "sha256": "35350389e59872d3733f7b7f99f5485c6cbc95f1bc2a71a47ba3ecf30bd7a060",
+      "bytes": 113722
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/probe.ts",
+      "sha256": "ceeb2ef2f1a0996b61e1b75f8b6534acdc652a7211db24037688a21575e3b2d3",
+      "bytes": 7973
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/probe.cjs",
+      "sha256": "49bae9cb3107bd482a338efe674730c50ffea8143ad6df0e20c15b379d405f2d",
+      "bytes": 251788
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/launch.mjs",
+      "sha256": "6161dba386698ce1484b2f97c826d001b2c043f6ba01bc4a69556cfcb826c0d6",
+      "bytes": 1837
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.json",
+      "sha256": "d7d2565fc66cfd82b1952c3d9261af234bcce169063cab908f8415fd854b2baf",
+      "bytes": 5832
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.json.checkpoint.json",
+      "sha256": "e3108a9f397e26af3e609981c52244812eb9c2fd11cbf2c42d070280470156ec",
+      "bytes": 5833
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.json.source.json",
+      "sha256": "623d635e582b3f9f882bbee7673f64e506835f9b2a9fa0f89f2cb43f6daccd44",
+      "bytes": 6459
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.json.old-low.input.json",
+      "sha256": "b1ebc630dd9d59e702f7a142b19a8661464ec920ed5f3e5f4a881aa169dd68c1",
+      "bytes": 4845
+    },
+    {
+      "path": ".local/feature-review/claude-thinking-off-20261006/comparison-1.json.production-off.input.json",
+      "sha256": "b1ebc630dd9d59e702f7a142b19a8661464ec920ed5f3e5f4a881aa169dd68c1",
+      "bytes": 4845
+    },
+    {
+      "path": ".local/feature-review/claude-wait-report-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-Temrvz/016-Claude核心最终状态含失败.json",
+      "sha256": "bb3a522447de00ea998b215991e06babfc6f86d08396285fa8d4a58793664aec",
+      "bytes": 92307
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-source-1-20261006.png",
+        "sha256": "50a6333d59ba6ec55b133bed7e808bbc114800c8118f3c64244081769a29e1b4",
+        "bytes": 313144
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-source-1-20261006.capture.json",
+        "sha256": "c56757a8a68bc54a233712ebf21027e39c4527e0126e307412fa1dc13d544362",
+        "bytes": 1685
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/024-重启后Claude群和原记录保持.native.png",
+        "sha256": "50a6333d59ba6ec55b133bed7e808bbc114800c8118f3c64244081769a29e1b4",
+        "bytes": 313144
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-thinking-off-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-K4qP5F/025-重启后Claude群和原记录保持.capture.json",
+        "sha256": "c56757a8a68bc54a233712ebf21027e39c4527e0126e307412fa1dc13d544362",
+        "bytes": 1685
+      }
+    },
+    {
+      "batch": "package-1",
+      "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-package-1-20261006.png",
+        "sha256": "0b58e82d1287f51e4731e9fb382c37ddb0b90fad1728891ec3eb9016d110e1ec",
+        "bytes": 342601
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-Claude显式关闭思考-package-1-20261006.capture.json",
+        "sha256": "0dfa7644a5572bf66615f1ba1cee2e1861c7c66e0565174dcc702ad12d7b9f27",
+        "bytes": 1685
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/024-重启后Claude群和原记录保持.native.png",
+        "sha256": "0b58e82d1287f51e4731e9fb382c37ddb0b90fad1728891ec3eb9016d110e1ec",
+        "bytes": 342601
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-thinking-off-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-LP0MLv/025-重启后Claude群和原记录保持.capture.json",
+        "sha256": "0dfa7644a5572bf66615f1ba1cee2e1861c7c66e0565174dcc702ad12d7b9f27",
+        "bytes": 1685
+      }
+    }
+  ],
+  "nativeThinkingControlsWireCheck": {
+    "kind": "pinned-Claude-private-parameter-wire-check",
+    "realProvider": false,
+    "modelInference": false,
+    "productWorkPersisted": false,
+    "uiVerified": false,
+    "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+    "cases": [
+      {
+        "name": "low-default-thinking",
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/v1/messages?beta=true",
+            "model": "deepseek-v4-pro",
+            "thinkingPresent": true,
+            "thinking": {
+              "type": "adaptive"
+            },
+            "outputConfig": {
+              "effort": "low"
+            },
+            "tools": [
+              "StructuredOutput"
+            ]
+          }
+        ],
+        "receipt": {
+          "receivedLines": 2,
+          "handledLines": 2,
+          "processGroupExited": true,
+          "exitCode": null,
+          "stoppedBecause": "cancelled",
+          "callbackActiveAtStop": false,
+          "pendingAtStop": 0
+        }
+      },
+      {
+        "name": "low-alwaysThinkingEnabled-false",
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/v1/messages?beta=true",
+            "model": "deepseek-v4-pro",
+            "thinkingPresent": false,
+            "outputConfig": {
+              "effort": "low"
+            },
+            "tools": [
+              "StructuredOutput"
+            ]
+          }
+        ],
+        "receipt": {
+          "receivedLines": 2,
+          "handledLines": 2,
+          "processGroupExited": true,
+          "exitCode": null,
+          "stoppedBecause": "cancelled",
+          "callbackActiveAtStop": false,
+          "pendingAtStop": 0
+        }
+      },
+      {
+        "name": "low-maxThinkingTokens-zero",
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/v1/messages?beta=true",
+            "model": "deepseek-v4-pro",
+            "thinkingPresent": false,
+            "outputConfig": {
+              "effort": "low"
+            },
+            "tools": [
+              "StructuredOutput"
+            ]
+          }
+        ],
+        "receipt": {
+          "receivedLines": 2,
+          "handledLines": 2,
+          "processGroupExited": true,
+          "exitCode": null,
+          "stoppedBecause": "cancelled",
+          "callbackActiveAtStop": false,
+          "pendingAtStop": 0
+        }
+      }
+    ]
+  },
+  "nativeThinkingControlsNote": "Both alwaysThinkingEnabled false and MAX_THINKING_TOKENS zero omitted thinking. Synthetic endpoints only; no inference or successful phase.",
+  "productionBridgeWireCheck": {
+    "kind": "actual-pinned-CLI-through-production-thinking-bridge",
+    "realProvider": false,
+    "modelInference": false,
+    "productWorkPersisted": false,
+    "uiVerified": false,
+    "passed": true,
+    "program": {
+      "executable": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/runtime-probes/claude-2.1.214/claude",
+      "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+      "version": "2.1.214"
+    },
+    "diagnostic": {
+      "outcome": "cancelled",
+      "stage": "event_wait",
+      "eventCounts": {
+        "init": 1,
+        "system": 1
+      },
+      "lastEvent": {
+        "type": "system",
+        "afterMs": 351
+      },
+      "transport": {
+        "receivedLines": 2,
+        "handledLines": 2,
+        "processGroupExited": true,
+        "exitCode": null,
+        "stoppedBecause": "cancelled",
+        "callbackActiveAtStop": false,
+        "pendingAtStop": 0
+      },
+      "protocolCounts": {
+        "formatterCalls": 0,
+        "formatterRejections": 0,
+        "formatReminders": 0
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/v1/messages?beta=true",
+        "model": "deepseek-v4-pro",
+        "thinking": {
+          "type": "disabled"
+        },
+        "tools": [
+          "StructuredOutput"
+        ],
+        "messagesHash": "5d81cddd72965f7f17bcd15fca4a443d483a0561e66381c159e01928377f561a",
+        "originalSyntheticKey": true
+      }
+    ]
+  },
+  "controlledPrivateReportComparison": {
+    "kind": "actual-Claude-private-wait-report-off-comparison",
+    "productWorkPersisted": false,
+    "uiVerified": false,
+    "timeoutMs": 120000,
+    "policyVersion": 10,
+    "attempts": [
+      {
+        "case": "old-low",
+        "partialUsage": [
+          {
+            "inputTokens": 1504,
+            "outputTokens": 0,
+            "totalTokens": 1504
+          },
+          {
+            "inputTokens": 1504,
+            "outputTokens": 970,
+            "totalTokens": 2474
+          }
+        ],
+        "traces": [],
+        "startedAt": "2026-10-06T11:49:49.662Z",
+        "inputHash": "9deb8a2189467a14366fa602f4036779605a295e65f5847a608ec6cec959ec8f",
+        "inputBytes": 4844,
+        "phaseConfig": {
+          "phase": "report",
+          "thinking": "low"
+        },
+        "diagnostic": {
+          "outcome": "completed",
+          "stage": "returned",
+          "eventCounts": {
+            "init": 1,
+            "system": 835,
+            "message_start": 1,
+            "content_block_start": 2,
+            "content_block_delta": 919,
+            "assistant": 2,
+            "content_block_stop": 2,
+            "user": 1,
+            "message_delta": 1,
+            "message_stop": 1,
+            "result": 1
+          },
+          "lastEvent": {
+            "type": "result",
+            "afterMs": 12861
+          },
+          "transport": {
+            "receivedLines": 1766,
+            "handledLines": 1766,
+            "processGroupExited": true,
+            "exitCode": 0
+          },
+          "protocolCounts": {
+            "formatterCalls": 1,
+            "formatterRejections": 0,
+            "formatReminders": 0
+          }
+        },
+        "resultUsage": {
+          "inputTokens": 1504,
+          "outputTokens": 970,
+          "totalTokens": 2474
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        },
+        "result": {
+          "action": "publish",
+          "text": "正在等待子工作交付 proof.txt。目前尚未收到实际交付结果，暂无法确认该文件已创建并正式发布。",
+          "outcome": {
+            "disposition": "waiting",
+            "summary": "等待子工作返回 proof.txt 的实际交付结果后再汇总，当前无任何已登记的文件交付证据。"
+          }
+        },
+        "passed": true,
+        "elapsedMs": 13038
+      },
+      {
+        "case": "production-off",
+        "partialUsage": [
+          {
+            "inputTokens": 1504,
+            "outputTokens": 0,
+            "totalTokens": 1504
+          },
+          {
+            "inputTokens": 1504,
+            "outputTokens": 59,
+            "totalTokens": 1563
+          },
+          {
+            "inputTokens": 1504,
+            "outputTokens": 59,
+            "totalTokens": 1563
+          }
+        ],
+        "traces": [
+          {
+            "id": "probe-run:30b51b8e-80c1-477c-9747-827ceefc9ef4",
+            "traceId": "probe-run",
+            "spanId": "30b51b8e-80c1-477c-9747-827ceefc9ef4",
+            "name": "Claude · report",
+            "spanType": "external_agent",
+            "startedAt": "2026-10-06T11:50:02.703Z",
+            "attributes": {
+              "runtime": "claude-cli",
+              "phase": "report",
+              "accounting": "external-turn",
+              "internalModelSteps": "unknown"
+            }
+          },
+          {
+            "id": "probe-run:30b51b8e-80c1-477c-9747-827ceefc9ef4",
+            "traceId": "probe-run",
+            "spanId": "30b51b8e-80c1-477c-9747-827ceefc9ef4",
+            "name": "Claude · report",
+            "spanType": "external_agent",
+            "startedAt": "2026-10-06T11:50:02.703Z",
+            "attributes": {
+              "runtime": "claude-cli",
+              "phase": "report",
+              "accounting": "external-turn",
+              "internalModelSteps": "unknown"
+            },
+            "endedAt": "2026-10-06T11:50:04.982Z",
+            "output": {
+              "outcome": "completed",
+              "stage": "returned",
+              "eventCounts": {
+                "init": 1,
+                "system": 1,
+                "message_start": 1,
+                "content_block_start": 2,
+                "content_block_delta": 25,
+                "assistant": 2,
+                "content_block_stop": 2,
+                "user": 1,
+                "message_delta": 1,
+                "message_stop": 1,
+                "result": 1
+              },
+              "lastEvent": {
+                "type": "result",
+                "afterMs": 2111
+              },
+              "transport": {
+                "receivedLines": 38,
+                "handledLines": 38,
+                "processGroupExited": true,
+                "exitCode": 0
+              },
+              "protocolCounts": {
+                "formatterCalls": 1,
+                "formatterRejections": 0,
+                "formatReminders": 0
+              }
+            }
+          }
+        ],
+        "startedAt": "2026-10-06T11:50:02.701Z",
+        "inputHash": "9deb8a2189467a14366fa602f4036779605a295e65f5847a608ec6cec959ec8f",
+        "inputBytes": 4844,
+        "phaseConfig": {
+          "phase": "report",
+          "thinking": "off"
+        },
+        "resultUsage": {
+          "inputTokens": 1504,
+          "outputTokens": 59,
+          "totalTokens": 1563
+        },
+        "protocolCounts": {
+          "formatterCalls": 1,
+          "formatterRejections": 0,
+          "formatReminders": 0
+        },
+        "result": {
+          "action": "discard"
+        },
+        "passed": true,
+        "elapsedMs": 2282
+      }
+    ],
+    "passed": true,
+    "stage": "report-comparison",
+    "provider": {
+      "baseUrl": "https://api.deepseek.com/anthropic",
+      "model": "deepseek-v4-pro",
+      "connectionId": "156886ae-cdc4-47de-969b-b049e5215ebc",
+      "credentialSource": "existing-BoAI-encrypted-vault-read-only"
+    },
+    "program": {
+      "executable": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/runtime-probes/claude-2.1.214/claude",
+      "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+      "version": "2.1.214"
+    }
+  },
+  "controlledComparisonNote": "Identical hashed phase input, original 120s deadline, original encrypted credential bridge. Publish/waiting and discard are both valid; host evidence and no business effects checked. Not a product-admitted Work or full-cost reliability claim.",
+  "baseline": {
+    "packageCoreOutputTokens": 16697,
+    "waitingReportKnownOutputTokens": [
+      629,
+      6163
+    ],
+    "incompleteCalls": 1,
+    "originalLimitsUnchanged": true,
+    "note": "Historical v9, different context. No percent improvement derived."
+  },
+  "notes": [
+    "Explicit thinking-off parameter, original private semantic judgment and actual app coverage are separate. Ordinary delivery and user-answer reports retain defaults.",
+    "All failures and incomplete evidence remain visible; current case success does not close the full LR0-LR6 matrix."
+  ]
+}

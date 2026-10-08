@@ -1,0 +1,1221 @@
+{
+  "kind": "actual-claude-cli-structured-local-protocol",
+  "createdAt": "2026-10-06T01:05:40.740Z",
+  "platform": "darwin",
+  "uiVerified": false,
+  "workVerified": false,
+  "realProvider": false,
+  "requests": [
+    {
+      "phase": "decision",
+      "reminder": false,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "work": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "scope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "deliverable": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "workId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "organization": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "employee_creation",
+                          "organize_only",
+                          "organize_and_execute"
+                        ]
+                      },
+                      "goal": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 12000
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "goal"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "key",
+                  "scope",
+                  "deliverable"
+                ],
+                "additionalProperties": false
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "reply",
+                  "pass",
+                  "wait",
+                  "ask",
+                  "request_handoff"
+                ]
+              },
+              "responseKind": {
+                "type": "string",
+                "enum": [
+                  "chat",
+                  "task"
+                ]
+              },
+              "replyToMessageId": {
+                "type": "string"
+              },
+              "recipientAgentIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "purpose": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "dependencyMessageIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "memory",
+      "reminder": false,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "candidates": {
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 400
+                    },
+                    "sourceMessageIds": {
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sourceResourceIds": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "long_term",
+                        "experience",
+                        "temporary"
+                      ]
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "enum": [
+                        "fact",
+                        "preference",
+                        "decision",
+                        "claim",
+                        "inference"
+                      ]
+                    },
+                    "useScope": {
+                      "type": "string",
+                      "const": "conversation"
+                    },
+                    "contextRef": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "conversation",
+                            "work"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "supersedes": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "sourceMessageIds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "candidates"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "report",
+      "reminder": false,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "publish",
+                  "discard"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48000
+              },
+              "outcome": {
+                "type": "object",
+                "properties": {
+                  "userQuestion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "disposition": {
+                    "type": "string",
+                    "enum": [
+                      "delivered",
+                      "progress",
+                      "waiting",
+                      "blocked",
+                      "no_progress"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "evidence": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "answer"
+                            },
+                            "reference": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "artifact"
+                            },
+                            "reference": {
+                              "not": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "disposition",
+                  "summary"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "decision",
+      "reminder": true,
+      "firstText": true,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "work": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "scope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "deliverable": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "workId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "organization": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "employee_creation",
+                          "organize_only",
+                          "organize_and_execute"
+                        ]
+                      },
+                      "goal": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 12000
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "goal"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "key",
+                  "scope",
+                  "deliverable"
+                ],
+                "additionalProperties": false
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "reply",
+                  "pass",
+                  "wait",
+                  "ask",
+                  "request_handoff"
+                ]
+              },
+              "responseKind": {
+                "type": "string",
+                "enum": [
+                  "chat",
+                  "task"
+                ]
+              },
+              "replyToMessageId": {
+                "type": "string"
+              },
+              "recipientAgentIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "purpose": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "dependencyMessageIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "decision",
+      "reminder": true,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "work": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "scope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "deliverable": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "workId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "organization": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "employee_creation",
+                          "organize_only",
+                          "organize_and_execute"
+                        ]
+                      },
+                      "goal": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 12000
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "goal"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "key",
+                  "scope",
+                  "deliverable"
+                ],
+                "additionalProperties": false
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "reply",
+                  "pass",
+                  "wait",
+                  "ask",
+                  "request_handoff"
+                ]
+              },
+              "responseKind": {
+                "type": "string",
+                "enum": [
+                  "chat",
+                  "task"
+                ]
+              },
+              "replyToMessageId": {
+                "type": "string"
+              },
+              "recipientAgentIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "purpose": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "dependencyMessageIds": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": true
+    },
+    {
+      "phase": "memory",
+      "reminder": true,
+      "firstText": true,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "candidates": {
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 400
+                    },
+                    "sourceMessageIds": {
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sourceResourceIds": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "long_term",
+                        "experience",
+                        "temporary"
+                      ]
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "enum": [
+                        "fact",
+                        "preference",
+                        "decision",
+                        "claim",
+                        "inference"
+                      ]
+                    },
+                    "useScope": {
+                      "type": "string",
+                      "const": "conversation"
+                    },
+                    "contextRef": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "conversation",
+                            "work"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "supersedes": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "sourceMessageIds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "candidates"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "memory",
+      "reminder": true,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "candidates": {
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 400
+                    },
+                    "sourceMessageIds": {
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sourceResourceIds": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "long_term",
+                        "experience",
+                        "temporary"
+                      ]
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "enum": [
+                        "fact",
+                        "preference",
+                        "decision",
+                        "claim",
+                        "inference"
+                      ]
+                    },
+                    "useScope": {
+                      "type": "string",
+                      "const": "conversation"
+                    },
+                    "contextRef": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "conversation",
+                            "work"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "supersedes": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "sourceMessageIds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "candidates"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": true
+    },
+    {
+      "phase": "report",
+      "reminder": true,
+      "firstText": true,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "publish",
+                  "discard"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48000
+              },
+              "outcome": {
+                "type": "object",
+                "properties": {
+                  "userQuestion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "disposition": {
+                    "type": "string",
+                    "enum": [
+                      "delivered",
+                      "progress",
+                      "waiting",
+                      "blocked",
+                      "no_progress"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "evidence": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "answer"
+                            },
+                            "reference": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "artifact"
+                            },
+                            "reference": {
+                              "not": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "disposition",
+                  "summary"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": false
+    },
+    {
+      "phase": "report",
+      "reminder": true,
+      "firstText": false,
+      "model": "deepseek-v4-pro",
+      "tools": [
+        {
+          "name": "StructuredOutput",
+          "description": "return the final response as structured JSON",
+          "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "publish",
+                  "discard"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48000
+              },
+              "outcome": {
+                "type": "object",
+                "properties": {
+                  "userQuestion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "disposition": {
+                    "type": "string",
+                    "enum": [
+                      "delivered",
+                      "progress",
+                      "waiting",
+                      "blocked",
+                      "no_progress"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "evidence": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "answer"
+                            },
+                            "reference": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "artifact"
+                            },
+                            "reference": {
+                              "not": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "reference"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "disposition",
+                  "summary"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "stream": true,
+      "enforcementPresent": true
+    }
+  ],
+  "steps": [
+    {
+      "kind": "decision",
+      "reminder": false,
+      "modelRequests": 1,
+      "passed": true,
+      "result": {
+        "sessionId": "cac576a3-023c-4550-99a1-6286fc7d7907",
+        "text": "{\"action\":\"reply\",\"responseKind\":\"chat\"}",
+        "usage": {
+          "inputTokens": 18,
+          "outputTokens": 7,
+          "totalTokens": 25
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    },
+    {
+      "kind": "memory",
+      "reminder": false,
+      "modelRequests": 1,
+      "passed": true,
+      "result": {
+        "sessionId": "2bab284c-4f58-4ece-9bda-127afbd4bc7d",
+        "text": "{\"candidates\":[]}",
+        "usage": {
+          "inputTokens": 18,
+          "outputTokens": 7,
+          "totalTokens": 25
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    },
+    {
+      "kind": "report",
+      "reminder": false,
+      "modelRequests": 1,
+      "passed": true,
+      "result": {
+        "sessionId": "99b963e2-7191-4afb-8d24-f601b48daf76",
+        "text": "{\"action\":\"publish\",\"text\":\"已核对\",\"outcome\":{\"disposition\":\"progress\",\"summary\":\"已核对\"}}",
+        "usage": {
+          "inputTokens": 18,
+          "outputTokens": 7,
+          "totalTokens": 25
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    },
+    {
+      "kind": "decision",
+      "reminder": true,
+      "modelRequests": 2,
+      "passed": true,
+      "result": {
+        "sessionId": "c65a5ab1-3e20-4416-9f19-234e80df93ca",
+        "text": "{\"action\":\"reply\",\"responseKind\":\"chat\"}",
+        "usage": {
+          "inputTokens": 36,
+          "outputTokens": 14,
+          "totalTokens": 50
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    },
+    {
+      "kind": "memory",
+      "reminder": true,
+      "modelRequests": 2,
+      "passed": true,
+      "result": {
+        "sessionId": "bb660c5c-3569-4e86-b6b6-141809459e9a",
+        "text": "{\"candidates\":[]}",
+        "usage": {
+          "inputTokens": 36,
+          "outputTokens": 14,
+          "totalTokens": 50
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    },
+    {
+      "kind": "report",
+      "reminder": true,
+      "modelRequests": 2,
+      "passed": true,
+      "result": {
+        "sessionId": "bca9cd35-381a-4a75-baa0-3a95d2396091",
+        "text": "{\"action\":\"publish\",\"text\":\"已核对\",\"outcome\":{\"disposition\":\"progress\",\"summary\":\"已核对\"}}",
+        "usage": {
+          "inputTokens": 36,
+          "outputTokens": 14,
+          "totalTokens": 50
+        }
+      },
+      "deltas": [],
+      "onlyFormatter": true
+    }
+  ],
+  "sourceHashes": {
+    "src/runtime/modules/backends/program.ts": "eec09457c650e2369e7748cdb0a8f43e2756ce797c10067e1791928484170070",
+    "src/runtime/adapters/claude/policy.ts": "4207fb815c8856eb79cf8bd7df670f0e76e6995d15af2e0f450e815d04f28018",
+    "src/runtime/adapters/mastra/host-command.ts": "81c3a124190e732e271f40a25cee88ad9e3f7a84cfdcc8fb636bb0acd3ef571e",
+    "src/runtime/adapters/claude/process.ts": "feaf4fdc7016d6de906b889bd8540d3d1ec163d42f4b74a8e0384145303fe9d4",
+    "src/runtime/adapters/claude/tools.ts": "583136faa17eddb01ef2e2bbe72f41984a74752b21ac9e9c1775e6fac1a4003f",
+    "src/runtime/adapters/claude/turn.ts": "211fb3e981d6f2a8116b953b8de18ebcab106a9196a0e3df18d7b92d60a92256",
+    "src/runtime/modules/collaboration/work-protocol.ts": "950914d0fc3ca36cb2d7e8ef9029b289ca42de290da52a40cd84e14e11da015c",
+    "src/runtime/modules/employees/phase-protocol.ts": "20ee6fe135694da5954a2fe1b0a782e6c92d3505702c854465609f861a8c2894",
+    "scripts/probe-claude-structured.mjs": "157b6e3caafd06cb86763157300a24d67818e7006a9e86819d3daeb37011d99c",
+    "package.json": "41801bd2a2c81ce259bcbad1b3b770a4bb049d1e49e09ee1f8a9b03a3e16033c",
+    "pnpm-lock.yaml": "8c2424609d494f09aa21995c9fcd1b701c2c56ab3878c2a85fd9efc80d388900"
+  },
+  "bundleHash": "9d2d0ecea766b480e226fac93f922967a9f2d8d3231f8cabf47e5afd51e5e284",
+  "program": {
+    "executable": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/runtime-probes/claude-2.1.214/claude",
+    "executableHash": "59796dd18e9d77f1256f367db6d28ce4bd9cd5968e402ad3a327aac36abc6dec",
+    "version": "2.1.214"
+  },
+  "sourceUnchanged": true,
+  "passed": true
+}

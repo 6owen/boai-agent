@@ -1,0 +1,814 @@
+{
+  "kind": "codex-transport-fallback-diagnostic-and-post-exit-evidence",
+  "updatedAt": "2026-10-07",
+  "productionChangedFiles": [
+    "src/runtime/adapters/codex/client.ts",
+    "src/runtime/adapters/codex/turn.ts"
+  ],
+  "currentSourceBuilt": true,
+  "moduleTestsPassed": 55,
+  "newModuleTests": 7,
+  "initialNewTestsFailed": 6,
+  "typecheckPassed": true,
+  "bddGeneratedAfterBuild": true,
+  "desktopBatches": [
+    {
+      "summary": ".local/feature-review/native-window-final-proof-20261007/summary.json",
+      "mode": "offline-protocol-source-electron",
+      "result": "passed",
+      "launches": 2,
+      "controlledRestarts": 1,
+      "reportResources": 20,
+      "reportHashReferences": 22
+    },
+    {
+      "summary": ".local/feature-review/native-unsaved-window-20261007/summary.json",
+      "mode": "offline-protocol-real-native-input-required",
+      "result": "failed-environment-blocked",
+      "launches": 1,
+      "controlledRestarts": 0,
+      "actualNativeButtons": 0,
+      "reportResources": 5,
+      "reportHashReferences": 6
+    },
+    {
+      "summary": ".local/feature-review/native-window-final-proof-20261007/source-1-summary.json",
+      "mode": "real-codex-source-electron",
+      "result": "failed-original-observation-deadline",
+      "launches": 1,
+      "controlledRestarts": 0,
+      "reportResources": 16,
+      "reportHashReferences": 17
+    }
+  ],
+  "minimalProbeResults": {
+    "minimal1": "failed-original-120s-second-phase",
+    "observedFirst1": "passed-single-adapter-turn-only",
+    "fullProductVerifiedByProbe": false,
+    "controlledPerformanceComparison": false
+  },
+  "currentRealSourceFacts": {
+    "fourActualIPCDenials": [
+      {
+        "method": "snapshot",
+        "accepted": false,
+        "error": "Error: Error invoking remote method 'boai:request': Error: 不允许的请求来源。"
+      },
+      {
+        "method": "saveAgent",
+        "accepted": false,
+        "error": "Error: Error invoking remote method 'boai:request': Error: 不允许的请求来源。"
+      },
+      {
+        "method": "sendMessage",
+        "accepted": false,
+        "error": "Error: Error invoking remote method 'boai:request': Error: 不允许的请求来源。"
+      },
+      {
+        "method": "setUnsavedChanges",
+        "accepted": false,
+        "error": "Error: Error invoking remote method 'boai:request': Error: 不允许的请求来源。"
+      }
+    ],
+    "extraWindowIsTestFixture": true,
+    "originalIPCHandlerUnchanged": true,
+    "extraWindowClosed": true,
+    "mainSavedRole": "唯一主窗口明确保存的Codex聊天职责",
+    "mainConfigVersion": 2,
+    "explicitUserMessageCompleted": true,
+    "employeePublicReplyCompleted": true,
+    "employeePublicReplyIsCurrentSavedEmployee": true,
+    "employeePublicReplyUsesChatCallRun": true,
+    "employeePublicReplyIsExactRequestedCode": true,
+    "publicReplyContent": "CHAT_CODE_76ab8859-c407-47b2-a429-2a8aed5e6d44",
+    "businessTurnStatus": "completed",
+    "recordCounts": {
+      "conversations": 1,
+      "messages": 2,
+      "turns": 1,
+      "runs": 3,
+      "works": 0,
+      "budgets": 0,
+      "calls": 0,
+      "artifacts": 0,
+      "profileCalls": 3,
+      "codexSessions": 1,
+      "traces": 3
+    },
+    "recordCollectionsChangedAtFinalClose": [
+      "runs",
+      "profileCalls",
+      "traces"
+    ],
+    "recordCollectionsUnchangedAtFinalClose": [
+      "conversations",
+      "messages",
+      "turns",
+      "works",
+      "budgets",
+      "calls",
+      "artifacts",
+      "codexSessions"
+    ],
+    "memoryBeforeClose": "running",
+    "memoryAfterClose": "cancelled",
+    "memoryError": "达到本轮时间上限",
+    "memoryUsage": "unknown"
+  },
+  "currentRealPhases": [
+    {
+      "phase": "decision",
+      "runBeforeClose": "completed",
+      "runAfterClose": "completed",
+      "runError": null,
+      "outcome": "completed",
+      "stage": "completed",
+      "elapsedMs": 117152,
+      "warningCounts": {
+        "received": 2,
+        "handled": 2
+      },
+      "transportEvents": [
+        {
+          "type": "websocket_to_https_fallback",
+          "elapsedMs": 112885
+        }
+      ],
+      "usageComplete": true,
+      "thinking": "low"
+    },
+    {
+      "phase": "chat",
+      "runBeforeClose": "completed",
+      "runAfterClose": "completed",
+      "runError": null,
+      "outcome": "completed",
+      "stage": "completed",
+      "elapsedMs": 116584,
+      "warningCounts": {
+        "received": 2,
+        "handled": 2
+      },
+      "transportEvents": [
+        {
+          "type": "websocket_to_https_fallback",
+          "elapsedMs": 112750
+        }
+      ],
+      "usageComplete": true,
+      "thinking": "low"
+    },
+    {
+      "phase": "memory",
+      "runBeforeClose": "running",
+      "runAfterClose": "cancelled",
+      "runError": "达到本轮时间上限",
+      "outcome": "cancelled",
+      "stage": "turn_wait",
+      "elapsedMs": 66229,
+      "warningCounts": {
+        "received": 1,
+        "handled": 1
+      },
+      "transportEvents": [],
+      "usageComplete": false,
+      "thinking": "low"
+    }
+  ],
+  "observedExitVerified": true,
+  "allSampledAndFinalOwnedIdentityCount": 20,
+  "allSampledAndFinalOwnedProcessGroups": [
+    35937,
+    36002,
+    36098,
+    37252,
+    37354,
+    37356,
+    37358
+  ],
+  "reportResources": 41,
+  "reportHashReferences": 45,
+  "currentFrozenInputs": 893,
+  "sameInputCohortClaimed": false,
+  "diagnosticLimits": [
+    "Native warning has no turnId; only current thread/submission window is observed.",
+    "Diagnostic event elapsedMs is handler time, not native receipt time.",
+    "Fallback notice does not establish full disconnect cause or reliability fix."
+  ],
+  "fullGoalComplete": false,
+  "latencyRootCauseFixed": false,
+  "nativeUnsavedDialogVerified": false,
+  "humanApproved": false,
+  "historicalExitGapRepaired": false,
+  "currentPackageVerified": false,
+  "oldFailureRecordsPreserved": true,
+  "oldSharedVerificationRestoredToExactOriginal": true,
+  "references": [
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/summary.json",
+      "bytes": 11897,
+      "sha256": "d33c4a5eb291e83b893ca0abf474f305294c8a88933b91e44b112f478039a397"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/manifest.json",
+      "bytes": 19296,
+      "sha256": "f3dc51f352fe7d06e6314dccd88b82e3111e81846fa4989f3de41206350210cd"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/001-本机Codex实际连接验证.png",
+      "bytes": 203998,
+      "sha256": "c0dd9ba2ea3c64adbd18aba0d0171cf86e3b57c806ca48e8b249e904c5b442b8"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/002-创建本机Codex员工无API配置.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/003-untrusted-renderer-preload.cjs",
+      "bytes": 242,
+      "sha256": "299dd8b2d582d872499e8285808c47897c9b4bf153479ba1567adbc60c816ac7"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/004-真实额外窗口身份与原IPC拒绝.json",
+      "bytes": 3811,
+      "sha256": "64593ef1742cac632b7ce7777f0790a7122bd0b1e1c8c2362179b3fd756645df"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/005-额外窗口被拒绝后主窗口编辑与聊天草稿保持.native.png",
+      "bytes": 295180,
+      "sha256": "0a73e30f1bf399c38b60dcbe1b93bec57dd2874a882605ebf4c7dedefa2330b9"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/006-额外窗口被拒绝后主窗口编辑与聊天草稿保持.capture.json",
+      "bytes": 1685,
+      "sha256": "16c7c59856cb2f67d6930f35daacf0c6efca150190602faa6131714e67bba93f"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/007-实际额外测试窗口显示原IPC拒绝结果.native.png",
+      "bytes": 104770,
+      "sha256": "e9342242e148d40485293222065dba991277d20390157ef042487909cc323fe1"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/008-实际额外测试窗口显示原IPC拒绝结果.capture.json",
+      "bytes": 1685,
+      "sha256": "6b43e4eb5fe6e3c0172633c08ddb643706788419628d438e3768132fb33e066c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/009-原主窗口明确新消息使用本机Codex回复.native.png",
+      "bytes": 163811,
+      "sha256": "6d88a57f35e1148d3ecd77c465bdde741f5e946c10b5200140e4930145ab75eb"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/010-原主窗口明确新消息使用本机Codex回复.capture.json",
+      "bytes": 1685,
+      "sha256": "55a2d48799dae8861013de7a17453d11d9c0eb4145b96c0bf0c10985b588a1c9"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/011-第-1-次启动结束画面.png",
+      "bytes": 163811,
+      "sha256": "6d88a57f35e1148d3ecd77c465bdde741f5e946c10b5200140e4930145ab75eb"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/012-额外窗口拒绝后主窗口配置与明确Codex新消息最终核对.json",
+      "bytes": 47331,
+      "sha256": "09a336ad1fc1bd21e9d7036d97f115319dd3284b65104ca0b28d9155a0d7b2c4"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/013-额外窗口拒绝与原主窗口最终状态.json",
+      "bytes": 22625,
+      "sha256": "182cb1c52955d6f92e50e8116387461687b1eda4397b18fc8e717378b9527bdd"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/014-额外窗口拒绝与原主窗口退出前实际状态.json",
+      "bytes": 20428,
+      "sha256": "59149487a279ba7f3064745de62530c366db8f82346bb51c4750315c4edd3fb9"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/015-额外窗口拒绝与原主窗口退出前原生画面.native.png",
+      "bytes": 157925,
+      "sha256": "6b9cd8fccda9245e6881c714c43f3cefb55d6bdbdb2f0225e3a3af213ae2e402"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/016-额外窗口拒绝与原主窗口退出前原生画面.capture.json",
+      "bytes": 1685,
+      "sha256": "d4469a5416185863e2c0f62cf06511edacf827f7f81d95ea4b3750cc84043056"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/017-额外窗口拒绝与原主窗口退出前进程身份.json",
+      "bytes": 161,
+      "sha256": "32de6628b2673561fa0388c0880a7cbe7edb571eced11e3fffe764aaa7a9c1e1"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/018-第-2-次启动结束画面.png",
+      "bytes": 157927,
+      "sha256": "ea547223d75e094debd9c2a6b6c93d1cb4ac6e4514dba9184cf4dcba1a1e3db4"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/019-额外窗口拒绝与原主窗口实际退出核对.json",
+      "bytes": 360,
+      "sha256": "e23e081aae7699438e94a2efeea287b4e25ce2aefe12586a9e8dedb6dc7390cd"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/scenarios/704506bbdae38bebaafd-bd18a09e2d7d34503089-retry0-repeat0-1SjUuo/020-额外窗口拒绝与原主窗口退出后实际状态.json",
+      "bytes": 21715,
+      "sha256": "03ad39c1e79663b1eac4274d80ab48115adc2cd6de3e7125b263069c2d9a8e51"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/test-results/codex-employee.feature-本机--12d55-员工业务-使用离线协议核对额外窗口不得访问本机员工业务/desktop-1.zip",
+      "bytes": 6511804,
+      "sha256": "5d71bd5d52b3b052a4f2323474dfadef6c8ae6c25b2b90ed35f2b9d78317d3dc"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/test-results/codex-employee.feature-本机--12d55-员工业务-使用离线协议核对额外窗口不得访问本机员工业务/desktop-2.zip",
+      "bytes": 836489,
+      "sha256": "adeb375ef0033f39a3d0351ccb87175610ae7ca96fb1d45235c4162e5a63a7e4"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "f6faa3089735f6d6b530c3e09625396bdd5fb5bc02eaf527e0223e2e2e377cd7"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "1b5fe582c23c2845057277f575502a29010ef9c9a14b059b0a1f61d9475081c5"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/execution-receipt.json",
+      "bytes": 306,
+      "sha256": "774fff702e8b255fba470922a0fb6d27a8fe7f9b1438921dd99486cec8de5f46"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/registration.json",
+      "bytes": 35,
+      "sha256": "b44f012ac9b7283ef84188e9389304310560e09f0b5edd796e69dc85f156c0bb"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1/playwright-results.json",
+      "bytes": 44783,
+      "sha256": "fdbc23eb487cb5c31734eb5943802dafad26fb58dcb798c833750a1954fc2acd"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/preflight.json",
+      "bytes": 602,
+      "sha256": "466fde742750f8bb13b639ca4a062b2e1a329aeb1409e150de423f5370959a9c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/bddgen.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/visual-inspection.json",
+      "bytes": 2824,
+      "sha256": "e5191ccb5f7891e0b4b97e475e4fea03d35dfd4c42212ccb910892739e6a208a"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/report-resource-verification.json",
+      "bytes": 152,
+      "sha256": "7f8d199548d43ae1cb222f366c73dbc2ed9b37b96466336fbcde6dd38c30a19b"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1-report/checks.json",
+      "bytes": 159200,
+      "sha256": "e807188e310defe17cfb8d04aec54ffa1466209a817258d5aa35124896b4d00b"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/offline-1-report/manifest.json",
+      "bytes": 1246,
+      "sha256": "203b093ba4325d1d8dc8b9c09aa861b32ccbbf629c3a1061de04e21b664f2424"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/summary.json",
+      "bytes": 20778,
+      "sha256": "8c02b4b8236d1e7d7b303a5c1caa158e0686bdf9ad292f2a939c1d0debd19896"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/manifest.json",
+      "bytes": 5430,
+      "sha256": "a267ce0676e3866a91480735115f36b0e047f172ef3e7df547f1dc47f3b93bb8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/001-本机Codex实际连接验证.png",
+      "bytes": 205196,
+      "sha256": "bbc10fc2768ddfaaf8be1d9b05d10f1a150ecab1db6ec5cb94e79a39f5c12391"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/002-创建本机Codex员工无API配置.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/003-真实原生关闭before-continue等待实际操作前.json",
+      "bytes": 10820,
+      "sha256": "e29ec21b88e968728b2138bdaffe46af14b6a87a4679641d8a19b9903d246779"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/004-真实原生关闭最终原状态.json",
+      "bytes": 11600,
+      "sha256": "5eaaf9060f88ff36f0ff1c3bc4fb0cefb396bc1d19b2404bf771b21073a5b1a4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/scenarios/704506bbdae38bebaafd-5fb42719ce81e28e9253-retry0-repeat0-fCnWT6/005-第-1-次启动结束画面.png",
+      "bytes": 309888,
+      "sha256": "9fc39829655b30b4d2bf465470b0077860f0dfad5df0636d79fa038df8432932"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/test-results/codex-employee.feature-本机--0e477-工聊天-离线协议未知保存经原生关闭弹窗继续或放弃后重启/desktop-1.zip",
+      "bytes": 6946637,
+      "sha256": "b2994be1ec57e3b906f4cdebb76fcc15f475eb6f180d9a68bef45a66ba6485c7"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "aec21232c67c9cce8083b507d02fc8924cebf9be00dbdbb3c88157ce5452a6e3"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "64069b1278421882dcf4005071f0ae7e6758da9a9679d723a3d8a410ed79639e"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/execution-receipt.json",
+      "bytes": 474,
+      "sha256": "0518ce0527cd5b75b15405eb9fbe7c591a6187a2d1df852914939a7229062320"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/registration.json",
+      "bytes": 35,
+      "sha256": "b44f012ac9b7283ef84188e9389304310560e09f0b5edd796e69dc85f156c0bb"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1/playwright-results.json",
+      "bytes": 439204,
+      "sha256": "e918c157e249280f3088bf53c677789d85ec066d92d3faffed55e898c5d57ce8"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/preflight.json",
+      "bytes": 779,
+      "sha256": "2d3129efbdf7a24a0be382cbfc196b7414c5d245381ca4f279d30633fd117fbc"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/bddgen.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coverage-input-change.json",
+      "bytes": 726,
+      "sha256": "2fbea116809a34ac772a0bfed605210f66c92e41954e1b41c43246ee010a072f"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coverage-input-change.diff",
+      "bytes": 1921,
+      "sha256": "4a858146ab24909c9a0460ee793dbf779f57405606e05731838276fae31db7df"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/before-codex-employee.feature",
+      "bytes": 23142,
+      "sha256": "f8229cfb7b93d3c7e59c8e4bbf7317e60f68533909a04489b0f6dc760535c52a"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/before-local-agent-configuration.steps.ts",
+      "bytes": 60306,
+      "sha256": "8625d2e50cf0e20848863038724b09d3f65665d70d9d77aba642fd11393fd546"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/process-sampling-initial-failure.json",
+      "bytes": 326,
+      "sha256": "89e259121296059bc2d5e0ce7402dcffc68b98eec48f5a893dd495fa2583ed06"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/report-resource-verification.json",
+      "bytes": 152,
+      "sha256": "d0af290b5de7185d49a43cbb6a5a5a04bb773bc0897ba0f2b93bf501749c533d"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coordinator-codex-1/environment-blocker.json",
+      "bytes": 725,
+      "sha256": "b756c8ae25554a46d03299d6b7d1b863fc8d54977b136804279432252b679a49"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coordinator-codex-1/process-codex-local-before-continue-0a59e656.json",
+      "bytes": 9162,
+      "sha256": "a9967935072e8a4fc406ea507da0ca4b31a8115d29d110477d3640db677fe001"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coordinator-codex-1/actual-process-exit.json",
+      "bytes": 9564,
+      "sha256": "6c5bc000d80382723e0c67b614e4728d8255ba5e7f7df389c57fcebf5e3128f4"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/coordinator-codex-1/ready.json",
+      "bytes": 603,
+      "sha256": "cebf24b85d0860a9c52e8b2fc405a367354aa32af198b9fffae71ec50faa0ea7"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1-report/checks.json",
+      "bytes": 44203,
+      "sha256": "f11ee5b1baea29a4a668cec90616225b9032df9d68c3c5ad6217f8567bf8777c"
+    },
+    {
+      "path": ".local/feature-review/native-unsaved-window-20261007/run-codex-1-report/manifest.json",
+      "bytes": 1245,
+      "sha256": "0565ea4e6fbb452caf8c4e3e9e19e551f1aaf2075120e294b289125d36d83ed4"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-summary.json",
+      "bytes": 22834,
+      "sha256": "1322c04f1957d6383bf7494d5be3050dae7deaff1100bae71f7511692bf9637b"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/manifest.json",
+      "bytes": 16358,
+      "sha256": "2c918e2b48b83ab50b0e6589251c6afc729fb4e2392c42d8cfa9afe338615d35"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/001-本机Codex实际连接验证.png",
+      "bytes": 193421,
+      "sha256": "827907f115096a8713eeae009a7511c505c9de6ca4cb703c7a5cc32c47926321"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/002-创建本机Codex员工无API配置.png",
+      "bytes": 242332,
+      "sha256": "4b81022900f99fc44b96e6806e1538831859a9e7f5d9b39f9f5451a5159fb027"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/003-untrusted-renderer-preload.cjs",
+      "bytes": 242,
+      "sha256": "4b2bda3c6c76cbd4717195dde8bea39fee3c0ca4150a00d9cd3ad8ebe378cc2a"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/004-真实额外窗口身份与原IPC拒绝.json",
+      "bytes": 3811,
+      "sha256": "c4a0a16487eed732275b84fae3f13687d573f55f9e2f95f89ac669913f6de86a"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/005-额外窗口被拒绝后主窗口编辑与聊天草稿保持.native.png",
+      "bytes": 295581,
+      "sha256": "82aede65017acecddc1c1022ff62ae266e8721d88dd5132e801b3f2546171764"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/006-额外窗口被拒绝后主窗口编辑与聊天草稿保持.capture.json",
+      "bytes": 1685,
+      "sha256": "320ef24578de14124406e19eb38c8c35b8c67b6532fce642ad22c8c942d88d4c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/007-实际额外测试窗口显示原IPC拒绝结果.native.png",
+      "bytes": 104770,
+      "sha256": "e9342242e148d40485293222065dba991277d20390157ef042487909cc323fe1"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/008-实际额外测试窗口显示原IPC拒绝结果.capture.json",
+      "bytes": 1685,
+      "sha256": "6b43e4eb5fe6e3c0172633c08ddb643706788419628d438e3768132fb33e066c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/009-额外窗口拒绝与原主窗口最终状态.json",
+      "bytes": 22944,
+      "sha256": "e3004b85bde436570ecaab928a8aa36abbf16dbe94fd0087b7af61ea84ca639a"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/010-额外窗口拒绝与原主窗口退出前实际状态.json",
+      "bytes": 20737,
+      "sha256": "21a4161f0ded353ebbd3797b9a7892473d8ca4b730f75e0ba18458470abb8191"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/011-额外窗口拒绝与原主窗口退出前原生画面.native.png",
+      "bytes": 163105,
+      "sha256": "45f9d13ff4fc114669ed4761e1ed0b72870a93d6ba853d662a6d7120043e4ed5"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/012-额外窗口拒绝与原主窗口退出前原生画面.capture.json",
+      "bytes": 1685,
+      "sha256": "d9ec79f081e4006fbb828ef9df67650171feeda6ebcfdaedab07ea0766c96b56"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/013-额外窗口拒绝与原主窗口退出前进程身份.json",
+      "bytes": 1215,
+      "sha256": "bb64b5c53e64fa8dc7ef5fe2d6dbd4ceee39b243003512d3a105a9a40bb75363"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/014-第-1-次启动结束画面.png",
+      "bytes": 163105,
+      "sha256": "45f9d13ff4fc114669ed4761e1ed0b72870a93d6ba853d662a6d7120043e4ed5"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/015-额外窗口拒绝与原主窗口实际退出核对.json",
+      "bytes": 1414,
+      "sha256": "8adde069abd103e4927d284d56ede98af068dcd348473b1b77a01cdf3cc90403"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/scenarios/704506bbdae38bebaafd-02145dfd80708f350345-retry0-repeat0-xv6ydo/016-额外窗口拒绝与原主窗口退出后实际状态.json",
+      "bytes": 25181,
+      "sha256": "51bbff8ade93efb06e0a43382b2c0be3ba951627051d69028002a7d0ebb9b404"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/test-results/codex-employee.feature-本机--cda2f-务-使用真实Codex核对额外窗口不得访问本机员工业务/desktop-1.zip",
+      "bytes": 128451207,
+      "sha256": "237e4e4f685235b7fc444309d250b3176a243333587c95a98f90b5a0006ab5ca"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/build-manifest.json",
+      "bytes": 102888,
+      "sha256": "5863b79dae272bf90788c46efba4e8477d43d2c3e7f8c0aa4884237f53b98873"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "12c703ef4b46eb76c4bf6d2b45a520cb4133022c0d878dcd201fb59dd3f39a8f"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/execution-receipt.json",
+      "bytes": 307,
+      "sha256": "c874023ef5997e36b5c3fdfeaea5f52967718fd1c05b2622bde226404e70c1d1"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/registration.json",
+      "bytes": 35,
+      "sha256": "b44f012ac9b7283ef84188e9389304310560e09f0b5edd796e69dc85f156c0bb"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1/playwright-results.json",
+      "bytes": 45692,
+      "sha256": "356c2f9390bdb747ffc5b08a01c674a9a85b9d0b349a8adf4ab12856c72699b8"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1.log",
+      "bytes": 16858,
+      "sha256": "8cb3b715a03e737ae86b9e746c640a0a76bbf86ce18f96e1262aab96df8628e0"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-preflight.json",
+      "bytes": 660,
+      "sha256": "325c402058b5b20f7c918dc9c73acd434f8ec92a880387c0e32fe8144064999c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-process-samples.json",
+      "bytes": 12493,
+      "sha256": "69f67cc554fc9c09de41dea3455fe98967e96fd26a0c29f701bda8ecacf2c7bd"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-live-1.json",
+      "bytes": 10196,
+      "sha256": "791c593b42e860cb7a16a203383bbababd0dd6009d840b1da6fcdc6576e62551"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-process-exit-verification.json",
+      "bytes": 3029,
+      "sha256": "5a6504500364b12d3cd49284b20e61f2e76cc529dfa91259c56efd18050a089f"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-phase-final-summary.json",
+      "bytes": 8558,
+      "sha256": "96d5c97bb534e5b169162b35afca2c3a1e456f50039e6461dce9d15de8ee92d6"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-visual-inspection.json",
+      "bytes": 2658,
+      "sha256": "a2205e97016286fa8d1f201807055df136973cd55f475505bd420501f4c7638b"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/report-resource-verification-source-1.json",
+      "bytes": 300,
+      "sha256": "25ec8800ea57062281ea4143fb9d5b71f784ed251fd9957e1466d7deaac11de2"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-shared-reference-restoration.json",
+      "bytes": 1443,
+      "sha256": "51636c8feac6bc3cca92f12e4e764f4e61cd3c024d3b10018506c87a7465c2b1"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-original-resource-verification.json",
+      "bytes": 462,
+      "sha256": "c3b2b37ecae53bbd8efe5970ca9bd6781c6319aae998c2efe789efec4993b7de"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/run-real-codex.py",
+      "bytes": 2351,
+      "sha256": "905094083f06a25ccc977638d039eaf2fb54b049ac50b50fa98170eb8e994600"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-report/checks.json",
+      "bytes": 112612,
+      "sha256": "ab36ad1efb93f4349f76ea3c06864e8a1e18f952cdfa405ad068fe8c0db0ee2c"
+    },
+    {
+      "path": ".local/feature-review/native-window-final-proof-20261007/source-1-report/manifest.json",
+      "bytes": 1268,
+      "sha256": "de04da55d9719679e4e08419c79bbbb19a86b9c222240b4efd0849196b44c160"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/probe.mjs",
+      "bytes": 5469,
+      "sha256": "295b1e7c4115e907457088e484dba1b811fa5fd96934724b421adc6724f41b26"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/probe-observed.mjs",
+      "bytes": 15492,
+      "sha256": "913e4757c63df322583250dbc36eaf5c8df81cc777999b40395b69a7c56f1ae6"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/minimal-1.json",
+      "bytes": 9094,
+      "sha256": "a3c2483be9b06ca69274a7c4f646ee084faf1d89dd5eab46cce9b479cbaf5733"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/observed-first-1.json",
+      "bytes": 11535,
+      "sha256": "84c83e46257ca8f25f41d1b1cc6c36c9a9be1760d3afb6788c0138ad1e6c3aa0"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/retry-evidence.json",
+      "bytes": 8842,
+      "sha256": "0335d007d1cee79fe0981033344c4881f492fcc776b8ac655ab2dcbde84b4f89"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-controls.json",
+      "bytes": 9453,
+      "sha256": "a5b5102b9edbf66307546fffb87751b0c56f0fb19613f4927376d3c441adc52b"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-lifecycle-review.json",
+      "bytes": 20012,
+      "sha256": "4a00e43267deb1c32d46cfb4e08f447610f662dc0a2fd8dd452a33ce652860ca"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-review.json",
+      "bytes": 17791,
+      "sha256": "52fbb807789d746d162182dd49cda61deb8716a1c653a97a67971826b9685e5b"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/draft-section103-review.json",
+      "bytes": 21760,
+      "sha256": "549007cca515985a365254545acabb12bd85939384279f792c35d60536377287"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/host-proxy-presence.json",
+      "bytes": 681,
+      "sha256": "60c89386dde79f5970c642c3375722bf0a0dfcf31b546f7a005ece4d2d15eb43"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/build-and-bdd-receipts.json",
+      "bytes": 691,
+      "sha256": "b2a7788792e3ebff2725fba8357f16b388fae77bf237854215b606eb6b9bd54d"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/current-input-difference.json",
+      "bytes": 624,
+      "sha256": "e4956db9194fdf816ac799881ee57e33170febc56799a3f907d76464a173ed57"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/window-evidence-reference-check.json",
+      "bytes": 327,
+      "sha256": "01e4735372e73ffd9a33cb515cbd79e55930b21508537228d52dee41fb0ecd76"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/continuation-after-docs.json",
+      "bytes": 776,
+      "sha256": "54b9908a1f05a6075d8016fac6ab2ee34669936c6763d6d44d8fd19a29b6b7c9"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/typecheck-final.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/red.log",
+      "bytes": 6425,
+      "sha256": "7b4d7ac7fde596c29ff9be45d7f8c8d186da083208d69f50c83b58a4abdcdb9a"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/build-source.log",
+      "bytes": 9685,
+      "sha256": "a489a3846af0c010aa919ff5a697033dfed7a767dec301cdce18826ff6979f9c"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/typecheck.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/green-module.log",
+      "bytes": 196,
+      "sha256": "75f75703cefda0f1f78f66026812e27db619a787fe9acc83483e86b7006b1d68"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/bddgen-after-build.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/green-module-final.log",
+      "bytes": 196,
+      "sha256": "0f6152a00479a7d6267ea6f7ca457d0f1d28fad06ec33e15fff1e44596a3e8cf"
+    },
+    {
+      "path": ".local/feature-review/native-codex-latency-20261007/transport-trace-validation/green-focused.log",
+      "bytes": 209,
+      "sha256": "15598adaf8431c243399111ea6ed3074187fe635b3c66c4daf88ff2bc013cd8f"
+    }
+  ],
+  "referenceErrors": []
+}

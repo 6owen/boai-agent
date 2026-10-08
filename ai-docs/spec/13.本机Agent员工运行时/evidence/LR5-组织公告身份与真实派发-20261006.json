@@ -1,0 +1,2812 @@
+{
+  "kind": "organization-original-message-versus-real-delivery-event",
+  "createdAt": "2026-10-06T15:59:00.079062+00:00",
+  "fullGoalComplete": false,
+  "humanReview": "pending",
+  "productionChanged": false,
+  "modelParametersOrBudgetsChanged": false,
+  "gates": {
+    "dispatchTests": 15,
+    "testFiles": 1,
+    "typecheck": "passed",
+    "build": "passed",
+    "bddgen": "passed",
+    "fullModuleSuiteRerunThisTurn": false,
+    "codexRerunThisTurn": false
+  },
+  "limits": [
+    "Original Run.triggerMessageId is preserved work identity, not necessarily the current participation event.",
+    "Completed decision provenance follows Decision.sourceDecisionRunId to its actual delivery and event; failed decisions without that receipt stay unbound.",
+    "The actual event is not a frozen complete native model prompt or private model reasoning.",
+    "Section 77 historical failure lacked the event/delivery collection; new run evidence does not retrospectively bind that failed run.",
+    "Production code, model configuration, budgets and existing assertions are unchanged; no claim that this evidence change repairs stochastic provider output cost.",
+    "Unchanged current macOS arm64 unpacked app only; no installer, signing, notarization or other platforms."
+  ],
+  "batches": [
+    {
+      "name": "offline-1",
+      "frozenFiles": 883,
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T15:51:07.614Z",
+        "duration": 13775.255000000001,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用离线协议通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "gaps": [],
+          "manifest": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/manifest.json",
+            "bytes": 33450,
+            "sha256": "dbd16086a56b4b09b9c9ab4ea7d3a5b2478b1295e6539dcadbca5ccbba5c4923"
+          },
+          "humanReview": "pending",
+          "afterCloseState": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/031-Claude核心退出后实际状态.json",
+            "bytes": 117527,
+            "sha256": "d1509bc413d2ea0dad0e110eaf9b1ef6109bb2140803f2bb40a9d3d4cb55be85"
+          },
+          "exitReceipt": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/030-Claude核心实际退出核对.json",
+            "bytes": 360,
+            "sha256": "76fe0c49f1282aa7356c2620784096240d778d110b182426d5f953a49a416d5b"
+          },
+          "exitVerified": true,
+          "stateIsScenarioVerdict": false,
+          "counts": {
+            "turns": 4,
+            "events": 8,
+            "deliveries": 8,
+            "decisions": 8,
+            "runs": 10,
+            "works": 3,
+            "calls": 11,
+            "artifacts": 2
+          },
+          "works": [
+            {
+              "id": "work-1f6f322feb00835d1ee1ee41f728b068a3f61e13f000dfda96dea8b0821fcb60",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-da3e5109839492b7d85166fefac9674b82255b73081f26f89de81944299fa6f7",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "b6245ddf-a477-427e-9190-e3528cc197ef"
+              ],
+              "updatedAt": "2026-10-06T15:51:17.120Z"
+            },
+            {
+              "id": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-da3e5109839492b7d85166fefac9674b82255b73081f26f89de81944299fa6f7",
+              "resultVersion": 2,
+              "resultMessageIds": [
+                "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                "896b8e39-ce28-4744-ad10-1af5f30c7602"
+              ],
+              "updatedAt": "2026-10-06T15:51:17.973Z"
+            },
+            {
+              "id": "work-e2b36f516decafc7f0994c05126e64a326118f5e015d1dc8d70de913717cead8",
+              "ownerAgentId": "4ba510bb-11e6-4671-95fa-0568c0aa86b8",
+              "status": "delivered",
+              "parentWorkId": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+              "budgetId": "budget-da3e5109839492b7d85166fefac9674b82255b73081f26f89de81944299fa6f7",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "4b249139-f075-4613-a11d-1bbb33912053"
+              ],
+              "updatedAt": "2026-10-06T15:51:17.749Z"
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-da3e5109839492b7d85166fefac9674b82255b73081f26f89de81944299fa6f7",
+              "modelCalls": 11,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 198,
+                "outputTokens": 22,
+                "totalTokens": 220
+              },
+              "usageIncomplete": false,
+              "unknownCalls": 0,
+              "deadlineAt": "2026-10-06T15:56:16.655Z"
+            }
+          ],
+          "calls": [
+            {
+              "id": "0fa80566-1ca4-42cd-b49b-b6cf7f47d9db",
+              "runId": "81cd8652-37f2-4c21-bc9f-52c277d3ec31",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:16.842Z",
+              "settledAt": "2026-10-06T15:51:16.842Z"
+            },
+            {
+              "id": "2f829ae5-1e68-4b89-99e8-232c376e513e",
+              "runId": "f9c8e31b-20ba-4da7-b4f4-6ab8405eef6c",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:16.847Z",
+              "settledAt": "2026-10-06T15:51:17.110Z"
+            },
+            {
+              "id": "b6cfdd1f-0b62-4333-8b13-168569dbf7d1",
+              "runId": "8c92fba9-4e50-4018-b7ee-8d3fc6cda56a",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.125Z",
+              "settledAt": "2026-10-06T15:51:17.312Z"
+            },
+            {
+              "id": "e61e04a8-a1bd-46ef-8adf-7748d9a03df9",
+              "runId": "7151b133-6784-4cb1-a238-fd8990ce12ba",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.127Z",
+              "settledAt": "2026-10-06T15:51:17.309Z"
+            },
+            {
+              "id": "428c070c-3368-4361-8798-66996bb4e5e1",
+              "runId": "bad22131-e2e2-4efb-a28e-1d347d23b134",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.136Z",
+              "settledAt": "2026-10-06T15:51:17.368Z"
+            },
+            {
+              "id": "278ac447-e62c-40fd-885a-b9506c418635",
+              "runId": "da27170b-a3a5-48e6-9b18-f99db73c4981",
+              "phase": "memory",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.137Z",
+              "settledAt": "2026-10-06T15:51:17.315Z"
+            },
+            {
+              "id": "f2aa7253-f039-404a-95f9-1ea470794ff0",
+              "runId": "3aaf2df2-7af6-4c9a-9f00-474a67fb2ddb",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.364Z",
+              "settledAt": "2026-10-06T15:51:17.585Z"
+            },
+            {
+              "id": "de33b7fa-971d-4585-937a-f2ab2f4a43e3",
+              "runId": "ce88fec8-e667-4f75-90b5-f47577b13630",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.380Z",
+              "settledAt": "2026-10-06T15:51:17.546Z"
+            },
+            {
+              "id": "78d6633f-2608-4ce9-8c92-965b4eb71ee6",
+              "runId": "3aaf2df2-7af6-4c9a-9f00-474a67fb2ddb",
+              "phase": "report",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.590Z",
+              "settledAt": "2026-10-06T15:51:17.744Z"
+            },
+            {
+              "id": "8d89fefc-1f12-4778-a252-6ba9d8cca684",
+              "runId": "a0f1a314-6953-4365-a3ba-2996b28775f8",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.767Z",
+              "settledAt": "2026-10-06T15:51:17.922Z"
+            },
+            {
+              "id": "a178e45e-cf80-4087-9e7d-b519dd96437f",
+              "runId": "ada66e47-7d18-47b1-bc8d-d47d1188bd41",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:51:17.773Z",
+              "settledAt": "2026-10-06T15:51:17.969Z"
+            }
+          ],
+          "decisionSources": [
+            {
+              "runId": "81cd8652-37f2-4c21-bc9f-52c277d3ec31",
+              "agentId": "bobo",
+              "status": "completed",
+              "originalMessageId": "b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+              "createdAt": "2026-10-06T15:51:16.655Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 169,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "b33c26bb-f0c8-410b-8b49-506526c9c2af",
+              "decisionAction": "reply",
+              "deliveryId": "251703d8-5349-4f92-a619-85ced15669e6:bobo",
+              "event": {
+                "id": "251703d8-5349-4f92-a619-85ced15669e6",
+                "turnId": "cfffafab-2f76-4a5e-93bf-c2fa9c9f4530",
+                "conversationId": "9f19a945-47fa-46cb-bd52-0b604369e2ee",
+                "type": "user_message",
+                "messageId": "b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "recipientAgentIds": [],
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:16.652Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "251703d8-5349-4f92-a619-85ced15669e6",
+                  "turnId": "cfffafab-2f76-4a5e-93bf-c2fa9c9f4530",
+                  "conversationId": "9f19a945-47fa-46cb-bd52-0b604369e2ee",
+                  "type": "user_message",
+                  "messageId": "b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                  "recipientAgentIds": [],
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:51:16.652Z"
+                }
+              ],
+              "observedEventId": "251703d8-5349-4f92-a619-85ced15669e6",
+              "eventMessage": {
+                "id": "b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "conversationId": "9f19a945-47fa-46cb-bd52-0b604369e2ee",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:16.652Z",
+                "senderType": "user",
+                "senderId": "user",
+                "senderName": "我",
+                "content": "CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。",
+                "status": "completed",
+                "mentionIds": [],
+                "turnId": "cfffafab-2f76-4a5e-93bf-c2fa9c9f4530"
+              }
+            },
+            {
+              "runId": "8c92fba9-4e50-4018-b7ee-8d3fc6cda56a",
+              "agentId": "c1d0d651-66c5-4909-a841-5831269a6ea5",
+              "status": "completed",
+              "originalMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+              "createdAt": "2026-10-06T15:51:17.095Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 208,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "b3e037af-97d8-4637-a5fd-2a905d5d207e",
+              "decisionAction": "pass",
+              "deliveryId": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d:c1d0d651-66c5-4909-a841-5831269a6ea5",
+              "event": {
+                "id": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "type": "collaboration_start",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "messageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "agentId": "bobo",
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:17.093Z",
+                "work": {
+                  "key": "collaboration-root",
+                  "scope": "CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。",
+                  "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                  "workId": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+                  "expectedVersion": 1
+                }
+              },
+              "mergedSources": [
+                {
+                  "id": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+                  "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                  "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                  "type": "collaboration_start",
+                  "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                  "messageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                  "agentId": "bobo",
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:51:17.093Z",
+                  "work": {
+                    "key": "collaboration-root",
+                    "scope": "CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。",
+                    "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                    "workId": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+                    "expectedVersion": 1
+                  }
+                }
+              ],
+              "observedEventId": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+              "eventMessage": {
+                "id": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "CLAUDE_BOBO_EXECUTE empty-memory 同事核对并发布文件，我等实际子成果后汇总。",
+                "status": "completed",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:17.057Z",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "collaborationSource": {
+                  "operationId": "bobo-collaboration-663c42baa755916235b2423d6e2b29f710a5f9ac7ab3638b4240401739c4b2f6",
+                  "sourceRunId": "f9c8e31b-20ba-4da7-b4f4-6ab8405eef6c",
+                  "modelCallId": "2f829ae5-1e68-4b89-99e8-232c376e513e",
+                  "toolCallId": "toolu_93eefea5-ec61-4027-b991-4cbf57813a0a"
+                },
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea"
+              }
+            },
+            {
+              "runId": "7151b133-6784-4cb1-a238-fd8990ce12ba",
+              "agentId": "4ba510bb-11e6-4671-95fa-0568c0aa86b8",
+              "status": "completed",
+              "originalMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+              "createdAt": "2026-10-06T15:51:17.096Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 197,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "3d7b076e-d07a-4a31-850b-0518b2a9dcfc",
+              "decisionAction": "pass",
+              "deliveryId": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d:4ba510bb-11e6-4671-95fa-0568c0aa86b8",
+              "event": {
+                "id": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "type": "collaboration_start",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "messageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "agentId": "bobo",
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:17.093Z",
+                "work": {
+                  "key": "collaboration-root",
+                  "scope": "CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。",
+                  "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                  "workId": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+                  "expectedVersion": 1
+                }
+              },
+              "mergedSources": [
+                {
+                  "id": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+                  "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                  "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                  "type": "collaboration_start",
+                  "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                  "messageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                  "agentId": "bobo",
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:51:17.093Z",
+                  "work": {
+                    "key": "collaboration-root",
+                    "scope": "CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。",
+                    "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                    "workId": "work-93909c194847a19a452f6bbf1b56ad0bc711e64213d842b93f29dee2ff712eaa",
+                    "expectedVersion": 1
+                  }
+                }
+              ],
+              "observedEventId": "a9c97be8-71cf-400d-92d9-c2fa87cfbd5d",
+              "eventMessage": {
+                "id": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "CLAUDE_BOBO_EXECUTE empty-memory 同事核对并发布文件，我等实际子成果后汇总。",
+                "status": "completed",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:17.057Z",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "collaborationSource": {
+                  "operationId": "bobo-collaboration-663c42baa755916235b2423d6e2b29f710a5f9ac7ab3638b4240401739c4b2f6",
+                  "sourceRunId": "f9c8e31b-20ba-4da7-b4f4-6ab8405eef6c",
+                  "modelCallId": "2f829ae5-1e68-4b89-99e8-232c376e513e",
+                  "toolCallId": "toolu_93eefea5-ec61-4027-b991-4cbf57813a0a"
+                },
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea"
+              }
+            },
+            {
+              "runId": "ce88fec8-e667-4f75-90b5-f47577b13630",
+              "agentId": "c1d0d651-66c5-4909-a841-5831269a6ea5",
+              "status": "completed",
+              "originalMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+              "createdAt": "2026-10-06T15:51:17.374Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 168,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "e39e8dda-1c69-4e6b-8ace-ed873a29aec4",
+              "decisionAction": "pass",
+              "deliveryId": "16ee1987-e92e-4a5f-8118-84241e5afe53:c1d0d651-66c5-4909-a841-5831269a6ea5",
+              "event": {
+                "id": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "type": "agent_message",
+                "agentId": "bobo",
+                "messageId": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                "sequence": 2,
+                "generation": 1,
+                "createdAt": "2026-10-06T15:51:17.371Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+                  "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                  "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                  "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                  "type": "agent_message",
+                  "agentId": "bobo",
+                  "messageId": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                  "sequence": 2,
+                  "generation": 1,
+                  "createdAt": "2026-10-06T15:51:17.371Z"
+                }
+              ],
+              "observedEventId": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+              "eventMessage": {
+                "id": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "等待同事实际交付。",
+                "status": "completed",
+                "runId": "bad22131-e2e2-4efb-a28e-1d347d23b134",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "sequence": 2,
+                "createdAt": "2026-10-06T15:51:17.371Z",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "replyToMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "mentionIds": []
+              }
+            },
+            {
+              "runId": "a0f1a314-6953-4365-a3ba-2996b28775f8",
+              "agentId": "4ba510bb-11e6-4671-95fa-0568c0aa86b8",
+              "status": "completed",
+              "originalMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+              "createdAt": "2026-10-06T15:51:17.755Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 163,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "73abd277-041b-400c-acd8-8c689ce8cb6d",
+              "decisionAction": "pass",
+              "deliveryId": "16ee1987-e92e-4a5f-8118-84241e5afe53:4ba510bb-11e6-4671-95fa-0568c0aa86b8",
+              "event": {
+                "id": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                "type": "agent_message",
+                "agentId": "bobo",
+                "messageId": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                "sequence": 2,
+                "generation": 1,
+                "createdAt": "2026-10-06T15:51:17.371Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+                  "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                  "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                  "collaborationRequestId": "bobo-collaboration:b6d98d86-10ab-4bd1-bfc7-6437528e711a",
+                  "type": "agent_message",
+                  "agentId": "bobo",
+                  "messageId": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                  "sequence": 2,
+                  "generation": 1,
+                  "createdAt": "2026-10-06T15:51:17.371Z"
+                }
+              ],
+              "observedEventId": "16ee1987-e92e-4a5f-8118-84241e5afe53",
+              "eventMessage": {
+                "id": "54381f34-78ba-4bf5-9c82-6a236ea73c34",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "等待同事实际交付。",
+                "status": "completed",
+                "runId": "bad22131-e2e2-4efb-a28e-1d347d23b134",
+                "conversationId": "146b14f9-de19-45a2-8a69-375702574b2f",
+                "sequence": 2,
+                "createdAt": "2026-10-06T15:51:17.371Z",
+                "turnId": "9571258e-643e-48ac-947e-393a427d55ea",
+                "replyToMessageId": "748bbd03-1f66-4ba0-9c36-644a3311d535",
+                "mentionIds": []
+              }
+            }
+          ],
+          "preservedFiles": [
+            {
+              "label": "Claude组织群交付原件-proof.txt",
+              "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/014-3fe92833-a7b5-433c-a9aa-39e4df9f41de-proof.txt",
+              "bytes": 225,
+              "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+            },
+            {
+              "label": "Claude组织群交付原件-proof.txt",
+              "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/015-ca8d9f3f-e754-44c5-9aaf-3440d658efef-proof.txt",
+              "bytes": 112,
+              "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+            },
+            {
+              "label": "Claude核心退出后已发布原件-proof.txt",
+              "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/032-3fe92833-a7b5-433c-a9aa-39e4df9f41de-proof.txt",
+              "bytes": 225,
+              "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+            },
+            {
+              "label": "Claude核心退出后已发布原件-proof.txt",
+              "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/033-ca8d9f3f-e754-44c5-9aaf-3440d658efef-proof.txt",
+              "bytes": 112,
+              "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "source-1",
+      "frozenFiles": 883,
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T15:51:45.512Z",
+        "duration": 108406.865,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "manifest": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/manifest.json",
+            "bytes": 34536,
+            "sha256": "57dc13bb518b6fbdb1bebc105a130849979dd5b3a19247786766bb4e0b4d3baa"
+          },
+          "humanReview": "pending",
+          "afterCloseState": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/033-Claude核心退出后实际状态.json",
+            "bytes": 122365,
+            "sha256": "f902aebb43969bc3e6738764964654879711ee1e1efa27b65ab6bcfd51d8ee99"
+          },
+          "exitReceipt": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/032-Claude核心实际退出核对.json",
+            "bytes": 360,
+            "sha256": "f77339378efca5ad6ebce0203abc71402f17feeb39935298b6e7f2cb3f56006d"
+          },
+          "exitVerified": true,
+          "stateIsScenarioVerdict": false,
+          "counts": {
+            "turns": 4,
+            "events": 8,
+            "deliveries": 6,
+            "decisions": 6,
+            "runs": 8,
+            "works": 3,
+            "calls": 9,
+            "artifacts": 2
+          },
+          "works": [
+            {
+              "id": "work-6631f66ed35650d1ddf94f33005501f017c5b25b3786e581476c521c0e01d35d",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-2ffb34dc73eccc899e6944c3778e3799f3df2445e93403d1d28c1587b8042069",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "55060889-95b6-445e-9528-2aa080bb997f"
+              ],
+              "updatedAt": "2026-10-06T15:53:00.219Z"
+            },
+            {
+              "id": "work-9936f4b49cc40250306ed425133fe6d6de52061b1e5470c490135f1fc6b82db4",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-2ffb34dc73eccc899e6944c3778e3799f3df2445e93403d1d28c1587b8042069",
+              "resultVersion": 2,
+              "resultMessageIds": [
+                "5e41c8c6-49cb-483f-82a8-a336c440700c",
+                "8b4c5cfd-359d-4a3a-b9bf-a548cf58d608"
+              ],
+              "updatedAt": "2026-10-06T15:53:21.145Z"
+            },
+            {
+              "id": "work-32f2fb407b397a88c737fb57b156da2a76956031b72a59f6aaf0985b45086b6a",
+              "ownerAgentId": "0c90505e-bf2e-4b53-9e18-521b35c788ad",
+              "status": "delivered",
+              "parentWorkId": "work-9936f4b49cc40250306ed425133fe6d6de52061b1e5470c490135f1fc6b82db4",
+              "budgetId": "budget-2ffb34dc73eccc899e6944c3778e3799f3df2445e93403d1d28c1587b8042069",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "2450f195-1b5b-45b4-9764-0983ef165264"
+              ],
+              "updatedAt": "2026-10-06T15:53:08.855Z"
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-2ffb34dc73eccc899e6944c3778e3799f3df2445e93403d1d28c1587b8042069",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 149793,
+                "outputTokens": 12422,
+                "totalTokens": 162215
+              },
+              "usageIncomplete": false,
+              "unknownCalls": 0,
+              "deadlineAt": "2026-10-06T15:56:56.507Z"
+            }
+          ],
+          "calls": [
+            {
+              "id": "f4635fda-17f9-4b9b-a7b3-4a762ced3023",
+              "runId": "713f1c89-76b5-492e-bb4b-649851eb93c5",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 3668,
+                "outputTokens": 615,
+                "totalTokens": 4283
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:52:02.659Z",
+              "settledAt": "2026-10-06T15:52:02.659Z"
+            },
+            {
+              "id": "fb60875a-66f1-4dcb-9948-bcc0727da144",
+              "runId": "b6eb3f9c-be73-4ad9-8d3d-28cbf3c7942a",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 38989,
+                "outputTokens": 6523,
+                "totalTokens": 45512
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:52:02.665Z",
+              "settledAt": "2026-10-06T15:52:03.763Z"
+            },
+            {
+              "id": "30e5f1fc-fbff-4e2e-a90e-3a4b0e64aafd",
+              "runId": "37149a8a-25d8-4b89-8e44-800df9084ec5",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 4100,
+                "outputTokens": 622,
+                "totalTokens": 4722
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:52:52.327Z",
+              "settledAt": "2026-10-06T15:52:52.989Z"
+            },
+            {
+              "id": "f53d9413-7852-415b-9333-8d616f5183bd",
+              "runId": "8dd8592b-4765-43ae-8878-44319db5e0e7",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 17585,
+                "outputTokens": 667,
+                "totalTokens": 18252
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:52:52.486Z",
+              "settledAt": "2026-10-06T15:52:53.213Z"
+            },
+            {
+              "id": "d9a6a234-b5ac-4f9e-9ab1-a7bd4c6cdfc8",
+              "runId": "f3a663f6-e4f2-49bd-8d3b-95304699bc1c",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 24293,
+                "outputTokens": 392,
+                "totalTokens": 24685
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:52:57.123Z",
+              "settledAt": "2026-10-06T15:52:57.792Z"
+            },
+            {
+              "id": "3c6a82e1-942b-42f0-a6c5-34ecb961eeeb",
+              "runId": "5187f939-e07b-43b7-bf18-e46c46a00719",
+              "phase": "memory",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 3477,
+                "outputTokens": 45,
+                "totalTokens": 3522
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:53:00.387Z",
+              "settledAt": "2026-10-06T15:53:01.113Z"
+            },
+            {
+              "id": "9677ee7f-c316-4ba7-8763-bfde8baa3cac",
+              "runId": "f3a663f6-e4f2-49bd-8d3b-95304699bc1c",
+              "phase": "report",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 4144,
+                "outputTokens": 526,
+                "totalTokens": 4670
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:53:03.803Z",
+              "settledAt": "2026-10-06T15:53:04.447Z"
+            },
+            {
+              "id": "2b49666d-7193-4bda-96e6-8b378b39769d",
+              "runId": "333d9382-7d7b-4ca1-8399-95be0c514fe8",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 12206,
+                "outputTokens": 2014,
+                "totalTokens": 14220
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:53:09.175Z",
+              "settledAt": "2026-10-06T15:53:09.827Z"
+            },
+            {
+              "id": "1f2e2ab1-4c59-4fac-883f-0501140ac4d8",
+              "runId": "06eb107e-aa45-430b-b9b8-4e5c9b607737",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 41331,
+                "outputTokens": 1018,
+                "totalTokens": 42349
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:53:09.333Z",
+              "settledAt": "2026-10-06T15:53:10.482Z"
+            }
+          ],
+          "decisionSources": [
+            {
+              "runId": "713f1c89-76b5-492e-bb4b-649851eb93c5",
+              "agentId": "bobo",
+              "status": "completed",
+              "originalMessageId": "0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+              "createdAt": "2026-10-06T15:51:56.507Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 5832,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "372454ca-5e61-4963-b42b-291778cf14be",
+              "decisionAction": "reply",
+              "deliveryId": "ab72c1e6-157a-4d33-be5a-d5abab3a3ef8:bobo",
+              "event": {
+                "id": "ab72c1e6-157a-4d33-be5a-d5abab3a3ef8",
+                "turnId": "6567f858-2e15-4e25-aaf3-f2f74fe1146c",
+                "conversationId": "0ba63fc2-96ca-4186-9f6d-f5e750aabc2a",
+                "type": "user_message",
+                "messageId": "0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                "recipientAgentIds": [],
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:56.503Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "ab72c1e6-157a-4d33-be5a-d5abab3a3ef8",
+                  "turnId": "6567f858-2e15-4e25-aaf3-f2f74fe1146c",
+                  "conversationId": "0ba63fc2-96ca-4186-9f6d-f5e750aabc2a",
+                  "type": "user_message",
+                  "messageId": "0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                  "recipientAgentIds": [],
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:51:56.503Z"
+                }
+              ],
+              "observedEventId": "ab72c1e6-157a-4d33-be5a-d5abab3a3ef8",
+              "eventMessage": {
+                "id": "0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                "conversationId": "0ba63fc2-96ca-4186-9f6d-f5e750aabc2a",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:51:56.503Z",
+                "senderType": "user",
+                "senderId": "user",
+                "senderName": "我",
+                "content": "请新建一名独立员工“Claude新同事”，职责为文件核对，使用你当前的本机Claude和明确API模型来源。只把你和这名新员工加入“Claude组织群”，现在组织并执行：你用宿主委派工具让新员工创建并发布 child.md，正文“月桂-fcf121ab”，随后用依赖工具等待；实际交付后，你核对该文件，再创建并发布 summary.md，包含同一核对码和子文件名。只需两个短文件；不联网、不执行命令、不提问。不要复用或更改已有员工，不把本场内容记为长期偏好。",
+                "status": "completed",
+                "mentionIds": [],
+                "turnId": "6567f858-2e15-4e25-aaf3-f2f74fe1146c"
+              }
+            },
+            {
+              "runId": "37149a8a-25d8-4b89-8e44-800df9084ec5",
+              "agentId": "0c90505e-bf2e-4b53-9e18-521b35c788ad",
+              "status": "completed",
+              "originalMessageId": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+              "createdAt": "2026-10-06T15:52:52.003Z",
+              "timing": {
+                "queueMs": 1,
+                "executionMs": 6708,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "95ca8aea-4419-4729-bbe7-424007f0046c",
+              "decisionAction": "pass",
+              "deliveryId": "d110ac5e-b7f2-4b29-9d78-83144f573d1d:0c90505e-bf2e-4b53-9e18-521b35c788ad",
+              "event": {
+                "id": "d110ac5e-b7f2-4b29-9d78-83144f573d1d",
+                "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30",
+                "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                "type": "collaboration_start",
+                "collaborationRequestId": "bobo-collaboration:0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                "messageId": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+                "agentId": "bobo",
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:52:52.000Z",
+                "work": {
+                  "key": "collaboration-root",
+                  "scope": "新建独立员工\"Claude新同事\"（职责：文件核对，使用本机 Claude 与明确 API 模型来源），仅将 bobo 与该新员工加入\"Claude组织群\"；组织并执行：bobo 委派新员工创建并发布 child.md（正文\"月桂-fcf121ab\"），随后等待；实际交付后 bobo 核对该文件，再创建并发布 summary.md（包含同一核对码和子文件名）。只交付两个短文件；不联网、不执行命令、不提问；不复用或更改已有员工，不将本场内容记为长期偏好。",
+                  "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                  "workId": "work-9936f4b49cc40250306ed425133fe6d6de52061b1e5470c490135f1fc6b82db4",
+                  "expectedVersion": 1
+                }
+              },
+              "mergedSources": [
+                {
+                  "id": "d110ac5e-b7f2-4b29-9d78-83144f573d1d",
+                  "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30",
+                  "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                  "type": "collaboration_start",
+                  "collaborationRequestId": "bobo-collaboration:0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                  "messageId": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+                  "agentId": "bobo",
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:52:52.000Z",
+                  "work": {
+                    "key": "collaboration-root",
+                    "scope": "新建独立员工\"Claude新同事\"（职责：文件核对，使用本机 Claude 与明确 API 模型来源），仅将 bobo 与该新员工加入\"Claude组织群\"；组织并执行：bobo 委派新员工创建并发布 child.md（正文\"月桂-fcf121ab\"），随后等待；实际交付后 bobo 核对该文件，再创建并发布 summary.md（包含同一核对码和子文件名）。只交付两个短文件；不联网、不执行命令、不提问；不复用或更改已有员工，不将本场内容记为长期偏好。",
+                    "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                    "workId": "work-9936f4b49cc40250306ed425133fe6d6de52061b1e5470c490135f1fc6b82db4",
+                    "expectedVersion": 1
+                  }
+                }
+              ],
+              "observedEventId": "d110ac5e-b7f2-4b29-9d78-83144f573d1d",
+              "eventMessage": {
+                "id": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+                "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "本群「Claude组织群」由 bobo（系统核心 Agent）与新建的独立员工「Claude新同事」组成。目标：bobo 委派 Claude新同事 创建并发布 child.md（正文「月桂-fcf121ab」），随后等待；实际交付后 bobo 核对该文件，再创建并发布 summary.md（包含同一核对码和子文件名）。分工：bobo 负责委派与最终核对；Claude新同事（文件核对）负责创建并发布 child.md。只交付两个短文件，不联网、不执行命令、不提问。",
+                "status": "completed",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:52:51.507Z",
+                "collaborationRequestId": "bobo-collaboration:0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                "collaborationSource": {
+                  "operationId": "bobo-collaboration-99bd523f210f9501acf6dcaee4f45ad34d5610e7a32b15056becffdfc29eef90",
+                  "sourceRunId": "b6eb3f9c-be73-4ad9-8d3d-28cbf3c7942a",
+                  "modelCallId": "fb60875a-66f1-4dcb-9948-bcc0727da144",
+                  "toolCallId": "call_00_ed9PNfhCYrbd68cEROfu1749"
+                },
+                "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30"
+              }
+            },
+            {
+              "runId": "333d9382-7d7b-4ca1-8399-95be0c514fe8",
+              "agentId": "0c90505e-bf2e-4b53-9e18-521b35c788ad",
+              "status": "completed",
+              "originalMessageId": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+              "createdAt": "2026-10-06T15:53:08.864Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 21119,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "5f998e81-4bf0-4ba1-bc70-40e9b599856a",
+              "decisionAction": "pass",
+              "deliveryId": "6d9662c5-db60-4bbc-9889-faf675eaf2d0:0c90505e-bf2e-4b53-9e18-521b35c788ad",
+              "event": {
+                "id": "6d9662c5-db60-4bbc-9889-faf675eaf2d0",
+                "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30",
+                "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                "collaborationRequestId": "bobo-collaboration:0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                "type": "agent_message",
+                "agentId": "bobo",
+                "messageId": "5e41c8c6-49cb-483f-82a8-a336c440700c",
+                "sequence": 2,
+                "generation": 1,
+                "createdAt": "2026-10-06T15:53:00.549Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "6d9662c5-db60-4bbc-9889-faf675eaf2d0",
+                  "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30",
+                  "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                  "collaborationRequestId": "bobo-collaboration:0bae738d-0228-4073-896c-0ae6c2b3f3b7",
+                  "type": "agent_message",
+                  "agentId": "bobo",
+                  "messageId": "5e41c8c6-49cb-483f-82a8-a336c440700c",
+                  "sequence": 2,
+                  "generation": 1,
+                  "createdAt": "2026-10-06T15:53:00.549Z"
+                }
+              ],
+              "observedEventId": "6d9662c5-db60-4bbc-9889-faf675eaf2d0",
+              "eventMessage": {
+                "id": "5e41c8c6-49cb-483f-82a8-a336c440700c",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "已向 Claude新同事 委派创建并发布 child.md（正文「月桂-fcf121ab」）的任务，现在等待其实际交付。收到后我会核对文件内容，再创建并发布 summary.md。",
+                "status": "completed",
+                "runId": "8dd8592b-4765-43ae-8878-44319db5e0e7",
+                "conversationId": "ea144e13-90f1-4d0a-a105-fb4a6b08743a",
+                "sequence": 2,
+                "createdAt": "2026-10-06T15:53:00.549Z",
+                "turnId": "eea41069-579f-4a4f-a967-6a206e5a4c30",
+                "replyToMessageId": "8ddbce80-0cc3-4448-890c-e3771248cce5",
+                "mentionIds": []
+              }
+            }
+          ],
+          "preservedFiles": [
+            {
+              "label": "Claude组织群交付原件-child.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/016-681efbf8-0273-4e1a-b25a-35a7ab2ed818-child.md",
+              "bytes": 16,
+              "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+            },
+            {
+              "label": "Claude组织群交付原件-summary.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/017-c63c44f4-7335-470d-ad92-9ffb1e79f3c9-summary.md",
+              "bytes": 129,
+              "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+            },
+            {
+              "label": "Claude核心退出后已发布原件-child.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/034-681efbf8-0273-4e1a-b25a-35a7ab2ed818-child.md",
+              "bytes": 16,
+              "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+            },
+            {
+              "label": "Claude核心退出后已发布原件-summary.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/035-c63c44f4-7335-470d-ad92-9ffb1e79f3c9-summary.md",
+              "bytes": 129,
+              "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package-1",
+      "frozenFiles": 883,
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "stats": {
+        "startTime": "2026-10-06T15:54:17.462Z",
+        "duration": 189092.449,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude通过Claude核心助手完成组织并执行并保持原身份",
+          "status": "failed",
+          "modelMode": "real-provider",
+          "gaps": [],
+          "manifest": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/manifest.json",
+            "bytes": 37401,
+            "sha256": "5be30c9dad633d5df4dabfb178bdbb23b26b011c1cdaac4415ce8dcc604ed6f7"
+          },
+          "humanReview": "pending",
+          "afterCloseState": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/024-Claude核心退出后实际状态.json",
+            "bytes": 122778,
+            "sha256": "a4f8a5d028ec19af013eb4f2d76137f9e27e81897656c859f0f3187dbc3f859f"
+          },
+          "exitReceipt": {
+            "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/023-Claude核心实际退出核对.json",
+            "bytes": 360,
+            "sha256": "b8edd0c9c1a8c8843818199ea9d0f5d8800c11242eaeba044a6e72802175a89e"
+          },
+          "exitVerified": true,
+          "stateIsScenarioVerdict": false,
+          "counts": {
+            "turns": 4,
+            "events": 8,
+            "deliveries": 6,
+            "decisions": 5,
+            "runs": 8,
+            "works": 3,
+            "calls": 9,
+            "artifacts": 2
+          },
+          "works": [
+            {
+              "id": "work-619250b6d51755fd163067ad6868a15a5b0e77f0590402c05e9661695d9ec4bf",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-16fae20f090d6621440524f53587e9dd181be25558626d3815daa32f2ec4204f",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "a22efb01-07bc-42b7-8667-a2be4b4ce31c"
+              ],
+              "updatedAt": "2026-10-06T15:55:11.514Z"
+            },
+            {
+              "id": "work-7b14e98ed43447d21040c3260837c39d019cf46d8f43b7ceb164cf28c329a422",
+              "ownerAgentId": "bobo",
+              "status": "delivered",
+              "parentWorkId": null,
+              "budgetId": "budget-16fae20f090d6621440524f53587e9dd181be25558626d3815daa32f2ec4204f",
+              "resultVersion": 2,
+              "resultMessageIds": [
+                "919b7ca3-3f27-4224-9a4e-3fa688e155f5",
+                "47d302c3-b628-4145-907f-4ec7b28032b4"
+              ],
+              "updatedAt": "2026-10-06T15:55:35.638Z"
+            },
+            {
+              "id": "work-4c8d3327b539adc5589482a96dc5908cb9a7f656d07b808fefc0ff7a447ac048",
+              "ownerAgentId": "8febe131-f634-4a97-99c7-a5031d877a4a",
+              "status": "delivered",
+              "parentWorkId": "work-7b14e98ed43447d21040c3260837c39d019cf46d8f43b7ceb164cf28c329a422",
+              "budgetId": "budget-16fae20f090d6621440524f53587e9dd181be25558626d3815daa32f2ec4204f",
+              "resultVersion": 1,
+              "resultMessageIds": [
+                "995121e2-6b98-4554-845f-3b60f03aabac"
+              ],
+              "updatedAt": "2026-10-06T15:55:22.858Z"
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-16fae20f090d6621440524f53587e9dd181be25558626d3815daa32f2ec4204f",
+              "modelCalls": 9,
+              "maxModelCalls": 48,
+              "maxOutputTokens": 16000,
+              "usage": {
+                "inputTokens": 135177,
+                "outputTokens": 8156,
+                "totalTokens": 143333
+              },
+              "usageIncomplete": true,
+              "unknownCalls": 1,
+              "deadlineAt": "2026-10-06T15:59:28.712Z"
+            }
+          ],
+          "calls": [
+            {
+              "id": "b110ba58-7501-4323-a131-6a667bff9a2e",
+              "runId": "cabd695b-c8f3-4533-bd19-2809e5939917",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 3635,
+                "outputTokens": 922,
+                "totalTokens": 4557
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:54:37.504Z",
+              "settledAt": "2026-10-06T15:54:37.504Z"
+            },
+            {
+              "id": "ac76c0c8-5b2e-4c0a-b1cf-169cfca2a43b",
+              "runId": "569dc93b-6874-4755-9a83-b1e4dada3432",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 26099,
+                "outputTokens": 3575,
+                "totalTokens": 29674
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:54:37.510Z",
+              "settledAt": "2026-10-06T15:54:38.236Z"
+            },
+            {
+              "id": "38795ae6-07a2-4844-af51-18be4aa6a2a3",
+              "runId": "c64fd08f-31d8-4762-bd51-7c6d32ac786b",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 8780,
+                "outputTokens": 744,
+                "totalTokens": 9524
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:04.424Z",
+              "settledAt": "2026-10-06T15:55:05.092Z"
+            },
+            {
+              "id": "7a6d1467-8be0-43a8-87f3-f90c2e9aed80",
+              "runId": "c479b157-cd47-4e10-8d50-55ec2ef4b884",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 17930,
+                "outputTokens": 802,
+                "totalTokens": 18732
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:04.587Z",
+              "settledAt": "2026-10-06T15:55:05.321Z"
+            },
+            {
+              "id": "d9fde270-997c-456e-9053-f2216aa595b0",
+              "runId": "ab2766d0-bae2-4d92-a849-75160a3e14b0",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 24502,
+                "outputTokens": 481,
+                "totalTokens": 24983
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:09.815Z",
+              "settledAt": "2026-10-06T15:55:10.537Z"
+            },
+            {
+              "id": "6786bd5f-23a3-45c8-a0f0-bb023e4656f9",
+              "runId": "ddc6425c-ebed-414c-ac20-cf9306dd779b",
+              "phase": "memory",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 3436,
+                "outputTokens": 45,
+                "totalTokens": 3481
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:11.683Z",
+              "settledAt": "2026-10-06T15:55:12.408Z"
+            },
+            {
+              "id": "ba9e6724-e7f1-462b-8636-6ff85698f6d9",
+              "runId": "ab2766d0-bae2-4d92-a849-75160a3e14b0",
+              "phase": "report",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 4163,
+                "outputTokens": 611,
+                "totalTokens": 4774
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:17.180Z",
+              "settledAt": "2026-10-06T15:55:17.828Z"
+            },
+            {
+              "id": "b3b1c2ac-bc42-4183-93e4-0590df70dd64",
+              "runId": "28dc8424-d9a7-4d2b-b17d-fd122d51c4e2",
+              "phase": "decision",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 5166,
+                "outputTokens": 0,
+                "totalTokens": 5166
+              },
+              "usageComplete": false,
+              "reservedAt": "2026-10-06T15:55:23.178Z",
+              "settledAt": "2026-10-06T15:55:23.834Z"
+            },
+            {
+              "id": "ee6feeba-aac5-494d-83bf-8a2361f49b3e",
+              "runId": "e732573a-00d4-467e-b276-95bba11d241e",
+              "phase": "execution",
+              "callUnit": "external-turn",
+              "usage": {
+                "inputTokens": 41466,
+                "outputTokens": 976,
+                "totalTokens": 42442
+              },
+              "usageComplete": true,
+              "reservedAt": "2026-10-06T15:55:23.337Z",
+              "settledAt": "2026-10-06T15:55:24.029Z"
+            }
+          ],
+          "decisionSources": [
+            {
+              "runId": "cabd695b-c8f3-4533-bd19-2809e5939917",
+              "agentId": "bobo",
+              "status": "completed",
+              "originalMessageId": "88663998-fb35-426c-b37a-33ebac841a6f",
+              "createdAt": "2026-10-06T15:54:28.712Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 8480,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "518ee635-c8f2-4bc5-9731-5783a8935ba5",
+              "decisionAction": "reply",
+              "deliveryId": "cb7d0055-a297-495c-ab20-53623c24e510:bobo",
+              "event": {
+                "id": "cb7d0055-a297-495c-ab20-53623c24e510",
+                "turnId": "72228021-db4a-4191-8e01-d65ce51de265",
+                "conversationId": "ecc353ae-bde8-42c7-8ee2-1aaf9baf3feb",
+                "type": "user_message",
+                "messageId": "88663998-fb35-426c-b37a-33ebac841a6f",
+                "recipientAgentIds": [],
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:54:28.708Z"
+              },
+              "mergedSources": [
+                {
+                  "id": "cb7d0055-a297-495c-ab20-53623c24e510",
+                  "turnId": "72228021-db4a-4191-8e01-d65ce51de265",
+                  "conversationId": "ecc353ae-bde8-42c7-8ee2-1aaf9baf3feb",
+                  "type": "user_message",
+                  "messageId": "88663998-fb35-426c-b37a-33ebac841a6f",
+                  "recipientAgentIds": [],
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:54:28.708Z"
+                }
+              ],
+              "observedEventId": "cb7d0055-a297-495c-ab20-53623c24e510",
+              "eventMessage": {
+                "id": "88663998-fb35-426c-b37a-33ebac841a6f",
+                "conversationId": "ecc353ae-bde8-42c7-8ee2-1aaf9baf3feb",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:54:28.708Z",
+                "senderType": "user",
+                "senderId": "user",
+                "senderName": "我",
+                "content": "请新建一名独立员工“Claude新同事”，职责为文件核对，使用你当前的本机Claude和明确API模型来源。只把你和这名新员工加入“Claude组织群”，现在组织并执行：你用宿主委派工具让新员工创建并发布 child.md，正文“月桂-8a09ebe5”，随后用依赖工具等待；实际交付后，你核对该文件，再创建并发布 summary.md，包含同一核对码和子文件名。只需两个短文件；不联网、不执行命令、不提问。不要复用或更改已有员工，不把本场内容记为长期偏好。",
+                "status": "completed",
+                "mentionIds": [],
+                "turnId": "72228021-db4a-4191-8e01-d65ce51de265"
+              }
+            },
+            {
+              "runId": "c64fd08f-31d8-4762-bd51-7c6d32ac786b",
+              "agentId": "8febe131-f634-4a97-99c7-a5031d877a4a",
+              "status": "completed",
+              "originalMessageId": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+              "createdAt": "2026-10-06T15:55:04.113Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 8432,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": null,
+              "verifiedSubmittedDecisionSource": true,
+              "decisionId": "39497b25-ad49-4345-b1be-d75886fa582e",
+              "decisionAction": "pass",
+              "deliveryId": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca:8febe131-f634-4a97-99c7-a5031d877a4a",
+              "event": {
+                "id": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+                "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                "type": "collaboration_start",
+                "collaborationRequestId": "bobo-collaboration:88663998-fb35-426c-b37a-33ebac841a6f",
+                "messageId": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+                "agentId": "bobo",
+                "generation": 0,
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:55:04.110Z",
+                "work": {
+                  "key": "collaboration-root",
+                  "scope": "新建一名独立员工“Claude新同事”，职责为文件核对，使用当前本机Claude和明确API模型来源；只把 bobo 和该新员工加入“Claude组织群”。组织并执行：由宿主委派工具让新员工创建并发布 child.md（正文“月桂-8a09ebe5”），随后用依赖工具等待；实际交付后，bobo 核对该文件，再创建并发布 summary.md，包含同一核对码（月桂-8a09ebe5）和子文件名 child.md。仅两个短文件；不联网、不执行命令、不提问；不复用或更改已有员工；不将本场内容记为长期偏好。",
+                  "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                  "workId": "work-7b14e98ed43447d21040c3260837c39d019cf46d8f43b7ceb164cf28c329a422",
+                  "expectedVersion": 1
+                }
+              },
+              "mergedSources": [
+                {
+                  "id": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+                  "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                  "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                  "type": "collaboration_start",
+                  "collaborationRequestId": "bobo-collaboration:88663998-fb35-426c-b37a-33ebac841a6f",
+                  "messageId": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+                  "agentId": "bobo",
+                  "generation": 0,
+                  "sequence": 1,
+                  "createdAt": "2026-10-06T15:55:04.110Z",
+                  "work": {
+                    "key": "collaboration-root",
+                    "scope": "新建一名独立员工“Claude新同事”，职责为文件核对，使用当前本机Claude和明确API模型来源；只把 bobo 和该新员工加入“Claude组织群”。组织并执行：由宿主委派工具让新员工创建并发布 child.md（正文“月桂-8a09ebe5”），随后用依赖工具等待；实际交付后，bobo 核对该文件，再创建并发布 summary.md，包含同一核对码（月桂-8a09ebe5）和子文件名 child.md。仅两个短文件；不联网、不执行命令、不提问；不复用或更改已有员工；不将本场内容记为长期偏好。",
+                    "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                    "workId": "work-7b14e98ed43447d21040c3260837c39d019cf46d8f43b7ceb164cf28c329a422",
+                    "expectedVersion": 1
+                  }
+                }
+              ],
+              "observedEventId": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+              "eventMessage": {
+                "id": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+                "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                "senderType": "agent",
+                "senderId": "bobo",
+                "senderName": "bobo",
+                "content": "大家好，欢迎加入「Claude组织群」，成员为 bobo（系统核心 Agent）和 Claude新同事（文件核对）。本群目标是完成一次文件核对协作：Claude新同事负责创建并发布 child.md，正文为「月桂-8a09ebe5」；bobo 在文件实际交付后负责核对该文件，并创建发布 summary.md，其中包含同一核对码「月桂-8a09ebe5」和子文件名 child.md。预期成果为两个短文件：child.md 与 summary.md。全程不联网、不执行命令、不提问。",
+                "status": "completed",
+                "sequence": 1,
+                "createdAt": "2026-10-06T15:55:03.616Z",
+                "collaborationRequestId": "bobo-collaboration:88663998-fb35-426c-b37a-33ebac841a6f",
+                "collaborationSource": {
+                  "operationId": "bobo-collaboration-662b32b256e9838773ebc6d8b6c16fcdd391008d2fd60fc887ae5a84bfe843bf",
+                  "sourceRunId": "569dc93b-6874-4755-9a83-b1e4dada3432",
+                  "modelCallId": "ac76c0c8-5b2e-4c0a-b1cf-169cfca2a43b",
+                  "toolCallId": "call_00_IWYXjmmY6sSAecGL81sO3220"
+                },
+                "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb"
+              }
+            },
+            {
+              "runId": "28dc8424-d9a7-4d2b-b17d-fd122d51c4e2",
+              "agentId": "8febe131-f634-4a97-99c7-a5031d877a4a",
+              "status": "failed",
+              "originalMessageId": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+              "createdAt": "2026-10-06T15:55:22.869Z",
+              "timing": {
+                "queueMs": 0,
+                "executionMs": 120329,
+                "backoffMs": 0,
+                "rateLimitRetries": 0
+              },
+              "error": "Claude执行超时，原请求需要核对",
+              "verifiedSubmittedDecisionSource": false,
+              "sourceLimit": "No submitted decision linking this run to a delivery; same-agent/turn delivery candidates are contextual evidence, not a direct persisted Run binding.",
+              "sameAgentTurnDeliveryCandidates": [
+                {
+                  "delivery": {
+                    "id": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca:8febe131-f634-4a97-99c7-a5031d877a4a",
+                    "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                    "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                    "agentId": "8febe131-f634-4a97-99c7-a5031d877a4a",
+                    "eventId": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+                    "eventIds": [
+                      "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca"
+                    ],
+                    "status": "passed",
+                    "observedThroughSequence": 1,
+                    "observedEventId": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+                    "updatedAt": "2026-10-06T15:55:12.703Z"
+                  },
+                  "event": {
+                    "id": "92511fe6-6c0d-4b6b-8dd3-6ce380d843ca",
+                    "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                    "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                    "type": "collaboration_start",
+                    "collaborationRequestId": "bobo-collaboration:88663998-fb35-426c-b37a-33ebac841a6f",
+                    "messageId": "f631921b-d2b7-4247-8bb7-f4ba448cfb26",
+                    "agentId": "bobo",
+                    "generation": 0,
+                    "sequence": 1,
+                    "createdAt": "2026-10-06T15:55:04.110Z",
+                    "work": {
+                      "key": "collaboration-root",
+                      "scope": "新建一名独立员工“Claude新同事”，职责为文件核对，使用当前本机Claude和明确API模型来源；只把 bobo 和该新员工加入“Claude组织群”。组织并执行：由宿主委派工具让新员工创建并发布 child.md（正文“月桂-8a09ebe5”），随后用依赖工具等待；实际交付后，bobo 核对该文件，再创建并发布 summary.md，包含同一核对码（月桂-8a09ebe5）和子文件名 child.md。仅两个短文件；不联网、不执行命令、不提问；不复用或更改已有员工；不将本场内容记为长期偏好。",
+                      "deliverable": "在本群按已授权目标安排分工并交付可检查结果",
+                      "workId": "work-7b14e98ed43447d21040c3260837c39d019cf46d8f43b7ceb164cf28c329a422",
+                      "expectedVersion": 1
+                    }
+                  }
+                },
+                {
+                  "delivery": {
+                    "id": "f413d9ec-5fc6-4632-ac4a-24f58d02a3a1:8febe131-f634-4a97-99c7-a5031d877a4a",
+                    "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                    "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                    "agentId": "8febe131-f634-4a97-99c7-a5031d877a4a",
+                    "eventId": "f413d9ec-5fc6-4632-ac4a-24f58d02a3a1",
+                    "eventIds": [
+                      "f413d9ec-5fc6-4632-ac4a-24f58d02a3a1"
+                    ],
+                    "status": "failed",
+                    "observedThroughSequence": 2,
+                    "observedEventId": "f413d9ec-5fc6-4632-ac4a-24f58d02a3a1",
+                    "updatedAt": "2026-10-06T15:57:23.353Z",
+                    "error": "Claude执行超时，原请求需要核对",
+                    "failurePhase": "decision"
+                  },
+                  "event": {
+                    "id": "f413d9ec-5fc6-4632-ac4a-24f58d02a3a1",
+                    "turnId": "ebdf25a6-d1cb-41bc-8775-e65499d292bb",
+                    "conversationId": "7c5608f4-5961-4e0f-a9f6-dc1f8c71b121",
+                    "collaborationRequestId": "bobo-collaboration:88663998-fb35-426c-b37a-33ebac841a6f",
+                    "type": "agent_message",
+                    "agentId": "bobo",
+                    "messageId": "919b7ca3-3f27-4224-9a4e-3fa688e155f5",
+                    "sequence": 2,
+                    "generation": 1,
+                    "createdAt": "2026-10-06T15:55:12.973Z"
+                  }
+                }
+              ]
+            }
+          ],
+          "preservedFiles": [
+            {
+              "label": "Claude核心退出后已发布原件-child.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/025-723721e0-6af7-400f-a5cb-a79353b22581-child.md",
+              "bytes": 15,
+              "sha256": "93606df29978a2972ebbfac40eb6a9d41d1289e3146eeef559b73cee1bd9fd50"
+            },
+            {
+              "label": "Claude核心退出后已发布原件-summary.md",
+              "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/026-9f7b155f-964b-4eec-8508-141c61a9e34b-summary.md",
+              "bytes": 51,
+              "sha256": "3db20dca9371b6fb584b8614a61040a7bcbc2008987c55145127f41c934a7299"
+            }
+          ]
+        }
+      ],
+      "packageFiles": 3405
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "scenarioStatus": "passed",
+      "phase": "before teardown close",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-source-1-退出前-20261006.png",
+        "bytes": 320865,
+        "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-source-1-退出前-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "53d6d2a2d5edb79cbe887cf91ac68ee0597256ab977ce683954e091ec3422da3"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/028-Claude核心退出前原生画面.native.png",
+        "bytes": 320865,
+        "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/029-Claude核心退出前原生画面.capture.json",
+        "bytes": 1685,
+        "sha256": "53d6d2a2d5edb79cbe887cf91ac68ee0597256ab977ce683954e091ec3422da3"
+      }
+    },
+    {
+      "batch": "package-1",
+      "scenarioStatus": "failed",
+      "phase": "before teardown close",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-package-1-退出前-20261006.png",
+        "bytes": 377154,
+        "sha256": "45600e007adad3b7687989c43f375abf4e5aaf07064c7577c84f657bc87142cc"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-package-1-退出前-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "d9d0f81b8eb336c5d57ce750288d0a4eeac69d2febcd75ed482f700783870774"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/019-Claude核心退出前原生画面.native.png",
+        "bytes": 377154,
+        "sha256": "45600e007adad3b7687989c43f375abf4e5aaf07064c7577c84f657bc87142cc"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/020-Claude核心退出前原生画面.capture.json",
+        "bytes": 1685,
+        "sha256": "d9d0f81b8eb336c5d57ce750288d0a4eeac69d2febcd75ed482f700783870774"
+      }
+    }
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/manifest.json",
+      "bytes": 33450,
+      "sha256": "dbd16086a56b4b09b9c9ab4ea7d3a5b2478b1295e6539dcadbca5ccbba5c4923"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/031-Claude核心退出后实际状态.json",
+      "bytes": 117527,
+      "sha256": "d1509bc413d2ea0dad0e110eaf9b1ef6109bb2140803f2bb40a9d3d4cb55be85"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/030-Claude核心实际退出核对.json",
+      "bytes": 360,
+      "sha256": "76fe0c49f1282aa7356c2620784096240d778d110b182426d5f953a49a416d5b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/014-3fe92833-a7b5-433c-a9aa-39e4df9f41de-proof.txt",
+      "bytes": 225,
+      "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/015-ca8d9f3f-e754-44c5-9aaf-3440d658efef-proof.txt",
+      "bytes": 112,
+      "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/032-3fe92833-a7b5-433c-a9aa-39e4df9f41de-proof.txt",
+      "bytes": 225,
+      "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/033-ca8d9f3f-e754-44c5-9aaf-3440d658efef-proof.txt",
+      "bytes": 112,
+      "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/001-Claude程序核对只证明程序状态.png",
+      "bytes": 196905,
+      "sha256": "d8a94721c2c98b7067680dc4aafa3fa995d40cc1137b02b6be399f02b607dc68"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/002-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/003-原助手设置选择Claude程序和明确API来源.native.png",
+      "bytes": 293743,
+      "sha256": "f89572d630a7522fb1b9c231016e285d8e9c2c39a991525ce5788ecf98ae74d3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/004-原助手设置选择Claude程序和明确API来源.capture.json",
+      "bytes": 1685,
+      "sha256": "3517f099a4f9262c07f27eb59459a8f92ee079db9320cb345690c01e7f88dbc6"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/005-Claude核心本场原始请求.json",
+      "bytes": 202,
+      "sha256": "45a3e9de2778af48ad9a497ab4321b6afb324254927532024e792361db16a1ff"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/006-Claude核心空白页底部准确打开原员工配置.native.png",
+      "bytes": 271908,
+      "sha256": "5203f4e39b42df5e0cbde560b60f0948583de986c4d6028fa4e57b71f7b9c191"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/007-Claude核心空白页底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "5893869d6d2fb8ca38879c938fd124dedb26d6b52e8f2cb4f437c2a7e851bf40"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/008-Claude核心空白页底部准确打开原本机配置.native.png",
+      "bytes": 204059,
+      "sha256": "04a5af806da76d88e38dc690f5a211a409fde56a8466ac4d4bbac29ee9c31a4c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/009-Claude核心空白页底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "ba3cb80caff097d9b4826130f1543ccc4d3956dcb50c2f3c5e74b75d6c28842f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/010-Claude核心空白页导航原身份与零业务调用.json",
+      "bytes": 10246,
+      "sha256": "7c2358532b9f51021acda1ee8ec774d452c93b2875668a94f07078abfc47ef96"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/011-Claude核心空白页设置往返后原输入与发送语义保持.native.png",
+      "bytes": 109450,
+      "sha256": "6c0584500e0025dce4df270636110422bd34405c224840162cff70ffe2f1816b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/012-Claude核心空白页设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "2d35ce08bbdc88ae459a0737ecfceee1e44b84bb906fc5c2413f6f0a5fa8cee8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/013-Claude核心原持久回执与账本.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/016-Claude组织群原消息与父子工作.json",
+      "bytes": 53852,
+      "sha256": "73d658ba981288b7349570162f7b173db5a2ce2e66da4c6d6a7ff79a63af1fdc"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/017-Claude核心原讨论与真实创建回执.native.png",
+      "bytes": 203519,
+      "sha256": "d10a5f51bc7942061383a39cfe59facc3f56f217ac3bbf5ca50210a631e01f67"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/018-Claude核心原讨论与真实创建回执.capture.json",
+      "bytes": 1685,
+      "sha256": "1efc86e82141b609879aa13656e9f097e2e8f73f2df347c7addf88c2ed55b707"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/019-Claude独立群与原交付结果.native.png",
+      "bytes": 273035,
+      "sha256": "0eafaa74b96909433b02c28ab35f9331ed08b1717eb67c55313a016e3359cffa"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/020-Claude独立群与原交付结果.capture.json",
+      "bytes": 1685,
+      "sha256": "b5e9aceaaf8e6b588bcaf787a39a71085d50ba198dbf0e980203c6d23efff427"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/021-第-1-次启动结束画面.png",
+      "bytes": 274641,
+      "sha256": "e2077d5ed4a1577213da4d6c378f3b767da3d2b88655fe34fec627248be1e908"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/022-重启后Claude群和原记录保持.native.png",
+      "bytes": 270885,
+      "sha256": "7a42bc24517fd74759ea1c9b4548916e121c5b0c8e1f8da08780091a6c77431a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/023-重启后Claude群和原记录保持.capture.json",
+      "bytes": 1685,
+      "sha256": "d5db2d182886d8ce7886be643b01cc583a743a975dfd53ef73696ad3961e852b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/024-Claude核心最终状态含失败.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/025-Claude核心退出前实际状态.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/026-Claude核心退出前原生画面.native.png",
+      "bytes": 270683,
+      "sha256": "f6b4f9972dcae86dc6963b6380c5f72b7e2673680066333d4118379b748718ba"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/027-Claude核心退出前原生画面.capture.json",
+      "bytes": 1685,
+      "sha256": "36585651f709a749eb25c6310197c9782b10ec6cdcaf6b2631176fab603be77c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/028-Claude核心退出前进程身份.json",
+      "bytes": 161,
+      "sha256": "64c348a08fcfcfdab7e45a8d40c29acf8df9fe93bba0ef448868e46f967f5fd9"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/scenarios/76620a6b86e22810b964-6a01b72b41ebfee1d686-retry0-repeat0-sQOwSX/029-第-2-次启动结束画面.png",
+      "bytes": 270683,
+      "sha256": "f6b4f9972dcae86dc6963b6380c5f72b7e2673680066333d4118379b748718ba"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "f3d344ef479fc55ae7403e81ecf15947871ede7f1392a40ac0b6719a30c2c313"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "13e2f16241c8ab8bcb7d5c4bf21e814212f1941a6c87d167548263f02996f642"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1/playwright-results.json",
+      "bytes": 71022,
+      "sha256": "4add3046a313f96a7e54aa32cb0eb2102c731c760862d972cca5d61e2dcfb13c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/checks.json",
+      "bytes": 614181,
+      "sha256": "7aafc3e1dacc67bebb9dbe590ca9cf065dab0e56eb3e223e763302871ab86e37"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/manifest.json",
+      "bytes": 1248,
+      "sha256": "68217ee0b5b31eae3c0a8d45c18c63b039f76d408552167705a2668867338ed9"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/index.html",
+      "bytes": 624687,
+      "sha256": "60ffc5f5633afe4beb844f534b04a989f03c98171b601a6e306c7a12e1ccc77e"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0001-d8a94721c2c98b70.png",
+      "bytes": 196905,
+      "sha256": "d8a94721c2c98b7067680dc4aafa3fa995d40cc1137b02b6be399f02b607dc68"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0002-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0003-f89572d630a7522f.png",
+      "bytes": 293743,
+      "sha256": "f89572d630a7522fb1b9c231016e285d8e9c2c39a991525ce5788ecf98ae74d3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0004-3517f099a4f9262c.download",
+      "bytes": 1685,
+      "sha256": "3517f099a4f9262c07f27eb59459a8f92ee079db9320cb345690c01e7f88dbc6"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0005-45a3e9de2778af48.json",
+      "bytes": 202,
+      "sha256": "45a3e9de2778af48ad9a497ab4321b6afb324254927532024e792361db16a1ff"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0006-5203f4e39b42df5e.png",
+      "bytes": 271908,
+      "sha256": "5203f4e39b42df5e0cbde560b60f0948583de986c4d6028fa4e57b71f7b9c191"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0007-5893869d6d2fb8ca.download",
+      "bytes": 1685,
+      "sha256": "5893869d6d2fb8ca38879c938fd124dedb26d6b52e8f2cb4f437c2a7e851bf40"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0008-04a5af806da76d88.png",
+      "bytes": 204059,
+      "sha256": "04a5af806da76d88e38dc690f5a211a409fde56a8466ac4d4bbac29ee9c31a4c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0009-ba3cb80caff097d9.download",
+      "bytes": 1685,
+      "sha256": "ba3cb80caff097d9b4826130f1543ccc4d3956dcb50c2f3c5e74b75d6c28842f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0010-7c2358532b9f5102.json",
+      "bytes": 10246,
+      "sha256": "7c2358532b9f51021acda1ee8ec774d452c93b2875668a94f07078abfc47ef96"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0011-6c0584500e0025dc.png",
+      "bytes": 109450,
+      "sha256": "6c0584500e0025dce4df270636110422bd34405c224840162cff70ffe2f1816b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0012-2d35ce08bbdc88ae.download",
+      "bytes": 1685,
+      "sha256": "2d35ce08bbdc88ae459a0737ecfceee1e44b84bb906fc5c2413f6f0a5fa8cee8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0013-1f80958a73108e73.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0014-5a33855e20928be1.txt",
+      "bytes": 225,
+      "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0015-71562746e50d37c1.txt",
+      "bytes": 112,
+      "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0016-73d658ba981288b7.json",
+      "bytes": 53852,
+      "sha256": "73d658ba981288b7349570162f7b173db5a2ce2e66da4c6d6a7ff79a63af1fdc"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0017-d10a5f51bc794206.png",
+      "bytes": 203519,
+      "sha256": "d10a5f51bc7942061383a39cfe59facc3f56f217ac3bbf5ca50210a631e01f67"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0018-1efc86e82141b609.download",
+      "bytes": 1685,
+      "sha256": "1efc86e82141b609879aa13656e9f097e2e8f73f2df347c7addf88c2ed55b707"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0019-0eafaa74b9690943.png",
+      "bytes": 273035,
+      "sha256": "0eafaa74b96909433b02c28ab35f9331ed08b1717eb67c55313a016e3359cffa"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0020-b5e9aceaaf8e6b58.download",
+      "bytes": 1685,
+      "sha256": "b5e9aceaaf8e6b588bcaf787a39a71085d50ba198dbf0e980203c6d23efff427"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0021-e2077d5ed4a15772.png",
+      "bytes": 274641,
+      "sha256": "e2077d5ed4a1577213da4d6c378f3b767da3d2b88655fe34fec627248be1e908"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0022-7a42bc24517fd747.png",
+      "bytes": 270885,
+      "sha256": "7a42bc24517fd74759ea1c9b4548916e121c5b0c8e1f8da08780091a6c77431a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0023-d5db2d182886d8ce.download",
+      "bytes": 1685,
+      "sha256": "d5db2d182886d8ce7886be643b01cc583a743a975dfd53ef73696ad3961e852b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0024-1f80958a73108e73.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0025-1f80958a73108e73.json",
+      "bytes": 112108,
+      "sha256": "1f80958a73108e73fc5fea2733a1b334eecb6a73259e3f4592d8fbbafdd4c1be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0026-f6b4f9972dcae86d.png",
+      "bytes": 270683,
+      "sha256": "f6b4f9972dcae86dc6963b6380c5f72b7e2673680066333d4118379b748718ba"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0027-36585651f709a749.download",
+      "bytes": 1685,
+      "sha256": "36585651f709a749eb25c6310197c9782b10ec6cdcaf6b2631176fab603be77c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0028-64c348a08fcfcfda.json",
+      "bytes": 161,
+      "sha256": "64c348a08fcfcfdab7e45a8d40c29acf8df9fe93bba0ef448868e46f967f5fd9"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0029-f6b4f9972dcae86d.png",
+      "bytes": 270683,
+      "sha256": "f6b4f9972dcae86dc6963b6380c5f72b7e2673680066333d4118379b748718ba"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0030-76fe0c49f1282aa7.json",
+      "bytes": 360,
+      "sha256": "76fe0c49f1282aa7356c2620784096240d778d110b182426d5f953a49a416d5b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0031-d1509bc413d2ea0d.json",
+      "bytes": 117527,
+      "sha256": "d1509bc413d2ea0dad0e110eaf9b1ef6109bb2140803f2bb40a9d3d4cb55be85"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0032-5a33855e20928be1.txt",
+      "bytes": 225,
+      "sha256": "5a33855e20928be128bef6c3d8f143aec401c89f444073025485a0a9556981db"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report/resources/0033-71562746e50d37c1.txt",
+      "bytes": 112,
+      "sha256": "71562746e50d37c1e285639640f71b1e6ca4687984395d3ae44e337b50f975be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/manifest.json",
+      "bytes": 34536,
+      "sha256": "57dc13bb518b6fbdb1bebc105a130849979dd5b3a19247786766bb4e0b4d3baa"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/033-Claude核心退出后实际状态.json",
+      "bytes": 122365,
+      "sha256": "f902aebb43969bc3e6738764964654879711ee1e1efa27b65ab6bcfd51d8ee99"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/032-Claude核心实际退出核对.json",
+      "bytes": 360,
+      "sha256": "f77339378efca5ad6ebce0203abc71402f17feeb39935298b6e7f2cb3f56006d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/016-681efbf8-0273-4e1a-b25a-35a7ab2ed818-child.md",
+      "bytes": 16,
+      "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/017-c63c44f4-7335-470d-ad92-9ffb1e79f3c9-summary.md",
+      "bytes": 129,
+      "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/034-681efbf8-0273-4e1a-b25a-35a7ab2ed818-child.md",
+      "bytes": 16,
+      "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/035-c63c44f4-7335-470d-ad92-9ffb1e79f3c9-summary.md",
+      "bytes": 129,
+      "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-source-1-退出前-20261006.png",
+      "bytes": 320865,
+      "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-source-1-退出前-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "53d6d2a2d5edb79cbe887cf91ac68ee0597256ab977ce683954e091ec3422da3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/028-Claude核心退出前原生画面.native.png",
+      "bytes": 320865,
+      "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/029-Claude核心退出前原生画面.capture.json",
+      "bytes": 1685,
+      "sha256": "53d6d2a2d5edb79cbe887cf91ac68ee0597256ab977ce683954e091ec3422da3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/001-第-1-次启动结束画面.png",
+      "bytes": 104678,
+      "sha256": "3eabac59d11d1ac5698d34c5c585b01830a4ccf0ec78af3e259db30f43be8afb"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/005-原助手设置选择Claude程序和明确API来源.native.png",
+      "bytes": 292933,
+      "sha256": "41eb7a40197956a88e79bd4a68d884f8f58bbfb48ebaa90b61bff28806a61972"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/006-原助手设置选择Claude程序和明确API来源.capture.json",
+      "bytes": 1685,
+      "sha256": "9fbe1d9683809b22138d5379a2c74a547bdb0571ba96bea74dcb19ebeb9ce3d4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/007-Claude核心本场原始请求.json",
+      "bytes": 699,
+      "sha256": "35c666ef4175202c2c99fea80729832342e5d5427703d46be8a4221544b3e8e9"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/008-Claude核心空白页底部准确打开原员工配置.native.png",
+      "bytes": 288253,
+      "sha256": "47029a207a2d0a7b4af4430593ab599093dce1be8ef61b7d20af9e8bdcfa990b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/009-Claude核心空白页底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "e9dace37dc097693386d59fd1e17f2417995684c6fb85f2a86e48fdf68df804d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/010-Claude核心空白页底部准确打开原本机配置.native.png",
+      "bytes": 203105,
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/011-Claude核心空白页底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/012-Claude核心空白页导航原身份与零业务调用.json",
+      "bytes": 10746,
+      "sha256": "328e07124c1fc7346abc5fe9a272a868f723093aace1aaf4b96b5ed1aa02ffd4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/013-Claude核心空白页设置往返后原输入与发送语义保持.native.png",
+      "bytes": 133071,
+      "sha256": "03366d92b724b193709c3854cf56243ed615295090c4962fd121c542f777e102"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/014-Claude核心空白页设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "8d2ce5a3af5c472f8dbab76d9e7f11abd1bbc421a54003692e97e7bed24a442b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/015-Claude核心原持久回执与账本.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/018-Claude组织群原消息与父子工作.json",
+      "bytes": 55570,
+      "sha256": "7b9f86a4b93b988adfd55110244d7df636e10f57cc742d8a963e53defeda573f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/019-Claude核心原讨论与真实创建回执.native.png",
+      "bytes": 385341,
+      "sha256": "fa4b508ec7d70ecb85fc647a50951be0b2c3919b3f80148d2146c865ee113bf8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/020-Claude核心原讨论与真实创建回执.capture.json",
+      "bytes": 1685,
+      "sha256": "6a730672f5366601917ce183d537ba552921d447e6296ed369051d7633203c32"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/021-Claude独立群与原交付结果.native.png",
+      "bytes": 324852,
+      "sha256": "18c0897635e77a5039464ac27b309016e153b9050dcf00226035389e5cd2a5f7"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/022-Claude独立群与原交付结果.capture.json",
+      "bytes": 1685,
+      "sha256": "1db4a774e2341aaac9b7489e23d1c91cce6a90f8113f06a70a95cf9d7df687d2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/023-第-2-次启动结束画面.png",
+      "bytes": 326918,
+      "sha256": "bd407a97261e694a5143c184f5929fe0a2bd912ff1a3abad66ef8892f7471e87"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/024-重启后Claude群和原记录保持.native.png",
+      "bytes": 321120,
+      "sha256": "05069a6888e4d19e3a9cf5d87f3cab1e55ab59afe606a006d64a5fb562786826"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/025-重启后Claude群和原记录保持.capture.json",
+      "bytes": 1685,
+      "sha256": "ee82de658d346b2f84510abe7b78ff186e25296566eb414784cae05cf1c894b5"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/026-Claude核心最终状态含失败.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/027-Claude核心退出前实际状态.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/030-Claude核心退出前进程身份.json",
+      "bytes": 161,
+      "sha256": "23d075afbd2aeeb5e4f0cecc91c8a38e64aae10d0c257b81f5886b8f5bb335a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-HGpm7F/031-第-3-次启动结束画面.png",
+      "bytes": 320865,
+      "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "10abda8445674876b9eac11757acf16fdc29bf5f0ff8cd888faee4425776fd64"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "d32ea5d5baa95daa400d424d197151a3327a7f233eeddc09f368879bf7d5810a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1/playwright-results.json",
+      "bytes": 73906,
+      "sha256": "da9449a6513232f77227bebe4ebd9529b4e543ffe6f602498480f352455e525a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/checks.json",
+      "bytes": 636114,
+      "sha256": "0798ae01d44b08399d31d0b962cfe381c34c726da0caa3b9e5ef3ff25b712939"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/manifest.json",
+      "bytes": 1270,
+      "sha256": "2902b9de8aea9b20a23af5786c40262124f79b29fb943dea859dd34f6fc1bb1c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/index.html",
+      "bytes": 646173,
+      "sha256": "eeb73e357acc749839697797bc1800575183ac4303cc290e85ade37af1364ccf"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0001-3eabac59d11d1ac5.png",
+      "bytes": 104678,
+      "sha256": "3eabac59d11d1ac5698d34c5c585b01830a4ccf0ec78af3e259db30f43be8afb"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0003-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0005-41eb7a40197956a8.png",
+      "bytes": 292933,
+      "sha256": "41eb7a40197956a88e79bd4a68d884f8f58bbfb48ebaa90b61bff28806a61972"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0006-9fbe1d9683809b22.download",
+      "bytes": 1685,
+      "sha256": "9fbe1d9683809b22138d5379a2c74a547bdb0571ba96bea74dcb19ebeb9ce3d4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0007-35c666ef4175202c.json",
+      "bytes": 699,
+      "sha256": "35c666ef4175202c2c99fea80729832342e5d5427703d46be8a4221544b3e8e9"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0008-47029a207a2d0a7b.png",
+      "bytes": 288253,
+      "sha256": "47029a207a2d0a7b4af4430593ab599093dce1be8ef61b7d20af9e8bdcfa990b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0009-e9dace37dc097693.download",
+      "bytes": 1685,
+      "sha256": "e9dace37dc097693386d59fd1e17f2417995684c6fb85f2a86e48fdf68df804d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0010-b67431dce59ba313.png",
+      "bytes": 203105,
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0011-6f434a926d8d59bf.download",
+      "bytes": 1685,
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0012-328e07124c1fc734.json",
+      "bytes": 10746,
+      "sha256": "328e07124c1fc7346abc5fe9a272a868f723093aace1aaf4b96b5ed1aa02ffd4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0013-03366d92b724b193.png",
+      "bytes": 133071,
+      "sha256": "03366d92b724b193709c3854cf56243ed615295090c4962fd121c542f777e102"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0014-8d2ce5a3af5c472f.download",
+      "bytes": 1685,
+      "sha256": "8d2ce5a3af5c472f8dbab76d9e7f11abd1bbc421a54003692e97e7bed24a442b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0015-32ad603940edb088.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0016-05624593e9434a85.md",
+      "bytes": 16,
+      "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0017-7e8a7c9d2e95561d.md",
+      "bytes": 129,
+      "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0018-7b9f86a4b93b988a.json",
+      "bytes": 55570,
+      "sha256": "7b9f86a4b93b988adfd55110244d7df636e10f57cc742d8a963e53defeda573f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0019-fa4b508ec7d70ecb.png",
+      "bytes": 385341,
+      "sha256": "fa4b508ec7d70ecb85fc647a50951be0b2c3919b3f80148d2146c865ee113bf8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0020-6a730672f5366601.download",
+      "bytes": 1685,
+      "sha256": "6a730672f5366601917ce183d537ba552921d447e6296ed369051d7633203c32"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0021-18c0897635e77a50.png",
+      "bytes": 324852,
+      "sha256": "18c0897635e77a5039464ac27b309016e153b9050dcf00226035389e5cd2a5f7"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0022-1db4a774e2341aaa.download",
+      "bytes": 1685,
+      "sha256": "1db4a774e2341aaac9b7489e23d1c91cce6a90f8113f06a70a95cf9d7df687d2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0023-bd407a97261e694a.png",
+      "bytes": 326918,
+      "sha256": "bd407a97261e694a5143c184f5929fe0a2bd912ff1a3abad66ef8892f7471e87"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0024-05069a6888e4d19e.png",
+      "bytes": 321120,
+      "sha256": "05069a6888e4d19e3a9cf5d87f3cab1e55ab59afe606a006d64a5fb562786826"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0025-ee82de658d346b2f.download",
+      "bytes": 1685,
+      "sha256": "ee82de658d346b2f84510abe7b78ff186e25296566eb414784cae05cf1c894b5"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0026-32ad603940edb088.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0027-32ad603940edb088.json",
+      "bytes": 117400,
+      "sha256": "32ad603940edb088e7c8c3e5d99eaa5d640eba43ff620e0424d94cd7a0fd9b12"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0028-8c7fe89aa688aef4.png",
+      "bytes": 320865,
+      "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0029-53d6d2a2d5edb79c.download",
+      "bytes": 1685,
+      "sha256": "53d6d2a2d5edb79cbe887cf91ac68ee0597256ab977ce683954e091ec3422da3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0030-23d075afbd2aeeb5.json",
+      "bytes": 161,
+      "sha256": "23d075afbd2aeeb5e4f0cecc91c8a38e64aae10d0c257b81f5886b8f5bb335a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0031-8c7fe89aa688aef4.png",
+      "bytes": 320865,
+      "sha256": "8c7fe89aa688aef4c8df7cb6baa197c095854a3ece16ff529ae5eea8d88c2620"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0032-f77339378efca5ad.json",
+      "bytes": 360,
+      "sha256": "f77339378efca5ad6ebce0203abc71402f17feeb39935298b6e7f2cb3f56006d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0033-f902aebb43969bc3.json",
+      "bytes": 122365,
+      "sha256": "f902aebb43969bc3e6738764964654879711ee1e1efa27b65ab6bcfd51d8ee99"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0034-05624593e9434a85.md",
+      "bytes": 16,
+      "sha256": "05624593e9434a85f41eecfedcdb9eba087b011153de051c2b0511232c650a8c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report/resources/0035-7e8a7c9d2e95561d.md",
+      "bytes": 129,
+      "sha256": "7e8a7c9d2e95561dc108487a3d0f8a7d62fe50137b75e67c17700baa73a538d0"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/manifest.json",
+      "bytes": 37401,
+      "sha256": "5be30c9dad633d5df4dabfb178bdbb23b26b011c1cdaac4415ce8dcc604ed6f7"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/024-Claude核心退出后实际状态.json",
+      "bytes": 122778,
+      "sha256": "a4f8a5d028ec19af013eb4f2d76137f9e27e81897656c859f0f3187dbc3f859f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/023-Claude核心实际退出核对.json",
+      "bytes": 360,
+      "sha256": "b8edd0c9c1a8c8843818199ea9d0f5d8800c11242eaeba044a6e72802175a89e"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/025-723721e0-6af7-400f-a5cb-a79353b22581-child.md",
+      "bytes": 15,
+      "sha256": "93606df29978a2972ebbfac40eb6a9d41d1289e3146eeef559b73cee1bd9fd50"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/026-9f7b155f-964b-4eec-8508-141c61a9e34b-summary.md",
+      "bytes": 51,
+      "sha256": "3db20dca9371b6fb584b8614a61040a7bcbc2008987c55145127f41c934a7299"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-package-1-退出前-20261006.png",
+      "bytes": 377154,
+      "sha256": "45600e007adad3b7687989c43f375abf4e5aaf07064c7577c84f657bc87142cc"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-组织真实派发-package-1-退出前-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "d9d0f81b8eb336c5d57ce750288d0a4eeac69d2febcd75ed482f700783870774"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/019-Claude核心退出前原生画面.native.png",
+      "bytes": 377154,
+      "sha256": "45600e007adad3b7687989c43f375abf4e5aaf07064c7577c84f657bc87142cc"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/020-Claude核心退出前原生画面.capture.json",
+      "bytes": 1685,
+      "sha256": "d9d0f81b8eb336c5d57ce750288d0a4eeac69d2febcd75ed482f700783870774"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/001-第-1-次启动结束画面.png",
+      "bytes": 104744,
+      "sha256": "327b3e2ad046b5b7bdddea299d41107ca46d3309c9473b5a067adfda3d1adc7d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/005-原助手设置选择Claude程序和明确API来源.native.png",
+      "bytes": 292561,
+      "sha256": "3da5d472031b15d59aa4157c56c82bd63dca76adf93a5d73767260d6f00ab833"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/006-原助手设置选择Claude程序和明确API来源.capture.json",
+      "bytes": 1685,
+      "sha256": "f41939dc3e5867e2fc221dc8401a36f219db6317dc69cf026faa3c50a3504313"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/007-Claude核心本场原始请求.json",
+      "bytes": 699,
+      "sha256": "f021204b9632cbe058c6d2400ec4221817fff0ed9c9b17071571c120ddaed69c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/008-Claude核心空白页底部准确打开原员工配置.native.png",
+      "bytes": 289228,
+      "sha256": "e4f16476357c18da4031bfe9f635069a2132b1c43760b4ea6ea5088bcaef6ee7"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/009-Claude核心空白页底部准确打开原员工配置.capture.json",
+      "bytes": 1685,
+      "sha256": "1d213d664aa5abfd22ffce8cdb91be2d951ef0bec51bb190229513ce0000144e"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/010-Claude核心空白页底部准确打开原本机配置.native.png",
+      "bytes": 203105,
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/011-Claude核心空白页底部准确打开原本机配置.capture.json",
+      "bytes": 1685,
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/012-Claude核心空白页导航原身份与零业务调用.json",
+      "bytes": 10746,
+      "sha256": "00d523ba43beac0af8b5b94f57dfc75e0c418a02fbe22e26654ee6cad23878f8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/013-Claude核心空白页设置往返后原输入与发送语义保持.native.png",
+      "bytes": 133071,
+      "sha256": "700032873dba0d03a20da2cce3d8ea28b7553d8ae65c16c519d11da8ac017cde"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/014-Claude核心空白页设置往返后原输入与发送语义保持.capture.json",
+      "bytes": 1685,
+      "sha256": "79508064328612f61b2e2c9189b2d1f4f85628982c073dff67dbfbef02dda0e8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/015-Claude核心原持久回执与账本.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/016-Claude核心原场景失败.json",
+      "bytes": 6512,
+      "sha256": "60f36c66dfbaf0ba2dbda4613104bb952925b3f7c33c09bf5bf3da7592b21991"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/017-Claude核心最终状态含失败.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/018-Claude核心退出前实际状态.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/021-Claude核心退出前进程身份.json",
+      "bytes": 161,
+      "sha256": "2c1697096787ecb4472203ddcceb3ac4bb32913aeb1ffeeaa9e653d1c8750d7a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-nLPfaH/022-第-2-次启动结束画面.png",
+      "bytes": 377165,
+      "sha256": "5fe9bcb07747fd70593a4be22a352071f9716dc1fe502410ba0c8a4c5dcabaf1"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/build-manifest.json",
+      "bytes": 101710,
+      "sha256": "83490c7b5f9874ecaac2ef3c54aa753f5e08ad6731861bf5fb6be3a1cc73ace3"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "8a6d2807c908092b2bdd31d35086aa34b3307eff82b723bf0d9fa6fd824ef2fe"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/playwright-results.json",
+      "bytes": 110153,
+      "sha256": "04ca4b76d17fe146d44da9316def22e4281fd2f8fc1c5bbfa519fc396d9699fb"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/checks.json",
+      "bytes": 587307,
+      "sha256": "bf3a6c6acabaed5b40baee87b122a7d4fff2fa8e193399d524ffa3f3265f3087"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/manifest.json",
+      "bytes": 1272,
+      "sha256": "974bd5cee4b3c6e361d1121f45d1bd5e6a82803f39fb26263cb628f7dac08421"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/index.html",
+      "bytes": 599045,
+      "sha256": "8a9c414032f20fa95548c4edcddefb509ff779404f8bc312f57a199a1cdd75ef"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0001-327b3e2ad046b5b7.png",
+      "bytes": 104744,
+      "sha256": "327b3e2ad046b5b7bdddea299d41107ca46d3309c9473b5a067adfda3d1adc7d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0003-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0005-3da5d472031b15d5.png",
+      "bytes": 292561,
+      "sha256": "3da5d472031b15d59aa4157c56c82bd63dca76adf93a5d73767260d6f00ab833"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0006-f41939dc3e5867e2.download",
+      "bytes": 1685,
+      "sha256": "f41939dc3e5867e2fc221dc8401a36f219db6317dc69cf026faa3c50a3504313"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0007-f021204b9632cbe0.json",
+      "bytes": 699,
+      "sha256": "f021204b9632cbe058c6d2400ec4221817fff0ed9c9b17071571c120ddaed69c"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0008-e4f16476357c18da.png",
+      "bytes": 289228,
+      "sha256": "e4f16476357c18da4031bfe9f635069a2132b1c43760b4ea6ea5088bcaef6ee7"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0009-1d213d664aa5abfd.download",
+      "bytes": 1685,
+      "sha256": "1d213d664aa5abfd22ffce8cdb91be2d951ef0bec51bb190229513ce0000144e"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0010-b67431dce59ba313.png",
+      "bytes": 203105,
+      "sha256": "b67431dce59ba31346b4c874dad70f603c4de2d1e130acb2aaca22ff6902a25b"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0011-6f434a926d8d59bf.download",
+      "bytes": 1685,
+      "sha256": "6f434a926d8d59bf7ea130b7fc7f4a8086814ee5bff96f15e377c6ae5b1c4cc8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0012-00d523ba43beac0a.json",
+      "bytes": 10746,
+      "sha256": "00d523ba43beac0af8b5b94f57dfc75e0c418a02fbe22e26654ee6cad23878f8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0013-700032873dba0d03.png",
+      "bytes": 133071,
+      "sha256": "700032873dba0d03a20da2cce3d8ea28b7553d8ae65c16c519d11da8ac017cde"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0014-79508064328612f6.download",
+      "bytes": 1685,
+      "sha256": "79508064328612f61b2e2c9189b2d1f4f85628982c073dff67dbfbef02dda0e8"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0015-b32fb29a4fba6325.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0016-60f36c66dfbaf0ba.json",
+      "bytes": 6512,
+      "sha256": "60f36c66dfbaf0ba2dbda4613104bb952925b3f7c33c09bf5bf3da7592b21991"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0017-b32fb29a4fba6325.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0018-b32fb29a4fba6325.json",
+      "bytes": 117851,
+      "sha256": "b32fb29a4fba63250c891bd63e66c3d6c85929cb1aedfd9ba30d56c01a973e24"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0019-45600e007adad3b7.png",
+      "bytes": 377154,
+      "sha256": "45600e007adad3b7687989c43f375abf4e5aaf07064c7577c84f657bc87142cc"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0020-d9d0f81b8eb336c5.download",
+      "bytes": 1685,
+      "sha256": "d9d0f81b8eb336c5d57ce750288d0a4eeac69d2febcd75ed482f700783870774"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0021-2c1697096787ecb4.json",
+      "bytes": 161,
+      "sha256": "2c1697096787ecb4472203ddcceb3ac4bb32913aeb1ffeeaa9e653d1c8750d7a"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0022-5fe9bcb07747fd70.png",
+      "bytes": 377165,
+      "sha256": "5fe9bcb07747fd70593a4be22a352071f9716dc1fe502410ba0c8a4c5dcabaf1"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0023-b8edd0c9c1a8c884.json",
+      "bytes": 360,
+      "sha256": "b8edd0c9c1a8c8843818199ea9d0f5d8800c11242eaeba044a6e72802175a89e"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0024-a4f8a5d028ec19af.json",
+      "bytes": 122778,
+      "sha256": "a4f8a5d028ec19af013eb4f2d76137f9e27e81897656c859f0f3187dbc3f859f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0025-93606df29978a297.md",
+      "bytes": 15,
+      "sha256": "93606df29978a2972ebbfac40eb6a9d41d1289e3146eeef559b73cee1bd9fd50"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report/resources/0026-3db20dca9371b6fb.md",
+      "bytes": 51,
+      "sha256": "3db20dca9371b6fb584b8614a61040a7bcbc2008987c55145127f41c934a7299"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1/package-verification.json",
+      "bytes": 162,
+      "sha256": "37871d0a9073e3ba59865e33e8e09b48b650f63784fa394de6ebf2f87c0fca7b"
+    },
+    {
+      "path": ".local/feature-review/native-final-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-vOr7wO/024-Claude核心退出后实际状态.json",
+      "bytes": 103724,
+      "sha256": "688e068a89dd75c7d467d1f1d0e6646e970e8b56e33046da6b9db6fda9a42707"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-退出后最终留证与必需原件-20261006.json",
+      "bytes": 375551,
+      "sha256": "14eb3191acb77f19b007b98756e64963c83f1a1cbfbbfc92794881457008f66f"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/bddgen-1.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/build-1.log",
+      "bytes": 9685,
+      "sha256": "7148f0d877df94cdc497bd9bc959537c435c96e1f0aa829501e3f617abeb34be"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/collect-event-evidence.py",
+      "bytes": 7302,
+      "sha256": "a48e47bd984f831be6c38da2b2b197845e0deaf6a6efa7bf5e65b93e0162feb0"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/dispatch-1.log",
+      "bytes": 197,
+      "sha256": "191290d33a218f52c344fc213302f59a389879d1131a21e2f792b03e2586d352"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/freeze.py",
+      "bytes": 1280,
+      "sha256": "afd525d4f20d1e95c7ac95778902ed8cab10f4aa263eee686fb6d52cb1612bfb"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1-report.log",
+      "bytes": 261,
+      "sha256": "e71a0ccb08d6b0707509d5fec8715906fa8c9e5c97f2c9a6ee5993f52d014f56"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/offline-1.log",
+      "bytes": 482,
+      "sha256": "1c6293a46ec82e7da939871fe1d69bf6022c5e1f54fef1f9b57ca95825adc6f4"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1-report.log",
+      "bytes": 261,
+      "sha256": "fbef686e989907a12b43243585d8ac1abce30022f5c73d1fde88d3b1a42944c5"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/package-1.log",
+      "bytes": 29919,
+      "sha256": "d73f37d3136a356e2bfc56cac506ad3fb9b51186742caa59bc364ba7960d8e63"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/report-resource-verification.json",
+      "bytes": 449,
+      "sha256": "a87629391eb07435748f27c83b7ff4c0620cb718e43f7ec525d237f9167d2aad"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1-report.log",
+      "bytes": 260,
+      "sha256": "22db923a225572092af459b4e4b7319e70f5c611ea5d419a186045f6ae2070a6"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/source-1.log",
+      "bytes": 480,
+      "sha256": "e3e200f581a4108c7853467096b3e7568ccb9eeb7ef5cabcae33d56fdbe94367"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/typecheck-1.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/unchanged-package-before.json",
+      "bytes": 145,
+      "sha256": "507124992bc73d82029750ccb733b41f4d715bbacd6c0802b675a116c0d63f83"
+    },
+    {
+      "path": ".local/feature-review/organization-event-evidence-20261006/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    }
+  ],
+  "historicalFailureState": {
+    "path": ".local/feature-review/native-final-evidence-20261006/package-1/scenarios/76620a6b86e22810b964-38bff6587e77eb6bfa84-retry0-repeat0-vOr7wO/024-Claude核心退出后实际状态.json",
+    "bytes": 103724,
+    "sha256": "688e068a89dd75c7d467d1f1d0e6646e970e8b56e33046da6b9db6fda9a42707"
+  },
+  "historicalFailureSummary": {
+    "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-退出后最终留证与必需原件-20261006.json",
+    "bytes": 375551,
+    "sha256": "14eb3191acb77f19b007b98756e64963c83f1a1cbfbbfc92794881457008f66f"
+  }
+}

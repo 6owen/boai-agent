@@ -1,12 +1,19 @@
+/*
+ * [INPUT]: 员工绑定资源、冻结环境及Mastra与本机Codex工具。
+ * [OUTPUT]: 核对获准路径、资源版本及缓存后的外改拒绝；不把工具缓存当来源权威。
+ * [POS]: 员工环境模块验证，真实桌面和供应商证据另行执行。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Workspace } from '@mastra/core/workspace'
 import type { EngineContext } from '../src/runtime/contracts'
-import type { Resource } from '../src/shared/domain'
+import type { Resource, WorkItem } from '../src/shared/domain'
 import { assertEnvironmentScope, describeEnvironment, prepareEnvironment, readVersionedText } from '../src/runtime/modules/workspaces/environment-plan'
 import { createStageAgent } from '../src/runtime/adapters/mastra/agent-factory'
+import { createCodexTask } from '../src/runtime/adapters/codex/task'
 
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -31,6 +38,31 @@ async function skill(ctx: EngineContext): Promise<Resource> {
 }
 
 describe('authorized employee environments', () => {
+  it('rejects a changed or newly added native skill file even when the framework cached its instructions', async () => {
+    const ctx = await context(), resource = await skill(ctx)
+    const reference = path.join(resource.path, 'references/proof.md')
+    await mkdir(path.dirname(reference)); await writeFile(reference, 'Frozen proof')
+    ctx.work = { id: 'claimed-work' } as WorkItem; ctx.responseKind = 'task'
+    const activated: string[] = []; ctx.onSkillActivated = async (_, skill) => { activated.push(skill.id) }
+    const runtime = await createCodexTask(ctx)
+    try {
+      expect(runtime.tools.map(tool => tool.name)).toEqual(expect.arrayContaining(['skill', 'skill_read']))
+      const activate = runtime.tools.find(tool => tool.name === 'skill')!, read = runtime.tools.find(tool => tool.name === 'skill_read')!
+      expect(await activate.execute({ name: 'check-data' }, 'activate')).toContain('Read the inputs')
+      expect(activated).toEqual([resource.id])
+      expect(await read.execute({ skillName: 'check-data', path: 'references/proof.md' }, 'read')).toContain('Frozen proof')
+      await writeFile(reference, 'Changed private proof')
+      await expect(read.execute({ skillName: 'check-data', path: 'references/proof.md' }, 'changed-read')).rejects.toThrow('资源内容已变更')
+      await writeFile(path.join(resource.path, 'new.md'), 'Not in frozen version')
+      await expect(read.execute({ skillName: 'check-data', path: 'new.md' }, 'new-read')).rejects.toThrow('不属于')
+      await writeFile(path.join(resource.path, 'SKILL.md'), 'Unapproved replacement')
+      await expect(activate.execute({ name: 'check-data' }, 'changed-activation')).rejects.toThrow('资源内容已变更')
+      expect(activated).toEqual([resource.id])
+      runtime.stop()
+      await expect(activate.execute({ name: 'check-data' }, 'after-stop')).rejects.toThrow('已退出')
+    } finally { runtime.stop(); await runtime.dispose() }
+  })
+
   it('requires both group and employee knowledge grants, and excludes unbound and foreign skills', async () => {
     const ctx = await context(), resource = await skill(ctx)
     const knowledge: Resource = { id: 'facts', kind: 'knowledge', name: 'Facts', description: '', path: path.join(roots.at(-1)!, 'facts.md'), createdAt: '' }
@@ -102,7 +134,7 @@ describe('authorized employee environments', () => {
 
   it('destroys a task workspace when model assembly fails after initialization', async () => {
     const ctx = await context()
-    ctx.connection.provider = 'openai'; ctx.apiKey = ''
+    ctx.connection!.provider = 'openai'; ctx.apiKey = ''
     const destroy = vi.spyOn(Workspace.prototype, 'destroy')
     await expect(createStageAgent('task', ctx)).rejects.toThrow('API Key')
     expect(destroy).toHaveBeenCalledTimes(1)

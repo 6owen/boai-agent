@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
+ * [OUTPUT]: 本机交互预算/请求固定原消息来源及external-turn计量，判断/执行/记忆共账本；保留旧字段兼容，不冒充内部逐模型限额。
  * [INPUT]: 用户请求、员工工作意图、执行权与可检查结果。
  * [OUTPUT]: 新宿主授权完整群协作首次固定48次共用调用，其他及追加方案保留24；原保存预算不升级，输出/运行/事项/绝对期限不变。
  * [OUTPUT]: bobo 组织合同/真实组织证据与独立群根共原预算；启动意图唯一消费；非自动化逐调用账本和清理去重；明确用户问题与公开结果绑定，依赖等待保持独立，补充沿原工作/预算；宿主修订请求绑定新根工作并由子工作继承来源身份；材料来源约束工作正文与父子继承；显式追加额度的固定方案与前后限额/累计用量回执；版本化父子工作、依赖、共享预算/调用账本及私有汇报合同。
@@ -114,6 +116,10 @@ export interface WorkItem {
   updatedAt: string
 }
 export interface WorkBudget {
+  /** Original interactive request; unlike an occurrence or organized collaboration. */
+  sourceMessageId?: string
+  /** Legacy field names remain compatible; native Codex counts host turns, never internal model steps. */
+  callUnit?: 'external-turn' | 'mixed'
   collaborationRequestId?: string
   renewals?: BudgetRenewal[]
   origin?: AutomationOrigin
@@ -160,6 +166,8 @@ export interface BudgetRenewal {
   workVersions: { id: string; version: number; status: WorkItem['status'] }[]
 }
 export interface BudgetModelCall {
+  sourceMessageId?: string
+  callUnit?: 'external-turn'
   id: string
   budgetId: string
   conversationId: string
@@ -178,6 +186,7 @@ export interface BudgetModelCall {
 /** Cleared private call identities cannot be reserved or settled again. Counters stay on the shared budget. */
 export interface ClearedBudgetModelCall { id: string; budgetId: string; status: 'cleared'; requestHash: string }
 export interface WorkExecution {
+  callUnit?: 'external-turn'
   origin?: AutomationOrigin
   id: string
   workId: string

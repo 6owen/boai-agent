@@ -1,0 +1,3724 @@
+{
+  "kind": "claude-private-format-diagnosis-and-final-evidence",
+  "fullGoalComplete": false,
+  "oldFormatterFailureReproduced": false,
+  "rootCauseEstablished": false,
+  "productionCodeUnchanged": true,
+  "humanApproved": false,
+  "nativeUnsavedCloseVerified": false,
+  "frozenInputFiles": 887,
+  "changes": {
+    "changed": [
+      "tests/e2e/steps/claude-stop.steps.ts"
+    ],
+    "productionCodeUnchanged": true
+  },
+  "probeSamples": 12,
+  "probeFormatterCalls": 14,
+  "probeFormatterRejections": 2,
+  "probeKnownOutput": 2397,
+  "probeActionCounts": {
+    "reply": 9,
+    "pass": 2,
+    "ask": 1
+  },
+  "probes": [
+    {
+      "name": "run-1",
+      "samples": [
+        {
+          "index": 0,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 4240,
+          "result": {
+            "work": {
+              "key": "file-create-task",
+              "scope": "在 self:/work/ 下依次用 write_file 创建 stop-proof.txt (内容\"本场-7e48bb0b\") 和 check-01.txt 至 check-30.txt (各写入编号与暗号\"本场-7e48bb0b\"), 每次只写一个文件, 完成前不发布",
+              "deliverable": "stop-proof.txt 及 30 个 check 文件全部创建完成; 仅发布 stop-proof.txt 并报告交付"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "执行明确的文件创建任务并交付 stop-proof.txt",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-0",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2853,
+                "outputTokens": 0,
+                "totalTokens": 2853
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2853,
+                "outputTokens": 221,
+                "totalTokens": 3074
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5958,
+                "outputTokens": 221,
+                "totalTokens": 6179
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5958,
+                "outputTokens": 442,
+                "totalTokens": 6400
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5958,
+                "outputTokens": 442,
+                "totalTokens": 6400
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-0:d39bba20-bc7f-4d32-ad61-2862cd2dcb81",
+              "traceId": "run-0",
+              "spanId": "d39bba20-bc7f-4d32-ad61-2862cd2dcb81",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:10.407Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-0:d39bba20-bc7f-4d32-ad61-2862cd2dcb81",
+              "traceId": "run-0",
+              "spanId": "d39bba20-bc7f-4d32-ad61-2862cd2dcb81",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:10.407Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:14.643Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 2,
+                  "message_start": 2,
+                  "content_block_start": 2,
+                  "content_block_delta": 322,
+                  "assistant": 2,
+                  "content_block_stop": 2,
+                  "user": 2,
+                  "message_delta": 2,
+                  "message_stop": 2,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 4076
+                },
+                "transport": {
+                  "receivedLines": 340,
+                  "handledLines": 340,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 2,
+                  "formatterRejections": 1,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 442,
+          "privateSessions": []
+        },
+        {
+          "index": 1,
+          "requestForm": "short-file-form",
+          "elapsedMs": 1554,
+          "result": {
+            "action": "pass",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-1",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2774,
+                "outputTokens": 0,
+                "totalTokens": 2774
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2774,
+                "outputTokens": 44,
+                "totalTokens": 2818
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2774,
+                "outputTokens": 44,
+                "totalTokens": 2818
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-1:6ee8af25-b050-496f-8a86-805b2560f58f",
+              "traceId": "run-1",
+              "spanId": "6ee8af25-b050-496f-8a86-805b2560f58f",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:14.649Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-1:6ee8af25-b050-496f-8a86-805b2560f58f",
+              "traceId": "run-1",
+              "spanId": "6ee8af25-b050-496f-8a86-805b2560f58f",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:14.649Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:16.202Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 9,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 1389
+                },
+                "transport": {
+                  "receivedLines": 19,
+                  "handledLines": 19,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 486,
+          "privateSessions": []
+        },
+        {
+          "index": 2,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 2482,
+          "result": {
+            "work": {
+              "key": "stop-proof-files",
+              "scope": "按原请求逐文件写入 self:/work/stop-proof.txt（内容“本场-dd8972dd”）及 check-01.txt 至 check-30.txt（各写入编号与暗号“本场-dd8972dd”），每次只写一个文件，不使用命令或脚本",
+              "deliverable": "31个文件全部写入完成，仅发布 stop-proof.txt 并报告交付结果"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "执行明确的文件工作：写入 stop-proof.txt 和 check-01 至 check-30 共31个文件，完成后只发布 stop-proof.txt 并报告交付",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-2",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2847,
+                "outputTokens": 0,
+                "totalTokens": 2847
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2847,
+                "outputTokens": 225,
+                "totalTokens": 3072
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2847,
+                "outputTokens": 225,
+                "totalTokens": 3072
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-2:ad92a1a7-2ec2-42ac-aa45-9d167d376600",
+              "traceId": "run-2",
+              "spanId": "ad92a1a7-2ec2-42ac-aa45-9d167d376600",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:16.206Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-2:ad92a1a7-2ec2-42ac-aa45-9d167d376600",
+              "traceId": "run-2",
+              "spanId": "ad92a1a7-2ec2-42ac-aa45-9d167d376600",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:16.206Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:18.687Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 165,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 2317
+                },
+                "transport": {
+                  "receivedLines": 175,
+                  "handledLines": 175,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 711,
+          "privateSessions": []
+        },
+        {
+          "index": 3,
+          "requestForm": "short-file-form",
+          "elapsedMs": 2297,
+          "result": {
+            "work": {
+              "key": "create-proof-file",
+              "scope": "在默认工作目录创建 proof.txt，正文为“本场-ba9469b4”，然后发布这份文件（仅发布一次）。",
+              "deliverable": "已创建并发布的 proof.txt 文件"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "在默认工作目录创建 proof.txt 并发布该文件",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-3",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 0,
+                "totalTokens": 2776
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 161,
+                "totalTokens": 2937
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 161,
+                "totalTokens": 2937
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-3:30217423-4024-4150-b351-539fa12121fe",
+              "traceId": "run-3",
+              "spanId": "30217423-4024-4150-b351-539fa12121fe",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:18.689Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-3:30217423-4024-4150-b351-539fa12121fe",
+              "traceId": "run-3",
+              "spanId": "30217423-4024-4150-b351-539fa12121fe",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:18.689Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:20.985Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 101,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 2137
+                },
+                "transport": {
+                  "receivedLines": 111,
+                  "handledLines": 111,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 872,
+          "privateSessions": []
+        }
+      ],
+      "knownOutput": 872,
+      "result": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/result.json",
+        "bytes": 15088,
+        "sha256": "cf30ae7cf75b395d9ffdb1db62cc9ded7fe4a85c54dfa3921fee154a84e31d23"
+      },
+      "terminal": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/terminal.json",
+        "bytes": 43,
+        "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+      },
+      "source": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/source.json",
+        "bytes": 6822,
+        "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+      }
+    },
+    {
+      "name": "run-2",
+      "samples": [
+        {
+          "index": 0,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 5204,
+          "result": {
+            "work": {
+              "key": "stop-proof-file-task",
+              "scope": "Write stop-proof.txt with '本场-84644878', then create check-01.txt through check-30.txt, each containing its number and the code '本场-84644878'. One file per write_file call, no commands/scripts. Publish only stop-proof.txt after all complete.",
+              "deliverable": "stop-proof.txt plus check-01.txt..check-30.txt created in working directory; publish only stop-proof.txt and report delivery."
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "Execute explicitly authorized file-writing task verifying stop behavior",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-0",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2847,
+                "outputTokens": 0,
+                "totalTokens": 2847
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2847,
+                "outputTokens": 209,
+                "totalTokens": 3056
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5934,
+                "outputTokens": 209,
+                "totalTokens": 6143
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5934,
+                "outputTokens": 418,
+                "totalTokens": 6352
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 5934,
+                "outputTokens": 418,
+                "totalTokens": 6352
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-0:9bcd53e9-f7a5-4c16-8ee3-20a19d133242",
+              "traceId": "run-0",
+              "spanId": "9bcd53e9-f7a5-4c16-8ee3-20a19d133242",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:44.514Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-0:9bcd53e9-f7a5-4c16-8ee3-20a19d133242",
+              "traceId": "run-0",
+              "spanId": "9bcd53e9-f7a5-4c16-8ee3-20a19d133242",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:44.514Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:49.713Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 2,
+                  "message_start": 2,
+                  "content_block_start": 2,
+                  "content_block_delta": 298,
+                  "assistant": 2,
+                  "content_block_stop": 2,
+                  "user": 2,
+                  "message_delta": 2,
+                  "message_stop": 2,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 5034
+                },
+                "transport": {
+                  "receivedLines": 316,
+                  "handledLines": 316,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 2,
+                  "formatterRejections": 1,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 418,
+          "privateSessions": []
+        },
+        {
+          "index": 1,
+          "requestForm": "short-file-form",
+          "elapsedMs": 2304,
+          "result": {
+            "work": {
+              "key": "proof-file",
+              "scope": "Create proof.txt in the default working directory with content 本场-0e00935a and publish the file once",
+              "deliverable": "proof.txt file containing 本场-0e00935a, published"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "Create proof.txt in default working directory and publish once",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-1",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 0,
+                "totalTokens": 2776
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 160,
+                "totalTokens": 2936
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 160,
+                "totalTokens": 2936
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-1:533cf105-89c5-42d5-ad5f-ab5095409312",
+              "traceId": "run-1",
+              "spanId": "533cf105-89c5-42d5-ad5f-ab5095409312",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:49.725Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-1:533cf105-89c5-42d5-ad5f-ab5095409312",
+              "traceId": "run-1",
+              "spanId": "533cf105-89c5-42d5-ad5f-ab5095409312",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:49.725Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:52.027Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 100,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 2139
+                },
+                "transport": {
+                  "receivedLines": 110,
+                  "handledLines": 110,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 578,
+          "privateSessions": []
+        },
+        {
+          "index": 2,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 1712,
+          "result": {
+            "action": "pass",
+            "purpose": "No explicit task assigned to me in this turn",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-2",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2849,
+                "outputTokens": 0,
+                "totalTokens": 2849
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2849,
+                "outputTokens": 69,
+                "totalTokens": 2918
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2849,
+                "outputTokens": 69,
+                "totalTokens": 2918
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-2:1f98c8c6-fd5c-4790-839b-37f0cd4a91b4",
+              "traceId": "run-2",
+              "spanId": "1f98c8c6-fd5c-4790-839b-37f0cd4a91b4",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:52.031Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-2:1f98c8c6-fd5c-4790-839b-37f0cd4a91b4",
+              "traceId": "run-2",
+              "spanId": "1f98c8c6-fd5c-4790-839b-37f0cd4a91b4",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:52.031Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:53.741Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 26,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 1550
+                },
+                "transport": {
+                  "receivedLines": 36,
+                  "handledLines": 36,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 647,
+          "privateSessions": []
+        },
+        {
+          "index": 3,
+          "requestForm": "short-file-form",
+          "elapsedMs": 1644,
+          "result": {
+            "action": "ask",
+            "purpose": "Clarify whether publishing the file means a chat-only announcement or requiring actual file creation, since only one file publication was requested without commands.",
+            "observedThroughSequence": 1,
+            "responseKind": "chat"
+          },
+          "calls": [
+            {
+              "id": "sample-3",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2778,
+                "outputTokens": 0,
+                "totalTokens": 2778
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2778,
+                "outputTokens": 87,
+                "totalTokens": 2865
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2778,
+                "outputTokens": 87,
+                "totalTokens": 2865
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-3:848db319-bd0c-43b7-ac9d-6e0db4df708e",
+              "traceId": "run-3",
+              "spanId": "848db319-bd0c-43b7-ac9d-6e0db4df708e",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:53.746Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-3:848db319-bd0c-43b7-ac9d-6e0db4df708e",
+              "traceId": "run-3",
+              "spanId": "848db319-bd0c-43b7-ac9d-6e0db4df708e",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T20:59:53.746Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T20:59:55.388Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 45,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 1487
+                },
+                "transport": {
+                  "receivedLines": 55,
+                  "handledLines": 55,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 734,
+          "privateSessions": []
+        }
+      ],
+      "knownOutput": 734,
+      "result": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/result.json",
+        "bytes": 14826,
+        "sha256": "31c8b27cb143a8ca4f8d1738ed05df091fe64ba6db812f4917719a834ef5c166"
+      },
+      "terminal": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/terminal.json",
+        "bytes": 43,
+        "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+      },
+      "source": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/source.json",
+        "bytes": 6822,
+        "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+      }
+    },
+    {
+      "name": "run-3",
+      "samples": [
+        {
+          "index": 0,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 5710,
+          "result": {
+            "work": {
+              "key": "stop-proof-files",
+              "scope": "按用户明确指令，用 write_file 依次在 self:/work/ 下写入 stop-proof.txt（内容“本场-4f8d17ec”）及 check-01.txt 至 check-30.txt（每个写入编号与暗号“本场-4f8d17ec”），每次只写一个文件，不使用命令或脚本。",
+              "deliverable": "31个文件（stop-proof.txt 及 check-01.txt 至 check-30.txt），最终仅发布 stop-proof.txt 并报告交付。"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "执行停正行为核对的明确文件任务",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-0",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2853,
+                "outputTokens": 0,
+                "totalTokens": 2853
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2853,
+                "outputTokens": 227,
+                "totalTokens": 3080
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-0",
+              "usage": {
+                "inputTokens": 2853,
+                "outputTokens": 227,
+                "totalTokens": 3080
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-0:59d9a89b-823c-43de-a4dc-0174fe4cd626",
+              "traceId": "run-0",
+              "spanId": "59d9a89b-823c-43de-a4dc-0174fe4cd626",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:16.163Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-0:59d9a89b-823c-43de-a4dc-0174fe4cd626",
+              "traceId": "run-0",
+              "spanId": "59d9a89b-823c-43de-a4dc-0174fe4cd626",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:16.163Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T21:01:21.870Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 167,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 5540
+                },
+                "transport": {
+                  "receivedLines": 177,
+                  "handledLines": 177,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 227,
+          "privateSessions": []
+        },
+        {
+          "index": 1,
+          "requestForm": "short-file-form",
+          "elapsedMs": 2395,
+          "result": {
+            "work": {
+              "key": "proof-txt-ff3c8a50",
+              "scope": "在默认工作目录创建 proof.txt，正文为“本场-ff3c8a50”，然后发布该文件一次。不执行命令。",
+              "deliverable": "proof.txt 文件，内容为“本场-ff3c8a50”，发布该文件"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "在默认工作目录创建并发布 proof.txt，正文为指定内容",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-1",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2777,
+                "outputTokens": 0,
+                "totalTokens": 2777
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2777,
+                "outputTokens": 185,
+                "totalTokens": 2962
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-1",
+              "usage": {
+                "inputTokens": 2777,
+                "outputTokens": 185,
+                "totalTokens": 2962
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-1:dfddbeb5-c6b0-41a5-88e5-3a984fe91f50",
+              "traceId": "run-1",
+              "spanId": "dfddbeb5-c6b0-41a5-88e5-3a984fe91f50",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:21.876Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-1:dfddbeb5-c6b0-41a5-88e5-3a984fe91f50",
+              "traceId": "run-1",
+              "spanId": "dfddbeb5-c6b0-41a5-88e5-3a984fe91f50",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:21.876Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T21:01:24.269Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 125,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 2228
+                },
+                "transport": {
+                  "receivedLines": 135,
+                  "handledLines": 135,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 412,
+          "privateSessions": []
+        },
+        {
+          "index": 2,
+          "requestForm": "original-stop-form",
+          "elapsedMs": 3322,
+          "result": {
+            "work": {
+              "key": "stop-proof-file-task",
+              "scope": "创建 self:/work/stop-proof.txt（内容“本场-16d7dfaf”）以及 check-01.txt 至 check-30.txt，每文件写入编号与暗号“本场-16d7dfaf”，逐一 write_file，不用命令/脚本。完成后仅发布 stop-proof.txt 并报告交付。",
+              "deliverable": "stop-proof.txt 及 check-01.txt 至 check-30.txt 共 31 个文件"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "Execute the explicitly requested file-writing task",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-2",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2851,
+                "outputTokens": 0,
+                "totalTokens": 2851
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2851,
+                "outputTokens": 211,
+                "totalTokens": 3062
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-2",
+              "usage": {
+                "inputTokens": 2851,
+                "outputTokens": 211,
+                "totalTokens": 3062
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-2:94117a22-e81e-4859-8e05-0ba6a953d7fc",
+              "traceId": "run-2",
+              "spanId": "94117a22-e81e-4859-8e05-0ba6a953d7fc",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:24.273Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-2:94117a22-e81e-4859-8e05-0ba6a953d7fc",
+              "traceId": "run-2",
+              "spanId": "94117a22-e81e-4859-8e05-0ba6a953d7fc",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:24.273Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T21:01:27.594Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 151,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 3161
+                },
+                "transport": {
+                  "receivedLines": 161,
+                  "handledLines": 161,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 623,
+          "privateSessions": []
+        },
+        {
+          "index": 3,
+          "requestForm": "short-file-form",
+          "elapsedMs": 2539,
+          "result": {
+            "work": {
+              "key": "proof-file",
+              "scope": "在默认工作目录创建 proof.txt，正文为“本场-26a5c140”，并发布该文件一次，不执行任何命令。",
+              "deliverable": "发布文件 proof.txt（正文：本场-26a5c140）"
+            },
+            "action": "reply",
+            "responseKind": "task",
+            "purpose": "在默认工作目录创建 proof.txt 并发布",
+            "observedThroughSequence": 1
+          },
+          "calls": [
+            {
+              "id": "sample-3",
+              "phase": "decision",
+              "thinking": "off"
+            }
+          ],
+          "usage": [
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 0,
+                "totalTokens": 2776
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 168,
+                "totalTokens": 2944
+              },
+              "complete": false
+            },
+            {
+              "id": "sample-3",
+              "usage": {
+                "inputTokens": 2776,
+                "outputTokens": 168,
+                "totalTokens": 2944
+              },
+              "complete": true
+            }
+          ],
+          "traces": [
+            {
+              "id": "run-3:d1313254-224d-4c2c-8b5d-09d039185b49",
+              "traceId": "run-3",
+              "spanId": "d1313254-224d-4c2c-8b5d-09d039185b49",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:27.599Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              }
+            },
+            {
+              "id": "run-3:d1313254-224d-4c2c-8b5d-09d039185b49",
+              "traceId": "run-3",
+              "spanId": "d1313254-224d-4c2c-8b5d-09d039185b49",
+              "name": "Claude · decision",
+              "spanType": "external_agent",
+              "startedAt": "2026-10-06T21:01:27.599Z",
+              "attributes": {
+                "runtime": "claude-cli",
+                "phase": "decision",
+                "accounting": "external-turn",
+                "internalModelSteps": "unknown"
+              },
+              "endedAt": "2026-10-06T21:01:30.136Z",
+              "output": {
+                "outcome": "completed",
+                "stage": "returned",
+                "eventCounts": {
+                  "init": 1,
+                  "system": 1,
+                  "message_start": 1,
+                  "content_block_start": 1,
+                  "content_block_delta": 108,
+                  "assistant": 1,
+                  "content_block_stop": 1,
+                  "user": 1,
+                  "message_delta": 1,
+                  "message_stop": 1,
+                  "result": 1
+                },
+                "lastEvent": {
+                  "type": "result",
+                  "afterMs": 2384
+                },
+                "transport": {
+                  "receivedLines": 118,
+                  "handledLines": 118,
+                  "processGroupExited": true,
+                  "exitCode": 0
+                },
+                "protocolCounts": {
+                  "formatterCalls": 1,
+                  "formatterRejections": 0,
+                  "formatReminders": 0
+                }
+              }
+            }
+          ],
+          "publicDeltas": [],
+          "toolEvents": [],
+          "effects": [],
+          "knownOutput": 791,
+          "privateSessions": []
+        }
+      ],
+      "knownOutput": 791,
+      "result": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/result.json",
+        "bytes": 15089,
+        "sha256": "870737ab5a5b12e8720f732519dc20188762fd7cbc0ca69c5aaeb820647f4a17"
+      },
+      "terminal": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/terminal.json",
+        "bytes": 43,
+        "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+      },
+      "source": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/source.json",
+        "bytes": 6822,
+        "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+      }
+    }
+  ],
+  "batches": [
+    {
+      "name": "source-1",
+      "stats": {
+        "startTime": "2026-10-06T21:04:00.457Z",
+        "duration": 31675.437,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude保留原Claude工作并拒绝更换模型来源且运行服务意外退出",
+          "status": "passed",
+          "launchCount": 4,
+          "manifest": {
+            "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/manifest.json",
+            "bytes": 20239,
+            "sha256": "e8248c30b0420afc71dd226c05b1e79afdd700105d7bd9971e246a97a9fb5690"
+          },
+          "capturedDecisionTrace": {
+            "id": "5aa63cac-a9ce-4283-b627-301c56401f57:15510a30-fec5-4342-9732-deb12ec21913",
+            "traceId": "5aa63cac-a9ce-4283-b627-301c56401f57",
+            "spanId": "15510a30-fec5-4342-9732-deb12ec21913",
+            "name": "Claude · decision",
+            "spanType": "external_agent",
+            "startedAt": "2026-10-06T21:04:12.096Z",
+            "attributes": {
+              "runtime": "claude-cli",
+              "phase": "decision",
+              "accounting": "external-turn",
+              "internalModelSteps": "unknown"
+            },
+            "endedAt": "2026-10-06T21:04:15.836Z",
+            "output": {
+              "outcome": "completed",
+              "stage": "returned",
+              "eventCounts": {
+                "init": 1,
+                "system": 1,
+                "message_start": 1,
+                "content_block_start": 1,
+                "content_block_delta": 170,
+                "assistant": 1,
+                "content_block_stop": 1,
+                "user": 1,
+                "message_delta": 1,
+                "message_stop": 1,
+                "result": 1
+              },
+              "lastEvent": {
+                "type": "result",
+                "afterMs": 3565
+              },
+              "transport": {
+                "receivedLines": 180,
+                "handledLines": 180,
+                "processGroupExited": true,
+                "exitCode": 0
+              },
+              "protocolCounts": {
+                "formatterCalls": 1,
+                "formatterRejections": 0,
+                "formatReminders": 0
+              }
+            },
+            "conversationId": "c93246f6-3fe8-4190-9160-e71819574024",
+            "runId": "5aa63cac-a9ce-4283-b627-301c56401f57",
+            "agentId": "8809a5d5-e878-4020-8df3-d8be021253e9",
+            "turnId": "a8ce5349-5260-4c1d-ba6c-9cf593334bf3"
+          },
+          "taskTraceHasNoTerminal": true,
+          "cleanup": {
+            "cleanup": []
+          },
+          "capturedWorkStatus": "interrupted",
+          "capturedRequiresReview": true,
+          "budgetCalls": 2,
+          "ordinaryCalls": 2,
+          "sessions": 0,
+          "businessRestartAssertionsPassed": true
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-results.json",
+        "bytes": 50035,
+        "sha256": "186f04b7a83911e6643846359b61619cfe629a48f641f92737c86273dc1ae580"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/build-manifest.json",
+        "bytes": 102193,
+        "sha256": "8813ef8529df089566f215d16efec40b6b7c0c25f4e1f829cdc9829c35d41b7e"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "38d3aab37f2bd171eae2e396b6024347d4facfbbee00f1add92abd6276807a45"
+      }
+    },
+    {
+      "name": "package-1",
+      "stats": {
+        "startTime": "2026-10-06T21:05:13.080Z",
+        "duration": 20417.426,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude保留原Claude工作并拒绝更换模型来源且运行服务意外退出",
+          "status": "failed",
+          "launchCount": 2,
+          "manifest": {
+            "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/manifest.json",
+            "bytes": 12580,
+            "sha256": "4364b8b3508adaf61e344e6d3a29cca50f5c5180a2825d99183959a6ade8b28f"
+          },
+          "capturedDecisionTrace": {
+            "id": "9ea6e547-d967-430a-b42a-d5e719281317:27c4ec18-9334-47ae-916d-43c11463d534",
+            "traceId": "9ea6e547-d967-430a-b42a-d5e719281317",
+            "spanId": "27c4ec18-9334-47ae-916d-43c11463d534",
+            "name": "Claude · decision",
+            "spanType": "external_agent",
+            "startedAt": "2026-10-06T21:05:24.525Z",
+            "attributes": {
+              "runtime": "claude-cli",
+              "phase": "decision",
+              "accounting": "external-turn",
+              "internalModelSteps": "unknown"
+            },
+            "endedAt": "2026-10-06T21:05:26.707Z",
+            "output": {
+              "outcome": "completed",
+              "stage": "returned",
+              "eventCounts": {
+                "init": 1,
+                "system": 1,
+                "message_start": 1,
+                "content_block_start": 1,
+                "content_block_delta": 134,
+                "assistant": 1,
+                "content_block_stop": 1,
+                "user": 1,
+                "message_delta": 1,
+                "message_stop": 1,
+                "result": 1
+              },
+              "lastEvent": {
+                "type": "result",
+                "afterMs": 2010
+              },
+              "transport": {
+                "receivedLines": 144,
+                "handledLines": 144,
+                "processGroupExited": true,
+                "exitCode": 0
+              },
+              "protocolCounts": {
+                "formatterCalls": 1,
+                "formatterRejections": 0,
+                "formatReminders": 0
+              }
+            },
+            "conversationId": "52b3fa4a-3a63-449d-b0a2-6978e1e928e4",
+            "runId": "9ea6e547-d967-430a-b42a-d5e719281317",
+            "agentId": "5ba60c96-5b02-449d-a6ef-aaecf257e7b6",
+            "turnId": "795a05ca-59a6-445b-aeea-7a5ac7b69d80"
+          },
+          "taskTraceHasNoTerminal": true,
+          "cleanup": {
+            "cleanup": []
+          },
+          "capturedWorkStatus": "running",
+          "capturedRequiresReview": true,
+          "budgetCalls": 2,
+          "ordinaryCalls": 2,
+          "sessions": 0,
+          "failure": {
+            "kind": "test-evidence-storage",
+            "code": "ENOSPC",
+            "stage": "Desktop.close / TestInfo.attach",
+            "fullSceneVerified": false,
+            "oldFormatterFailureReproduced": false
+          }
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-results.json",
+        "bytes": 40987,
+        "sha256": "e93f9ccaa9d4c52cb8e987f7f69f597427e02c7c1b23ca7116d673c41b6661cd"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/build-manifest.json",
+        "bytes": 102193,
+        "sha256": "74469001889d33fb79d228ca462fac8b6d1eaf44a81b948a0013c9b9d7e597dc"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "87d5412101cc60c9ebe322bbdab974f85fb1283e7ca82f44122295c5fc62e8a7"
+      }
+    },
+    {
+      "name": "package-2",
+      "stats": {
+        "startTime": "2026-10-06T21:07:59.432Z",
+        "duration": 31815.819,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "使用真实Claude保留原Claude工作并拒绝更换模型来源且运行服务意外退出",
+          "status": "passed",
+          "launchCount": 4,
+          "manifest": {
+            "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/manifest.json",
+            "bytes": 20243,
+            "sha256": "abb2730bef7534b008c7b552c9bd37c89cac5940a03844850ef6c981a3b1643e"
+          },
+          "capturedDecisionTrace": {
+            "id": "c3881a96-cbea-4644-bacf-a1451f4a8118:19ad3bdc-16b0-4d00-98b5-6305e1f5189e",
+            "traceId": "c3881a96-cbea-4644-bacf-a1451f4a8118",
+            "spanId": "19ad3bdc-16b0-4d00-98b5-6305e1f5189e",
+            "name": "Claude · decision",
+            "spanType": "external_agent",
+            "startedAt": "2026-10-06T21:08:10.867Z",
+            "attributes": {
+              "runtime": "claude-cli",
+              "phase": "decision",
+              "accounting": "external-turn",
+              "internalModelSteps": "unknown"
+            },
+            "endedAt": "2026-10-06T21:08:13.373Z",
+            "output": {
+              "outcome": "completed",
+              "stage": "returned",
+              "eventCounts": {
+                "init": 1,
+                "system": 1,
+                "message_start": 1,
+                "content_block_start": 1,
+                "content_block_delta": 194,
+                "assistant": 1,
+                "content_block_stop": 1,
+                "user": 1,
+                "message_delta": 1,
+                "message_stop": 1,
+                "result": 1
+              },
+              "lastEvent": {
+                "type": "result",
+                "afterMs": 2322
+              },
+              "transport": {
+                "receivedLines": 204,
+                "handledLines": 204,
+                "processGroupExited": true,
+                "exitCode": 0
+              },
+              "protocolCounts": {
+                "formatterCalls": 1,
+                "formatterRejections": 0,
+                "formatReminders": 0
+              }
+            },
+            "conversationId": "f7f79832-47b3-458d-8ff6-bfd865116e8d",
+            "runId": "c3881a96-cbea-4644-bacf-a1451f4a8118",
+            "agentId": "b107b6ae-fde6-4990-8544-f81abc9edb9b",
+            "turnId": "fd7c6dd1-9808-4593-a88b-775bd2c02485"
+          },
+          "taskTraceHasNoTerminal": true,
+          "cleanup": {
+            "cleanup": []
+          },
+          "capturedWorkStatus": "interrupted",
+          "capturedRequiresReview": true,
+          "budgetCalls": 2,
+          "ordinaryCalls": 2,
+          "sessions": 0,
+          "businessRestartAssertionsPassed": true
+        }
+      ],
+      "results": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-results.json",
+        "bytes": 50071,
+        "sha256": "10bbce49c392984688bc8f3fbca89d4a78c9f823a2d9fd4141881dc1ec928095"
+      },
+      "buildManifest": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/build-manifest.json",
+        "bytes": 102193,
+        "sha256": "a2a220651c19430b29fdf6922c50d915863dfa7f1fa5d8f0109bfc22a71aa82f"
+      },
+      "freeze": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/freeze-verification.json",
+        "bytes": 103,
+        "sha256": "a8017f56344c9c888e35056e02dd56316a5c57660cee0d1a9261ee2d293c7080"
+      }
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-1",
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-source-1-20261007.png",
+        "bytes": 292414,
+        "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-source-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/014-故障首次重启后底部拒绝更换Claude模型来源.native.png",
+        "bytes": 292414,
+        "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/015-故障首次重启后底部拒绝更换Claude模型来源.capture.json",
+        "bytes": 1685,
+        "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+      },
+      "assistantInspectedOriginal": true,
+      "humanApproved": false,
+      "visible": "Original refusal, disabled form and original bottom Claude/DeepSeek source; selected candidate field below viewport."
+    },
+    {
+      "batch": "package-1",
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-1-20261007.png",
+        "bytes": 289077,
+        "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-1-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/008-文件执行中底部拒绝更换Claude模型来源.native.png",
+        "bytes": 289077,
+        "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/009-文件执行中底部拒绝更换Claude模型来源.capture.json",
+        "bytes": 1685,
+        "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+      },
+      "assistantInspectedOriginal": true,
+      "humanApproved": false,
+      "visible": "Original refusal, disabled form and original bottom Claude/DeepSeek source; selected candidate field below viewport."
+    },
+    {
+      "batch": "package-2",
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-2-20261007.png",
+        "bytes": 292619,
+        "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-2-20261007.capture.json",
+        "bytes": 1685,
+        "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/014-故障首次重启后底部拒绝更换Claude模型来源.native.png",
+        "bytes": 292619,
+        "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/015-故障首次重启后底部拒绝更换Claude模型来源.capture.json",
+        "bytes": 1685,
+        "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+      },
+      "assistantInspectedOriginal": true,
+      "humanApproved": false,
+      "visible": "Original refusal, disabled form and original bottom Claude/DeepSeek source; selected candidate field below viewport."
+    }
+  ],
+  "limitations": [
+    "Fresh synthetic request forms and isolated probe context are not the exact old UI input or product Work admission.",
+    "Valid private decisions include pass; no claim that the probe executed the requested files.",
+    "No original formatter-limit red sample or causal diagnosis established; bounded recoveries do not close the old failure.",
+    "Task Trace has no terminal after service SIGKILL; it remains incomplete rather than inferred from Work interruption.",
+    "Package-1 retained ENOSPC test-copy failure; later independent pass does not complete that scene.",
+    "Native screenshots do not expose the candidate source field, prove process exit, or establish human approval.",
+    "Production source, three-turn limit and original business budgets unchanged; other runtime/platform/native-close matrices remain open."
+  ],
+  "references": [
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/result.json",
+      "bytes": 15088,
+      "sha256": "cf30ae7cf75b395d9ffdb1db62cc9ded7fe4a85c54dfa3921fee154a84e31d23"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/terminal.json",
+      "bytes": 43,
+      "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/source.json",
+      "bytes": 6822,
+      "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/result.json",
+      "bytes": 14826,
+      "sha256": "31c8b27cb143a8ca4f8d1738ed05df091fe64ba6db812f4917719a834ef5c166"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/terminal.json",
+      "bytes": 43,
+      "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/source.json",
+      "bytes": 6822,
+      "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/result.json",
+      "bytes": 15089,
+      "sha256": "870737ab5a5b12e8720f732519dc20188762fd7cbc0ca69c5aaeb820647f4a17"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/terminal.json",
+      "bytes": 43,
+      "sha256": "230677ba281e55fa0c18e59949f7495ddd63494eb12e08ae66b4c5f029d860ae"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/source.json",
+      "bytes": 6822,
+      "sha256": "c0ad70a8d1cae999b27ef34ea30d780a174d12c1a5f5c47f7175e9f59f94fc1c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/manifest.json",
+      "bytes": 20239,
+      "sha256": "e8248c30b0420afc71dd226c05b1e79afdd700105d7bd9971e246a97a9fb5690"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-source-1-20261007.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-source-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/014-故障首次重启后底部拒绝更换Claude模型来源.native.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/015-故障首次重启后底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-results.json",
+      "bytes": 50035,
+      "sha256": "186f04b7a83911e6643846359b61619cfe629a48f641f92737c86273dc1ae580"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/build-manifest.json",
+      "bytes": 102193,
+      "sha256": "8813ef8529df089566f215d16efec40b6b7c0c25f4e1f829cdc9829c35d41b7e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "38d3aab37f2bd171eae2e396b6024347d4facfbbee00f1add92abd6276807a45"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/manifest.json",
+      "bytes": 12580,
+      "sha256": "4364b8b3508adaf61e344e6d3a29cca50f5c5180a2825d99183959a6ade8b28f"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-1-20261007.png",
+      "bytes": 289077,
+      "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-1-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/008-文件执行中底部拒绝更换Claude模型来源.native.png",
+      "bytes": 289077,
+      "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/009-文件执行中底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-results.json",
+      "bytes": 40987,
+      "sha256": "e93f9ccaa9d4c52cb8e987f7f69f597427e02c7c1b23ca7116d673c41b6661cd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/build-manifest.json",
+      "bytes": 102193,
+      "sha256": "74469001889d33fb79d228ca462fac8b6d1eaf44a81b948a0013c9b9d7e597dc"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "87d5412101cc60c9ebe322bbdab974f85fb1283e7ca82f44122295c5fc62e8a7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/package-verification.json",
+      "bytes": 186,
+      "sha256": "f8960ea1f4f34b99f471560bbb0fbf60986c7c9d8954b0bd2a3604f5c0c98055"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/manifest.json",
+      "bytes": 20243,
+      "sha256": "abb2730bef7534b008c7b552c9bd37c89cac5940a03844850ef6c981a3b1643e"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-2-20261007.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR4-Claude格式诊断-package-2-20261007.capture.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/014-故障首次重启后底部拒绝更换Claude模型来源.native.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/015-故障首次重启后底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-results.json",
+      "bytes": 50071,
+      "sha256": "10bbce49c392984688bc8f3fbca89d4a78c9f823a2d9fd4141881dc1ec928095"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/build-manifest.json",
+      "bytes": 102193,
+      "sha256": "a2a220651c19430b29fdf6922c50d915863dfa7f1fa5d8f0109bfc22a71aa82f"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "a8017f56344c9c888e35056e02dd56316a5c57660cee0d1a9261ee2d293c7080"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/package-verification.json",
+      "bytes": 186,
+      "sha256": "f8960ea1f4f34b99f471560bbb0fbf60986c7c9d8954b0bd2a3604f5c0c98055"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/initial-collector-summary.json",
+      "bytes": 174541,
+      "sha256": "d3394741aeec9b36efb07642186ccb7748469c23975d853d866cc46fb3978f3b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/validation-receipts.json",
+      "bytes": 2079,
+      "sha256": "54389618c8d1eabbd916dc67a516963415c33e62311d34d673457914ad9d8727"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/collect.py",
+      "bytes": 7767,
+      "sha256": "4d25d61c51c280c2269891cbf62cf2e47d4658a0a90c7923dbf2a52f1c36da26"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run.mjs",
+      "bytes": 2446,
+      "sha256": "9f0161ff794a7021fe33c89d5734a7c37cf766269e2aca9fe1456bf40c9910ba"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/verify-package.py",
+      "bytes": 757,
+      "sha256": "ba75a9b694582c115941e274c98bcdf6d34ae23f0d03c391fff87561bbee3d39"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/changed-inputs.json",
+      "bytes": 101,
+      "sha256": "e53a8ae0784a2decdcf05cbaaed5521e6e53d271e5199f441d22a53464fa4d44"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/initial-collector.py",
+      "bytes": 7640,
+      "sha256": "e868e9982f5ae5d6937fbe7d964ec2b13bd486aa3282d1f06459483e9bf8957a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/typecheck.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/decision-host.ts",
+      "bytes": 6705,
+      "sha256": "4a314673e414c85c86b250d5e6a7f46ac12c6f4053c76022ae69a5bc85b313f1"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1.log",
+      "bytes": 504,
+      "sha256": "f4f7bbfac8eea2c55e288994fa860649f27aa3cb350003daab4b925fc733f451"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1.log",
+      "bytes": 2236,
+      "sha256": "bdfb8d4a89a8de28be40a89063744cfbd14f41e70a433f23ed9e9abd948bd148"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3.log",
+      "bytes": 2241,
+      "sha256": "e683480be2fb2cee2fa85000b7b475402636b66de21932a50cc99ed4bcd742b0"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/current-package-manifest.json",
+      "bytes": 600583,
+      "sha256": "ae312e92b965c03b4697d37c35fba6bfee580d5092e69c263c203b3a46676bd0"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2.log",
+      "bytes": 2232,
+      "sha256": "c14f887fe828d8ee5c613735a5ac1517d83f3597a76ea0347fb43d20db635410"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/freeze.py",
+      "bytes": 1280,
+      "sha256": "afd525d4f20d1e95c7ac95778902ed8cab10f4aa263eee686fb6d52cb1612bfb"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2.log",
+      "bytes": 504,
+      "sha256": "4f94af9eacacf7cadadaf7d6b952260a914eac36c8c677611a64f0ebb10ab341"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/review-copy-storage.json",
+      "bytes": 11610,
+      "sha256": "439b97dfb8735e91426d4f69b88e9d5ddc490207c10cb301f4fffd3373671684"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1.log",
+      "bytes": 16213,
+      "sha256": "9547f8daa6cd0fc0027a13f40b0450602235dbc06c1bc28e4338325d19baaa8d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/clone-completed-storage.py",
+      "bytes": 1574,
+      "sha256": "89a3beb9f4636fd78aeb3c62b4df69a8ad9819ceb30501621689d3d4289757ab"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/report-resource-verification.json",
+      "bytes": 449,
+      "sha256": "ad8c807fc6e1dd2e18422369edf54357f5a88d800a7ccd27e46dab4a23be3d41"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/index.html",
+      "bytes": 216078,
+      "sha256": "98ebc0a8ba643f100fb256e8767b491f66bab900fd88745df46ec9610c63f25c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/checks.json",
+      "bytes": 204498,
+      "sha256": "d5ed44490c8a1e2c00d9d34a8ceda3ea362f21b4d7aff63b6d88ac91aecdf397"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/manifest.json",
+      "bytes": 1268,
+      "sha256": "46f042cd8e5552dcbc2e6b1cd2babd2c1e1a1276cd867f4bb87cefe4dce3ca97"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-3/host.cjs",
+      "bytes": 255665,
+      "sha256": "1108246d91361ef3be243f6bd7b0f8295c5012b33cf17332249a4f4142782fd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-2/host.cjs",
+      "bytes": 255665,
+      "sha256": "1108246d91361ef3be243f6bd7b0f8295c5012b33cf17332249a4f4142782fd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/index.html",
+      "bytes": 217377,
+      "sha256": "68342f61144be1939a3459d6892750e48b391d1b95e56f22bfad31a30ee2099c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/checks.json",
+      "bytes": 205798,
+      "sha256": "f34c291031f02332093b775b8fa1d7afb13790874ce2ab7bd3763a099edcf32a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/manifest.json",
+      "bytes": 1266,
+      "sha256": "2a81215831b8f5a1d57e9c6db792f5aad180fce15edbf1920267103d934eb0fb"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/run-1/host.cjs",
+      "bytes": 255665,
+      "sha256": "1108246d91361ef3be243f6bd7b0f8295c5012b33cf17332249a4f4142782fd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/index.html",
+      "bytes": 119449,
+      "sha256": "dbc602ce1755951ccbeec934e629d19a50fdd4910c0156f04de070f598b5b1d5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/checks.json",
+      "bytes": 105777,
+      "sha256": "2e4848866d4b0d9f9c36f2c617a90bdf26eedd8867773b58313ff79b85fae7e5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/manifest.json",
+      "bytes": 1268,
+      "sha256": "431e1418cbe5468e67f788fd522846ee2775ed0aa12e55825ccef1f82e981fe8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/index.html",
+      "bytes": 546019,
+      "sha256": "d80dfae946a7f5de94ad891304d3d25cf899cbef13fb4a1cbad92d6e8dd1c51f"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/020-再次重启后底部拒绝更换Claude模型来源.native.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/019-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/001-第-1-次启动结束画面.png",
+      "bytes": 104738,
+      "sha256": "b87e74d962866e73d0df71d664e7412f9e49d801bc430f74a1cfa9dfc82ae60e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/009-文件执行中底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "f18e25321f8b95c8f9b9f2149c0be90643d961f4f1d7818d5fa12a91b54dfc2e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/017-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 309097,
+      "sha256": "b620bd4c253eb40a832892b492bda938eb6cd2e040ab5eef2e3a38ffc7c4783d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/024-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/011-运行服务意外退出后的原界面.png",
+      "bytes": 243488,
+      "sha256": "537ea9ff93df64d3bff5ea44eca92959e1849c4184a8ca8336df7faa16d351f8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/007-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 40674,
+      "sha256": "dfa3bf817e24bb17d7099cdddb21f2e3b046ac233b0de73dcee7d68c69bb84c3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/022-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 257304,
+      "sha256": "97b85aadfe5ba63664d410a616c9e0b3e40a575e37fa2caac33215d41f7019d3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/021-再次重启后底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/016-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/023-Claude自动化停止最终原始状态.json",
+      "bytes": 16481,
+      "sha256": "21fb1fb28724c0b6333175ef3507a86a379a53d64e54ade65166d092492911ca"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/005-本场换绑目标与原来源保持.json",
+      "bytes": 565,
+      "sha256": "bf0c76127ef58e13994827e67864232ecfbb47d8b5ecafe864be4467d6866e58"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/013-故障首次重启后底部拒绝换绑及原事实.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/026-第-4-次启动结束画面.png",
+      "bytes": 256982,
+      "sha256": "9f1f741aaac6c62d2f5c61acdfbcea978a1b1dcc818dc400c6046622f20673b7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/012-第-2-次启动结束画面.png",
+      "bytes": 264499,
+      "sha256": "69bbbbbd84810e613232d8261a01f84910978ac649bc62da3635ffb1c6ca5ec9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/010-停止前实际运行与本场子进程.json",
+      "bytes": 15658,
+      "sha256": "788fdbc9595d65511e108c2ce4bdcbb6ba6f42df999d49f3e72a0bf36ae1709e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/008-文件执行中底部拒绝更换Claude模型来源.native.png",
+      "bytes": 289138,
+      "sha256": "76abd47c9cdfa91cd581a4dfd04433a32d055443da7b46c1094edeea1f2c530c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/025-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/018-第-3-次启动结束画面.png",
+      "bytes": 309183,
+      "sha256": "5f527757541bf3a893fbc78616bb8162afef04bc82127f68ac3a37445b1cf41c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-9a5aHz/006-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/f4ea615f2bb02d687ac8fcddb2e19409cef4e73c.zip",
+      "bytes": 15866359,
+      "sha256": "fef6cef0fa73959a9bd62ae411c96583c4d662a26aa7598660eccedd68dd6a83"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/3083671407cf0009f93ea22dbb3d219553aaab01.zip",
+      "bytes": 5122573,
+      "sha256": "67eba1a4601d7f37e81606d3cc4a4e17d37f7d78910de732904ea55f8bb87cff"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/4003748525d1680bf41ab659753c14bf10fd6046.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/e6f6032e7cb29ea3294e2f57ad4cf5cdc8f8691c.json",
+      "bytes": 1685,
+      "sha256": "f18e25321f8b95c8f9b9f2149c0be90643d961f4f1d7818d5fa12a91b54dfc2e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/5983dd992f927ce2a27bc727ed5429488ee00919.zip",
+      "bytes": 4800544,
+      "sha256": "19e53dc81e3a0c85141527cd3baacde7bf06a382bb261e355eaa986667ba8100"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/5541b5d9df3ca7a79c01abe93e82f92f3238164f.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/48015372feff3cbae14515df7e0a4407c5e577ce.png",
+      "bytes": 289138,
+      "sha256": "76abd47c9cdfa91cd581a4dfd04433a32d055443da7b46c1094edeea1f2c530c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/0faa164b23d4ce22977f5f512c11734bce334169.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/cbe6c35879a9a2ff041774ef4e9d6ee26058fb28.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/071e42ce6ebb2e55e6ad01243f463b6031cffd5a.png",
+      "bytes": 257304,
+      "sha256": "97b85aadfe5ba63664d410a616c9e0b3e40a575e37fa2caac33215d41f7019d3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/f11cb7439aee67bcd5eb99d9f98cf7a83cfe0662.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/45b9fdc165ec81e103d260584048c30960e7bbc6.json",
+      "bytes": 565,
+      "sha256": "bf0c76127ef58e13994827e67864232ecfbb47d8b5ecafe864be4467d6866e58"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/a0a198359dc905a07a336228bf6b78a8253f80de.png",
+      "bytes": 256982,
+      "sha256": "9f1f741aaac6c62d2f5c61acdfbcea978a1b1dcc818dc400c6046622f20673b7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/7f07c072d9cb69e13e6cb994959983198c90fd75.json",
+      "bytes": 15658,
+      "sha256": "788fdbc9595d65511e108c2ce4bdcbb6ba6f42df999d49f3e72a0bf36ae1709e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/8b4166b93426615f8795f9155cf82a6ca1551e30.png",
+      "bytes": 309183,
+      "sha256": "5f527757541bf3a893fbc78616bb8162afef04bc82127f68ac3a37445b1cf41c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/5a9458666a77376ee5a94f8c1fdd40dd2a0df2bf.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/4882cd93eef4a54c63560f879b0332ffdf04d2c2.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/c73447c4deb56775f96bc4c14db5643fbae42519.json",
+      "bytes": 16481,
+      "sha256": "21fb1fb28724c0b6333175ef3507a86a379a53d64e54ade65166d092492911ca"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/68cebde80f330a9b3c40807d2aaaca5e75f678d5.png",
+      "bytes": 104738,
+      "sha256": "b87e74d962866e73d0df71d664e7412f9e49d801bc430f74a1cfa9dfc82ae60e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/cc92e4c9fcd6ad4e73d87055bdc327a09e7b1cca.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/62aed1888f58861945e1a2dda732eeef93e5bf6e.png",
+      "bytes": 243488,
+      "sha256": "537ea9ff93df64d3bff5ea44eca92959e1849c4184a8ca8336df7faa16d351f8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/1b6ae58b10983695f7623c71bb7f385e86ed31d1.json",
+      "bytes": 40674,
+      "sha256": "dfa3bf817e24bb17d7099cdddb21f2e3b046ac233b0de73dcee7d68c69bb84c3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/2ea42eca493375219f04351d309e8d0f4a8b03bc.zip",
+      "bytes": 537614,
+      "sha256": "778bcafc0973a75f003e7cae974b9f12a1051c640a4afdb71c69c0cd4201b4d9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/27f704017fb6edc63d4c6e8f554457b8e27b372c.png",
+      "bytes": 309097,
+      "sha256": "b620bd4c253eb40a832892b492bda938eb6cd2e040ab5eef2e3a38ffc7c4783d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/playwright-report/data/a742f9b19de5c3dab43a9caa503c32e0e8b6500a.png",
+      "bytes": 264499,
+      "sha256": "69bbbbbd84810e613232d8261a01f84910978ac649bc62da3635ffb1c6ca5ec9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-1.zip",
+      "bytes": 537614,
+      "sha256": "778bcafc0973a75f003e7cae974b9f12a1051c640a4afdb71c69c0cd4201b4d9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-3.zip",
+      "bytes": 5122573,
+      "sha256": "67eba1a4601d7f37e81606d3cc4a4e17d37f7d78910de732904ea55f8bb87cff"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-2.zip",
+      "bytes": 15866359,
+      "sha256": "fef6cef0fa73959a9bd62ae411c96583c4d662a26aa7598660eccedd68dd6a83"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-4.zip",
+      "bytes": 4800544,
+      "sha256": "19e53dc81e3a0c85141527cd3baacde7bf06a382bb261e355eaa986667ba8100"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-·-原生截取元数据-00eefecad01306a6ff32719c38ee57e382e30370.json",
+      "bytes": 1685,
+      "sha256": "f18e25321f8b95c8f9b9f2149c0be90643d961f4f1d7818d5fa12a91b54dfc2e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-4-ebecc80311197cf1446e7a276a7833aca6fa79b3.zip",
+      "bytes": 4800544,
+      "sha256": "19e53dc81e3a0c85141527cd3baacde7bf06a382bb261e355eaa986667ba8100"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/新员工明确选择Claude程序与模型来源-a4faa628a3c2fa17f134b7f17a02f8634c6d0f72.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障最终未发布原件-411b778411704f997ea7dfd758aca2d810763f3e.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝更换Claude模型来源-59316e5109dbcf6af56497d95451822704cac489.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-1-次启动结束画面-3139a7887366b227eab7d1c6f5bed10b3476b662.png",
+      "bytes": 104738,
+      "sha256": "b87e74d962866e73d0df71d664e7412f9e49d801bc430f74a1cfa9dfc82ae60e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-4-次启动结束画面-93d28c7a14a0566d40a2a59f635c006abc6e1eba.png",
+      "bytes": 256982,
+      "sha256": "9f1f741aaac6c62d2f5c61acdfbcea978a1b1dcc818dc400c6046622f20673b7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/本场换绑目标与原来源保持-a4d8aa0207ef5670ec5b4a915960684f3a8f1af3.json",
+      "bytes": 565,
+      "sha256": "bf0c76127ef58e13994827e67864232ecfbb47d8b5ecafe864be4467d6866e58"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止前实际运行与本场子进程-af719f4eaca0fba07462b743d56c7424f7f1f0e3.json",
+      "bytes": 15658,
+      "sha256": "788fdbc9595d65511e108c2ce4bdcbb6ba6f42df999d49f3e72a0bf36ae1709e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude自动化停止最终原始状态-69aaeae0a0302dc862b187c35c7076631a54a816.json",
+      "bytes": 16481,
+      "sha256": "21fb1fb28724c0b6333175ef3507a86a379a53d64e54ade65166d092492911ca"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝换绑及原事实-d6bc36b14211f6cb172db1e22912fc3c5104c975.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude程序核对只证明程序状态-4d9f86db8d99508bec119c3d2a33a370f8c24a47.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-1-0c06902f87e06bbd84fd0db46ef0f6a43ba982f3.zip",
+      "bytes": 537614,
+      "sha256": "778bcafc0973a75f003e7cae974b9f12a1051c640a4afdb71c69c0cd4201b4d9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝换绑及原事实-6f99cb46af6fbca8f084b3deb8c761df8d59ee63.json",
+      "bytes": 40674,
+      "sha256": "dfa3bf817e24bb17d7099cdddb21f2e3b046ac233b0de73dcee7d68c69bb84c3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝更换Claude模型来源-e041fd1f24bd845c23b474922d1bc8b77a411a43.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止前已写但未发布的原件-f11aaecbfa4badf436cf4877f67e5385548a444a.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude自动化停止后保留未知用量且未交付-e84499121f95714b483bafd94b833e9f1981bb0d.png",
+      "bytes": 309097,
+      "sha256": "b620bd4c253eb40a832892b492bda938eb6cd2e040ab5eef2e3a38ffc7c4783d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-3-次启动结束画面-0f8e3d73ee13a9e989d4a07b931f1973ee0c2e4a.png",
+      "bytes": 309183,
+      "sha256": "5f527757541bf3a893fbc78616bb8162afef04bc82127f68ac3a37445b1cf41c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障前已写但未发布原件-335cfc64aeade8e273765df363123dd99a8aa07e.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障场景人工清理进程不计产品通过-a82977113f18597f39bbf16b180248b45afcb699.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止后重启没有恢复执行或发布原件-acb390da53dc8a90b5b71f446e00cf88b6dcc8b7.png",
+      "bytes": 257304,
+      "sha256": "97b85aadfe5ba63664d410a616c9e0b3e40a575e37fa2caac33215d41f7019d3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-3-61365f91fc3feb62e2d322dce1d30e54a6540173.zip",
+      "bytes": 5122573,
+      "sha256": "67eba1a4601d7f37e81606d3cc4a4e17d37f7d78910de732904ea55f8bb87cff"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝换绑及原事实-2b6425247250d462da9c47f8f88ea46b8f10df30.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/真实模型使用产品系统加密-f0447bd427faeeb4ba3027e7f935358130563cc7.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-2-次启动结束画面-625feb2dcfff465bbf7443c12e87ff3117814f63.png",
+      "bytes": 264499,
+      "sha256": "69bbbbbd84810e613232d8261a01f84910978ac649bc62da3635ffb1c6ca5ec9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝更换Claude模型来源-·-原生截取元数据-b46ac6e8507d648f780ec42b85b2050d6c8ded3a.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-2-e89a2628a6ecdd9f6828c223e24b651b8a62e238.zip",
+      "bytes": 15866359,
+      "sha256": "fef6cef0fa73959a9bd62ae411c96583c4d662a26aa7598660eccedd68dd6a83"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝更换Claude模型来源-·-原生截取元数据-b4fc464d2af0334cb8dc97fc09813ebc345c8fe6.json",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-ca0cc4eff4854b8aebde2feaa3c0889abf79adfc.png",
+      "bytes": 289138,
+      "sha256": "76abd47c9cdfa91cd581a4dfd04433a32d055443da7b46c1094edeea1f2c530c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/运行服务意外退出后的原界面-e5735fd56aa8c471864d67862ee1a9609bd88eb6.png",
+      "bytes": 243488,
+      "sha256": "537ea9ff93df64d3bff5ea44eca92959e1849c4184a8ca8336df7faa16d351f8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/index.html",
+      "bytes": 546343,
+      "sha256": "fcdf0a96dd3f850f01cb42ba35cfe824221193a34c8bc3d9be4c7da304b29031"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 278837,
+      "sha256": "dd259aac37a97edab0a73c31bfc851e76bb554229374d16fd8d83110e0d94d52"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/020-再次重启后底部拒绝更换Claude模型来源.native.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/019-再次重启后底部拒绝换绑及原事实.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/001-第-1-次启动结束画面.png",
+      "bytes": 104636,
+      "sha256": "0d96cced901228d8c81c65b850f5814fbc218564770d83ecf522930f78dce57d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/009-文件执行中底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "ea78e0808d3a770f15ca5ce392b21895569759c19201d900dbb8edcc3659e048"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/017-Claude自动化停止后保留未知用量且未交付.png",
+      "bytes": 307097,
+      "sha256": "4310a3e462988b86bbcfe79ca42b98c60b28e881d8c3919f01643b810b6dcb4a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/024-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/011-运行服务意外退出后的原界面.png",
+      "bytes": 240447,
+      "sha256": "934915ac8ea33801bf5f59fbeb6ecc32c66b244369e04a22ef47e459a1bb116b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/007-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 40778,
+      "sha256": "9d1b87b0e43522840250bffeb207653a87e2aa33571e1b431c519f3c77c76343"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/022-停止后重启没有恢复执行或发布原件.png",
+      "bytes": 255282,
+      "sha256": "2602dd022a3acf51876b2861ef8a3c227cf016208334930afbee03fa620edd17"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/021-再次重启后底部拒绝更换Claude模型来源.capture.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/016-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/023-Claude自动化停止最终原始状态.json",
+      "bytes": 16715,
+      "sha256": "dfc034af0d16d2117ceebd84f192867df7a08ba547f667bb35a75879c35dab53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/005-本场换绑目标与原来源保持.json",
+      "bytes": 565,
+      "sha256": "73c5f7b2e6f3afe65c7ece1ade3ea385286707728e78a3736c886e3b125c4e53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/013-故障首次重启后底部拒绝换绑及原事实.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/026-第-4-次启动结束画面.png",
+      "bytes": 254924,
+      "sha256": "e0dea0e0ebb2e1535010d1a288bf3e204a02de2c18dc1d7adc56847b826b596a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/012-第-2-次启动结束画面.png",
+      "bytes": 260790,
+      "sha256": "553bfb4dee67cd9248230440e1f558f2fd96d69cd606a60ba944b0f703fbc6ba"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/010-停止前实际运行与本场子进程.json",
+      "bytes": 15554,
+      "sha256": "68dd134db9ed3404a87357d198c3f99359e88efc0b4e4782b611d8feb714d850"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197026,
+      "sha256": "38e7cffb7058ebc7560cf69b83b412e3328c3b12b15cd320f530ab8645c1a5f2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/008-文件执行中底部拒绝更换Claude模型来源.native.png",
+      "bytes": 288950,
+      "sha256": "b9027e29eed7ddd14bc22a24d92aa72f6061a8856c464691bf562f573cff55fe"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/025-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/018-第-3-次启动结束画面.png",
+      "bytes": 307293,
+      "sha256": "f6aaf20070150d747642a00c5ad7714df21c17cd72d5036471a3100bcfcc4897"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-QFuPab/006-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/2ad751ea786c7212e61988bd5b3c92c1409a242d.png",
+      "bytes": 255282,
+      "sha256": "2602dd022a3acf51876b2861ef8a3c227cf016208334930afbee03fa620edd17"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/9df5ac42de644f41d55b25be5f077275390b1fd4.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/7629793d083d96f47944d4bcec21ef629948102b.json",
+      "bytes": 15554,
+      "sha256": "68dd134db9ed3404a87357d198c3f99359e88efc0b4e4782b611d8feb714d850"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/fc298c60d4b42f528ea57c105c6e828e48f43437.zip",
+      "bytes": 4198741,
+      "sha256": "c08c2036f86bd522435194fa22364f05d27aa7c979318ac21927a6e1ee8f44ea"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/c4d5601644608b664569f0e9c8baea62b56ef32d.png",
+      "bytes": 288950,
+      "sha256": "b9027e29eed7ddd14bc22a24d92aa72f6061a8856c464691bf562f573cff55fe"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/66a200d254dff4d53b7696a3352c424d27558f31.png",
+      "bytes": 104636,
+      "sha256": "0d96cced901228d8c81c65b850f5814fbc218564770d83ecf522930f78dce57d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/f11cb7439aee67bcd5eb99d9f98cf7a83cfe0662.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/766ba118899ddef69322961a14ef5f05bdc0a74b.png",
+      "bytes": 240447,
+      "sha256": "934915ac8ea33801bf5f59fbeb6ecc32c66b244369e04a22ef47e459a1bb116b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/63abae1d2c13639c8f58710cba3d89c662059e9d.png",
+      "bytes": 278837,
+      "sha256": "dd259aac37a97edab0a73c31bfc851e76bb554229374d16fd8d83110e0d94d52"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/f2ddff8f9d222fd0c8b5df9a09b09c3117c0c77f.zip",
+      "bytes": 520394,
+      "sha256": "f3f5927f2b3ef81420da778f62b6ed020fd9985ea9658610ad22c6a224ec3e32"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/05b01785acb6d94ecc63b7a463f822215f3a6678.png",
+      "bytes": 197026,
+      "sha256": "38e7cffb7058ebc7560cf69b83b412e3328c3b12b15cd320f530ab8645c1a5f2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/5a9458666a77376ee5a94f8c1fdd40dd2a0df2bf.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/6afa9e47f26e01f77373c73aca1a8d4e8b216254.json",
+      "bytes": 565,
+      "sha256": "73c5f7b2e6f3afe65c7ece1ade3ea385286707728e78a3736c886e3b125c4e53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/85105b0453d72ebd77d6f0a66fc468ef4c6433d5.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/e6185a99a31cfb494f5435c73afe88f191dcac42.zip",
+      "bytes": 14864895,
+      "sha256": "1571e9131146bda766b487eaab6fc52b6bd5072b66c4371a566917415106ab72"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/a078ec0f22090b208cf7a0f564e7d4e6391a6619.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/0dabe17b5f175288998bcc3f76a116bee9e212fb.json",
+      "bytes": 16715,
+      "sha256": "dfc034af0d16d2117ceebd84f192867df7a08ba547f667bb35a75879c35dab53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/a17a9ee99bdd661968b58ed08e2200aae8247026.png",
+      "bytes": 254924,
+      "sha256": "e0dea0e0ebb2e1535010d1a288bf3e204a02de2c18dc1d7adc56847b826b596a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/7d702d5c75189877389d97b2e2da64c6d251fd8f.png",
+      "bytes": 307097,
+      "sha256": "4310a3e462988b86bbcfe79ca42b98c60b28e881d8c3919f01643b810b6dcb4a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/ceaf233af95e3f8b05aeb4b33066f6d52e950b2c.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/018a65d9f25c5472dbac6171802d83c8e6b2b2a4.json",
+      "bytes": 1685,
+      "sha256": "ea78e0808d3a770f15ca5ce392b21895569759c19201d900dbb8edcc3659e048"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/f0bf6ad4459caefbcf1a962eed775a44daf726da.zip",
+      "bytes": 5235799,
+      "sha256": "84a323a984fa33e7b2fe754564a5cfbf63f47718f80bec5f578ceb67c30ad12d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/7af655ec06aba14755703e1d57adc53fc904078b.json",
+      "bytes": 40778,
+      "sha256": "9d1b87b0e43522840250bffeb207653a87e2aa33571e1b431c519f3c77c76343"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/fef87a51ef85ee9162540f7a352587c60b3c68a4.png",
+      "bytes": 307293,
+      "sha256": "f6aaf20070150d747642a00c5ad7714df21c17cd72d5036471a3100bcfcc4897"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/playwright-report/data/feccc2f1dbd2202f7094bfc8ef39ba7961d85517.png",
+      "bytes": 260790,
+      "sha256": "553bfb4dee67cd9248230440e1f558f2fd96d69cd606a60ba944b0f703fbc6ba"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-1.zip",
+      "bytes": 520394,
+      "sha256": "f3f5927f2b3ef81420da778f62b6ed020fd9985ea9658610ad22c6a224ec3e32"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-3.zip",
+      "bytes": 5235799,
+      "sha256": "84a323a984fa33e7b2fe754564a5cfbf63f47718f80bec5f578ceb67c30ad12d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-2.zip",
+      "bytes": 14864895,
+      "sha256": "1571e9131146bda766b487eaab6fc52b6bd5072b66c4371a566917415106ab72"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-4.zip",
+      "bytes": 4198741,
+      "sha256": "c08c2036f86bd522435194fa22364f05d27aa7c979318ac21927a6e1ee8f44ea"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude自动化停止最终原始状态-2bd3186129230be4be76f0a54411695939be9746.json",
+      "bytes": 16715,
+      "sha256": "dfc034af0d16d2117ceebd84f192867df7a08ba547f667bb35a75879c35dab53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-4cdb1e64e416d277677e09bf930cca70dba8323f.png",
+      "bytes": 288950,
+      "sha256": "b9027e29eed7ddd14bc22a24d92aa72f6061a8856c464691bf562f573cff55fe"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-2-次启动结束画面-96fb9213f9c1fc30ee103a95df0630a4a6d7b62e.png",
+      "bytes": 260790,
+      "sha256": "553bfb4dee67cd9248230440e1f558f2fd96d69cd606a60ba944b0f703fbc6ba"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/本场换绑目标与原来源保持-2a17765d4c8628a74ef8625f410a368d764a0647.json",
+      "bytes": 565,
+      "sha256": "73c5f7b2e6f3afe65c7ece1ade3ea385286707728e78a3736c886e3b125c4e53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝更换Claude模型来源-96f5f93725942e1783a5435266bd547fd262d526.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-3-次启动结束画面-d02ba4b776bc719b2bf96a89c2561b3675f732f9.png",
+      "bytes": 307293,
+      "sha256": "f6aaf20070150d747642a00c5ad7714df21c17cd72d5036471a3100bcfcc4897"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止前实际运行与本场子进程-78e519fa53742d3337fa6b1fcc249afa8b9c7fa5.json",
+      "bytes": 15554,
+      "sha256": "68dd134db9ed3404a87357d198c3f99359e88efc0b4e4782b611d8feb714d850"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/新员工明确选择Claude程序与模型来源-fb7933059d50c7ed3efaef2b62529434f9f267bd.png",
+      "bytes": 278837,
+      "sha256": "dd259aac37a97edab0a73c31bfc851e76bb554229374d16fd8d83110e0d94d52"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障场景人工清理进程不计产品通过-17df022a39a58c73b0dbce2fa62662b696b189a0.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝更换Claude模型来源-e3780fd01e7b40455637faa51879892d3584dec0.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/真实模型使用产品系统加密-ab02ce1283a41729b5d9c70a40840c41c4ace4ee.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝换绑及原事实-079b402f649b322730e76f10c120693b45005603.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-·-原生截取元数据-6e24bdddf7279de1ca6651f54edf19e2356ae152.json",
+      "bytes": 1685,
+      "sha256": "ea78e0808d3a770f15ca5ce392b21895569759c19201d900dbb8edcc3659e048"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-4-次启动结束画面-5c0400cd58c8733601725db24241cfc59fc59a6f.png",
+      "bytes": 254924,
+      "sha256": "e0dea0e0ebb2e1535010d1a288bf3e204a02de2c18dc1d7adc56847b826b596a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/运行服务意外退出后的原界面-c8582423b0f04ecbdce4ccb4a45a6ec7b1d2c26c.png",
+      "bytes": 240447,
+      "sha256": "934915ac8ea33801bf5f59fbeb6ecc32c66b244369e04a22ef47e459a1bb116b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-3-b21ef48e3faffb3fcb87c2151bd49e855d6e3c51.zip",
+      "bytes": 5235799,
+      "sha256": "84a323a984fa33e7b2fe754564a5cfbf63f47718f80bec5f578ceb67c30ad12d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-1-次启动结束画面-521a6fc89f478710c6a94ff603490c49ff573e77.png",
+      "bytes": 104636,
+      "sha256": "0d96cced901228d8c81c65b850f5814fbc218564770d83ecf522930f78dce57d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障最终未发布原件-cea2d5de52bc5b1bb22f05be1403bc24d05035af.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障首次重启后底部拒绝更换Claude模型来源-·-原生截取元数据-19667fb1b3e98bd61ebd175d1bbc56aa1e93f6df.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-4-f72cfb3c05e4e8a9b49f60ad779229531d5836d1.zip",
+      "bytes": 4198741,
+      "sha256": "c08c2036f86bd522435194fa22364f05d27aa7c979318ac21927a6e1ee8f44ea"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝更换Claude模型来源-·-原生截取元数据-6a6f940a8312f197972fd7ec10ca152365f041d5.json",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝换绑及原事实-5f8d58dc471c691fff4a247cf8bd9f193b1670e3.json",
+      "bytes": 40778,
+      "sha256": "9d1b87b0e43522840250bffeb207653a87e2aa33571e1b431c519f3c77c76343"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude自动化停止后保留未知用量且未交付-44669c68c82706bf09b23542c1e49f73776b5646.png",
+      "bytes": 307097,
+      "sha256": "4310a3e462988b86bbcfe79ca42b98c60b28e881d8c3919f01643b810b6dcb4a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止前已写但未发布的原件-4895c0b337b330b269f5335eb6e764ce2daf49e1.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude程序核对只证明程序状态-dad2b3e2870e3fb43b33e3e9c75fe82dcc3bbb1a.png",
+      "bytes": 197026,
+      "sha256": "38e7cffb7058ebc7560cf69b83b412e3328c3b12b15cd320f530ab8645c1a5f2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/再次重启后底部拒绝换绑及原事实-ac624d077cad46ae607f6c85894ada78de8a96b7.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障前已写但未发布原件-77c3affad46bbc88df2b62d8c364cc339d14fc3d.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止后重启没有恢复执行或发布原件-3b2feddc552c43354723c72862ab9b39912f6cd1.png",
+      "bytes": 255282,
+      "sha256": "2602dd022a3acf51876b2861ef8a3c227cf016208334930afbee03fa620edd17"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-2-84b791c01096cd2a538ff530ced2361196e2214f.zip",
+      "bytes": 14864895,
+      "sha256": "1571e9131146bda766b487eaab6fc52b6bd5072b66c4371a566917415106ab72"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-1-693b470c6c70fcc0211e0d63ad1e605a42732146.zip",
+      "bytes": 520394,
+      "sha256": "f3f5927f2b3ef81420da778f62b6ed020fd9985ea9658610ad22c6a224ec3e32"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0017-b620bd4c253eb40a.png",
+      "bytes": 309097,
+      "sha256": "b620bd4c253eb40a832892b492bda938eb6cd2e040ab5eef2e3a38ffc7c4783d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0018-5f527757541bf3a8.png",
+      "bytes": 309183,
+      "sha256": "5f527757541bf3a893fbc78616bb8162afef04bc82127f68ac3a37445b1cf41c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0001-b87e74d962866e73.png",
+      "bytes": 104738,
+      "sha256": "b87e74d962866e73d0df71d664e7412f9e49d801bc430f74a1cfa9dfc82ae60e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0008-76abd47c9cdfa91c.png",
+      "bytes": 289138,
+      "sha256": "76abd47c9cdfa91cd581a4dfd04433a32d055443da7b46c1094edeea1f2c530c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0025-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0005-bf0c76127ef58e13.json",
+      "bytes": 565,
+      "sha256": "bf0c76127ef58e13994827e67864232ecfbb47d8b5ecafe864be4467d6866e58"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0014-6417f59bfdfd6125.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0012-69bbbbbd84810e61.png",
+      "bytes": 264499,
+      "sha256": "69bbbbbd84810e613232d8261a01f84910978ac649bc62da3635ffb1c6ca5ec9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0011-537ea9ff93df64d3.png",
+      "bytes": 243488,
+      "sha256": "537ea9ff93df64d3bff5ea44eca92959e1849c4184a8ca8336df7faa16d351f8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0022-97b85aadfe5ba636.png",
+      "bytes": 257304,
+      "sha256": "97b85aadfe5ba63664d410a616c9e0b3e40a575e37fa2caac33215d41f7019d3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0003-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0024-c741bd55e44b86e1.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0010-788fdbc9595d6551.json",
+      "bytes": 15658,
+      "sha256": "788fdbc9595d65511e108c2ce4bdcbb6ba6f42df999d49f3e72a0bf36ae1709e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0016-c741bd55e44b86e1.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0023-21fb1fb28724c0b6.json",
+      "bytes": 16481,
+      "sha256": "21fb1fb28724c0b6333175ef3507a86a379a53d64e54ade65166d092492911ca"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0013-1abacbea5aff4385.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0019-1abacbea5aff4385.json",
+      "bytes": 41682,
+      "sha256": "1abacbea5aff43851d39e0fb2560ca9782aaef0fb113b60506cbe9a9d43fa63e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0007-dfa3bf817e24bb17.json",
+      "bytes": 40674,
+      "sha256": "dfa3bf817e24bb17d7099cdddb21f2e3b046ac233b0de73dcee7d68c69bb84c3"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0015-5724b7f804d64ead.download",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0026-9f1f741aaac6c62d.png",
+      "bytes": 256982,
+      "sha256": "9f1f741aaac6c62d2f5c61acdfbcea978a1b1dcc818dc400c6046622f20673b7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0006-c741bd55e44b86e1.txt",
+      "bytes": 15,
+      "sha256": "c741bd55e44b86e1210ecf71009892d9d1d879692c4dcac7477b3d43fe0e446e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0021-5724b7f804d64ead.download",
+      "bytes": 1685,
+      "sha256": "5724b7f804d64eade8814645b01db6966b335ef8b467b6ebcb65d3a01a0f6858"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0009-f18e25321f8b95c8.download",
+      "bytes": 1685,
+      "sha256": "f18e25321f8b95c8f9b9f2149c0be90643d961f4f1d7818d5fa12a91b54dfc2e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-2-report/resources/0020-6417f59bfdfd6125.png",
+      "bytes": 292619,
+      "sha256": "6417f59bfdfd61255ed1ad1d47305448adaacd0b2caa84292533b450531cf60c"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/frozen-inputs/tests/e2e/steps/claude-stop.steps.ts",
+      "bytes": 23798,
+      "sha256": "ccda902f703580fe456cf422c5d7075ecc5712bf7eb20b59f210ba5435cf1ebb"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0005-73c5f7b2e6f3afe6.json",
+      "bytes": 565,
+      "sha256": "73c5f7b2e6f3afe65c7ece1ade3ea385286707728e78a3736c886e3b125c4e53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0022-2602dd022a3acf51.png",
+      "bytes": 255282,
+      "sha256": "2602dd022a3acf51876b2861ef8a3c227cf016208334930afbee03fa620edd17"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0021-3584503ba71dbbc1.download",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0025-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0003-38e7cffb7058ebc7.png",
+      "bytes": 197026,
+      "sha256": "38e7cffb7058ebc7560cf69b83b412e3328c3b12b15cd320f530ab8645c1a5f2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0019-debc9bcecf9cabef.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0013-debc9bcecf9cabef.json",
+      "bytes": 42092,
+      "sha256": "debc9bcecf9cabefeb624bbe83d47b8498b8e0cc288a8b98e8f40cc73376c2ac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0020-fbd5a86234fde1a5.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0023-dfc034af0d16d211.json",
+      "bytes": 16715,
+      "sha256": "dfc034af0d16d2117ceebd84f192867df7a08ba547f667bb35a75879c35dab53"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0015-3584503ba71dbbc1.download",
+      "bytes": 1685,
+      "sha256": "3584503ba71dbbc1d429d8cb0b1ea987bdbda49eb51c3fc52eede3194d12f725"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0006-88ff758b0927b852.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0011-934915ac8ea33801.png",
+      "bytes": 240447,
+      "sha256": "934915ac8ea33801bf5f59fbeb6ecc32c66b244369e04a22ef47e459a1bb116b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0009-ea78e0808d3a770f.download",
+      "bytes": 1685,
+      "sha256": "ea78e0808d3a770f15ca5ce392b21895569759c19201d900dbb8edcc3659e048"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0010-68dd134db9ed3404.json",
+      "bytes": 15554,
+      "sha256": "68dd134db9ed3404a87357d198c3f99359e88efc0b4e4782b611d8feb714d850"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0001-0d96cced901228d8.png",
+      "bytes": 104636,
+      "sha256": "0d96cced901228d8c81c65b850f5814fbc218564770d83ecf522930f78dce57d"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0026-e0dea0e0ebb2e153.png",
+      "bytes": 254924,
+      "sha256": "e0dea0e0ebb2e1535010d1a288bf3e204a02de2c18dc1d7adc56847b826b596a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0007-9d1b87b0e4352284.json",
+      "bytes": 40778,
+      "sha256": "9d1b87b0e43522840250bffeb207653a87e2aa33571e1b431c519f3c77c76343"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0012-553bfb4dee67cd92.png",
+      "bytes": 260790,
+      "sha256": "553bfb4dee67cd9248230440e1f558f2fd96d69cd606a60ba944b0f703fbc6ba"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0004-dd259aac37a97eda.png",
+      "bytes": 278837,
+      "sha256": "dd259aac37a97edab0a73c31bfc851e76bb554229374d16fd8d83110e0d94d52"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0008-b9027e29eed7ddd1.png",
+      "bytes": 288950,
+      "sha256": "b9027e29eed7ddd14bc22a24d92aa72f6061a8856c464691bf562f573cff55fe"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0017-4310a3e462988b86.png",
+      "bytes": 307097,
+      "sha256": "4310a3e462988b86bbcfe79ca42b98c60b28e881d8c3919f01643b810b6dcb4a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0014-fbd5a86234fde1a5.png",
+      "bytes": 292414,
+      "sha256": "fbd5a86234fde1a5223d56fc2adab699fd0a2ac887090e72bbd5b31f82d1095a"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0024-88ff758b0927b852.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0016-88ff758b0927b852.txt",
+      "bytes": 15,
+      "sha256": "88ff758b0927b852d2cab22ccd2b84b8f90b04cca709d9277424b0a5c85befbd"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/source-1-report/resources/0018-f6aaf20070150d74.png",
+      "bytes": 307293,
+      "sha256": "f6aaf20070150d747642a00c5ad7714df21c17cd72d5036471a3100bcfcc4897"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/index.html",
+      "bytes": 544147,
+      "sha256": "ea14c64ee0a64a2273ee0bb86b5aa03a296383504530a3c0058d85b9faf63afc"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/.last-run.json",
+      "bytes": 96,
+      "sha256": "7c4fc2b9afe88d235e23342de201574f3444cd640f1f709bf6db0e3743f0e1a8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/004-新员工明确选择Claude程序与模型来源.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/001-第-1-次启动结束画面.png",
+      "bytes": 104764,
+      "sha256": "e1a28b6483cf0bc7f8f4291dec56c673c5b322564868fca541507dc6d8267145"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/011-运行服务意外退出后的原界面.png",
+      "bytes": 242455,
+      "sha256": "5247ff3f293e6862696ad7ec31e5ebf353188cc64b3cf6fdf6cf10c04248a66e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/007-文件执行中底部拒绝换绑及原事实.json",
+      "bytes": 40310,
+      "sha256": "65d575010a1ad5b2deaa6464e786915d29c17e5fca6304d36c4ae1621097b9c7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/005-本场换绑目标与原来源保持.json",
+      "bytes": 565,
+      "sha256": "7bb8746f0388d97142da51cef13e0c969f78bd377cb186b05f21fa534494d2df"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/012-第-2-次启动结束画面.png",
+      "bytes": 263429,
+      "sha256": "af02bc45000011b74bcfe5af16b41560addea71f4407a90fd4eda61cdc34b909"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/015-故障场景人工清理进程不计产品通过.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/010-停止前实际运行与本场子进程.json",
+      "bytes": 15321,
+      "sha256": "48f33987dace408187e6445caafbe46bb3ef53a597140c93d1d420c28a7ef588"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/013-Claude自动化停止最终原始状态.json",
+      "bytes": 16196,
+      "sha256": "49b555cced396bc8178152b6143e84cae802d17b88b98785969e1aa472fb54a5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/003-Claude程序核对只证明程序状态.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/014-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/scenarios/76620a6b86e22810b964-66f4c8a4ecf5ecaefc40-retry0-repeat0-nbJsRT/006-stop-proof.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/4003748525d1680bf41ab659753c14bf10fd6046.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/5541b5d9df3ca7a79c01abe93e82f92f3238164f.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/f11cb7439aee67bcd5eb99d9f98cf7a83cfe0662.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/0e92557eaa2d57255efd31a14ea289057615aea2.json",
+      "bytes": 15321,
+      "sha256": "48f33987dace408187e6445caafbe46bb3ef53a597140c93d1d420c28a7ef588"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/23878853f071e6773ad15cf0a00bba6faba11890.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/c0920c1b3e30c04a6cb3b9a9ba0b6a3288430cce.zip",
+      "bytes": 469311,
+      "sha256": "b7b59b789619854aed6de5518119059d6ac070e13e30d69fe14c3b6ef1cb7aac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/3cf002e0a39ba49595204927f716b980ca5ae508.json",
+      "bytes": 1685,
+      "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/a9c2f69663fefb65671246470aea9a61a99b9843.png",
+      "bytes": 242455,
+      "sha256": "5247ff3f293e6862696ad7ec31e5ebf353188cc64b3cf6fdf6cf10c04248a66e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/869b8f4cb22d7d468bea1c502ca9ccbef2800c1c.json",
+      "bytes": 40310,
+      "sha256": "65d575010a1ad5b2deaa6464e786915d29c17e5fca6304d36c4ae1621097b9c7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/5a9458666a77376ee5a94f8c1fdd40dd2a0df2bf.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/a5a21bfd1e0a6c9e65f425ce834548befc80eadb.png",
+      "bytes": 104764,
+      "sha256": "e1a28b6483cf0bc7f8f4291dec56c673c5b322564868fca541507dc6d8267145"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/dc193cdc492eae2ff2256f506c82b85ee74307d2.json",
+      "bytes": 565,
+      "sha256": "7bb8746f0388d97142da51cef13e0c969f78bd377cb186b05f21fa534494d2df"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/e760281650b8ad8cd574613dbec62724a5a68df1.md",
+      "bytes": 9953,
+      "sha256": "7d08cf049bcf87e3ca3f0b81ad839a2a4a44bc6f8c3b9985e63fcbb4bffac79e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/fc8e63ae9b08f76fc9f54a5cfb77f12d58f421f8.png",
+      "bytes": 263429,
+      "sha256": "af02bc45000011b74bcfe5af16b41560addea71f4407a90fd4eda61cdc34b909"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/e7be084a0866592317a1c3d8e1431deb60321d44.json",
+      "bytes": 16196,
+      "sha256": "49b555cced396bc8178152b6143e84cae802d17b88b98785969e1aa472fb54a5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/playwright-report/data/9d5f792c26f6190b0287de2dc2d0f3cffefad409.png",
+      "bytes": 289077,
+      "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-1.zip",
+      "bytes": 469311,
+      "sha256": "b7b59b789619854aed6de5518119059d6ac070e13e30d69fe14c3b6ef1cb7aac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/error-context.md",
+      "bytes": 9953,
+      "sha256": "7d08cf049bcf87e3ca3f0b81ad839a2a4a44bc6f8c3b9985e63fcbb4bffac79e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/desktop-2.zip",
+      "bytes": 15287056,
+      "sha256": "e3a7e30308cbbce9332375991d75998470c953e29cfd820b604586fab90d06b8"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/新员工明确选择Claude程序与模型来源-5b97f7f4c669ebba0bc7d3c8dc4aa59751644e54.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障最终未发布原件-181399120e75c1f84c843d585be42cb3b382f36e.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/本场换绑目标与原来源保持-f0e48325cad6ea4186be6495a4d76e024829d42c.json",
+      "bytes": 565,
+      "sha256": "7bb8746f0388d97142da51cef13e0c969f78bd377cb186b05f21fa534494d2df"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/运行服务意外退出后的原界面-0c09261cdac0db6bf6e1ea783a91b22914a10f09.png",
+      "bytes": 242455,
+      "sha256": "5247ff3f293e6862696ad7ec31e5ebf353188cc64b3cf6fdf6cf10c04248a66e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-2-次启动结束画面-b882909f53e9e14d81fd3ec5a7706ff0cb15edb7.png",
+      "bytes": 263429,
+      "sha256": "af02bc45000011b74bcfe5af16b41560addea71f4407a90fd4eda61cdc34b909"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝换绑及原事实-c72013c92f9368e86bea1c6d581609459ad5fd38.json",
+      "bytes": 40310,
+      "sha256": "65d575010a1ad5b2deaa6464e786915d29c17e5fca6304d36c4ae1621097b9c7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/真实模型使用产品系统加密-eaa77dd038b84e00e566525b4128056dd9e4f316.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-ae7eca6d11b8a70ee80af8571efc3cd5158bece1.png",
+      "bytes": 289077,
+      "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/桌面启动-1-9ff164d0312db667830ee5c8a7f7a52a314a11e0.zip",
+      "bytes": 469311,
+      "sha256": "b7b59b789619854aed6de5518119059d6ac070e13e30d69fe14c3b6ef1cb7aac"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/第-1-次启动结束画面-975ae7ba0fd1f0125dcb37f54af4d1ba54b9fc8a.png",
+      "bytes": 104764,
+      "sha256": "e1a28b6483cf0bc7f8f4291dec56c673c5b322564868fca541507dc6d8267145"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障场景人工清理进程不计产品通过-bacf0f24701a276104c887afbda96c4acef71ead.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude自动化停止最终原始状态-f824a79ae57ef376a7ff1feb8fea6f9ab10d1cc4.json",
+      "bytes": 16196,
+      "sha256": "49b555cced396bc8178152b6143e84cae802d17b88b98785969e1aa472fb54a5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/Claude程序核对只证明程序状态-3678961e39e8eaf118dcc6346c717a337732df69.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/停止前实际运行与本场子进程-e9943f3084ce78d14b4579ac9554211af0eabd47.json",
+      "bytes": 15321,
+      "sha256": "48f33987dace408187e6445caafbe46bb3ef53a597140c93d1d420c28a7ef588"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/文件执行中底部拒绝更换Claude模型来源-·-原生截取元数据-2453de02c403b77cd0984f897a44f77bcee11832.json",
+      "bytes": 1685,
+      "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1/test-results/claude-employee.feature-本机-79d95-原Claude工作并拒绝更换模型来源且运行服务意外退出/attachments/故障前已写但未发布原件-3ca72d45e8fef8dd45710dc5ac2bd127be2f9444.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0013-49b555cced396bc8.json",
+      "bytes": 16196,
+      "sha256": "49b555cced396bc8178152b6143e84cae802d17b88b98785969e1aa472fb54a5"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0015-a90f878e11fea05c.json",
+      "bytes": 19,
+      "sha256": "a90f878e11fea05c1f905525cb907a947b5541dc074850226d8c5b9b0b158cd6"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0004-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0001-e1a28b6483cf0bc7.png",
+      "bytes": 104764,
+      "sha256": "e1a28b6483cf0bc7f8f4291dec56c673c5b322564868fca541507dc6d8267145"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0003-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0011-5247ff3f293e6862.png",
+      "bytes": 242455,
+      "sha256": "5247ff3f293e6862696ad7ec31e5ebf353188cc64b3cf6fdf6cf10c04248a66e"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0009-467f443f4c7c333d.download",
+      "bytes": 1685,
+      "sha256": "467f443f4c7c333dbd39187199fcec678796d3b838495faf9f630d5bee776fc4"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0005-7bb8746f0388d971.json",
+      "bytes": 565,
+      "sha256": "7bb8746f0388d97142da51cef13e0c969f78bd377cb186b05f21fa534494d2df"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0006-62fe4bb89bad114c.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0014-62fe4bb89bad114c.txt",
+      "bytes": 15,
+      "sha256": "62fe4bb89bad114c68c0cb94c9c657b103a34e19c3b2d42e2c6d7caf8f8a8ef9"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0007-65d575010a1ad5b2.json",
+      "bytes": 40310,
+      "sha256": "65d575010a1ad5b2deaa6464e786915d29c17e5fca6304d36c4ae1621097b9c7"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0010-48f33987dace4081.json",
+      "bytes": 15321,
+      "sha256": "48f33987dace408187e6445caafbe46bb3ef53a597140c93d1d420c28a7ef588"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0012-af02bc45000011b7.png",
+      "bytes": 263429,
+      "sha256": "af02bc45000011b74bcfe5af16b41560addea71f4407a90fd4eda61cdc34b909"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0002-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/claude-format-diagnosis-20261007/package-1-report/resources/0008-493525d2c4f68e36.png",
+      "bytes": 289077,
+      "sha256": "493525d2c4f68e3695b19b0d80250e253249b5d139a29f4944a2a6f3d3a68bd2"
+    }
+  ]
+}

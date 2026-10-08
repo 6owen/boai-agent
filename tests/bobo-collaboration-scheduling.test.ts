@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 已交付员工的后续判断沿真实业务消息事件，Run仍保留原公告身份；原首轮和已分工等待的跳过合同不混为一谈。
+ * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: 真实 AppService/SQLite/组织发布和工作接续，带明确开始/实际退出屏障的内部模型协议。
  * [OUTPUT]: 失败群业务根重试的判断/执行继续原预算；群内bobo未选连接沿首个有效默认模型且不获得组织权限。
  * [OUTPUT]: 无关历史清理后组织继续并真实交付；依赖成果经宿主来源/hash 核对后提供确切路径，依赖引用不变成本人产物。
@@ -130,6 +132,33 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
 }
 
 describe('bobo opening and real directed work scheduling', () => {
+  it('keeps an already delivered employee peer decision tied to its actual event while preserving the original announcement identity', async () => {
+    const rootWait = barrier(), f = await fixture({ rootWait })
+    await vi.waitFor(async () => expect((await f.detail()).workItems!.find(work => work.id === f.state.children[0]!.id)?.status).toBe('delivered'), { timeout: 5000, interval: 10 })
+    rootWait.release(); await f.settled()
+    const view = await f.detail(), opening = view.turns!.find(turn => turn.startIntentId)!
+    const first = f.state.decisions.find(context => context.agent.id === 'researcher' && context.participation?.triggerEventType === 'collaboration_start')!
+    const follow = f.state.decisions.filter(context => context.agent.id === 'researcher' && context.participation?.triggerEventType === 'agent_message')
+    expect(first.triggerMessageId).toBe(opening.triggerMessageId)
+    expect(first.participation?.eventMessageId).toBe(opening.triggerMessageId)
+    expect(follow.length).toBeGreaterThan(0)
+    for (const context of follow) {
+      expect(context.triggerMessageId).toBe(opening.triggerMessageId)
+      expect(context.participation?.eventMessageId).not.toBe(opening.triggerMessageId)
+      expect(context.workItems!.find(work => work.id === f.state.children[0]!.id)?.status).toBe('delivered')
+      const decision = view.decisions!.find(decision => decision.sourceDecisionRunId === context.runId)!
+      const delivery = view.deliveries!.find(delivery => delivery.id === decision.deliveryId)!
+      const source = view.events!.find(event => event.id === delivery.eventId)!
+      expect(source).toMatchObject({ type: 'agent_message', messageId: context.participation!.eventMessageId })
+      expect(context.participation!.sourceEventIds).toEqual(delivery.eventIds ?? [delivery.eventId])
+      expect(view.runs.find(run => run.id === context.runId)).toMatchObject({ phase: 'decision', status: 'completed', triggerMessageId: opening.triggerMessageId })
+    }
+    expect(view.workItems!.every(work => work.status === 'delivered')).toBe(true)
+    expect(f.state.childRuns).toHaveLength(1)
+    expect(view.workBudgets).toHaveLength(1)
+    expect(view.workBudgets![0]).toMatchObject({ usageIncomplete: false, unknownCalls: 0 })
+  })
+
   it('keeps the actual bobo organization and independent group work alive when an unrelated old conversation is cleared', async () => {
     const f = await fixture({ clearUnrelatedDuringOrganization: true })
     await f.settled()
@@ -293,7 +322,7 @@ it('uses the core default connection in an existing authorized group after clear
  await f.settled()
  const contexts=f.state.decisions.filter(context=>context.agent.id==='bobo' && context.triggerMessageId===sent.id)
  expect(contexts.length,JSON.stringify((await f.detail()).runs.filter(run=>run.triggerMessageId===sent.id))).toBeGreaterThan(0)
- for(const context of contexts){expect(context.connection.id).toBe(snapshot.connections[0]!.id);expect(context.findEmployees).toBeUndefined();expect(context.organizeCollaboration).toBeUndefined()}
+ for(const context of contexts){expect(context.connection!.id).toBe(snapshot.connections[0]!.id);expect(context.findEmployees).toBeUndefined();expect(context.organizeCollaboration).toBeUndefined()}
  expect((await f.detail()).runs.filter(run=>run.triggerMessageId===sent.id).every(run=>run.status==='completed')).toBe(true)
 })
 

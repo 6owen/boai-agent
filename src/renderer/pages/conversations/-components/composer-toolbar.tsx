@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 本机来源菜单准确进入当前员工设置或其本机连接；导航不保存配置、不执行任务，API原模型菜单与群内独立运行保持。
+ * [OUTPUT]: Claude底部显示真实运行时/模型来源，沿员工配置更改，不虚构支持API思考档位。
+ * [OUTPUT]: 本机Codex复用原命令权限菜单与发送行为，普通聊天仍无工具。
+ * [OUTPUT]: 聊天底部显示本机Codex来源与逐次命令授权，保留原发送行为。
  * [INPUT]: 当前成员、连接快照、任务状态及宿主提供的配置/发送回调。
  * [OUTPUT]: 原问题补充模式锁定点名；composer仅发送消息，不展示停止本轮/停止并发送按钮；已有 API 聊天加号接入原生材料选择，空白首发/ACP 不开放；首发前不展示会话目录操作；@ 与 / 共用 Prompt Bar；核心助手隐藏命令权限菜单；普通员工权限仅呈现已提交的禁止命令/逐次批准，模型/思考强度、配置锁定及普通发送语义。
  * [POS]: 会话私有工具栏；复用 ui 的 composer 和 DropdownMenu，真实配置写入由 AppShell 管理。
@@ -7,7 +11,7 @@
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import { supportsThinkingControl, type ThinkingLevel } from '@shared/domain/model-preferences'
-import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FileText, FolderOpen, LoaderCircle, Plus, ShieldCheck, Terminal } from '@/components/icons'
+import { ArrowUp, AtSign, ChevronDownIcon as ChevronDown, FileText, FolderOpen, LoaderCircle, Plus, Settings, ShieldCheck, Terminal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ChatComposerActions, ChatComposerFooter, ChatComposerOption, ChatComposerSelect } from '@/components/ui/chat-composer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -26,7 +30,7 @@ interface Props {
   replyMode?: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
   commandsVisible: boolean; onCommands(): void
-  onOpenWorkspace(): void; onMentions(): void; onSettings(): void
+  onOpenWorkspace(): void; onMentions(): void; onSettings(agent?: DigitalAgent): void; onConfigureAgent(agent: DigitalAgent): void
   onAddMaterial?(): void; materialsDisabled?: boolean
   onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): void; onSend(): void
 }
@@ -36,8 +40,8 @@ export function ComposerToolbar(props: Props) {
   const primary = members[0]
   const runningAgents = new Set(snapshot.conversations.filter(c => ['running', 'queued', 'waiting_approval'].includes(c.activity ?? '')).flatMap(c => c.agentIds))
   const locked = (agent: DigitalAgent) => busy || active || configurationLocked || !agent.active || runningAgents.has(agent.id)
-  const modelLabel = external ? '外部 Agent' : primary?.modelId || snapshot.connections.find(c => c.id === primary?.connectionId)?.defaultModel || '选择模型'
-  const permissionLabel = external || primary?.allowCommands ? '请求批准' : '禁止命令'
+  const modelLabel = primary?.executionBackend?.kind === 'claude-local' ? `本机 Claude · ${primary.modelId || snapshot.connections.find(c => c.id === primary.connectionId)?.defaultModel || '未配置模型'}` : primary?.executionBackend?.kind === 'codex-local' ? '本机 Codex' : external ? '外部 Agent' : primary?.modelId || snapshot.connections.find(c => c.id === primary?.connectionId)?.defaultModel || '选择模型'
+  const permissionLabel = primary?.executionBackend?.kind === 'acp-local' || primary?.allowCommands ? '请求批准' : '禁止命令'
   const choices = snapshot.connections.flatMap(connection => {
     const custom = [...new Set(snapshot.agents.filter(a => a.connectionId === connection.id).map(a => a.modelId).filter(model => model && model !== connection.defaultModel))]
     const models = [...(connection.defaultModel ? [{ modelId: '', label: connection.defaultModel }] : []), ...custom.map(modelId => ({ modelId, label: modelId }))]
@@ -83,7 +87,7 @@ export function ComposerToolbar(props: Props) {
         <DropdownMenuTrigger render={<ChatComposerSelect kind="model" aria-label="选择模型" title={modelLabel} />}><span>{modelLabel}</span><ChevronDown /></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="end" className="chat-composer-menu w-[256px] max-w-[calc(100vw-32px)] p-2" aria-label="选择模型">
           {members.map(agent => <DropdownMenuGroup key={agent.id}>
-            {agent.executionBackend?.kind === 'acp-local' ? <DropdownMenuItem disabled><ChatComposerOption label="由外部 Agent 管理" description="模型在外部程序中选择。" /></DropdownMenuItem> : <>
+            {agent.executionBackend && agent.executionBackend.kind !== 'mastra-model' ? <DropdownMenuItem disabled><ChatComposerOption label="由本机 Agent 配置" description={agent.executionBackend.kind === 'claude-local' ? 'API来源与模型在员工设置中选择。' : '模型在外部程序中选择。'} /></DropdownMenuItem> : <>
               {!choices.length && <DropdownMenuItem disabled>还没有配置模型连接</DropdownMenuItem>}
               <DropdownMenuRadioGroup value={selectedModel(agent)} onValueChange={value => {
                 const choice = choices.find(c => c.value === value)
@@ -111,7 +115,10 @@ export function ComposerToolbar(props: Props) {
             </>}
           </DropdownMenuGroup>)}
           <DropdownMenuSeparator />
-          <DropdownMenuGroup><DropdownMenuItem onClick={props.onSettings}><Plus />管理模型连接</DropdownMenuItem></DropdownMenuGroup>
+          <DropdownMenuGroup>{primary?.executionBackend && primary.executionBackend.kind !== 'mastra-model' ? <>
+            <DropdownMenuItem onClick={() => props.onConfigureAgent(primary)}><Settings />{isCoreAgent(primary) ? '助手设置' : '员工设置'}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => props.onSettings(primary)}><Terminal />管理本机 Agent</DropdownMenuItem>
+          </> : <DropdownMenuItem onClick={() => props.onSettings()}><Plus />管理模型连接</DropdownMenuItem>}</DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>}
       <Button variant="ink" size={external ? 'sm' : 'icon-sm'} round={!external} aria-label={external ? '执行外部任务' : '发送消息'} disabled={busy || !props.canSend} onClick={() => props.onSend()}>{busy ? <LoaderCircle className="spinner" /> : external ? '执行外部任务' : <ArrowUp />}</Button>

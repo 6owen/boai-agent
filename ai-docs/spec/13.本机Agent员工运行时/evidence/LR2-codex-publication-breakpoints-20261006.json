@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-06",
+  "scope": "真实Electron应用中的复制完成未登记/登记事务未提交精确退出",
+  "faultMechanism": "本场空闲utility先重启以添加回环Inspector；在唯一生产源码位置命中断点、导出原件与数据库后SIGKILL同一PID。生产文件/事务/模型响应不替换，不执行call-frame表达式。",
+  "productionChanged": false,
+  "batches": [
+    {
+      "batch": "artifact-breakpoint-offline-1",
+      "frozenFiles": 880,
+      "sourceVerification": ".local/feature-review/artifact-breakpoint-offline-1/source-verification.json",
+      "asarSha256": "ff357456a89cd6d06dcfcf3e676b6d3e9ae1811f9a687b5eeae9c436c64291cf",
+      "report": ".local/feature-review/artifact-breakpoint-offline-1-report/index.html",
+      "scenarios": [
+        {
+          "title": "使用离线协议在复制完成未登记实际退出后未提交文件不成为成果",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "boundary": "复制完成未登记",
+          "durationSeconds": 10.261,
+          "launches": 3,
+          "resources": 15,
+          "traces": 3,
+          "gaps": [],
+          "manifest": ".local/feature-review/artifact-breakpoint-offline-1/scenarios/704506bbdae38bebaafd-eec32947f4e020d73011-retry0-repeat0-Z3XaS8/manifest.json",
+          "breakpoint": {
+            "boundary": "复制完成未登记",
+            "processId": 62084,
+            "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI%20Agent.app/Contents/Resources/app.asar/dist/runtime/worker.mjs",
+            "scriptSha256": "d6f2b34898deebd073a15a85f664fec8f37523c18450442243aa199393c7a680",
+            "sourceLine": "await context.onArtifact(artifact);",
+            "line": 2192,
+            "breakpointId": "4:2191:4:126",
+            "actualLocation": {
+              "scriptId": "126",
+              "lineNumber": 2191,
+              "columnNumber": 18
+            },
+            "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+            "reason": "other",
+            "frames": [
+              {
+                "functionName": "publishArtifact",
+                "location": {
+                  "scriptId": "126",
+                  "lineNumber": 2191,
+                  "columnNumber": 18
+                }
+              }
+            ]
+          },
+          "workId": "work-07db9bcb35b1115c36031cc25625d2c31bc226149ea40bf86505b31eb69aefcb",
+          "candidate": {
+            "id": "589abeb4-1d5c-4083-9ee7-cc3b379e57ae",
+            "conversationId": "d44dab7b-d69b-4f2f-bf10-b8680dc7982d",
+            "managedRelativePath": "artifacts/589abeb4-1d5c-4083-9ee7-cc3b379e57ae-codex-proof.md",
+            "contentHash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+            "fingerprint": "a5b8e099e593e8204c767a54ce8db2071038200c0cc496b636a614c3ecf7f2c9"
+          },
+          "finalWorkStatus": "interrupted",
+          "registeredArtifactCount": 0,
+          "childrenExited": true,
+          "rawIdenticalAfterTwoRestarts": true,
+          "humanReview": "pending"
+        }
+      ]
+    },
+    {
+      "batch": "artifact-breakpoint-offline-2",
+      "frozenFiles": 880,
+      "sourceVerification": ".local/feature-review/artifact-breakpoint-offline-2/source-verification.json",
+      "asarSha256": "ff357456a89cd6d06dcfcf3e676b6d3e9ae1811f9a687b5eeae9c436c64291cf",
+      "report": ".local/feature-review/artifact-breakpoint-offline-2-report/index.html",
+      "scenarios": [
+        {
+          "title": "使用离线协议在登记事务未提交实际退出后未提交文件不成为成果",
+          "status": "passed",
+          "modelMode": "offline-protocol-or-fixture",
+          "boundary": "登记事务未提交",
+          "durationSeconds": 11.167,
+          "launches": 3,
+          "resources": 15,
+          "traces": 3,
+          "gaps": [],
+          "manifest": ".local/feature-review/artifact-breakpoint-offline-2/scenarios/704506bbdae38bebaafd-68554a5e23822fc59c15-retry0-repeat0-GEDYWU/manifest.json",
+          "breakpoint": {
+            "boundary": "登记事务未提交",
+            "processId": 62931,
+            "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI%20Agent.app/Contents/Resources/app.asar/dist/runtime/worker.mjs",
+            "scriptSha256": "d6f2b34898deebd073a15a85f664fec8f37523c18450442243aa199393c7a680",
+            "sourceLine": "if (previous) await this.finishFamilyAcceptances(tx, logicalArtifactId, \"superseded\");",
+            "line": 3213,
+            "breakpointId": "4:3212:4:126",
+            "actualLocation": {
+              "scriptId": "126",
+              "lineNumber": 3212,
+              "columnNumber": 4
+            },
+            "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+            "reason": "other",
+            "frames": [
+              {
+                "functionName": "register",
+                "location": {
+                  "scriptId": "126",
+                  "lineNumber": 3212,
+                  "columnNumber": 4
+                }
+              }
+            ]
+          },
+          "workId": "work-77b1d7d01413f76c3ab3a0930e2ee411830a7f57ffa86c335f1621c35b4b5d9a",
+          "candidate": {
+            "id": "9b6b3723-75d8-4dd0-82f7-a0b01abba417",
+            "conversationId": "f4ee0a96-4755-4618-aee4-fb8966afda32",
+            "managedRelativePath": "artifacts/9b6b3723-75d8-4dd0-82f7-a0b01abba417-codex-proof.md",
+            "contentHash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+            "fingerprint": "0995f45061d188a2bc4272dbb02a8caf98218cc866d66708337f202139a3cf15"
+          },
+          "finalWorkStatus": "interrupted",
+          "registeredArtifactCount": 0,
+          "childrenExited": true,
+          "rawIdenticalAfterTwoRestarts": true,
+          "humanReview": "pending"
+        }
+      ]
+    },
+    {
+      "batch": "artifact-breakpoint-real-1",
+      "frozenFiles": 880,
+      "sourceVerification": ".local/feature-review/artifact-breakpoint-real-1/source-verification.json",
+      "asarSha256": "ff357456a89cd6d06dcfcf3e676b6d3e9ae1811f9a687b5eeae9c436c64291cf",
+      "report": ".local/feature-review/artifact-breakpoint-real-1-report/index.html",
+      "scenarios": [
+        {
+          "title": "使用真实Codex在复制完成未登记实际退出后未提交文件不成为成果",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "boundary": "复制完成未登记",
+          "durationSeconds": 48.478,
+          "launches": 3,
+          "resources": 15,
+          "traces": 3,
+          "gaps": [],
+          "manifest": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-0d891509cc407e5d58c5-retry0-repeat0-qIRwDB/manifest.json",
+          "breakpoint": {
+            "boundary": "复制完成未登记",
+            "processId": 63809,
+            "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI%20Agent.app/Contents/Resources/app.asar/dist/runtime/worker.mjs",
+            "scriptSha256": "d6f2b34898deebd073a15a85f664fec8f37523c18450442243aa199393c7a680",
+            "sourceLine": "await context.onArtifact(artifact);",
+            "line": 2192,
+            "breakpointId": "4:2191:4:126",
+            "actualLocation": {
+              "scriptId": "126",
+              "lineNumber": 2191,
+              "columnNumber": 18
+            },
+            "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+            "reason": "other",
+            "frames": [
+              {
+                "functionName": "publishArtifact",
+                "location": {
+                  "scriptId": "126",
+                  "lineNumber": 2191,
+                  "columnNumber": 18
+                }
+              }
+            ]
+          },
+          "workId": "work-4d49625f95e99dc6bea387741b796f30acc21f0185d0169a19fbfc2b283d171a",
+          "candidate": {
+            "id": "dfc81c77-3b2a-4076-a912-bdf8fa47d35a",
+            "conversationId": "4203117d-a121-44dc-a7e4-cc737fd10e90",
+            "managedRelativePath": "artifacts/dfc81c77-3b2a-4076-a912-bdf8fa47d35a-codex-proof.md",
+            "contentHash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+            "fingerprint": "b9cdbcdaa809598f1224ed85a8ff6534468d4a19492f9a14f016e41ada13b8c2"
+          },
+          "finalWorkStatus": "interrupted",
+          "registeredArtifactCount": 0,
+          "childrenExited": true,
+          "rawIdenticalAfterTwoRestarts": true,
+          "humanReview": "pending",
+          "programs": [
+            {
+              "name": "Codex",
+              "version": "0.159.3",
+              "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+            },
+            {
+              "name": "Codex",
+              "version": "0.159.3",
+              "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+            }
+          ],
+          "images": [
+            {
+              "file": "LR2-真实Codex复制完成未登记重启工作.png",
+              "sha256": "75aa42aa0afb8aad9e3cae851e3e03a680f9ca412892b32fe3056a27cd1bb703",
+              "source": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-0d891509cc407e5d58c5-retry0-repeat0-qIRwDB/008-第1次重启原工作中断且未交付.png"
+            },
+            {
+              "file": "LR2-真实Codex复制完成未登记重启文件.png",
+              "sha256": "04d05792f747f675cfb3e9acf1dd320b132b1258577b3065265f8647df7bbc4e",
+              "source": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-0d891509cc407e5d58c5-retry0-repeat0-qIRwDB/009-第1次重启未登记原件不进入文件列表.png"
+            }
+          ]
+        },
+        {
+          "title": "使用真实Codex在登记事务未提交实际退出后未提交文件不成为成果",
+          "status": "passed",
+          "modelMode": "real-provider",
+          "boundary": "登记事务未提交",
+          "durationSeconds": 50.859,
+          "launches": 3,
+          "resources": 15,
+          "traces": 3,
+          "gaps": [],
+          "manifest": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-31f8783cc18e148a9c19-retry0-repeat0-FCia03/manifest.json",
+          "breakpoint": {
+            "boundary": "登记事务未提交",
+            "processId": 64365,
+            "scriptUrl": "file:///Users/wangwenbo/Desktop/demo/boai/boai-agent/release/mac-arm64/BoAI%20Agent.app/Contents/Resources/app.asar/dist/runtime/worker.mjs",
+            "scriptSha256": "d6f2b34898deebd073a15a85f664fec8f37523c18450442243aa199393c7a680",
+            "sourceLine": "if (previous) await this.finishFamilyAcceptances(tx, logicalArtifactId, \"superseded\");",
+            "line": 3213,
+            "breakpointId": "4:3212:4:126",
+            "actualLocation": {
+              "scriptId": "126",
+              "lineNumber": 3212,
+              "columnNumber": 4
+            },
+            "mechanism": "Node Inspector breakpoint, no source replacement or call-frame evaluation",
+            "reason": "other",
+            "frames": [
+              {
+                "functionName": "register",
+                "location": {
+                  "scriptId": "126",
+                  "lineNumber": 3212,
+                  "columnNumber": 4
+                }
+              }
+            ]
+          },
+          "workId": "work-1d7f6bf09f6ea50bab058d1f28d033ed7717cd6c2ed5a5f849a2bb5e328e709b",
+          "candidate": {
+            "id": "52c586fd-d6d6-4f02-bd3a-3597dcd33e23",
+            "conversationId": "38319448-635c-47da-b87f-59188b341614",
+            "managedRelativePath": "artifacts/52c586fd-d6d6-4f02-bd3a-3597dcd33e23-codex-proof.md",
+            "contentHash": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c",
+            "fingerprint": "f653bd67fa98fa0e4e908b4602a1a4c6e0ef5c0ecaba170b47ee5f9df30c9fbe"
+          },
+          "finalWorkStatus": "interrupted",
+          "registeredArtifactCount": 0,
+          "childrenExited": true,
+          "rawIdenticalAfterTwoRestarts": true,
+          "humanReview": "pending",
+          "programs": [
+            {
+              "name": "Codex",
+              "version": "0.159.3",
+              "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+            },
+            {
+              "name": "Codex",
+              "version": "0.159.3",
+              "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+            }
+          ],
+          "images": [
+            {
+              "file": "LR2-真实Codex登记事务未提交重启工作.png",
+              "sha256": "8b127a96751653a00c8c1d2332c942e60865dbdbab1d5e8b571691e0cbcc8d38",
+              "source": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-31f8783cc18e148a9c19-retry0-repeat0-FCia03/008-第1次重启原工作中断且未交付.png"
+            },
+            {
+              "file": "LR2-真实Codex登记事务未提交重启文件.png",
+              "sha256": "6748a3428dfd76c4c70e4b0366cd053d6899c3f4f4c4c36107794eff6e363360",
+              "source": ".local/feature-review/artifact-breakpoint-real-1/scenarios/704506bbdae38bebaafd-31f8783cc18e148a9c19-retry0-repeat0-FCia03/009-第1次重启未登记原件不进入文件列表.png"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "精确中断为运行服务SIGKILL，不是整机断电或磁盘损坏",
+    "复制前准备事务内部与消息/Work受理事务不属于这两个窗口",
+    "旧版本无准备记录的孤立文件仍无法还原来源",
+    "第二真实场景的模型交付目标含已发布字样，目标文案不是交付证据；原状态为已中断且成果列表为空",
+    "未签名macOS arm64应用，人工效果待审阅"
+  ],
+  "sources": [
+    "https://www.electronjs.org/docs/latest/api/utility-process",
+    "https://nodejs.org/api/inspector.html"
+  ]
+}

@@ -1,0 +1,330 @@
+{
+  "status": "passed",
+  "runtime": "Codex 0.159.3",
+  "platform": "macOS arm64",
+  "execution": "source Electron UI",
+  "modelMode": "real-provider",
+  "humanReview": "pending",
+  "originalReport": ".local/feature-review/codex-restore-real-2/playwright-results.json",
+  "report": ".local/feature-review/codex-restore-real-2-report/index.html",
+  "durationMs": 148489.725,
+  "resources": 18,
+  "frozenFiles": 709,
+  "sourceAndBuildDigest": "63d69245b6e1908f745d0c9d088673d01c2d85afe6c0412445bb3375a328e025",
+  "frozenFilesUnchanged": true,
+  "restoreLocation": "原目录",
+  "backupManifest": {
+    "format": "boai-agent-local-backup",
+    "version": 2,
+    "createdAt": "2026-10-05T11:00:32.335Z",
+    "sourceDataPath": "/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-I08of6/v2",
+    "credentialsIncluded": false,
+    "nativeAgentRestorePolicy": "fresh-session",
+    "excludedNativeRuntimeHomes": [
+      "agents/0427a00f-afd8-4c27-bb71-95d6d33245fb/workspace/sessions/96a11c78-0fc3-4182-a02b-934d93b8f64f/.codex-private"
+    ],
+    "excludedLegacyBrowserRuns": [],
+    "appearanceIncluded": true,
+    "automationRestorePolicy": "paused"
+  },
+  "originalMapping": {
+    "id": "361ecc8800bf1f74c4d64dcb6f3fd49d60b56c91a207e54d334cd0bae117a0e1",
+    "conversationId": "96a11c78-0fc3-4182-a02b-934d93b8f64f",
+    "agentId": "0427a00f-afd8-4c27-bb71-95d6d33245fb",
+    "sourceVersion": 2,
+    "fingerprint": "96d23e2bf188d200145bcd0aa40d760f861141fb997b56fae4eb42d445d73e71",
+    "runId": "eb7f946a-6580-40b6-b59e-46ec74dcb811",
+    "state": "completed",
+    "memories": [],
+    "materials": [],
+    "sources": [
+      {
+        "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+        "hash": "a21a6f314d68a662fdee16502c06d7e59b9ebec4c8a81f3308fb57ad401f484b"
+      }
+    ],
+    "inputMessageIds": [
+      "e543efc6-ae7c-4fb2-879c-d55c53481e21"
+    ],
+    "threadId": "01a10bb8-8d79-71c0-b0c5-9d46d9d736ce",
+    "turnId": "01a10bb8-8e03-71b3-ae46-f5139fab3c35",
+    "outputHash": "5063f4b43fec1ef6b5d91211830b365de2c2535770c11b258b7d2fe4064dad3c"
+  },
+  "advancedMapping": {
+    "id": "361ecc8800bf1f74c4d64dcb6f3fd49d60b56c91a207e54d334cd0bae117a0e1",
+    "conversationId": "96a11c78-0fc3-4182-a02b-934d93b8f64f",
+    "agentId": "0427a00f-afd8-4c27-bb71-95d6d33245fb",
+    "sourceVersion": 2,
+    "fingerprint": "96d23e2bf188d200145bcd0aa40d760f861141fb997b56fae4eb42d445d73e71",
+    "runId": "7d8677be-ee78-4880-a7a3-9321ba4081f8",
+    "state": "completed",
+    "memories": [
+      {
+        "id": "f5c44910-c005-4f7b-9ba5-96e631bf41eb",
+        "hash": "9d78a2e662cbe22ff15abc352e512f11d53588c3634a39946c1669ad932a5220"
+      }
+    ],
+    "materials": [],
+    "sources": [
+      {
+        "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+        "hash": "a21a6f314d68a662fdee16502c06d7e59b9ebec4c8a81f3308fb57ad401f484b"
+      },
+      {
+        "id": "a53225da-cdd3-486a-9889-8e4276f48ffc",
+        "hash": "c282ce6586f116d0e28feafbe05fd2f8a13120c7526a6b32072f1dfd7db38d31"
+      },
+      {
+        "id": "99ea2a85-53e2-4308-9787-b24c2dcf2e43",
+        "hash": "89b14ade58a2a2c0fd6fc1fcaff01690c1bc1dfefec3c655d8d4b1470a27aa17"
+      }
+    ],
+    "inputMessageIds": [
+      "99ea2a85-53e2-4308-9787-b24c2dcf2e43"
+    ],
+    "threadId": "01a10bb8-8d79-71c0-b0c5-9d46d9d736ce",
+    "turnId": "01a10bb9-22c8-7111-9247-b00fca9a81e2",
+    "outputHash": "601c5600d4094f87a136a0808e244dbd85c96ca9b0ffb3880567ddd2f10fc2bc"
+  },
+  "invalidatedMapping": {
+    "id": "361ecc8800bf1f74c4d64dcb6f3fd49d60b56c91a207e54d334cd0bae117a0e1",
+    "conversationId": "96a11c78-0fc3-4182-a02b-934d93b8f64f",
+    "agentId": "0427a00f-afd8-4c27-bb71-95d6d33245fb",
+    "sourceVersion": 2,
+    "fingerprint": "96d23e2bf188d200145bcd0aa40d760f861141fb997b56fae4eb42d445d73e71",
+    "runId": "eb7f946a-6580-40b6-b59e-46ec74dcb811",
+    "state": "completed",
+    "memories": [],
+    "materials": [],
+    "sources": [
+      {
+        "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+        "hash": "a21a6f314d68a662fdee16502c06d7e59b9ebec4c8a81f3308fb57ad401f484b"
+      }
+    ],
+    "inputMessageIds": [
+      "e543efc6-ae7c-4fb2-879c-d55c53481e21"
+    ],
+    "threadId": "01a10bb8-8d79-71c0-b0c5-9d46d9d736ce",
+    "turnId": "01a10bb8-8e03-71b3-ae46-f5139fab3c35",
+    "outputHash": "5063f4b43fec1ef6b5d91211830b365de2c2535770c11b258b7d2fe4064dad3c",
+    "resumeInvalidated": "restored-backup"
+  },
+  "rebuiltMapping": {
+    "id": "361ecc8800bf1f74c4d64dcb6f3fd49d60b56c91a207e54d334cd0bae117a0e1",
+    "conversationId": "96a11c78-0fc3-4182-a02b-934d93b8f64f",
+    "agentId": "0427a00f-afd8-4c27-bb71-95d6d33245fb",
+    "sourceVersion": 2,
+    "fingerprint": "96d23e2bf188d200145bcd0aa40d760f861141fb997b56fae4eb42d445d73e71",
+    "runId": "f83e3106-cd2e-4237-8a13-5af9b3fbab91",
+    "state": "completed",
+    "memories": [
+      {
+        "id": "f5c44910-c005-4f7b-9ba5-96e631bf41eb",
+        "hash": "9d78a2e662cbe22ff15abc352e512f11d53588c3634a39946c1669ad932a5220"
+      }
+    ],
+    "materials": [],
+    "sources": [
+      {
+        "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+        "hash": "a21a6f314d68a662fdee16502c06d7e59b9ebec4c8a81f3308fb57ad401f484b"
+      },
+      {
+        "id": "a53225da-cdd3-486a-9889-8e4276f48ffc",
+        "hash": "c282ce6586f116d0e28feafbe05fd2f8a13120c7526a6b32072f1dfd7db38d31"
+      },
+      {
+        "id": "3967a041-861f-4b05-a9dd-a332328ac46e",
+        "hash": "f76062ff9f0d236688f8ab5967f7912cbe9a86ff643a74d6645708d3764e39ff"
+      }
+    ],
+    "inputMessageIds": [
+      "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+      "a53225da-cdd3-486a-9889-8e4276f48ffc",
+      "3967a041-861f-4b05-a9dd-a332328ac46e"
+    ],
+    "threadId": "01a10bba-1782-7e92-a293-7c5208cacd43",
+    "turnId": "01a10bba-1805-70b1-bd90-37fb12340b7e",
+    "outputHash": "5063f4b43fec1ef6b5d91211830b365de2c2535770c11b258b7d2fe4064dad3c"
+  },
+  "startupRunsEqual": true,
+  "startupMessagesEqual": true,
+  "newThreadAfterExplicitMessage": true,
+  "sameNewMappingAfterNormalRestart": true,
+  "supplierRuns": [
+    {
+      "id": "ebff339c-4d65-4283-a4b5-d97dc53f25ab",
+      "phase": "decision",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 9232,
+        "outputTokens": 37,
+        "totalTokens": 9269
+      }
+    },
+    {
+      "id": "eb7f946a-6580-40b6-b59e-46ec74dcb811",
+      "phase": "execution",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 15390,
+        "outputTokens": 11,
+        "totalTokens": 15401
+      }
+    },
+    {
+      "id": "91a21405-4e7d-442d-9152-24a83be0a30a",
+      "phase": "memory",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 10057,
+        "outputTokens": 106,
+        "totalTokens": 10163
+      }
+    },
+    {
+      "id": "fff4a360-7ef5-4754-8e57-975634c3adfa",
+      "phase": "decision",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 20720,
+        "outputTokens": 28,
+        "totalTokens": 20748
+      }
+    },
+    {
+      "id": "7d8677be-ee78-4880-a7a3-9321ba4081f8",
+      "phase": "execution",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 29332,
+        "outputTokens": 11,
+        "totalTokens": 29343
+      }
+    },
+    {
+      "id": "0598b9ed-374b-4298-945d-55c704c8d52e",
+      "phase": "memory",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 20286,
+        "outputTokens": 109,
+        "totalTokens": 20395
+      }
+    },
+    {
+      "id": "971fc2d6-516f-46e3-856c-232cf3498ce5",
+      "phase": "decision",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 8866,
+        "outputTokens": 30,
+        "totalTokens": 8896
+      }
+    },
+    {
+      "id": "f83e3106-cd2e-4237-8a13-5af9b3fbab91",
+      "phase": "execution",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 8239,
+        "outputTokens": 11,
+        "totalTokens": 8250
+      }
+    },
+    {
+      "id": "df66bb90-5909-45dd-a09f-8c962881e37c",
+      "phase": "memory",
+      "status": "completed",
+      "usage": {
+        "inputTokens": 8795,
+        "outputTokens": 9,
+        "totalTokens": 8804
+      }
+    }
+  ],
+  "messagesBeforeBackup": [
+    {
+      "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+      "senderType": "user",
+      "content": "普通聊天：请记住当前暗号“海星-3bcfed14”，只回复暗号，不执行工作。"
+    },
+    {
+      "id": "a53225da-cdd3-486a-9889-8e4276f48ffc",
+      "senderType": "agent",
+      "content": "海星-3bcfed14"
+    }
+  ],
+  "messagesAfterExport": [
+    {
+      "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+      "senderType": "user",
+      "content": "普通聊天：请记住当前暗号“海星-3bcfed14”，只回复暗号，不执行工作。"
+    },
+    {
+      "id": "a53225da-cdd3-486a-9889-8e4276f48ffc",
+      "senderType": "agent",
+      "content": "海星-3bcfed14"
+    },
+    {
+      "id": "99ea2a85-53e2-4308-9787-b24c2dcf2e43",
+      "senderType": "user",
+      "content": "普通聊天：将当前暗号更新为“导出之后-ede3231d”，只回复这个新暗号，不执行工作。"
+    },
+    {
+      "id": "99847e43-da9e-4f1b-b19c-8134da135a63",
+      "senderType": "agent",
+      "content": "导出之后-ede3231d"
+    }
+  ],
+  "messagesAfterRestoreAndNewRequest": [
+    {
+      "id": "e543efc6-ae7c-4fb2-879c-d55c53481e21",
+      "senderType": "user",
+      "content": "普通聊天：请记住当前暗号“海星-3bcfed14”，只回复暗号，不执行工作。"
+    },
+    {
+      "id": "a53225da-cdd3-486a-9889-8e4276f48ffc",
+      "senderType": "agent",
+      "content": "海星-3bcfed14"
+    },
+    {
+      "id": "3967a041-861f-4b05-a9dd-a332328ac46e",
+      "senderType": "user",
+      "content": "普通聊天：当前暗号是什么？只回复暗号，不执行工作。"
+    },
+    {
+      "id": "0ef1846d-8263-4617-8408-0ddaba21c2f1",
+      "senderType": "agent",
+      "content": "海星-3bcfed14"
+    }
+  ],
+  "apiConnections": [],
+  "workItems": [],
+  "evidence": [
+    {
+      "path": ".local/feature-review/codex-restore-real-2/scenarios/704506bbdae38bebaafd-9c7e3335bb3d19166df5-retry0-repeat0-04haNh/011-恢复仅核对原事实未新增运行.json",
+      "sha256": "8785ace675e3a5b9ccf8b31c3a5135dcb62ae7726a0d75f64cbbf7a0ec3e49dc"
+    },
+    {
+      "path": ".local/feature-review/codex-restore-real-2/scenarios/704506bbdae38bebaafd-9c7e3335bb3d19166df5-retry0-repeat0-04haNh/016-恢复后新会话与再次正常重启核对.json",
+      "sha256": "1102dc274dea2d0dc2cde1e281dc5acacb90d198246559f9ab77e5460185907f"
+    },
+    {
+      "path": ".local/feature-review/codex-restore-real-2/scenarios/704506bbdae38bebaafd-9c7e3335bb3d19166df5-retry0-repeat0-04haNh/009-备份导出之后继续原生聊天原始消息与运行.json",
+      "sha256": "e817df59a5c8b6243f2c0531bb56c0e73e424001ed5d5fc324dd2d011cb38530"
+    },
+    {
+      "path": ".local/feature-review/codex-restore-real-2/scenarios/704506bbdae38bebaafd-9c7e3335bb3d19166df5-retry0-repeat0-04haNh/017-恢复后再次重启仍保留新会话原记录.png",
+      "sha256": "380c65d927f8b93f34d26cc082c03ba5775301c9894129f145675d7783b541f3"
+    }
+  ],
+  "limits": [
+    "Real provider restore was performed at the same path; new-path restore was tested separately with the offline protocol.",
+    "Formal Work, artifact adoption and fake credential exclusions were verified in AppService module tests, not in this real chat-only batch.",
+    "BoAI does not restore or delete user-owned native runtime history.",
+    "Previous real attempt timed out before restore and remains a separate failed report.",
+    "Not a packaged application run or a human quality approval."
+  ]
+}

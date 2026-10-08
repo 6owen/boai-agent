@@ -1,0 +1,3579 @@
+{
+  "kind": "native-current-request-authority-and-delivered-work-memory",
+  "createdAt": "2026-10-06T13:23:17.236308+00:00",
+  "fullGoalComplete": false,
+  "humanReview": "pending",
+  "references": [
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/manifest.json",
+      "bytes": 6702,
+      "sha256": "33dad8e22753a5879c4f79cfa2d0a53cbf94906238f5133489a61dfa844e5e91"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/011-本机修订原工作与新根状态.json",
+      "bytes": 39962,
+      "sha256": "cf01bd427a91fe27fb8231fb69387d2b87a14b2fba63d870cb8e3e0c3d0668c0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/004-本机工作预算与外部调用计量.json",
+      "bytes": 808,
+      "sha256": "6cf62e61fc9599c0e078458561a795eedac5c71e8782ea1b111c2937b005aff3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/006-本机文件任务原始工作与消息.json",
+      "bytes": 18644,
+      "sha256": "56aaddb50e3c2cf3a0f4f3726459df9da0510b7ddc75304c01c12efbbc493045"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/007-本机修订前记忆结算原始状态.json",
+      "bytes": 33923,
+      "sha256": "bf14b5a1032be9924fdb63a79b0b65163fc97f9d1901f2730025437470780699"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/manifest.json",
+      "bytes": 17012,
+      "sha256": "9a1d7e8191916a4ab54f8545b122f3578c93d64d6a08b433149cf2f90cb6ddd3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/015-Claude普通群最终实际状态.json",
+      "bytes": 129564,
+      "sha256": "35b58b07965fa3749ea7b09f17851add61cc532f5a9f99a52b2ddc5196d8d443"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/013-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 156,
+      "sha256": "fcb777003f89efac296d3508b660e22c8697b65c4ab5b8c0c126b4da0f408b02"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/006-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "09acf0dbeee77eca15dea841172918b1624b5e61ae799f68de02b8f5534afa71"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/007-Claude普通群本次输入和运行来源.json",
+      "bytes": 1359,
+      "sha256": "ff4a15c1c3a6c4fab05e93677a2ff750f791ae91f426074725d70ec368fe3225"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/008-真实委派后群更新前原运行及预算.json",
+      "bytes": 21633,
+      "sha256": "e817cacad24e7b19e071beb1e253e86829088bf7571212660366736aded88a95"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/009-真实原群信息更新的消息身份.json",
+      "bytes": 25682,
+      "sha256": "3e6c895215dee76630d0859c95a72d3dbfa12bb3b3aab620d9b92c819cfa96c3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/010-真实私有等待汇报配置与原来源结算.json",
+      "bytes": 12800,
+      "sha256": "c824f6ec03bb9031c4274b7f65b1075d0c63e866b4aae793e5695ce659bb1b03"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/012-真实群消息更新后原负责人完成文件交付.capture.json",
+      "bytes": 1685,
+      "sha256": "cf4ce1665aa95c2c04967f3e54189b5de709150b8ff29d7974486f524fb274b8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/014-记忆请求的实际公开回复.json",
+      "bytes": 946,
+      "sha256": "a3a9eb9df2ea6cd701d034c916585d065dce781f27be52b184630adf2d6ac7c8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/017-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "cf4ce1665aa95c2c04967f3e54189b5de709150b8ff29d7974486f524fb274b8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/manifest.json",
+      "bytes": 22109,
+      "sha256": "88146bdbcd346395556175a871518edc52e5f7f0f5cc362f687628b00fb938a6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/019-Claude普通群最终实际状态.json",
+      "bytes": 113164,
+      "sha256": "186d8db520078d69166ef37403f71e2791dc4be7aae135f4af0a306bfb23e475"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/009-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 1872,
+      "sha256": "b4ae9a41c68e836c885e765d57f18881c20aaa1a87a7a763752795718fd013d0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/004-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "40988c204ffbf405bad676bc5ac60afc324d4e5f10ec8a74011aa681611505cf"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/005-Claude普通群本次输入和运行来源.json",
+      "bytes": 377,
+      "sha256": "e2ab0ff37353bf7a1a479710a09daee67f0521d9a686d4325e3d900c7edcb4a1"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/006-旧汇报暂不公开仍保留原等待和预算.json",
+      "bytes": 32262,
+      "sha256": "efab53c4ba564038ec4e339b23505d8cfb02b1a6c9c434e523a9c80256f91c0a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/008-原群等待未公开草稿且保留依赖.capture.json",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/010-记忆请求的实际公开回复.json",
+      "bytes": 202,
+      "sha256": "5f2a970d6ca163160d60e6bf0a59abbc2905cb864fc76aa71da927434aad4adc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/013-Claude普通群工作与原账本.json",
+      "bytes": 63672,
+      "sha256": "84c1b3d98dd743c9d9716276667679b7fc2f60fa099cb1b5758b578d8612805d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/015-Claude普通群两位员工实际交付.capture.json",
+      "bytes": 1685,
+      "sha256": "ee4405d58b2885f6636d01e987457210fa3e9f998bffeb43e2574f0a8f3cc794"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/018-Claude普通群重启保留原交付.capture.json",
+      "bytes": 1685,
+      "sha256": "dd6d4e77a384d332c37adb1ebd7f47864485b6265dc75316bd7a8b9999b21bec"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/021-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "fa1b06de02be43ad56a21d0a10859b59bfacffa55c13d01871a858a899ee1d9c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/build-manifest.json",
+      "bytes": 101485,
+      "sha256": "3772c150fbffdcdb6870931233f65a24aabb146c3005712a05c8b29662eebb50"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "8f26f682af23749d0a2b6528595d7a3a4366ed3c386a5b01d5c1f4892398610d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1/playwright-results.json",
+      "bytes": 531426,
+      "sha256": "f2beac11a253589b0435e2cb5923c94ec73ecb19c349c1a6a6cfd3f083e54165"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/checks.json",
+      "bytes": 605371,
+      "sha256": "1340eacb7a780a4f9c062698f63d642b114776a61aa7f11ac14bde7654eaf0c8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/manifest.json",
+      "bytes": 1250,
+      "sha256": "700531c6097c2ba8f5ec63a6426ba71a4f3f223430d9d2e5c1245c7093f6b93b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/index.html",
+      "bytes": 611498,
+      "sha256": "d662116e198cd0aba72559d1c0fe794c493e36e2c2c2af85150adc8832831d10"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0001-7a653aba5cf150c5.png",
+      "bytes": 193794,
+      "sha256": "7a653aba5cf150c5807adb6f91ba4cd0f5803dbe937fa1a9ee886ea7776f15f1"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0002-931526d0f03564ac.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0004-6cf62e61fc9599c0.json",
+      "bytes": 808,
+      "sha256": "6cf62e61fc9599c0e078458561a795eedac5c71e8782ea1b111c2937b005aff3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0005-b73acf7a86676a71.png",
+      "bytes": 202846,
+      "sha256": "b73acf7a86676a7130216c86890c921cd547c573cfb7736e7026d72c0ad57da1"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0006-56aaddb50e3c2cf3.json",
+      "bytes": 18644,
+      "sha256": "56aaddb50e3c2cf3a0f4f3726459df9da0510b7ddc75304c01c12efbbc493045"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0007-bf14b5a1032be992.json",
+      "bytes": 33923,
+      "sha256": "bf14b5a1032be9924fdb63a79b0b65163fc97f9d1901f2730025437470780699"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0008-c90b69835532e0a9.png",
+      "bytes": 253874,
+      "sha256": "c90b69835532e0a9aca2e29ccf85cefc3e0e91bbdba6b7b56edb47ec7be864d0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0009-4d5e4dc3163b83c6.md",
+      "bytes": 38,
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0010-25a824172a48b45d.png",
+      "bytes": 299805,
+      "sha256": "25a824172a48b45d8a332520a3cf81c2ba3cea7829a8cc87592c78f4a0db34db"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0011-cf01bd427a91fe27.json",
+      "bytes": 39962,
+      "sha256": "cf01bd427a91fe27fb8231fb69387d2b87a14b2fba63d870cb8e3e0c3d0668c0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0012-25a824172a48b45d.png",
+      "bytes": 299805,
+      "sha256": "25a824172a48b45d8a332520a3cf81c2ba3cea7829a8cc87592c78f4a0db34db"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0013-aa70db5f6921086a.png",
+      "bytes": 104686,
+      "sha256": "aa70db5f6921086a6446bd8d34cca397de6d6245d3681a84c27cf1e263287c5c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0014-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0015-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0016-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0017-df37abbc8e2b951b.png",
+      "bytes": 250066,
+      "sha256": "df37abbc8e2b951be0ae4daee8a82ca927f1097a72532b48df39075ecdcce22d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0018-09acf0dbeee77eca.download",
+      "bytes": 1685,
+      "sha256": "09acf0dbeee77eca15dea841172918b1624b5e61ae799f68de02b8f5534afa71"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0019-ff4a15c1c3a6c4fa.json",
+      "bytes": 1359,
+      "sha256": "ff4a15c1c3a6c4fab05e93677a2ff750f791ae91f426074725d70ec368fe3225"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0020-e817cacad24e7b19.json",
+      "bytes": 21633,
+      "sha256": "e817cacad24e7b19e071beb1e253e86829088bf7571212660366736aded88a95"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0021-3e6c895215dee766.json",
+      "bytes": 25682,
+      "sha256": "3e6c895215dee76630d0859c95a72d3dbfa12bb3b3aab620d9b92c819cfa96c3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0022-c824f6ec03bb9031.json",
+      "bytes": 12800,
+      "sha256": "c824f6ec03bb9031c4274b7f65b1075d0c63e866b4aae793e5695ce659bb1b03"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0023-eff819f69a0f076b.png",
+      "bytes": 314141,
+      "sha256": "eff819f69a0f076b011ff22790e424c7d03d88c87cd9a2f3a57eec8687d2291d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0024-cf4ce1665aa95c2c.download",
+      "bytes": 1685,
+      "sha256": "cf4ce1665aa95c2c04967f3e54189b5de709150b8ff29d7974486f524fb274b8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0025-fcb777003f89efac.json",
+      "bytes": 156,
+      "sha256": "fcb777003f89efac296d3508b660e22c8697b65c4ab5b8c0c126b4da0f408b02"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0026-a3a9eb9df2ea6cd7.json",
+      "bytes": 946,
+      "sha256": "a3a9eb9df2ea6cd701d034c916585d065dce781f27be52b184630adf2d6ac7c8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0027-35b58b07965fa374.json",
+      "bytes": 129564,
+      "sha256": "35b58b07965fa3749ea7b09f17851add61cc532f5a9f99a52b2ddc5196d8d443"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0028-eff819f69a0f076b.png",
+      "bytes": 314141,
+      "sha256": "eff819f69a0f076b011ff22790e424c7d03d88c87cd9a2f3a57eec8687d2291d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0029-cf4ce1665aa95c2c.download",
+      "bytes": 1685,
+      "sha256": "cf4ce1665aa95c2c04967f3e54189b5de709150b8ff29d7974486f524fb274b8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0030-eff819f69a0f076b.png",
+      "bytes": 314141,
+      "sha256": "eff819f69a0f076b011ff22790e424c7d03d88c87cd9a2f3a57eec8687d2291d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0031-dc83b10faaa7df09.png",
+      "bytes": 197116,
+      "sha256": "dc83b10faaa7df09d65969f31d2c1cf96bc6d838068ae53c26875b7f4e926554"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0032-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0033-49f324407086a7f9.png",
+      "bytes": 249822,
+      "sha256": "49f324407086a7f92270f207a7456a81c02a1d92345ba0b56a1ee1719c86e145"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0034-40988c204ffbf405.download",
+      "bytes": 1685,
+      "sha256": "40988c204ffbf405bad676bc5ac60afc324d4e5f10ec8a74011aa681611505cf"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0035-e2ab0ff37353bf7a.json",
+      "bytes": 377,
+      "sha256": "e2ab0ff37353bf7a1a479710a09daee67f0521d9a686d4325e3d900c7edcb4a1"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0036-efab53c4ba564038.json",
+      "bytes": 32262,
+      "sha256": "efab53c4ba564038ec4e339b23505d8cfb02b1a6c9c434e523a9c80256f91c0a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0037-5557d361aa79ce61.png",
+      "bytes": 203772,
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0038-03866afd5089f350.download",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0039-b4ae9a41c68e836c.json",
+      "bytes": 1872,
+      "sha256": "b4ae9a41c68e836c885e765d57f18881c20aaa1a87a7a763752795718fd013d0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0040-5f2a970d6ca16316.json",
+      "bytes": 202,
+      "sha256": "5f2a970d6ca163160d60e6bf0a59abbc2905cb864fc76aa71da927434aad4adc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0041-4e9c4cc7bc56e772.txt",
+      "bytes": 144,
+      "sha256": "4e9c4cc7bc56e772a18f2c52066139b73b612366b5aebc15ab35be565c3b898c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0042-2f83ae192951293c.txt",
+      "bytes": 225,
+      "sha256": "2f83ae192951293c1c62857f1cce6055f80d25a9c95aaab442fe1d598377895c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0043-84c1b3d98dd743c9.json",
+      "bytes": 63672,
+      "sha256": "84c1b3d98dd743c9d9716276667679b7fc2f60fa099cb1b5758b578d8612805d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0044-8d5b7253495aad2e.png",
+      "bytes": 269543,
+      "sha256": "8d5b7253495aad2ed4318350d199323b61f98ef1c582ec0bd7554f941df9eb36"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0045-ee4405d58b2885f6.download",
+      "bytes": 1685,
+      "sha256": "ee4405d58b2885f6636d01e987457210fa3e9f998bffeb43e2574f0a8f3cc794"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0046-8d5b7253495aad2e.png",
+      "bytes": 269543,
+      "sha256": "8d5b7253495aad2ed4318350d199323b61f98ef1c582ec0bd7554f941df9eb36"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0047-9d01683c0545ccd3.png",
+      "bytes": 269320,
+      "sha256": "9d01683c0545ccd301eee8710f5b84f72ecf6ad70ccaf0a2d930e74a205f7354"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0048-dd6d4e77a384d332.download",
+      "bytes": 1685,
+      "sha256": "dd6d4e77a384d332c37adb1ebd7f47864485b6265dc75316bd7a8b9999b21bec"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0049-186d8db520078d69.json",
+      "bytes": 113164,
+      "sha256": "186d8db520078d69166ef37403f71e2791dc4be7aae135f4af0a306bfb23e475"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0050-7f261701f159148b.png",
+      "bytes": 269100,
+      "sha256": "7f261701f159148b2ddc2d3de6d2d19bb4cb8a106d4bda4f1f731cc302ef1684"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0051-fa1b06de02be43ad.download",
+      "bytes": 1685,
+      "sha256": "fa1b06de02be43ad56a21d0a10859b59bfacffa55c13d01871a858a899ee1d9c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1-report/resources/0052-7f261701f159148b.png",
+      "bytes": 269100,
+      "sha256": "7f261701f159148b2ddc2d3de6d2d19bb4cb8a106d4bda4f1f731cc302ef1684"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-2JDECd/manifest.json",
+      "bytes": 4915,
+      "sha256": "3445be8d1cd1aa2a969255e576f8448317e019cca2fb195cf1c6d20790d8451f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-2JDECd/003-本机文件任务原始工作与消息.json",
+      "bytes": 10866,
+      "sha256": "b89387c4c2cd86e76345b2397446bc3bdedad8b5680ea7a71583007cfe442acd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/manifest.json",
+      "bytes": 23968,
+      "sha256": "87084808505380780d01d83a6c1ae34a20dcf2296b2781778ea72684d85f9e74"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/023-Claude普通群最终实际状态.json",
+      "bytes": 129201,
+      "sha256": "bc34e5ea4661e267c3bf7ba0d69ded303a0ce406f49d327d7090f38805dffd58"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/013-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 1989,
+      "sha256": "74a89ca6d366f1a2f1afb6fc87aaa08aacd96f9a33d9ff9797d66530855edbc3"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-交付-20261006.png",
+      "bytes": 328547,
+      "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-交付-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/011-真实群消息更新后原负责人完成文件交付.native.png",
+      "bytes": 328547,
+      "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/012-真实群消息更新后原负责人完成文件交付.capture.json",
+      "bytes": 1685,
+      "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-重启-20261006.png",
+      "bytes": 328379,
+      "sha256": "22c1abde512c2767a2d40731df0b49fb0609e5572f654e145d1f2f91fafb0ad6"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-重启-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "f800f026e8435267961f6038dd9c0edee7ed4bed846b98c903e6f6bda175fadc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/021-Claude普通群重启保留原交付.native.png",
+      "bytes": 328379,
+      "sha256": "22c1abde512c2767a2d40731df0b49fb0609e5572f654e145d1f2f91fafb0ad6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/022-Claude普通群重启保留原交付.capture.json",
+      "bytes": 1685,
+      "sha256": "f800f026e8435267961f6038dd9c0edee7ed4bed846b98c903e6f6bda175fadc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/006-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "cbcf9b832b75686a00b5817cf454dc88452edb8b4581ce36cdf48fa96910bb3a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/007-Claude普通群本次输入和运行来源.json",
+      "bytes": 1359,
+      "sha256": "468d5141f8d5fe7a21b1b8ea7e767d4a5e5588205df45ac2e0deab20f550e75a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/008-真实委派后群更新前原运行及预算.json",
+      "bytes": 21405,
+      "sha256": "bff3d5521c59a17a80ab570989cb4ed79c3a17ef265d5a91a3a48f601387ece3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/009-真实原群信息更新的消息身份.json",
+      "bytes": 25450,
+      "sha256": "5976efda388795d0093b5b1b78d782266bdd3c22c702dba2b57345301cfd3a86"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/010-真实私有等待汇报配置与原来源结算.json",
+      "bytes": 12842,
+      "sha256": "ab8efe8b859ad71a9703e7762be6d2fd6c19ae76be901896d3e0f3f3af899126"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/014-记忆请求的实际公开回复.json",
+      "bytes": 1017,
+      "sha256": "e496457f8094bcf853dd88c2eb2eabbed2c482694b4381190eabd06464a716cd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/017-Claude普通群工作与原账本.json",
+      "bytes": 76663,
+      "sha256": "3e60898951781871a92089cb281186c386225ff9aeff49bfac89e7d215372cb7"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/019-Claude普通群两位员工实际交付.capture.json",
+      "bytes": 1685,
+      "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/025-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "47870f825e7d978df27e36668426ad9e3b1b03e2915bbce737d79b2a3bb1edd9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/manifest.json",
+      "bytes": 22109,
+      "sha256": "572fa35554ac8314c1c1c723a2b1b477563c42476be6d1baf6e792c98da79d9b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/019-Claude普通群最终实际状态.json",
+      "bytes": 113164,
+      "sha256": "092582f5f09db28107fb80ced96a9b4a4bd6ce66a05dce82d94c3a7e08d9f81c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/009-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 1872,
+      "sha256": "9108c4dd9c64328d2c48f05da9becda928a7ead70a9a68d028accb3261fec734"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/004-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "845d90210ccb59de2e2a3281f3a95d828d33daacc3b63c62bd5d587dd47d8bcb"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/005-Claude普通群本次输入和运行来源.json",
+      "bytes": 377,
+      "sha256": "62e63aa1d84efd6a2cbd89e832f57648f7303918f103164dfda4468531166ac2"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/006-旧汇报暂不公开仍保留原等待和预算.json",
+      "bytes": 32262,
+      "sha256": "d306a119a63e9948c4200d158ca377a2ed04d71a6df16713acc8f63c2c231362"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/008-原群等待未公开草稿且保留依赖.capture.json",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/010-记忆请求的实际公开回复.json",
+      "bytes": 202,
+      "sha256": "14f732a2bac067b691483f3196939b4a3001fa44e99323260e4aa2c99589abb9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/013-Claude普通群工作与原账本.json",
+      "bytes": 63672,
+      "sha256": "3932098489ac5806c13b677307ededf7ce13ea310b4b4db0c09be76fd4b69f2e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/015-Claude普通群两位员工实际交付.capture.json",
+      "bytes": 1685,
+      "sha256": "d535e586204da552725a084863e2e8617fdcf613d8d3069d8bfe5a429a6da09b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/018-Claude普通群重启保留原交付.capture.json",
+      "bytes": 1685,
+      "sha256": "a1eb7304d83558c8731111eb3ffac933cbf0c66880a8367d33ca783c200fed76"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/021-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "ad7c730ba94383b365bdc315386c2e837a9e74b7bca5d755e34a83c75f4eafd3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/build-manifest.json",
+      "bytes": 101485,
+      "sha256": "dfc1c7479d425cb06d741849d6162e3faad3d6d41b9473d17e812914192389a1"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "d812b09381b5fcb5cfb9eaa2078924a854c31a3a21685acf9802021ddaad5bf3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2/playwright-results.json",
+      "bytes": 328056,
+      "sha256": "c04cf56fa9eee41cbd4f5402b38b61d0d53d353acd23de5226697621da1bf137"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/checks.json",
+      "bytes": 605021,
+      "sha256": "53d26d8186de5f8db1fb93167daf7498e36782a3a5e3610948865cd57efa0cf7"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/manifest.json",
+      "bytes": 1250,
+      "sha256": "5b7485acb455b0eab1e3e650c2cfdcf90dd85c70b1d9e62c793aacedc8a208cc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/index.html",
+      "bytes": 611010,
+      "sha256": "42a26d4d7bc0c1c155de5d01f239050fe43254b223d76f36464cc654128e7353"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0001-6ff1c93c38ed1808.png",
+      "bytes": 193711,
+      "sha256": "6ff1c93c38ed180888afeb21b3cb529f4ec48a408a23a9f4834c1625573998d5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0002-931526d0f03564ac.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0003-b89387c4c2cd86e7.json",
+      "bytes": 10866,
+      "sha256": "b89387c4c2cd86e76345b2397446bc3bdedad8b5680ea7a71583007cfe442acd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0004-803a4f266de42937.png",
+      "bytes": 155050,
+      "sha256": "803a4f266de42937fe0105d4f9f4a535a900a9bd7258dd5846d17e4512e63749"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0005-5dc68053894aee80.png",
+      "bytes": 104683,
+      "sha256": "5dc68053894aee802eb812c4a37b107d9d7f228769c1a50c9492b8c7f0143ef6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0006-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0007-70defc488124d242.png",
+      "bytes": 197143,
+      "sha256": "70defc488124d242b7427b916a253866645d4e7e62f3c990b1bec67327e731a2"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0008-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0009-ab7f0962c0b11085.png",
+      "bytes": 250026,
+      "sha256": "ab7f0962c0b110858624b38f591ab0acdd9f56c269e8d9773fc53ba09e1c35e0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0010-cbcf9b832b75686a.download",
+      "bytes": 1685,
+      "sha256": "cbcf9b832b75686a00b5817cf454dc88452edb8b4581ce36cdf48fa96910bb3a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0011-468d5141f8d5fe7a.json",
+      "bytes": 1359,
+      "sha256": "468d5141f8d5fe7a21b1b8ea7e767d4a5e5588205df45ac2e0deab20f550e75a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0012-bff3d5521c59a17a.json",
+      "bytes": 21405,
+      "sha256": "bff3d5521c59a17a80ab570989cb4ed79c3a17ef265d5a91a3a48f601387ece3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0013-5976efda388795d0.json",
+      "bytes": 25450,
+      "sha256": "5976efda388795d0093b5b1b78d782266bdd3c22c702dba2b57345301cfd3a86"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0014-ab8efe8b859ad71a.json",
+      "bytes": 12842,
+      "sha256": "ab8efe8b859ad71a9703e7762be6d2fd6c19ae76be901896d3e0f3f3af899126"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0015-d7424e7c199bca6f.png",
+      "bytes": 328547,
+      "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0016-eea44d179e03d6b4.download",
+      "bytes": 1685,
+      "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0017-74a89ca6d366f1a2.json",
+      "bytes": 1989,
+      "sha256": "74a89ca6d366f1a2f1afb6fc87aaa08aacd96f9a33d9ff9797d66530855edbc3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0018-e496457f8094bcf8.json",
+      "bytes": 1017,
+      "sha256": "e496457f8094bcf853dd88c2eb2eabbed2c482694b4381190eabd06464a716cd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0019-245e48d8b917b688.md",
+      "bytes": 64,
+      "sha256": "245e48d8b917b688ec217a63c38a2721b5e5eee4719ad80c00a5af4b3b58fb28"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0020-208aa51bc1430e8d.md",
+      "bytes": 28,
+      "sha256": "208aa51bc1430e8d3c1681720bc5f92eb39aec88e91ef1e0ca6cc6c92aa0c265"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0021-3e60898951781871.json",
+      "bytes": 76663,
+      "sha256": "3e60898951781871a92089cb281186c386225ff9aeff49bfac89e7d215372cb7"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0022-d7424e7c199bca6f.png",
+      "bytes": 328547,
+      "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0023-eea44d179e03d6b4.download",
+      "bytes": 1685,
+      "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0024-d7424e7c199bca6f.png",
+      "bytes": 328547,
+      "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0025-22c1abde512c2767.png",
+      "bytes": 328379,
+      "sha256": "22c1abde512c2767a2d40731df0b49fb0609e5572f654e145d1f2f91fafb0ad6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0026-f800f026e8435267.download",
+      "bytes": 1685,
+      "sha256": "f800f026e8435267961f6038dd9c0edee7ed4bed846b98c903e6f6bda175fadc"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0027-bc34e5ea4661e267.json",
+      "bytes": 129201,
+      "sha256": "bc34e5ea4661e267c3bf7ba0d69ded303a0ce406f49d327d7090f38805dffd58"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0028-6dd8e0af15bcd9a7.png",
+      "bytes": 328250,
+      "sha256": "6dd8e0af15bcd9a72ef489ab3461bb99faa0f7ab587f917e9dcde05677ec10db"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0029-47870f825e7d978d.download",
+      "bytes": 1685,
+      "sha256": "47870f825e7d978df27e36668426ad9e3b1b03e2915bbce737d79b2a3bb1edd9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0030-6dd8e0af15bcd9a7.png",
+      "bytes": 328250,
+      "sha256": "6dd8e0af15bcd9a72ef489ab3461bb99faa0f7ab587f917e9dcde05677ec10db"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0031-3d91643d6efd8411.png",
+      "bytes": 197087,
+      "sha256": "3d91643d6efd84115f8259361edb963a18402d092b899866a210e533c7ae61cd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0032-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0033-462c1571c672f719.png",
+      "bytes": 250031,
+      "sha256": "462c1571c672f7196cebf21256aace8a9a2c2abe4600d1ebc57e4bb2368992d3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0034-845d90210ccb59de.download",
+      "bytes": 1685,
+      "sha256": "845d90210ccb59de2e2a3281f3a95d828d33daacc3b63c62bd5d587dd47d8bcb"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0035-62e63aa1d84efd6a.json",
+      "bytes": 377,
+      "sha256": "62e63aa1d84efd6a2cbd89e832f57648f7303918f103164dfda4468531166ac2"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0036-d306a119a63e9948.json",
+      "bytes": 32262,
+      "sha256": "d306a119a63e9948c4200d158ca377a2ed04d71a6df16713acc8f63c2c231362"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0037-5557d361aa79ce61.png",
+      "bytes": 203772,
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0038-03866afd5089f350.download",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0039-9108c4dd9c64328d.json",
+      "bytes": 1872,
+      "sha256": "9108c4dd9c64328d2c48f05da9becda928a7ead70a9a68d028accb3261fec734"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0040-14f732a2bac067b6.json",
+      "bytes": 202,
+      "sha256": "14f732a2bac067b691483f3196939b4a3001fa44e99323260e4aa2c99589abb9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0041-b2c63fb21ad6c3ae.txt",
+      "bytes": 144,
+      "sha256": "b2c63fb21ad6c3aed1cd578a3ca28a0a647da3bd82ea11de4b60a9b459ce4be3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0042-8d6aef53dc3cedab.txt",
+      "bytes": 225,
+      "sha256": "8d6aef53dc3cedab6574d4dc5853e90e44d8c765dbcc6b60ae022113ec4dff90"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0043-3932098489ac5806.json",
+      "bytes": 63672,
+      "sha256": "3932098489ac5806c13b677307ededf7ce13ea310b4b4db0c09be76fd4b69f2e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0044-544320d286857d83.png",
+      "bytes": 268972,
+      "sha256": "544320d286857d837655596b733ae7bca1b888b967f8f707f2f8eac2d44e52c4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0045-d535e586204da552.download",
+      "bytes": 1685,
+      "sha256": "d535e586204da552725a084863e2e8617fdcf613d8d3069d8bfe5a429a6da09b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0046-ac82e0ebf609b34f.png",
+      "bytes": 268965,
+      "sha256": "ac82e0ebf609b34f2559df2e50c757993b618fea088cd7aff6a2969ec8fa571a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0047-8ef3d9b400abb1ed.png",
+      "bytes": 268751,
+      "sha256": "8ef3d9b400abb1ed4d1c4e7b5000ed5c948a7714ed801da2d3120927996444e5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0048-a1eb7304d83558c8.download",
+      "bytes": 1685,
+      "sha256": "a1eb7304d83558c8731111eb3ffac933cbf0c66880a8367d33ca783c200fed76"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0049-092582f5f09db281.json",
+      "bytes": 113164,
+      "sha256": "092582f5f09db28107fb80ced96a9b4a4bd6ce66a05dce82d94c3a7e08d9f81c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0050-3462497ff0443da5.png",
+      "bytes": 268578,
+      "sha256": "3462497ff0443da542ee14dc05705b9c1b529213cb87e171d7787c023b170d78"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0051-ad7c730ba94383b3.download",
+      "bytes": 1685,
+      "sha256": "ad7c730ba94383b365bdc315386c2e837a9e74b7bca5d755e34a83c75f4eafd3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-report/resources/0052-3462497ff0443da5.png",
+      "bytes": 268578,
+      "sha256": "3462497ff0443da542ee14dc05705b9c1b529213cb87e171d7787c023b170d78"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/manifest.json",
+      "bytes": 7040,
+      "sha256": "8fd288ee77de177bf34189e04578ff63d539ee5baeb9c95dbadf7c604831418f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/012-本机修订原工作与新根状态.json",
+      "bytes": 39960,
+      "sha256": "c604abf05c7810278096930637b22bc3c429a74ff7ef9f04d3b7fb08bacc96ce"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/004-本机工作预算与外部调用计量.json",
+      "bytes": 808,
+      "sha256": "0f68f240960b372624aa666dd6aa08b15ea79e638a681b111ddac98fd386bb29"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/006-本机文件任务原始工作与消息.json",
+      "bytes": 18660,
+      "sha256": "7aee53c7b640f035c54a8c6298b28b97ef7671ec21f60f74a29b9203d3eec994"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/007-本机文件任务外部阶段与原调用.json",
+      "bytes": 11266,
+      "sha256": "ea3167c379f0021fa84100e5cfdd86803877e220af1531cdaabcf5a8e1f040c6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/008-本机修订前记忆结算原始状态.json",
+      "bytes": 33941,
+      "sha256": "89415efd5de8d83c28310ffc57f567e67b4eb0d8981ea3443cbf0b0591abe3a3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/manifest.json",
+      "bytes": 23971,
+      "sha256": "f5e177b615765a02640c4dfcd664b1a242de2aaa70bca1c759a43f6856c58846"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/023-Claude普通群最终实际状态.json",
+      "bytes": 127783,
+      "sha256": "834075e01f0eb8a46cc661170dfdecc5267e8b826163ebbeb92dba270998eaa4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/013-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 2107,
+      "sha256": "b413fcf1637470c8e5115e02af4e6e4247f2eb0733b60fef3d46a97ace73036b"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-交付-20261006.png",
+      "bytes": 319447,
+      "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-交付-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/011-真实群消息更新后原负责人完成文件交付.native.png",
+      "bytes": 319447,
+      "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/012-真实群消息更新后原负责人完成文件交付.capture.json",
+      "bytes": 1685,
+      "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-重启-20261006.png",
+      "bytes": 319365,
+      "sha256": "6c43f21b58e4f2e560c37c9f7bfd5d78a40b49f86b773477d827532e43b7cd71"
+    },
+    {
+      "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-重启-20261006.capture.json",
+      "bytes": 1685,
+      "sha256": "ff297b2a3a50773ab9c242ec4baf302cc50953133d00869b89b7a56029fd0d1d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/021-Claude普通群重启保留原交付.native.png",
+      "bytes": 319365,
+      "sha256": "6c43f21b58e4f2e560c37c9f7bfd5d78a40b49f86b773477d827532e43b7cd71"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/022-Claude普通群重启保留原交付.capture.json",
+      "bytes": 1685,
+      "sha256": "ff297b2a3a50773ab9c242ec4baf302cc50953133d00869b89b7a56029fd0d1d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/002-真实模型使用产品系统加密.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/006-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "4256d073afc6b8331afca7558c6912deec9bdc7f40df21308c945920de44df6a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/007-Claude普通群本次输入和运行来源.json",
+      "bytes": 1359,
+      "sha256": "26ab73dc2ff29ffe49b3a0380a24a790805325eb4748300ec58ecfcad40d5229"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/008-真实委派后群更新前原运行及预算.json",
+      "bytes": 21208,
+      "sha256": "dbf12c00f15a0c05cd6c36cec45cdcea2c4703055aedab5d260646fa40f6137f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/009-真实原群信息更新的消息身份.json",
+      "bytes": 25253,
+      "sha256": "41365210a7370f092d746f47a55d5c3c753a8d148a7f22e4fd7c7df1d64a5c6a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/010-真实私有等待汇报配置与原来源结算.json",
+      "bytes": 12882,
+      "sha256": "84f878bdc3f1ae3feea5b61d95a2004544860d66ce6ee380f43eaeea0e1cb08b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/014-记忆请求的实际公开回复.json",
+      "bytes": 1128,
+      "sha256": "e7a496497ab151e68c449000660be5e4804b53eec596f847b31ad8b00012b41f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/017-Claude普通群工作与原账本.json",
+      "bytes": 75475,
+      "sha256": "c3e30f5935f02fda123ebfddf076b02f0f72fd982660febddcc68db82bb388c8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/019-Claude普通群两位员工实际交付.capture.json",
+      "bytes": 1685,
+      "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/025-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "e9fccf5e65b05fa5c962b4c58d4337f8b1568163e2045e06d4a3010e6297a26c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/manifest.json",
+      "bytes": 22112,
+      "sha256": "b071a5799d0c6fee6f24b6108866f027dbbd0bf97cd93d1393b5af0804e2735c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/019-Claude普通群最终实际状态.json",
+      "bytes": 113164,
+      "sha256": "04dd79a56fa0a731946708419f2b1cb4d96c78b819a1eea53293adb72429a85e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/009-Claude普通群实际记忆与原偏好来源.json",
+      "bytes": 1872,
+      "sha256": "1c3064d71cbeacc596ccd299ab3af8b3bc9bedef0bbb181b48ca7c56af7fe16e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/004-原群聊入口选择Claude与独立同事.capture.json",
+      "bytes": 1685,
+      "sha256": "4ec8747ed4a24ac2ba8dbd069b910c8ca99c3e0f4a793951049a3e6c50294f72"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/005-Claude普通群本次输入和运行来源.json",
+      "bytes": 377,
+      "sha256": "0a6750a26f1e167103ecb71a5604ef50fe7e17a9fca14d39472bfbc02de5df98"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/006-旧汇报暂不公开仍保留原等待和预算.json",
+      "bytes": 32262,
+      "sha256": "aebba74d0c2084845e9a6b0115e4ecbf5e50cfa24951db5a2903c843610f58e6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/008-原群等待未公开草稿且保留依赖.capture.json",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/010-记忆请求的实际公开回复.json",
+      "bytes": 202,
+      "sha256": "552be44fe5577ea927b72d47d85c7fe945fe9092ef0bde031dc90b4c1ace302e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/013-Claude普通群工作与原账本.json",
+      "bytes": 63672,
+      "sha256": "828bed605f66e5041f4c3d32bc94b8f69d3e39295c0995a4c500c0a60c4ada00"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/015-Claude普通群两位员工实际交付.capture.json",
+      "bytes": 1685,
+      "sha256": "1f6ebea7218b1b7586b4c58bb7d9d65e08b84e67b42db15b84256f13e071f2c9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/018-Claude普通群重启保留原交付.capture.json",
+      "bytes": 1685,
+      "sha256": "9990602d5fa2fcbcc8e3444515b986b0263fbaddcb6591651057746446e23d29"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/021-Claude普通群本场结束画面.capture.json",
+      "bytes": 1685,
+      "sha256": "e3aacc17869cd738a36266a19f6e092cb07687a391a5241bbdb3770c8f4ab21a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/build-manifest.json",
+      "bytes": 101485,
+      "sha256": "964a8888f235eeb9b87c27078e2769045f6a01ccac0d72d94f2f0d4847429225"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/freeze-verification.json",
+      "bytes": 103,
+      "sha256": "c1f437a7644b34c74624f54599f0243d018483d7cac6354289e6a10a83b81a70"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/playwright-results.json",
+      "bytes": 120417,
+      "sha256": "d8dd3e894d0d1da5f5ced4b1ca81a93f31a090440413cfb76fb15204da6e6e43"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/checks.json",
+      "bytes": 705438,
+      "sha256": "fd8630d5a83bd6fc60b8d57689357fc85278135144cda11f1e2df49400a6c28a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/manifest.json",
+      "bytes": 1252,
+      "sha256": "f27d28dd110beeadd84df9b69cafd952cde10edbcdd038a11d6f39422725454f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/index.html",
+      "bytes": 709904,
+      "sha256": "c66ff110cd9c6d5992915050d2ab11e525f14e438be35e6b9b2832bb49d1adc0"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0001-dad238288588bfeb.png",
+      "bytes": 193613,
+      "sha256": "dad238288588bfeb03b74ebd2e3f81dbf6a8b4d1263bb9f5ff7a8b818ace19f4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0002-931526d0f03564ac.png",
+      "bytes": 242144,
+      "sha256": "931526d0f03564acee91edd20b4cfdfbeb494886eafb3a31367ea5e8e83692ee"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0003-9ad7a0fb0a5904b8.md",
+      "bytes": 31,
+      "sha256": "9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0004-0f68f240960b3726.json",
+      "bytes": 808,
+      "sha256": "0f68f240960b372624aa666dd6aa08b15ea79e638a681b111ddac98fd386bb29"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0005-1157f63de24b16de.png",
+      "bytes": 204324,
+      "sha256": "1157f63de24b16de3cbe75007ade94dc9fe1dec75a2d422b5671fa093befb0b4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0006-7aee53c7b640f035.json",
+      "bytes": 18660,
+      "sha256": "7aee53c7b640f035c54a8c6298b28b97ef7671ec21f60f74a29b9203d3eec994"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0007-ea3167c379f0021f.json",
+      "bytes": 11266,
+      "sha256": "ea3167c379f0021fa84100e5cfdd86803877e220af1531cdaabcf5a8e1f040c6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0008-89415efd5de8d83c.json",
+      "bytes": 33941,
+      "sha256": "89415efd5de8d83c28310ffc57f567e67b4eb0d8981ea3443cbf0b0591abe3a3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0009-b6dc1545b297d49b.png",
+      "bytes": 254243,
+      "sha256": "b6dc1545b297d49b729484275506fba9adf7e9fa1b7e2508e72c601c7e857275"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0010-4d5e4dc3163b83c6.md",
+      "bytes": 38,
+      "sha256": "4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0011-3989b73321f94a76.png",
+      "bytes": 299821,
+      "sha256": "3989b73321f94a7686bfa9c157d035bfba252046004c3f356a264a1d047eed5d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0012-c604abf05c781027.json",
+      "bytes": 39960,
+      "sha256": "c604abf05c7810278096930637b22bc3c429a74ff7ef9f04d3b7fb08bacc96ce"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0013-3989b73321f94a76.png",
+      "bytes": 299821,
+      "sha256": "3989b73321f94a7686bfa9c157d035bfba252046004c3f356a264a1d047eed5d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0014-78792f5e0c04b2dc.png",
+      "bytes": 104751,
+      "sha256": "78792f5e0c04b2dca05359d6556138348071165ce98159d9e2484abf720eed46"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0015-9664532b21f856f5.json",
+      "bytes": 71,
+      "sha256": "9664532b21f856f5e15fbeeea2e39bf8c00129d7f3d4b46d4b769e726039347b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0016-2af097f8e3f33af0.png",
+      "bytes": 196948,
+      "sha256": "2af097f8e3f33af08024d74b3dbba1d5efecd536f8fc696230440d0519377c60"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0017-9a31bae2312de4b9.png",
+      "bytes": 279016,
+      "sha256": "9a31bae2312de4b99d992b4b2ee3085ffdb2bfb0639a644698f191e2ff7307a4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0018-2bfd4d5db5736454.png",
+      "bytes": 250166,
+      "sha256": "2bfd4d5db57364544ce8a7f8e91e4f2640c0848394591619d6a6463d39e0021e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0019-4256d073afc6b833.download",
+      "bytes": 1685,
+      "sha256": "4256d073afc6b8331afca7558c6912deec9bdc7f40df21308c945920de44df6a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0020-26ab73dc2ff29ffe.json",
+      "bytes": 1359,
+      "sha256": "26ab73dc2ff29ffe49b3a0380a24a790805325eb4748300ec58ecfcad40d5229"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0021-dbf12c00f15a0c05.json",
+      "bytes": 21208,
+      "sha256": "dbf12c00f15a0c05cd6c36cec45cdcea2c4703055aedab5d260646fa40f6137f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0022-41365210a7370f09.json",
+      "bytes": 25253,
+      "sha256": "41365210a7370f092d746f47a55d5c3c753a8d148a7f22e4fd7c7df1d64a5c6a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0023-84f878bdc3f1ae3f.json",
+      "bytes": 12882,
+      "sha256": "84f878bdc3f1ae3feea5b61d95a2004544860d66ce6ee380f43eaeea0e1cb08b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0024-e838d03d80dce87d.png",
+      "bytes": 319447,
+      "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0025-e15e154cd66cc3f0.download",
+      "bytes": 1685,
+      "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0026-b413fcf1637470c8.json",
+      "bytes": 2107,
+      "sha256": "b413fcf1637470c8e5115e02af4e6e4247f2eb0733b60fef3d46a97ace73036b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0027-e7a496497ab151e6.json",
+      "bytes": 1128,
+      "sha256": "e7a496497ab151e68c449000660be5e4804b53eec596f847b31ad8b00012b41f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0028-fe15328a3c2eb039.md",
+      "bytes": 52,
+      "sha256": "fe15328a3c2eb039cc1ab13174d5598cfb35593618d3ad614fbce6a60bc2be0b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0029-fd2a602320c825d5.md",
+      "bytes": 16,
+      "sha256": "fd2a602320c825d580be8ba7ec8e509529571f55f559abaf1db58dbc8b67c252"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0030-c3e30f5935f02fda.json",
+      "bytes": 75475,
+      "sha256": "c3e30f5935f02fda123ebfddf076b02f0f72fd982660febddcc68db82bb388c8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0031-e838d03d80dce87d.png",
+      "bytes": 319447,
+      "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0032-e15e154cd66cc3f0.download",
+      "bytes": 1685,
+      "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0033-e838d03d80dce87d.png",
+      "bytes": 319447,
+      "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0034-6c43f21b58e4f2e5.png",
+      "bytes": 319365,
+      "sha256": "6c43f21b58e4f2e560c37c9f7bfd5d78a40b49f86b773477d827532e43b7cd71"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0035-ff297b2a3a50773a.download",
+      "bytes": 1685,
+      "sha256": "ff297b2a3a50773ab9c242ec4baf302cc50953133d00869b89b7a56029fd0d1d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0036-834075e01f0eb8a4.json",
+      "bytes": 127783,
+      "sha256": "834075e01f0eb8a46cc661170dfdecc5267e8b826163ebbeb92dba270998eaa4"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0037-b2f327d5f1a7a6e1.png",
+      "bytes": 319170,
+      "sha256": "b2f327d5f1a7a6e1284b5b033af3ebcd1dbd832cea491520a32c2fabe9c53f9e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0038-e9fccf5e65b05fa5.download",
+      "bytes": 1685,
+      "sha256": "e9fccf5e65b05fa5c962b4c58d4337f8b1568163e2045e06d4a3010e6297a26c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0039-b2f327d5f1a7a6e1.png",
+      "bytes": 319170,
+      "sha256": "b2f327d5f1a7a6e1284b5b033af3ebcd1dbd832cea491520a32c2fabe9c53f9e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0040-6aef42c106b6dfee.png",
+      "bytes": 197023,
+      "sha256": "6aef42c106b6dfeeb264dd877d1c9c6a4344241e08b3c655e90cbcacdb37a6ed"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0041-d6fba47c513774e9.png",
+      "bytes": 279227,
+      "sha256": "d6fba47c513774e9e3b94251f5091fd3596a4d62a9be8b0567f7e5ce1a0a930f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0042-67b8b975c3409b78.png",
+      "bytes": 250139,
+      "sha256": "67b8b975c3409b7868dcf2d3484c4742edd2de9a510c3c9504923bc12ebd87ed"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0043-4ec8747ed4a24ac2.download",
+      "bytes": 1685,
+      "sha256": "4ec8747ed4a24ac2ba8dbd069b910c8ca99c3e0f4a793951049a3e6c50294f72"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0044-0a6750a26f1e1671.json",
+      "bytes": 377,
+      "sha256": "0a6750a26f1e167103ecb71a5604ef50fe7e17a9fca14d39472bfbc02de5df98"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0045-aebba74d0c208484.json",
+      "bytes": 32262,
+      "sha256": "aebba74d0c2084845e9a6b0115e4ecbf5e50cfa24951db5a2903c843610f58e6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0046-5557d361aa79ce61.png",
+      "bytes": 203772,
+      "sha256": "5557d361aa79ce6112d010b5310ddeadda42dcd988f8611ab3b048f6e92a76b3"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0047-03866afd5089f350.download",
+      "bytes": 1685,
+      "sha256": "03866afd5089f3509a5d3e6c057d0243be5d4bff46627a83cdf9939408e3be62"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0048-1c3064d71cbeacc5.json",
+      "bytes": 1872,
+      "sha256": "1c3064d71cbeacc596ccd299ab3af8b3bc9bedef0bbb181b48ca7c56af7fe16e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0049-552be44fe5577ea9.json",
+      "bytes": 202,
+      "sha256": "552be44fe5577ea927b72d47d85c7fe945fe9092ef0bde031dc90b4c1ace302e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0050-5276dbc31d08022d.txt",
+      "bytes": 144,
+      "sha256": "5276dbc31d08022d2f26af622de1c9a1b5e0af1823689f4ddaa61db9063e841e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0051-694f8c2e86322605.txt",
+      "bytes": 225,
+      "sha256": "694f8c2e86322605942255f131630a4dc1943c11c8d669c3d7ff1c18d712b523"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0052-828bed605f66e504.json",
+      "bytes": 63672,
+      "sha256": "828bed605f66e5041f4c3d32bc94b8f69d3e39295c0995a4c500c0a60c4ada00"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0053-1a2c1c5f3db57418.png",
+      "bytes": 269644,
+      "sha256": "1a2c1c5f3db57418945682c17ae4c72c99a81c1d87e0d309109ddf1bc8207237"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0054-1f6ebea7218b1b75.download",
+      "bytes": 1685,
+      "sha256": "1f6ebea7218b1b7586b4c58bb7d9d65e08b84e67b42db15b84256f13e071f2c9"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0055-ef8f83b80e0fae19.png",
+      "bytes": 269002,
+      "sha256": "ef8f83b80e0fae1963f4adcbe0dd6aa22fef9b74938c48d64ca5f905706c3c9c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0056-5e3496648128dff9.png",
+      "bytes": 268783,
+      "sha256": "5e3496648128dff9b0aef1dd48c4233b6ff91467bd5f5f5e9d5e36d8f8dc1ca2"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0057-9990602d5fa2fcbc.download",
+      "bytes": 1685,
+      "sha256": "9990602d5fa2fcbcc8e3444515b986b0263fbaddcb6591651057746446e23d29"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0058-04dd79a56fa0a731.json",
+      "bytes": 113164,
+      "sha256": "04dd79a56fa0a731946708419f2b1cb4d96c78b819a1eea53293adb72429a85e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0059-58285c572924c7ef.png",
+      "bytes": 268613,
+      "sha256": "58285c572924c7efe78c67419778ec9ee4ef2e75d9767003ef69a8e87acacb4d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0060-e3aacc17869cd738.download",
+      "bytes": 1685,
+      "sha256": "e3aacc17869cd738a36266a19f6e092cb07687a391a5241bbdb3770c8f4ab21a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1-report/resources/0061-58285c572924c7ef.png",
+      "bytes": 268613,
+      "sha256": "58285c572924c7efe78c67419778ec9ee4ef2e75d9767003ef69a8e87acacb4d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/package-manifest.json",
+      "bytes": 869548,
+      "sha256": "958aa75b691a65bf8070e9864806a2e8dfcca43d1eccea1d388e3cec6e0cd839"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1/package-verification.json",
+      "bytes": 105,
+      "sha256": "8b65c6b887859f1e5787b2eeae608846f125b834896d805d0736158e664bd13a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.cjs",
+      "bytes": 252923,
+      "sha256": "ae0d6629cada31fb3b0aa3a30e6241be6afc6ab6d1a368a644466d9dfc14985c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json",
+      "bytes": 17479,
+      "sha256": "34cc735d02ccf14af08e7d5bc6721271e73bf054e3f736ee19e2aae675c39187"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.checkpoint.json",
+      "bytes": 17480,
+      "sha256": "61aa0d31cec0eddc7b401b609201a414fa296cf2937524d4c8a63e0760e0b1e5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.child-directed.input.json",
+      "bytes": 15202,
+      "sha256": "6a6479800c1820a9a99c1f2b5a8ea29766ba2471c343fbab99457394844d24bd"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.new-task-control.input.json",
+      "bytes": 14847,
+      "sha256": "602fed5a3217d231518cd5a7c62dbb1ec49d59942f457229af32d56f865b3638"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.owner-hidden.input.json",
+      "bytes": 16871,
+      "sha256": "a904bdb3a3594047e280b5809e78eb757be321b4b4ed52b1c00c8ca00156701c"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.owner-no-memory.input.json",
+      "bytes": 14763,
+      "sha256": "6fea78cac7e06db8e61c7fe8924e53428dc2f311b166fa00a305f8e59de9ab8b"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.owner-present.input.json",
+      "bytes": 18373,
+      "sha256": "a0805dfa4f3d52d659975407bf34d6716687516172f2bc0897a6b3d431e8f081"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.json.source.json",
+      "bytes": 6462,
+      "sha256": "6944f7cba0c59059e5f927fd3fd4ca494d90a25ee37667c35429d63a7e78cd32"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/authority-1.log",
+      "bytes": 1279,
+      "sha256": "15f62444c5a6fe7605b6e1ff4bdf0f761bc5672ec307fd522629ceb7190d25ae"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.cjs",
+      "bytes": 251908,
+      "sha256": "4b9b0f6cf5ef51810b5dce966c30436fc45d10b8e527594b39ffb8124e80f638"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json",
+      "bytes": 15243,
+      "sha256": "d8216db18a3c81119d648cd18be84309c6cd27ef43860948083335ba9878b909"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.checkpoint.json",
+      "bytes": 15243,
+      "sha256": "d8216db18a3c81119d648cd18be84309c6cd27ef43860948083335ba9878b909"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.child-directed.input.json",
+      "bytes": 14191,
+      "sha256": "0d1f8ee287a4e9434d0438c2e1e94b44d48f7378aa2bba5bded2a713c58e3a17"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.new-task-control.input.json",
+      "bytes": 13836,
+      "sha256": "3983d49deee447db7b2209bd38c1a82bd7b1820efc1de00211466d522670fa7e"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.owner-hidden.input.json",
+      "bytes": 15860,
+      "sha256": "46f63e66ed00a569adad12abd7c5c9633d84d705036ca5540acdfbf46ccc0b71"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.owner-no-memory.input.json",
+      "bytes": 13752,
+      "sha256": "5cf5db9a48cb67138634bb433a9513339dbd6cb2e97896d1b0fc51741b9bf81a"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.json.source.json",
+      "bytes": 6462,
+      "sha256": "6924e7a5fa2634338d6380c84b1b42310e753a0603adf66cfaff41b75b23a99f"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/baseline-1.log",
+      "bytes": 2192,
+      "sha256": "20dd9444b2b1feab49a441f2c53fcb07f4621bee378d6ccd1d99b71f0d51bcde"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/batch-comparison.json",
+      "bytes": 598,
+      "sha256": "518e49ff1ea04a52cd7053fe1c3f08fa03b983f6c88bb4164d6c53ae28ea35be"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/bddgen-1.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/bddgen-2.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/bddgen-3.log",
+      "bytes": 88,
+      "sha256": "b2df10afc38343ef171632f7c4d3e807a19f99fa278448fe3ccff3866295644d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/build-1.log",
+      "bytes": 9685,
+      "sha256": "c81e5c708ec23f054a5e68fbcebe52ab3a5494dec5ad85bc2c3ea1514bb0e9de"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/build-2.log",
+      "bytes": 9685,
+      "sha256": "86e4ecdad536d91889252f2885060895f2e15a145053a8dabae4f979d3397247"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/collect.py",
+      "bytes": 8155,
+      "sha256": "73415518aec5e36c05cf01d56839d8226052a325fa620949094c33a26a620008"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/data-comparison.json",
+      "bytes": 1374,
+      "sha256": "5fcf6ca5a3a4f32658ddca82746570a549bf05d1ea2741a3d4337f137f8fce76"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/launch.mjs",
+      "bytes": 2006,
+      "sha256": "2dc7fd7fca5791be5b6d646a1d9f228fd4da05c535e2f5fcb16609d33c6abc35"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/memory-green-1.log",
+      "bytes": 198,
+      "sha256": "ed0261cd7f9cc6c5bbe5414cfce2317e0c1f1f9e09a8dabb5c973b0886add7d5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/memory-input-only-1.log",
+      "bytes": 1458,
+      "sha256": "2a9a7a690fdd06bce451a01001e3a4fc3d8129aa9bf04efcfe55185e5a692127"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/memory-red-1.log",
+      "bytes": 1484,
+      "sha256": "fa5a4007c46879161a23743d0be2b94fae11eed7d34d6908c475721fd4c30eab"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/modules-1.log",
+      "bytes": 1770,
+      "sha256": "3e638dfd1f410bd85d31e4590063e02c2ebd93af3055867dbddc98c7eaca1434"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/modules-2.log",
+      "bytes": 1767,
+      "sha256": "aaf088048daa64d403aabfe93339641444b03d33c209b08e798d5ddd0a3b5f82"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-1.log",
+      "bytes": 854,
+      "sha256": "7f0877e189f4cedd87fdca566a18c0864dfb50d4843bdc570b45bd3eac5043d6"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/package-build-1.log",
+      "bytes": 2400,
+      "sha256": "bdc54e44665522a3537cd2c032adcb7dedf5beb512673e03c5401548b4871aaa"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/probe.ts",
+      "bytes": 8361,
+      "sha256": "8fa7410fea89a538429ad51d912c736a778517c3adf2e0008167e6c77a80943d"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/report-resource-verification.json",
+      "bytes": 448,
+      "sha256": "195d6bff6482f018340ffc9a1a40ea103891454b12277df56f8bac56cf0a0279"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-1.log",
+      "bytes": 19307,
+      "sha256": "326b59cf305ad169187e6ff3f79180048f8d376774a84e45d7ade35ae65617b8"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2-selection.log",
+      "bytes": 594,
+      "sha256": "282b35529d73c015b87e7530c383b5963181147341aa4b5aedfbf4b035f2f793"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/source-2.log",
+      "bytes": 7584,
+      "sha256": "c7f8982fd8193c410b3b5a93e8361ed796562b46d403bd5c930696a0bd461488"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/typecheck-1.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/typecheck-2.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/typecheck-3.log",
+      "bytes": 92,
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/feature-review/native-update-decision-20261006/verify-reports.py",
+      "bytes": 1966,
+      "sha256": "77096c4c0550db32f757efa27af15f1c263d750fdbb11dde826868ac26893872"
+    }
+  ],
+  "batches": [
+    {
+      "name": "source-1",
+      "frozenFiles": 881,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 1,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/manifest.json",
+            "bytes": 6702,
+            "sha256": "33dad8e22753a5879c4f79cfa2d0a53cbf94906238f5133489a61dfa844e5e91"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-xRhpMw/011-本机修订原工作与新根状态.json",
+            "bytes": 39962,
+            "sha256": "cf01bd427a91fe27fb8231fb69387d2b87a14b2fba63d870cb8e3e0c3d0668c0"
+          },
+          "works": [
+            {
+              "id": "work-2b3ffe0747bbbda90bee7affb6d5e6e86514ad7a3381306f2548acb6e54582e9",
+              "sourceMessageId": "ea2acece-a87d-4b7c-b7af-864c21fb4c8c",
+              "status": "delivered",
+              "ownerAgentId": "1b1bb2fe-1084-4ae9-b88c-173369ee62bb",
+              "budgetId": "budget-29dc7bef2144f1ee6c5fed818acb3aa51bfc7bd3d4b0fe9f7a38c8a272f5ccbb",
+              "resultVersion": 1
+            },
+            {
+              "id": "work-32386522581a515dd6a13d96e53a783eabada9602929313a93633d760e8e9368",
+              "sourceMessageId": "4ea09e2a-e47f-4cf2-ba17-f80dc55daec7",
+              "status": "delivered",
+              "ownerAgentId": "1b1bb2fe-1084-4ae9-b88c-173369ee62bb",
+              "budgetId": "budget-dd43ebf349179698e0f45546dfac28585b991f7d55b5f71d3d4560a1ac3088cd",
+              "resultVersion": 1
+            }
+          ],
+          "artifactCount": 2,
+          "runs": [
+            {
+              "id": "70314df5-1703-4d16-816b-8beef27a60df",
+              "phase": "decision",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 11390,
+                "outputTokens": 104,
+                "totalTokens": 11494
+              }
+            },
+            {
+              "id": "6ee778c1-09ba-45a3-8127-da6b3fe91a2f",
+              "phase": "execution",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              },
+              "toolEvents": [
+                {
+                  "id": "call_GmpQCduq2CI7bzXZgI7Uzo4D",
+                  "name": "write_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:54:20.732Z",
+                  "detail": "{\"path\":\"self:/runs/6ee778c1-09ba-45a3-8127-da6b3fe91a2f/codex-proof.md\",\"bytes\":31,\"published\":false}"
+                },
+                {
+                  "id": "call_sQFVzcCvVSumkiMKXpyICskY",
+                  "name": "read_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:54:23.927Z",
+                  "detail": "{\"path\":\"self:/runs/6ee778c1-09ba-45a3-8127-da6b3fe91a2f/codex-proof.md\",\"content\":\"# Codex proof\\nNATIVE_FILE_TASK\\n\"}"
+                },
+                {
+                  "id": "call_NZn5bOCjIXTybbabGC9BfEsu",
+                  "name": "publish_artifact",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:54:26.538Z",
+                  "detail": "{\"artifact\":{\"id\":\"82188ade-dbc6-489c-add2-4a397a8fe205\",\"name\":\"codex-proof.md\",\"path\":\"/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-cYH2LU/v2/workspaces/592f257a-9b4a-410e-bb28-2e7225231523/artifacts/82188ade-dbc6-489c-add2-4a397a8fe205-codex-proof.md\",\"size\":31,\"ownerAgentId\":\"1b1bb2fe-1084-4ae9-b88c-173369ee62bb\",\"runId\":\"6ee778c1-09ba-45a3-8127-da6b3fe91a2f\",\"sourcePath\":\"/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-cYH2LU/v2/agents/1b1bb2fe-1084-4ae9-b88c-173369ee62bb/workspace/sessions/592f257a-9b4a-410e-bb28-2e7225231523/runs/6ee778c1-09ba-45a3-8127-da6b3fe91a2f/codex-proof.md\",\"contentHash\":\"9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c\",\"publishedAt\":\"2026-10-06T12:54:26.546Z\",\"conversationId\":\"592f257a-9b4a-410e-bb28-2e7225231523\",\"logicalArtifactId\":\"82188ade-dbc6-489c-add2-4a397a8fe205\",\"contentVersion\":1,\"contentStatus\":\"ready\",\"managedRelativePath\":\"artifacts/82188ade-dbc6-489c-add2-4a397a8fe205-codex-proof.md\",\"registrationSource\":\"publication\",\"sourceWorkId\":\"work-2b3ffe0747bbbda90bee7affb6d5e6e86514ad7a3381306f2548acb6e54582e9\"},\"sharedPath\":\"shared:/artifacts/82188ade-dbc6-489c-add2-4a397a8fe205-codex-proof.md\"}"
+                },
+                {
+                  "id": "call_Uu4qFrO2NPEI9piUumW7hKO0",
+                  "name": "report_work",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:54:29.734Z",
+                  "detail": "{\"recorded\":true,\"publicationPending\":true}"
+                }
+              ],
+              "usage": {
+                "inputTokens": 145065,
+                "outputTokens": 454,
+                "totalTokens": 145519
+              }
+            },
+            {
+              "id": "2b582383-64ef-45de-b247-f50a15d872ec",
+              "phase": "memory",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 14630,
+                "outputTokens": 9,
+                "totalTokens": 14639
+              }
+            },
+            {
+              "id": "48a06a85-c70d-4323-a300-5b9829d5b4b2",
+              "phase": "decision",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 24842,
+                "outputTokens": 181,
+                "totalTokens": 25023
+              }
+            },
+            {
+              "id": "e30527f9-acac-4b64-84b1-8c8c17918531",
+              "phase": "execution",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              },
+              "toolEvents": [
+                {
+                  "id": "call_wGPs6X8B0hDL3f9rIMolJEcf",
+                  "name": "write_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:55:19.562Z",
+                  "detail": "{\"path\":\"self:/runs/e30527f9-acac-4b64-84b1-8c8c17918531/codex-proof.md\",\"bytes\":38,\"published\":false}"
+                },
+                {
+                  "id": "call_cJ1yaEEHqF4rAVn44FNBKkMN",
+                  "name": "read_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:55:24.721Z",
+                  "detail": "{\"path\":\"self:/runs/e30527f9-acac-4b64-84b1-8c8c17918531/codex-proof.md\",\"content\":\"# Codex proof revised\\nNATIVE_REVISION\\n\"}"
+                },
+                {
+                  "id": "call_fYrh0ckzjhY2abeG9aA29fXz",
+                  "name": "publish_artifact",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:55:31.223Z",
+                  "detail": "{\"artifact\":{\"id\":\"90dbac3f-a501-4baa-9c29-5f6ddc76d1a1\",\"name\":\"codex-proof.md\",\"path\":\"/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-cYH2LU/v2/workspaces/592f257a-9b4a-410e-bb28-2e7225231523/artifacts/90dbac3f-a501-4baa-9c29-5f6ddc76d1a1-codex-proof.md\",\"size\":38,\"ownerAgentId\":\"1b1bb2fe-1084-4ae9-b88c-173369ee62bb\",\"runId\":\"e30527f9-acac-4b64-84b1-8c8c17918531\",\"sourcePath\":\"/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-cYH2LU/v2/agents/1b1bb2fe-1084-4ae9-b88c-173369ee62bb/workspace/sessions/592f257a-9b4a-410e-bb28-2e7225231523/runs/e30527f9-acac-4b64-84b1-8c8c17918531/codex-proof.md\",\"contentHash\":\"4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af\",\"revisionRequestId\":\"53be8553-1ac4-4ea5-a0c3-a5975a5393cd\",\"publishedAt\":\"2026-10-06T12:55:31.239Z\",\"conversationId\":\"592f257a-9b4a-410e-bb28-2e7225231523\",\"logicalArtifactId\":\"82188ade-dbc6-489c-add2-4a397a8fe205\",\"contentVersion\":2,\"contentStatus\":\"ready\",\"managedRelativePath\":\"artifacts/90dbac3f-a501-4baa-9c29-5f6ddc76d1a1-codex-proof.md\",\"registrationSource\":\"publication\",\"sourceWorkId\":\"work-32386522581a515dd6a13d96e53a783eabada9602929313a93633d760e8e9368\",\"previousArtifactId\":\"82188ade-dbc6-489c-add2-4a397a8fe205\"},\"sharedPath\":\"shared:/artifacts/90dbac3f-a501-4baa-9c29-5f6ddc76d1a1-codex-proof.md\"}"
+                },
+                {
+                  "id": "call_TxHNS1iNNo3i1k3oZBTvp4uX",
+                  "name": "report_work",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T12:55:40.039Z",
+                  "detail": "{\"recorded\":true,\"publicationPending\":true}"
+                }
+              ],
+              "usage": {
+                "inputTokens": 112967,
+                "outputTokens": 528,
+                "totalTokens": 113495
+              }
+            },
+            {
+              "id": "e5cd17ef-6b0c-4428-95f6-d8582be53b4a",
+              "phase": "memory",
+              "status": "running",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "750c7203-5e47-42be-a5b5-e7f705a01ded",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": null
+            }
+          ]
+        },
+        {
+          "title": "真实Claude在原群信息更新后沿原预算核对私有等待汇报并交付",
+          "status": "failed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 2,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/manifest.json",
+            "bytes": 17012,
+            "sha256": "9a1d7e8191916a4ab54f8545b122f3578c93d64d6a08b433149cf2f90cb6ddd3"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/015-Claude普通群最终实际状态.json",
+            "bytes": 129564,
+            "sha256": "35b58b07965fa3749ea7b09f17851add61cc532f5a9f99a52b2ddc5196d8d443"
+          },
+          "works": [
+            {
+              "id": "work-e7e145000680e3dc34b764b5828353985a9947d4001e0de050dfdd638d54a2b3",
+              "sourceMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+              "status": "delivered",
+              "ownerAgentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "parentWorkId": null,
+              "budgetId": "budget-6398a2fdb4297a3eb945dd7cd85f12ee2958fbe4b1635ed7f639f67acc7a91c3",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-f14fe12f52ba2e0a284fb53800086fba0260e8d59207effa562843f39d67324e",
+              "sourceMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+              "status": "delivered",
+              "ownerAgentId": "3bfc23a3-2d14-4fb3-8c41-9b783fb3ba9e",
+              "parentWorkId": "work-e7e145000680e3dc34b764b5828353985a9947d4001e0de050dfdd638d54a2b3",
+              "budgetId": "budget-6398a2fdb4297a3eb945dd7cd85f12ee2958fbe4b1635ed7f639f67acc7a91c3",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-6398a2fdb4297a3eb945dd7cd85f12ee2958fbe4b1635ed7f639f67acc7a91c3",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 119103,
+                "outputTokens": 4540,
+                "totalTokens": 123643
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T12:56:39.968Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "bb24648c-9eb5-4708-a787-8483d2801117",
+              "runId": "207fbf6a-6cdc-432c-b1bd-935872e6500f",
+              "usage": {
+                "inputTokens": 3087,
+                "outputTokens": 192,
+                "totalTokens": 3279
+              },
+              "usageComplete": true,
+              "thinking": "off"
+            }
+          ],
+          "runs": [
+            {
+              "id": "445609a5-6023-4a8f-8954-b9d5eed59eba",
+              "agentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+              "error": null
+            },
+            {
+              "id": "60a6a0f3-d90c-401a-a536-a8b66f448dba",
+              "agentId": "3bfc23a3-2d14-4fb3-8c41-9b783fb3ba9e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+              "error": null
+            },
+            {
+              "id": "207fbf6a-6cdc-432c-b1bd-935872e6500f",
+              "agentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-e7e145000680e3dc34b764b5828353985a9947d4001e0de050dfdd638d54a2b3",
+              "triggerMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+              "error": null
+            },
+            {
+              "id": "a7c4d891-8e22-4ef7-afa3-3801355ea8ed",
+              "agentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            },
+            {
+              "id": "5ca1116a-9e5d-4111-a059-dcbb3b8fc442",
+              "agentId": "3bfc23a3-2d14-4fb3-8c41-9b783fb3ba9e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            },
+            {
+              "id": "2a96d808-396f-49a3-be93-f533c3068b6a",
+              "agentId": "3bfc23a3-2d14-4fb3-8c41-9b783fb3ba9e",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-f14fe12f52ba2e0a284fb53800086fba0260e8d59207effa562843f39d67324e",
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            },
+            {
+              "id": "c1054b93-2e57-4c25-a63a-040b850c9ea8",
+              "agentId": "3bfc23a3-2d14-4fb3-8c41-9b783fb3ba9e",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-f14fe12f52ba2e0a284fb53800086fba0260e8d59207effa562843f39d67324e",
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            },
+            {
+              "id": "bd3f3779-cfe3-4efa-ba16-148834136cbb",
+              "agentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-e7e145000680e3dc34b764b5828353985a9947d4001e0de050dfdd638d54a2b3",
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            },
+            {
+              "id": "24f74214-86d3-4ed8-b025-617bd8160f75",
+              "agentId": "a3aa4d47-5f9a-453e-a0db-4684423db387",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-e7e145000680e3dc34b764b5828353985a9947d4001e0de050dfdd638d54a2b3",
+              "triggerMessageId": "ba66efd4-36cf-4a6b-9dbd-e6ec4bf76a17",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-Gm3AFd/013-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 156,
+            "sha256": "fcb777003f89efac296d3508b660e22c8697b65c4ab5b8c0c126b4da0f408b02"
+          },
+          "preferenceSourceMessageId": "442d76ba-15c4-4faa-bc67-f3230ec14e3c",
+          "memories": []
+        },
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "offline-protocol-or-fixture",
+          "launchCount": 2,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/manifest.json",
+            "bytes": 22109,
+            "sha256": "88146bdbcd346395556175a871518edc52e5f7f0f5cc362f687628b00fb938a6"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/019-Claude普通群最终实际状态.json",
+            "bytes": 113164,
+            "sha256": "186d8db520078d69166ef37403f71e2791dc4be7aae135f4af0a306bfb23e475"
+          },
+          "works": [
+            {
+              "id": "work-b9df727defd55678420d57d2611b4aa5852e9cd6038827d14c8242e0631562da",
+              "sourceMessageId": "af20cc4e-1558-473c-b003-64bb7868c691",
+              "status": "delivered",
+              "ownerAgentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "parentWorkId": null,
+              "budgetId": "budget-b83da21c61f749cf71ecbb3752e05cc49b4f13886d8b9d045058fe16ab1a1909",
+              "waitRevision": 1,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-6d7b246d9caef016ee6cb82504ecbbab7e11bef1567cfa46f15ca64ed21ca810",
+              "sourceMessageId": "af20cc4e-1558-473c-b003-64bb7868c691",
+              "status": "delivered",
+              "ownerAgentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "parentWorkId": "work-b9df727defd55678420d57d2611b4aa5852e9cd6038827d14c8242e0631562da",
+              "budgetId": "budget-b83da21c61f749cf71ecbb3752e05cc49b4f13886d8b9d045058fe16ab1a1909",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-b83da21c61f749cf71ecbb3752e05cc49b4f13886d8b9d045058fe16ab1a1909",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 126,
+                "outputTokens": 14,
+                "totalTokens": 140
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T12:58:35.351Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "a5e7bf10-7314-4c47-ba70-ce3bcdf735eb",
+              "runId": "cf2991a8-4632-401a-85ea-d1ef026cec86",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "runs": [
+            {
+              "id": "ccaadb67-1938-4797-9ab0-2d48146e2118",
+              "agentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "af20cc4e-1558-473c-b003-64bb7868c691",
+              "error": null
+            },
+            {
+              "id": "64248b8f-1f7e-49e3-b836-8f90d6969920",
+              "agentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "af20cc4e-1558-473c-b003-64bb7868c691",
+              "error": null
+            },
+            {
+              "id": "cf2991a8-4632-401a-85ea-d1ef026cec86",
+              "agentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-b9df727defd55678420d57d2611b4aa5852e9cd6038827d14c8242e0631562da",
+              "triggerMessageId": "af20cc4e-1558-473c-b003-64bb7868c691",
+              "error": null
+            },
+            {
+              "id": "afa3d1e3-d9cd-4317-93b1-2692f705a4e9",
+              "agentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            },
+            {
+              "id": "f69b0bf1-313c-4b0c-870d-13ca7f816cf1",
+              "agentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            },
+            {
+              "id": "0ffc699f-2d9c-40e4-8caf-9a53dcb013df",
+              "agentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-6d7b246d9caef016ee6cb82504ecbbab7e11bef1567cfa46f15ca64ed21ca810",
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            },
+            {
+              "id": "5cb91061-020e-4260-a140-60468f243470",
+              "agentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-6d7b246d9caef016ee6cb82504ecbbab7e11bef1567cfa46f15ca64ed21ca810",
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            },
+            {
+              "id": "ceca7041-4b6e-4b17-a239-a7ca1d8e4209",
+              "agentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-b9df727defd55678420d57d2611b4aa5852e9cd6038827d14c8242e0631562da",
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            },
+            {
+              "id": "39d3772b-535b-4910-a82a-097d74b7ecf3",
+              "agentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-b9df727defd55678420d57d2611b4aa5852e9cd6038827d14c8242e0631562da",
+              "triggerMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-7bUSC8/009-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 1872,
+            "sha256": "b4ae9a41c68e836c885e765d57f18881c20aaa1a87a7a763752795718fd013d0"
+          },
+          "preferenceSourceMessageId": "9aade554-ce57-4768-86b7-45428bc9899b",
+          "memories": [
+            {
+              "ownerAgentId": "7c320c13-63bc-4437-b993-d1d76fdfc57d",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "9aade554-ce57-4768-86b7-45428bc9899b"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "de9fa266-44be-4d58-9f3e-5c7012205d4d",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "de9fa266-44be-4d58-9f3e-5c7012205d4d"
+              ],
+              "sourceMemoryIds": []
+            },
+            {
+              "ownerAgentId": "6265c4b2-968c-41db-a8db-db80c0661a84",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "9aade554-ce57-4768-86b7-45428bc9899b"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "de9fa266-44be-4d58-9f3e-5c7012205d4d",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "de9fa266-44be-4d58-9f3e-5c7012205d4d"
+              ],
+              "sourceMemoryIds": []
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "startTime": "2026-10-06T12:51:26.838Z",
+        "duration": 266677.3,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 3,
+        "passed": 2,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "name": "source-2",
+      "frozenFiles": 881,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "failed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 1,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-2JDECd/manifest.json",
+            "bytes": 4915,
+            "sha256": "3445be8d1cd1aa2a969255e576f8448317e019cca2fb195cf1c6d20790d8451f"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-2JDECd/003-本机文件任务原始工作与消息.json",
+            "bytes": 10866,
+            "sha256": "b89387c4c2cd86e76345b2397446bc3bdedad8b5680ea7a71583007cfe442acd"
+          },
+          "works": [
+            {
+              "id": "work-e415a4915a609b3133fe84ec7b6f6d4c8c4b02846ebaf9955187f7319d10048d",
+              "sourceMessageId": "6fa9f777-6187-44ea-a837-d8fbbd022b10",
+              "status": "running",
+              "ownerAgentId": "f6129ddb-b802-4fee-add7-7f8d724cef08",
+              "budgetId": "budget-cf0d0bf053d51ebdc6653dcd1bfd9cb4caa0f6f2916e0898b2c5487f710d1ae6",
+              "resultVersion": 0
+            }
+          ],
+          "artifactCount": 0,
+          "runs": [
+            {
+              "id": "caabc228-a4cc-4a4a-8335-e1035c2eb014",
+              "phase": "decision",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "4b3093ae-2534-459c-a54d-92a35e719e8d",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 26391,
+                "outputTokens": 113,
+                "totalTokens": 26504
+              }
+            },
+            {
+              "id": "7dd82de8-52ad-442a-99af-bcb16e4603cb",
+              "phase": "execution",
+              "status": "running",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "4b3093ae-2534-459c-a54d-92a35e719e8d",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              },
+              "toolEvents": [],
+              "usage": null
+            }
+          ]
+        },
+        {
+          "title": "真实Claude在原群信息更新后沿原预算核对私有等待汇报并交付",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 3,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/manifest.json",
+            "bytes": 23968,
+            "sha256": "87084808505380780d01d83a6c1ae34a20dcf2296b2781778ea72684d85f9e74"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/023-Claude普通群最终实际状态.json",
+            "bytes": 129201,
+            "sha256": "bc34e5ea4661e267c3bf7ba0d69ded303a0ce406f49d327d7090f38805dffd58"
+          },
+          "works": [
+            {
+              "id": "work-7121f7b732a7b2e5c3abb5fb5734fd80a90b024a5a3dccdbb88b951db845b1a1",
+              "sourceMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+              "status": "delivered",
+              "ownerAgentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "parentWorkId": null,
+              "budgetId": "budget-3e61bea8d1250196d08e0bea1d6dc370560b51734e1ff0dd43ab6d8e350b2985",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-c70e3ffc21e68ecf4b2adaea6374507e9a816d03231f40b40bfbf852c73be079",
+              "sourceMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+              "status": "delivered",
+              "ownerAgentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "parentWorkId": "work-7121f7b732a7b2e5c3abb5fb5734fd80a90b024a5a3dccdbb88b951db845b1a1",
+              "budgetId": "budget-3e61bea8d1250196d08e0bea1d6dc370560b51734e1ff0dd43ab6d8e350b2985",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-3e61bea8d1250196d08e0bea1d6dc370560b51734e1ff0dd43ab6d8e350b2985",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 114575,
+                "outputTokens": 3999,
+                "totalTokens": 118574
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T13:13:17.702Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "a5beab98-039d-4afb-bf3d-30c3bfbb81fc",
+              "runId": "5cb22231-8485-42fb-be5a-997a3da7f877",
+              "usage": {
+                "inputTokens": 3078,
+                "outputTokens": 192,
+                "totalTokens": 3270
+              },
+              "usageComplete": true,
+              "thinking": "off"
+            }
+          ],
+          "runs": [
+            {
+              "id": "1ec58d88-f14a-4e56-a94f-2bdc3119b9f9",
+              "agentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+              "error": null
+            },
+            {
+              "id": "36e53855-808b-4f9a-8711-db0de1ff3457",
+              "agentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+              "error": null
+            },
+            {
+              "id": "5cb22231-8485-42fb-be5a-997a3da7f877",
+              "agentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-7121f7b732a7b2e5c3abb5fb5734fd80a90b024a5a3dccdbb88b951db845b1a1",
+              "triggerMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+              "error": null
+            },
+            {
+              "id": "ecb48fc0-03b7-45ae-8fe4-6c22e163d719",
+              "agentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            },
+            {
+              "id": "d5782999-087c-41b7-8cbe-7c042efbd9cb",
+              "agentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            },
+            {
+              "id": "618c344c-bbdc-4681-8c4c-9c0811c6e48c",
+              "agentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-c70e3ffc21e68ecf4b2adaea6374507e9a816d03231f40b40bfbf852c73be079",
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            },
+            {
+              "id": "1805f931-9f21-4c30-ba53-50e03d1e0cd5",
+              "agentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-c70e3ffc21e68ecf4b2adaea6374507e9a816d03231f40b40bfbf852c73be079",
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            },
+            {
+              "id": "8e094d29-4e61-43fe-ad73-c3c1df854601",
+              "agentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-7121f7b732a7b2e5c3abb5fb5734fd80a90b024a5a3dccdbb88b951db845b1a1",
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            },
+            {
+              "id": "194e0447-478b-429a-863b-bdccb1c3f8d5",
+              "agentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-7121f7b732a7b2e5c3abb5fb5734fd80a90b024a5a3dccdbb88b951db845b1a1",
+              "triggerMessageId": "f0b7b2bc-6726-4c07-a4e4-182625fac417",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/013-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 1989,
+            "sha256": "74a89ca6d366f1a2f1afb6fc87aaa08aacd96f9a33d9ff9797d66530855edbc3"
+          },
+          "preferenceSourceMessageId": "153bc144-b79b-4be5-8be2-e73792c6d6bb",
+          "memories": [
+            {
+              "ownerAgentId": "9d2345ae-f384-4a41-8654-7d80cad748d7",
+              "content": "本群今后的固定汇报偏好：先给结论，再列依据，使用简短中文。",
+              "sourceMessageIds": [
+                "153bc144-b79b-4be5-8be2-e73792c6d6bb"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "6e11e391-7b90-4f34-beb1-3b152ccfa8f1",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "6e11e391-7b90-4f34-beb1-3b152ccfa8f1"
+              ],
+              "sourceMemoryIds": []
+            },
+            {
+              "ownerAgentId": "0e274a91-876d-4070-9946-43c8394e15ba",
+              "content": "本群固定汇报偏好：先给结论，再列依据，使用简短中文。",
+              "sourceMessageIds": [
+                "153bc144-b79b-4be5-8be2-e73792c6d6bb"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "6e11e391-7b90-4f34-beb1-3b152ccfa8f1",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "6e11e391-7b90-4f34-beb1-3b152ccfa8f1"
+              ],
+              "sourceMemoryIds": []
+            }
+          ]
+        },
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "offline-protocol-or-fixture",
+          "launchCount": 2,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/manifest.json",
+            "bytes": 22109,
+            "sha256": "572fa35554ac8314c1c1c723a2b1b477563c42476be6d1baf6e792c98da79d9b"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/019-Claude普通群最终实际状态.json",
+            "bytes": 113164,
+            "sha256": "092582f5f09db28107fb80ced96a9b4a4bd6ce66a05dce82d94c3a7e08d9f81c"
+          },
+          "works": [
+            {
+              "id": "work-7fbfa964976483281c14c2414ab0a01d862d7ae8b8fd71ddeedc60d881e67d2d",
+              "sourceMessageId": "937e2812-b391-44dc-8638-3d4dea5b4d7a",
+              "status": "delivered",
+              "ownerAgentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "parentWorkId": null,
+              "budgetId": "budget-35720c5fc60aee04c6e1f9146b2f70f6d5985e215cbd1e129f8fd088b5d975d5",
+              "waitRevision": 1,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-94eaa576e694480f90cefaf4f44be097f66eb86e3f2cb601f80287f5cf7e7b0e",
+              "sourceMessageId": "937e2812-b391-44dc-8638-3d4dea5b4d7a",
+              "status": "delivered",
+              "ownerAgentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "parentWorkId": "work-7fbfa964976483281c14c2414ab0a01d862d7ae8b8fd71ddeedc60d881e67d2d",
+              "budgetId": "budget-35720c5fc60aee04c6e1f9146b2f70f6d5985e215cbd1e129f8fd088b5d975d5",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-35720c5fc60aee04c6e1f9146b2f70f6d5985e215cbd1e129f8fd088b5d975d5",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 126,
+                "outputTokens": 14,
+                "totalTokens": 140
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T13:15:35.938Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "1c339d96-c6a5-4516-bd78-67983bf62ea9",
+              "runId": "cfaa9a98-c256-4cc6-bbb4-3bf2ff31c223",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "runs": [
+            {
+              "id": "89741cd9-db14-46c7-890e-c6caef882e65",
+              "agentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "937e2812-b391-44dc-8638-3d4dea5b4d7a",
+              "error": null
+            },
+            {
+              "id": "fd459948-4bcf-48ca-b416-260bf1d8db64",
+              "agentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "937e2812-b391-44dc-8638-3d4dea5b4d7a",
+              "error": null
+            },
+            {
+              "id": "cfaa9a98-c256-4cc6-bbb4-3bf2ff31c223",
+              "agentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-7fbfa964976483281c14c2414ab0a01d862d7ae8b8fd71ddeedc60d881e67d2d",
+              "triggerMessageId": "937e2812-b391-44dc-8638-3d4dea5b4d7a",
+              "error": null
+            },
+            {
+              "id": "8c5a428d-58e9-4c4a-bdde-0a417f57d1f6",
+              "agentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            },
+            {
+              "id": "945c229b-05e1-4140-885a-2826adf44c09",
+              "agentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            },
+            {
+              "id": "c3b04820-eed2-43a1-9f8a-0464448f642d",
+              "agentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-94eaa576e694480f90cefaf4f44be097f66eb86e3f2cb601f80287f5cf7e7b0e",
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            },
+            {
+              "id": "35866ea9-1c5c-47a4-b499-3cbd5d6d3361",
+              "agentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-94eaa576e694480f90cefaf4f44be097f66eb86e3f2cb601f80287f5cf7e7b0e",
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            },
+            {
+              "id": "b80c62a8-4120-4999-9cf0-03d774ca6182",
+              "agentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-7fbfa964976483281c14c2414ab0a01d862d7ae8b8fd71ddeedc60d881e67d2d",
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            },
+            {
+              "id": "a5cd0640-0456-4d3b-8a5e-78ac7165a69f",
+              "agentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-7fbfa964976483281c14c2414ab0a01d862d7ae8b8fd71ddeedc60d881e67d2d",
+              "triggerMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-sF4fgv/009-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 1872,
+            "sha256": "9108c4dd9c64328d2c48f05da9becda928a7ead70a9a68d028accb3261fec734"
+          },
+          "preferenceSourceMessageId": "fdf5f08c-c068-4dd5-b7bb-3898e612ef64",
+          "memories": [
+            {
+              "ownerAgentId": "0d146bb8-0baa-45ae-a7a5-269a01dc00e2",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "fdf5f08c-c068-4dd5-b7bb-3898e612ef64"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "16fa9223-5181-48f6-8a0d-c087e99fd1f6",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "16fa9223-5181-48f6-8a0d-c087e99fd1f6"
+              ],
+              "sourceMemoryIds": []
+            },
+            {
+              "ownerAgentId": "396496f6-c162-42f2-9f6d-654d8a9e586c",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "fdf5f08c-c068-4dd5-b7bb-3898e612ef64"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "16fa9223-5181-48f6-8a0d-c087e99fd1f6",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "16fa9223-5181-48f6-8a0d-c087e99fd1f6"
+              ],
+              "sourceMemoryIds": []
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "startTime": "2026-10-06T13:08:04.401Z",
+        "duration": 408878.172,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 3,
+        "passed": 2,
+        "failed": 1,
+        "flaky": 0,
+        "notRun": 0
+      }
+    },
+    {
+      "name": "package-1",
+      "frozenFiles": 881,
+      "cases": [
+        {
+          "title": "使用真实Codex从新建员工到原聊天真实文件交付及明确修订",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 1,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/manifest.json",
+            "bytes": 7040,
+            "sha256": "8fd288ee77de177bf34189e04578ff63d539ee5baeb9c95dbadf7c604831418f"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/704506bbdae38bebaafd-8b049b1d64585cded809-retry0-repeat0-J3VeYc/012-本机修订原工作与新根状态.json",
+            "bytes": 39960,
+            "sha256": "c604abf05c7810278096930637b22bc3c429a74ff7ef9f04d3b7fb08bacc96ce"
+          },
+          "works": [
+            {
+              "id": "work-e7c07160b1ef66c95472d0d6b8f977a9232d9f9f99fdc1624a7b130989c11617",
+              "sourceMessageId": "12c90fcf-5316-491a-9299-e55342ac4d01",
+              "status": "delivered",
+              "ownerAgentId": "ca6ad8c5-2787-45f8-ad08-930907f977c4",
+              "budgetId": "budget-30587a5fe0cc7a1c58d26f414154f4d68491a24639704685fe8edff72717f232",
+              "resultVersion": 1
+            },
+            {
+              "id": "work-f0f722c13d3143f0127c86dd8ec12e4fb702108ba09f3af6bf2f723a2386db14",
+              "sourceMessageId": "3120ce84-a39a-4631-864b-e41eed096805",
+              "status": "delivered",
+              "ownerAgentId": "ca6ad8c5-2787-45f8-ad08-930907f977c4",
+              "budgetId": "budget-1a0a04fd87e9ae865118567257e79d71e6ac27326a455d5993bea1b1a679cd63",
+              "resultVersion": 1
+            }
+          ],
+          "artifactCount": 2,
+          "runs": [
+            {
+              "id": "305b8a5a-ef44-4cc3-958e-10c91c4c8b92",
+              "phase": "decision",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 15664,
+                "outputTokens": 105,
+                "totalTokens": 15769
+              }
+            },
+            {
+              "id": "6ae3bda3-4f42-4c56-9669-b16bb09224fa",
+              "phase": "execution",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              },
+              "toolEvents": [
+                {
+                  "id": "call_3WlZVUueOUzQpH5XGFZlWeg2",
+                  "name": "write_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:20:26.440Z",
+                  "detail": "{\"path\":\"self:/runs/6ae3bda3-4f42-4c56-9669-b16bb09224fa/codex-proof.md\",\"bytes\":31,\"published\":false}"
+                },
+                {
+                  "id": "call_t2DXZzc5qkH3JIOtxEuU1gmC",
+                  "name": "read_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:20:33.930Z",
+                  "detail": "{\"path\":\"self:/runs/6ae3bda3-4f42-4c56-9669-b16bb09224fa/codex-proof.md\",\"content\":\"# Codex proof\\nNATIVE_FILE_TASK\\n\"}"
+                },
+                {
+                  "id": "call_eNlAUh4O2uIahD1wlXimmpWJ",
+                  "name": "publish_artifact",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:20:39.120Z",
+                  "detail": "{\"artifact\":{\"id\":\"d2df58dd-0f21-4291-92b1-f0e31332a734\",\"name\":\"codex-proof.md\",\"path\":\"/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-Dhl8nO/v2/workspaces/352acdbf-6700-4671-8579-58ceb92c2c6c/artifacts/d2df58dd-0f21-4291-92b1-f0e31332a734-codex-proof.md\",\"size\":31,\"ownerAgentId\":\"ca6ad8c5-2787-45f8-ad08-930907f977c4\",\"runId\":\"6ae3bda3-4f42-4c56-9669-b16bb09224fa\",\"sourcePath\":\"/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-Dhl8nO/v2/agents/ca6ad8c5-2787-45f8-ad08-930907f977c4/workspace/sessions/352acdbf-6700-4671-8579-58ceb92c2c6c/runs/6ae3bda3-4f42-4c56-9669-b16bb09224fa/codex-proof.md\",\"contentHash\":\"9ad7a0fb0a5904b8dcc1458bf3c129055ae6f4fae796bb57e5f7b1bf4cac9e0c\",\"publishedAt\":\"2026-10-06T13:20:39.126Z\",\"conversationId\":\"352acdbf-6700-4671-8579-58ceb92c2c6c\",\"logicalArtifactId\":\"d2df58dd-0f21-4291-92b1-f0e31332a734\",\"contentVersion\":1,\"contentStatus\":\"ready\",\"managedRelativePath\":\"artifacts/d2df58dd-0f21-4291-92b1-f0e31332a734-codex-proof.md\",\"registrationSource\":\"publication\",\"sourceWorkId\":\"work-e7c07160b1ef66c95472d0d6b8f977a9232d9f9f99fdc1624a7b130989c11617\"},\"sharedPath\":\"shared:/artifacts/d2df58dd-0f21-4291-92b1-f0e31332a734-codex-proof.md\"}"
+                },
+                {
+                  "id": "call_oQ4cwtUZtAoEvOVyQx0YzFBU",
+                  "name": "report_work",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:20:44.610Z",
+                  "detail": "{\"recorded\":true,\"publicationPending\":true}"
+                }
+              ],
+              "usage": {
+                "inputTokens": 189248,
+                "outputTokens": 395,
+                "totalTokens": 189643
+              }
+            },
+            {
+              "id": "1fab14b3-1b5b-4983-9882-9d1f8da85d4b",
+              "phase": "memory",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 10770,
+                "outputTokens": 9,
+                "totalTokens": 10779
+              }
+            },
+            {
+              "id": "89829db8-c3e1-4a28-b461-85bdc1b4ceda",
+              "phase": "decision",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": {
+                "inputTokens": 27716,
+                "outputTokens": 174,
+                "totalTokens": 27890
+              }
+            },
+            {
+              "id": "2ea9130d-48c8-4ff1-915c-73d84cacc00e",
+              "phase": "execution",
+              "status": "completed",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "host-bridge"
+              },
+              "toolEvents": [
+                {
+                  "id": "call_yOlMhYUnQZue1N2bWHX2Injc",
+                  "name": "write_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:21:50.060Z",
+                  "detail": "{\"path\":\"self:/runs/2ea9130d-48c8-4ff1-915c-73d84cacc00e/codex-proof.md\",\"bytes\":38,\"published\":false}"
+                },
+                {
+                  "id": "call_vjeLPHSb8WARwZwZ10XJvAlc",
+                  "name": "read_file",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:21:58.976Z",
+                  "detail": "{\"path\":\"self:/runs/2ea9130d-48c8-4ff1-915c-73d84cacc00e/codex-proof.md\",\"content\":\"# Codex proof revised\\nNATIVE_REVISION\\n\"}"
+                },
+                {
+                  "id": "call_LY5MkpQQ7J2rTDAxcsTyk29t",
+                  "name": "publish_artifact",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:22:08.099Z",
+                  "detail": "{\"artifact\":{\"id\":\"8897c423-d414-4c3e-af7c-9eae280f1211\",\"name\":\"codex-proof.md\",\"path\":\"/private/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-Dhl8nO/v2/workspaces/352acdbf-6700-4671-8579-58ceb92c2c6c/artifacts/8897c423-d414-4c3e-af7c-9eae280f1211-codex-proof.md\",\"size\":38,\"ownerAgentId\":\"ca6ad8c5-2787-45f8-ad08-930907f977c4\",\"runId\":\"2ea9130d-48c8-4ff1-915c-73d84cacc00e\",\"sourcePath\":\"/var/folders/04/wfrx9zpj7xl_1zff0dj9zpv40000gn/T/boai-bdd-Dhl8nO/v2/agents/ca6ad8c5-2787-45f8-ad08-930907f977c4/workspace/sessions/352acdbf-6700-4671-8579-58ceb92c2c6c/runs/2ea9130d-48c8-4ff1-915c-73d84cacc00e/codex-proof.md\",\"contentHash\":\"4d5e4dc3163b83c6286faee46551e6ff903cb33e481dab9bfebd0395b289e9af\",\"revisionRequestId\":\"2f1733e1-6268-449d-bd6e-03c35cfbad5b\",\"publishedAt\":\"2026-10-06T13:22:08.127Z\",\"conversationId\":\"352acdbf-6700-4671-8579-58ceb92c2c6c\",\"logicalArtifactId\":\"d2df58dd-0f21-4291-92b1-f0e31332a734\",\"contentVersion\":2,\"contentStatus\":\"ready\",\"managedRelativePath\":\"artifacts/8897c423-d414-4c3e-af7c-9eae280f1211-codex-proof.md\",\"registrationSource\":\"publication\",\"sourceWorkId\":\"work-f0f722c13d3143f0127c86dd8ec12e4fb702108ba09f3af6bf2f723a2386db14\",\"previousArtifactId\":\"d2df58dd-0f21-4291-92b1-f0e31332a734\"},\"sharedPath\":\"shared:/artifacts/8897c423-d414-4c3e-af7c-9eae280f1211-codex-proof.md\"}"
+                },
+                {
+                  "id": "call_M8zBr5TJn3PmzelmSKV1PNkC",
+                  "name": "report_work",
+                  "status": "completed",
+                  "createdAt": "2026-10-06T13:22:18.369Z",
+                  "detail": "{\"recorded\":true,\"publicationPending\":true}"
+                }
+              ],
+              "usage": {
+                "inputTokens": 197834,
+                "outputTokens": 572,
+                "totalTokens": 198406
+              }
+            },
+            {
+              "id": "fd77670b-8e2b-48ec-8426-fcc82c794d86",
+              "phase": "memory",
+              "status": "running",
+              "error": null,
+              "backend": {
+                "kind": "codex-local",
+                "profileId": "c1ba4318-9b98-4fd1-b67a-430f1291a3f8",
+                "profileRevision": 1,
+                "program": {
+                  "name": "Codex",
+                  "version": "0.159.3",
+                  "executableHash": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70"
+                },
+                "externalInvocations": 1,
+                "sessionPolicy": "fresh",
+                "toolControl": "none"
+              },
+              "toolEvents": [],
+              "usage": null
+            }
+          ]
+        },
+        {
+          "title": "真实Claude在原群信息更新后沿原预算核对私有等待汇报并交付",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "real-provider",
+          "launchCount": 3,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/manifest.json",
+            "bytes": 23971,
+            "sha256": "f5e177b615765a02640c4dfcd664b1a242de2aaa70bca1c759a43f6856c58846"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/023-Claude普通群最终实际状态.json",
+            "bytes": 127783,
+            "sha256": "834075e01f0eb8a46cc661170dfdecc5267e8b826163ebbeb92dba270998eaa4"
+          },
+          "works": [
+            {
+              "id": "work-4a4f42dfc295c299ff28e9499f7b08e1d039f94e37bf49815b6bfec05151d7d8",
+              "sourceMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+              "status": "delivered",
+              "ownerAgentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "parentWorkId": null,
+              "budgetId": "budget-51521a78ddf6ad6625a8d1f222c943143a489f8253aab535be4bd8adbd546259",
+              "waitRevision": 1,
+              "resultVersion": 2,
+              "requiresReview": false
+            },
+            {
+              "id": "work-79a6203d681c44099d86a994f1c56927526285712e049ff76c5c2735b93961ce",
+              "sourceMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+              "status": "delivered",
+              "ownerAgentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "parentWorkId": "work-4a4f42dfc295c299ff28e9499f7b08e1d039f94e37bf49815b6bfec05151d7d8",
+              "budgetId": "budget-51521a78ddf6ad6625a8d1f222c943143a489f8253aab535be4bd8adbd546259",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-51521a78ddf6ad6625a8d1f222c943143a489f8253aab535be4bd8adbd546259",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 109454,
+                "outputTokens": 5129,
+                "totalTokens": 114583
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T13:23:27.510Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "e304f10c-98c0-4e58-b2e7-8c0358e335c6",
+              "runId": "aa369539-64f4-4c04-af54-dd6e3c12bcd9",
+              "usage": {
+                "inputTokens": 3030,
+                "outputTokens": 886,
+                "totalTokens": 3916
+              },
+              "usageComplete": true,
+              "thinking": "off"
+            }
+          ],
+          "runs": [
+            {
+              "id": "9f493b36-faca-4300-ae82-e34d273d1ee5",
+              "agentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+              "error": null
+            },
+            {
+              "id": "0ea3b70b-5b2d-407f-89a7-0401018e8064",
+              "agentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+              "error": null
+            },
+            {
+              "id": "aa369539-64f4-4c04-af54-dd6e3c12bcd9",
+              "agentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-4a4f42dfc295c299ff28e9499f7b08e1d039f94e37bf49815b6bfec05151d7d8",
+              "triggerMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+              "error": null
+            },
+            {
+              "id": "6b4aab11-8105-462c-81cd-4a650a8a6d46",
+              "agentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            },
+            {
+              "id": "76cf3311-cba0-4252-ac6a-52a572102fa2",
+              "agentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            },
+            {
+              "id": "d5c2aae0-3985-4862-b711-327b5c76a80d",
+              "agentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-79a6203d681c44099d86a994f1c56927526285712e049ff76c5c2735b93961ce",
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            },
+            {
+              "id": "1cc9f5a9-9194-48a7-b213-bc3d4698e626",
+              "agentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-79a6203d681c44099d86a994f1c56927526285712e049ff76c5c2735b93961ce",
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            },
+            {
+              "id": "c38aea73-759c-4c91-a7c4-55bbe5aea08b",
+              "agentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-4a4f42dfc295c299ff28e9499f7b08e1d039f94e37bf49815b6bfec05151d7d8",
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            },
+            {
+              "id": "e1506024-24be-4e1c-9590-bd91f5c053c8",
+              "agentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-4a4f42dfc295c299ff28e9499f7b08e1d039f94e37bf49815b6bfec05151d7d8",
+              "triggerMessageId": "795e464c-2218-4dab-9d13-fa1ce4939e2b",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/013-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 2107,
+            "sha256": "b413fcf1637470c8e5115e02af4e6e4247f2eb0733b60fef3d46a97ace73036b"
+          },
+          "preferenceSourceMessageId": "c450fcc2-afd2-42c7-880c-8414555b0e49",
+          "memories": [
+            {
+              "ownerAgentId": "7e551cfd-38ee-4138-ad1b-948f1f03607e",
+              "content": "本群的固定汇报偏好：先给结论，再列依据，使用简短中文。",
+              "sourceMessageIds": [
+                "c450fcc2-afd2-42c7-880c-8414555b0e49"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "325aae40-2f43-4e29-8ef4-33da6b010462",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "context",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "325aae40-2f43-4e29-8ef4-33da6b010462"
+              ],
+              "sourceMemoryIds": []
+            },
+            {
+              "ownerAgentId": "6efaf889-cae1-40c4-8b97-4da930fa781a",
+              "content": "本群今后的固定汇报偏好：先给结论，再列依据，使用简短中文。",
+              "sourceMessageIds": [
+                "c450fcc2-afd2-42c7-880c-8414555b0e49"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "325aae40-2f43-4e29-8ef4-33da6b010462",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "325aae40-2f43-4e29-8ef4-33da6b010462"
+              ],
+              "sourceMemoryIds": []
+            }
+          ]
+        },
+        {
+          "title": "原群新消息使旧等待汇报暂不公开后仍由原负责人交付",
+          "status": "passed",
+          "gaps": [],
+          "modelMode": "offline-protocol-or-fixture",
+          "launchCount": 2,
+          "manifest": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/manifest.json",
+            "bytes": 22112,
+            "sha256": "b071a5799d0c6fee6f24b6108866f027dbbd0bf97cd93d1393b5af0804e2735c"
+          },
+          "actualState": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/019-Claude普通群最终实际状态.json",
+            "bytes": 113164,
+            "sha256": "04dd79a56fa0a731946708419f2b1cb4d96c78b819a1eea53293adb72429a85e"
+          },
+          "works": [
+            {
+              "id": "work-b5618a590d8b6a4c96358ba9ea4cb3b2f089c58fa9eb521fed1369b632fa3129",
+              "sourceMessageId": "24c9325d-867e-443d-8a8b-072d487ea917",
+              "status": "delivered",
+              "ownerAgentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "parentWorkId": null,
+              "budgetId": "budget-0d48a25fe0c312f9f41a164bcb542e06821525fa0fc617798c12efbec9b09c5f",
+              "waitRevision": 1,
+              "resultVersion": 1,
+              "requiresReview": false
+            },
+            {
+              "id": "work-0c201c16c87386a10db58e0707b01a13ec964832a71b960d41299462fc2e8ba5",
+              "sourceMessageId": "24c9325d-867e-443d-8a8b-072d487ea917",
+              "status": "delivered",
+              "ownerAgentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "parentWorkId": "work-b5618a590d8b6a4c96358ba9ea4cb3b2f089c58fa9eb521fed1369b632fa3129",
+              "budgetId": "budget-0d48a25fe0c312f9f41a164bcb542e06821525fa0fc617798c12efbec9b09c5f",
+              "waitRevision": 0,
+              "resultVersion": 1,
+              "requiresReview": false
+            }
+          ],
+          "budgets": [
+            {
+              "id": "budget-0d48a25fe0c312f9f41a164bcb542e06821525fa0fc617798c12efbec9b09c5f",
+              "modelCalls": 7,
+              "maxModelCalls": 24,
+              "usage": {
+                "inputTokens": 126,
+                "outputTokens": 14,
+                "totalTokens": 140
+              },
+              "maxOutputTokens": 16000,
+              "unknownCalls": 0,
+              "usageIncomplete": false,
+              "deadlineAt": "2026-10-06T13:24:41.746Z"
+            }
+          ],
+          "reports": [
+            {
+              "id": "a7507c31-d8f9-4fa6-9f2d-8d946b971524",
+              "runId": "950ca9bd-1d5e-4644-ad2f-d42c4bedd57d",
+              "usage": {
+                "inputTokens": 18,
+                "outputTokens": 2,
+                "totalTokens": 20
+              },
+              "usageComplete": true,
+              "thinking": null
+            }
+          ],
+          "runs": [
+            {
+              "id": "1e9946cc-96bf-4b40-a23a-2c4b03f8438b",
+              "agentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "24c9325d-867e-443d-8a8b-072d487ea917",
+              "error": null
+            },
+            {
+              "id": "ef6a42b9-9eab-4436-bd2a-281526973aea",
+              "agentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "24c9325d-867e-443d-8a8b-072d487ea917",
+              "error": null
+            },
+            {
+              "id": "950ca9bd-1d5e-4644-ad2f-d42c4bedd57d",
+              "agentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-b5618a590d8b6a4c96358ba9ea4cb3b2f089c58fa9eb521fed1369b632fa3129",
+              "triggerMessageId": "24c9325d-867e-443d-8a8b-072d487ea917",
+              "error": null
+            },
+            {
+              "id": "8639df48-0100-4c0c-9577-3abe1588d648",
+              "agentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            },
+            {
+              "id": "57e30489-2529-4958-b1bb-72924f465e63",
+              "agentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "phase": "decision",
+              "status": "completed",
+              "workId": null,
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            },
+            {
+              "id": "8d90d7ed-0249-4b91-a561-dbf14fe072e9",
+              "agentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-0c201c16c87386a10db58e0707b01a13ec964832a71b960d41299462fc2e8ba5",
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            },
+            {
+              "id": "c914b82b-b86a-4bc8-8218-44bb6877ad26",
+              "agentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-0c201c16c87386a10db58e0707b01a13ec964832a71b960d41299462fc2e8ba5",
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            },
+            {
+              "id": "206208db-3f72-45fe-84fd-a4b66275cc8f",
+              "agentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "phase": "execution",
+              "status": "completed",
+              "workId": "work-b5618a590d8b6a4c96358ba9ea4cb3b2f089c58fa9eb521fed1369b632fa3129",
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            },
+            {
+              "id": "822e03fc-bf0b-4e60-8de4-e964fc7ce39d",
+              "agentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "phase": "memory",
+              "status": "completed",
+              "workId": "work-b5618a590d8b6a4c96358ba9ea4cb3b2f089c58fa9eb521fed1369b632fa3129",
+              "triggerMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+              "error": null
+            }
+          ],
+          "memorySource": {
+            "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-5c80ec710f3ec8840ef4-retry0-repeat0-1mh5fg/009-Claude普通群实际记忆与原偏好来源.json",
+            "bytes": 1872,
+            "sha256": "1c3064d71cbeacc596ccd299ab3af8b3bc9bedef0bbb181b48ca7c56af7fe16e"
+          },
+          "preferenceSourceMessageId": "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a",
+          "memories": [
+            {
+              "ownerAgentId": "b003061d-8e4e-48f5-8ef3-47d460528348",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "f911349b-b5d0-4e6f-9ddc-1a11cce74473",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "f911349b-b5d0-4e6f-9ddc-1a11cce74473"
+              ],
+              "sourceMemoryIds": []
+            },
+            {
+              "ownerAgentId": "0f067e15-241f-47f4-ac24-839eb0c9d28e",
+              "content": "用户偏好简短答复",
+              "sourceMessageIds": [
+                "d7118ba4-79cb-4dc2-b4be-f38f5b60e28a"
+              ],
+              "sourceResourceIds": [],
+              "conversationId": "f911349b-b5d0-4e6f-9ddc-1a11cce74473",
+              "kind": "long_term",
+              "evidence": "preference",
+              "useScope": "employee",
+              "disclosure": "public",
+              "sourceConversationIds": [
+                "f911349b-b5d0-4e6f-9ddc-1a11cce74473"
+              ],
+              "sourceMemoryIds": []
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "startTime": "2026-10-06T13:18:10.705Z",
+        "duration": 259058.21099999998,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "flaky": 0,
+        "notRun": 0
+      },
+      "packageFiles": 3405
+    }
+  ],
+  "captures": [
+    {
+      "batch": "source-2",
+      "label": "真实群消息更新后原负责人完成文件交付",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-交付-20261006.png",
+        "bytes": 328547,
+        "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-交付-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/011-真实群消息更新后原负责人完成文件交付.native.png",
+        "bytes": 328547,
+        "sha256": "d7424e7c199bca6f5b113390cfc347e3867dd2d6ebe6e5b0cabe5e77eaf8a68f"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/012-真实群消息更新后原负责人完成文件交付.capture.json",
+        "bytes": 1685,
+        "sha256": "eea44d179e03d6b4a74bac89d94d435a3c81eedaa89281586e6e97efe764c92c"
+      }
+    },
+    {
+      "batch": "source-2",
+      "label": "Claude普通群重启保留原交付",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-重启-20261006.png",
+        "bytes": 328379,
+        "sha256": "22c1abde512c2767a2d40731df0b49fb0609e5572f654e145d1f2f91fafb0ad6"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-source-2-重启-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "f800f026e8435267961f6038dd9c0edee7ed4bed846b98c903e6f6bda175fadc"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/021-Claude普通群重启保留原交付.native.png",
+        "bytes": 328379,
+        "sha256": "22c1abde512c2767a2d40731df0b49fb0609e5572f654e145d1f2f91fafb0ad6"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/native-update-decision-20261006/source-2/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-xeNQ6w/022-Claude普通群重启保留原交付.capture.json",
+        "bytes": 1685,
+        "sha256": "f800f026e8435267961f6038dd9c0edee7ed4bed846b98c903e6f6bda175fadc"
+      }
+    },
+    {
+      "batch": "package-1",
+      "label": "真实群消息更新后原负责人完成文件交付",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-交付-20261006.png",
+        "bytes": 319447,
+        "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-交付-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/011-真实群消息更新后原负责人完成文件交付.native.png",
+        "bytes": 319447,
+        "sha256": "e838d03d80dce87d4e2c18a1b57006517df99bb9dbf89672717ad6d05d1ec3b6"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/012-真实群消息更新后原负责人完成文件交付.capture.json",
+        "bytes": 1685,
+        "sha256": "e15e154cd66cc3f0beee1fa2d668fc3779b79a2ab8d862131108b735a7cd0093"
+      }
+    },
+    {
+      "batch": "package-1",
+      "label": "Claude普通群重启保留原交付",
+      "dimensions": [
+        2580,
+        1720
+      ],
+      "image": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-重启-20261006.png",
+        "bytes": 319365,
+        "sha256": "6c43f21b58e4f2e560c37c9f7bfd5d78a40b49f86b773477d827532e43b7cd71"
+      },
+      "metadata": {
+        "path": "ai-docs/spec/13.本机Agent员工运行时/evidence/LR5-原请求权限与工作记忆-package-1-重启-20261006.capture.json",
+        "bytes": 1685,
+        "sha256": "ff297b2a3a50773ab9c242ec4baf302cc50953133d00869b89b7a56029fd0d1d"
+      },
+      "originalImage": {
+        "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/021-Claude普通群重启保留原交付.native.png",
+        "bytes": 319365,
+        "sha256": "6c43f21b58e4f2e560c37c9f7bfd5d78a40b49f86b773477d827532e43b7cd71"
+      },
+      "originalMetadata": {
+        "path": ".local/feature-review/native-update-decision-20261006/package-1/scenarios/76620a6b86e22810b964-36934a1e317c107c42ce-retry0-repeat0-KbDSek/022-Claude普通群重启保留原交付.capture.json",
+        "bytes": 1685,
+        "sha256": "ff297b2a3a50773ab9c242ec4baf302cc50953133d00869b89b7a56029fd0d1d"
+      }
+    }
+  ],
+  "gates": {
+    "moduleFiles": 101,
+    "moduleTests": 1793,
+    "targetedTests": 205,
+    "typecheck": "passed",
+    "build": "passed",
+    "bddgen": "passed"
+  },
+  "diagnosis": {
+    "decisionBaseline": {
+      "cases": 4,
+      "passed": 2,
+      "failed": 2
+    },
+    "decisionInstructionChange": {
+      "cases": 5,
+      "passed": 5
+    },
+    "memoryOriginalRepro": "empty memories after actual directed delivery",
+    "memoryInputOnlyProbe": "both candidates rejected by original host source whitelist",
+    "memoryFix": "one bounded original-work evidence selection shared by model input and persistence",
+    "correctionAuthority": "only current user messages; an admitted older request cannot supersede retained memory"
+  },
+  "productionModules": [
+    "src/runtime/modules/employees/phase-instructions.ts",
+    "src/runtime/modules/employees/memory-extraction.ts",
+    "src/runtime/service.ts"
+  ],
+  "notes": [
+    "All common controlled decision inputs were equal except instructions. No admitted Work or business effects in those diagnostic probes.",
+    "Source-1 real group delivered files but failed original-preference memory before restart; it remains failed.",
+    "Source-2 real Codex was claimed and running at the 240-second observation cutoff with no tools/result; the underlying cause remains unknown. New observation covers the original 300-second work deadline and preserves external phase records without increasing the product allowance.",
+    "Model output varies; bounded passing samples do not prove reliability, cost equivalence or complete LR0-LR6 coverage.",
+    "Original limits, work identities, directed wake claim and no-replay rules remain authoritative.",
+    "Native phase diagnostics are external observations, not internal model step counts."
+  ]
+}
