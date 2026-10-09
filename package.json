@@ -25,7 +25,11 @@
     "test:electron:report": "playwright show-report",
     "eval:collaboration": "node scripts/evaluate-collaboration.mjs",
     "eval:score": "node scripts/score-collaboration.mjs",
-    "eval:dataset": "node scripts/score-collaboration.mjs --list"
+    "eval:dataset": "node scripts/score-collaboration.mjs --list",
+    "eval:experiment": "node scripts/evaluation-experiment.mjs",
+    "dev:repair": "node scripts/iterate-agent.mjs",
+    "eval:build": "node scripts/evaluation-experiment.mjs build",
+    "eval:hillclimb": "node scripts/evaluation-experiment.mjs hillclimb"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",

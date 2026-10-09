@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 相同场景/模型配置、基线或候选 AppService/Mastra 和临时运行目录。
- * [OUTPUT]: 普通员工与核心隔离；既有素材/事件及可选 MD-v1 真实材料到报告/修订/采用/重启证据、完整hash、共享预算/冻结校验与人工待评审报告。
+ * [OUTPUT]: 调用前核对登记模型签名；员工隔离、原件hash、共享预算/冻结校验与人工待评审报告。
  * [POS]: tests/evaluation/harness.ts，手动供应商评估；不将自动检查替代语义复核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -21,7 +21,7 @@ import { EvaluationBudget } from './budget'
 import { validateFrozenHoldout } from './matrix'
 import { executeMaterialDelivery, newMaterialDeliveryEvidence } from './material-delivery'
 
-interface Settings { split?: string; team?: 'single' | 'multi'; budgetFile?: string; label: string; source: string; output: string; samples: number; sampleStart?: number; maxRequests: number; cases: string[]; revision: string; hashes: Record<string, string> }
+interface Settings { split?: string; team?: 'single' | 'multi'; budgetFile?: string; expectedModelSignature?: string; label: string; source: string; output: string; samples: number; sampleStart?: number; maxRequests: number; cases: string[]; revision: string; hashes: Record<string, string> }
 interface Input { settings: Settings; connection: Connection; apiKey: string; connections?: { connection: Connection; apiKey: string }[] }
 type Phase = { caseId: string; sample: number; phase: string; runId: string; agentId: string }
 type Call = Phase & { startedAt: number; headersMs?: number; requestBytes: number; status?: number; error?: string }
@@ -32,6 +32,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export async function runEvaluation(input: Input, constructors: { AppService: typeof Service; MastraEngine: typeof Engine }) {
   const { settings, connection, apiKey } = input
   const connections = input.connections ?? [{ connection, apiKey }]
+  const modelSignature = createHash('sha256').update(JSON.stringify(connections.map(({ connection: item }) => ({ provider: item.provider, baseUrl: item.baseUrl, model: item.defaultModel })))).digest('hex')
+  if (settings.expectedModelSignature && settings.expectedModelSignature !== modelSignature) throw new Error('登记的模型配置已变化；未启动供应商调用')
   const redact = (value: string) => connections.reduce((text, item) => item.apiKey ? text.replaceAll(item.apiKey, '[REDACTED]') : text, value)
   const save = (name: string, value: unknown) => writeFile(join(settings.output, name), redact(JSON.stringify(value, null, 2)))
   const selected = settings.cases.length ? cases.filter(item => settings.cases.includes(item.id)) : cases.filter(item => !item.delivery && (item.split === (settings.split ?? 'regression') || settings.split === 'all'))

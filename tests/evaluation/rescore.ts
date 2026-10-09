@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 保存的评估目录、可选独立评审/基线/校准标签。
- * [OUTPUT]: 无供应商请求且校准绑定judge版本的逐样本重新评分与报告，损坏记录显式保留为证据不完整。
+ * [OUTPUT]: 服务重评分与显式桌面证据导入、统一实验报告；无供应商请求，失败/缺证据/待校准保持。
  * [POS]: tests/evaluation/rescore.ts，离线命令入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,8 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cases } from './cases'
 import { scoreRecord } from './checks'
-import { writeReport } from './report'
+import { writeReport, writeDesktopReport } from './report'
+import { loadDesktopTrials } from './desktop'
 import { calibrate, type CalibrationPair } from './calibration'
 import type { EvaluationCase, EvaluationRecord, ExternalReview } from './schema'
 export async function loadRecords(input: string, reviews: ExternalReview[] = [], calibratedReviewer?: string) {
@@ -37,5 +38,15 @@ export async function rescore(input: string, output: string, options: { baseline
   const rows = await loadRecords(input, options.reviews, calibrated), baseline = options.baseline ? await loadRecords(options.baseline, options.reviews, calibrated) : []
   const summary = await writeReport(output, rows, baseline)
   if (options.calibration) await writeFile(join(output, 'calibration.json'), JSON.stringify(calibrate(options.calibration), null, 2))
+  return summary
+}
+
+export async function rescoreDesktop(input: string, output: string, options: { baseline?: string } = {}) {
+  const current = await loadDesktopTrials(input)
+  const baseline = options.baseline ? await loadDesktopTrials(options.baseline) : undefined
+  await mkdir(output, { recursive: false })
+  const summary = await writeDesktopReport(output, current.trials, baseline?.trials)
+  await writeFile(join(output, 'sources.json'), JSON.stringify({ current: current.input, baseline: baseline?.input,
+    currentIssues: current.issues, baselineIssues: baseline?.issues ?? [], modelCalls: 0 }, null, 2))
   return summary
 }
