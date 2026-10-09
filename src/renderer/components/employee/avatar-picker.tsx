@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 个人/员工头像值、内置生肖与毛绒角色透明 WebP、浏览器本地图片选择与统一 Popover/Button。
- * [OUTPUT]: 共用个人/员工头像选择，21 款顺序复用共享目录，个人上传说明置于标题图标 tooltip，默认小老虎与旧文字值同样选中；上传仅最新选择可回填；图片居中裁成 256px PNG，失败恢复焦点，保存前只更新表单。
+ * [OUTPUT]: 共用个人/员工头像选择，21 款顺序复用共享目录，上传说明仅列格式与大小并统一置于标题后的图标 tooltip，不占独立说明行；默认小老虎与旧文字值同样选中；上传仅最新选择可回填；图片居中裁成 256px PNG，失败恢复焦点，保存前只更新表单。
  * [POS]: 个人资料和新建/编辑员工共用的头像控件，不直接修改持久数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,7 +11,7 @@ import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH, defaultAvatar, type AgentAvatar
 import { Avatar, Banner, errorText } from '@/components/common'
 import { InfoIcon, Pencil, Upload } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function AvatarPicker({ value, name, seed = name, disabled = false, onChange, onBusyChange, personal = false, onReset }: {
@@ -52,12 +52,11 @@ export function AvatarPicker({ value, name, seed = name, disabled = false, onCha
     </PopoverTrigger>
     <input ref={input} type="file" hidden aria-label={personal ? '上传个人头像' : '上传员工头像'} accept="image/png,image/jpeg,image/webp" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file) }} />
     <PopoverContent className="w-[284px] max-w-[calc(100vw-32px)]" sideOffset={8}>
-      <div className="flex items-center justify-between gap-2"><PopoverTitle>{personal ? '选择个人头像' : '选择员工头像'}</PopoverTitle>{personal && <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="头像上传说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>PNG、JPG、WebP，最大 5 MB，自动居中裁剪。</TooltipContent></Tooltip>}</div>
+      <div className="flex items-center gap-1"><PopoverTitle>{personal ? '选择个人头像' : '选择员工头像'}</PopoverTitle><Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="头像上传说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>PNG、JPG、WebP，最大 5 MB。</TooltipContent></Tooltip></div>
       <div className="avatar-presets" role="group" aria-label="内置头像">{avatarPresets.map(preset => <Button key={preset.id} variant="ghost" size="content" className="avatar-preset" disabled={disabled || uploading} aria-label={preset.name} aria-pressed={selected === preset.id} onClick={() => { setError(''); onChange({ kind: 'preset', id: preset.id }); setOpen(false) }}><Avatar name={preset.name} avatar={{ kind: 'preset', id: preset.id }} /></Button>)}</div>
       {error && <Banner>{error}</Banner>}
       <Button ref={uploadButton} variant="secondary" size="sm" disabled={disabled || uploading} onClick={() => input.current?.click()}><Upload />{uploading ? '正在处理图片…' : '上传本地图片'}</Button>
       {personal && <Button variant="ghost" size="sm" disabled={disabled || uploading} onClick={() => { onReset?.(); setOpen(false) }}>恢复默认头像</Button>}
-      {!personal && <PopoverDescription>PNG、JPG、WebP，最大 5 MB，自动居中裁剪。</PopoverDescription>}
     </PopoverContent>
   </Popover>
 }

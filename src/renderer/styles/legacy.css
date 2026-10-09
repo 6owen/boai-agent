@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工配置面板常驻时，仅可见标签参与编辑区固定页脚布局，隐藏面板不占用页面空间。
  * [OUTPUT]: 右侧详情的实际宽度不超过内容框扣分割线的可用空间；窄窗/原生缩放仍保留会话手动分栏偏好，收窄的主内容不越列覆盖预览，不裁切预览到窗口外。
  * [INPUT]: Shell、公共控件和业务页面结构、共享 ScrollFade 滚动容器、只读文件预览，以及统一视觉 token；消息阅读交互由 group-chat.css 统一覆盖。
  * [OUTPUT]: 全局透明轨道/4px 可见圆角滑块及悬停反馈，会话列表滚动区域延伸至侧栏边缘并保留内容留白；设置页保持横向可调分栏，不再由窄窗规则固定侧栏或切为上下布局；删除旧资料库页面留白，商店资源列表保留共享布局；页面空态迁至共用 IllustratedEmpty；移除会话状态条布局；44px 顶栏与包含分割线宽度的右侧标签/内容对齐，右侧空白可拖动窗口、多标签点击区排除拖拽；52px 导航、圆角框和紧凑会话；会话页保留手动分栏宽度与开关、悬浮名称/操作菜单与 Scroll Fade 消息顶部重叠区、无页脚列表，其他页面保留窄窗详情浮层；员工分类栏仅负责布局，员工/技能标签皮肤由全局 Tabs 提供。 右侧编辑区滚动与固定定高页脚；卡片与文件/资源按钮仅保留布局，边框和分割线使用共享 UI 皮肤。
@@ -754,7 +755,7 @@ fieldset {
 /* Only the right workspace pins editor actions; contacts use document flow. */
 .detail-content:has(.editor-frame) { display:flex;flex-direction:column;overflow:hidden }
 .detail-content .employee-detail { flex:1;min-height:0 }
-.detail-content .employee-detail:has(.editor-frame)>[data-slot=tabs-content]:has(.editor-frame) { display:flex;min-height:0;flex:1 }
+.detail-content .employee-detail:has(.editor-frame)>[data-slot=tabs-content]:not([hidden]):has(.editor-frame) { display:flex;min-height:0;flex:1;overflow:hidden }
 .detail-session:has(.editor-frame) { display:flex;flex:1;min-height:0;flex-direction:column;overflow:hidden }
 .detail-content .editor-frame { flex:1;min-height:0;overflow:hidden }
 .detail-content .editor-scroll { flex:1;min-height:0;overflow-y:auto }

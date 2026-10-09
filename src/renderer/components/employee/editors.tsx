@@ -1,5 +1,7 @@
 /*
- * [OUTPUT]: 员工与系统助手共用模型API/本机Agent两级选择；具体连接按真实协议绑定，切换不静默清除技能、知识或命令权限。
+ * [OUTPUT]: 员工身份跨详情标签常驻编辑并共用保存草稿/页脚；隐藏且无修改的配置不占用其他表单守卫，保存错误回到配置核对；普通员工默认允许申请命令，核心与旧ACP限制保持。
+ * [OUTPUT]: 通讯录配置可将唯一保存按钮挂到顶部操作行，省略原底部保存/取消；原表单、禁用、版本及未知回执合同保持。
+ * [OUTPUT]: 员工与系统助手共用模型API/本机Agent两级选择；具体连接按真实协议绑定，切换不静默清除技能或知识，命令申请采用普通员工默认与核心/旧ACP限制。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude核心配置复用原程序/API字段，组织群允许独立Claude成员；核心不得经普通建群加入，自动化仍未开放。
  * [OUTPUT]: Claude材料接入沿原入口，图片理解需实际模型支持；普通群已接，核心组织/自动化门禁保持。
@@ -20,10 +22,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SelectField } from '@/components/ui/select-field'
-import { Checkbox } from '@/components/ui/checkbox'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog'
 import type { LaunchProfile } from '@shared/domain'
 import { useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '@shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt } from '@shared/domain/skills'
@@ -41,7 +43,7 @@ export const templates = [
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
 function savedAgentForm(agent: DigitalAgent): AgentInput { return { avatar: agent.avatar, executionBackend: agent.executionBackend, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
-export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation' }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string }) {
+export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation', identityTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string; identityTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
   const [uploading, setUploading] = useState(false)
@@ -56,7 +58,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const preset = template === undefined ? undefined : templates[template]
   const [form, setForm] = useState<AgentInput>(() => {
     if (agent) return savedAgentForm(agent)
-    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
+    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: true, active: true }
   })
   const { busy, error, run, setError } = useMutation()
   const guard = useContext(GuardContext)
@@ -66,7 +68,13 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const dirty = JSON.stringify(form) !== baseline.current
   const locked = busy || uploading || bindingLocked || saveUnconfirmed
   const set = <K extends keyof AgentInput>(key: K, value: AgentInput[K]) => { if (!locked) setForm(current => ({ ...current, [key]: value })) }
-  useEffect(() => { guard.setDirty(dirty); return () => guard.setDirty(false) }, [dirty, guard.setDirty])
+  useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
+  useEffect(() => {
+    if (!configurationVisible && !dirty) return
+    guard.setDirty(dirty)
+    return () => guard.setDirty(false)
+  }, [dirty, guard.setDirty, configurationVisible])
+  useEffect(() => { if (error && !configurationVisible) onRevealConfiguration?.() }, [error, configurationVisible, onRevealConfiguration])
   useEffect(() => {
     if (!agent || bindingLocked || saveUnconfirmed || JSON.stringify(currentForm.current) !== baseline.current || agent.configVersion <= (initialVersion.current ?? 0)) return
     const updated = savedAgentForm(agent); baseline.current = JSON.stringify(updated); initialVersion.current = agent.configVersion; setForm(updated)
@@ -102,7 +110,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     event.preventDefault(); if (uploading || bindingLocked || saveUnconfirmed || !modelReady) return
     void run(async () => {
       let committed: DigitalAgent
-      try { committed = await api.request('saveAgent', { ...form, expectedConfigVersion: initialVersion.current, name: form.name.trim(), role: form.role.trim() }) }
+      try { committed = await api.request('saveAgent', { ...form, expectedConfigVersion: initialVersion.current, name: form.name.trim(), role: form.role.trim(), allowCommands: !core && form.executionBackend?.kind !== 'acp-local' }) }
       catch (reason) { if (agent) { setSaveUnconfirmed(true); await readCommittedConfiguration() }; throw reason }
       const updated = savedAgentForm(committed)
       initialVersion.current = committed.configVersion; baseline.current = JSON.stringify(updated); currentForm.current = updated; setForm(updated); guard.setDirty(false)
@@ -110,29 +118,34 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       guard.saved(onClose)
     })
   }
-  return <EditorFrame title={core ? '编辑系统助手' : agent ? '编辑数字员工' : '认识一位新同事'} description={core ? '设置助手名称、运行方式和默认模型。' : '定义他的职责、能力和工作方式。'} footer={<><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={locked || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{agent ? '保存修改' : '创建员工'}</Button></>}>
-    <form data-edit-form id={formId} onSubmit={submit} className="form-grid">
+  const identity = <div className="employee-identity-editor">
+    <AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={locked || identityDisabled} onChange={avatar => { if (!identityDisabled) set('avatar', avatar) }} onBusyChange={setUploading} />
+    <div className="employee-identity-fields">
+      <Input form={formId} required maxLength={80} aria-label={core ? '助手名称' : '员工名称'} className="employee-identity-name" disabled={locked || identityDisabled} value={form.name} onChange={event => { if (!identityDisabled) set('name', event.target.value) }} placeholder={core ? '助手名称' : '员工姓名'} />
+      <Input form={formId} maxLength={300} aria-label="员工职责" className="employee-identity-role" disabled={locked || identityDisabled} value={form.role} onChange={event => { if (!identityDisabled) set('role', event.target.value) }} placeholder="一句话描述擅长的工作" />
+    </div>
+  </div>
+  const saveAction = <Button type="submit" form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
+  const actions = actionsTarget === undefined ? <><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined
+  return <>{identityTarget && createPortal(identity, identityTarget)}{actionsTarget && createPortal(saveAction, actionsTarget)}{actions && !configurationVisible && footerTarget && (dirty || busy || uploading) && createPortal(<footer className="editor-footer">{actions}</footer>, footerTarget)}<EditorFrame leading={identityTarget === undefined ? <div className="employee-identity">{identity}</div> : undefined} footer={actions}>
+    <form data-edit-form={configurationVisible || dirty ? true : undefined} id={formId} onSubmit={submit} className="form-grid">
       {error && <div className="full"><Banner>{error}</Banner></div>}
       {bindingNotice && <div className="full"><Banner kind="notice">{bindingNotice}</Banner></div>}
       {saveCheckNotice && <div className="full"><Banner kind="notice">{saveCheckNotice}</Banner>{saveUnconfirmed && <div className="button-row"><Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => { void run(readCommittedConfiguration) }}>重新核对配置</Button>{checkedAgent && <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={loadCommittedConfiguration}>载入已提交配置</Button>}</div>}</div>}
       <fieldset className="contents" disabled={locked}>
-      <Field label={core ? '助手名称' : '员工名称'}><Input required maxLength={80} value={form.name} onChange={e => set('name', e.target.value)} placeholder={core ? '例如：bobo' : '例如：资料研究员'} /></Field>
-      <Field label="职责简介"><Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="一句话描述擅长的工作" /></Field>
       {!agent && <Field label="初始工作规则" full hint="创建后保存在员工 AGENTS.md，可在系统文件中修改。"><Textarea rows={5} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……" /></Field>}
-      <AgentModelFields value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
-      <div className="field full"><span className="field-label">员工头像</span><div className="employee-avatar-field"><AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={busy} onChange={avatar => set('avatar', avatar)} onBusyChange={setUploading} /><span className="field-hint">选择内置头像，或上传本地图片。</span></div></div>
+      <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
       </fieldset>
-      {(form.executionBackend?.kind!=='acp-local')&&<><div className="field full"><span className="field-label">启用的 Skills</span><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationDirty={dirty} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div>
+      {(form.executionBackend?.kind!=='acp-local')&&<><div className="field full"><span className="field-label">启用的 Skills</span><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationDirty={dirty} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div>
       <fieldset className="contents" disabled={locked}>
       <div className="field full"><span className="field-label">可访问的知识库</span><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} empty="还没有知识资料。" /></div>
-      {!core && <label className="toggle-row full"><span><strong>允许申请运行命令</strong><small>脚本执行前仍会向你展示命令并请求授权。</small></span><Checkbox checked={form.allowCommands} onCheckedChange={checked => set('allowCommands', checked)} /></label>}
       </fieldset>
       </>}
     </form>
-  </EditorFrame>
+  </EditorFrame></>
 }
 
-export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void> }) {
+export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }) {
   const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')
@@ -157,7 +170,9 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onD
     })
   }
   const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
-  return <><EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={<>{conversation && <Button variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button><Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{conversation ? '保存设置' : '创建群聊'}</Button></>}>
+  const saveAction = <Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : conversation ? '保存设置' : '创建群聊'}</Button>
+  const dissolveAction = conversation && <Button type="button" variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>
+  return <>{actionsTarget && createPortal(saveAction, actionsTarget)}<EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={actionsTarget === undefined ? <>{dissolveAction}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined}>
     <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
@@ -170,6 +185,7 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onD
         <Button type="button" variant="outline" onClick={() => setTeamSetup(null)}>移除团队背景</Button>
       </>}
       <div className="field full"><span className="field-label">群内共享知识</span><p className="field-hint">只有明确共享的资料才可用于这个群的任务。员工私聊不会自动加入群上下文。</p><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={knowledge} onChange={setKnowledge} empty="还没有可共享的知识资料。" /></div>
+      {actionsTarget !== undefined && dissolveAction && <div className="full">{dissolveAction}</div>}
     </form>
   </EditorFrame><AlertDialog open={dissolving} onOpenChange={open => { if (!open) closeDissolve() }}>
     <AlertDialogContent>

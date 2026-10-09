@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 创建共用设置页模型目录/手动输入，普通员工默认允许申请命令；旧ACP限制保持。
  * [OUTPUT]: 创建员工共用模型API/本机Agent两级选择，按用户明确选择保存具体连接与模型，不再隐式使用第一条API连接。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
  * [OUTPUT]: 创建弹窗区分Codex本机登录与Claude明确API来源；Claude进入原普通群选人，核心组织能力仍单独限制。
@@ -48,7 +49,7 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
     if (!form.name.trim() || uploading || (!created.current && !modelReady)) return
     void run(async () => {
       // Keep the saved employee if opening the conversation needs to be retried.
-      created.current ??= await api.request('saveAgent', { ...form, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], skillIds: [], knowledgeIds: [], allowCommands: false, active: true })
+      created.current ??= await api.request('saveAgent', { ...form, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], skillIds: [], knowledgeIds: [], allowCommands: form.executionBackend.kind !== 'acp-local', active: true })
       const conversation = await api.request('createConversation', { kind: 'direct', title: created.current.name, agentIds: [created.current.id] })
       await onCreated(conversation)
     })
@@ -64,7 +65,7 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
             <FieldGroup>
               <Field label="名称"><Input ref={nameInput} required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：资料研究员" /></Field>
               <Field label="角色"><Input maxLength={300} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="一句话描述这位同事的职责" /></Field>
-              <AgentModelFields value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
+              <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
               <Field label="Prompt"><Textarea rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></Field>
             </FieldGroup>
           </fieldset>

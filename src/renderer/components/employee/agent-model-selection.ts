@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工当前运行配置、API连接与已保存本机启动项。
- * [OUTPUT]: 模型API/本机Agent两类统一选择、真实配置名称、协议精确映射与提交资格；不改运行时能力或自动清除员工资源。
+ * [OUTPUT]: 共用前端开关暂时关闭本机Agent设置与新选择入口；保留已有后端/配置名称、协议映射和提交资格，不迁移员工绑定。
  * [POS]: employee 的纯选择合同，供创建、配置和聊天入口共用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,7 +8,9 @@ import type { Connection, ExecutionBackend, LaunchProfile } from '@shared/domain
 import { backendProtocol } from '@shared/domain/backends'
 
 export type AgentModelSelection = { executionBackend?: ExecutionBackend; connectionId: string; modelId: string }
-export const agentRunModes = [{ value: 'api', label: '模型 API' }, { value: 'local', label: '本机 Agent' }] as const
+// 全局模型连接与员工共用字段统一控制入口，后续恢复本机路线时在此开启。
+export const localAgentSetupEnabled = false
+export const agentRunModes = ([{ value: 'api', label: '模型 API' }, { value: 'local', label: '本机 Agent' }] as const).filter(mode => mode.value !== 'local' || localAgentSetupEnabled)
 export const agentRunMode = (value: AgentModelSelection) => !value.executionBackend || value.executionBackend.kind === 'mastra-model' ? 'api' : 'local'
 export const modelConnectionOptions = (connections: Connection[]) => connections.map(connection => ({ value: connection.id, label: `${connection.name}${connection.defaultModel ? ` · ${connection.defaultModel}` : ''}` }))
 

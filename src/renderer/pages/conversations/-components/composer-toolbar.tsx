@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 聊天模型选择复用设置/员工模型目录与手动编辑，连接选项仅含实际连接。
  * [OUTPUT]: 聊天与核心首发共用模型API/本机Agent两级配置，显示实际连接名称；草稿一次保存并等待真实回执；未知结果冻结原草稿/版本，只读核对并显式载入当前配置后再编辑。
  * [OUTPUT]: 本机来源显示已保存连接名称，模型/API与本机程序配置共用字段；思考强度仅按真实API模型能力开放。
  * [OUTPUT]: 本机Codex复用原命令权限菜单与发送行为，普通聊天仍无工具。
@@ -147,7 +148,7 @@ export function ComposerToolbar(props: Props) {
         <DialogTrigger render={<ChatComposerSelect kind="model" aria-label="选择模型" title={modelLabel} disabled={!primary} />}><span>{modelLabel}</span><ChevronDown /></DialogTrigger>
         <DialogContent showCloseButton={!saving && !checking}>
           <DialogHeader><DialogTitle>选择模型</DialogTitle><DialogDescription>{editing?.name}的运行配置{selectionLocked && !saving ? ' · 当前不可修改' : ''}</DialogDescription></DialogHeader>
-          <AgentModelFields value={selection} connections={snapshot.connections} profiles={profiles} onChange={setSelection} disabled={selectionLocked} allowTaskOnly={allowTaskOnly} profileError={profileError} full />
+          <AgentModelFields api={api} value={selection} connections={snapshot.connections} profiles={profiles} onChange={setSelection} disabled={selectionLocked} allowTaskOnly={allowTaskOnly} profileError={profileError} full />
           {supportsThinking && <Field label="思考强度" full hint={thinkingOptions.find(option => option.value === thinkingLevel)?.description}><SelectField disabled={selectionLocked} value={thinkingLevel} onValueChange={value => { const option = thinkingOptions.find(item => item.value === value); if (option) setThinkingLevel(option.value) }} options={thinkingOptions} /></Field>}
           {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           {checkNotice && <p role="status" className="text-sm text-muted-foreground">{checkNotice}</p>}

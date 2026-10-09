@@ -1,5 +1,7 @@
 /*
  * [INPUT]: 员工领域类型、显式配置导航请求、DesktopApi 与公共组件、统一 UI 基础组件。
+ * [OUTPUT]: 顶部头像/姓名/职责跨标签保持同一编辑控件与尺寸；身份修改共原保存/未知回执，其他表单编辑与身份草稿互斥，显式放弃重置配置草稿。
+ * [OUTPUT]: 通讯录配置的保存可挂到页面顶部，替代底部操作栏；其他详情保持原页脚布局。
  * [OUTPUT]: 本机技能绑定和能力说明按页面隐藏停读，配置版本变化重新核对；真实能力状态与当前受管说明/来源入口；群知识仍按既有共享交集提示；配置导航请求经未保存守卫返回配置页；员工统一记忆页及系统文件/工作区详情；会话清空后更新只读投影。
  * [POS]: src/renderer/components/employee/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -12,16 +14,22 @@ import { MemoryPane } from './memory-pane'
 import { SelectField } from '@/components/ui/select-field'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SkillContent } from '@/pages/library/skill-content'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, FileText, FolderOpen, Plus, RefreshCw } from '@/components/icons/index'
 import type { AgentFileContent, AgentHome, Conversation, DigitalAgent, MemoryQuery, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
-import { Avatar, Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
+import { Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 
 type EmployeeTab = 'profile' | 'files' | 'workspace' | 'memory'
-export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts' }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string }) {
+export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts', actionsTarget }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string; actionsTarget?: HTMLElement | null }) {
   const [tab, setTab] = useState<EmployeeTab>('profile')
+  const [identityTarget, setIdentityTarget] = useState<HTMLDivElement | null>(null)
+  const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null)
+  const [configurationDirty, setConfigurationDirty] = useState(false), configurationDirtyRef = useRef(false)
+  const [configurationEpoch, setConfigurationEpoch] = useState(0)
+  const configurationChanged = useCallback((dirty: boolean) => { configurationDirtyRef.current = dirty; setConfigurationDirty(dirty) }, [])
+  const revealConfiguration = useCallback(() => setTab('profile'), [])
   const [home, setHome] = useState<AgentHome | null>(null), [error, setError] = useState('')
   const [fileName, setFileName] = useState<string | null>(null)
   const guard = useContext(GuardContext)
@@ -44,11 +52,14 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
   }, [api, active, contextId, fileName])
   const selectTab = (next: EmployeeTab) => {
     if (next === tab) return
-    // Switching panels unmounts the old form; keep this tab owner mounted on discard.
-    guard.navigate(() => { setTab(next); setFileName(null) }, { resetOnDiscard: false })
+    guard.navigate(() => {
+      // The configuration now stays mounted; explicitly discard its remaining draft.
+      if (configurationDirtyRef.current) setConfigurationEpoch(current => current + 1)
+      setTab(next); setFileName(null)
+    }, { resetOnDiscard: false })
   }
   useEffect(() => { if (configurationRequest) selectTab('profile') }, [configurationRequest])
-  return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div className="employee-identity"><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><div><strong>{agent.name}</strong><small>{agent.role || '独立数字员工'}</small></div></div>
+  return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div ref={setIdentityTarget} className="employee-identity" />
     <div className="employee-tabs-bar"><TabsList aria-label="员工详情分类">
       <TabsTrigger value="profile">配置</TabsTrigger>
       <TabsTrigger value="files">系统文件</TabsTrigger>
@@ -56,10 +67,11 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
       <TabsTrigger value="memory">记忆</TabsTrigger>
     </TabsList></div>
     {error && <Banner>{error}</Banner>}
-    <TabsContent value="profile"><AgentEditor api={api} snapshot={snapshot} agent={agent} active={active && tab === 'profile'} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
-    <TabsContent value="files">{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '记忆由同一员工持有。这里的文件是来源范围投影，统一记录可在记忆页管理。'}</div></>}</div>}</TabsContent>
-    <TabsContent value="workspace"><WorkspaceView api={api} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => selectTab('profile')} onRefresh={async () => { await refresh(); await loadHome() }} /></TabsContent>
-    <TabsContent value="memory"><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></TabsContent>
+    <TabsContent value="profile" keepMounted><AgentEditor key={configurationEpoch} api={api} snapshot={snapshot} agent={agent} identityTarget={identityTarget} footerTarget={footerTarget} actionsTarget={actionsTarget} configurationVisible={tab === 'profile'} identityDisabled={tab !== 'profile' && guard.dirty && !configurationDirty} onDirtyChange={configurationChanged} onRevealConfiguration={revealConfiguration} active={active} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
+    <TabsContent value="files"><fieldset className="contents" disabled={configurationDirty}>{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '记忆由同一员工持有。这里的文件是来源范围投影，统一记录可在记忆页管理。'}</div></>}</div>}</fieldset></TabsContent>
+    <TabsContent value="workspace"><fieldset className="contents" disabled={configurationDirty}><WorkspaceView api={api} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => selectTab('profile')} onRefresh={async () => { await refresh(); await loadHome() }} /></fieldset></TabsContent>
+    <TabsContent value="memory"><fieldset className="contents" disabled={configurationDirty}><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></fieldset></TabsContent>
+    {actionsTarget === undefined && <div ref={setFooterTarget} className="employee-identity-actions" />}
   </Tabs>
 }
 
