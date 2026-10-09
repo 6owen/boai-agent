@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 员工身份跨详情标签常驻编辑并共用保存草稿/页脚；隐藏且无修改的配置不占用其他表单守卫，保存错误回到配置核对；普通员工默认允许申请命令，核心与旧ACP限制保持。
- * [OUTPUT]: 通讯录配置可将唯一保存按钮挂到顶部操作行，省略原底部保存/取消；原表单、禁用、版本及未知回执合同保持。
+ * [OUTPUT]: 通讯录配置将唯一保存按钮挂到顶部操作行，保存后留在当前编辑页并更新基线/版本，省略原底部保存/取消；明确保存并退出仍沿原守卫。
  * [OUTPUT]: 员工与系统助手共用模型API/本机Agent两级选择；具体连接按真实协议绑定，切换不静默清除技能或知识，命令申请采用普通员工默认与核心/旧ACP限制。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude核心配置复用原程序/API字段，组织群允许独立Claude成员；核心不得经普通建群加入，自动化仍未开放。
@@ -115,7 +115,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       const updated = savedAgentForm(committed)
       initialVersion.current = committed.configVersion; baseline.current = JSON.stringify(updated); currentForm.current = updated; setForm(updated); guard.setDirty(false)
       try { await onSaved() } catch (reason) { throw new Error(`配置已保存为版本 ${committed.configVersion}，资料刷新失败：${errorText(reason)}。请返回资料重新核对。`) }
-      guard.saved(onClose)
+      guard.saved(actionsTarget === undefined ? onClose : undefined)
     })
   }
   const identity = <div className="employee-identity-editor">
@@ -169,7 +169,7 @@ export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onD
       guard.saved(onClose)
     })
   }
-  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); await onSaved(result); guard.saved(onClose) }) }
+  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); initialVersion.current = result.configVersion; clean(); await onSaved(result); guard.saved(actionsTarget === undefined ? onClose : undefined) }) }
   const saveAction = <Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : conversation ? '保存设置' : '创建群聊'}</Button>
   const dissolveAction = conversation && <Button type="button" variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>
   return <>{actionsTarget && createPortal(saveAction, actionsTarget)}<EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={actionsTarget === undefined ? <>{dissolveAction}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined}>
