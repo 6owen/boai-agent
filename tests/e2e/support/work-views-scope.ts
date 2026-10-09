@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 八状态目标预置保留完成式原文，不伪造文件/消息结果；只读核对原Work、模型调用/预算/成果及触发账本。
  * [INPUT]: 隔离Electron/真实宿主API、显式SQLite预置关系/规模与离线真实工具协议。
  * [OUTPUT]: 根子/独立依赖和五列75项的明确预置；实际全来源Work/失败触发/ACP对照；有界查询、耗时及进程内存原样记录。
@@ -77,6 +78,7 @@ export async function prepareActualWorkSources(runtime: Desktop) {
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as { role: string; content: unknown; tool_calls?: { function: { name: string } }[] }[], system = messages.filter(message => message.role === 'system').map(message => text(message.content)).join('\n')
+      if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(text(messages.at(-1)!.content)).data
         sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'task', work: { key: `scope-explicit-${data.originalUserRequestId}-${data.currentEmployeeId}`, scope: '用户明确要求各员工分别交付本人独立报告', deliverable: `员工${data.currentEmployeeId}的独立报告` } }); return

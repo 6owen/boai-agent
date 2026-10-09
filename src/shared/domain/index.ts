@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: AgentRun记录实际Claude或Codex来源，保留各自程序/profile和外部阶段计量。
  * [OUTPUT]: 运行后端记录原生Codex/ACP、外部请求次数和宿主工具范围，不把原生turn视为单次模型调用。
  * [OUTPUT]: 工作视图有界只读DTO与五组计数导出，复用既有Work及真实文件身份。
@@ -229,7 +230,7 @@ export interface ConversationDetail {
 }
 
 export type TurnStatus = 'queued' | 'evaluating' | 'responding' | 'executing' | 'waiting_user' | 'completed' | 'cancelled' | 'failed' | 'interrupted' | 'budget_exhausted'
-export interface DiscussionTurn { collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number }
+export interface DiscussionTurn { coordination?: import('./group-coordination').GroupCoordination; collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number }
 export interface AgentDelivery { observedEventId?: string; id: string; turnId: string; conversationId: string; agentId: string; eventId: string; eventIds?: string[]; supersededByDeliveryId?: string; status: 'pending' | 'evaluating' | 'ready' | 'waiting' | 'passed' | 'responding' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'skipped'; observedThroughSequence: number; error?: string; updatedAt: string }
 export interface ParticipationDecision {
   work?: WorkIntent

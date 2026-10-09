@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 阅读位置提交后丢失回执及临时核对失败只拦截IPC返回；首次打开会话正常，故障仅在真实提交后生效，保留原始故障与恢复后只读核对。
  * [INPUT]: 隔离桌面、真实 SQLite 旧历史、同名材料原件与可控制结束顺序的离线 Mastra HTTP 流。
  * [OUTPUT]: 万条同文不同身份历史、混合搜索真实同名材料、可指定历史数量/追加正文的实际员工并行流和一次分页快照延迟；固定目标读取可等待真实删除事务后执行原 IPC 并恢复 handler，验证迟到异常隔离；完成顺序与浏览请求观测，不替代发布或阅读事务；隐藏会话由真实获准查询拒绝，不提供检索恢复显示旁路。
@@ -53,6 +54,7 @@ export async function prepareReadingStreams(runtime: Desktop, historyCount = 120
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as { role: string; content: unknown }[], system = messages.filter(value => value.role === 'system').map(value => contentText(value.content)).join('\n')
+      if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
       if (system.includes('Private participation decision')) {
         const { data } = JSON.parse(contentText(messages.at(-1)!.content))
         if (data.currentTurn?.ownCompletedMessageIds?.length || data.participation?.hasRespondedInTurn) { sendTeamOutput(response, { action: 'pass' }); return }

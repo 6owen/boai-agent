@@ -1,9 +1,11 @@
 # language: zh-CN
+# [OUTPUT]: 既有六项场景加入协作用例集，报数/未知接龙可按显式配置运行真实API。
+# [OUTPUT]: 第14组新增API群报数和倒序随机内容接续；离线协议与真实模型分场留证。
 # [INPUT]: 委派、显式依赖与隔离的 Electron 应用。
 # [OUTPUT]: 五人实际问候无重复引用、手动引用发送/重启保留、原有渐隐/输入样式、并行流式与群聊后续判断并发、定向接续、原始预算、工作进度与停止后的重启行为验收。
 # [POS]: tests/e2e/features/collaboration.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
-@electron @collaboration
+@electron @collaboration @collaboration-suite
 功能: 委派工作与定向接续
 
   场景: 五名独立成员同时流式回复
@@ -32,3 +34,15 @@
     当 负责人等待尚未交付的第二版结果
     那么 可以从工作进度停止此工作及子工作
     那么 重启保留协作结果而不重新执行
+
+  @group-coordination
+  场景: 五位员工依次报数并在重启后保留结果
+    假如 五位API员工已配置群接续模型
+    当 用户要求大家开始报数
+    那么 每位员工依据前一位完整回复接续到五且重启不重放
+
+  @group-coordination
+  场景: 指定倒序的员工传递首次生成的未知内容
+    假如 五位API员工已配置群接续模型
+    当 用户指定倒序接龙传递随机数字
+    那么 每位员工读取前一位实际内容且重启不重放

@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 实际SDK覆盖父任务依赖创建前拒绝/真实同事ID接续，以及正文选择位置兼容、冲突选择与未知字段拒绝。
+ * [OUTPUT]: 新增实际157字摘要的SDK读写回执红绿，以及Unicode/截断/有界段落计数；协作BDD内置实际输入因果断言。
+ * [OUTPUT]: 第14组本次正文证据选择的真实SDK红绿：正文绑定、组织/等待/无结果/丢弃/未交付边界及显式选择优先/未选择拒绝旧摘句。
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；明确限字的私有压缩、逐调用预算用量、取消和超限拒绝验收。
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: Mastra 适配器、消息投影、执行合同、真实附件图片与本地协议服务。
  * [OUTPUT]: 用户图片穿透实际SDK到原生image_url，历史获准图可用于后续交流；外会话/非用户图不投影，Trace只保留实际字节hash摘要。
@@ -9,6 +13,7 @@
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workEvidenceError } from '../src/runtime/modules/collaboration/work-protocol'
 import { createServer, type ServerResponse } from 'node:http'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
@@ -114,6 +119,72 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('keeps oversized ordered chat private and budgets one rewrite before publishing its complete meaning', async () => {
+    const draft = '作为写手：第二版保留了周六开头和三条清单。仍需遵守：练习安排不是效果保证。'
+    const final = '第二版已定；练习不保证效果。'
+    const receipts: [string, ModelUsage][] = [], totals: ModelUsage[] = [], started: string[] = []
+    const server = await endpoint((_body, response, index) => send(response, index ? final : draft, index, { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }))
+    const run = await context(server.url, { responseKind: 'chat', modelCallId: 'original', groupCoordination: { mode: 'ordered', instruction: '每人15字以内，说明版本和一条限制', maxReplyCharacters: 15, agentIds: ['agent-a', 'agent-b'], sourceRunId: 'interpretation', memberConfigVersions: {}, revision: 1, completed: [] }, onModelCallStarted: async id => { started.push(id) }, onModelCallUsage: async (id, usage) => { receipts.push([id, usage]) }, onUsage: async usage => { totals.push(usage) } })
+    run.ctx.onAdditionalModelCall = async () => { expect(run.deltas).toEqual([]); return 'rewrite' }
+    await new MastraEngine().run(run.ctx)
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests.every(request => !request.tools?.length)).toBe(true)
+    expect(allMessageText(server.requests[1])).toContain(draft)
+    expect(run.deltas).toEqual([final])
+    expect(started).toEqual(['original', 'rewrite'])
+    expect(receipts.map(([id]) => id)).toEqual(['original', 'rewrite'])
+    expect(totals.at(-1)).toEqual({ inputTokens: 20, outputTokens: 40, totalTokens: 60 })
+  })
+
+  it.each(['still too long', 'budget refused', 'cancelled'] as const)('does not publish or keep rewriting a limited chat when %s', async failure => {
+    const server = await endpoint(['超出五字的原始草稿', '仍然超出五字的修改稿'])
+    const run = await context(server.url, { responseKind: 'chat', groupCoordination: { mode: 'ordered', instruction: '每人5字以内', maxReplyCharacters: 5, agentIds: ['agent-a', 'agent-b'], sourceRunId: 'interpretation', memberConfigVersions: {}, revision: 1, completed: [] } })
+    run.ctx.onAdditionalModelCall = async () => {
+      if (failure === 'budget refused') throw new Error('原预算耗尽')
+      if (failure === 'cancelled') run.controller.abort()
+      return 'rewrite'
+    }
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow(failure === 'still too long' ? '5' : failure === 'budget refused' ? '原预算耗尽' : '取消')
+    expect(server.requests).toHaveLength(failure === 'still too long' ? 2 : 1)
+    expect(run.deltas).toEqual([])
+  })
+
+  it('counts Chinese, punctuation, digits and Unicode code points but not whitespace in an explicit limit', async () => {
+    const server = await endpoint(['甲 1，😀\n乙', '甲1，😀乙。', '合格。'])
+    const run = await context(server.url, { responseKind: 'chat', groupCoordination: { mode: 'ordered', instruction: '每人5字以内', maxReplyCharacters: 5, agentIds: ['agent-a', 'agent-b'], sourceRunId: 'interpretation', memberConfigVersions: {}, revision: 1, completed: [] } })
+    await new MastraEngine().run(run.ctx)
+    expect(run.deltas).toEqual(['甲 1，😀\n乙'])
+    await new MastraEngine().run(run.ctx)
+    expect(run.deltas).toEqual(['甲 1，😀\n乙', '合格。'])
+    expect(run.additionalCalls).toHaveLength(1)
+  })
+
+  it('lets the host supply the frozen member order when the group interpreter returns no explicit order', async () => {
+    const server = await endpoint([JSON.stringify({ mode: 'ordered', instruction: '依次报数，每人80字以内', agentIds: null, maxReplyCharacters: 80 })])
+    const run = await context(server.url, { members: [employee({ id: 'agent-b' }), employee()], triggerMessageId: 'message-1' })
+    expect(await new MastraEngine().interpretGroup(run.ctx)).toEqual({ mode: 'ordered', instruction: '依次报数，每人80字以内', agentIds: ['agent-b', 'agent-a'], maxReplyCharacters: 80 })
+  })
+  it('interprets only the public group request and repairs invalid membership within the original budget', async () => {
+    const server = await endpoint([JSON.stringify({ mode: 'ordered', instruction: '继续报数', agentIds: ['agent-a', 'outsider'] }), JSON.stringify({ mode: 'ordered', instruction: '继续报数', agentIds: ['agent-b', 'agent-a'] })])
+    const run = await context(server.url, { members: [employee(), employee({ id: 'agent-b' })], triggerMessageId: 'message-1', turnId: 'group-turn', messages: [message('依次报数', 1, { turnId: 'group-turn' })], bootstrap: { instructions: 'SECRET_PRIVATE_ROLE', hashes: {}, configVersion: 1, memoryVersion: 1, policyVersion: 1, sources: [] } })
+    expect(await new MastraEngine().interpretGroup(run.ctx)).toEqual({ mode: 'ordered', instruction: '继续报数', agentIds: ['agent-b', 'agent-a'] })
+    expect(run.additionalCalls).toHaveLength(1)
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests.every(request => !request.tools?.length && !allMessageText(request).includes('SECRET_PRIVATE_ROLE'))).toBe(true)
+    expect(JSON.parse(server.requests[1].messages.at(-1)!.content as string)).toMatchObject({ protocol: 'private-group-interpretation-v1', repair: { validationError: expect.stringContaining('获准成员') } })
+    expect(run.deltas).toEqual([])
+  })
+
+  it('supplies the shared ordered goal and actual completed predecessor to the no-tool chat model', async () => {
+    const server = await endpoint(['2'])
+    const run = await context(server.url, { responseKind: 'chat', triggerMessageId: 'message-1', turnId: 'group-turn', messages: [message('依次报数', 1, { turnId: 'group-turn' }), message('1', 2, { turnId: 'group-turn', senderType: 'agent', senderId: 'agent-b', senderName: 'Bob' })], groupCoordination: { mode: 'ordered', instruction: '接着前一位递增报数', agentIds: ['agent-b', 'agent-a'], memberConfigVersions: { 'agent-a': 1, 'agent-b': 1 }, sourceRunId: 'interpretation', revision: 2, completed: [{ agentId: 'agent-b', messageId: 'message-2', eventId: 'event-2', contentHash: 'hash' }] } })
+    await new MastraEngine().run(run.ctx)
+    expect(allMessageText(server.requests[0])).toContain('接着前一位递增报数')
+    expect(allMessageText(server.requests[0])).toContain('do not restart the shared operation')
+    expect(server.requests[0].tools ?? []).toEqual([])
+    expect(run.deltas.join('')).toBe('2')
+  })
+
   it('uses current host browser capability for a retry after an obsolete no-browser reply, without granting tools to the decision', async () => {
     const server = await endpoint([JSON.stringify({ action: 'reply', responseKind: 'task', work: { key: 'main', scope: '读取原请求中的 IANA 页面', deliverable: '实际页面标题、域名和来源' } }), JSON.stringify({ action: 'reply', responseKind: 'chat' })])
     const run = await context(server.url, { agent: employee({ allowBrowser: true }), browserAvailable: true, triggerMessageId: 'message-3', turnId: 'retry-turn', messages: [message('请实际使用浏览器打开 https://www.iana.org/help/example-domains'), message('我现在没有浏览器能力。', 2, { senderType: 'agent', senderId: 'agent-a' }), message('再试一下', 3, { turnId: 'retry-turn' })] })
@@ -390,6 +461,63 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(server.requests[0].tools ?? []).toEqual([])
     expect(run.deltas).toEqual([]); expect(run.tools).toEqual([]); expect(run.approvals).toEqual([])
     expect(allMessageText(server.requests[0])).toContain('private-work-report-v1')
+  })
+
+  it('binds explicitly selected answer evidence to this returned report instead of asking the model to duplicate Markdown', async () => {
+    const text = '**核对结果**\n\n1. 原件已核对。\n2. 三条清单已确认。\n\n**交付**\n\n同事已交付发布文案。'
+    const server = await endpoint([JSON.stringify({ action: 'publish', text, answerEvidence: true, outcome: { disposition: 'delivered', summary: '完成汇总' } })])
+    const run = await context(server.url)
+    const result = await new MastraEngine().report(run.ctx, { text: '旧稿含不同小标题', observedThroughSequence: 1, revisions: 1, status: 'private', reason: '答复证据不在本次结果中' })
+    expect(result).toEqual({ action: 'publish', text, outcome: { disposition: 'delivered', summary: '完成汇总', evidence: [{ kind: 'answer', reference: text }] } })
+    expect(server.requests).toHaveLength(1)
+    expect(server.requests[0].tools ?? []).toEqual([])
+    expect(run.deltas).toEqual([])
+  })
+
+  it.each([true, false])('binds the selected current answer exactly once while preserving legacy excerpt rejection (selected=%s)', async selected => {
+    const text = '**四项核对（第二版）全部通过：**\n- 开头场景已核对。'
+    const stale = { kind: 'answer' as const, reference: '四项核对（基于第二版）全部通过' }
+    const server = await endpoint([JSON.stringify({ action: 'publish', text, answerEvidence: selected, outcome: { disposition: 'delivered', summary: '本次汇总', evidence: [stale] } })])
+    const run = await context(server.url)
+    const result = await new MastraEngine().report(run.ctx, { text: '旧草稿', observedThroughSequence: 1, revisions: 1, status: 'private' })
+    expect(result.outcome!.evidence).toEqual([selected ? { kind: 'answer', reference: text } : stale])
+    expect(workEvidenceError(result.outcome!, { content: result.text!, artifactIds: [] })).toBe(selected ? undefined : '答复证据不在本次结果中')
+    expect(server.requests).toHaveLength(1); expect(run.tools).toEqual([]); expect(run.deltas).toEqual([])
+  })
+
+  it('accepts an explicit nested current-answer selection, but rejects conflicting selections and other unknown outcome fields', async () => {
+    const text = '本次真实汇总。'
+    const server = await endpoint([
+      JSON.stringify({ action: 'publish', text, outcome: { disposition: 'delivered', summary: '汇总', answerEvidence: true } }),
+      JSON.stringify({ action: 'publish', text, answerEvidence: false, outcome: { disposition: 'delivered', summary: '汇总', answerEvidence: true } }),
+      JSON.stringify({ action: 'publish', text, outcome: { disposition: 'delivered', summary: '汇总', answerEvidence: true, ignoreAuthority: true } }),
+    ])
+    const run = await context(server.url), draft = { text: '旧稿', observedThroughSequence: 1, revisions: 1, status: 'private' as const }
+    const engine = new MastraEngine(), result = await engine.report(run.ctx, draft)
+    expect(result.outcome).toEqual({ disposition: 'delivered', summary: '汇总', evidence: [{ kind: 'answer', reference: text }] })
+    await expect(engine.report(run.ctx, draft)).rejects.toThrow()
+    await expect(engine.report(run.ctx, draft)).rejects.toThrow()
+    expect(run.tools).toEqual([]); expect(run.deltas).toEqual([])
+  })
+
+  it('rejects a child waiting for its active delegating parent before registration and accepts the actual peer receipt instead', async () => {
+    const input = { key: 'review', scope: '等待写手初稿后审稿', deliverable: '审稿意见.md', ownerAgentId: 'agent-b' }
+    const corrected = { ...input, dependencies: [{ workId: 'actual-writer-receipt', resultVersion: 1 }] }
+    const server = await endpoint([{ name: 'delegate_work', args: { ...input, dependencies: [{ workId: 'active-parent', resultVersion: 2 }] } }, { name: 'delegate_work', args: corrected }, '已按真实写手工作ID委派编辑。'])
+    const created: unknown[] = []
+    const run = await context(server.url, { work: { id: 'active-parent', scope: '组织文章', deliverable: '文章与审稿', status: 'running' } as WorkItem, delegateWork: async value => { created.push(value); return { ...value, id: 'one-editor-task' } as WorkItem } })
+    await new MastraEngine().run(run.ctx)
+    expect(created).toEqual([corrected])
+    expect(run.tools.filter(t => t.name === 'delegate_work' && t.status !== 'running').map(t => t.status)).toEqual(['failed', 'completed'])
+    expect(toolResultText(server.requests[1])).toContain('父工作')
+    expect(server.requests).toHaveLength(3)
+  })
+
+  it.each(['organization', 'waiting', 'no outcome', 'discard', 'progress'] as const)('refuses current-report evidence when %s has no authority for it', async kind => {
+    const server = await endpoint([JSON.stringify({ action: kind === 'discard' ? 'discard' : 'publish', text: '本次摘要', answerEvidence: true, ...(kind !== 'no outcome' ? { outcome: { disposition: kind === 'progress' ? 'progress' : 'delivered', summary: '完成' } } : {}) })])
+    const run = await context(server.url, { ...(kind === 'organization' ? { work: { organization: { mode: 'organize_only' } } as WorkItem } : {}), ...(kind === 'waiting' ? { pendingWorkWait: { dependencies: [{ workId: 'child', resultVersion: 1 }], nextStep: '等待' } } : {}) })
+    await expect(new MastraEngine().report(run.ctx, { text: '原稿', observedThroughSequence: 1, revisions: 0, status: 'private' })).rejects.toThrow()
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
   })
 
   it('records a declared work outcome through the real SDK without exposing control text', async () => {
@@ -1128,6 +1256,33 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
   })
 })
 
+describe('measured file text in API tool receipts', () => {
+  it('returns exact written paragraph lengths through the SDK so a claimed 108-character summary cannot hide 157 characters', async () => {
+    const summary = '周六早上，电脑开着，文档却还是空白，收藏夹里的写作工具越攒越多。文章想说的是：问题不在工具不够，而是把“再准备一下”当成了迟迟不写的理由。给你自己90分钟，拆成三小段——前15分钟只想定一句话、中间45分钟一口气写初稿、最后30分钟只改不重写。结尾附三条行动清单，分别对应这三段时间。改完就停，先让第一篇真的落地。'
+    const content = `## 发布摘要\n\n${summary}`
+    const server = await endpoint([{ name: 'write_file', args: { path: 'self:/runs/run-1/copy.md', content } }, { name: 'read_file', args: { path: 'self:/runs/run-1/copy.md' } }, '这是私有草稿，摘要超长，尚未交付。'])
+    const fixture = await context(server.url)
+    await new MastraEngine().run(fixture.ctx)
+    const results = fixture.tools.filter(t => ['read_file', 'write_file'].includes(t.name) && t.status === 'completed').map(t => JSON.parse(t.detail))
+    expect(results).toHaveLength(2)
+    for (const result of results) expect(result.textMetrics).toEqual({ nonWhitespaceCharacters: 163, paragraphCharacters: [6, 157], omittedParagraphs: 0 })
+    expect(toolResultText(server.requests[1])).toContain('157'); expect(toolResultText(server.requests[2])).toContain('paragraphCharacters')
+    expect(await readFile(path.join(fixture.ctx.workspace!.runPath, 'copy.md'), 'utf8')).toBe(content)
+    expect(fixture.artifacts).toEqual([])
+  })
+  it('counts Unicode code points and marks bounded read statistics without claiming to have measured the unread tail', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const file = path.join(ctx.workspace!.workPath, 'length.md')
+    await writeFile(file, '中 😀 12。\r\n\r\n第二段\t!')
+    expect(await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)).toMatchObject({ truncated: false, textMetrics: { nonWhitespaceCharacters: 9, paragraphCharacters: [5, 4], omittedParagraphs: 0 } })
+    await writeFile(file, '甲'.repeat(48_001))
+    expect(await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)).toMatchObject({ truncated: true, textMetrics: { nonWhitespaceCharacters: 48_000, paragraphCharacters: [48_000], omittedParagraphs: 0 } })
+    await writeFile(file, Array(105).fill('甲').join('\n\n'))
+    const result = await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)
+    expect(result).toMatchObject({ textMetrics: { nonWhitespaceCharacters: 105, paragraphCharacters: Array(100).fill(1), omittedParagraphs: 5 } })
+  })
+})
+
 describe('native task file source authorization', () => {
   const materialRef = { id: 'material-a', revision: 1, contentHash: 'content-hash', parseVersion: 'text-v1' as const, conversationId: 'conversation' }
 
@@ -1149,7 +1304,7 @@ describe('native task file source authorization', () => {
     await expect(runtime.tools.read_file.execute!({ path: 'shared:/confidential-name.md' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.list_files.execute!({ path: 'shared:/confidential-directory' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.read_file.execute!({ path: 'self:/runs/run-previous/report.md' }, invocation)).rejects.toThrow('not authorized')
-    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result' })
+    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result', truncated: false, textMetrics: { nonWhitespaceCharacters: 12, paragraphCharacters: [12], omittedParagraphs: 0 } })
   })
 
   it('honors provenance acquired by a read before later writes and limits material-backed outputs to the current run', async () => {

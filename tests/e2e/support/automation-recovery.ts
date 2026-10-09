@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 独立 Desktop、生产运行时与本地模型协议。
  * [OUTPUT]: 实际写文件后挂起、精确结束本场景utility的故障注入及本场子进程退出核对；只读取PID关系，不读取命令行或凭据。
  * [POS]: 自动化中断恢复的隔离支撑；不修改产品调度、存储或工具实现。
@@ -19,7 +20,8 @@ export async function startInterruptedAutomation(runtime: Desktop) {
       const input = JSON.parse(raw), system = input.messages.filter((m: { role: string }) => m.role === 'system').map((m: { content: string }) => m.content).join('\n')
       calls++
       let content: string | undefined, tool: { name: string; arguments: string } | undefined
-      if (system.includes('Private participation decision')) content = JSON.stringify({ action: 'reply', responseKind: 'task', work: { key: 'interrupted-file', scope: '写出文件后报告结果', deliverable: '文件及可检查结果' } })
+      if (system.includes('Private group request interpretation')) content = JSON.stringify({ mode: 'independent' })
+      else if (system.includes('Private participation decision')) content = JSON.stringify({ action: 'reply', responseKind: 'task', work: { key: 'interrupted-file', scope: '写出文件后报告结果', deliverable: '文件及可检查结果' } })
       else if (system.includes('Private memory maintenance')) content = '{"candidates":[]}'
       else if (input.messages.some((m: { role: string }) => m.role === 'tool')) {
         response.writeHead(200, { 'Content-Type': 'text/event-stream' }); response.flushHeaders()

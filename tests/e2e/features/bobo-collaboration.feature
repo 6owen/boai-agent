@@ -1,4 +1,8 @@
-@electron @bobo-collaboration
+# [INPUT]: 独立组织员工/群与固定离线协议。
+# [OUTPUT]: 原八项组织场景纳入协作用例集，业务断言保持。
+# [POS]: tests/e2e/features/bobo-collaboration.feature。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header和所属.folder.md。
+@electron @bobo-collaboration @collaboration-suite
 Feature: bobo 组织独立员工进行群协作
   原讨论会话持续保留，通讯录员工使用自己的身份和工作区参与独立群。
 

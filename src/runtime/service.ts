@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: API顺序发言沿原事件和协调进度接续，不把触发消息自动登记为引用回复；明确引用和其他运行路径保持。
+ * [OUTPUT]: API依赖接续必须提交本次结果声明；漏报复用原有界只读汇报，失败保留草稿且零操作重放，历史等待不冒充当前结果。
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 本机配置删除保留员工原绑定与历史；同配置测试/实际执行退出前拒绝删除，原工作沿既有取消边界收尾。
  * [OUTPUT]: 原额度追加回执固定的未完成负责人在确认讨论中只接收上下文，沿原 WorkWake 接续；其他员工和普通本人消息保留独立判断。
  * [OUTPUT]: 本机员工更换来源连接或模型ID同运行后端换绑共用实际退出/原Work待核对门禁；拒绝发生在配置保存与取消原执行之前，普通资料编辑保持原行为。
@@ -37,6 +40,7 @@
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { validateGroupInterpretation } from './modules/collaboration/group-coordination'
 import { automationDraftRequestSchema, validateAutomationDraft, type AutomationDraftTarget } from './modules/automations/automation-draft'
 import { teamSetupSchema } from '../shared/domain/team-creation'
 import { CORE_AGENT_ID, CORE_TEAM_NAME_MAX_LENGTH, CORE_TEAM_REQUIREMENTS_MAX_LENGTH, isCoreAgent, type StartCoreConversationInput } from '../shared/domain/core-agent'
@@ -343,6 +347,7 @@ export class AppService {
       commitReply: (message, records) => this.store.transaction(async tx => { for (const value of records) await tx.put(value); await this.reading.recordCompletion(tx, message) }),
       critical: operation => this.serialize(operation),
       conversation: id => this.getConversation(id), agent: id => this.getAgent(id), message: id => this.messages.get(id),
+      interpretGroup: (turn, signal) => this.interpretGroup(turn, signal),
       contextOnly: (turn, event, delivery) => this.contextOnlyPeerDelivery(turn, event, delivery),
       decide: (turn, event, delivery, signal) => this.executeDecision(turn, event, delivery, signal),
       speak: (turn, event, decision, signal, publish) => this.executeResponse(turn, event, decision, signal, publish),
@@ -1927,6 +1932,14 @@ export class AppService {
       materialContext.refs = [...new Map([...materialContext.refs, ...(source.materialSources ?? [])].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
     }
     const messages = materialContext.messages.filter(message => !forgotten.has(message.id)), visibleMessageIds = new Set(messages.map(message => message.id))
+    const groupCoordination = run.phase === 'execution' && turn.coordination?.mode === 'ordered' ? clone(turn.coordination) : undefined
+    if (groupCoordination) {
+      if (!visibleMessageIds.has(turn.triggerMessageId) || groupCoordination.agentIds[groupCoordination.completed.length] !== agent.id) fail('群接续原请求或当前步骤已失效')
+      for (const predecessor of groupCoordination.completed) {
+        const message = this.messages.get(predecessor.messageId)
+        if (!message || message.status !== 'completed' || message.turnId !== turn.id || message.senderId !== predecessor.agentId || !visibleMessageIds.has(message.id) || createHash('sha256').update(message.content).digest('hex') !== predecessor.contentHash) fail('群接续前置回复已缺失、变化或不再获准读取')
+      }
+    }
     let continuation: EngineContext['continuation']
     if (origin && (turn.replyToTurnIds?.length || turn.resumesTurnIds?.length || turn.resumesRunIds?.length)) {
       const o = await this.automations.replyContext(origin.occurrenceId)
@@ -1968,7 +1981,7 @@ export class AppService {
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
       externalInvocations: 0, sessionPolicy: run.responseKind === 'chat' ? 'scoped' : 'fresh', toolControl: run.responseKind === 'task' ? 'host-bridge' : 'none' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    const context: EngineContext = { browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent) && !origin, artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+    const context: EngineContext = { groupCoordination, browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent) && !origin, artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
       readTaskFile: path => this.serialize(async () => {
         signal.throwIfAborted()
@@ -1996,7 +2009,7 @@ export class AppService {
         await this.assertMaterialRefs(context)
         if (!await this.memory.recallValid(combined)) fail('记忆已失效，请重新发起')
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能继续请求模型')
-        await this.scheduler.reserveAdditionalCall(turn.id, run.phase === 'decision' ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
+        await this.scheduler.reserveAdditionalCall(turn.id, (run.phase === 'decision' || run.phase === 'coordination') ? 'decision' : run.phase === 'memory' ? 'memory' : 'execution')
         if (run.collaborationRequestId) return this.works.reserveCollaborationCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
         if (run.origin) { await this.automations.assertExecutable(run.origin, run.conversationId); return this.works.reserveAutomationCall(run, randomUUID(), phase ?? run.phase ?? 'execution') }
         if (context.workBudget?.sourceMessageId && run.workId) return this.works.reserveInteractiveCall(run, randomUUID(), phase ?? run.phase ?? 'execution')
@@ -2094,6 +2107,36 @@ export class AppService {
     }))
   }
 
+  private async interpretGroup(turn: DiscussionTurn, signal: AbortSignal): Promise<DiscussionTurn['coordination']> {
+    const conversation = this.getConversation(turn.conversationId), source = this.messages.get(turn.triggerMessageId)
+    if (!this.options.engine.interpretGroup || conversation.kind !== 'group' || turn.origin || turn.workId || turn.wakeId || turn.collaborationRequestId || turn.replyToTurnIds?.length || turn.resumesRunIds?.length || source?.senderType !== 'user' || source.artifactRevisionRequestId || source.inboxReply) return
+    const members = conversation.agentIds.map(id => this.getAgent(id))
+    // Existing saved native/mixed groups retain their current runtime contract.
+    if (members.some(member => !member.active || (member.executionBackend?.kind ?? 'mastra-model') !== 'mastra-model')) return
+    const recipients = new Set([...this.scheduler.deliveries.values()].filter(delivery => delivery.turnId === turn.id).map(delivery => delivery.agentId))
+    const eligible = members.filter(member => recipients.has(member.id) && (!source.mentionIds?.length || source.mentionIds.includes(member.id)))
+    if (eligible.length < 2) return
+    const versions = Object.fromEntries(eligible.map(member => [member.id, member.configVersion]))
+    await this.scheduler.reserveAdditionalCall(turn.id, 'decision')
+    const run = this.newRun(conversation, eligible[0].id, turn.triggerMessageId, turn.id, 'coordination')
+    run.status = 'running'; this.runs.set(run.id, run); await this.store.write([record('runs', run)])
+    const controller = new AbortController(), effective = AbortSignal.any([signal, controller.signal]); this.runControllers.set(run.id, controller)
+    let key = ''
+    try {
+      const context = await this.engineContext(run, turn, effective, source.sequence); key = context.apiKey
+      context.members = eligible.map(clone)
+      if (!context.messages.some(message => message.id === source.id)) fail('群请求原消息已不在获准上下文')
+      const result = await this.invokeModel(run, context, ctx => this.options.engine.interpretGroup!(ctx), PARTICIPATION_TIMEOUT_MS)
+      effective.throwIfAborted()
+      const plan = validateGroupInterpretation(result, eligible.map(member => member.id))
+      for (const member of eligible) if (!this.getConversation(conversation.id).agentIds.includes(member.id) || !this.getAgent(member.id).active || this.getAgent(member.id).configVersion !== versions[member.id]) fail('群请求解释期间成员配置已变化')
+      await this.finishRun(run, 'completed')
+      return { ...plan, agentIds: plan.mode === 'ordered' ? plan.agentIds : eligible.map(member => member.id), sourceRunId: run.id, memberConfigVersions: versions, revision: 1, completed: [] }
+    } catch (error) {
+      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key))
+      throw new Error(this.redact(this.errorMessage(error), key))
+    } finally { this.runControllers.delete(run.id) }
+  }
   private async executeDecision(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery, signal: AbortSignal) {
     if (turn.workId && this.messages.get(turn.triggerMessageId)?.inboxReply?.workId === turn.workId) {
       signal.throwIfAborted()
@@ -2310,7 +2353,10 @@ export class AppService {
       }
       const initialMessage = { id: run.messageId, senderType: 'agent' as const, senderId: run.agentId, senderName: run.agentName, content: '', status: 'streaming' as const, runId: run.id, ...(run.origin ? { origin: clone(run.origin) } : {}) }
       const message: Message = run.responseKind === 'task' ? { ...initialMessage, conversationId: conversation.id, sequence: 0, createdAt: now() } : this.nextMessage(conversation.id, initialMessage)
-      message.turnId = turn.id; message.replyToMessageId = decision.replyToMessageId ?? event.messageId; message.mentionIds = decision.recipientAgentIds ?? []
+      message.turnId = turn.id
+      // Ordered steps already carry their causal link in the delivery and coordination progress.
+      message.replyToMessageId = decision.replyToMessageId ?? (turn.coordination?.mode === 'ordered' ? undefined : event.messageId)
+      message.mentionIds = decision.recipientAgentIds ?? []
       if (run.responseKind === 'chat') this.messages.set(message.id, message)
       await this.store.write([record('runs', run), ...(run.responseKind === 'chat' ? [record('messages', message)] : [])])
       if (run.responseKind === 'chat') this.emit({ type: 'message', message })
@@ -2437,7 +2483,8 @@ export class AppService {
               // private workspace's result. User input, chat and related work still can.
               return !other || other.rootWorkId === own.rootWorkId || dependencies.has(other.id)
             })
-            const evidenceError = workEvidenceError(outcome, { content: run.draft!.text, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) }, !!context.pendingWorkWait)
+            const missingContinuationOutcome = (context.agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && !!context.work?.waitRevision && !context.pendingWorkWait && !outcomeReported
+            const evidenceError = missingContinuationOutcome ? '接续执行缺少本次业务结果声明；先核对实际结果再更新汇报，不能沿用历史等待或仅凭正文宣布完成' : workEvidenceError(outcome, { content: run.draft!.text, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) }, !!context.pendingWorkWait)
             if (!changed && !evidenceError) { await commit(); return undefined }
             if (evidenceError) { run.draft!.reason = evidenceError; await this.store.write([record('runs', run)]) }
             const projected = await this.materialMessages(this.getConversation(conversation.id), latestUser.id, run.agentId, latest)
@@ -2489,8 +2536,8 @@ export class AppService {
           if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')
           run.draft.text = report.text; run.draft.observedThroughSequence = stale.sequence
           observedMessageIds = new Set(stale.messages.map(message => message.id))
-          if (report.outcome) outcome = workOutcomeSchema.parse(report.outcome)
-          if (!workEvidenceError(outcome, { content: report.text, artifactIds: reportContext.work!.artifactIds }, !!context.pendingWorkWait)) delete run.draft.reason
+          if (report.outcome) { outcome = workOutcomeSchema.parse(report.outcome); outcomeReported = true }
+          if (outcomeReported && !workEvidenceError(outcome, { content: report.text, artifactIds: reportContext.work!.artifactIds }, !!context.pendingWorkWait)) delete run.draft.reason
           await this.store.write([record('runs', run)])
         }
       } else await this.serialize(commit)
@@ -2584,7 +2631,7 @@ export class AppService {
   }
 
   private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {
-    const readOnly = run.phase === 'decision' || run.phase === 'memory'
+    const readOnly = run.phase === 'coordination' || run.phase === 'decision' || run.phase === 'memory'
     const previousTiming = run.timing
     const earlierAttempts: ModelUsage = {}
     let attemptUsage: ModelUsage = {}, started = false
@@ -2871,6 +2918,7 @@ export class AppService {
     if (previous) { if (previous.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return }
     const original = this.runs.get(id) ?? fail('任务不存在')
     if(original.backend)fail('外部任务不能自动重放，请在单聊中明确发起新任务。')
+    if (original.phase === 'coordination' || (original.turnId && this.scheduler.turns.get(original.turnId)?.coordination?.mode === 'ordered')) fail('群接续不能重放某位员工，请在群中明确发送新的接续请求。')
     if (original.phase === 'memory') fail('记忆整理不支持此重试操作，以免重新执行原用户任务。')
     if (!['failed', 'cancelled', 'interrupted'].includes(original.status)) fail('只能重试失败、停止或中断的任务')
     const conversation = this.getConversation(original.conversationId)

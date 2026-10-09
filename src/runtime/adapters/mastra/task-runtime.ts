@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: API委派在创建前拒绝子工作依赖正在委派的父工作；依赖链须先取真实前置回执，防止猜父ID造成多份审稿；本机工具合同保持。
+ * [OUTPUT]: 仅API上下文读写文件回执提供实际文本/段落Unicode非空白计数，截断读取明确标记；模型以区间中部为目标、整体修订并按实测核对原限字再发布，权限/原件/预算保持。
  * [OUTPUT]: 文件任务保留获准原文件名/逻辑路径，仅未指定时默认本run目录；材料写入门禁/工具原参数/发布与实际退出保持，不静默迁移拒绝的目标。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
@@ -27,6 +29,12 @@ import { abortable, executeCommand } from './host-command'
 import { createBrowserTool } from './browser-tool'
 import { createBoboOrganizationTools } from './bobo-tools'
 const MAX_TOOL_OUTPUT = 48_000
+const MAX_PARAGRAPH_COUNTS = 100
+function fileTextMetrics(content: string) {
+  const count = (text: string) => Array.from(text.replace(/\s/gu, '')).length
+  const paragraphs = content.split(/\r?\n(?:[ \t]*\r?\n)+/u).filter(part => part.trim())
+  return { nonWhitespaceCharacters: count(content), paragraphCharacters: paragraphs.slice(0, MAX_PARAGRAPH_COUNTS).map(count), omittedParagraphs: Math.max(0, paragraphs.length - MAX_PARAGRAPH_COUNTS) }
+}
 const check = (signal: AbortSignal) => signal.throwIfAborted()
 
 export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 60_000) {
@@ -35,6 +43,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
   const plan = ctx.work?.organization ? { ...environment, skills: [], knowledge: [] } : environment
   const scope = plan.workspace
   const signal = ctx.signal
+  const apiContext = !!ctx.connection && !ctx.runtimeProfile && (ctx.agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
   const filesystem = new LocalFilesystem({ basePath: scope.root, contained: true })
   const skillRoots = plan.skills.map(version => path.resolve(version.resource.path))
   const knowledge = plan.knowledge.map(version => version.resource)
@@ -87,7 +96,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
         }),
       } : {}),
       read_file: createTool({
-        id: 'read_file', description: 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible.',
+        id: 'read_file', description: 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible.' + (apiContext ? ' Returns measured non-whitespace Unicode character counts for the returned text and each blank-line-separated paragraph in order (including punctuation, digits and Markdown syntax). truncated:true means the unread tail was NOT measured.' : ''),
         inputSchema: z.object({ path: z.string() }),
         execute: ({ path: file }) => fileOperation(async () => {
           check(signal)
@@ -95,13 +104,14 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           const target = path.resolve(location.root, location.relative)
           await assertTaskPathAccess(ctx, target, 'read')
           const verified = await ctx.readTaskFile?.(target)
-          const content = (verified?.content ?? await boundedRead(await workspaceTarget(location.root, location.relative))).slice(0, MAX_TOOL_OUTPUT)
+          const original = verified?.content ?? await boundedRead(await workspaceTarget(location.root, location.relative))
+          const content = original.slice(0, MAX_TOOL_OUTPUT)
           check(signal)
-          return { path: file, content }
+          return { path: file, content, ...(apiContext ? { truncated: original.length > MAX_TOOL_OUTPUT, textMetrics: fileTextMetrics(content) } : {}) }
         }),
       }),
       write_file: createTool({
-        id: 'write_file', description: `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. Use publish_artifact to share a finished result. No shared or system-file writes.`,
+        id: 'write_file', description: `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. ${apiContext ? 'Returns measured textMetrics for these exact written bytes, including counts per blank-line-separated paragraph. Check explicit user character limits against these counts and revise the private draft before publish_artifact if needed; never estimate or invent a count.' : 'Use publish_artifact to share a finished result.'} No shared or system-file writes.`,
         inputSchema: z.object({ path: z.string(), content: z.string().max(MAX_FILE_BYTES) }),
         execute: ({ path: file, content }) => fileOperation(async () => {
           check(signal)
@@ -111,7 +121,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           await ctx.beforeEffect?.(); check(signal)
           await writeWorkspaceFile(location.root, location.relative, content)
           await ctx.afterEffect?.()
-          return { path: file, bytes: Buffer.byteLength(content), published: false }
+          return { path: file, bytes: Buffer.byteLength(content), published: false, ...(apiContext ? { textMetrics: fileTextMetrics(content) } : {}) }
         }),
       }),
       list_files: createTool({
@@ -146,9 +156,13 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       }),
       ...(ctx.delegateWork ? {
         delegate_work: createTool({
-          id: 'delegate_work', description: 'Assign a bounded part of the claimed work to a current group member using a stable key. Retries with the same key return the same child. All children share the original budget. Parenthood alone does not make the parent wait or complete it. Optional dependencies reference actual registered work IDs and explicit minimum result versions. Target version 1 may wait for that work’s first delivery; it does not claim delivery already happened. Never fabricate IDs or delivered evidence. The host starts dependent work only when the required versions are actually delivered.',
+          id: 'delegate_work', description: 'Assign a bounded part of the claimed work to a current group member using a stable key. Retries with the same key return the same child. All children share the original budget. Parenthood alone does not make the parent wait or complete it. Optional dependencies reference actual registered work IDs and explicit minimum result versions. Target version 1 may wait for that work’s first delivery; it does not claim delivery already happened. Never fabricate IDs or delivered evidence. The host starts dependent work only when the required versions are actually delivered.' + (apiContext ? ' For a dependent chain, first delegate the prerequisite alone, then use its actual returned work ID in a later call for the dependent task. Never guess IDs/versions or substitute this active parent work ID. A child cannot depend on the active work delegating it. Do not rename a stable key or add v2 to bypass an existing-work conflict.' : ''),
           inputSchema: workDelegationSchema,
-          execute: async input => { check(signal); return ctx.delegateWork!(input) },
+          execute: async input => {
+            check(signal)
+            if (apiContext && ctx.work && input.dependencies?.some(dependency => dependency.workId === ctx.work!.id)) throw new Error('子工作不能依赖正在委派它的父工作；先单独委派前置同事，取得真实工作ID后，再用该ID创建依赖分工。不要猜测工作ID或结果版本。')
+            return ctx.delegateWork!(input)
+          },
         }),
       } : {}),
       ...(ctx.waitForWork ? {
@@ -199,7 +213,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     return {
       workspace, tools: availableTools, skills: ctx.organizeCollaboration ? [] : identities,
       dispose: async () => { filesClosing = true; await fileQueue; try { await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
-      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified; non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
+      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified; non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.${apiContext ? ' For explicit character limits, use read_file/write_file textMetrics: nonWhitespaceCharacters counts Unicode code points including punctuation/digits/Markdown syntax, excluding whitespace; paragraphCharacters lists counts in blank-line-separated paragraph order, with omittedParagraphs marking bounded statistics. For a summary limit use its actual body paragraph, not the entire file with headings. Aim near the MIDPOINT of a requested range, or comfortably below a maximum, never exactly at the upper boundary. Check the measured receipt BEFORE publishing. If outside the range, rewrite substantially toward that interior target in one pass, removing whole nonessential clauses instead of shaving a few characters over many calls. Use at most two length-only rewrites; if still outside the requested range, report the limitation instead of publishing a noncompliant result. Reserve steps for publication, report_work and the final reply. Always check the new write receipt. Never guess a character count or accept a teammate’s self-reported count. These measurements do not certify task completion, and truncated reads do not measure the unread tail.' : ''}\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
   } catch (error) { try { await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
   }

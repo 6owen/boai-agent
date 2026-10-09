@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 隔离 Electron、离线真实 Mastra HTTP 工具协议、可观测本地网页与原生产浏览器窗口/事务。
  * [OUTPUT]: 内置浏览器窗口取证不接受业务归属参数，工具任务仍用原工作事实验收。
  * [OUTPUT]: 真实普通工具栏导航/X关闭、零尺寸第三视图和无控制权菜单核对，明确task/媒体/持久登录Cookie/提交/SQLite回执。
@@ -51,6 +52,7 @@ export async function prepareBrowserDesktop(runtime: Desktop, options: { legacy?
   const endpoint = await teamEndpoint(async (body, response, index) => {
     try {
       const messages = body.messages as ModelMessage[], system = messages.filter(value => value.role === 'system').map(value => text(value.content)).join('\n')
+      if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
       if (system.includes('Private participation decision')) {
         const { data } = JSON.parse(text(messages.at(-1)!.content)), source = data.currentTurnMessages?.find((value: { id: string }) => value.id === data.originalUserRequestId)?.content ?? ''
         const taskKey = source.match(/BROWSER_CASE:([a-zA-Z0-9_-]+)/)?.[1], plan = plans.get(taskKey)

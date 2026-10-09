@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
  * [OUTPUT]: 受管 artifacts 目录中的真实文件/已交付历史群聊、单聊长历史和真实聊天/Trace 离线回复、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
  * [POS]: 单聊/群聊共享交互验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
@@ -20,7 +21,8 @@ export async function prepareGroupChat(runtime: Desktop) {
       const system = input.messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
       let content = '', tool: { name: string; arguments: string } | undefined
       state.calls++
-      if (system.includes('Private participation decision')) {
+      if (system.includes('Private group request interpretation')) content = JSON.stringify({ mode: 'independent' })
+      else if (system.includes('Private participation decision')) {
         const data = JSON.parse(input.messages.at(-1)!.content).data
         const root = data.currentTurnMessages?.find((message: { id: string }) => message.id === data.currentTurn.rootMessageId)
         const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content)

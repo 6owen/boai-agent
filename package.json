@@ -14,6 +14,7 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:collaboration": "node scripts/test-group-collaboration.mjs",
     "test:electron": "pnpm build && pnpm test:bddgen && playwright test",
     "start": "electron .",
     "package": "pnpm build && electron-builder --dir",

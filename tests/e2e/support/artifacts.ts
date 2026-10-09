@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 可独立准备原有文件协议端点，供 UI 新员工贯穿场景复用；可选确定聊天回复，默认成果场景行为保持。
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
  * [OUTPUT]: 已有宿主明确接续时模型协议交付，不再对已回答原问题重复固定ask；执行期问题先真实write_file再report_work等待，原草稿单次副作用可核对。
@@ -41,6 +42,7 @@ export async function prepareArtifactProtocol(runtime: Desktop, options: Artifac
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as ModelMessage[], system = messages.filter(value => value.role === 'system').map(value => contentText(value.content)).join('\n')
+      if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
         const current = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)

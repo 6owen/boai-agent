@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 宿主在成果复制前持久登记准备身份，正式成果与准备记录清除共用提交事务。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
  * [OUTPUT]: 外部阶段用量区分中途观测与已确认终态；只有终态可关闭原请求的未知用量。
@@ -62,6 +63,7 @@ export interface EngineContext {
   memoryContexts?: import('../shared/domain').MemoryContextRef[]
   workspace?: SessionWorkspace
   environment?: RunEnvironmentPlan
+  groupCoordination?: import('../shared/domain/group-coordination').GroupCoordination
   responseKind?: 'chat' | 'task'
   decision?: ParticipationDecision
   members?: DigitalAgent[]
@@ -117,6 +119,7 @@ export interface AutomationDraftContext {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
+  interpretGroup?(context: EngineContext): Promise<import('../shared/domain/group-coordination').GroupInterpretation>
   draftAutomation?(context: AutomationDraftContext): Promise<unknown>
   run(context: EngineContext): Promise<void>
   report?(context: EngineContext, draft: WorkDraft): Promise<WorkReport>

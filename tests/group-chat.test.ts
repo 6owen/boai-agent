@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已保存的顺序接续仅按真实轮次/前置完成消息和无引用意图隐藏自动引用，明确引用与历史原件保持。
  * [INPUT]: 群聊展示投影与消息、工作、产物合同。
  * [OUTPUT]: 即时宿主证据优先且 false 不回退陈旧正文、不覆盖人工待审；普通回复去除重复触发引用而保留明确引用/原数据、连续发言不得跨边界、固定成果原消息缺失不得换挂、歧义文件不得错挂、审批不得错归属、无证据不得显示已交付。
  * [POS]: Vitest 群聊展示不变量回归。
@@ -40,6 +41,28 @@ describe('group messages preserve origin and result boundaries', () => {
     const next = { ...reply, id: 'next', runId: 'next-run', sequence: 3 }
     const projected = groupMessages({ ...history, turns: [turn], messages: [user, reply, next] })
     expect(continuesMessage(projected[1], projected[2])).toBe(true)
+  })
+  it('shows a verified legacy sequence step as a normal message without erasing explicit quotes', () => {
+    const peer = { ...message, id: 'peer', senderId: 'researcher', runId: 'peer-run', content: '1' }
+    const reply = { ...message, content: '2', replyToMessageId: peer.id }
+    const turn: NonNullable<ConversationDetail['turns']>[number] = { id: 't', conversationId: 'c', triggerMessageId: user.id, status: 'completed', generation: 1, createdAt: message.createdAt, modelCalls: 3, publicMessages: 2,
+      coordination: { mode: 'ordered', agentIds: ['researcher', 'writer'], sourceRunId: 'interpretation', memberConfigVersions: { researcher: 1, writer: 1 }, revision: 3, completed: [
+        { agentId: peer.senderId, messageId: peer.id, eventId: 'peer-event', contentHash: 'peer-hash' },
+        { agentId: reply.senderId, messageId: reply.id, eventId: 'reply-event', contentHash: 'reply-hash' },
+      ] } }
+    const decision: NonNullable<ConversationDetail['decisions']>[number] = { id: 'decision', turnId: turn.id, agentId: reply.senderId, deliveryId: 'delivery', action: 'reply', responseKind: 'chat', observedThroughSequence: 2, createdAt: message.createdAt }
+    const history = { ...detail, messages: [user, peer, reply], turns: [turn], decisions: [decision] }
+    expect(groupMessages(history).at(-1)?.replyToMessageId).toBeUndefined()
+    expect(reply.replyToMessageId).toBe(peer.id)
+    expect(groupMessages({ ...history, messages: [reply] })[0].replyToMessageId).toBeUndefined()
+    for (const changed of [
+      { ...history, decisions: [{ ...decision, replyToMessageId: peer.id }] },
+      { ...history, decisions: [] },
+      { ...history, turns: [{ ...turn, conversationId: 'other' }] },
+      { ...history, turns: [{ ...turn, coordination: { ...turn.coordination!, mode: 'independent' as const } }] },
+      { ...history, messages: [user, peer, { ...reply, replyToMessageId: 'unrelated' }] },
+      { ...history, messages: [user, peer, { ...reply, senderType: 'user' as const }] },
+    ]) expect(groupMessages(changed).at(-1)).toBe(changed.messages.at(-1))
   })
   it('groups only completed same-turn utterances within three minutes', () => {
     const next = { ...message, id: 'm2', sequence: 2, createdAt: '2026-09-29T10:01:00Z' }

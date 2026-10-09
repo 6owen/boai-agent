@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 中文协作场景、真实 Electron/Mastra 与隔离的本地模型协议。
  * [OUTPUT]: 实际五人问候无重复引用、手动引用镜像与发送/重启保留、原有渐隐/输入样式截图、并行流式、群聊慢判断并发、真实委派/接续/预算、会话菜单中的工作进度、停止 UI 和重启断言。
  * [POS]: tests/e2e/steps/collaboration.steps.ts，不代表真实供应商语义评估。
@@ -30,7 +31,8 @@ async function configureModel(runtime: Desktop, state: State) {
       const system = input.messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
       state.calls++
       let content = '', tool: { name: string; arguments: string } | undefined
-      if (system.includes('Private participation decision')) {
+      if (system.includes('Private group request interpretation')) content = JSON.stringify({ mode: 'independent' })
+      else if (system.includes('Private participation decision')) {
         const data = JSON.parse(input.messages.at(-1)!.content).data
         if (state.parallel) content = JSON.stringify(data.participation.hasRespondedInTurn ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' })
         else if (state.greeting) {
@@ -66,7 +68,7 @@ async function configureModel(runtime: Desktop, state: State) {
       emit({ role: 'assistant' })
       if (tool) { emit({ tool_calls: [{ index: 0, id: `tool-${state.calls}`, type: 'function', function: tool }] }); emit({}, 'tool_calls') }
       else {
-        if (state.parallel && !system.includes('Private participation decision') && !system.includes('Private memory maintenance')) {
+        if (state.parallel && !system.includes('Private group request interpretation') && !system.includes('Private participation decision') && !system.includes('Private memory maintenance')) {
           emit({ content: `${input.model}：` })
           if (state.streams) await new Promise<void>(resolve => { state.streams!.push(resolve) })
           emit({ content: '大家好' })

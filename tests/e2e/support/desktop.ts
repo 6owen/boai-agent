@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: BOAI_TEST_DEV_SERVER=1 显式沿 pnpm dev 启动 Vite/宿主及原 BDD 调试连接，重启同一路径，不生成安装包。
  * [OUTPUT]: 原生关闭场景显式核对实际已关闭窗口，只保存无可用结束画面的事实；普通场景仍要求结束截图，trace及实际退出保持。
  * [OUTPUT]: reviewFile可要求必需原件和已登记hash，归档失败向调用者显式拒绝，场景结束前继续保留其余证据。
  * [OUTPUT]: 可显式为本场额外窗口原样留证；省略目标仍沿原主窗口，不改变启动、关闭或业务权限。
@@ -8,7 +9,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { _electron as electron, type ElectronApplication, type JSHandle, type Page, type TestInfo } from '@playwright/test'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Server } from 'node:http'
@@ -100,8 +101,12 @@ export class Desktop {
     delete (env as NodeJS.ProcessEnv).BOAI_RENDERER_URL
     if (options.rendererURL) (env as NodeJS.ProcessEnv).BOAI_RENDERER_URL = options.rendererURL
     const packaged = process.env.BOAI_TEST_PACKAGED_PATH
+    const dev = process.env.BOAI_TEST_DEV_SERVER === '1'
+    if (dev && (packaged || options.rendererURL)) throw new Error('pnpm dev 场景不能混用安装包或另一个渲染入口')
+    const devLauncher = join(this.root, 'launch-dev.sh')
+    if (dev) await writeFile(devLauncher, '#!/bin/sh\nexec pnpm dev "$@"\n', { mode: 0o700 })
     this.application = await electron.launch({
-      ...(packaged ? { executablePath: packaged, args: [] } : { args: [options.mainEntry ?? resolve('.')] }),
+      ...(packaged ? { executablePath: packaged, args: [] } : { ...(dev ? { executablePath: devLauncher, timeout: 60_000 } : {}), args: [options.mainEntry ?? resolve('.')] }),
       env,
     })
     this.launchCount++
@@ -110,6 +115,10 @@ export class Desktop {
     this.window = await this.application.firstWindow()
     this.window.on('pageerror', (error) => this.errors.push(error.message))
     await this.window.waitForFunction(() => Boolean(window.boai))
+    if (dev) {
+      await this.window.locator('.app-shell').waitFor({ timeout: 60_000 })
+      await this.reviewData(`第 ${this.launchCount} 次 pnpm dev 启动`, { command: 'pnpm dev', rendererURL: this.window.url(), packaged: false, dataDirectoryIsolated: true })
+    }
     return this.application
   }
 

@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 顺序发言不把执行触发来源保存为引用回复，流式、完成与重启保持真实接续关系。
+ * [OUTPUT]: 群接续字数约束随原轮次冻结、下游上下文和重启保持。
+ * [OUTPUT]: API依赖接续必须提交本次结果声明；漏报复用原有界只读汇报，失败保留草稿且零操作重放，历史等待不冒充当前结果。
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 独立长短任务以长任务实际进入屏障后发布短结果，原并行/草稿/次序/零重放断言保持；不以短结果可见猜测另一适配器已开始。
  * [OUTPUT]: 原群新消息后的三种汇报退出沿实际AppService保留等待，子工作仅唤醒原负责人，共原预算/期限且已确认工具只执行一次。
  * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
@@ -26,6 +30,7 @@ class MemorySecrets implements SecretStore {
   async delete(id: string) { this.values.delete(id) }
 }
 class FakeEngine implements AgentEngine {
+  interpretGroup?: AgentEngine['interpretGroup']
   extractMemory?: AgentEngine['extractMemory']
   report: AgentEngine['report'] = async (_context, draft) => ({ action: 'publish', text: draft.text })
   contexts: EngineContext[] = []
@@ -82,6 +87,147 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it('starts each ordered participant only after the preceding complete reply is committed', async () => {
+    const { service, engine } = await fixture(); const connection = await configure(service)
+    const ids = ['researcher', 'writer', 'reviewer']
+    for (let i = 0; i < 2; i++) ids.push((await service.handle('saveAgent', { name: `接续成员${i}`, role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'test', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as DigitalAgent).id)
+    const group = await service.handle('createConversation', { kind: 'group', title: '依次接续', agentIds: ids, mode: 'mention', sharedKnowledgeIds: [] }) as Conversation
+    let interpretations = 0
+    engine.interpretGroup = async () => { interpretations++; return { mode: 'ordered', instruction: '依次读取本轮前一位的完整回复并递增报数，每位只报一次。', agentIds: ids } }
+    engine.decisionHandler = async context => ({ action: context.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence })
+    let release!: () => void
+    const barrier = new Promise<void>(resolve => { release = resolve })
+    engine.handler = async context => {
+      const previous = context.messages.filter(message => message.turnId === context.turnId && message.senderType === 'agent' && message.status === 'completed')
+      if (context.agent.id === 'researcher') { await context.onDelta('1'); await barrier }
+      else await context.onDelta(String(previous.length + 1))
+    }
+    try {
+      await send(service, group, '大家开始报数', 'ordered-count', [])
+      await until(() => engine.contexts.some(context => context.agent.id === 'researcher'))
+      await new Promise(resolve => setTimeout(resolve, 60))
+      expect(engine.contexts.map(context => context.agent.id)).toEqual(['researcher'])
+      expect((await detail(service, group)).messages.find(message => message.senderType === 'agent')?.replyToMessageId).toBeUndefined()
+    } finally { release() }
+    await idle(service, group, 5)
+    const result = await detail(service, group)
+    expect(result.messages.filter(message => message.senderType === 'agent' && message.status === 'completed').map(message => [message.senderId, message.content])).toEqual(ids.map((id, index) => [id, String(index + 1)]))
+    expect(result.messages.filter(message => message.senderType === 'agent').every(message => !message.replyToMessageId)).toBe(true)
+    expect(interpretations).toBe(1)
+    expect(engine.decisions).toHaveLength(0)
+    expect(result.workItems ?? []).toHaveLength(0)
+    expect(result.turns?.[0]).toMatchObject({ status: 'completed', publicMessages: 5, modelCalls: 6 })
+  })
+
+  it('relays unpredictable content in the interpreted order, deduplicates receipt and never replays after restart', async () => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    engine.interpretGroup = async () => ({ mode: 'ordered', instruction: '写手选一个词，研究员复述其实际选择。每人80字以内。', agentIds: ['writer', 'researcher'], maxReplyCharacters: 80 })
+    const word = `随机词-${Math.random().toString(36).slice(2)}`
+    engine.handler = async context => {
+      const predecessor = context.messages.find(message => message.turnId === context.turnId && message.senderId === 'writer' && message.status === 'completed')
+      await context.onDelta(context.agent.id === 'writer' ? word : `收到：${predecessor?.content}`)
+    }
+    const first = await send(service, group, '写手先选词，研究员接着复述', 'ordered-relay', [])
+    expect((await send(service, group, first.content, 'ordered-relay', [])).id).toBe(first.id)
+    await idle(service, group, 2)
+    const result = await detail(service, group)
+    expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual([word, `收到：${word}`])
+    expect(result.turns?.[0].coordination).toMatchObject({ mode: 'ordered', revision: 3, completed: [{ agentId: 'writer' }, { agentId: 'researcher' }] })
+    expect(engine.contexts[1].groupCoordination?.completed).toHaveLength(1)
+    expect(engine.contexts.every(context => context.groupCoordination?.maxReplyCharacters === 80)).toBe(true)
+    await service.close()
+    const reopened = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(reopened); await reopened.init()
+    await new Promise(resolve => setTimeout(resolve, 40))
+    expect(engine.contexts).toHaveLength(2)
+    expect((await detail(reopened, group)).turns?.[0].coordination).toEqual(result.turns?.[0].coordination)
+    expect((await detail(reopened, group)).messages.filter(message => message.senderType === 'agent').every(message => !message.replyToMessageId)).toBe(true)
+  })
+
+  it.each(['publication failure', 'cancellation', 'restart'] as const)('does not advance an ordered chain on %s', async fault => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    engine.interpretGroup = async () => ({ mode: 'ordered', instruction: '前一位完整完成后再接续', agentIds: group.agentIds })
+    engine.handler = async context => { await context.onDelta('未完成前不得接续'); if (fault !== 'publication failure') await waitForAbort(context) }
+    const store = (service as unknown as { store: ProductStore }).store, transaction = store.transaction.bind(store)
+    const spy = fault === 'publication failure' ? vi.spyOn(store, 'transaction').mockImplementation(operation => transaction(tx => operation({ ...tx, put: async record => {
+      if (record.collection === 'events' && (record.value as { type?: string }).type === 'agent_message') throw new Error('publication disk failure')
+      await tx.put(record)
+    } }))) : undefined
+    await send(service, group, '依次接续', `ordered-${fault}`, [])
+    await until(() => engine.contexts.length === 1)
+    if (fault === 'cancellation') await service.handle('cancelRun', { conversationId: group.id })
+    if (fault === 'restart') await service.close()
+    else await idle(service, group, 1)
+    spy?.mockRestore()
+    const reopened = fault === 'restart' ? new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }) : service
+    if (reopened !== service) { services.push(reopened); await reopened.init() }
+    const result = await detail(reopened, group)
+    expect(engine.contexts.map(context => context.agent.id)).toEqual(['researcher'])
+    expect(result.turns?.[0].coordination?.completed).toEqual([])
+    expect(result.turns?.[0].status).toBe(fault === 'publication failure' ? 'failed' : fault === 'cancellation' ? 'cancelled' : 'interrupted')
+    expect(result.messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toEqual([])
+  })
+
+  it('retains parallel independent replies after one group interpretation', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    let calls = 0
+    engine.interpretGroup = async () => { calls++; return { mode: 'independent' } }
+    engine.decisionHandler = async context => ({ action: context.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence })
+    let release!: () => void
+    const barrier = new Promise<void>(resolve => { release = resolve })
+    engine.handler = async context => { await context.onDelta(context.agent.name); await barrier }
+    try {
+      await send(service, group, '大家各自介绍自己', 'group-independent', [])
+      await until(() => engine.contexts.length === 2)
+      expect((await detail(service, group)).messages.filter(message => message.status === 'streaming')).toHaveLength(2)
+    } finally { release() }
+    await idle(service, group, 2)
+    expect(calls).toBe(1)
+  })
+
+  it('interrupts the unstarted ordered remainder when the user sends a new request', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    engine.interpretGroup = async context => context.messages.find(message => message.id === context.triggerMessageId)?.content === '第一轮接续' ? { mode: 'ordered', instruction: '依次接续', agentIds: group.agentIds } : { mode: 'independent' }
+    engine.decisionHandler = async context => ({ action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence })
+    let release!: () => void
+    const barrier = new Promise<void>(resolve => { release = resolve })
+    engine.handler = async context => { await context.onDelta('原第一步'); await barrier }
+    const original = await send(service, group, '第一轮接续', 'ordered-old-request', [])
+    try {
+      await until(() => engine.contexts.length === 1)
+      await send(service, group, '暂停接龙，讨论别的', 'ordered-new-request', [])
+    } finally { release() }
+    await idle(service, group, 1)
+    const result = await detail(service, group)
+    expect(engine.contexts).toHaveLength(1)
+    expect(result.turns?.find(turn => turn.triggerMessageId === original.id)).toMatchObject({ status: 'interrupted', coordination: { completed: [{ agentId: 'researcher' }] } })
+  })
+
+  it('rejects an invalid group plan instead of falling back to unrelated concurrent answers', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    engine.interpretGroup = async () => ({ mode: 'ordered', instruction: '接续', agentIds: ['researcher', 'outside'] })
+    await send(service, group, '依次接龙', 'invalid-group-plan', []); await idle(service, group, 0)
+    expect(engine.decisions).toHaveLength(0); expect(engine.contexts).toHaveLength(0)
+    const result = await detail(service, group)
+    expect(result.turns?.[0]).toMatchObject({ status: 'failed', modelCalls: 1 })
+    await expect(service.handle('retryRun', { id: result.runs[0].id, requestId: 'invalid-plan-retry' })).rejects.toThrow('新的接续请求')
+  })
+
+  it('does not interpret direct chats or an explicitly single-addressed group request', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service), group = await conversation(service, true)
+    let interpretations = 0
+    engine.interpretGroup = async () => { interpretations++; return { mode: 'independent' } }
+    engine.decisionHandler = async context => ({ action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence })
+    await send(service, direct, '你好', 'no-plan-direct'); await idle(service, direct, 0)
+    await send(service, group, '你好', 'no-plan-one-member', ['writer']); await idle(service, group, 0)
+    expect(interpretations).toBe(0)
+  })
+
   it('records an activity gap without replaying a business operation or blocking a reply', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service), store = (service as unknown as { store: ProductStore }).store
@@ -283,6 +429,46 @@ describe('local product service', () => {
       releaseReport(); await idle(service, group, 3)
       expect(reports).toBe(2); expect(effects).toBe(1)
     } finally { markWriterEntered(); releaseWriter(); releaseTask(); releaseReport() }
+  })
+
+  it.each([true, false])('requires a fresh business declaration after dependency continuation, bounded repair succeeds=%s', async succeeds => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    let reports = 0, delegations = 0, effects = 0
+    engine.decisionHandler = async context => ({ action: context.agent.id === 'researcher' && context.participation?.isFirstDecision ? 'reply' : 'pass', responseKind: 'task', work: { key: 'main', scope: '委派检查后汇总', deliverable: '检查汇总' }, observedThroughSequence: context.participation!.observedThroughSequence })
+    engine.handler = async context => {
+      if (context.work!.parentWorkId) {
+        effects++
+        await context.onWorkOutcome!({ disposition: 'delivered', summary: '检查完成', evidence: [{ kind: 'answer', reference: '实际检查结果42' }] })
+        await context.onDelta('实际检查结果42'); return
+      }
+      if (!context.work!.waitRevision) {
+        const child = await context.delegateWork!({ key: 'check', ownerAgentId: 'writer', scope: '检查数据', deliverable: '检查结果' }); delegations++
+        await context.waitForWork!({ dependencies: [{ workId: child.id, resultVersion: 1 }], nextStep: '汇总实际结果' })
+        await context.onDelta('等待实际检查结果'); return
+      }
+      expect(context.pendingWorkWait).toBeUndefined()
+      // A prior wait is not this resumed execution's result declaration.
+      await context.onDelta('已完成汇总：实际检查结果42')
+    }
+    engine.report = async (context, draft) => {
+      reports++
+      expect(draft.reason).toContain('接续执行缺少本次业务结果声明')
+      expect(context.beforeEffect).toBeUndefined(); expect(context.delegateWork).toBeUndefined(); expect(context.waitForWork).toBeUndefined()
+      expect(context.messages.some(message => message.content === '实际检查结果42')).toBe(true)
+      return { action: 'publish', text: '已完成汇总：实际检查结果42', ...(succeeds ? { outcome: { disposition: 'delivered' as const, summary: '实际汇总完成', evidence: [{ kind: 'answer' as const, reference: '实际检查结果42' }] } } : {}) }
+    }
+    await send(service, group, '请委派检查，收到结果后汇总', `missing-resumed-outcome-${succeeds}`, ['researcher']); await idle(service, group, 3)
+    const result = await detail(service, group), parent = result.workItems!.find(work => !work.parentWorkId)!
+    expect(parent.status).toBe(succeeds ? 'delivered' : 'blocked')
+    expect(result.workItems!.find(work => work.parentWorkId)?.status).toBe('delivered')
+    expect(reports).toBe(succeeds ? 1 : 2); expect(delegations).toBe(1); expect(effects).toBe(1)
+    expect(result.messages.some(message => message.content.startsWith('已完成汇总'))).toBe(succeeds)
+    expect(result.workBudgets![0]).toMatchObject({ runs: 3, modelCalls: 3 + reports, reportRefreshes: reports })
+    await service.close()
+    const reopened = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(reopened); await reopened.init()
+    expect((await detail(reopened, group)).workItems).toEqual(result.workItems)
+    expect(reports).toBe(succeeds ? 1 : 2); expect(effects).toBe(1)
   })
 
   it('maintains distinct member memories concurrently after their replies', async () => {

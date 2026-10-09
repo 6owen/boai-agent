@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按当前统一模型控件显式选择已准备的API连接，原连续IM/文件版本/重启断言保持。
  * [INPUT]: 单场中文 Mastra 主线场景、生产 Electron UI/IPC 和实际宿主文件链。
  * [OUTPUT]: UI 新员工绑定 API、同聊两轮上下文、真实 V1/V2；修订沿固定成果/hash/请求与新根Work核对原发布消息，重启零模型重放及明确新消息单次续聊。
  * [POS]: Mastra 主线业务步骤；复用原成果协议支撑，不调用本机 Agent。
@@ -57,6 +58,8 @@ When('用户从界面创建API员工并在同一私聊连续交流两轮', async
   await dialog.getByRole('textbox', { name: '名称', exact: true }).fill(MAINLINE_EMPLOYEE)
   await dialog.getByRole('textbox', { name: '角色', exact: true }).fill(MAINLINE_ROLE)
   await dialog.getByRole('textbox', { name: 'Prompt', exact: true }).fill(MAINLINE_RULES)
+  await dialog.getByRole('combobox', { name: '模型连接', exact: true }).click()
+  await runtime.page.getByRole('option', { name: `${mainline.fixture!.connection.name} · ${mainline.fixture!.connection.defaultModel}`, exact: true }).click()
   await dialog.getByRole('button', { name: '创建员工', exact: true }).click()
   await expect(dialog).toBeHidden()
   const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))

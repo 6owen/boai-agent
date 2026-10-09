@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 隔离 Desktop、实际 Mastra HTTP/工具协议、通讯录员工配置与真实工作结果。
  * [OUTPUT]: 普通讨论/组织模式、仅补缺员与群中两位员工文件交付的有界本地协议；实际写入后并行声明发布与公开回答，核对原件再结束；查询失联不替换发布或调度。
  * [POS]: BC1–BC4 Electron 支撑；本地确定性模型不作为真实供应商或人工质量通过证据。
@@ -56,6 +57,7 @@ export async function prepareBoboCollaborationDesktop(runtime: Desktop, options:
       const messages = body.messages as ModelMessage[], system = messages.filter(message => message.role === 'system').map(message => contentText(message.content)).join('\n')
       if (system.includes('Private memory maintenance')) { sendTeamOutput(response, { candidates: [] }); return }
       if (system.includes('Read the actual new conversation facts. Publish a relevant, updated report')) { const input = JSON.parse(contentText(messages.at(-1)!.content)); sendTeamOutput(response, { action: 'publish', text: input.data.draft.text, ...(input.data.draft.outcome ? { outcome: input.data.draft.outcome } : {}) }); return }
+      if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
         const original = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)

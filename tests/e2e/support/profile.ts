@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 每场景独立 Desktop 与已结束的历史消息。
  * [OUTPUT]: 首次snapshot可控延迟且记录真实资料写入； 本人/自动化/人工补充/外部单聊、员工引用与 senderId=user 的非本人历史、可控离线模型与大历史。
  * [POS]: 个人资料 BDD 数据和模型协议支撑，不接触用户目录。
@@ -16,7 +17,7 @@ export async function prepareProfile(runtime: Desktop, large = false) {
     let body = ''; for await (const chunk of request) body += chunk
     const input = JSON.parse(body) as { messages: { role: string; content: string }[] }, system = input.messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
     model.calls++
-    const content = system.includes('Private participation decision') ? '{"action":"reply","responseKind":"chat"}' : system.includes('Private memory maintenance') ? '{"candidates":[]}' : '个人资料更新后，当前运行继续完成。'
+    const content = system.includes('Private group request interpretation') ? '{"mode":"independent"}' : system.includes('Private participation decision') ? '{"action":"reply","responseKind":"chat"}' : system.includes('Private memory maintenance') ? '{"candidates":[]}' : '个人资料更新后，当前运行继续完成。'
     response.writeHead(200, { 'Content-Type': 'text/event-stream' })
     const emit = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: `profile-${model.calls}`, object: 'chat.completion.chunk', created: 1, model: 'fixture', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
     emit({ role: 'assistant' })

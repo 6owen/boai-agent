@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 消息故障可定向阻断受理前或丢失受理后IPC回复，重启后仅观测原请求与回执。
  * [INPUT]: 场景独立 Desktop、真实本机文本文件、共享 Mastra 兼容 HTTP fixture 与生产原生 IPC。
  * [OUTPUT]: Markdown/TypeScript/HTML真实预览原件、通用PDF/超过20MiB夹具；同名来源/严格文本失败、原生File授权及准备/发送失联观测；资源随场景回收。
@@ -27,7 +28,8 @@ export async function prepareMaterialsDesktop(runtime: Desktop) {
   const endpoint = await teamEndpoint((body, response) => {
     const messages = body.messages as { role: string; content: string }[]
     const system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
-    if (system.includes('Private participation decision')) {
+    if (system.includes('Private group request interpretation')) { sendTeamOutput(response, { mode: 'independent' }); return }
+      if (system.includes('Private participation decision')) {
       const data = JSON.parse(messages.at(-1)!.content).data
       sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' })
     } else if (system.includes('Private memory maintenance')) sendTeamOutput(response, { candidates: [] })

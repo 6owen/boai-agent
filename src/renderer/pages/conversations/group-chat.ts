@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧顺序接续按原完成链和无引用意图隐藏自动前置引用，仅改变展示；明确引用及未知关系保持。
  * [INPUT]: 已发布消息、工作结果、产物与当前审批的共享合同。
  * [OUTPUT]: 群工作优先使用宿主即时证据 bool，false 不回退旧缓存，兼容旧局部证据与人工待审边界；本轮用户触发关联不重复显示为引用，保留手动/跨消息引用；保守连续发言、文件/审批关联与有证据的工作状态展示；已登记成果优先固定 sourceMessageId，缺失原消息不猜其他交付消息。
  * [POS]: 单聊/群聊共用的纯消息展示投影及群工作状态，不创建任务或推断执行归属。
@@ -9,16 +10,22 @@ import type { Approval, Artifact, ConversationDetail, Message, WorkItem } from '
 const MESSAGE_GROUP_WINDOW_MS = 3 * 60_000
 const workLabels: Record<WorkItem['status'], string> = { ready: '等待接续', running: '正在处理', delivered: '已交付', waiting: '等待输入或依赖', blocked: '需要处理', failed: '执行失败', cancelled: '已停止', interrupted: '已中断，需明确恢复' }
 
-/** The host's trigger link is context, not a repeated quote of the user's current request. */
+/** Host trigger links are context; verified sequence predecessors are not quoted replies. */
 export function groupMessages(detail: ConversationDetail) {
   const messages = new Map(detail.messages.map(message => [message.id, message]))
   const runs = new Map(detail.runs.map(run => [run.id, run]))
   const turns = new Map(detail.turns?.map(turn => [turn.id, turn]))
   return detail.messages.map(message => {
+    const turn = message.turnId && turns.get(message.turnId)
+    if (message.senderType === 'agent' && message.replyToMessageId && turn && turn.conversationId === message.conversationId && turn.coordination?.mode === 'ordered') {
+      const completed = turn.coordination.completed
+      const index = completed.findIndex(step => step.messageId === message.id && step.agentId === message.senderId)
+      const decisions = detail.decisions?.filter(decision => decision.turnId === turn.id && decision.agentId === message.senderId) ?? []
+      if (index > 0 && completed[index - 1].messageId === message.replyToMessageId && decisions.length === 1 && decisions[0].action === 'reply' && decisions[0].responseKind === 'chat' && !decisions[0].replyToMessageId) return { ...message, replyToMessageId: undefined }
+    }
     const target = message.replyToMessageId && messages.get(message.replyToMessageId)
     if (message.senderType !== 'agent' || !target || target.senderType !== 'user' || target.conversationId !== message.conversationId) return message
     const run = message.runId && runs.get(message.runId)
-    const turn = message.turnId && turns.get(message.turnId)
     const triggerId = run && run.messageId === message.id && run.agentId === message.senderId && run.conversationId === message.conversationId
       ? run.triggerMessageId
       : turn && turn.conversationId === message.conversationId ? turn.triggerMessageId : undefined
