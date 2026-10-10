@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增真实PDF核源字节、错误hash/外改拒绝与不能作为文本采用的验证。
  * [OUTPUT]: 新增发布准备身份/事务回滚与提交消耗、缺失/未改/外改原件清理边界的真实SQLite验证。
  * [INPUT]: 真实 ProductStore 事务、受管成果原件与明确本人修订/采用请求。
  * [OUTPUT]: 受控群bobo未选模型的修订目标复用有效默认；显式失效选择拒绝、不影响普通员工。
@@ -70,6 +71,19 @@ async function fixture(options: Options = {}) {
   const adoption = (artifact: ArtifactVersion, requestId = 'adoption', expectedAdoptionRevision = 0): ArtifactAdoptionInput => ({ artifactId: artifact.id, contentHash: artifact.contentHash, expectedAdoptionRevision, requestId })
   return { root, rawRoot, store, repository, publication, register, revise, revised, adoption }
 }
+
+describe('binary preview preserves artifact identity', () => {
+  it('returns checked bytes without turning preview into adoption or model text', async () => {
+    const { store, repository, register } = await fixture(), bytes = Buffer.from('%PDF-1.4\nchecked binary')
+    const artifact = await register('pdf-preview', bytes, 'report.pdf')
+    const result = await repository.preview(artifact.id, artifact.contentHash)
+    expect(result.binaryPreview).toEqual({ kind: 'pdf', bytes: Uint8Array.from(bytes) }); expect(result.text).toBe('')
+    expect(result.filePreview?.kind).toBe('unsupported'); expect(await store.load('artifactAdoptionEvents')).toEqual([])
+    await expect(repository.preview(artifact.id, '0'.repeat(64))).rejects.toThrow('身份')
+    await writeFile(artifact.path, '%PDF-1.4\nchanged binary')
+    await expect(repository.preview(artifact.id, artifact.contentHash)).rejects.toThrow('外部修改')
+  })
+})
 
 describe('durable artifact identity and explicit user decisions', () => {
   it('binds a pending copy to its original publication and removes that reservation only with the artifact commit', async () => {

@@ -1,0 +1,2330 @@
+--- a/packages/components/src/components/sessions/session-file-pdf-preview.tsx
++++ b/src/renderer/components/common/lody/session-file-pdf-preview.tsx
+@@ -1,7 +1,13 @@
+-import '@/lib/pdfjs-viewer-global';
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-pdf-preview.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-pdf-preview.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import './pdfjs-viewer-global';
++import { classProps } from './class-props';
+ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+-import { useTranslation } from 'react-i18next';
++import { useTranslation } from './translation';
+ import {
+   EventBus,
+   LinkTarget,
+@@ -29,16 +35,16 @@
+   X,
+   ZoomIn,
+   ZoomOut,
+-} from 'lucide-react';
+-import { Button } from '@lody/ui/button';
+-import { Input } from '@lody/ui/input';
+-import { Select } from '@lody/ui/select';
+-import { Spinner } from '@lody/ui/spinner';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
+-import { withClassName } from '@/lib/stylex';
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
+-import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from '@/lib/pdf-file-preview';
++} from './icons';
++import { Button } from './ui';
++import { Input } from './ui';
++import { Select } from './ui';
++import { Spinner } from './ui';
++import { colors } from './tokens';
++import { space } from './tokens';
++import { withClassName } from './stylex';
++import type { SessionFileErrorActions } from './session-file-actions';
++import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from './pdf-file-preview';
+ import { SessionFileNoticeCard } from './session-file-error-state';
+ import { SessionFilePdfThumbnails } from './session-file-pdf-thumbnails';
+ 
+@@ -55,68 +61,24 @@
+ 
+ GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+ 
+-const styles = stylex.create({
+-  root: {
+-    display: 'flex',
+-    flexDirection: 'column',
+-    height: '100%',
+-    minHeight: 0,
+-    color: colors.label,
+-    backgroundColor: colors.background,
+-  },
+-  toolbar: {
+-    display: 'flex',
+-    flex: '0 0 auto',
+-    flexWrap: 'wrap',
+-    alignItems: 'center',
+-    gap: space[2],
+-    paddingInline: space[3],
+-    paddingBlock: space[2],
+-    borderBottomWidth: '1px',
+-    borderBottomStyle: 'solid',
+-    borderBottomColor: colors.separator,
+-  },
+-  group: { display: 'inline-flex', alignItems: 'center', gap: space[1], flexShrink: 0 },
+-  spacer: { flex: '1 1 auto' },
+-  pageInputWell: { width: '3.5rem' },
+-  zoomSelect: { minWidth: '6rem' },
+-  pageCount: { flexShrink: 0, color: colors.secondaryLabel, fontSize: '0.75rem' },
+-  findGroup: {
+-    display: 'flex',
+-    flex: '1 1 100%',
+-    minWidth: 0,
+-    alignItems: 'center',
+-    gap: space[1],
+-  },
+-  findInputWell: { minWidth: '8rem', flex: '1 1 auto' },
+-  matches: {
+-    minWidth: '2rem',
+-    color: colors.secondaryLabel,
+-    fontSize: '0.75rem',
+-    textAlign: 'center',
+-  },
+-  body: { display: 'flex', flex: '1 1 auto', minHeight: 0, minWidth: 0 },
+-  documentArea: { position: 'relative', flex: '1 1 auto', minHeight: 0, minWidth: 0 },
+-  canvas: {
+-    position: 'absolute',
+-    inset: 0,
+-    overflow: 'auto',
+-    backgroundColor: colors.secondaryBackground,
+-  },
+-  viewer: { minHeight: '100%' },
+-  loading: {
+-    position: 'absolute',
+-    inset: 0,
+-    display: 'flex',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[2],
+-    color: colors.secondaryLabel,
+-    fontSize: '0.875rem',
+-    backgroundColor: colors.secondaryBackground,
+-  },
+-  spinner: { width: '1rem', height: '1rem' },
+-});
++const styles = {
++root: { className: 'lody-session-file-pdf-preview-root' },
++toolbar: { className: 'lody-session-file-pdf-preview-toolbar' },
++group: { className: 'lody-session-file-pdf-preview-group' },
++spacer: { className: 'lody-session-file-pdf-preview-spacer' },
++pageInputWell: { className: 'lody-session-file-pdf-preview-pageInputWell' },
++zoomSelect: { className: 'lody-session-file-pdf-preview-zoomSelect' },
++pageCount: { className: 'lody-session-file-pdf-preview-pageCount' },
++findGroup: { className: 'lody-session-file-pdf-preview-findGroup' },
++findInputWell: { className: 'lody-session-file-pdf-preview-findInputWell' },
++matches: { className: 'lody-session-file-pdf-preview-matches' },
++body: { className: 'lody-session-file-pdf-preview-body' },
++documentArea: { className: 'lody-session-file-pdf-preview-documentArea' },
++canvas: { className: 'lody-session-file-pdf-preview-canvas' },
++viewer: { className: 'lody-session-file-pdf-preview-viewer' },
++loading: { className: 'lody-session-file-pdf-preview-loading' },
++spinner: { className: 'lody-session-file-pdf-preview-spinner' }
++};
+ 
+ interface SessionFilePdfPreviewProps {
+   readonly bytes?: Uint8Array;
+@@ -383,7 +345,7 @@
+ 
+   return (
+     <section
+-      {...stylex.props(styles.root)}
++      {...classProps(styles.root)}
+       aria-label={t('sessions.fileViewer.pdf.viewer', 'PDF viewer')}
+       onKeyDownCapture={(event) => {
+         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+@@ -392,8 +354,8 @@
+         }
+       }}
+     >
+-      <div {...stylex.props(styles.toolbar)}>
+-        <div {...stylex.props(styles.group)}>
++      <div {...classProps(styles.toolbar)}>
++        <div {...classProps(styles.group)}>
+           <Button
+             type="button"
+             variant="ghost"
+@@ -421,7 +383,7 @@
+           >
+             <ChevronLeft size={16} aria-hidden />
+           </Button>
+-          <span {...stylex.props(styles.pageInputWell)}>
++          <span {...classProps(styles.pageInputWell)}>
+             <Input
+               type="number"
+               size="small"
+@@ -437,7 +399,7 @@
+               }}
+             />
+           </span>
+-          <span {...stylex.props(styles.pageCount)} aria-live="polite">
++          <span {...classProps(styles.pageCount)} aria-live="polite">
+             {pageCount === 0
+               ? t('sessions.fileViewer.pdf.pageCountUnknown', 'of —')
+               : t('sessions.fileViewer.pdf.pageCount', 'of {{count}}', { count: pageCount })}
+@@ -457,7 +419,7 @@
+             <ChevronRight size={16} aria-hidden />
+           </Button>
+         </div>
+-        <div {...stylex.props(styles.group)}>
++        <div {...classProps(styles.group)}>
+           <Button
+             type="button"
+             variant="ghost"
+@@ -494,7 +456,7 @@
+           >
+             <ZoomOut size={16} aria-hidden />
+           </Button>
+-          <span {...stylex.props(styles.zoomSelect)}>
++          <span {...classProps(styles.zoomSelect)}>
+             <Select.Root
+               items={zoomOptions}
+               value={zoomValue}
+@@ -531,7 +493,7 @@
+             <ZoomIn size={16} aria-hidden />
+           </Button>
+         </div>
+-        <span {...stylex.props(styles.spacer)} />
++        <span {...classProps(styles.spacer)} />
+         <Button
+           type="button"
+           variant="ghost"
+@@ -547,13 +509,13 @@
+         </Button>
+         {searchOpen ? (
+           <form
+-            {...stylex.props(styles.findGroup)}
++            {...classProps(styles.findGroup)}
+             onSubmit={(event) => {
+               event.preventDefault();
+               dispatchFind('find');
+             }}
+           >
+-            <span {...stylex.props(styles.findInputWell)}>
++            <span {...classProps(styles.findInputWell)}>
+               <Input
+                 ref={findInputRef}
+                 type="search"
+@@ -570,7 +532,7 @@
+                 }}
+               />
+             </span>
+-            <span {...stylex.props(styles.matches)} aria-live="polite">
++            <span {...classProps(styles.matches)} aria-live="polite">
+               {matchesCount.total > 0 ? `${matchesCount.current}/${matchesCount.total}` : ''}
+             </span>
+             <Button
+@@ -608,7 +570,7 @@
+           </form>
+         ) : null}
+       </div>
+-      <div {...stylex.props(styles.body)}>
++      <div {...classProps(styles.body)}>
+         {pagesOpen && pdfDocument && pageCount > 0 ? (
+           <SessionFilePdfThumbnails
+             document={pdfDocument}
+@@ -620,16 +582,16 @@
+             }}
+           />
+         ) : null}
+-        <div {...stylex.props(styles.documentArea)}>
+-          <div ref={containerRef} {...stylex.props(styles.canvas)}>
++        <div {...classProps(styles.documentArea)}>
++          <div ref={containerRef} {...classProps(styles.canvas)}>
+             <div
+               ref={viewerElementRef}
+-              {...withClassName(stylex.props(styles.viewer), 'pdfViewer')}
++              {...withClassName(classProps(styles.viewer), 'pdfViewer')}
+             />
+           </div>
+           {loading ? (
+-            <div {...stylex.props(styles.loading)} role="status">
+-              <span {...stylex.props(styles.spinner)}>
++            <div {...classProps(styles.loading)} role="status">
++              <span {...classProps(styles.spinner)}>
+                 <Spinner label={null} />
+               </span>
+               <span>{t('sessions.fileViewer.pdf.loading', 'Loading PDF…')}</span>
+--- a/packages/components/src/components/sessions/session-file-pdf-thumbnails.tsx
++++ b/src/renderer/components/common/lody/session-file-pdf-thumbnails.tsx
+@@ -1,72 +1,31 @@
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-pdf-thumbnails.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-pdf-thumbnails.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
+ import { useEffect, useRef, useState } from 'react';
+-import { useTranslation } from 'react-i18next';
++import { useTranslation } from './translation';
+ import type { PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
+-import { colors, shadow } from '@lody/ui/tokens/colors.stylex';
+-import { radius, space } from '@lody/ui/tokens/scales.stylex';
++import { colors, shadow } from './tokens';
++import { radius, space } from './tokens';
+ 
+ const ROW_HEIGHT = 190;
+ const THUMB_WIDTH = 112;
+ const THUMB_HEIGHT = 148;
+ const OVERSCAN = 3;
+ 
+-const styles = stylex.create({
+-  sidebar: {
+-    position: 'relative',
+-    flex: '0 0 172px',
+-    minWidth: 0,
+-    overflowY: 'auto',
+-    overflowX: 'hidden',
+-    borderRightWidth: '1px',
+-    borderRightStyle: 'solid',
+-    borderRightColor: colors.separator,
+-    backgroundColor: colors.secondaryBackground,
+-  },
+-  listSpace: (height: number) => ({ position: 'relative', height }),
+-  row: (top: number) => ({
+-    position: 'absolute',
+-    top,
+-    left: 0,
+-    right: 0,
+-    height: ROW_HEIGHT,
+-    padding: space[2],
+-  }),
+-  item: {
+-    display: 'flex',
+-    width: '100%',
+-    height: '100%',
+-    flexDirection: 'column',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[1],
+-    borderWidth: '1px',
+-    borderStyle: 'solid',
+-    borderColor: 'transparent',
+-    borderRadius: radius.medium,
+-    backgroundColor: 'transparent',
+-    color: colors.secondaryLabel,
+-    cursor: 'pointer',
+-    ':hover': { backgroundColor: colors.hoverFill },
+-    ':focus-visible': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: colors.accent },
+-  },
+-  selected: {
+-    borderColor: colors.separator,
+-    backgroundColor: colors.selectedFill,
+-    color: colors.label,
+-  },
+-  page: {
+-    display: 'flex',
+-    width: '120px',
+-    height: '150px',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    overflow: 'hidden',
+-    backgroundColor: colors.background,
+-    boxShadow: shadow.card,
+-  },
+-  canvas: (width: number, height: number) => ({ display: 'block', width, height }),
+-  pageNumber: { fontSize: '0.75rem', lineHeight: '1rem' },
+-});
++const styles = {
++sidebar: { className: 'lody-session-file-pdf-thumbnails-sidebar' },
++listSpace: (height: number) => ({ style: { position: 'relative', height } }),
++row: (top: number) => ({ style: { position: 'absolute', top, left: 0, right: 0, height: ROW_HEIGHT, padding: space[2] } }),
++item: { className: 'lody-session-file-pdf-thumbnails-item' },
++selected: { className: 'lody-session-file-pdf-thumbnails-selected' },
++page: { className: 'lody-session-file-pdf-thumbnails-page' },
++canvas: (width: number, height: number) => ({ style: { display: 'block', width, height } }),
++pageNumber: { className: 'lody-session-file-pdf-thumbnails-pageNumber' },
++};
+ 
+ function PdfThumbnail({
+   document,
+@@ -120,7 +79,7 @@
+   return (
+     <canvas
+       ref={canvasRef}
+-      {...stylex.props(styles.canvas(dimensions.width, dimensions.height))}
++      {...classProps(styles.canvas(dimensions.width, dimensions.height))}
+       aria-hidden="true"
+     />
+   );
+@@ -168,26 +127,26 @@
+   return (
+     <aside
+       ref={sidebarRef}
+-      {...stylex.props(styles.sidebar)}
++      {...classProps(styles.sidebar)}
+       aria-label={t('sessions.fileViewer.pdf.pages', 'Pages')}
+       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+     >
+-      <div {...stylex.props(styles.listSpace(pageCount * ROW_HEIGHT))}>
++      <div {...classProps(styles.listSpace(pageCount * ROW_HEIGHT))}>
+         {Array.from({ length: last - first }, (_, index) => {
+           const page = first + index + 1;
+           return (
+-            <div key={page} {...stylex.props(styles.row((page - 1) * ROW_HEIGHT))}>
++            <div key={page} {...classProps(styles.row((page - 1) * ROW_HEIGHT))}>
+               <button
+                 type="button"
+-                {...stylex.props(styles.item, page === currentPage && styles.selected)}
++                {...classProps(styles.item, page === currentPage && styles.selected)}
+                 aria-label={t('sessions.fileViewer.pdf.goToPage', 'Go to page {{page}}', { page })}
+                 aria-current={page === currentPage ? 'page' : undefined}
+                 onClick={() => onSelectPage(page)}
+               >
+-                <span {...stylex.props(styles.page)}>
++                <span {...classProps(styles.page)}>
+                   <PdfThumbnail document={document} pageNumber={page} rotation={rotation} />
+                 </span>
+-                <span {...stylex.props(styles.pageNumber)}>{page}</span>
++                <span {...classProps(styles.pageNumber)}>{page}</span>
+               </button>
+             </div>
+           );
+--- a/packages/components/src/components/sessions/session-file-office-preview.tsx
++++ b/src/renderer/components/common/lody/session-file-office-preview.tsx
+@@ -1,16 +1,22 @@
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-office-preview.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-office-preview.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
+ import { useEffect, useState, type ComponentType } from 'react';
+-import { useTranslation } from 'react-i18next';
+-import { Spinner } from '@lody/ui/spinner';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
+-import { scheduleFilePreviewWhenIdle } from '@/lib/session-file-preview-idle';
++import { useTranslation } from './translation';
++import { Spinner } from './ui';
++import { colors } from './tokens';
++import { space } from './tokens';
++import type { SessionFileErrorActions } from './session-file-actions';
++import { scheduleFilePreviewWhenIdle } from './session-file-preview-idle';
+ import {
+   OfficePreviewTooLargeError,
+   readOfficePreviewBytes,
+   type OfficePreviewKind,
+-} from '@/lib/session-file-office-source';
++} from './session-file-office-source';
+ import { SessionFileNoticeCard } from './session-file-error-state';
+ 
+ export type OfficeRenderer = ComponentType<{
+@@ -19,17 +25,10 @@
+   readonly fileActions?: SessionFileErrorActions;
+ }>;
+ 
+-const styles = stylex.create({
+-  root: { position: 'relative', width: '100%', height: '100%', minHeight: 0, overflow: 'hidden' },
+-  loading: {
+-    display: 'flex',
+-    height: '100%',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[2],
+-    color: colors.secondaryLabel,
+-  },
+-});
++const styles = {
++root: { className: 'lody-session-file-office-preview-root' },
++loading: { className: 'lody-session-file-office-preview-loading' }
++};
+ 
+ async function loadRenderer(kind: OfficePreviewKind): Promise<OfficeRenderer> {
+   switch (kind) {
+@@ -117,7 +116,7 @@
+   }
+   if (!active || state.status === 'loading') {
+     return (
+-      <div {...stylex.props(styles.loading)} role="status">
++      <div {...classProps(styles.loading)} role="status">
+         <Spinner label={null} />
+         {t('sessions.fileViewer.office.loading', 'Loading document…')}
+       </div>
+@@ -125,7 +124,7 @@
+   }
+   const { Renderer, buffer } = state;
+   return (
+-    <div {...stylex.props(styles.root)}>
++    <div {...classProps(styles.root)}>
+       <Renderer buffer={buffer} path={path} fileActions={fileActions} />
+     </div>
+   );
+--- a/packages/components/src/components/sessions/session-file-office-frame.tsx
++++ b/src/renderer/components/common/lody/session-file-office-frame.tsx
+@@ -1,36 +1,23 @@
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-office-frame.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-office-frame.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
+ import type { ReactNode } from 'react';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
++import { colors } from './tokens';
++import { space } from './tokens';
+ 
+-const styles = stylex.create({
+-  root: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 },
+-  toolbar: {
+-    display: 'flex',
+-    flex: '0 0 auto',
+-    flexWrap: 'wrap',
+-    alignItems: 'center',
+-    gap: space[2],
+-    paddingInline: space[3],
+-    paddingBlock: space[2],
+-    borderBottomWidth: '1px',
+-    borderBottomStyle: 'solid',
+-    borderBottomColor: colors.separator,
+-    backgroundColor: colors.background,
+-  },
+-  body: {
+-    position: 'relative',
+-    flex: '1 1 auto',
+-    minHeight: 0,
+-    minWidth: 0,
+-    overflow: 'auto',
+-    backgroundColor: colors.secondaryBackground,
+-  },
+-  group: { display: 'inline-flex', alignItems: 'center', gap: space[1] },
+-  spacer: { flex: '1 1 auto' },
+-  zoom: { minWidth: '6rem' },
+-  label: { color: colors.secondaryLabel, fontSize: '0.75rem' },
+-});
++const styles = {
++root: { className: 'lody-session-file-office-frame-root' },
++toolbar: { className: 'lody-session-file-office-frame-toolbar' },
++body: { className: 'lody-session-file-office-frame-body' },
++group: { className: 'lody-session-file-office-frame-group' },
++spacer: { className: 'lody-session-file-office-frame-spacer' },
++zoom: { className: 'lody-session-file-office-frame-zoom' },
++label: { className: 'lody-session-file-office-frame-label' }
++};
+ 
+ export const officeFrameStyles = styles;
+ 
+@@ -44,9 +31,9 @@
+   readonly children: ReactNode;
+ }) {
+   return (
+-    <section {...stylex.props(styles.root)} aria-label={label}>
+-      {toolbar !== null ? <div {...stylex.props(styles.toolbar)}>{toolbar}</div> : null}
+-      <div {...stylex.props(styles.body)}>{children}</div>
++    <section {...classProps(styles.root)} aria-label={label}>
++      {toolbar !== null ? <div {...classProps(styles.toolbar)}>{toolbar}</div> : null}
++      <div {...classProps(styles.body)}>{children}</div>
+     </section>
+   );
+ }
+--- a/packages/components/src/components/sessions/session-file-docx-renderer.tsx
++++ b/src/renderer/components/common/lody/session-file-docx-renderer.tsx
+@@ -1,7 +1,13 @@
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-docx-renderer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-docx-renderer.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
+ import { useEffect, useState } from 'react';
+-import { useTranslation } from 'react-i18next';
+-import { ZoomIn, ZoomOut } from 'lucide-react';
++import { useTranslation } from './translation';
++import { ZoomIn, ZoomOut } from './icons';
+ import {
+   parseDocxForViewer,
+   ReactDocxViewer,
+@@ -10,28 +16,21 @@
+   type ViewerZoomLevel,
+ } from '@extend-ai/react-docx';
+ import wasmUrl from '@extend-ai/react-docx/docx_wasm_bg.wasm?url';
+-import { Button } from '@lody/ui/button';
+-import { Select } from '@lody/ui/select';
+-import { Spinner } from '@lody/ui/spinner';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
++import { Button } from './ui';
++import { Select } from './ui';
++import { Spinner } from './ui';
++import { colors } from './tokens';
++import { space } from './tokens';
++import type { SessionFileErrorActions } from './session-file-actions';
+ import { SessionFileNoticeCard } from './session-file-error-state';
+ import { OfficeViewerFrame, officeFrameStyles } from './session-file-office-frame';
+ 
+ setWasmSource(wasmUrl);
+ 
+-const styles = stylex.create({
+-  pageHost: { minHeight: '100%', padding: space[4], color: colors.label },
+-  loading: {
+-    display: 'flex',
+-    height: '100%',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[2],
+-    color: colors.secondaryLabel,
+-  },
+-});
++const styles = {
++pageHost: { className: 'lody-session-file-docx-renderer-pageHost' },
++loading: { className: 'lody-session-file-docx-renderer-loading' }
++};
+ 
+ const ZOOM_LEVELS = ['fit-page', 'fit-width', 'automatic', 50, 75, 100, 125, 150, 200] as const;
+ 
+@@ -106,7 +105,7 @@
+     <OfficeViewerFrame
+       label={t('sessions.fileViewer.office.docxViewer', 'DOCX viewer')}
+       toolbar={
+-        <div {...stylex.props(officeFrameStyles.group)}>
++        <div {...classProps(officeFrameStyles.group)}>
+           <Button
+             type="button"
+             variant="ghost"
+@@ -120,7 +119,7 @@
+           >
+             <ZoomOut size={16} aria-hidden />
+           </Button>
+-          <span {...stylex.props(officeFrameStyles.zoom)}>
++          <span {...classProps(officeFrameStyles.zoom)}>
+             <Select.Root
+               items={zoomOptions}
+               value={String(zoom)}
+@@ -163,11 +162,11 @@
+       }
+     >
+       {document ? (
+-        <div {...stylex.props(styles.pageHost)} data-native-selection-allow>
++        <div {...classProps(styles.pageHost)} data-native-selection-allow>
+           <ReactDocxViewer document={document} zoom={zoom} />
+         </div>
+       ) : (
+-        <div {...stylex.props(styles.loading)} role="status">
++        <div {...classProps(styles.loading)} role="status">
+           <Spinner label={null} />
+           {t('sessions.fileViewer.office.loading', 'Loading document…')}
+         </div>
+--- a/packages/components/src/components/sessions/session-file-xlsx-renderer.tsx
++++ b/src/renderer/components/common/lody/session-file-xlsx-renderer.tsx
+@@ -1,35 +1,34 @@
+-import * as stylex from '@stylexjs/stylex';
+-import { useTranslation } from 'react-i18next';
+-import { ZoomIn, ZoomOut } from 'lucide-react';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-xlsx-renderer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-xlsx-renderer.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
++import { useTranslation } from './translation';
++import { ZoomIn, ZoomOut } from './icons';
+ import { setWasmSource, XlsxViewer, type XlsxViewerController } from '@extend-ai/react-xlsx';
+ import wasmUrl from '@extend-ai/react-xlsx/duke_sheets_wasm_bg.wasm?url';
+-import { Button } from '@lody/ui/button';
+-import { Spinner } from '@lody/ui/spinner';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
+-import { useResolvedTheme } from '@/theme-provider';
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
++import { Button } from './ui';
++import { Spinner } from './ui';
++import { colors } from './tokens';
++import { space } from './tokens';
++import { useResolvedTheme } from './theme';
++import type { SessionFileErrorActions } from './session-file-actions';
+ import { SessionFileNoticeCard } from './session-file-error-state';
+ import { OfficeViewerFrame, officeFrameStyles } from './session-file-office-frame';
+ 
+ setWasmSource(wasmUrl);
+ 
+-const styles = stylex.create({
+-  viewer: { width: '100%', height: '100%', minHeight: 0 },
+-  loading: {
+-    display: 'flex',
+-    height: '100%',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[2],
+-    color: colors.secondaryLabel,
+-  },
+-});
++const styles = {
++viewer: { className: 'lody-session-file-xlsx-renderer-viewer' },
++loading: { className: 'lody-session-file-xlsx-renderer-loading' }
++};
+ 
+ function XlsxToolbar({ controller }: { readonly controller: XlsxViewerController }) {
+   const { t } = useTranslation();
+   return (
+-    <div {...stylex.props(officeFrameStyles.group)}>
++    <div {...classProps(officeFrameStyles.group)}>
+       <Button
+         type="button"
+         variant="ghost"
+@@ -42,7 +41,7 @@
+         <ZoomOut size={16} aria-hidden />
+       </Button>
+       <span
+-        {...stylex.props(officeFrameStyles.label)}
++        {...classProps(officeFrameStyles.label)}
+         aria-label={t('sessions.fileViewer.pdf.zoomLevel', 'Zoom level')}
+       >
+         {Math.round(controller.zoomScale)}%
+@@ -58,8 +57,8 @@
+       >
+         <ZoomIn size={16} aria-hidden />
+       </Button>
+-      <span {...stylex.props(officeFrameStyles.spacer)} />
+-      <span {...stylex.props(officeFrameStyles.label)}>
++      <span {...classProps(officeFrameStyles.spacer)} />
++      <span {...classProps(officeFrameStyles.label)}>
+         {controller.tabs.length > 0
+           ? controller.tabs.length === 1
+             ? t('sessions.fileViewer.office.oneSheet', '1 sheet')
+@@ -100,7 +99,7 @@
+       label={t('sessions.fileViewer.office.xlsxViewer', 'XLSX viewer')}
+       toolbar={null}
+     >
+-      <div {...stylex.props(styles.viewer)}>
++      <div {...classProps(styles.viewer)}>
+         <XlsxViewer
+           file={buffer}
+           fileName={path.split('/').pop()}
+@@ -112,7 +111,7 @@
+           showDefaultToolbar={false}
+           toolbar={(controller) => <XlsxToolbar controller={controller} />}
+           loadingState={
+-            <div {...stylex.props(styles.loading)} role="status">
++            <div {...classProps(styles.loading)} role="status">
+               <Spinner label={null} />
+               {t('sessions.fileViewer.office.loading', 'Loading document…')}
+             </div>
+--- a/packages/components/src/components/sessions/session-file-pptx-renderer.tsx
++++ b/src/renderer/components/common/lody/session-file-pptx-renderer.tsx
+@@ -1,34 +1,33 @@
+-import * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-pptx-renderer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-pptx-renderer.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import { classProps } from './class-props';
+ import { useEffect, useState } from 'react';
+-import { useTranslation } from 'react-i18next';
+-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
++import { useTranslation } from './translation';
++import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from './icons';
+ import { ReactPptxViewer, setWasmSource, type ViewerZoomLevel } from '@extend-ai/react-pptx';
+ // A CSS import in this lazy renderer also moves the app's extracted StyleX rules
+ // into the lazy CSS chunk. Keep only the PPTX vendor CSS here as deferred text.
+ import pptxStylesText from '@extend-ai/react-pptx/styles.css?raw';
+ import wasmUrl from '@extend-ai/react-pptx/pptx_wasm_bg.wasm?url';
+-import { Button } from '@lody/ui/button';
+-import { Select } from '@lody/ui/select';
+-import { Spinner } from '@lody/ui/spinner';
+-import { colors } from '@lody/ui/tokens/colors.stylex';
+-import { space } from '@lody/ui/tokens/scales.stylex';
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
++import { Button } from './ui';
++import { Select } from './ui';
++import { Spinner } from './ui';
++import { colors } from './tokens';
++import { space } from './tokens';
++import type { SessionFileErrorActions } from './session-file-actions';
+ import { SessionFileNoticeCard } from './session-file-error-state';
+ import { OfficeViewerFrame, officeFrameStyles } from './session-file-office-frame';
+ 
+ setWasmSource(wasmUrl);
+ 
+-const styles = stylex.create({
+-  viewer: { width: '100%', height: '100%', minHeight: 0 },
+-  loading: {
+-    display: 'flex',
+-    height: '100%',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: space[2],
+-    color: colors.secondaryLabel,
+-  },
+-});
++const styles = {
++viewer: { className: 'lody-session-file-pptx-renderer-viewer' },
++loading: { className: 'lody-session-file-pptx-renderer-loading' }
++};
+ 
+ const ZOOM_LEVELS = ['fit-page', 'fit-width', 'automatic', 50, 75, 100, 125, 150, 200] as const;
+ 
+@@ -86,7 +85,7 @@
+       label={t('sessions.fileViewer.office.pptxViewer', 'PowerPoint viewer')}
+       toolbar={
+         <>
+-          <div {...stylex.props(officeFrameStyles.group)}>
++          <div {...classProps(officeFrameStyles.group)}>
+             <Button
+               type="button"
+               variant="ghost"
+@@ -98,7 +97,7 @@
+             >
+               <ChevronLeft size={16} aria-hidden />
+             </Button>
+-            <span {...stylex.props(officeFrameStyles.label)} aria-live="polite">
++            <span {...classProps(officeFrameStyles.label)} aria-live="polite">
+               {t('sessions.fileViewer.office.slideCount', '{{current}} of {{count}}', {
+                 current: slide + 1,
+                 count: slideCount,
+@@ -116,8 +115,8 @@
+               <ChevronRight size={16} aria-hidden />
+             </Button>
+           </div>
+-          <span {...stylex.props(officeFrameStyles.spacer)} />
+-          <div {...stylex.props(officeFrameStyles.group)}>
++          <span {...classProps(officeFrameStyles.spacer)} />
++          <div {...classProps(officeFrameStyles.group)}>
+             <Button
+               type="button"
+               variant="ghost"
+@@ -133,7 +132,7 @@
+             >
+               <ZoomOut size={16} aria-hidden />
+             </Button>
+-            <span {...stylex.props(officeFrameStyles.zoom)}>
++            <span {...classProps(officeFrameStyles.zoom)}>
+               <Select.Root
+                 items={zoomOptions}
+                 value={String(zoom)}
+@@ -178,7 +177,7 @@
+         </>
+       }
+     >
+-      <div {...stylex.props(styles.viewer)}>
++      <div {...classProps(styles.viewer)}>
+         {stylesReady ? (
+           <ReactPptxViewer
+             source={buffer}
+@@ -193,14 +192,14 @@
+             onSlideChange={setSlide}
+             onError={() => setFailed(true)}
+             renderLoading={() => (
+-              <div {...stylex.props(styles.loading)} role="status">
++              <div {...classProps(styles.loading)} role="status">
+                 <Spinner label={null} />
+                 {t('sessions.fileViewer.office.loading', 'Loading document…')}
+               </div>
+             )}
+           />
+         ) : (
+-          <div {...stylex.props(styles.loading)} role="status">
++          <div {...classProps(styles.loading)} role="status">
+             <Spinner label={null} />
+             {t('sessions.fileViewer.office.loading', 'Loading document…')}
+           </div>
+--- a/packages/components/src/components/sessions/session-file-error-state.tsx
++++ b/src/renderer/components/common/lody/session-file-error-state.tsx
+@@ -1,80 +1,30 @@
+-import type { CodeCollabContentUnavailableReason } from '@lody/shared';
+-import * as stylex from '@stylexjs/stylex';
+-import { Copy, ExternalLink, FolderOpen, Loader2, Share2 } from 'lucide-react';
+-import { useTranslation } from 'react-i18next';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-error-state.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-error-state.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import type { CodeCollabContentUnavailableReason } from './shared-types';
++import { classProps } from './class-props';
++import { Copy, ExternalLink, FolderOpen, Loader2, Share2 } from './icons';
++import { useTranslation } from './translation';
+ // The action model is shared with the file tree context menu and the side
+ // panel ⋯ menu; the card is one consumer of it, not its owner.
+-import type { SessionFileErrorActions } from '@/lib/session-file-actions';
+-import { Button } from '@lody/ui/button';
+-
+-const spin = stylex.keyframes({ to: { transform: 'rotate(360deg)' } });
+-const styles = stylex.create({
+-  frame: {
+-    display: 'flex',
+-    minHeight: '100%',
+-    alignItems: 'flex-start',
+-    justifyContent: 'center',
+-    paddingBlock: '24px',
+-    paddingInline: '16px',
+-  },
+-  card: {
+-    width: '100%',
+-    maxWidth: '20rem',
+-    borderWidth: '1px',
+-    borderStyle: 'solid',
+-    borderColor: 'color-mix(in oklab, hsl(var(--border)) 70%, transparent)',
+-    borderRadius: '0.75rem',
+-    backgroundColor: 'hsl(var(--card))',
+-    paddingBlock: '14px',
+-    paddingInline: '16px',
+-    boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+-  },
+-  title: {
+-    color: 'hsl(var(--foreground))',
+-    fontSize: '0.875rem',
+-    fontWeight: 600,
+-    lineHeight: '1.25rem',
+-  },
+-  description: {
+-    marginTop: '4px',
+-    color: 'hsl(var(--muted-foreground))',
+-    fontSize: '13px',
+-    lineHeight: '1.25rem',
+-  },
+-  actions: { display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '12px' },
+-  actionIcon: { width: '14px', height: '14px', flexShrink: 0 },
+-  spinner: {
+-    width: '14px',
+-    height: '14px',
+-    flexShrink: 0,
+-    animationName: spin,
+-    animationDuration: '1s',
+-    animationTimingFunction: 'linear',
+-    animationIterationCount: 'infinite',
+-  },
+-  technicalDetails: {
+-    marginTop: '12px',
+-    borderTopWidth: '1px',
+-    borderTopStyle: 'solid',
+-    borderTopColor: 'color-mix(in oklab, hsl(var(--border)) 60%, transparent)',
+-    paddingTop: '10px',
+-    color: 'hsl(var(--muted-foreground))',
+-    fontSize: '0.75rem',
+-    lineHeight: '1rem',
+-  },
+-  summary: {
+-    cursor: 'pointer',
+-    userSelect: 'none',
+-    fontWeight: 500,
+-    color: 'color-mix(in oklab, hsl(var(--foreground)) 80%, transparent)',
+-  },
+-  technicalText: {
+-    marginTop: '8px',
+-    overflowWrap: 'break-word',
+-    fontFamily: 'var(--font-mono)',
+-    lineHeight: '1.25rem',
+-  },
+-});
++import type { SessionFileErrorActions } from './session-file-actions';
++import { Button } from './ui';
++
++const styles = {
++frame: { className: 'lody-session-file-error-state-frame' },
++card: { className: 'lody-session-file-error-state-card' },
++title: { className: 'lody-session-file-error-state-title' },
++description: { className: 'lody-session-file-error-state-description' },
++actions: { className: 'lody-session-file-error-state-actions' },
++actionIcon: { className: 'lody-session-file-error-state-actionIcon' },
++spinner: { className: 'lody-session-file-error-state-spinner' },
++technicalDetails: { className: 'lody-session-file-error-state-technicalDetails' },
++summary: { className: 'lody-session-file-error-state-summary' },
++technicalText: { className: 'lody-session-file-error-state-technicalText' }
++};
+ 
+ type Translation = (key: string, defaultValue: string, options?: Record<string, unknown>) => string;
+ 
+@@ -372,14 +322,14 @@
+   const localHost = actions?.localHost;
+ 
+   return (
+-    <div {...stylex.props(styles.frame)}>
++    <div {...classProps(styles.frame)}>
+       {/* No status glyph: the card is one short paragraph and a stack of
+           actions, and a 40px icon column indented all of it for decoration. */}
+-      <section data-testid="session-file-error-state" {...stylex.props(styles.card)}>
+-        <h2 {...stylex.props(styles.title)}>{presentation.title}</h2>
+-        <p {...stylex.props(styles.description)}>{presentation.description}</p>
++      <section data-testid="session-file-error-state" {...classProps(styles.card)}>
++        <h2 {...classProps(styles.title)}>{presentation.title}</h2>
++        <p {...classProps(styles.description)}>{presentation.description}</p>
+         {actions ? (
+-          <div {...stylex.props(styles.actions)}>
++          <div {...classProps(styles.actions)}>
+             {actions.onShare ? (
+               <Button
+                 size="small"
+@@ -389,9 +339,9 @@
+                 disabled={actions.sharing}
+               >
+                 {actions.sharing ? (
+-                  <Loader2 {...stylex.props(styles.spinner)} aria-hidden="true" />
++                  <Loader2 {...classProps(styles.spinner)} aria-hidden="true" />
+                 ) : (
+-                  <Share2 {...stylex.props(styles.actionIcon)} aria-hidden="true" />
++                  <Share2 {...classProps(styles.actionIcon)} aria-hidden="true" />
+                 )}
+                 {t('sessions.fileActions.share', 'Share file…')}
+               </Button>
+@@ -405,7 +355,7 @@
+                   onClick={localHost.onOpen}
+                   data-testid="session-file-error-open"
+                 >
+-                  <ExternalLink {...stylex.props(styles.actionIcon)} aria-hidden="true" />
++                  <ExternalLink {...classProps(styles.actionIcon)} aria-hidden="true" />
+                   {localHost.openTarget === 'browser'
+                     ? t('sessions.fileActions.openInBrowser', 'Open in browser')
+                     : t('sessions.fileActions.openInDefaultApp', 'Open in default app')}
+@@ -417,7 +367,7 @@
+                   onClick={localHost.onReveal}
+                   data-testid="session-file-error-reveal"
+                 >
+-                  <FolderOpen {...stylex.props(styles.actionIcon)} aria-hidden="true" />
++                  <FolderOpen {...classProps(styles.actionIcon)} aria-hidden="true" />
+                   {localHost.revealLabel}
+                 </Button>
+               </>
+@@ -431,17 +381,17 @@
+               onClick={actions.onCopyPath}
+               data-testid="session-file-error-copy-path"
+             >
+-              <Copy {...stylex.props(styles.actionIcon)} aria-hidden="true" />
++              <Copy {...classProps(styles.actionIcon)} aria-hidden="true" />
+               {t('sessions.fileViewer.copyPath', 'Copy file path')}
+             </Button>
+           </div>
+         ) : null}
+         {presentation.technicalDetails ? (
+-          <details {...stylex.props(styles.technicalDetails)}>
+-            <summary {...stylex.props(styles.summary)}>
++          <details {...classProps(styles.technicalDetails)}>
++            <summary {...classProps(styles.summary)}>
+               {t('sessions.fileError.technicalDetails', 'Technical details')}
+             </summary>
+-            <p {...stylex.props(styles.technicalText)}>{presentation.technicalDetails}</p>
++            <p {...classProps(styles.technicalText)}>{presentation.technicalDetails}</p>
+           </details>
+         ) : null}
+       </section>
+--- a/packages/components/src/lib/pdf-file-preview.ts
++++ b/src/renderer/components/common/lody/pdf-file-preview.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/pdf-file-preview.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/pdf-file-preview.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { PDFDataRangeTransport } from 'pdfjs-dist/legacy/build/pdf.mjs';
+ 
+ export const PDF_RANGE_CHUNK_BYTES = 64 * 1024;
+--- a/packages/components/src/lib/pdfjs-viewer-global.ts
++++ b/src/renderer/components/common/lody/pdfjs-viewer-global.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/pdfjs-viewer-global.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/pdfjs-viewer-global.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+ 
+ type PdfjsGlobal = typeof globalThis & { pdfjsLib?: typeof pdfjsLib };
+--- a/packages/components/src/lib/session-file-actions.ts
++++ b/src/renderer/components/common/lody/session-file-actions.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/session-file-actions.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-actions.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ /**
+  * What a surface may offer to do with a session file OUTSIDE the in-app viewer
+  * — the file tree's context menu, the side panel's ⋯ menu, and the error card
+--- a/packages/components/src/lib/session-file-preview-idle.ts
++++ b/src/renderer/components/common/lody/session-file-preview-idle.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/session-file-preview-idle.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-preview-idle.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ export function scheduleFilePreviewWhenIdle(callback: () => void): () => void {
+   if (typeof window.requestIdleCallback === 'function') {
+     const handle = window.requestIdleCallback(callback);
+--- a/packages/components/src/lib/session-file-office-source.ts
++++ b/src/renderer/components/common/lody/session-file-office-source.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/session-file-office-source.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-file-office-source.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ export const MAX_OFFICE_PREVIEW_BYTES = 25 * 1024 * 1024;
+ 
+ export type OfficePreviewKind = 'docx' | 'xlsx' | 'pptx';
+--- a/packages/components/src/lib/stylex.ts
++++ b/src/renderer/components/common/lody/stylex.ts
+@@ -1,15 +1,21 @@
+-import type * as stylex from '@stylexjs/stylex';
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/stylex.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/stylex.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
++import type { classProps } from './class-props';
+ 
+ /**
+- * `stylex.props` with a caller's class appended: the compiled styles are the
++ * `classProps` with a caller's class appended: the compiled styles are the
+  * element's own, and a caller's class only lays it out. Never pass a visual
+  * class through here to restyle something; two classes setting one property
+  * are ordered by the stylesheet, not by this list.
+  */
+ export function withClassName(
+-  props: ReturnType<typeof stylex.props>,
++  props: ReturnType<typeof classProps>,
+   className?: string
+-): { className?: string; style?: ReturnType<typeof stylex.props>['style'] } {
++): { className?: string; style?: ReturnType<typeof classProps>['style'] } {
+   return {
+     className: [props.className, className].filter(Boolean).join(' ') || undefined,
+     style: props.style,
+--- a/packages/components/src/ui/diff-viewer/diff-viewer.tsx
++++ b/src/renderer/components/common/lody/diff-viewer.tsx
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/diff-viewer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-viewer.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import type { CSSProperties, ReactNode } from 'react';
+@@ -10,44 +16,44 @@
+ } from '@pierre/diffs/react';
+ import type { DiffLineAnnotation, FileDiffMetadata, SupportedLanguages } from '@pierre/diffs';
+ import { parseDiffFromFile } from '@pierre/diffs';
+-import { useTranslation } from 'react-i18next';
+-
+-import * as Collapsible from '@radix-ui/react-collapsible';
+-import { ChevronDown, MessageSquare } from 'lucide-react';
++import { useTranslation } from './translation';
++
++import * as Collapsible from './collapsible';
++import { ChevronDown, MessageSquare } from './icons';
+ 
+ import {
+   CollapsibleCard,
+   CollapsibleCardHeader,
+   CollapsibleCardContent,
+-} from '@/ui/collapsible-card';
+-import { Button } from '@lody/ui/button';
+-import { FileIcon } from '@/components/icons/file-icons';
+-
+-import { getSessionDiffErrorMessage } from '@/lib/session-diff-diagnostics';
+-import { getDiffPerfNow, isDiffPerfEnabled, logDiffPerfDurationLazy } from '@/lib/diff-perf';
+-import { observeResizeOnAnimationFrame } from '@/lib/resize-observer';
+-import { cn } from '@/lib/utils';
+-import { useIsMobile } from '@/hooks/use-mobile';
+-import { DEFAULT_VSCODE_DIFF_THEME_FALLBACK } from '@/lib/vscode-theme';
+-import { parseDiffInWorker, parseDiffTextSourceInWorker } from '@/lib/diff-parse-worker';
+-import type { DiffTextChunkSource } from '@/lib/diff-text-chunk-source';
++} from './collapsible-card';
++import { Button } from './ui';
++import { FileIcon } from './ui';
++
++import { getSessionDiffErrorMessage } from './session-diff-diagnostics';
++import { getDiffPerfNow, isDiffPerfEnabled, logDiffPerfDurationLazy } from './diff-perf';
++import { observeResizeOnAnimationFrame } from './resize-observer';
++import { cn } from 'cn';
++import { useIsMobile } from './theme';
++import { DEFAULT_VSCODE_DIFF_THEME_FALLBACK } from './theme';
++import { parseDiffInWorker, parseDiffTextSourceInWorker } from './diff-parse-worker';
++import type { DiffTextChunkSource } from './diff-text-chunk-source';
+ import {
+   configureDiffRenderWorkerPool,
+   createDiffRenderWorkerPool,
+-} from '@/ui/diff-viewer/diff-render-worker';
+-import { useActiveVSCodeDiffThemeName, useResolvedTheme } from '../../theme-provider';
++} from './diff-render-worker';
++import { useActiveVSCodeDiffThemeName, useResolvedTheme } from './theme';
+ import type {
+   CommentAnnotationMeta,
+   CommentUser,
+   GitHubReviewThread,
+   DiffCommentSide,
+   DiffViewerCommentCallbacks,
+-} from './session-comment-types';
++} from './shared-types';
+ import { useSessionComments } from './use-session-comments';
+ import { SessionCommentAnnotation } from './session-comment-annotation';
+ import { SessionCommentAddButton } from './session-comment-add-button';
+ import { isCommentableDiffLineType } from './session-comment-line';
+-import { EMPTY_COMMENT_REFERENCE_KEYS } from '@/components/chat/comment-reference-state';
++import { EMPTY_COMMENT_REFERENCE_KEYS } from './comment-reference-state';
+ import { DiffFileHeaderActions } from './diff-file-header-actions';
+ 
+ /** Minimum container width (in pixels) to auto-switch to split view */
+@@ -1056,29 +1062,29 @@
+     (): CSSProperties =>
+       ({
+         // Pierre reads these as CSS variables (inherited into its shadow root).
+-        ['--diffs-light-bg' as string]: 'hsl(var(--background))',
+-        ['--diffs-dark-bg' as string]: 'hsl(var(--background))',
+-        ['--diffs-bg-buffer-override' as string]: 'hsl(var(--background))',
+-        ['--diffs-bg-context-override' as string]: 'hsl(var(--background))',
++        ['--diffs-light-bg' as string]: 'var(--background)',
++        ['--diffs-dark-bg' as string]: 'var(--background)',
++        ['--diffs-bg-buffer-override' as string]: 'var(--background)',
++        ['--diffs-bg-context-override' as string]: 'var(--background)',
+         // Default separator is only ~4% black on white (and the pill also has
+         // opacity 0.65) — nearly invisible on a cool-white canvas. Use a
+         // stronger muted fill so "N unmodified lines" reads as a control.
+         ['--diffs-bg-separator-override' as string]:
+-          'color-mix(in oklab, hsl(var(--foreground)) 10%, hsl(var(--background)))',
+-        ['--diffs-addition-color-override' as string]: 'hsl(var(--github-addition))',
+-        ['--diffs-deletion-color-override' as string]: 'hsl(var(--github-deletion))',
++          'color-mix(in oklab, var(--foreground) 10%, var(--background))',
++        ['--diffs-addition-color-override' as string]: 'var(--chart-2)',
++        ['--diffs-deletion-color-override' as string]: 'var(--destructive)',
+         ['--diffs-bg-addition-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-addition)) 12%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--chart-2) 12%, var(--background))',
+         ['--diffs-bg-addition-number-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-addition)) 18%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--chart-2) 18%, var(--background))',
+         ['--diffs-bg-addition-emphasis-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-addition)) 28%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--chart-2) 28%, var(--background))',
+         ['--diffs-bg-deletion-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-deletion)) 12%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--destructive) 12%, var(--background))',
+         ['--diffs-bg-deletion-number-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-deletion)) 18%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--destructive) 18%, var(--background))',
+         ['--diffs-bg-deletion-emphasis-override' as string]:
+-          'color-mix(in oklab, hsl(var(--github-deletion)) 28%, hsl(var(--background)))',
++          'color-mix(in oklab, var(--destructive) 28%, var(--background))',
+       }) as CSSProperties,
+     []
+   );
+@@ -1169,8 +1175,8 @@
+           )}
+           {(additions > 0 || deletions > 0) && (
+             <div className="flex shrink-0 items-center gap-1.5 text-xs">
+-              {additions > 0 && <span className="text-github-addition">+{additions}</span>}
+-              {deletions > 0 && <span className="text-github-deletion">-{deletions}</span>}
++              {additions > 0 && <span className="text-chart-2">+{additions}</span>}
++              {deletions > 0 && <span className="text-destructive">-{deletions}</span>}
+             </div>
+           )}
+         </CollapsibleCardHeader>
+--- a/packages/components/src/ui/diff-viewer/diff-render-worker.ts
++++ b/src/renderer/components/common/lody/diff-render-worker.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/diff-render-worker.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-render-worker.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import type { WorkerInitializationRenderOptions, WorkerPoolOptions } from '@pierre/diffs/react';
+ import { WorkerPoolManager } from '@pierre/diffs/worker';
+ import PierreDiffsRenderWorker from '@pierre/diffs/worker/worker.js?worker';
+--- a/packages/components/src/ui/diff-viewer/use-session-comments.ts
++++ b/src/renderer/components/common/lody/use-session-comments.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/use-session-comments.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/use-session-comments.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import { useState, useCallback, useMemo } from 'react';
+@@ -7,7 +13,7 @@
+   CommentAnchor,
+   GitHubReviewThread,
+   DiffCommentSide,
+-} from './session-comment-types';
++} from './shared-types';
+ 
+ interface UseSessionCommentsOptions {
+   /** File path for this diff viewer */
+--- a/packages/components/src/ui/diff-viewer/session-comment-annotation.tsx
++++ b/src/renderer/components/common/lody/session-comment-annotation.tsx
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/session-comment-annotation.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-comment-annotation.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import type { DiffLineAnnotation } from '@pierre/diffs';
+@@ -7,7 +13,7 @@
+   GitHubReviewThread,
+   DiffCommentSide,
+   DiffViewerCommentCallbacks,
+-} from './session-comment-types';
++} from './shared-types';
+ import { SessionCommentDraft } from './session-comment-draft';
+ import { GitHubCommentThread } from './github-comment-thread';
+ import type { DraftState } from './use-session-comments';
+--- a/packages/components/src/ui/diff-viewer/session-comment-add-button.tsx
++++ b/src/renderer/components/common/lody/session-comment-add-button.tsx
+@@ -1,7 +1,13 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/session-comment-add-button.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-comment-add-button.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+-import { Plus } from 'lucide-react';
+-import { cn } from '@/lib/utils';
++import { Plus } from './icons';
++import { cn } from 'cn';
+ 
+ interface SessionCommentAddButtonProps {
+   onClick: () => void;
+--- a/packages/components/src/ui/diff-viewer/session-comment-line.ts
++++ b/src/renderer/components/common/lody/session-comment-line.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/session-comment-line.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-comment-line.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import type { LineTypes } from '@pierre/diffs';
+ 
+ export type CommentableDiffLineType = Extract<LineTypes, 'change-addition' | 'change-deletion'>;
+--- a/packages/components/src/ui/diff-viewer/session-comment-draft.tsx
++++ b/src/renderer/components/common/lody/session-comment-draft.tsx
+@@ -1,55 +1,33 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/session-comment-draft.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-comment-draft.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import { useState, useCallback } from 'react';
+-import * as stylex from '@stylexjs/stylex';
+-import { useTranslation } from 'react-i18next';
++import { classProps } from './class-props';
++import { useTranslation } from './translation';
+ 
+-import { UserAvatar } from '@/components/user-avatar';
+-import { colors, shadow } from '@lody/ui/tokens/colors.stylex';
+-import { corner, radius, space } from '@lody/ui/tokens/scales.stylex';
+-import { Button } from '@lody/ui/button';
+-import { Textarea } from '@lody/ui/textarea';
+-import { withClassName } from '@/lib/stylex';
+-import type { CommentAnchor, CommentUser } from './session-comment-types';
++import { UserAvatar } from './ui';
++import { colors, shadow } from './tokens';
++import { corner, radius, space } from './tokens';
++import { Button } from './ui';
++import { Textarea } from './ui';
++import { withClassName } from './stylex';
++import type { CommentAnchor, CommentUser } from './shared-types';
+ 
+-const styles = stylex.create({
+-  // The same card a GitHub thread beside the code is: a draft is a thread-to-be.
+-  card: {
+-    display: 'flex',
+-    flexDirection: 'column',
+-    gap: space[2],
+-    padding: space[3],
+-    overflow: 'hidden',
+-    backgroundColor: colors.elevatedBackground,
+-    boxShadow: shadow.card,
+-    borderRadius: radius.large,
+-    cornerShape: corner.shape,
+-    color: colors.label,
+-  },
+-  header: { display: 'flex', alignItems: 'center', gap: space[2], minWidth: 0 },
+-  author: {
+-    minWidth: 0,
+-    overflow: 'hidden',
+-    textOverflow: 'ellipsis',
+-    whiteSpace: 'nowrap',
+-    fontSize: '0.9em',
+-    fontWeight: 500,
+-  },
+-  destination: {
+-    flexShrink: 0,
+-    marginInlineStart: 'auto',
+-    fontSize: '0.8em',
+-    color: colors.tertiaryLabel,
+-  },
+-  field: { display: 'flex', flexDirection: 'column' },
+-  footer: { display: 'flex', alignItems: 'center', gap: space[1.5] },
+-  hint: {
+-    display: { default: 'block', '@media (max-width: 640px)': 'none' },
+-    fontSize: '0.75em',
+-    color: colors.tertiaryLabel,
+-  },
+-  pushEnd: { marginInlineStart: 'auto' },
+-});
++const styles = {
++card: { className: 'lody-session-comment-draft-card' },
++header: { className: 'lody-session-comment-draft-header' },
++author: { className: 'lody-session-comment-draft-author' },
++destination: { className: 'lody-session-comment-draft-destination' },
++field: { className: 'lody-session-comment-draft-field' },
++footer: { className: 'lody-session-comment-draft-footer' },
++hint: { className: 'lody-session-comment-draft-hint' },
++pushEnd: { className: 'lody-session-comment-draft-pushEnd' }
++};
+ 
+ interface SessionCommentDraftProps {
+   anchor: CommentAnchor;
+@@ -108,8 +86,8 @@
+   );
+ 
+   return (
+-    <div {...withClassName(stylex.props(styles.card), className)}>
+-      <div {...stylex.props(styles.header)}>
++    <div {...withClassName(classProps(styles.card), className)}>
++      <div {...classProps(styles.header)}>
+         {currentUser && (
+           <UserAvatar
+             user={{
+@@ -120,15 +98,15 @@
+             size="small"
+           />
+         )}
+-        <span {...stylex.props(styles.author)}>
++        <span {...classProps(styles.author)}>
+           {currentUser?.name ?? t('comments.anonymous', 'Anonymous')}
+         </span>
+-        <span {...stylex.props(styles.destination)}>
++        <span {...classProps(styles.destination)}>
+           {t('comments.githubOnly', 'Posts to GitHub')}
+         </span>
+       </div>
+ 
+-      <div {...stylex.props(styles.field)}>
++      <div {...classProps(styles.field)}>
+         <Textarea
+           value={body}
+           onChange={(e) => setBody(e.target.value)}
+@@ -141,9 +119,9 @@
+         />
+       </div>
+ 
+-      <div {...stylex.props(styles.footer)}>
+-        <span {...stylex.props(styles.hint)}>Ctrl+Enter</span>
+-        <span {...stylex.props(styles.pushEnd)} />
++      <div {...classProps(styles.footer)}>
++        <span {...classProps(styles.hint)}>Ctrl+Enter</span>
++        <span {...classProps(styles.pushEnd)} />
+         <Button
+           type="button"
+           size="small"
+--- a/packages/components/src/ui/diff-viewer/github-comment-thread.tsx
++++ b/src/renderer/components/common/lody/github-comment-thread.tsx
+@@ -1,21 +1,27 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/github-comment-thread.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/github-comment-thread.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import { useState, useCallback, useMemo } from 'react';
+-import { Check, ChevronDown, ExternalLink, SendHorizontal } from 'lucide-react';
+-import * as stylex from '@stylexjs/stylex';
+-import type { CommentReferencePayload } from '@lody/shared';
+-import { useTranslation } from 'react-i18next';
+-
+-import { colors, shadow } from '@lody/ui/tokens/colors.stylex';
+-import { corner, duration, ease, focus, radius, space } from '@lody/ui/tokens/scales.stylex';
+-import { Avatar } from '@lody/ui/avatar';
+-import { Badge } from '@lody/ui/badge';
+-import { Button } from '@lody/ui/button';
+-import { Textarea } from '@lody/ui/textarea';
+-import { withClassName } from '@/lib/stylex';
+-import type { GitHubReviewThread, GitHubReviewComment } from './session-comment-types';
++import { Check, ChevronDown, ExternalLink, SendHorizontal } from './icons';
++import { classProps } from './class-props';
++import type { CommentReferencePayload } from './shared-types';
++import { useTranslation } from './translation';
++
++import { colors, shadow } from './tokens';
++import { corner, duration, ease, focus, radius, space } from './tokens';
++import { Avatar } from './ui';
++import { Badge } from './ui';
++import { Button } from './ui';
++import { Textarea } from './ui';
++import { withClassName } from './stylex';
++import type { GitHubReviewThread, GitHubReviewComment } from './shared-types';
+ import { SessionCommentMarkdown } from './session-comment-markdown';
+-import { useSendToChatState } from '@/components/chat/comment-reference-state';
++import { useSendToChatState } from './comment-reference-state';
+ 
+ const MONO = 'var(--font-mono)';
+ const FOCUS_RING = `0 0 0 ${focus.ringWidth} ${colors.accent}`;
+@@ -24,207 +30,40 @@
+ /** A multi-line thread quotes its range, up to this many lines. */
+ const EXCERPT_MAX_LINES = 8;
+ 
+-const styles = stylex.create({
+-  // Beside the code a thread is a card: it floats over the diff it annotates.
+-  card: {
+-    overflow: 'hidden',
+-    backgroundColor: colors.elevatedBackground,
+-    boxShadow: shadow.card,
+-    borderRadius: radius.large,
+-    cornerShape: corner.shape,
+-  },
+-  // Inside another card (a PR review) it is a region of that card: a fill, no edge.
+-  inset: {
+-    overflow: 'hidden',
+-    backgroundColor: `color-mix(in oklab, transparent, ${colors.label} 3.5%)`,
+-    borderRadius: radius.medium,
+-    cornerShape: corner.shape,
+-  },
+-  root: { color: colors.label },
+-
+-  header: {
+-    display: 'flex',
+-    alignItems: 'center',
+-    gap: space[1],
+-    paddingInlineEnd: space[1.5],
+-    minHeight: '32px',
+-  },
+-  toggle: {
+-    display: 'flex',
+-    flexGrow: 1,
+-    minWidth: 0,
+-    alignItems: 'center',
+-    gap: space[1.5],
+-    margin: 0,
+-    borderWidth: 0,
+-    paddingInline: space[3],
+-    paddingBlock: space[1.5],
+-    backgroundColor: 'transparent',
+-    fontFamily: 'inherit',
+-    fontSize: '0.8em',
+-    color: colors.secondaryLabel,
+-    textAlign: 'start',
+-    cursor: 'pointer',
+-    outlineStyle: 'none',
+-    borderRadius: radius.small,
+-    cornerShape: corner.shape,
+-    boxShadow: { default: 'none', ':focus-visible': `inset ${FOCUS_RING}` },
+-  },
+-  chevron: {
+-    flexShrink: 0,
+-    width: '12px',
+-    height: '12px',
+-    color: colors.tertiaryLabel,
+-    transitionProperty: 'transform',
+-    transitionDuration: duration.fast,
+-    transitionTimingFunction: ease.standard,
+-  },
+-  chevronCollapsed: { transform: 'rotate(-90deg)' },
+-  path: {
+-    minWidth: 0,
+-    overflow: 'hidden',
+-    textOverflow: 'ellipsis',
+-    whiteSpace: 'nowrap',
+-    direction: 'rtl',
+-    fontFamily: MONO,
+-    color: colors.label,
+-  },
+-  // `direction: rtl` keeps the file name visible when the path truncates;
+-  // this keeps the characters themselves in reading order.
+-  pathText: { direction: 'ltr', unicodeBidi: 'plaintext' },
+-  lineNo: { flexShrink: 0, fontFamily: MONO, color: colors.tertiaryLabel },
+-  count: { flexShrink: 0 },
+-  // The preview takes only what the path leaves, so the file name survives.
+-  preview: {
+-    flexGrow: 1,
+-    flexBasis: 0,
+-    minWidth: 0,
+-    overflow: 'hidden',
+-    textOverflow: 'ellipsis',
+-    whiteSpace: 'nowrap',
+-    color: colors.tertiaryLabel,
+-  },
+-  glyph: { width: '100%', height: '100%' },
+-  mirrored: { transform: 'scaleX(-1)' },
+-  sent: { color: colors.success },
+-
+-  excerpt: {
+-    marginInline: space[3],
+-    marginBottom: space[1],
+-    paddingBlock: space[1],
+-    overflowX: 'auto',
+-    borderRadius: radius.small,
+-    cornerShape: corner.shape,
+-    backgroundColor: `color-mix(in oklab, transparent, ${colors.label} 4%)`,
+-    fontFamily: MONO,
+-    fontSize: '0.75em',
+-    lineHeight: 1.6,
+-  },
+-  excerptLine: {
+-    display: 'block',
+-    minWidth: 'max-content',
+-    paddingInline: space[2],
+-    whiteSpace: 'pre',
+-    color: colors.secondaryLabel,
+-  },
+-  excerptAdded: {
+-    backgroundColor: 'hsl(var(--github-addition) / 0.1)',
+-    color: colors.label,
+-  },
+-  excerptRemoved: {
+-    backgroundColor: 'hsl(var(--github-deletion) / 0.1)',
+-    color: colors.label,
+-  },
+-
+-  comments: { display: 'flex', flexDirection: 'column', paddingBottom: space[1] },
+-  comment: {
+-    display: 'grid',
+-    gridTemplateColumns: '20px minmax(0, 1fr)',
+-    columnGap: space[2],
+-    paddingInline: space[3],
+-    paddingBlock: space[1.5],
+-  },
+-  commentAvatar: { marginTop: '1px' },
+-  commentHead: {
+-    display: 'flex',
+-    alignItems: 'baseline',
+-    gap: space[1.5],
+-    minHeight: '20px',
+-    minWidth: 0,
+-  },
+-  commentAuthor: {
+-    minWidth: 0,
+-    overflow: 'hidden',
+-    textOverflow: 'ellipsis',
+-    whiteSpace: 'nowrap',
+-    fontSize: '0.9em',
+-    fontWeight: 500,
+-    lineHeight: '20px',
+-  },
+-  commentTime: { flexShrink: 0, fontSize: '0.8em', color: colors.tertiaryLabel },
+-  commentLink: {
+-    display: 'inline-flex',
+-    alignSelf: 'center',
+-    flexShrink: 0,
+-    marginInlineStart: 'auto',
+-    width: '12px',
+-    height: '12px',
+-    borderRadius: radius.mini,
+-    color: { default: colors.tertiaryLabel, ':hover': colors.label },
+-    opacity: {
+-      default: 0,
+-      [stylex.when.ancestor(':hover')]: 1,
+-      ':focus-visible': 1,
+-    },
+-    outlineStyle: 'none',
+-    boxShadow: { default: 'none', ':focus-visible': FOCUS_RING },
+-    transitionProperty: 'opacity, color',
+-    transitionDuration: duration.fast,
+-    transitionTimingFunction: ease.standard,
+-  },
+-  commentBody: { minWidth: 0 },
+-
+-  replyArea: {
+-    display: 'flex',
+-    flexDirection: 'column',
+-    gap: space[2],
+-    paddingInline: space[3],
+-    paddingBottom: space[3],
+-  },
+-  replyActions: { display: 'flex', alignItems: 'center', gap: space[1.5] },
+-  hint: {
+-    display: { default: 'block', '@media (max-width: 640px)': 'none' },
+-    fontSize: '0.75em',
+-    color: colors.tertiaryLabel,
+-  },
+-  pushEnd: { marginInlineStart: 'auto' },
+-  replyPrompt: {
+-    boxSizing: 'border-box',
+-    display: 'block',
+-    width: '100%',
+-    margin: 0,
+-    borderWidth: 0,
+-    paddingInline: space[3],
+-    paddingBlock: space[2],
+-    backgroundColor: {
+-      default: 'transparent',
+-      ':hover': `color-mix(in oklab, transparent, ${colors.label} 4%)`,
+-    },
+-    boxShadow: {
+-      default: `inset 0 1px 0 ${colors.separator}`,
+-      ':focus-visible': `inset ${FOCUS_RING}`,
+-    },
+-    fontFamily: 'inherit',
+-    fontSize: '0.8em',
+-    color: { default: colors.tertiaryLabel, ':hover': colors.secondaryLabel },
+-    textAlign: 'start',
+-    cursor: 'text',
+-    outlineStyle: 'none',
+-    transitionProperty: 'background-color, color',
+-    transitionDuration: duration.fast,
+-    transitionTimingFunction: ease.standard,
+-  },
+-});
++const styles = {
++card: { className: 'lody-github-comment-thread-card' },
++inset: { className: 'lody-github-comment-thread-inset' },
++root: { className: 'lody-github-comment-thread-root' },
++header: { className: 'lody-github-comment-thread-header' },
++toggle: { className: 'lody-github-comment-thread-toggle' },
++chevron: { className: 'lody-github-comment-thread-chevron' },
++chevronCollapsed: { className: 'lody-github-comment-thread-chevronCollapsed' },
++path: { className: 'lody-github-comment-thread-path' },
++pathText: { className: 'lody-github-comment-thread-pathText' },
++lineNo: { className: 'lody-github-comment-thread-lineNo' },
++count: { className: 'lody-github-comment-thread-count' },
++preview: { className: 'lody-github-comment-thread-preview' },
++glyph: { className: 'lody-github-comment-thread-glyph' },
++mirrored: { className: 'lody-github-comment-thread-mirrored' },
++sent: { className: 'lody-github-comment-thread-sent' },
++excerpt: { className: 'lody-github-comment-thread-excerpt' },
++excerptLine: { className: 'lody-github-comment-thread-excerptLine' },
++excerptAdded: { className: 'lody-github-comment-thread-excerptAdded' },
++excerptRemoved: { className: 'lody-github-comment-thread-excerptRemoved' },
++comments: { className: 'lody-github-comment-thread-comments' },
++comment: { className: 'lody-github-comment-thread-comment' },
++commentAvatar: { className: 'lody-github-comment-thread-commentAvatar' },
++commentHead: { className: 'lody-github-comment-thread-commentHead' },
++commentAuthor: { className: 'lody-github-comment-thread-commentAuthor' },
++commentTime: { className: 'lody-github-comment-thread-commentTime' },
++commentLink: { className: 'lody-github-comment-thread-commentLink' },
++commentBody: { className: 'lody-github-comment-thread-commentBody' },
++replyArea: { className: 'lody-github-comment-thread-replyArea' },
++replyActions: { className: 'lody-github-comment-thread-replyActions' },
++hint: { className: 'lody-github-comment-thread-hint' },
++pushEnd: { className: 'lody-github-comment-thread-pushEnd' },
++replyPrompt: { className: 'lody-github-comment-thread-replyPrompt' }
++};
+ 
+ type RelativeTimeT = (key: string, fallback: string, opts?: Record<string, unknown>) => string;
+ 
+@@ -272,15 +111,15 @@
+   const avatarUrl = comment.user?.avatarUrl;
+ 
+   return (
+-    <div {...stylex.props(stylex.defaultMarker(), styles.comment)}>
+-      <Avatar.Root size="small" {...stylex.props(styles.commentAvatar)}>
++    <div {...classProps({ className: 'lody-comment-marker' }, styles.comment)}>
++      <Avatar.Root size="small" {...classProps(styles.commentAvatar)}>
+         {avatarUrl && <Avatar.Image src={avatarUrl} alt={login} />}
+         <Avatar.Fallback>{login.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+       </Avatar.Root>
+-      <div {...stylex.props(styles.commentBody)}>
+-        <div {...stylex.props(styles.commentHead)}>
+-          <span {...stylex.props(styles.commentAuthor)}>{login}</span>
+-          <span {...stylex.props(styles.commentTime)}>
++      <div {...classProps(styles.commentBody)}>
++        <div {...classProps(styles.commentHead)}>
++          <span {...classProps(styles.commentAuthor)}>{login}</span>
++          <span {...classProps(styles.commentTime)}>
+             {formatGitHubRelativeTime(comment.createdAt, t)}
+           </span>
+           <a
+@@ -288,9 +127,9 @@
+             target="_blank"
+             rel="noopener noreferrer"
+             aria-label={t('sessions.prTab.openOnGitHub', 'Open on GitHub')}
+-            {...stylex.props(styles.commentLink)}
++            {...classProps(styles.commentLink)}
+           >
+-            <ExternalLink {...stylex.props(styles.glyph)} />
++            <ExternalLink {...classProps(styles.glyph)} />
+           </a>
+         </div>
+         <SessionCommentMarkdown body={comment.body} allowHtml />
+@@ -411,34 +250,34 @@
+       data-diff-comment-thread-source="github"
+       data-diff-comment-thread-id={String(thread.id)}
+       {...withClassName(
+-        stylex.props(styles.root, surface === 'inset' ? styles.inset : styles.card),
++        classProps(styles.root, surface === 'inset' ? styles.inset : styles.card),
+         className
+       )}
+     >
+-      <div {...stylex.props(styles.header)}>
++      <div {...classProps(styles.header)}>
+         <button
+           type="button"
+           aria-expanded={!isCollapsed}
+           onClick={() => setIsCollapsed((v) => !v)}
+-          {...stylex.props(styles.toggle)}
++          {...classProps(styles.toggle)}
+         >
+           <ChevronDown
+             aria-hidden
+-            {...stylex.props(styles.chevron, isCollapsed && styles.chevronCollapsed)}
++            {...classProps(styles.chevron, isCollapsed && styles.chevronCollapsed)}
+           />
+           {showAnchor ? (
+             <>
+-              <span {...stylex.props(styles.path)} title={thread.anchor.path}>
+-                <span {...stylex.props(styles.pathText)}>{thread.anchor.path}</span>
++              <span {...classProps(styles.path)} title={thread.anchor.path}>
++                <span {...classProps(styles.pathText)}>{thread.anchor.path}</span>
+               </span>
+-              {hasLine && <span {...stylex.props(styles.lineNo)}>:{thread.anchor.line}</span>}
++              {hasLine && <span {...classProps(styles.lineNo)}>:{thread.anchor.line}</span>}
+             </>
+           ) : (
+-            <span {...stylex.props(styles.count)}>{countLabel}</span>
++            <span {...classProps(styles.count)}>{countLabel}</span>
+           )}
+           {thread.outdated && <Badge>{t('comments.outdated', 'Outdated')}</Badge>}
+           {isCollapsed && firstComment && (
+-            <span {...stylex.props(styles.preview)}>
++            <span {...classProps(styles.preview)}>
+               {firstComment.user?.login ?? 'ghost'}: {firstComment.body}
+             </span>
+           )}
+@@ -455,9 +294,9 @@
+             aria-pressed={isSentToChat}
+           >
+             {isSentToChat ? (
+-              <Check {...stylex.props(styles.glyph, styles.sent)} />
++              <Check {...classProps(styles.glyph, styles.sent)} />
+             ) : (
+-              <SendHorizontal {...stylex.props(styles.glyph, styles.mirrored)} />
++              <SendHorizontal {...classProps(styles.glyph, styles.mirrored)} />
+             )}
+           </Button>
+         )}
+@@ -466,11 +305,11 @@
+       {isCollapsed ? null : (
+         <>
+           {excerpt.length > 0 && (
+-            <pre data-thread-excerpt="" {...stylex.props(styles.excerpt)}>
++            <pre data-thread-excerpt="" {...classProps(styles.excerpt)}>
+               {excerpt.map((line, index) => (
+                 <code
+                   key={index}
+-                  {...stylex.props(
++                  {...classProps(
+                     styles.excerptLine,
+                     line.startsWith('+') && styles.excerptAdded,
+                     line.startsWith('-') && styles.excerptRemoved
+@@ -482,7 +321,7 @@
+             </pre>
+           )}
+ 
+-          <div {...stylex.props(styles.comments)}>
++          <div {...classProps(styles.comments)}>
+             {thread.comments.map((comment) => (
+               <GitHubCommentItem key={comment.id} comment={comment} />
+             ))}
+@@ -490,7 +329,7 @@
+ 
+           {onReply &&
+             (isReplying ? (
+-              <div {...stylex.props(styles.replyArea)}>
++              <div {...classProps(styles.replyArea)}>
+                 <Textarea
+                   value={replyBody}
+                   onChange={(e) => setReplyBody(e.target.value)}
+@@ -501,9 +340,9 @@
+                   disabled={isSubmittingReply}
+                   autoFocus
+                 />
+-                <div {...stylex.props(styles.replyActions)}>
+-                  <span {...stylex.props(styles.hint)}>Ctrl+Enter</span>
+-                  <span {...stylex.props(styles.pushEnd)} />
++                <div {...classProps(styles.replyActions)}>
++                  <span {...classProps(styles.hint)}>Ctrl+Enter</span>
++                  <span {...classProps(styles.pushEnd)} />
+                   <Button
+                     type="button"
+                     size="small"
+@@ -531,7 +370,7 @@
+               <button
+                 type="button"
+                 onClick={() => setIsReplying(true)}
+-                {...stylex.props(styles.replyPrompt)}
++                {...classProps(styles.replyPrompt)}
+               >
+                 {t('comments.writeReply', 'Write a reply...')}
+               </button>
+--- a/packages/components/src/ui/diff-viewer/session-comment-markdown.tsx
++++ b/src/renderer/components/common/lody/session-comment-markdown.tsx
+@@ -1,8 +1,14 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/session-comment-markdown.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-comment-markdown.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import { memo } from 'react';
+-import { MarkdownRenderer } from '@/components/ai-gui/markdown-renderer';
+-import { cn } from '@/lib/utils';
++import { MarkdownRenderer } from './ui';
++import { cn } from 'cn';
+ 
+ interface SessionCommentMarkdownProps {
+   body: string;
+@@ -32,7 +38,7 @@
+     <MarkdownRenderer
+       text={body}
+       size="sm"
+-      allowHtml={allowHtml}
++      allowHtml={false}
+       className={cn(FLUSH_PROSE, className)}
+     />
+   );
+--- a/packages/components/src/ui/diff-viewer/diff-file-header-actions.tsx
++++ b/src/renderer/components/common/lody/diff-file-header-actions.tsx
+@@ -1,8 +1,14 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/diff-file-header-actions.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-file-header-actions.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { useState, type MouseEvent, type PointerEvent } from 'react';
+-import { Check, Copy, FileText } from 'lucide-react';
+-import { useTranslation } from 'react-i18next';
++import { Check, Copy, FileText } from './icons';
++import { useTranslation } from './translation';
+ 
+-import { cn } from '@/lib/utils';
++import { cn } from 'cn';
+ 
+ export type DiffFileHeaderActionsProps = {
+   readonly path: string;
+--- a/packages/components/src/lib/diff-parse-worker.ts
++++ b/src/renderer/components/common/lody/diff-parse-worker.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/diff-parse-worker.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-parse-worker.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import type { FileDiffMetadata, SupportedLanguages } from '@pierre/diffs';
+ import type { DiffTextChunkSide, DiffTextChunkSource } from './diff-text-chunk-source';
+ import DiffParseWorker from './diff-parse.worker?worker';
+--- a/packages/components/src/lib/diff-parse.worker.ts
++++ b/src/renderer/components/common/lody/diff-parse.worker.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/diff-parse.worker.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-parse.worker.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { parseDiffFromFile, type FileDiffMetadata, type SupportedLanguages } from '@pierre/diffs';
+ import { stripParsedFileDiffFullText } from './code-collab-diff-metadata-bounds';
+ 
+--- a/packages/components/src/lib/diff-text-chunk-source.ts
++++ b/src/renderer/components/common/lody/diff-text-chunk-source.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/diff-text-chunk-source.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-text-chunk-source.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ export type DiffTextChunkSide = 'old' | 'new';
+ 
+ export interface DiffTextChunkSource {
+--- a/packages/components/src/lib/code-collab-diff-metadata-bounds.ts
++++ b/src/renderer/components/common/lody/code-collab-diff-metadata-bounds.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/code-collab-diff-metadata-bounds.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/code-collab-diff-metadata-bounds.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import type { FileDiffMetadata } from '@pierre/diffs';
+ 
+ export const DEFAULT_CODE_COLLAB_FRONTIER_DIFF_MAX_PARSED_CHANGED_LINES = 20_000;
+--- a/packages/components/src/lib/web-worker-request-client.ts
++++ b/src/renderer/components/common/lody/web-worker-request-client.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/web-worker-request-client.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/web-worker-request-client.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ type WebWorkerRequestClientRestartReason = string;
+ 
+ export interface WebWorkerRequestClient {
+--- a/packages/components/src/lib/resize-observer.ts
++++ b/src/renderer/components/common/lody/resize-observer.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/resize-observer.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/resize-observer.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ const RESIZE_OBSERVER_LOOP_MESSAGES = new Set([
+   'ResizeObserver loop completed with undelivered notifications.',
+   'ResizeObserver loop limit exceeded',
+--- a/packages/components/src/lib/session-diff-diagnostics.ts
++++ b/src/renderer/components/common/lody/session-diff-diagnostics.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/session-diff-diagnostics.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/session-diff-diagnostics.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ export type SessionDiffSnapshotLike =
+   | {
+       kind: string;
+--- a/packages/components/src/lib/diff-perf.ts
++++ b/src/renderer/components/common/lody/diff-perf.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/diff-perf.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/diff-perf.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ const DIFF_PERF_STORAGE_KEY = 'lody.diffPerf';
+ const DIFF_PERF_QUERY_PARAM = 'lodyDiffPerf';
+ const DIFF_PERF_PREFIX = '[DiffPerf]';
+--- a/packages/components/src/ui/collapsible-card.tsx
++++ b/src/renderer/components/common/lody/collapsible-card.tsx
+@@ -1,14 +1,20 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/collapsible-card.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/collapsible-card.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import React, { useLayoutEffect, useRef } from 'react';
+-import { Fade } from '@/ui/blur-fade/blur-fade';
+-import { cn } from '@/lib/utils';
++import { Fade } from './blur-fade';
++import { cn } from 'cn';
+ 
+-import { ChevronDown } from 'lucide-react';
+-import * as Collapsible from '@radix-ui/react-collapsible';
+-import { Button } from '@lody/ui/button';
++import { ChevronDown } from './icons';
++import * as Collapsible from './collapsible';
++import { Button } from './ui';
+ import { CopyButton } from './copy-button';
+-import { clamp } from '@/lib/clamp';
++import { clamp } from './clamp';
+ 
+ type CollapsibleCardProps = Collapsible.CollapsibleProps & {
+   /** When true, removes overflow-hidden to allow sticky children to work with outer scroll containers */
+--- a/packages/components/src/ui/copy-button.tsx
++++ b/src/renderer/components/common/lody/copy-button.tsx
+@@ -1,10 +1,16 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/copy-button.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/copy-button.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import React, { useState } from 'react';
+ 
+-import { Check, Copy } from 'lucide-react';
+-import { Button } from '@lody/ui/button';
+-import { cn } from '@/lib/utils';
++import { Check, Copy } from './icons';
++import { Button } from './ui';
++import { cn } from 'cn';
+ 
+ export const CopyButton = ({
+   value,
+--- a/packages/components/src/ui/blur-fade/blur-fade.tsx
++++ b/src/renderer/components/common/lody/blur-fade.tsx
+@@ -1,6 +1,12 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/ui/blur-fade/blur-fade.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/blur-fade.tsx；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import * as React from "react";
+ 
+-import { cn } from "@/lib/utils";
++import { cn } from "cn";
+ import styles from "./fade.module.css";
+ 
+ export type FadeProps = {
+--- a/packages/components/src/lib/clamp.ts
++++ b/src/renderer/components/common/lody/clamp.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/lib/clamp.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/clamp.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ export function clamp(val: number, [min, max]: [number, number]): number {
+     return Math.min(Math.max(val, min), max);
+   }
+--- a/packages/components/src/components/chat/comment-reference-state.ts
++++ b/src/renderer/components/common/lody/comment-reference-state.ts
+@@ -1,8 +1,14 @@
++/*
++ * [INPUT]: Lody固定源码 packages/components/src/components/chat/comment-reference-state.ts @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
++ * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
++ * [POS]: common/lody/comment-reference-state.ts；Apache-2.0，保留上游注释。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 'use client';
+ 
+ import { useState, useCallback, useMemo } from 'react';
+-import type { CommentReferencePayload } from '@lody/shared';
+-import type { CommentReferenceChipItem } from './comment-reference-chip';
++import type { CommentReferencePayload } from './shared-types';
++import type { CommentReferenceChipItem } from './shared-types';
+ 
+ export const EMPTY_COMMENT_REFERENCE_KEYS: readonly string[] = [];
+ 
+--- a/THIRD_PARTY_NOTICES.md
++++ b/src/renderer/components/common/lody/THIRD_PARTY_NOTICES.md
+@@ -1,3 +1,9 @@
++<!--
++[INPUT]: Lody固定52e6eebe第三方声明，保留原文。
++[OUTPUT]: 原许可/样式资产；源hash见ai-docs迁入清单。
++[POS]: common/lody局部来源资产。
++[PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++-->
+ # Open Source Attributions
+ 
+ This file is generated by `node scripts/generate-open-source-attributions.mjs`.
+--- a/packages/components/src/ui/blur-fade/fade.module.css
++++ b/src/renderer/components/common/lody/fade.module.css
+@@ -1,3 +1,9 @@
++/*
++[INPUT]: Lody固定52e6eebe原blur-fade样式，保留原文。
++[OUTPUT]: 原许可/样式资产；源hash见ai-docs迁入清单。
++[POS]: common/lody局部来源资产。
++[PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++*/
+ .root {
+   --blur: 4px;
+   --stop: 25%;
+--- a/packages/components/src/stories/fixtures/office-viewer-files.ts
++++ b/tests/lody/office-viewer-files.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定52e6eebe的Office样本和PDF Story原函数。
++ * [OUTPUT]: 原样生成有效OOXML/PDF字节，供宿主核源/实际Electron预览。
++ * [POS]: tests/lody/office-viewer-files.ts，Apache-2.0。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { strToU8, zipSync } from 'fflate';
+ 
+ function officeArchive(files: Record<string, string>): Uint8Array {
+@@ -42,3 +48,36 @@
+       '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr><p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="7315200" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="3200"/><a:t>Quarterly report</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>',
+   });
+ }
++
++export const createSamplePdf = (): Uint8Array => {
++  const header = '%PDF-1.4\n';
++  const pageTitles = ['Overview', 'Revenue', 'Operations', 'Outlook'];
++  const pages = pageTitles.map((title, index) => {
++    const content = `BT /F1 30 Tf 72 700 Td (${title}) Tj /F1 16 Tf 0 -60 Td (Quarterly report page ${index + 1}) Tj ET`;
++    const pageId = 4 + index * 2;
++    const streamId = pageId + 1;
++    return {
++      pageId,
++      streamId,
++      page: `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${streamId} 0 R >>\nendobj\n`,
++      stream: `${streamId} 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`,
++    };
++  });
++  const objectCount = 3 + pages.length * 2;
++  const objects = [
++    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
++    `2 0 obj\n<< /Type /Pages /Kids [${pages.map(({ pageId }) => `${pageId} 0 R`).join(' ')}] /Count ${pages.length} >>\nendobj\n`,
++    '3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
++    ...pages.flatMap(({ page, stream }) => [page, stream]),
++  ];
++  let offset = header.length;
++  const offsets = objects.map((object) => {
++    const currentOffset = offset;
++    offset += object.length;
++    return currentOffset;
++  });
++  const xrefOffset = offset;
++  const xref = `xref\n0 ${objectCount + 1}\n0000000000 65535 f \n${offsets.map((position) => `${String(position).padStart(10, '0')} 00000 n \n`).join('')}`;
++  const trailer = `trailer\n<< /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
++  return new TextEncoder().encode(`${header}${objects.join('')}${xref}${trailer}`);
++};
+--- a/packages/components/tests/pdf-file-preview.test.ts
++++ b/tests/lody/pdf-file-preview.test.ts
+@@ -1,6 +1,12 @@
++/*
++ * [INPUT]: Lody固定提交52e6eebe原测试；适配被测文件导入及TS7类型标注，原断言保持。
++ * [OUTPUT]: 保留原断言与测试流程，验证迁入模块。
++ * [POS]: tests/lody/pdf-file-preview.test.ts。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { describe, expect, it } from 'vitest';
+ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+-import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from '../src/lib/pdf-file-preview';
++import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from '../../src/renderer/components/common/lody/pdf-file-preview';
+ 
+ describe('local PDF range transport', () => {
+   it('loads bounded initial data and supplies requested ranges', async () => {
+@@ -14,7 +20,7 @@
+       if (!match) throw new Error('Range header is invalid.');
+       const begin = Number(match[1]);
+       const end = Math.min(Number(match[2]), data.length - 1);
+-      return new Response(data.subarray(begin, end + 1), {
++      return new Response(data.subarray(begin, end + 1) as Uint8Array<ArrayBuffer>, {
+         status: 206,
+         headers: { 'Content-Range': `bytes ${begin}-${end}/${data.length}` },
+       });
+@@ -84,7 +90,7 @@
+       if (!match) throw new Error('Range header is invalid.');
+       const begin = Number(match[1]);
+       const end = Math.min(Number(match[2]), data.length - 1);
+-      return new Response(data.subarray(begin, end + 1), {
++      return new Response(data.subarray(begin, end + 1) as Uint8Array<ArrayBuffer>, {
+         status: 206,
+         headers: { 'Content-Range': `bytes ${begin}-${end}/${data.length}` },
+       });
+--- a/packages/components/tests/diff-parse-worker-client.test.ts
++++ b/tests/lody/diff-parse-worker-client.test.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定提交52e6eebe原测试；仅适配被测文件导入。
++ * [OUTPUT]: 保留原断言与测试流程，验证迁入模块。
++ * [POS]: tests/lody/diff-parse-worker-client.test.ts。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+ 
+ const diffParseWorkerMock = vi.hoisted(() => {
+@@ -51,7 +57,7 @@
+   return { FakeDiffParseWorker, instances };
+ });
+ 
+-vi.mock('../src/lib/diff-parse.worker?worker', () => ({
++vi.mock('../../src/renderer/components/common/lody/diff-parse.worker?worker', () => ({
+   default: diffParseWorkerMock.FakeDiffParseWorker,
+ }));
+ 
+@@ -60,7 +66,7 @@
+   DIFF_PARSE_WORKER_TEXT_CHUNK_LENGTH,
+   parseDiffInWorker,
+   parseDiffTextSourceInWorker,
+-} from '../src/lib/diff-parse-worker';
++} from '../../src/renderer/components/common/lody/diff-parse-worker';
+ 
+ describe('parseDiffInWorker', () => {
+   beforeEach(() => {
+--- a/packages/components/tests/diff-parse-worker-impl.test.ts
++++ b/tests/lody/diff-parse-worker-impl.test.ts
+@@ -1,3 +1,9 @@
++/*
++ * [INPUT]: Lody固定提交52e6eebe原测试；仅适配被测文件导入。
++ * [OUTPUT]: 保留原断言与测试流程，验证迁入模块。
++ * [POS]: tests/lody/diff-parse-worker-impl.test.ts。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { afterEach, describe, expect, it, vi } from 'vitest';
+ 
+ type WorkerHarness = {
+@@ -26,7 +32,7 @@
+       postMessage: vi.fn(),
+     };
+     vi.stubGlobal('self', worker);
+-    await import('../src/lib/diff-parse.worker');
++    await import('../../src/renderer/components/common/lody/diff-parse.worker');
+ 
+     worker.onmessage?.({
+       data: {
+--- a/packages/components/tests/diff-render-worker-pool.test.ts
++++ b/tests/lody/diff-render-worker-pool.test.ts
+@@ -1,4 +1,10 @@
+ // @vitest-environment jsdom
++/*
++ * [INPUT]: Lody固定提交52e6eebe原测试；适配被测文件导入及TS7类型标注，原断言保持。
++ * [OUTPUT]: 保留原断言与测试流程，验证迁入模块。
++ * [POS]: tests/lody/diff-render-worker-pool.test.ts。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ 
+ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+ 
+@@ -7,7 +13,7 @@
+     static readonly instances: FakeWorkerPoolManager[] = [];
+ 
+     readonly initialOptions: unknown;
+-    readonly setRenderOptions = vi.fn(async (_options: unknown) => undefined);
++    readonly setRenderOptions = vi.fn(async (_options: unknown): Promise<void> => undefined);
+     readonly terminate = vi.fn();
+ 
+     constructor(_poolOptions: unknown, renderOptions: unknown) {
+@@ -31,7 +37,7 @@
+   configureDiffRenderWorkerPool,
+   createDiffRenderWorkerPool,
+   terminateDiffRenderWorkerPools,
+-} from '../src/ui/diff-viewer/diff-render-worker';
++} from '../../src/renderer/components/common/lody/diff-render-worker';
+ 
+ describe('shared diff render worker pools', () => {
+   beforeEach(() => {
+--- a/packages/components/tests/code-collab-diff-metadata-bounds.test.ts
++++ b/tests/lody/code-collab-diff-metadata-bounds.test.ts
+@@ -1,10 +1,16 @@
++/*
++ * [INPUT]: Lody固定提交52e6eebe原测试；仅适配被测文件导入。
++ * [OUTPUT]: 保留原断言与测试流程，验证迁入模块。
++ * [POS]: tests/lody/code-collab-diff-metadata-bounds.test.ts。
++ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
++ */
+ import { parseDiffFromFile } from '@pierre/diffs';
+ import { describe, expect, it } from 'vitest';
+ import {
+   boundParsedFileDiffForMainThread,
+   measureParsedFileDiffComplexity,
+   stripParsedFileDiffFullText,
+-} from '../src/lib/code-collab-diff-metadata-bounds';
++} from '../../src/renderer/components/common/lody/code-collab-diff-metadata-bounds';
+ 
+ describe('Code Collab parsed diff metadata bounds', () => {
+   it('strips full old/new file lines before returning parsed diff metadata to the main thread', () => {

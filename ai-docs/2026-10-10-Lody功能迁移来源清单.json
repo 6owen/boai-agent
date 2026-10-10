@@ -1,0 +1,1394 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/LodyAI/Lody",
+    "commit": "52e6eebe908641ea53d5a9aa3530499932f3064f",
+    "archiveSha256": "17cbacb772c89d9a1a55028a1e2ca675b70deb3d38d1aaea2f58914362d4850d",
+    "verifiedGitBlobs": 6603,
+    "mismatches": 0,
+    "submodulesRequired": false
+  },
+  "baselineCommit": "c4e2cdf8ecde4bfea08fba3a0f90d07df1484a94",
+  "files": [
+    {
+      "source": "packages/components/src/components/sessions/session-file-pdf-preview.tsx",
+      "target": "src/renderer/components/common/lody/session-file-pdf-preview.tsx",
+      "sourceSha256": "f996c3f1db12786ee8a872fe72b5ae5e03a4b4525d6fe004db4b68a1cc0985dc",
+      "targetSha256": "5d785d5c29d9e6748a604f495a25a67dd9067d7da4c764c0526c957a3c700697",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-pdf-thumbnails.tsx",
+      "target": "src/renderer/components/common/lody/session-file-pdf-thumbnails.tsx",
+      "sourceSha256": "9b37ad507efa2f44495575cab8ce8e9f3c082f8155f2f36fab7075639a3ed9e3",
+      "targetSha256": "cd10508db44b01024bd27c9f4ac727defa5d9eaafdf8f8a82121ef3850032a78",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-office-preview.tsx",
+      "target": "src/renderer/components/common/lody/session-file-office-preview.tsx",
+      "sourceSha256": "b21eb14f52cdaf3d53daf8dacb99aee149c9f130482903336e6c058c998d639d",
+      "targetSha256": "74ee1d027c1b438d362227ad939e3b23c7962f9e87f73d0e5eafb5ace126d614",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-office-frame.tsx",
+      "target": "src/renderer/components/common/lody/session-file-office-frame.tsx",
+      "sourceSha256": "9882cfaca7fb0ea20db65f213b8b3fe6cc0b1cadf5eb2e83867faf835c671591",
+      "targetSha256": "bfe8b131b2e844b798a2f7a77914f2a7a19641c7dde4f7bc569740abb10002a9",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-docx-renderer.tsx",
+      "target": "src/renderer/components/common/lody/session-file-docx-renderer.tsx",
+      "sourceSha256": "089f26b46cd11a656434e9dedd97c2db9151a00d49b80bb8f57c9ac57e2305e6",
+      "targetSha256": "896dac547075cd8c8e3992becffff213555c457253784cf4e70922005873f490",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-xlsx-renderer.tsx",
+      "target": "src/renderer/components/common/lody/session-file-xlsx-renderer.tsx",
+      "sourceSha256": "a94b1421249389a13dafd93ab46faa3c82031dc4b8711caa05ed7c642dbe9694",
+      "targetSha256": "75c7d0cbacb67be85783b1e8700a5f3ade23ed333b7fee5b60a88f4d39c70a84",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-pptx-renderer.tsx",
+      "target": "src/renderer/components/common/lody/session-file-pptx-renderer.tsx",
+      "sourceSha256": "a08ddd67bcc04be711486365a95349f3e9c4f94c690f6f6684d92b3e64b7c341",
+      "targetSha256": "342f18fb26fdd4dc3f9355e9cf2e99d1be7cd3372a7438bd6cc8a346fdb186eb",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/components/sessions/session-file-error-state.tsx",
+      "target": "src/renderer/components/common/lody/session-file-error-state.tsx",
+      "sourceSha256": "b65b01469d178cb5ac26a35724ee0dcfca4f3f261bd2d3f0c81050f6d5bc8add",
+      "targetSha256": "b3c1ee99d4a18206e5d5efbc5d4bf50c2ecd37d00e3bf0624f2b6554defc424a",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/lib/pdf-file-preview.ts",
+      "target": "src/renderer/components/common/lody/pdf-file-preview.ts",
+      "sourceSha256": "b37aaf953bfddc168b566ae6173571ea07023b598be15fe4b6a6833d20ec1e66",
+      "targetSha256": "3f5a3c012b904f7421f03133f54e2b06faea2c99a2c302eab59c3752fbbb81af",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/pdfjs-viewer-global.ts",
+      "target": "src/renderer/components/common/lody/pdfjs-viewer-global.ts",
+      "sourceSha256": "baeac85839be798c29c3ec87d670a0bd935915d203a6a94de0c4852d836f11f3",
+      "targetSha256": "819341d3ff3ad375124fadc270727e1fbb0b0b27c7c2ee2f3c55e930cd915422",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/session-file-actions.ts",
+      "target": "src/renderer/components/common/lody/session-file-actions.ts",
+      "sourceSha256": "970d6775b479de9b48c32898ff24f6e00aa4fd2a65065d3b3875d5a54a553e91",
+      "targetSha256": "44f031dfa65f6ecbc95e3d749c1df107f9d919e0873a80d7ebd204e15984cf00",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/session-file-preview-idle.ts",
+      "target": "src/renderer/components/common/lody/session-file-preview-idle.ts",
+      "sourceSha256": "b8da12ad4073aab3f77ecc03e07f4b75ec8186b7c38a964496b07ec0f6ae62f9",
+      "targetSha256": "88a4b1dfa6df4a91311c591377289456347d61477661beb69c55615684142190",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/session-file-office-source.ts",
+      "target": "src/renderer/components/common/lody/session-file-office-source.ts",
+      "sourceSha256": "6523f01a4a4333ef735a94fa29214a05da7beba0717bdb0bdd1433634fc2a1c4",
+      "targetSha256": "0159f7cd97c690ec4aff187d46e839dda45c932162b353de32cb1b1a5e490599",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/stylex.ts",
+      "target": "src/renderer/components/common/lody/stylex.ts",
+      "sourceSha256": "9c3aca7ed99c1ce05077ff1f0b9a36ad1fc13bf7f2dd36c8d7ea90be77dbe8b5",
+      "targetSha256": "d1bd81fd6239acf2a515bca8f4d9617cc8fb07708f5c57d7c385ef4ac69a4711",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/diff-viewer.tsx",
+      "target": "src/renderer/components/common/lody/diff-viewer.tsx",
+      "sourceSha256": "ead9fc4f690729a2ca09c4a998af0043f81fb6f14a742d0758a30532d248b369",
+      "targetSha256": "2be3617cfc5e347e5929db0aebdb12a75167db3c33f44179c39d55a97d510fd1",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/diff-render-worker.ts",
+      "target": "src/renderer/components/common/lody/diff-render-worker.ts",
+      "sourceSha256": "789b878cb271c3122af45892bed61e062f43f4c6bd2702d51cfa5a9d73693809",
+      "targetSha256": "15d2225efd8dc8e7616e632837dd497e3ccd7503fdacdc30e229607e706a4833",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/use-session-comments.ts",
+      "target": "src/renderer/components/common/lody/use-session-comments.ts",
+      "sourceSha256": "e352232c0e47b39f9bc157b8cf3c29ffbb891477ab039f4a166bbd59549068ba",
+      "targetSha256": "6ce064a0ca3ad351c3fb163398e5887ba94cd9affab8705e368ac6dc9e168a64",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/session-comment-annotation.tsx",
+      "target": "src/renderer/components/common/lody/session-comment-annotation.tsx",
+      "sourceSha256": "6a5b33f57a8017458cd948513bf40d1dad0806fca839c7469eead884f032a8d8",
+      "targetSha256": "86bce43f67b07c4ce0684c3e08a8306ac87998cb0784e7a35512a0d6cb7ef80d",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/session-comment-add-button.tsx",
+      "target": "src/renderer/components/common/lody/session-comment-add-button.tsx",
+      "sourceSha256": "da391b557abdc96e025a0baaffd35619c7f53b505eb3b6a467aafcdd72646bc4",
+      "targetSha256": "c432e9cd14d59a3a8019ba4639278385c6e63d7b933edb76e99d9e96d943682e",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/session-comment-line.ts",
+      "target": "src/renderer/components/common/lody/session-comment-line.ts",
+      "sourceSha256": "0af65cd944320fafabad8ae09972670c0107aad2dac4e426f027422b34d6d516",
+      "targetSha256": "245c7bda45f30defbf33874211f319f6118604a115d7100c382bbb26b93d8e2a",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/session-comment-draft.tsx",
+      "target": "src/renderer/components/common/lody/session-comment-draft.tsx",
+      "sourceSha256": "a49067b7f453735c377f38d95d20d5e22358151fa3f75008925f65d8a00d07dc",
+      "targetSha256": "a18a0945c44ba8283e2bd5c5949eb7a5cca74053d7c9e30a4740d79db1604b35",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/github-comment-thread.tsx",
+      "target": "src/renderer/components/common/lody/github-comment-thread.tsx",
+      "sourceSha256": "753478f46a337ed44b46c388364a0ddd26720d8b89b3d7d94117bf7eba71de8f",
+      "targetSha256": "52188af75cdf36e2bdd7cdf2288aa87d86db77fd042019fc9859d9967df9f718",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/session-comment-markdown.tsx",
+      "target": "src/renderer/components/common/lody/session-comment-markdown.tsx",
+      "sourceSha256": "8211b1be5462034637a4b9315989136ee3813f28df0cf3484fb653a2a19a82e5",
+      "targetSha256": "146585b5178a95302c5d885919bd8a8428b4bbb9ddd16eb8a4df65ce0623cc0e",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/diff-viewer/diff-file-header-actions.tsx",
+      "target": "src/renderer/components/common/lody/diff-file-header-actions.tsx",
+      "sourceSha256": "723db388f9d0a23e99d1981fe8803b78b351e4f7002f90eeb6b9b900d8e164b1",
+      "targetSha256": "a2140628e5c950314d334c58aa8b4b25edf73494327ce757d5fcad77f5edc497",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/lib/diff-parse-worker.ts",
+      "target": "src/renderer/components/common/lody/diff-parse-worker.ts",
+      "sourceSha256": "9a39ac7590c512f4eebd6c7d454f713c7812eaff5117fe9debfe47e5ef82ff9f",
+      "targetSha256": "967f49eaf50abe8ae85355174da30e33793feaa5189bc01b74534c4341a9c7d4",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/diff-parse.worker.ts",
+      "target": "src/renderer/components/common/lody/diff-parse.worker.ts",
+      "sourceSha256": "49d09cf19064890b1796d7a71a717fe93d862c1822b25e50006a6e5b52b38da4",
+      "targetSha256": "cf922187117dd1f3368326c4bddce54bfaae73c6284d82bff63880c1f7039b39",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/diff-text-chunk-source.ts",
+      "target": "src/renderer/components/common/lody/diff-text-chunk-source.ts",
+      "sourceSha256": "6742197c765c45f6d66db859d9f2aece865b8f09f2695df2f6be0031844160e9",
+      "targetSha256": "71c0e956fa2188295361beb4fc391a7c9d88bfc9449e9adf12af9431105ee2d7",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/code-collab-diff-metadata-bounds.ts",
+      "target": "src/renderer/components/common/lody/code-collab-diff-metadata-bounds.ts",
+      "sourceSha256": "c493261ad1f79116804e2cd427ce63e04ccd59afc527482c7ade49de69a2f30f",
+      "targetSha256": "5c4df0cef4bf076b063e73d3a60a49687af09b7de0b4dc533e78a050bfc473a6",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/web-worker-request-client.ts",
+      "target": "src/renderer/components/common/lody/web-worker-request-client.ts",
+      "sourceSha256": "4602187f0d7d8b64757abf5e9f37daee0b6d89fa2bd27ac3d7d3fbb021ddf06a",
+      "targetSha256": "f9ea477768548e97314c6d6af7e7770835f120f43ce0b161ccf33e826ff50b55",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/resize-observer.ts",
+      "target": "src/renderer/components/common/lody/resize-observer.ts",
+      "sourceSha256": "02d9b760709679ed466a5b81139d28e91a9762affa40ced2a24a06b6536a7c63",
+      "targetSha256": "bff669d2f87e14ee838c351e97a6a30427e1b0073ba7ce18f905a8ec622f3e81",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/session-diff-diagnostics.ts",
+      "target": "src/renderer/components/common/lody/session-diff-diagnostics.ts",
+      "sourceSha256": "0311eaee71067e76d3913d88da207f50a3dbb09927de98cd7ca27f03f7bec446",
+      "targetSha256": "1f26a70d7479240eba008dde91f5102a0a54f3c73af6a4cf4cb80cbbe7d828cc",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/lib/diff-perf.ts",
+      "target": "src/renderer/components/common/lody/diff-perf.ts",
+      "sourceSha256": "b24ff59abdd3ffb3ce12b83b2fb8b00b899a680ddf481d61cd5d1bc76f670bcd",
+      "targetSha256": "fee751a5caca62782633b39698e309e1657d3d0191770a00a62ec6e109d73ce4",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/ui/collapsible-card.tsx",
+      "target": "src/renderer/components/common/lody/collapsible-card.tsx",
+      "sourceSha256": "9a8216264c6628ac05bd6bf43237cee1b2c5cf52331750d8052b6c23a1e6e6a2",
+      "targetSha256": "38a6abec8deee87b24e38fc08131c1cd2d63d5f7acb82cda0c7633d3bf858be9",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/copy-button.tsx",
+      "target": "src/renderer/components/common/lody/copy-button.tsx",
+      "sourceSha256": "56f055bcbf6d1edbc2280141ffbcb72a6f9d4f3f66482b01a846009bf835cb68",
+      "targetSha256": "879e4f6582bb6690f59452c9114d1f83d6deaced76ef504361be82725a448cc7",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/ui/blur-fade/blur-fade.tsx",
+      "target": "src/renderer/components/common/lody/blur-fade.tsx",
+      "sourceSha256": "224c9771dd377736de7211cd1b15bed911c7931c8295366f33994ff9a33dcf3d",
+      "targetSha256": "c0df5d2fcee9d410b354d1686832b6ff94628e60e2677e21c35c2e9b2f4b1ffb",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "packages/components/src/lib/clamp.ts",
+      "target": "src/renderer/components/common/lody/clamp.ts",
+      "sourceSha256": "be0aac80ec8e5fdfc928f56b67ccc6f3762204b179bd21b50841b922790c5f8d",
+      "targetSha256": "42a8edacb8e03d552186b4d0bbc00c888eff4be36dc2bc8fa010c18d9c7efa26",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/components/chat/comment-reference-state.ts",
+      "target": "src/renderer/components/common/lody/comment-reference-state.ts",
+      "sourceSha256": "a335396f90daeeee0c3ef4de9de6b7ce9dcef7e45793ec0740613a0dbe9dc87a",
+      "targetSha256": "0600c7bdcbbc489ca8a1ce8aaca11d7c36ba23c1d251febc5010fe90810c5f0c",
+      "classification": "import-ui-theme-style-adaptation"
+    },
+    {
+      "source": "LICENSE",
+      "target": "src/renderer/components/common/lody/LICENSE",
+      "sourceSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "targetSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "classification": "verbatim"
+    },
+    {
+      "source": "THIRD_PARTY_NOTICES.md",
+      "target": "src/renderer/components/common/lody/THIRD_PARTY_NOTICES.md",
+      "sourceSha256": "b145a92ebbb5f7a9532af0d7143297c4968f94960eb21de4fb0ddac0d1ebaebc",
+      "targetSha256": "d4b87bf59d1cdada03078dd0542944f42b364c9d3e7d00404e9d86dd24934da7",
+      "classification": "header-only"
+    },
+    {
+      "source": "patches/@pierre__diffs@1.0.10.patch",
+      "target": "src/renderer/components/common/lody/pierre-diffs.patch",
+      "sourceSha256": "0afca3b16a96287f9f3c9a7ae70d10d86090cc8a1adaa35886b799bd5087b3d8",
+      "targetSha256": "0afca3b16a96287f9f3c9a7ae70d10d86090cc8a1adaa35886b799bd5087b3d8",
+      "classification": "verbatim"
+    },
+    {
+      "source": "packages/components/src/ui/blur-fade/fade.module.css",
+      "target": "src/renderer/components/common/lody/fade.module.css",
+      "sourceSha256": "23ebd86aa9448a366d98386c9fd578d4274927b4ded7d4f1483d7d75f40e4af2",
+      "targetSha256": "538c1e5e3494b65fe88df2d22eb338a8f48023fc0ae6ea6263191fe2400f90d9",
+      "classification": "header-only"
+    },
+    {
+      "source": "packages/components/src/stories/fixtures/office-viewer-files.ts",
+      "target": "tests/lody/office-viewer-files.ts",
+      "sourceSha256": "46c0479c26ec441f2b7fdbad0b5dd349e67a8faa23eb1ad32d810bb6b4384cf5",
+      "targetSha256": "d0484146025cf0566fded7b829899a8f197a1599d9f25bbb34183ff4e014d76d",
+      "classification": "original-fixture-plus-original-pdf-function"
+    },
+    {
+      "source": "packages/components/src/stories/SessionFileBinaryPreview.stories.tsx",
+      "target": "tests/lody/office-viewer-files.ts",
+      "sourceSha256": "f605357dc3fb447c009d49e7e66022ac9a3bb9d428fb6ce4e781f8a8936a9f2f",
+      "targetSha256": "d0484146025cf0566fded7b829899a8f197a1599d9f25bbb34183ff4e014d76d",
+      "classification": "original-createSamplePdf-function"
+    },
+    {
+      "source": "locales/zh_CN.json",
+      "target": "src/renderer/components/common/lody/zh-CN.json",
+      "sourceSha256": "8c7f301ec91d95e4757d8db43cf86f0b9be51551a35a31fcc7e3946aafd42e73",
+      "targetSha256": "8ea9053a9579d36ca2b5a4f24a08ae3f66bd092cc845e62709a8bb868f55d557",
+      "classification": "preview-diff-key-subset"
+    },
+    {
+      "source": "packages/components/tests/pdf-file-preview.test.ts",
+      "target": "tests/lody/pdf-file-preview.test.ts",
+      "sourceSha256": "0365e460ba09d83f0d7ea7f7c202688dc51c068b92f540daf8c9abd46379bc55",
+      "targetSha256": "f08332db168d5b052da5c950d1f7bf3d7dd212c9b6dd03e33ca24f35c03e7bcf",
+      "classification": "import-adaptation-original-assertions"
+    },
+    {
+      "source": "packages/components/tests/diff-parse-worker-client.test.ts",
+      "target": "tests/lody/diff-parse-worker-client.test.ts",
+      "sourceSha256": "f5edefe47704b754da422101710caf6f6bf47f45de0782cf9b56d00a113e91dc",
+      "targetSha256": "387e17c55d9884b5a9d39633401daf2f7d812ec090dff5ad8b1957a44b08b49f",
+      "classification": "import-adaptation-original-assertions"
+    },
+    {
+      "source": "packages/components/tests/diff-parse-worker-impl.test.ts",
+      "target": "tests/lody/diff-parse-worker-impl.test.ts",
+      "sourceSha256": "c2783dc62b29004029359465ea6fff5837aab165bc783af37459771e36decb53",
+      "targetSha256": "95e1525a62f5eed8a9e7e9e0465bba138c7fd73bbcf4749b35d1c3f4ea1022e4",
+      "classification": "import-adaptation-original-assertions"
+    },
+    {
+      "source": "packages/components/tests/diff-render-worker-pool.test.ts",
+      "target": "tests/lody/diff-render-worker-pool.test.ts",
+      "sourceSha256": "2cab34e6a23e6c58da294dfc0a5de5e08e20b360b3bccd6c083cfe5b04be06dc",
+      "targetSha256": "90e8b689c0c3be228135fb8bbbf122ae4633f949010021473ef131a7b5b634b7",
+      "classification": "import-adaptation-original-assertions"
+    },
+    {
+      "source": "packages/components/tests/code-collab-diff-metadata-bounds.test.ts",
+      "target": "tests/lody/code-collab-diff-metadata-bounds.test.ts",
+      "sourceSha256": "0b6cbac87b8dd0f4e6982647c6b689832fce6bd894e9ed2aac9ad743982c434b",
+      "targetSha256": "4c42df055a66be3e500c641430d63fd5bdf565f1725a4a9f52e9553bfb5cfee1",
+      "classification": "import-adaptation-original-assertions"
+    },
+    {
+      "source": "packages/shared/src/session-comment-types.ts",
+      "target": "src/renderer/components/common/lody/shared-types.ts",
+      "sourceSha256": "dbb83263105524b7c0a83edffb12c603afc0009a64996f52d00728e114016e61",
+      "targetSha256": "7cbe4c27f60e4486aa0be34b7c1abc00b8a57a355250223931f3fe4fd7d893b9",
+      "classification": "type-extraction-only"
+    },
+    {
+      "source": "packages/shared/src/ai.ts",
+      "target": "src/renderer/components/common/lody/shared-types.ts",
+      "sourceSha256": "89d790b962d830d50751a724ef7626af52bbb6f3edd3d9894f023a0729dca5f4",
+      "targetSha256": "7cbe4c27f60e4486aa0be34b7c1abc00b8a57a355250223931f3fe4fd7d893b9",
+      "classification": "type-extraction-only"
+    },
+    {
+      "source": "packages/shared/src/code-collab.ts",
+      "target": "src/renderer/components/common/lody/shared-types.ts",
+      "sourceSha256": "2beee7c51a3867cb0a2290024923253c0e05c8f250636b816ebbe42e09cc0094",
+      "targetSha256": "7cbe4c27f60e4486aa0be34b7c1abc00b8a57a355250223931f3fe4fd7d893b9",
+      "classification": "type-extraction-only"
+    },
+    {
+      "source": "packages/components/src/components/chat/comment-reference-chip.tsx",
+      "target": "src/renderer/components/common/lody/shared-types.ts",
+      "sourceSha256": "796542f472293266d6462a1931736a113c842c559306e98d376b0768acd2d554",
+      "targetSha256": "7cbe4c27f60e4486aa0be34b7c1abc00b8a57a355250223931f3fe4fd7d893b9",
+      "classification": "type-extraction-only"
+    },
+    {
+      "source": "packages/ui/src/tokens/scales.stylex.ts",
+      "target": "src/renderer/components/common/lody/tokens.ts",
+      "sourceSha256": "fd1ffb595ee12a4d41c6f2e73fe9c573aa471486416af5d1e6519c649f82a94c",
+      "targetSha256": "cca68690c13ed4013d2b701df8bcca9d5e91600da2b7953191040706068fc867",
+      "classification": "host-global-token-mapping"
+    },
+    {
+      "source": "packages/ui/src/tokens/colors.stylex.ts",
+      "target": "src/renderer/components/common/lody/tokens.ts",
+      "sourceSha256": "fcc527810dd531cc9d65c16c8c6bee0fa9cd7a854908f428a419abe03ae3c1ba",
+      "targetSha256": "cca68690c13ed4013d2b701df8bcca9d5e91600da2b7953191040706068fc867",
+      "classification": "host-global-token-mapping"
+    }
+  ],
+  "hostAdapters": [
+    {
+      "target": "src/renderer/components/common/lody/binary-file-viewer.tsx",
+      "targetSha256": "e0d452442e93ccde2593515c4b159d552c66ed4ac5a9f8a0e61e5bdb993e80e2",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/class-props.ts",
+      "targetSha256": "dd57b50ca78e22d06eb5721c443091d2043b2699c8672f514fdc0bc5e10d5940",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/collapsible.tsx",
+      "targetSha256": "84f90a034753a3e0ea62d4d626008dfdae3defe733d365f2c4bc7cdb693260b7",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/icons.tsx",
+      "targetSha256": "01ad83e10bd3b2446910f2338fac7dd922ee64e1c62a406f4f2b65521d0cee5a",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/pierre-diffs-host.patch",
+      "targetSha256": "389aac33b5e4b5b8ac36ffa7cfa8ed3ba894c8daccc2fc587f6dae5337a56e6c",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/preview.css",
+      "targetSha256": "33169742abba5b14b700aa737d54660449efc2a92dd9384c0f243a8a0b21e327",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/theme.ts",
+      "targetSha256": "fa6b9fc50761bb514c8c7772e3ac31ceca065c3baf3edcd5ede450c74e5c27aa",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/translation.ts",
+      "targetSha256": "770e3cedb154a9fbb2030be5357934f17a914fdb6629e01ed0422e966f182903",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/common/lody/ui.tsx",
+      "targetSha256": "9aa7e85d4e380d1e6d4bbdcd7957e5c4a096df3ae3eb1aa3783cebd638f3755d",
+      "classification": "host-adapter-or-generated-css"
+    },
+    {
+      "target": "src/renderer/components/detail-panel/artifact-comparison.tsx",
+      "targetSha256": "6146e612029e175692da5ab2bb5a241985f06bdd7395a0a4c3bb8f2980a4f07e",
+      "classification": "host-source-and-readonly-lifecycle-adapter"
+    },
+    {
+      "target": "src/shared/domain/file-preview.ts",
+      "targetSha256": "5a8e16590836c79a542ea6fff690973f7fd03c5aa54ffa0735fe5a13a4925c0e",
+      "classification": "host-source-and-readonly-lifecycle-adapter"
+    },
+    {
+      "target": "src/renderer/components/detail-panel/artifact-tab.tsx",
+      "targetSha256": "c79d62e4c6e55732928c8da625fe3ae92bee25df013be99ad619492de9272d24",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/renderer/components/detail-panel/material-tab.tsx",
+      "targetSha256": "af0a15fae268be56525188e2aad4d2fdce988781f99f18536f8515ffba0ce57e",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/renderer/pages/conversations/-components/material-preview.tsx",
+      "targetSha256": "b2e46f61a3190a81f7eeba1650217f63cc10ccd8ef18f7152058379e0189730d",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/runtime/modules/materials/material-repository.ts",
+      "targetSha256": "f194c211d163a7dc6f4b4e1d79d370ef556b75b3707973f2c54234bfd137730f",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/runtime/modules/workspaces/artifact-repository.ts",
+      "targetSha256": "30f52746e15a82d5858755f6c2f6af834905a01d735187551e081054be955182",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/shared/domain/artifacts.ts",
+      "targetSha256": "2d3a224d91a568e80b0f4886c1deec9ee2c030a56c5308507d3ced789fad7f7a",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/shared/domain/materials.ts",
+      "targetSha256": "63e01d1fd49b6f8115d20db89f236886bda0830dc85d22dc6f7697adbde65208",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "src/renderer/index.html",
+      "targetSha256": "d8f1692348787566d6ab7d54a42d10244f2650c83e20561091d2798eaadf7f5e",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "package.json",
+      "targetSha256": "8f07e8107e4330d964c0ceb55fa77361cf0fbb522554f1bba4969ba1bd4967cf",
+      "classification": "boai-existing-host-wiring"
+    },
+    {
+      "target": "pnpm-workspace.yaml",
+      "targetSha256": "e16bd6c910447db1cee2de6b9a57d47513f4fd06550706bc98c0d16fd17041db",
+      "classification": "boai-existing-host-wiring"
+    }
+  ],
+  "dependencySnapshotPairs": [
+    {
+      "upstream": "pdfjs-dist@6.3.289",
+      "host": "pdfjs-dist@6.3.289",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@extend-ai/react-docx@0.9.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+      "host": "@extend-ai/react-docx@0.9.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+      "upstreamDependencies": {
+        "@chenglou/pretext": "0.0.8",
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+        "fast-png": "8.0.0",
+        "react": "19.2.0",
+        "react-dom": "19.2.0(react@19.2.0)",
+        "utif": "3.1.0"
+      },
+      "hostDependencies": {
+        "@chenglou/pretext": "0.0.8",
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+        "fast-png": "8.0.0",
+        "react": "19.3.0",
+        "react-dom": "19.3.0(react@19.3.0)",
+        "utif": "3.1.0"
+      }
+    },
+    {
+      "upstream": "@chenglou/pretext@0.0.8",
+      "host": "@chenglou/pretext@0.0.8",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@tanstack/react-virtual@3.13.23(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+      "host": "@tanstack/react-virtual@3.13.23(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+      "upstreamDependencies": {
+        "@tanstack/virtual-core": "3.13.23",
+        "react": "19.2.0",
+        "react-dom": "19.2.0(react@19.2.0)"
+      },
+      "hostDependencies": {
+        "@tanstack/virtual-core": "3.13.23",
+        "react": "19.3.0",
+        "react-dom": "19.3.0(react@19.3.0)"
+      }
+    },
+    {
+      "upstream": "@tanstack/virtual-core@3.13.23",
+      "host": "@tanstack/virtual-core@3.13.23",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "fast-png@8.0.0",
+      "host": "fast-png@8.0.0",
+      "upstreamDependencies": {
+        "fflate": "0.8.3",
+        "iobuffer": "6.0.1"
+      },
+      "hostDependencies": {
+        "fflate": "0.8.3",
+        "iobuffer": "6.0.1"
+      }
+    },
+    {
+      "upstream": "fflate@0.8.3",
+      "host": "fflate@0.8.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "iobuffer@6.0.1",
+      "host": "iobuffer@6.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "utif@3.1.0",
+      "host": "utif@3.1.0",
+      "upstreamDependencies": {
+        "pako": "1.0.11"
+      },
+      "hostDependencies": {
+        "pako": "1.0.11"
+      }
+    },
+    {
+      "upstream": "pako@1.0.11",
+      "host": "pako@1.0.11",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@extend-ai/react-xlsx@0.16.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+      "host": "@extend-ai/react-xlsx@0.16.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+      "upstreamDependencies": {
+        "@dukelib/sheets-wasm": "0.1.23",
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+        "d3-geo": "3.1.1",
+        "d3-hierarchy": "3.1.2",
+        "d3-scale": "4.0.2",
+        "d3-shape": "3.2.0",
+        "fflate": "0.8.3",
+        "react": "19.2.0",
+        "react-dom": "19.2.0(react@19.2.0)",
+        "regl": "2.1.1",
+        "topojson-client": "3.1.0",
+        "us-atlas": "3.0.1",
+        "world-atlas": "2.0.2"
+      },
+      "hostDependencies": {
+        "@dukelib/sheets-wasm": "0.1.23",
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+        "d3-geo": "3.1.1",
+        "d3-hierarchy": "3.1.2",
+        "d3-scale": "4.0.2",
+        "d3-shape": "3.2.0",
+        "fflate": "0.8.3",
+        "react": "19.3.0",
+        "react-dom": "19.3.0(react@19.3.0)",
+        "regl": "2.1.1",
+        "topojson-client": "3.1.0",
+        "us-atlas": "3.0.1",
+        "world-atlas": "2.0.2"
+      }
+    },
+    {
+      "upstream": "@dukelib/sheets-wasm@0.1.23",
+      "host": "@dukelib/sheets-wasm@0.1.23",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "d3-geo@3.1.1",
+      "host": "d3-geo@3.1.1",
+      "upstreamDependencies": {
+        "d3-array": "3.2.4"
+      },
+      "hostDependencies": {
+        "d3-array": "3.2.4"
+      }
+    },
+    {
+      "upstream": "d3-array@3.2.4",
+      "host": "d3-array@3.2.4",
+      "upstreamDependencies": {
+        "internmap": "2.0.3"
+      },
+      "hostDependencies": {
+        "internmap": "2.0.3"
+      }
+    },
+    {
+      "upstream": "internmap@2.0.3",
+      "host": "internmap@2.0.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "d3-hierarchy@3.1.2",
+      "host": "d3-hierarchy@3.1.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "d3-scale@4.0.2",
+      "host": "d3-scale@4.0.2",
+      "upstreamDependencies": {
+        "d3-array": "3.2.4",
+        "d3-format": "3.1.2",
+        "d3-interpolate": "3.0.1",
+        "d3-time": "3.1.0",
+        "d3-time-format": "4.1.0"
+      },
+      "hostDependencies": {
+        "d3-array": "3.2.4",
+        "d3-format": "3.1.2",
+        "d3-interpolate": "3.0.1",
+        "d3-time": "3.1.0",
+        "d3-time-format": "4.1.0"
+      }
+    },
+    {
+      "upstream": "d3-format@3.1.2",
+      "host": "d3-format@3.1.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "d3-interpolate@3.0.1",
+      "host": "d3-interpolate@3.0.1",
+      "upstreamDependencies": {
+        "d3-color": "3.1.0"
+      },
+      "hostDependencies": {
+        "d3-color": "3.1.0"
+      }
+    },
+    {
+      "upstream": "d3-color@3.1.0",
+      "host": "d3-color@3.1.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "d3-time@3.1.0",
+      "host": "d3-time@3.1.0",
+      "upstreamDependencies": {
+        "d3-array": "3.2.4"
+      },
+      "hostDependencies": {
+        "d3-array": "3.2.4"
+      }
+    },
+    {
+      "upstream": "d3-time-format@4.1.0",
+      "host": "d3-time-format@4.1.0",
+      "upstreamDependencies": {
+        "d3-time": "3.1.0"
+      },
+      "hostDependencies": {
+        "d3-time": "3.1.0"
+      }
+    },
+    {
+      "upstream": "d3-shape@3.2.0",
+      "host": "d3-shape@3.2.0",
+      "upstreamDependencies": {
+        "d3-path": "3.1.0"
+      },
+      "hostDependencies": {
+        "d3-path": "3.1.0"
+      }
+    },
+    {
+      "upstream": "d3-path@3.1.0",
+      "host": "d3-path@3.1.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "regl@2.1.1",
+      "host": "regl@2.1.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "topojson-client@3.1.0",
+      "host": "topojson-client@3.1.0",
+      "upstreamDependencies": {
+        "commander": "2.20.3"
+      },
+      "hostDependencies": {
+        "commander": "2.20.3"
+      }
+    },
+    {
+      "upstream": "commander@2.20.3",
+      "host": "commander@2.20.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "us-atlas@3.0.1",
+      "host": "us-atlas@3.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "world-atlas@2.0.2",
+      "host": "world-atlas@2.0.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@extend-ai/react-pptx@0.2.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+      "host": "@extend-ai/react-pptx@0.2.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+      "upstreamDependencies": {
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+        "@tanstack/virtual-core": "3.13.23",
+        "d3-geo": "3.1.1",
+        "d3-hierarchy": "3.1.2",
+        "d3-scale": "4.0.2",
+        "d3-shape": "3.2.0",
+        "react": "19.2.0",
+        "react-dom": "19.2.0(react@19.2.0)",
+        "regl": "2.1.1",
+        "topojson-client": "3.1.0"
+      },
+      "hostDependencies": {
+        "@tanstack/react-virtual": "3.13.23(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+        "@tanstack/virtual-core": "3.13.23",
+        "d3-geo": "3.1.1",
+        "d3-hierarchy": "3.1.2",
+        "d3-scale": "4.0.2",
+        "d3-shape": "3.2.0",
+        "react": "19.3.0",
+        "react-dom": "19.3.0(react@19.3.0)",
+        "regl": "2.1.1",
+        "topojson-client": "3.1.0"
+      }
+    },
+    {
+      "upstream": "@pierre/diffs@1.0.10(patch_hash=0afca3b16a96287f9f3c9a7ae70d10d86090cc8a1adaa35886b799bd5087b3d8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)",
+      "host": "@pierre/diffs@1.0.10(patch_hash=389aac33b5e4b5b8ac36ffa7cfa8ed3ba894c8daccc2fc587f6dae5337a56e6c)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)",
+      "upstreamDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/engine-javascript": "3.22.0",
+        "@shikijs/transformers": "3.22.0",
+        "diff": "8.0.3",
+        "hast-util-to-html": "9.0.5",
+        "lru_map": "0.4.1",
+        "react": "19.2.0",
+        "react-dom": "19.2.0(react@19.2.0)",
+        "shiki": "3.22.0"
+      },
+      "hostDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/engine-javascript": "3.22.0",
+        "@shikijs/transformers": "3.22.0",
+        "diff": "8.0.3",
+        "hast-util-to-html": "9.0.5",
+        "lru_map": "0.4.1",
+        "react": "19.3.0",
+        "react-dom": "19.3.0(react@19.3.0)",
+        "shiki": "3.22.0"
+      }
+    },
+    {
+      "upstream": "@shikijs/core@3.22.0",
+      "host": "@shikijs/core@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4",
+        "hast-util-to-html": "9.0.5"
+      },
+      "hostDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4",
+        "hast-util-to-html": "9.0.5"
+      }
+    },
+    {
+      "upstream": "@shikijs/types@3.22.0",
+      "host": "@shikijs/types@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4"
+      },
+      "hostDependencies": {
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4"
+      }
+    },
+    {
+      "upstream": "@shikijs/vscode-textmate@10.0.2",
+      "host": "@shikijs/vscode-textmate@10.0.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@types/hast@3.0.4",
+      "host": "@types/hast@3.0.4",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "@types/unist@3.0.3",
+      "host": "@types/unist@3.0.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "hast-util-to-html@9.0.5",
+      "host": "hast-util-to-html@9.0.5",
+      "upstreamDependencies": {
+        "@types/hast": "3.0.4",
+        "@types/unist": "3.0.3",
+        "ccount": "2.0.1",
+        "comma-separated-tokens": "2.0.3",
+        "hast-util-whitespace": "3.0.0",
+        "html-void-elements": "3.0.0",
+        "mdast-util-to-hast": "13.2.1",
+        "property-information": "7.1.0",
+        "space-separated-tokens": "2.0.2",
+        "stringify-entities": "4.0.4",
+        "zwitch": "2.0.4"
+      },
+      "hostDependencies": {
+        "@types/hast": "3.0.4",
+        "@types/unist": "3.0.3",
+        "ccount": "2.0.1",
+        "comma-separated-tokens": "2.0.3",
+        "hast-util-whitespace": "3.0.0",
+        "html-void-elements": "3.0.0",
+        "mdast-util-to-hast": "13.2.1",
+        "property-information": "7.1.0",
+        "space-separated-tokens": "2.0.2",
+        "stringify-entities": "4.0.4",
+        "zwitch": "2.0.4"
+      }
+    },
+    {
+      "upstream": "ccount@2.0.1",
+      "host": "ccount@2.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "comma-separated-tokens@2.0.3",
+      "host": "comma-separated-tokens@2.0.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "hast-util-whitespace@3.0.0",
+      "host": "hast-util-whitespace@3.0.0",
+      "upstreamDependencies": {
+        "@types/hast": "3.0.5"
+      },
+      "hostDependencies": {
+        "@types/hast": "3.0.5"
+      }
+    },
+    {
+      "upstream": "@types/hast@3.0.5",
+      "host": "@types/hast@3.0.5",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "html-void-elements@3.0.0",
+      "host": "html-void-elements@3.0.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "mdast-util-to-hast@13.2.1",
+      "host": "mdast-util-to-hast@13.2.1",
+      "upstreamDependencies": {
+        "@types/hast": "3.0.5",
+        "@types/mdast": "4.0.4",
+        "@ungap/structured-clone": "1.3.0",
+        "devlop": "1.1.0",
+        "micromark-util-sanitize-uri": "2.0.1",
+        "trim-lines": "3.0.1",
+        "unist-util-position": "5.0.0",
+        "unist-util-visit": "5.1.0",
+        "vfile": "6.0.3"
+      },
+      "hostDependencies": {
+        "@types/hast": "3.0.5",
+        "@types/mdast": "4.0.4",
+        "@ungap/structured-clone": "1.3.0",
+        "devlop": "1.1.0",
+        "micromark-util-sanitize-uri": "2.0.1",
+        "trim-lines": "3.0.1",
+        "unist-util-position": "5.0.0",
+        "unist-util-visit": "5.1.0",
+        "vfile": "6.0.3"
+      }
+    },
+    {
+      "upstream": "@types/mdast@4.0.4",
+      "host": "@types/mdast@4.0.4",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "@ungap/structured-clone@1.3.0",
+      "host": "@ungap/structured-clone@1.3.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "devlop@1.1.0",
+      "host": "devlop@1.1.0",
+      "upstreamDependencies": {
+        "dequal": "2.0.3"
+      },
+      "hostDependencies": {
+        "dequal": "2.0.3"
+      }
+    },
+    {
+      "upstream": "dequal@2.0.3",
+      "host": "dequal@2.0.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "micromark-util-sanitize-uri@2.0.1",
+      "host": "micromark-util-sanitize-uri@2.0.1",
+      "upstreamDependencies": {
+        "micromark-util-character": "2.1.1",
+        "micromark-util-encode": "2.0.1",
+        "micromark-util-symbol": "2.0.1"
+      },
+      "hostDependencies": {
+        "micromark-util-character": "2.1.1",
+        "micromark-util-encode": "2.0.1",
+        "micromark-util-symbol": "2.0.1"
+      }
+    },
+    {
+      "upstream": "micromark-util-character@2.1.1",
+      "host": "micromark-util-character@2.1.1",
+      "upstreamDependencies": {
+        "micromark-util-symbol": "2.0.1",
+        "micromark-util-types": "2.0.2"
+      },
+      "hostDependencies": {
+        "micromark-util-symbol": "2.0.1",
+        "micromark-util-types": "2.0.2"
+      }
+    },
+    {
+      "upstream": "micromark-util-symbol@2.0.1",
+      "host": "micromark-util-symbol@2.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "micromark-util-types@2.0.2",
+      "host": "micromark-util-types@2.0.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "micromark-util-encode@2.0.1",
+      "host": "micromark-util-encode@2.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "trim-lines@3.0.1",
+      "host": "trim-lines@3.0.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "unist-util-position@5.0.0",
+      "host": "unist-util-position@5.0.0",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "unist-util-visit@5.1.0",
+      "host": "unist-util-visit@5.1.0",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-is": "6.0.1",
+        "unist-util-visit-parents": "6.0.2"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-is": "6.0.1",
+        "unist-util-visit-parents": "6.0.2"
+      }
+    },
+    {
+      "upstream": "unist-util-is@6.0.1",
+      "host": "unist-util-is@6.0.1",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "unist-util-visit-parents@6.0.2",
+      "host": "unist-util-visit-parents@6.0.2",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-is": "6.0.1"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-is": "6.0.1"
+      }
+    },
+    {
+      "upstream": "vfile@6.0.3",
+      "host": "vfile@6.0.3",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3",
+        "vfile-message": "4.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3",
+        "vfile-message": "4.0.3"
+      }
+    },
+    {
+      "upstream": "vfile-message@4.0.3",
+      "host": "vfile-message@4.0.3",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-stringify-position": "4.0.0"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3",
+        "unist-util-stringify-position": "4.0.0"
+      }
+    },
+    {
+      "upstream": "unist-util-stringify-position@4.0.0",
+      "host": "unist-util-stringify-position@4.0.0",
+      "upstreamDependencies": {
+        "@types/unist": "3.0.3"
+      },
+      "hostDependencies": {
+        "@types/unist": "3.0.3"
+      }
+    },
+    {
+      "upstream": "property-information@7.1.0",
+      "host": "property-information@7.1.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "space-separated-tokens@2.0.2",
+      "host": "space-separated-tokens@2.0.2",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "stringify-entities@4.0.4",
+      "host": "stringify-entities@4.0.4",
+      "upstreamDependencies": {
+        "character-entities-html4": "2.1.0",
+        "character-entities-legacy": "3.0.0"
+      },
+      "hostDependencies": {
+        "character-entities-html4": "2.1.0",
+        "character-entities-legacy": "3.0.0"
+      }
+    },
+    {
+      "upstream": "character-entities-html4@2.1.0",
+      "host": "character-entities-html4@2.1.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "character-entities-legacy@3.0.0",
+      "host": "character-entities-legacy@3.0.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "zwitch@2.0.4",
+      "host": "zwitch@2.0.4",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "@shikijs/engine-javascript@3.22.0",
+      "host": "@shikijs/engine-javascript@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "oniguruma-to-es": "4.3.4"
+      },
+      "hostDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "oniguruma-to-es": "4.3.4"
+      }
+    },
+    {
+      "upstream": "oniguruma-to-es@4.3.4",
+      "host": "oniguruma-to-es@4.3.4",
+      "upstreamDependencies": {
+        "oniguruma-parser": "0.12.1",
+        "regex": "6.1.0",
+        "regex-recursion": "6.0.2"
+      },
+      "hostDependencies": {
+        "oniguruma-parser": "0.12.1",
+        "regex": "6.1.0",
+        "regex-recursion": "6.0.2"
+      }
+    },
+    {
+      "upstream": "oniguruma-parser@0.12.1",
+      "host": "oniguruma-parser@0.12.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "regex@6.1.0",
+      "host": "regex@6.1.0",
+      "upstreamDependencies": {
+        "regex-utilities": "2.3.0"
+      },
+      "hostDependencies": {
+        "regex-utilities": "2.3.0"
+      }
+    },
+    {
+      "upstream": "regex-utilities@2.3.0",
+      "host": "regex-utilities@2.3.0",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "regex-recursion@6.0.2",
+      "host": "regex-recursion@6.0.2",
+      "upstreamDependencies": {
+        "regex-utilities": "2.3.0"
+      },
+      "hostDependencies": {
+        "regex-utilities": "2.3.0"
+      }
+    },
+    {
+      "upstream": "@shikijs/transformers@3.22.0",
+      "host": "@shikijs/transformers@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/types": "3.22.0"
+      },
+      "hostDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/types": "3.22.0"
+      }
+    },
+    {
+      "upstream": "diff@8.0.3",
+      "host": "diff@8.0.3",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "lru_map@0.4.1",
+      "host": "lru_map@0.4.1",
+      "upstreamDependencies": {},
+      "hostDependencies": {}
+    },
+    {
+      "upstream": "shiki@3.22.0",
+      "host": "shiki@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/engine-javascript": "3.22.0",
+        "@shikijs/engine-oniguruma": "3.22.0",
+        "@shikijs/langs": "3.22.0",
+        "@shikijs/themes": "3.22.0",
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4"
+      },
+      "hostDependencies": {
+        "@shikijs/core": "3.22.0",
+        "@shikijs/engine-javascript": "3.22.0",
+        "@shikijs/engine-oniguruma": "3.22.0",
+        "@shikijs/langs": "3.22.0",
+        "@shikijs/themes": "3.22.0",
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2",
+        "@types/hast": "3.0.4"
+      }
+    },
+    {
+      "upstream": "@shikijs/engine-oniguruma@3.22.0",
+      "host": "@shikijs/engine-oniguruma@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2"
+      },
+      "hostDependencies": {
+        "@shikijs/types": "3.22.0",
+        "@shikijs/vscode-textmate": "10.0.2"
+      }
+    },
+    {
+      "upstream": "@shikijs/langs@3.22.0",
+      "host": "@shikijs/langs@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/types": "3.22.0"
+      },
+      "hostDependencies": {
+        "@shikijs/types": "3.22.0"
+      }
+    },
+    {
+      "upstream": "@shikijs/themes@3.22.0",
+      "host": "@shikijs/themes@3.22.0",
+      "upstreamDependencies": {
+        "@shikijs/types": "3.22.0"
+      },
+      "hostDependencies": {
+        "@shikijs/types": "3.22.0"
+      }
+    }
+  ],
+  "dependencyComparison": {
+    "count": 79,
+    "nonPeerVersionMismatches": 0,
+    "peerExceptions": {
+      "react": {
+        "upstream": "19.2.0",
+        "host": "19.3.0"
+      },
+      "react-dom": {
+        "upstream": "19.2.0",
+        "host": "19.3.0"
+      }
+    },
+    "selection": "Browser runtime dependency closure, excludes unreferenced Node optional canvas and peer host implementation."
+  },
+  "lockSources": [
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "dbb950560fd5a68b3fd54f58d3d48c650cd2050416910e098470d62cb97a4f3a",
+      "origin": "upstream"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "34e308482567bc515e638024e74c21f4967705fee92e25e50676cfc00c97647a",
+      "origin": "host"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "af6fc0ef9a5928e7be416a9eeea1c50533c79f9837063c9cd40c160b7cf1f7a6",
+      "origin": "upstream"
+    }
+  ],
+  "assets": [
+    "pdfjs-dist/legacy/web/pdf_viewer.css",
+    "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url",
+    "@extend-ai/react-docx/docx_wasm_bg.wasm?url",
+    "@extend-ai/react-xlsx/duke_sheets_wasm_bg.wasm?url",
+    "@extend-ai/react-pptx/pptx_wasm_bg.wasm?url",
+    "@extend-ai/react-pptx/styles.css?raw",
+    "@pierre/diffs/worker/worker.js?worker",
+    "diff-parse.worker?worker"
+  ],
+  "notes": [
+    "原37模块的源→目标完整差异另见同日适配.patch；generated CSS/宿主适配分别登记。",
+    "commentsEnabled=false；评论/GitHub持久化和协作运行时不在本次文件阅读/版本对比迁移范围。",
+    "原diff补丁另存；实际安装合并原补丁与dist Web Component副作用元数据修正。",
+    "原断言保留，PDF Response与render worker Promise两项TS7标注见patch。"
+  ],
+  "verificationFiles": [
+    {
+      "target": "tests/e2e/features/artifacts.feature",
+      "targetSha256": "1e4fbfb06f9a9d5dd03dd330bef395abdf8143879725d19db9813258313bf80a"
+    },
+    {
+      "target": "tests/e2e/features/materials.feature",
+      "targetSha256": "091a48c58cdecdaba02e561fc62674fd3792358020157ac89e5208fb7ed0c115"
+    },
+    {
+      "target": "tests/e2e/steps/artifacts.steps.ts",
+      "targetSha256": "cc60406a8ee5a96a762314a3966ceeacb7b55ce97170241e97209e2566a7a197"
+    },
+    {
+      "target": "tests/e2e/steps/materials.steps.ts",
+      "targetSha256": "3b891268fc86c14877263edd26d0bd79cc4b5169165a9c3417dd10820a5a34c6"
+    },
+    {
+      "target": "tests/e2e/support/artifacts.ts",
+      "targetSha256": "61116aa59a607de933768171aefddf81cfb6f4022988eb2f9bf2bbca543773fd"
+    }
+  ]
+}

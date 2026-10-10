@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主核源后的PDF/DOCX/XLSX/PPTX接Lody原查看器；正文仍只读，隐藏卸载二进制资源。
  * [INPUT]: 宿主复核后的材料、独立文件预览或图片data URI、加载/错误状态和可选文本来源行号。
  * [OUTPUT]: Markdown 排版/源码切换、Shiki 代码与来源行定位、静态图片及不支持格式说明；预览不改变材料解析记录，不执行HTML/SVG，失效/失败不显示旧内容。
  * [POS]: 会话材料独立详情标签的只读预览面板；不执行 Markdown 链接、不直接读取本机路径。
@@ -8,6 +9,7 @@ import { useState } from 'react'
 import type { MaterialPreview } from '@shared/domain/materials'
 import { sizeText } from '@/components/common'
 import { TextFilePreview } from '@/components/common/file-preview'
+import { BinaryFileViewer } from '@/components/common/lody/binary-file-viewer'
 import { ScrollFade } from '@/components/ui/scroll-fade'
 import { materialDisplayName, materialErrorText, materialFormatLabel, materialImageUrl, materialStatusLabels } from './material-draft'
 
@@ -16,9 +18,10 @@ interface MaterialPreviewPanelProps {
   loading?: boolean
   error?: string
   line?: number
+  active?: boolean
 }
 
-export function MaterialPreviewPanel({ preview, loading, error, line }: MaterialPreviewPanelProps) {
+export function MaterialPreviewPanel({ preview, loading, error, line, active = true }: MaterialPreviewPanelProps) {
   const [failedImage, setFailedImage] = useState<string>()
   const material = preview?.material
 
@@ -38,7 +41,7 @@ export function MaterialPreviewPanel({ preview, loading, error, line }: Material
       <p className="field-hint">{materialFormatLabel(material.format)} · {sizeText(material.size)}</p>
       {validLine && <p role="status" className="mt-2 break-all text-xs text-muted-foreground">来源定位：<code>{material.id}:L{line}</code></p>}
     </header>
-    {file && file.kind !== 'unsupported' ? <TextFilePreview key={`${material.id}:${material.revision}`} name={materialDisplayName(material.name)} text={file.text} kind={file.kind} language={'language' in file ? file.language : undefined} line={line} /> : <ScrollFade className="min-h-0 flex-1 rounded-xl bg-card text-card-foreground soft-card" aria-label={material.format === 'image' ? '材料图片' : '文件信息'}>
+    {preview.binaryPreview ? <BinaryFileViewer key={`${material.id}:${material.revision}:${material.contentHash}`} preview={preview.binaryPreview} name={material.name} active={active} /> : file && file.kind !== 'unsupported' ? <TextFilePreview key={`${material.id}:${material.revision}`} name={materialDisplayName(material.name)} text={file.text} kind={file.kind} language={'language' in file ? file.language : undefined} line={line} /> : <ScrollFade className="min-h-0 flex-1 rounded-xl bg-card text-card-foreground soft-card" aria-label={material.format === 'image' ? '材料图片' : '文件信息'}>
       {material.format === 'image' ? imageUrl && failedImage !== imageUrl ? <img src={imageUrl} alt={materialDisplayName(material.name)} className="max-h-full w-full object-contain p-2" draggable={false} onError={() => setFailedImage(imageUrl)} /> : <p role="status" className="field-hint p-3">图片预览暂不可用，请重新核对原件。</p> : <p className="field-hint p-3">{file?.kind === 'unsupported' ? file.reason : '此文件暂不支持预览。'}</p>}
     </ScrollFade>}
       <details className="max-h-40 shrink-0 overflow-y-auto text-xs text-muted-foreground">

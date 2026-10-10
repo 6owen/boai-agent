@@ -1,0 +1,50 @@
+/*
+[INPUT]: Lody固定52e6eebe原blur-fade样式，保留原文。
+[OUTPUT]: 原许可/样式资产；源hash见ai-docs迁入清单。
+[POS]: common/lody局部来源资产。
+[PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+*/
+.root {
+  --blur: 4px;
+  --stop: 25%;
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  backdrop-filter: blur(var(--blur));
+
+  &[data-side="top"] {
+    background: linear-gradient(to top, transparent, var(--background));
+    mask-image: linear-gradient(
+      to bottom,
+      var(--background) var(--stop),
+      transparent
+    );
+  }
+
+  &[data-side="left"] {
+    background: linear-gradient(to left, transparent, var(--background));
+    mask-image: linear-gradient(
+      to right,
+      var(--background) var(--stop),
+      transparent
+    );
+  }
+
+  &[data-side="right"] {
+    background: linear-gradient(to right, transparent, var(--background));
+    mask-image: linear-gradient(
+      to left,
+      var(--background) var(--stop),
+      transparent
+    );
+  }
+
+  &[data-side="bottom"] {
+    background: linear-gradient(to bottom, transparent, var(--background));
+    mask-image: linear-gradient(
+      to top,
+      var(--background) var(--stop),
+      transparent
+    );
+  }
+}

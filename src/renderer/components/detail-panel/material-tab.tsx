@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 透传活跃状态至Lody二进制查看器，隐藏卸载原renderer；读取仍核材料版本并隔离迟到结果。
  * [INPUT]: 固定会话/材料身份、期望版本、活跃标签状态、搜索来源失效 revision 与宿主材料预览回执。
  * [OUTPUT]: 固定材料 Markdown/代码文件预览与来源行定位；显式按最新状态同hash复核后重读，隐藏/清理/授权变化失效旧原文，迟到读取不回填。
  * [POS]: detail-panel 的材料原文数据边界；不执行模型或读取任意文件路径。
@@ -59,7 +60,7 @@ export function MaterialTab({ api, conversationId, id, revision, active, line, r
   }, [api, conversationId, id, expectedRevision, active, requestId, refresh, sourceRevision])
   const current = loadedSource.current === sourceRevision && preview?.material.id === id && preview.material.revision === expectedRevision ? preview : undefined
   return <div className="detail-section file-preview-detail flex min-h-0 flex-1 flex-col gap-2">
-    <MaterialPreviewPanel preview={current} loading={loading || active && !current && !error} error={error} line={line} />
+    <MaterialPreviewPanel preview={current} loading={loading || active && !current && !error} error={error} line={line} active={active} />
     {error && active && <Button variant="secondary" size="sm" disabled={loading} onClick={() => void recheck()}>重新核对材料</Button>}
   </div>
 }

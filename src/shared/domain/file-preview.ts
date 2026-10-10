@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已核验受管文件的名称和原件字节；不接受宿主路径或模型声明的正文。
- * [OUTPUT]: 有界严格 UTF-8 的 Markdown/代码/纯文本预览；字节/字符/行数门禁、未知文本回退、二进制/编码原因，HTML/SVG 仅为源码。
+ * [OUTPUT]: 有界严格 UTF-8 文本预览及宿主核源后的PDF/Office非持久字节DTO；文本门禁保持，HTML/SVG仅为源码。
  * [POS]: 材料与成果共用的确定性预览合同；不改变材料解析、搜索、读取证据或执行文件内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,14 @@ export interface FilePreview {
   text: string
   language?: string
   reason?: string
+}
+
+export interface BinaryFilePreview { kind: 'pdf' | 'docx' | 'xlsx' | 'pptx'; bytes: Uint8Array }
+/** Presentation only; callers must verify authorization, hash and their original byte limit first. */
+export function previewBinaryFile(name: string, bytes: Uint8Array): BinaryFilePreview | undefined {
+  const extension = name.split(/[/\\]/).pop()!.toLowerCase().split('.').pop()
+  if (extension !== 'pdf' && extension !== 'docx' && extension !== 'xlsx' && extension !== 'pptx') return undefined
+  return { kind: extension, bytes: Uint8Array.from(bytes) }
 }
 
 const languages: Record<string, string> = {

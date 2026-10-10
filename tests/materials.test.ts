@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增实际材料核源Office字节、非持久DTO、陈旧版本和真实聊天清理拒绝验证。
  * [OUTPUT]: 重启草稿回收后旧发送明确要求放弃并重新选择，真实原件清理/无外部重读的断言保持。
  * [INPUT]: 真实 ProductStore、宿主私有材料文件和可控文件执行断点。
  * [OUTPUT]: 当前成员/旧名单、稳定回执与实际退出；独立代码/纯文本预览不进入模型正文/持久解析；同hash已发材料显式修复保留原引用/备份，撤权/清理/错hash拒绝恢复；严格文本/图片/二进制、外改保留和草稿重启清理。
@@ -47,6 +48,20 @@ async function fixture(checkpoint?: MaterialCheckpoint) {
   })
   return { root, store, repository, source, prepare, attach }
 }
+
+describe('binary preview preserves material permission', () => {
+  it('keeps original bytes transient and refuses stale revisions and revoked sources', async () => {
+    const { root, repository, prepare, attach, store } = await fixture()
+    const path = join(root, 'preview.docx'), bytes = Buffer.from('PK\x03\x04checked OOXML bytes'); await writeFile(path, bytes)
+    const material = await prepare('binary-preview', ['alice'], path); await attach(material)
+    const preview = await repository.preview(material.id, material.revision)
+    expect(preview.binaryPreview).toEqual({ kind: 'docx', bytes: Uint8Array.from(bytes) }); expect(preview.text).toBe('')
+    expect((await store.load<ConversationMaterial>('materials'))[0]).not.toHaveProperty('binaryPreview')
+    await expect(repository.preview(material.id, material.revision + 1)).rejects.toThrow('版本')
+    await store.transaction(tx => repository.invalidateConversation(tx, material.conversationId))
+    await expect(repository.preview(material.id, material.revision + 1)).rejects.toThrow()
+  })
+})
 
 describe('durable conversation materials', () => {
   it('repairs only an explicitly rechecked sent original and preserves same-hash historical references through restart and backup', async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原hash/会话/版本核对后提供非持久PDF/Office字节；模型read不返回该DTO，原20MiB与清理授权保持。
  * [OUTPUT]: 原发送引用的重启已清理草稿明确要求放弃未受理发送并重新选择，不以刷新重试暗示旧版本可恢复。
  * [OUTPUT]: API与原生Codex复用当前聊天及旧显式授权材料合同，旧ACP保持受限。
  * [INPUT]: 权威聊天/员工、SQLite 事务、宿主受管根/选取或临时文件、普通会话投递范围或旧明确授权、原名称与请求/revision。
@@ -10,7 +11,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { lstat, realpath } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { Conversation, DigitalAgent } from '../../../shared/domain'
-import { previewFile } from '../../../shared/domain/file-preview'
+import { previewBinaryFile, previewFile } from '../../../shared/domain/file-preview'
 import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, isMaterialReadRevisionValid, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial, type MaterialPreview, type MaterialReadRef, type MaterialSelection } from '../../../shared/domain/materials'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { contained } from '../workspaces/file-access'
@@ -222,7 +223,8 @@ export class MaterialRepository {
         material.status = 'ready'; material.revision++; delete material.error
         await tx.put(record('materials', material))
       }
-      return { material: clone(material), text, ...(imageUrl ? { imageUrl } : { filePreview: previewFile(material.name, original.bytes) }) }
+      const binaryPreview = previewBinaryFile(material.name, original.bytes)
+      return { material: clone(material), text, ...(imageUrl ? { imageUrl } : { filePreview: previewFile(material.name, original.bytes) }), ...(binaryPreview ? { binaryPreview } : {}) }
     })
   }
   private async readContent(material: ConversationMaterial, includeFilePreview = false): Promise<MaterialPreview> {
@@ -239,7 +241,8 @@ export class MaterialRepository {
         const current = await this.material(tx, material.id)
         await this.conversation(tx, current.conversationId); this.ready(current, material.revision)
         if (current.contentHash !== material.contentHash || current.format !== material.format || current.parseVersion !== material.parseVersion || current.mimeType !== material.mimeType || current.deliveryScope !== material.deliveryScope) throw new Error('材料内容版本已改变')
-        return { material: clone(current), text, ...(imageUrl ? { imageUrl } : includeFilePreview ? { filePreview: previewFile(material.name, parsed.bytes) } : {}) }
+        const binaryPreview = includeFilePreview ? previewBinaryFile(material.name, parsed.bytes) : undefined
+        return { material: clone(current), text, ...(imageUrl ? { imageUrl } : includeFilePreview ? { filePreview: previewFile(material.name, parsed.bytes) } : {}), ...(binaryPreview ? { binaryPreview } : {}) }
       })
     } catch (error) {
       await this.store.transaction(async tx => {

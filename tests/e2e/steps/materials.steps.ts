@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Lody原PDF/Office真实发送/核源/阅读，延迟预览后的文件切换、隐藏停读与清理隔离，零新增模型调用。
  * [OUTPUT]: 可选审阅模式保留Markdown排版/源码、TypeScript/HTML关键帧及已发送原件与身份，不改变业务断言。
  * [INPUT]: D1 中文材料场景、生产 Electron UI/IPC、隔离原件与共享协议 fixture。
  * [OUTPUT]: 聊天Markdown/代码在右侧安全预览与Shiki高亮，来源行保持；新材料随当前成员授权、通用PDF不虚构正文、同字节恢复/未知回执与重启不重放。
@@ -8,8 +9,11 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { join } from 'node:path'
+import { realpath, writeFile } from 'node:fs/promises'
+import { sampleDocx, sampleXlsx, samplePptx, createSamplePdf } from '../../lody/office-viewer-files'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
+import { observeWorkViews } from '../support/work-views'
 import { messageDraft } from '../support/editor-controls'
 import { dropNativeMaterialFile, forgedMaterialRequests, managedMaterialFiles, legacyMaterialGrant, materialOriginal, materialRecords, materialReplyFault, materialSendReplyFault, nextMaterialDialog, prepareMaterialsDesktop, temporarilyRemoveMaterialOriginal } from '../support/materials'
 import type { ConversationMaterial } from '../../../src/shared/domain/materials'
@@ -29,6 +33,7 @@ interface State {
   frozenSend?: Awaited<ReturnType<SendFault['inspect']>>
   beforeRecovery?: ConversationDetail
   modelCalls?: number
+  binaryKind?: string
   restoreOriginal?: () => Promise<void>
 }
 export const test = base.extend<{ materialsState: State }>({ materialsState: async ({}, use) => use({}) })
@@ -455,4 +460,132 @@ Then('原材料正文恢复且消息和模型调用均未重放', async ({ runti
   expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
   await runtime.page.getByRole('button', { name: '查看材料 有效材料.txt 第 2 至 2 行', exact: true }).click()
   await inspectPreview(runtime, repaired, fixture.texts.valid.split('\n')[1])
+})
+
+When('用户发送Lody原样本文件 {string}', async ({ runtime, materialsState }, inputKind: string) => {
+  const fixture = materialsState.fixture!, page = runtime.page
+  const kind = inputKind.replace('invalid-', '')
+  const factories: Record<string, () => Uint8Array> = { pdf: createSamplePdf, docx: sampleDocx, xlsx: sampleXlsx, pptx: samplePptx }
+  const path = join(await realpath(runtime.root), `Lody样本.${kind}`); await writeFile(path, inputKind.startsWith('invalid-') ? Buffer.from('INVALID_LODY_DOCUMENT') : factories[kind]())
+  await selectConversation(page, fixture.direct.title); await addMaterial(runtime, path)
+  await expect(drafts(page)).toHaveCount(1)
+  await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('保存此文件以供阅读。')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click(); await idle(runtime, fixture.direct.id)
+  const current = await detail(runtime, fixture.direct.id)
+  materialsState.materials = current.materials!.filter(material => material.name === `Lody样本.${kind}`)
+  materialsState.binaryKind = kind; materialsState.modelCalls = fixture.endpoint.requests.length
+  expect(materialsState.materials).toHaveLength(1)
+  const material = materialsState.materials[0]
+  await runtime.reviewFile(material.name, join(fixture.dataPath, 'materials', material.conversationId, material.id, 'original'), { required: true, expectedSha256: material.contentHash })
+  await runtime.reviewData('二进制来源', { id: material.id, revision: material.revision, contentHash: material.contentHash, kind })
+  await page.getByRole('button', { name: `预览材料 ${material.name}`, exact: true }).click()
+})
+Then('Lody原查看器对损坏文件显示错误且不生成业务写入', async ({ runtime, materialsState }) => {
+  const page = runtime.page, material = materialsState.materials![0]
+  const preview = page.locator(`[data-material-preview-id="${material.id}"]:visible`)
+  await expect(preview.getByTestId('session-file-error-state')).toBeVisible()
+  await expect(preview.locator('.textLayer, [data-testid="pptx-viewport"], [role="grid"]')).toHaveCount(0)
+  expect(materialsState.fixture!.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+  await runtime.reviewNativeCheckpoint(`Lody ${materialsState.binaryKind} 损坏原件错误`)
+})
+Then('Lody查看器显示原内容且原操作和关闭重开可用', async ({ runtime, materialsState }) => {
+  const material = materialsState.materials![0], kind = materialsState.binaryKind!, page = runtime.page
+  const preview = page.locator(`[data-material-preview-id="${material.id}"]:visible`), viewer = preview.locator(`[data-binary-viewer="${kind}"]`)
+  await expect(viewer).toBeVisible()
+  if (kind === 'pdf') {
+    await expect(viewer.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
+    await viewer.getByRole('button', { name: '下一页', exact: true }).click()
+    await expect(viewer.getByRole('spinbutton', { name: '页码', exact: true })).toHaveValue('2')
+    await viewer.getByRole('combobox', { name: '缩放比例', exact: true }).click()
+    await page.getByRole('option', { name: '125%', exact: true }).click()
+    await expect(viewer.getByRole('combobox', { name: '缩放比例', exact: true })).toContainText('125%')
+    await viewer.getByRole('button', { name: '搜索文档', exact: true }).click()
+    await viewer.getByRole('searchbox', { name: '在文档中查找', exact: true }).fill('Revenue')
+    await expect(viewer.getByText('1/1', { exact: true })).toBeVisible()
+    await viewer.getByRole('button', { name: '顺时针旋转', exact: true }).click()
+  } else if (kind === 'docx') {
+    await expect(viewer.getByText('Quarterly report', { exact: true })).toBeVisible()
+    await expect(viewer.getByText('Revenue increased across all regions.', { exact: true })).toBeVisible()
+    await viewer.getByRole('combobox', { name: '缩放比例', exact: true }).click()
+    await page.getByRole('option', { name: '125%', exact: true }).click()
+    await expect(viewer.getByRole('combobox', { name: '缩放比例', exact: true })).toContainText('125%')
+  } else if (kind === 'xlsx') {
+    await expect(viewer.getByRole('grid', { name: 'Revenue worksheet grid' })).toBeVisible()
+    await viewer.getByRole('button', { name: '放大', exact: true }).click()
+    await expect(viewer.getByText('110%', { exact: true })).toBeVisible()
+  } else {
+    await expect(viewer.getByTestId('pptx-viewport').getByText('Quarterly report', { exact: true })).toBeVisible()
+    await expect(viewer.getByRole('navigation', { name: 'Slide thumbnails' })).toBeVisible()
+    await viewer.getByRole('button', { name: '放大', exact: true }).click()
+  }
+  await expect(viewer.getByTestId('session-file-error-state')).toHaveCount(0)
+  await runtime.reviewNativeCheckpoint(`Lody ${kind} 实际阅读与操作`)
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(page.locator('[data-binary-viewer]:visible')).toHaveCount(0)
+  await page.getByRole('button', { name: `预览材料 ${material.name}`, exact: true }).click()
+  const reopened = page.locator(`[data-binary-viewer="${kind}"]:visible`)
+  await expect(reopened).toBeVisible()
+  if (kind === 'pdf') await expect(reopened.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
+  else if (kind === 'xlsx') await expect(reopened.getByRole('grid', { name: 'Revenue worksheet grid' })).toBeVisible()
+  else if (kind === 'pptx') await expect(reopened.getByTestId('pptx-viewport').getByText('Quarterly report', { exact: true })).toBeVisible()
+  else await expect(reopened.getByText('Quarterly report', { exact: true })).toBeVisible()
+  expect(materialsState.fixture!.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+  await runtime.reviewCheckpoint(`Lody ${kind} 关闭重开`)
+})
+
+When('用户发送两份不同格式的Lody原样本', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, root = await realpath(runtime.root)
+  await selectConversation(runtime.page, fixture.direct.title)
+  const samples: [string, Uint8Array][] = [['Lody切换.pdf', createSamplePdf()], ['Lody切换.docx', sampleDocx()]]
+  for (const [index, [name, bytes]] of samples.entries()) {
+    const path = join(root, name); await writeFile(path, bytes)
+    await addMaterial(runtime, path)
+    await expect(drafts(runtime.page).nth(index)).toHaveAttribute('data-material-status', 'ready')
+  }
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('两份原样本用于文件查看器切换。')
+  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await idle(runtime, fixture.direct.id)
+  materialsState.beforeRecovery = await detail(runtime, fixture.direct.id)
+  materialsState.materials = materialsState.beforeRecovery.materials!
+  expect(materialsState.materials).toHaveLength(2)
+  materialsState.modelCalls = fixture.endpoint.requests.length
+  for (const material of materialsState.materials) await runtime.reviewFile(material.name, join(fixture.dataPath, 'materials', material.conversationId, material.id, 'original'), { required: true, expectedSha256: material.contentHash })
+})
+Then('Lody迟到PDF不会覆盖新文件且隐藏停读', async ({ runtime, materialsState }) => {
+  const observation = await observeWorkViews(runtime, 'getMaterialPreview'), page = runtime.page
+  await page.getByRole('button', { name: '预览材料 Lody切换.pdf', exact: true }).click()
+  await expect.poll(async () => (await observation.inspect()).delayed).toBe(true)
+  await page.getByRole('button', { name: '预览材料 Lody切换.docx', exact: true }).click()
+  const viewer = page.locator('[data-binary-viewer="docx"]:visible')
+  await expect(viewer.getByText('Quarterly report', { exact: true })).toBeVisible()
+  await observation.release()
+  await expect(page.locator('[data-binary-viewer]')).toHaveCount(1)
+  await expect(page.locator('[data-binary-viewer="pdf"]')).toHaveCount(0)
+  await runtime.reviewNativeCheckpoint('迟到PDF不覆盖DOCX原件')
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(page.locator('[data-binary-viewer="docx"]')).toHaveCount(0)
+  // Closing the current tab selects the previous PDF tab; close that actual tab as well.
+  await expect(page.locator('[data-binary-viewer="pdf"] .textLayer').getByText('Overview', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(page.locator('[data-binary-viewer]')).toHaveCount(0)
+  const reads = (await observation.inspect()).calls.filter(value => value === 'getMaterialPreview').length
+  await page.waitForTimeout(250)
+  expect((await observation.inspect()).calls.filter(value => value === 'getMaterialPreview')).toHaveLength(reads)
+  const after = await detail(runtime, materialsState.fixture!.direct.id), before = materialsState.beforeRecovery!
+  expect(after.messages).toEqual(before.messages); expect(after.workItems).toEqual(before.workItems); expect(after.materials).toEqual(before.materials)
+  expect(materialsState.fixture!.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+  await runtime.reviewCheckpoint('关闭后卸载全部二进制查看器且停读')
+})
+Then('Lody迟到二进制预览在清理后不能恢复原件', async ({ runtime, materialsState }) => {
+  const fixture = materialsState.fixture!, observation = await observeWorkViews(runtime, 'getMaterialPreview')
+  await runtime.page.getByRole('button', { name: '预览材料 Lody切换.pdf', exact: true }).click()
+  await expect.poll(async () => (await observation.inspect()).delayed).toBe(true)
+  await runtime.page.evaluate(id => window.boai.request('clearConversationHistory', { id, hide: false }), fixture.direct.id)
+  await observation.release()
+  await expect(runtime.page.locator('[data-binary-viewer]')).toHaveCount(0)
+  await expect(runtime.page.locator('[data-material-preview-id]:visible')).toHaveCount(0)
+  const after = await detail(runtime, fixture.direct.id)
+  expect(after.materials).toEqual([]); expect(after.messages).toEqual([])
+  expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
+  await runtime.reviewCheckpoint('真实材料清理后迟到字节不恢复文件标签')
 })

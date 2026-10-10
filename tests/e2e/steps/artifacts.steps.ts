@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Lody四格式经原批准命令/真实工具发布后核hash阅读；同名家族隔离、缺失与迟到diff清理，零额外业务写入。
  * [OUTPUT]: 可选功能审阅留存真实交付原件、版号/来源、原消息修改输入、采用与重启关键画面。
  * [INPUT]: D2 中文成果场景、生产 Electron UI/IPC、真实模型工具与隔离 SQLite/原件。
  * [OUTPUT]: 原员工消息内采用/同一composer修订及取消关联后的普通发送隔离，右侧仅固定版本预览；所见版本/来源、真实工具证据、未知回执跨关闭重启冻结原请求、原件失效及清理隔离。
@@ -11,6 +12,8 @@ import { join } from 'node:path'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { nextMaterialDialog } from '../support/materials'
+import { observeWorkViews } from '../support/work-views'
+import { sampleDocx, sampleXlsx, samplePptx, createSamplePdf } from '../../lody/office-viewer-files'
 import { messageDraft } from '../support/editor-controls'
 import { artifactDetail, artifactOriginal, artifactPendingRequests, artifactRecords, artifactReplyFault, changeArtifactOriginal, prepareArtifactsDesktop, removeArtifactOriginal } from '../support/artifacts'
 import type { ArtifactAdoptionInput, ArtifactRevisionInput, ArtifactVersion } from '../../../src/shared/domain/artifacts'
@@ -29,6 +32,7 @@ interface State {
   frozen?: ArtifactAdoptionInput | ArtifactRevisionInput
   beforeRecovery?: Awaited<ReturnType<typeof artifactRecords>>
   calls?: number
+  binaryKind?: string
 }
 export const test = base.extend<{ artifactsState: State }>({ artifactsState: async ({}, use) => use({ originals: [] }) })
 const { Given, When, Then } = createBdd(test)
@@ -414,4 +418,127 @@ Then('清理门禁保留外改文件且其他聊天成果仍可使用', async ({
   expect(await artifactOriginal(original)).toContain('EXTERNAL_ARTIFACT_PRESERVED')
   expect((await artifactRecords(fixture.dataPath)).cleanupGates.some(value => value.id === fixture.group.id)).toBe(true)
   expect(fixture.endpoint.requests).toHaveLength(calls)
+})
+
+Then('Lody只读对比显示两版差异且不产生业务写入', async ({ runtime, artifactsState }) => {
+  const fixture = artifactsState.fixture!, original = artifactsState.originals[0], v2 = artifactsState.v2!, view = panel(runtime.page, v2)
+  const before = await artifactRecords(fixture.dataPath), calls = fixture.endpoint.requests.length
+  await view.getByRole('button', { name: '对比第 1 版', exact: true }).click()
+  const comparison = view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })
+  await expect(comparison.locator('diffs-container pre')).toBeVisible()
+  await expect(comparison.locator('diffs-container pre')).toContainText('ARTIFACT_V1')
+  await expect(comparison.locator('diffs-container pre')).toContainText('ARTIFACT_V2')
+  await runtime.reviewNativeCheckpoint('Lody 原成果 V1/V2 diff')
+  const after = await artifactRecords(fixture.dataPath)
+  expect(after.adoptionEvents).toEqual(before.adoptionEvents); expect(after.revisions).toEqual(before.revisions)
+  expect(after.workItems).toEqual(before.workItems); expect(after.messages).toEqual(before.messages)
+  expect(fixture.endpoint.requests).toHaveLength(calls)
+  await view.getByRole('button', { name: '返回正文', exact: true }).click()
+  await expect(view).toContainText('ARTIFACT_V2')
+})
+
+Given('成果协作组已连接大文本真实工具协议模型', async ({ runtime, artifactsState }) => {
+  const common = Array.from({ length: 5_000 }, (_, index) => `COMMON_${String(index).padStart(4, '0')}：固定原件内容保持。\n`).join('')
+  expect(common.length * 2).toBeGreaterThan(200_000)
+  artifactsState.fixture = await prepareArtifactsDesktop(runtime, { file: { name: '交付报告.md', fileName: 'report.md', content: `ARTIFACT_V1\n${common}`, revisionContent: `ARTIFACT_V2\n${common}` } })
+  await runtime.page.evaluate(() => {
+    const HostWorker = window.Worker, urls: string[] = []
+    Object.assign(window, { __lodyPreviewWorkerUrls: urls })
+    window.Worker = class extends HostWorker { constructor(url: string | URL, options?: WorkerOptions) { urls.push(String(url)); super(url, options) } }
+  })
+})
+Then('Lody大文本worker已加载且外改旧版不能再次对比', async ({ runtime, artifactsState }) => {
+  const urls = await runtime.page.evaluate(() => (window as typeof window & { __lodyPreviewWorkerUrls: string[] }).__lodyPreviewWorkerUrls)
+  expect(urls.some(url => url.includes('diff-parse.worker'))).toBe(true)
+  await runtime.reviewData('大文本真实worker加载', { urls, versions: artifactsState.originals.map(value => ({ id: value.id, contentHash: value.contentHash })) })
+  await changeArtifactOriginal(artifactsState.originals[0], 'EXTERNAL_ARTIFACT_PRESERVED')
+  const view = panel(runtime.page, artifactsState.v2!)
+  await view.getByRole('button', { name: '对比第 1 版', exact: true }).click()
+  await expect(view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })).toContainText('外部修改')
+  await expect(view.locator('diffs-container')).toHaveCount(0)
+  await runtime.reviewCheckpoint('外改旧版拒绝再次比较')
+})
+
+Given('员工经原命令批准和成果工具发布Lody样本 {string}', async ({ runtime, artifactsState }, kind: string) => {
+  const factories: Record<string, () => Uint8Array> = { pdf: createSamplePdf, docx: sampleDocx, xlsx: sampleXlsx, pptx: samplePptx }
+  const bytes = Buffer.from(factories[kind]()), fileName = `lody-report.${kind}`
+  const command = `/usr/bin/python3 -c 'from pathlib import Path; import base64; Path("${fileName}").write_bytes(base64.b64decode("${bytes.toString('base64')}"))'`
+  const fixture = artifactsState.fixture = await prepareArtifactsDesktop(runtime, { file: { name: `Lody成果.${kind}`, fileName, content: '', command } })
+  artifactsState.binaryKind = kind
+  await selectChat(runtime, fixture.group.title)
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(`请在本次工作目录生成并发布 Lody成果.${kind}，命令先在聊天中申请批准。`)
+  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
+  const approval = runtime.page.locator('.messages').getByRole('button', { name: '允许这次执行', exact: true })
+  await expect(approval).toBeVisible()
+  await approval.click()
+  const detail = await settled(runtime, fixture.group.id, 1), artifact = detail.artifacts[0] as ArtifactVersion
+  expect(fixture.errors).toEqual([])
+  expect(detail.runs.flatMap(run => run.toolEvents).filter(tool => ['execute_command', 'publish_artifact', 'report_work'].includes(tool.name)).map(tool => [tool.name, tool.status])).toEqual([['execute_command', 'completed'], ['publish_artifact', 'completed'], ['report_work', 'completed']])
+  artifactsState.originals = [artifact]; artifactsState.calls = fixture.endpoint.requests.length
+  await runtime.reviewFile(artifact.name, artifact.path, { required: true, expectedSha256: artifact.contentHash })
+  await reviewArtifact(runtime, artifact)
+  await openArtifact(runtime, artifact)
+})
+Then('Lody成果查看器读取已发布原件且关闭重开不执行业务', async ({ runtime, artifactsState }) => {
+  const artifact = artifactsState.originals[0], kind = artifactsState.binaryKind!, fixture = artifactsState.fixture!
+  const before = await artifactRecords(fixture.dataPath)
+  const check = async () => {
+    const viewer = panel(runtime.page, artifact).locator(`[data-binary-viewer="${kind}"]`)
+    if (kind === 'pdf') await expect(viewer.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
+    else if (kind === 'xlsx') await expect(viewer.getByRole('grid', { name: 'Revenue worksheet grid' })).toBeVisible()
+    else if (kind === 'pptx') await expect(viewer.getByTestId('pptx-viewport').getByText('Quarterly report', { exact: true })).toBeVisible()
+    else await expect(viewer.getByText('Quarterly report', { exact: true })).toBeVisible()
+    await expect(viewer.getByTestId('session-file-error-state')).toHaveCount(0)
+  }
+  await check(); await runtime.reviewNativeCheckpoint(`已发布 ${kind} 成果实际阅读`)
+  await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(runtime.page.locator('[data-binary-viewer]')).toHaveCount(0)
+  await openArtifact(runtime, artifact); await check()
+  expect(await artifactRecords(fixture.dataPath)).toEqual(before)
+  expect(fixture.endpoint.requests).toHaveLength(artifactsState.calls!)
+  await runtime.reviewCheckpoint(`已发布 ${kind} 关闭重开零业务变更`)
+})
+
+Then('Lody版本比较只列原家族且缺失旧版拒绝读取', async ({ runtime, artifactsState }) => {
+  const fixture = artifactsState.fixture!, original = artifactsState.originals[0], independent = artifactsState.originals[1]
+  await requestRevision(runtime, original)
+  const detail = await settled(runtime, fixture.group.id, 3)
+  const v2 = artifactsState.v2 = detail.artifacts.find(value => value.previousArtifactId === original.id) as ArtifactVersion
+  expect(v2.logicalArtifactId).toBe(original.logicalArtifactId)
+  expect(independent.logicalArtifactId).not.toBe(original.logicalArtifactId)
+  await reviewArtifact(runtime, v2); await version(runtime, original, 2)
+  const view = panel(runtime.page, v2), before = await artifactRecords(fixture.dataPath), calls = fixture.endpoint.requests.length
+  await expect(view.getByRole('button', { name: /^对比第 / })).toHaveCount(1)
+  await view.getByRole('button', { name: '对比第 1 版', exact: true }).click()
+  await expect(view.locator('diffs-container pre')).toContainText('REPORT_1')
+  await expect(view.locator('diffs-container pre')).not.toContainText('REPORT_2')
+  await runtime.reviewNativeCheckpoint('同名成果只对比原家族')
+  await view.getByRole('button', { name: '返回正文', exact: true }).click()
+  await removeArtifactOriginal(original)
+  await view.getByRole('button', { name: '对比第 1 版', exact: true }).click()
+  await expect(view.locator('diffs-container')).toHaveCount(0)
+  await expect(view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })).toContainText(/不存在|来源已变化/)
+  const after = await artifactRecords(fixture.dataPath)
+  expect(after.adoptionEvents).toEqual(before.adoptionEvents); expect(after.revisions).toEqual(before.revisions); expect(after.messages).toEqual(before.messages); expect(after.workItems).toEqual(before.workItems)
+  expect(fixture.endpoint.requests).toHaveLength(calls)
+  await runtime.reviewCheckpoint('缺失旧版拒绝diff且独立原件保留')
+})
+
+Then('Lody迟到比较在清空来源后不能恢复旧正文', async ({ runtime, artifactsState }) => {
+  const fixture = artifactsState.fixture!, v2 = artifactsState.v2!, calls = fixture.endpoint.requests.length
+  const observation = await observeWorkViews(runtime, 'getArtifactPreview')
+  await panel(runtime.page, v2).getByRole('button', { name: '对比第 1 版', exact: true }).click()
+  await expect.poll(async () => (await observation.inspect()).delayed).toBe(true)
+  await runtime.page.evaluate(id => window.boai.request('clearConversationHistory', { id, hide: false }), fixture.group.id)
+  await observation.release()
+  await expect(runtime.page.locator('diffs-container')).toHaveCount(0)
+  const view = panel(runtime.page, v2)
+  await expect(view).toContainText('来源聊天已清理或移除，本版成果不可用。')
+  await expect(view.getByRole('region', { name: '成果第 2 版正文', exact: true })).toHaveCount(0)
+  await expect(view.getByText('正在核对成果版本…', { exact: true })).toHaveCount(0)
+  const after = await artifactRecords(fixture.dataPath)
+  expect(after.artifacts.filter(value => value.conversationId === fixture.group.id)).toEqual([])
+  expect(after.messages.filter(value => value.conversationId === fixture.group.id)).toEqual([])
+  expect(fixture.endpoint.requests).toHaveLength(calls)
+  await runtime.reviewCheckpoint('真实清理后迟到比较没有恢复旧版')
 })

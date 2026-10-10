@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-10用户先授权全部现有修改commit/push，再直接迁入Lody的PDF/Office与只读diff；固定来源及实际验证归ai-docs迁入报告，协作核心未迁入。
 [OUTPUT]: 第15组纠正为真实BOAI业务eval：build/hillclimb、独立judge、开发/验证与隔离Codex补丁；原工具改dev:repair；11现行合同、07唯一进度，校准/未见认证分开。
 [OUTPUT]: 第14组07提供GitHub测试参考与pnpm dev多轮用例集，05继续唯一维护实际结果。
 [OUTPUT]: 第14组复杂多阶段/多轮API协作按用户要求使用pnpm dev，无需安装包；实际进度与原件统一归05，本机暂停和A2A延期保持。
@@ -54,6 +55,9 @@
 [POS]: 仓库说明入口，规约真源为 AGENTS.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
+
+2026-10-10 Lody迁入：现有修改已以“正常功能开发”提交并推送。已按[直接迁入计划](ai-docs/2026-10-09-Lody代码直接迁入计划.md)接入PDF、DOCX/XLSX/PPTX只读阅读及同家族固定版本diff；材料/已发布成果双入口及来源生命周期20场逐场最新通过，固定来源、适配、实际结果与限制见[迁入报告](ai-docs/2026-10-10-Lody功能迁移报告.md)。Mastra/API主线、本机暂停及A2A延期保持。
+
 
 **2026-10-09评估方案：** [第15组Agent评估与持续优化](ai-docs/spec/15.Agent评估与持续优化/README.md)已获方案与代码授权，已接通离线评分、真实API业务实验、独立judge与Codex候选循环；11为现行主线，原测试修复改dev:repair，07维护实际进度。真实人工校准和最终未见认证尚未完成，既有功能成绩仍归原专题。
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 仅明确预览在原hash核读后返回PDF/Office字节；文本采用/修订/index门禁和原20MiB发布限制保持。
  * [OUTPUT]: Claude成果修订使用同一版本/请求合同，受理前核对明确API来源和已验证本机程序。
  * [OUTPUT]: 未提交发布保留精确相对路径/hash/来源指纹，禁止历史导入；登记与准备记录清除同事务，清理沿原hash门禁。
  * [OUTPUT]: 原生Codex修订沿原成果版本与新根Work，事务核对已验证连接；旧ACP仍保持任务限制。
@@ -16,7 +17,7 @@ import { isCoreAgent } from '../../../shared/domain/core-agent'
 import type { AgentRun, Connection, Conversation, DigitalAgent, Message, WorkItem } from '../../../shared/domain'
 import type { MaterialReadRef } from '../../../shared/domain/materials'
 import type { LaunchProfile } from '../../../shared/domain/backends'
-import { previewFile } from '../../../shared/domain/file-preview'
+import { previewBinaryFile, previewFile } from '../../../shared/domain/file-preview'
 import { ARTIFACT_LIMITS, type ArtifactAcceptance, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAcceptanceStatus, type ArtifactAdoptionCurrent, type ArtifactAdoptionEvent, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactAdoptionState, type ArtifactPreview, type ArtifactPublication, type ArtifactRegistration, type ArtifactRevisionInput, type ArtifactRevisionPrepared, type ArtifactRevisionRequest, type ArtifactRevisionSource, type ArtifactVersion } from '../../../shared/domain/artifacts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { contained, MAX_FILE_BYTES } from './file-access'
@@ -139,7 +140,7 @@ export class ArtifactRepository {
     } catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
     finally { await handle.close() }
   }
-  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readText: boolean | 'search' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview'>> {
+  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readText: boolean | 'search' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'>> {
     await this.conversation(tx, artifact.conversationId)
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
     if (artifact.contentStatus === 'removed' || !artifact.contentHash) throw new Error(artifact.contentError ?? '成果尚无可信内容身份')
@@ -153,7 +154,8 @@ export class ArtifactRepository {
     if (filePreview?.kind === 'unsupported') verified.contentError = filePreview.reason
     else if (filePreview) delete verified.contentError
     if (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError) await tx.put(record('artifacts', verified))
-    return { artifact: verified, text, ...(filePreview ? { filePreview } : {}) }
+    const binaryPreview = requirePreview && allowUnsupported ? previewBinaryFile(artifact.name, actual.bytes) : undefined
+    return { artifact: verified, text, ...(filePreview ? { filePreview } : {}), ...(binaryPreview ? { binaryPreview } : {}) }
   }
   private async unavailable(artifactId: string, error: unknown) {
     await this.store.transaction(async tx => {
@@ -450,7 +452,7 @@ export class ArtifactRepository {
     const current = await tx.get<ArtifactAdoptionCurrent>('artifactAdoptionCurrent', logicalArtifactId) ?? null
     return { logicalArtifactId, revision: current?.adoptionRevision ?? 0, current: clone(current), events: (await tx.list<ArtifactAdoptionEvent>('artifactAdoptionEvents')).filter(value => value.logicalArtifactId === logicalArtifactId).map(clone) }
   }
-  private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview'>): Promise<ArtifactPreview> {
+  private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'>): Promise<ArtifactPreview> {
     const versions = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === preview.artifact.conversationId && value.logicalArtifactId === preview.artifact.logicalArtifactId).sort((a, b) => a.contentVersion - b.contentVersion).map(clone)
     return { ...preview, versions, adoption: await this.adoptionInTransaction(tx, preview.artifact.logicalArtifactId), acceptance: await this.acceptanceInTransaction(tx, preview.artifact.id, true) }
   }

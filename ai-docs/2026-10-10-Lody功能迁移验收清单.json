@@ -1,0 +1,2913 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "c4e2cdf8ecde4bfea08fba3a0f90d07df1484a94",
+  "command": "BOAI_TEST_DEV_SERVER=1 BOAI_REVIEW_RUN_DIR=.local/lody-migration-20261010/final pnpm exec playwright test --grep 'Lody|聊天文件直接打开安全|员工交付的代码文件' --workers=1",
+  "finalResult": "20 unique scenarios passed: final 12, complete 6 and complete-fixed 2; complete originally retained 2 failures",
+  "moduleResult": "186 passed / 1 preexisting failure (187 cases)",
+  "counts": {
+    "finalScenarios": 12,
+    "finalEvidenceFiles": 89,
+    "finalTraces": 12,
+    "finalNativePngs": 10,
+    "missingEarlierTraces": 8,
+    "evidenceHashMismatches": 0,
+    "latestValidatedScenarios": 20,
+    "latestEvidenceFiles": 155,
+    "latestTraces": 20,
+    "latestNativePngs": 16,
+    "additionalOriginalFailures": 2
+  },
+  "logs": [
+    {
+      "path": ".local/lody-migration-20261010/final-desktop.log",
+      "sha256": "0a1cd832b85b7cf726420d863e8fa8a52e96f82329b52344672055487b6a8251"
+    },
+    {
+      "path": ".local/lody-migration-20261010/lint-ui.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696"
+    },
+    {
+      "path": ".local/lody-migration-20261010/modules.log",
+      "sha256": "4dc421f2e59aa42aad47ddb31f992046854bb3279394052734752d036c1784b4"
+    },
+    {
+      "path": ".local/lody-migration-20261010/renderer-build.log",
+      "sha256": "cf045139daddb41cd06037863194b7a7dd18a13dc08806479af75ced1cb4410f"
+    },
+    {
+      "path": ".local/lody-migration-20261010/typecheck.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/lody-migration-20261010/complete-desktop.log",
+      "sha256": "c9dca96c524ecc503f6e1158a7036be2fdd098ec7fdc4587ac2956926459c85a"
+    },
+    {
+      "path": ".local/lody-migration-20261010/complete-fixed-desktop.log",
+      "sha256": "691008ad8b13a1ce350609156f8fb17bc8f420643920cc8f094903cf97e08489"
+    },
+    {
+      "path": ".local/lody-migration-20261010/complete-typecheck.log",
+      "sha256": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5"
+    },
+    {
+      "path": ".local/lody-migration-20261010/complete-lint-ui.log",
+      "sha256": "e5c88e03e54243827bd7da8fa10829a6e2dfece124d3f8c2a969b5d2fee47696"
+    }
+  ],
+  "scenarios": [
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #4",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/manifest.json",
+      "manifestSha256": "ab4e6fd8f86d30384f263d05164e650d6b06274d4a7dbb2b6b08d98a26f1282a",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/002-original",
+          "kind": "file",
+          "label": "Lody样本.pptx",
+          "sha256": "2f178dd166598adb5d0c973a8982a90e4fc08442fb4c8a55a85416ddd33c892e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "9373ccec6cffceee4e9ede230bc740e253a0999e9c9c6c6ced906f89dcf53ea8",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/004-Lody-pptx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody pptx 实际阅读与操作",
+          "sha256": "27f86239b4d1cb89af9c6e858cbed7f00316a9a01f47873cb64798a676ea146a",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/005-Lody-pptx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody pptx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "3005b360576324b4e68bac3812474b8881b9cbed74f2302dd628d4ab94114db2",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/006-Lody-pptx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody pptx 关闭重开",
+          "sha256": "6509880d31c579aac94222bbd71c266dd2f7e3f9b276a21100b3db35567a9f6c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "cac461d72de29bb1cde8c3a27524caf9dc9679b5fdc9920c2f284cbb68f8f4b4",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-EyS5GW/trace-1.original.zip",
+          "sha256": "0591069ab2e2f5dcbc1d68d60af81dd3a095bc2c55940cf18e46502cb0b499c4",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #3",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/manifest.json",
+      "manifestSha256": "0a4c73aa529b45adaf7d8469f7019f4d9841aaf6ffc2541e0fb7becf634b6844",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/002-original",
+          "kind": "file",
+          "label": "Lody样本.xlsx",
+          "sha256": "b54b84987c2e59ffb4f61c3b22a21614885f3532443c4d6b06ec5f078eec182a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "7dacaf95907fe518bb6372b582585e447869f7adcf40b89e31768870799491e3",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/004-Lody-xlsx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 实际阅读与操作",
+          "sha256": "f37005882dfba88b199ec900bf3c5f02c3afa0bd8655a178e316dfa032a3448b",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/005-Lody-xlsx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody xlsx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "d7c6b5e7ff2ebdc47a82a6381254434d6053f26ee5668921e5345272b2a63761",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/006-Lody-xlsx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 关闭重开",
+          "sha256": "690f87bdc260fa34f7444bda7b15d848aa52fd59896a99f459dd678b8ff2d391",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "690f87bdc260fa34f7444bda7b15d848aa52fd59896a99f459dd678b8ff2d391",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-EkmqFK/trace-1.original.zip",
+          "sha256": "f0a0dae061577822f3e474489fe4b0d22dc7dfda6d246e481340a8b71ef774d4",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody查看器拒绝损坏的原件 / 例子: #3",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/manifest.json",
+      "manifestSha256": "ab618550e47ebe5cc8b11ddc38045adbcd0e10ccec4cbd65abe0b0d6a2d1ad29",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/002-original",
+          "kind": "file",
+          "label": "Lody样本.xlsx",
+          "sha256": "297a0ee1a73f0cf0e3a990cac25eeaab1677ffd251b29f0134a50e769cc79e03",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "63be5ba5d909ee54499b88d739fe7f9f1378b80119c017b8ddc86de248e27179",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/004-Lody-xlsx-损坏原件错误.native.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 损坏原件错误",
+          "sha256": "50edd86d0f652d0e901a5ff9f73d770eb95d27d110139f94815c437693131e7f",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/005-Lody-xlsx-损坏原件错误.capture.json",
+          "kind": "data",
+          "label": "Lody xlsx 损坏原件错误 · 原生截取元数据",
+          "sha256": "4071a460b34da5b13af59822052db994e5e2c0c0036813a4537b2e0ab5b91953",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "50edd86d0f652d0e901a5ff9f73d770eb95d27d110139f94815c437693131e7f",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-1afe7a3955c419ec40f4-retry0-repeat0-elAAhI/trace-1.original.zip",
+          "sha256": "425c79880004db328c99f59c19f62e6fa7eefb6038f0fa27600b659fdae29b2b",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / 聊天文件直接打开安全的文档与代码预览",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/manifest.json",
+      "manifestSha256": "a651f2043c1b27e306a81844397128a7d14716660ec6f4f45af45a9f59d5f1d6",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/002-original",
+          "kind": "file",
+          "label": "预览说明.md",
+          "sha256": "19127e54fec8033315099e96834822f7ae66e10961c88857cd099e47685a5713",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/003-original",
+          "kind": "file",
+          "label": "preview.ts",
+          "sha256": "46897a629b8f9ff58802c4ff046f5bc60055fd1b2fd244ccfce5b820760435d0",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/004-original",
+          "kind": "file",
+          "label": "preview.html",
+          "sha256": "e24819bb2fd2bbc0a0fa7690e933ad84006e2d1398b631e29ce8e93ac5617bd5",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/005-已发送材料身份.json",
+          "kind": "data",
+          "label": "已发送材料身份",
+          "sha256": "545134c93e5aae39592605edfd8a828949a80db560ddc77398b127944598ae9a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/006-在聊天中发送三份真实文件.png",
+          "kind": "screenshot",
+          "label": "在聊天中发送三份真实文件",
+          "sha256": "552f18f8e0312cfc58583352181e97d83f49a053c28aedf4080ef9825933aadc",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/007-Markdown-排版预览.png",
+          "kind": "screenshot",
+          "label": "Markdown 排版预览",
+          "sha256": "1f31091a5cb7b9eae437a361ed88c5134f3c80100a71b8004c791f66d4135a8c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/008-Markdown-源码与行号.png",
+          "kind": "screenshot",
+          "label": "Markdown 源码与行号",
+          "sha256": "83c1f82add1c4d7b3914d2f18b0b278964dfce84eb5bc0c6603ce93a255eb964",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/009-TypeScript-附件的-Shiki-高亮.png",
+          "kind": "screenshot",
+          "label": "TypeScript 附件的 Shiki 高亮",
+          "sha256": "a8b5410c52652a6cc52b911790545dd710ee78fd214c679d828eb5d57a2fad2d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/010-HTML-文件仅显示源码.png",
+          "kind": "screenshot",
+          "label": "HTML 文件仅显示源码",
+          "sha256": "5f4c8d9ed88704f9fccc1ebd0224ac0e06777b68bf6475d931a162131e5ecdf0",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/011-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "293456b64a50f830245255091acf6aba212b2676ad5827e5a53c3e66f25a8662",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-1NZZsk/trace-1.original.zip",
+          "sha256": "62540a70e9a70cc4c11cfc700f09c29283c293164725cee9d3c673fd8ade57f5",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody查看器拒绝损坏的原件 / 例子: #1",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/manifest.json",
+      "manifestSha256": "5465c2cd1c15a2439be59cb6cd995117efa958fff547e49f0025469eb8b41d19",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/002-original",
+          "kind": "file",
+          "label": "Lody样本.pdf",
+          "sha256": "297a0ee1a73f0cf0e3a990cac25eeaab1677ffd251b29f0134a50e769cc79e03",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "a9ab05120cff9b58ae269cbb23b6b7de0e2e98b8f69c0ba9ef9b087c51e2fe9d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/004-Lody-pdf-损坏原件错误.native.png",
+          "kind": "screenshot",
+          "label": "Lody pdf 损坏原件错误",
+          "sha256": "033fcc1b93e8d870b144ed3b73e09b1922b88488321f78ae1f4a1c64ed2ebab0",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/005-Lody-pdf-损坏原件错误.capture.json",
+          "kind": "data",
+          "label": "Lody pdf 损坏原件错误 · 原生截取元数据",
+          "sha256": "a510d0e81dbd92c1d325663fb8e1e23bbde08f269a8bcd450fac8ab0d1e4870f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "033fcc1b93e8d870b144ed3b73e09b1922b88488321f78ae1f4a1c64ed2ebab0",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-4ebc5178c5efa939e5d4-retry0-repeat0-Iz2MDI/trace-1.original.zip",
+          "sha256": "134f1196cde31d0d73b14dc26355e02322587ef3fd41b592b3cc9835752ef28d",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #1",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/manifest.json",
+      "manifestSha256": "9f51248a025ef9f538c5af0f5dc95167096b412a2e967fe078a854a3227b63e1",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/002-original",
+          "kind": "file",
+          "label": "Lody样本.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "53c34ca5c9ccbc7886093e0b3d476ec9e87369a81e2437006d1d20e622d5667b",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/004-Lody-pdf-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody pdf 实际阅读与操作",
+          "sha256": "98a46704a27af109e68289440f5e7e30fef13b33c35a4af2eb9f14523e919157",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/005-Lody-pdf-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody pdf 实际阅读与操作 · 原生截取元数据",
+          "sha256": "dea355b5683df695c70fc706256640c9a274f230eea9c7dded12caf471c98146",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/006-Lody-pdf-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody pdf 关闭重开",
+          "sha256": "698f3f151138197c71fc7732118914750db6c9e85d009802e7bec78d7cbd5caa",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "698f3f151138197c71fc7732118914750db6c9e85d009802e7bec78d7cbd5caa",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-LFQaF1/trace-1.original.zip",
+          "sha256": "9d20fc539ae14905516c86e6aebb47ea0bfbf4bf5d0113af9fa3770aa603972d",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody查看器拒绝损坏的原件 / 例子: #4",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/manifest.json",
+      "manifestSha256": "cd5ee140a9501f4f4006480f18202c11a0c631b2eb5a9ee3a45ca4ddcdc1dc18",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/002-original",
+          "kind": "file",
+          "label": "Lody样本.pptx",
+          "sha256": "297a0ee1a73f0cf0e3a990cac25eeaab1677ffd251b29f0134a50e769cc79e03",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "8192ff6aa28e8bfb332575766b754e41353a913d29169b85a336b13c1f18e3af",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/004-Lody-pptx-损坏原件错误.native.png",
+          "kind": "screenshot",
+          "label": "Lody pptx 损坏原件错误",
+          "sha256": "6289080e1f7e94ee66a2c3431aebca25ea0ba51b5265cbf924a555a1730ac762",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/005-Lody-pptx-损坏原件错误.capture.json",
+          "kind": "data",
+          "label": "Lody pptx 损坏原件错误 · 原生截取元数据",
+          "sha256": "74dbaef7eff9bb873261fca4ce2b523516a92c67f99dc0d81a885cdfff676931",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "6289080e1f7e94ee66a2c3431aebca25ea0ba51b5265cbf924a555a1730ac762",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-8c69e3870e79cd96c09a-retry0-repeat0-DwVa1J/trace-1.original.zip",
+          "sha256": "62e371a6995bff18bc1c93b7b44875521cb7d36a85e8187a036f545d5e9165ba",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #2",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/manifest.json",
+      "manifestSha256": "22b9f627009a7291eb1c7e32e5cce636672574ad0113b9959982caab74e33d9b",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/002-original",
+          "kind": "file",
+          "label": "Lody样本.docx",
+          "sha256": "61e532242678e4655e8766cf811802ca9e7e23bb174b1890d2196029097dcc7e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "7731dbe7bb15a8ea74386b765a0ab40bdf9bec46f7281628c444e3a3d4f8a396",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/004-Lody-docx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody docx 实际阅读与操作",
+          "sha256": "de659e61dfbb6ac7ed966d26b47238e3009a2e213160601735474f1e7b4d7f4e",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/005-Lody-docx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody docx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "74a828320e4e1ec48137e5fa241fc4c65471f76221e46f8c476fe3f4b98ddef7",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/006-Lody-docx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody docx 关闭重开",
+          "sha256": "43c20a902889b95f94e7ef4666d0c0e6aa458e4adf9aa80307392d90f0e8f36a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "43c20a902889b95f94e7ef4666d0c0e6aa458e4adf9aa80307392d90f0e8f36a",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-lZ8YbY/trace-1.original.zip",
+          "sha256": "26f9b4868dc7f650004443348f2f502643fbaa35e3726aba1f0a2f1faeb2531f",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody查看器拒绝损坏的原件 / 例子: #2",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/manifest.json",
+      "manifestSha256": "a0029772ac5a8082e87d1c1def7179eb89e6f25c3d048a443b10e1f0be55be1a",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/002-original",
+          "kind": "file",
+          "label": "Lody样本.docx",
+          "sha256": "297a0ee1a73f0cf0e3a990cac25eeaab1677ffd251b29f0134a50e769cc79e03",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "26ed1e1576bce56ee652d3c1c016967690542de8132cc265753061a4c504539f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/004-Lody-docx-损坏原件错误.native.png",
+          "kind": "screenshot",
+          "label": "Lody docx 损坏原件错误",
+          "sha256": "5fb10e756ae63b8ac601b36a2cf152690e3ee64b19ec6f05096647d61d423f60",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/005-Lody-docx-损坏原件错误.capture.json",
+          "kind": "data",
+          "label": "Lody docx 损坏原件错误 · 原生截取元数据",
+          "sha256": "30781f118f34fe4d46e95a105447849dcc839412747f93bfa6db70d49e80c626",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "5fb10e756ae63b8ac601b36a2cf152690e3ee64b19ec6f05096647d61d423f60",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/7b08bd0dd3f0302dbe41-ffacbe499b8dd458ddab-retry0-repeat0-dJSpdX/trace-1.original.zip",
+          "sha256": "6caeea26608f36c61527bd2c72485ed37579fd0247f22727b46a9c5a6ae6a3ca",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / 员工交付的代码文件从消息直接打开高亮预览",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/manifest.json",
+      "manifestSha256": "aab23ebb01af475a356f1c8114a0cd93aad025faf17ceccb97b9ae86e76ad648",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/002-ffc115f9-002b-4b4f-8905-906d744bb99e-交付模块.ts",
+          "kind": "file",
+          "label": "交付模块.ts · 第 1 版",
+          "sha256": "60444ca01a8effa3d1346b9610e1123718d98707cf8e9669dba04867bf25b51e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/003-成果身份-ffc115f9-002b-4b4f-8905-906d744bb99e.json",
+          "kind": "data",
+          "label": "成果身份 · ffc115f9-002b-4b4f-8905-906d744bb99e",
+          "sha256": "e0dfc67846e5735a8b07cc9e1510b7f6eec97598ab8b9c6c0847a1e852035924",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/004-员工在原消息交付代码.png",
+          "kind": "screenshot",
+          "label": "员工在原消息交付代码",
+          "sha256": "5a7596fd733405b870fc748785f4ee9c313dca5168f73f5d6d8b46138a6aff7a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/005-员工交付代码的-Shiki-预览.png",
+          "kind": "screenshot",
+          "label": "员工交付代码的 Shiki 预览",
+          "sha256": "5b2c1052e05c8596f68290963585046732d3b38a03819caabe0352625ea6e54d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "5b2c1052e05c8596f68290963585046732d3b38a03819caabe0352625ea6e54d",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-Ti2d86/trace-1.original.zip",
+          "sha256": "798b59f2887d71a0c0b943fd2383a6a4ae4d645510afa16022b2742371c61d5e",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody对比同一家族的两个固定成果版本",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/manifest.json",
+      "manifestSha256": "6901b72ebe1263808145d59c7f2e936721db960a71512095dc3ca6ea6c326c64",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/002-a8e33481-1e5e-4ae4-9351-ce13b39a201f-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/003-成果身份-a8e33481-1e5e-4ae4-9351-ce13b39a201f.json",
+          "kind": "data",
+          "label": "成果身份 · a8e33481-1e5e-4ae4-9351-ce13b39a201f",
+          "sha256": "c4839bc213fec0c2af665ed000c8338bec37a45786d61678ec0421eec26a88e4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "e8217bc6f212e70241606a6846929c73f7aed1dbfaf6791afccfef9121d52a9c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/005-3fce6a40-6a0e-49cc-944b-1cf84e9e6064-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/006-成果身份-3fce6a40-6a0e-49cc-944b-1cf84e9e6064.json",
+          "kind": "data",
+          "label": "成果身份 · 3fce6a40-6a0e-49cc-944b-1cf84e9e6064",
+          "sha256": "31b99519c2bee1124ea4d587edb68a6dd2cc13dd42e382ff3230037ee64f091a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/007-Lody-原成果-V1-V2-diff.native.png",
+          "kind": "screenshot",
+          "label": "Lody 原成果 V1/V2 diff",
+          "sha256": "88cb4cda4d1464c92a1d7a4bb715c9e19da542fe0fc3775e5aae734d5faa783e",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/008-Lody-原成果-V1-V2-diff.capture.json",
+          "kind": "data",
+          "label": "Lody 原成果 V1/V2 diff · 原生截取元数据",
+          "sha256": "9de9bccc42e1422e5b259af29b42265d27761b3938bbb1c81ee83180351607ef",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/009-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "f2058f7ba637592a7d751bfe468e5d33fe867c543307e55703c00e7ad3b5b05b",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-Ocp677/trace-1.original.zip",
+          "sha256": "0167fbe67aa8853884cea0b922acdefa6d429ee819731927d8f554a9593b5c41",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "final",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody大文本对比加载真实worker并拒绝外改原件",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/manifest.json",
+      "manifestSha256": "f7e2ca2911b681d4a3406d3aca13ea69645618b0c1b97c262606360af87b914f",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/002-3e5e6851-afec-4a2e-bca7-90906f503b06-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "387ad15562ce9df4826301bc4739208f6104a9d62d46130dda8aa2e018ea404a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/003-成果身份-3e5e6851-afec-4a2e-bca7-90906f503b06.json",
+          "kind": "data",
+          "label": "成果身份 · 3e5e6851-afec-4a2e-bca7-90906f503b06",
+          "sha256": "75517c2836bc28e2f228c204e1989f07f5a0bda5c70dbf70a80742e54c5492ee",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "aa83e3faac3eb44db6ffdfa95aafcdc60dbc22cf560dfdc136489f093b8c48b6",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/005-77bebd09-a63c-405c-b04f-19dbbeb8125e-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "8e28e5dca24c484a77d146e0638870e4c155a425999e58aa8249058e104d43d4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/006-成果身份-77bebd09-a63c-405c-b04f-19dbbeb8125e.json",
+          "kind": "data",
+          "label": "成果身份 · 77bebd09-a63c-405c-b04f-19dbbeb8125e",
+          "sha256": "1cfee0704a1885aea2b55f446e1ea3932a4e34f45a54259a09ba3bac8e9cbce4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/007-Lody-原成果-V1-V2-diff.native.png",
+          "kind": "screenshot",
+          "label": "Lody 原成果 V1/V2 diff",
+          "sha256": "8ec00346b1919193dc5f1d8f665904098089d1a1520b4f1b7843db8e304a2c22",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/008-Lody-原成果-V1-V2-diff.capture.json",
+          "kind": "data",
+          "label": "Lody 原成果 V1/V2 diff · 原生截取元数据",
+          "sha256": "d607a3331adf11fc3054c8457a1487902e548598fd9a392cc094c35272d8b3c9",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/009-大文本真实worker加载.json",
+          "kind": "data",
+          "label": "大文本真实worker加载",
+          "sha256": "9c60641089480785795d80ba2efaac43f9ba3886100a861505c519ba31a8cfa5",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/010-外改旧版拒绝再次比较.png",
+          "kind": "screenshot",
+          "label": "外改旧版拒绝再次比较",
+          "sha256": "823fcf2be5e6c4c0f29d9b408922937c1b70a1529573eaf81185fa2db908a950",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/011-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "906fe3017ef53a8599b2ad27f3084fc686d98ecb78246a7888bb1e7b7ecdd243",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/final/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-M8Eudp/trace-1.original.zip",
+          "sha256": "e03f52e6ad2bd708a2926e7c101f4812b7d8900751844aac00236785de63b488",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "first",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #3",
+      "originalStatus": "running",
+      "resolvedStatus": "interrupted",
+      "manifest": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-369VrG/manifest.json",
+      "manifestSha256": "f125d40098a9205b0df3f0cc192f4d1d0b7e8af910f0509d6b1a15c96f19a95e",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-369VrG/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        }
+      ],
+      "traces": [],
+      "recordedGaps": [
+        {
+          "label": "第 1 次启动结束画面",
+          "reason": "窗口未启动或已经关闭，未获取画面",
+          "recordedAt": "2026-10-09T16:25:42.436Z"
+        }
+      ],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "first",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #1",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-kjiWHa/manifest.json",
+      "manifestSha256": "6f1935a399ad565016f7949de61269d4b16b92e9970dd6e7e62573af2a64f947",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-kjiWHa/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-kjiWHa/002-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "7f3eab4c0b13243e4b2137d5181cb2e9fa618601be65b2be12ee8cc7e819dcd6",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-kjiWHa/trace-1.original.zip",
+          "sha256": "62351410aed36667a0fb181d34cf9426b1e1dae5573ae4f7e733c11ff013712a",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "first",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #2",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oXtaD3/manifest.json",
+      "manifestSha256": "1e86d202f581ff9eb9d1392c899402f301ba6a25a7dc4445217ae6c68ab96562",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oXtaD3/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oXtaD3/002-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "245638b74c352a7223f0016be7816a0f1f3bb631427a6312307022c17e9d39f9",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oXtaD3/trace-1.original.zip",
+          "sha256": "351ae2d1b4406e98c311ec84eecea7c5099e6ea0163068555ab0fc88b6df616a",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "first",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody对比同一家族的两个固定成果版本",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/manifest.json",
+      "manifestSha256": "12d9a46de287ca40693951d6fd371c4724c7a58f0de47a0e37556a7274253a9b",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/002-88b41a59-35ab-483e-9b61-fe43ece75697-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/003-成果身份-88b41a59-35ab-483e-9b61-fe43ece75697.json",
+          "kind": "data",
+          "label": "成果身份 · 88b41a59-35ab-483e-9b61-fe43ece75697",
+          "sha256": "9a1baabbc9d4936dd4f3fcd49346a243cfe05b791ad34b4c076e49186d17ce31",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "2614e4ba7f42d8654c92bd1315b4702f78e65c8c82f372b5b4fef61f312ef17a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/005-800cb7de-2346-4bc6-909a-0cd82c281eb7-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/006-成果身份-800cb7de-2346-4bc6-909a-0cd82c281eb7.json",
+          "kind": "data",
+          "label": "成果身份 · 800cb7de-2346-4bc6-909a-0cd82c281eb7",
+          "sha256": "6d1a026e099136f67b9ca607ba183addfea31eaaf767f6e630845b1bad87c1d3",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "fcb7f963c62158cff2c0049d6414b02412e6063c35d884c88cafbf9bdcec78ad",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/first/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-OEWXLP/trace-1.original.zip",
+          "sha256": "2a673df53d7def12258de316b18549c35ca4c570a32d5e796b03722c8ccfafe7",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "second",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #4",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/manifest.json",
+      "manifestSha256": "325253371625b9e73c018f1cce5481c44d72fc9246c28de77cd98f7bc0b0f452",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/002-original",
+          "kind": "file",
+          "label": "Lody样本.pptx",
+          "sha256": "fe2e2ac5de2d7afe731b8e9c378baedb869a50a3e30ab4ddf8c7572ed7ef2c3a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "6ffd9cafb6bdf99c4d3e329cb324734312c4c163a3c639091ab8a8c7b237b6d5",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/004-Lody-pptx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody pptx 实际阅读与操作",
+          "sha256": "13cdfbb2ff5cbe6637b710b06d9511f27ad80e2fb7dcc971d1fb8e9db0a12e70",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/005-Lody-pptx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody pptx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "4d720a3601f8ab4fbcb3c2c0c4953606878a2341a155df58645fb6e3b25fc707",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/006-Lody-pptx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody pptx 关闭重开",
+          "sha256": "0dddf13e5f5e3f4c77349494b71f440d3e0bd05109b6d8567589e4c426869d37",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "7def5637f7dc3b5344585d6a224718ad6c20f9eb3644c48aeea32c4d39d1f0b5",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-RmSQDq/trace-1.original.zip",
+          "sha256": "70cee1c8737fd2ca123bc3ffc0f06949c5058d62ae033a1ff62a4e7c99bc5a01",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "second",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #3",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/manifest.json",
+      "manifestSha256": "5b82d2f23bf8bb65b36520f7c58a866f7e6b40bbf17353858b0410504ae51e76",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/002-original",
+          "kind": "file",
+          "label": "Lody样本.xlsx",
+          "sha256": "ea958c8c46163d420e6951ad9c8a0f2c2504b2a06b010c45e42fa227bea849fb",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "0ee342511b25135a6ac4bebcce6fcf241820db4ffc68de0f606acefa076c3965",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/004-Lody-xlsx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 实际阅读与操作",
+          "sha256": "7a861b2e1ba16e565e97cdb44e7ebc71116bba3412ad918d2096a905e59ebace",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/005-Lody-xlsx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody xlsx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "c4323ced792184ac462665436aeccc94203f1a6b61fe0cae0b35ca454b577889",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/006-Lody-xlsx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 关闭重开",
+          "sha256": "e48add3d2fcc3b093a84d66c18c3a0bd54dc641ef892d3d0c2ddedd9231d4f7d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "02b14d93897da29d21673f7f89f317de3cdafef908079897c0952a601b784b3c",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-DeokTQ/trace-1.original.zip",
+          "sha256": "78ca0e514ce2bb98ba5f5c48943c10ae8e074b0d10ee7d115c08151a5f3d5c53",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "second",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #1",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/manifest.json",
+      "manifestSha256": "8ee1ff89c09e0d5ac80a36c40604e908e25256e231347ab0c3f93a860f02dcdf",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/002-original",
+          "kind": "file",
+          "label": "Lody样本.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "61d911c66a14b3e901d5a254891f21fa5e826536212878eaf7f2293fdf2054ed",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/004-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "4d58c58230171abb6f2cff732a78ac161120dbaed12505013634871ac29a3628",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-4rxCRR/trace-1.original.zip",
+          "sha256": "3de9586b61bd670081dcdd400fbd4b15af6cf0370283d85368005801ef69448a",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "second",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #2",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/manifest.json",
+      "manifestSha256": "823691720125b76a9f33093b5b7cf013d956279d3b491b6ec829b67be4290acf",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/002-original",
+          "kind": "file",
+          "label": "Lody样本.docx",
+          "sha256": "1fd644e637df626325519cd3026007de94e48aa0283b71e5aeb92d7e526f6c45",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "4b20e451e64e896ee664f657d01b26efd1eaed88bf88b29948973522904be2ec",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/004-Lody-docx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody docx 实际阅读与操作",
+          "sha256": "f41cc8f1a569bde8fe164c870b2b99c95efb22097da6d2db4dfcbb172b430e3f",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/005-Lody-docx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody docx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "41e5a4c79aa0eb83bf6ee3b9932f0889932f2a603036c74284a691c5dfce3adb",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/006-Lody-docx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody docx 关闭重开",
+          "sha256": "42f48b8f70c458f5896609c5413673d2f7618b759869e0e9b029301f92449820",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "42f48b8f70c458f5896609c5413673d2f7618b759869e0e9b029301f92449820",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-oTRDR6/trace-1.original.zip",
+          "sha256": "ecf4a7661e5a080ec878d153cdb0d15714b514bcac069a4d7438d7a5d28d778e",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "second",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody对比同一家族的两个固定成果版本",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/manifest.json",
+      "manifestSha256": "ff9665793631195cab95df9b0aa33eaad963ddce8229dcb007d51c2eebe3fc75",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/002-c19d3208-3135-42d6-8830-b95c78f8cd74-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/003-成果身份-c19d3208-3135-42d6-8830-b95c78f8cd74.json",
+          "kind": "data",
+          "label": "成果身份 · c19d3208-3135-42d6-8830-b95c78f8cd74",
+          "sha256": "a3291ef0218dc6c1af38c417d58658d7e103ac460cdac900a353e508d255014d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "9dd629272d20d5b5a9a9f44d2c4ca2de0d692e2f2621443a0d9d9297ea8d84ef",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/005-24e79b6a-e683-4d3a-9d2f-10b937d7d6f2-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/006-成果身份-24e79b6a-e683-4d3a-9d2f-10b937d7d6f2.json",
+          "kind": "data",
+          "label": "成果身份 · 24e79b6a-e683-4d3a-9d2f-10b937d7d6f2",
+          "sha256": "be1301234d570a5ef5d9fdccd830c49ed2e3a991426510e88a4c92d94019f4eb",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/007-Lody-原成果-V1-V2-diff.native.png",
+          "kind": "screenshot",
+          "label": "Lody 原成果 V1/V2 diff",
+          "sha256": "b254167a0a7c089f3b49270d1c30e03f9fc67c8b7238e24ef7ef8460e3501ca1",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/008-Lody-原成果-V1-V2-diff.capture.json",
+          "kind": "data",
+          "label": "Lody 原成果 V1/V2 diff · 原生截取元数据",
+          "sha256": "29995aee6a0f373c64c7b32b81e4aed14aba81647959181feb70c4876f4decbd",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/009-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "f2f6880e2907db1af4df482c85962c85ad4c873859cf491f2e7029e972519f45",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/second/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-lP7uat/trace-1.original.zip",
+          "sha256": "3ee0f9b257d6b292a37cb5c1cf282e8cb67dc43b7b68b3cb57e40b6efb3cfe57",
+          "preservedAndVerified": false
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #4",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/manifest.json",
+      "manifestSha256": "bf035c0b4e1c049370bde01a6974e576fe959fe3a2fe297fb1f29e771f7f81f5",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/002-original",
+          "kind": "file",
+          "label": "Lody样本.pptx",
+          "sha256": "5060ead518966a872cc35f75397b956efc14c40d9003ef0a5f5d2866a9a554e9",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "542d70282ef5598032b588c54aa07ea10ff44bd220da93820697e10a806508ff",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/004-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "a95b82fd9a9b687fb0ab4b05329fa220f9d51b4390bf088e92105ef25c8cdf51",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-094540a5a94be3bef4de-retry0-repeat0-YXw1yd/trace-1.original.zip",
+          "sha256": "b86adb8323f398e62c31769afbdd26fb0f894fe2b8ea38e4373a5c88b6a60e07",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #3",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/manifest.json",
+      "manifestSha256": "5fca55aba4620ecefa0d1bc1a40e3ee4a456fa670f9f4243867b2491e49c4afc",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/002-original",
+          "kind": "file",
+          "label": "Lody样本.xlsx",
+          "sha256": "d898b2a40dd67f780ba1ed9e6408994999eb296ea83532dcfec9c8f64140c690",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "bb917419a73c2d7b87029070aa293006ea6de7c90c292aedf911fdab26d3ca5a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/004-Lody-xlsx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 实际阅读与操作",
+          "sha256": "2045c19d2a92b0f7b46775318dbe0e880574038757b2169ea8f02608dec49b52",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/005-Lody-xlsx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody xlsx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "d778b0d5a072b83feeb58ea939a5447be764a05039932433ab18c5a25bb6c14e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/006-Lody-xlsx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody xlsx 关闭重开",
+          "sha256": "c42fffdcd79139c9ee82549b25128c43eb93076d729d0f0b119321573e3b175e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "924343290a925e1f6fcf7f3a12edb541be27a175b2921d816fe6e2f9af4833eb",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-0f0e61e1fef033500f73-retry0-repeat0-TsSkPk/trace-1.original.zip",
+          "sha256": "7971abbc96128673fc88bb791f1c468d2818678f13f0456969013995c6e400b9",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / 聊天文件直接打开安全的文档与代码预览",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/manifest.json",
+      "manifestSha256": "993fd6710a6f982520d06b7d56f55298fdc954cd0a9bae457ca289cf841de5f9",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/002-original",
+          "kind": "file",
+          "label": "预览说明.md",
+          "sha256": "19127e54fec8033315099e96834822f7ae66e10961c88857cd099e47685a5713",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/003-original",
+          "kind": "file",
+          "label": "preview.ts",
+          "sha256": "46897a629b8f9ff58802c4ff046f5bc60055fd1b2fd244ccfce5b820760435d0",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/004-original",
+          "kind": "file",
+          "label": "preview.html",
+          "sha256": "e24819bb2fd2bbc0a0fa7690e933ad84006e2d1398b631e29ce8e93ac5617bd5",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/005-已发送材料身份.json",
+          "kind": "data",
+          "label": "已发送材料身份",
+          "sha256": "7e6ebe54e6a36a7cc43eb1b7ae6a377e57e532030400db6053d048fe81fc1167",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/006-在聊天中发送三份真实文件.png",
+          "kind": "screenshot",
+          "label": "在聊天中发送三份真实文件",
+          "sha256": "8b8403fb6825895090e319e28f1905606c8fd6245aa533a02a5312bf562ea6f9",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/007-Markdown-排版预览.png",
+          "kind": "screenshot",
+          "label": "Markdown 排版预览",
+          "sha256": "623db02a49ac41dda4dac30b5d0b968a41391ded556b4a6bd5fd91f41d5b836c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/008-Markdown-源码与行号.png",
+          "kind": "screenshot",
+          "label": "Markdown 源码与行号",
+          "sha256": "7a2a63097a643063b821438caebf663b3dc9b96366ff5eb0bdae7a4a75b1375c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/009-TypeScript-附件的-Shiki-高亮.png",
+          "kind": "screenshot",
+          "label": "TypeScript 附件的 Shiki 高亮",
+          "sha256": "efbd99e09c6672bccc30792eb75f94e939f6ce4d6d04cd92aa5c39c379614f6e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/010-HTML-文件仅显示源码.png",
+          "kind": "screenshot",
+          "label": "HTML 文件仅显示源码",
+          "sha256": "7438e0f568e81d0f9079a5531af4806c03a424b50ac52c38295ef0b74971ce3f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/011-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "76dc5367fb6caecc43e1dd50f3666831eb1dc0f0ccd29b8961dc4fc35fe2ce89",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-4163543f55708761eea8-retry0-repeat0-EK7vM4/trace-1.original.zip",
+          "sha256": "b3b80bf439fe89eb635b840dbe8787f1a5280d4e7298a1f431c327203f9188b7",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #1",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/manifest.json",
+      "manifestSha256": "9d6ab21620d28729bd32196e659ebe0d11f4b8c75b35f01b70e9166fe2992133",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/002-original",
+          "kind": "file",
+          "label": "Lody样本.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "25e58cd202c021733223e6d7898e74157dd3cefdec02506876af9881106bcf02",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/004-Lody-pdf-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody pdf 实际阅读与操作",
+          "sha256": "a9a6cedb018656191b92828967f508db6119dcf3dc68e43e31cdbce7a1cc0da1",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/005-Lody-pdf-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody pdf 实际阅读与操作 · 原生截取元数据",
+          "sha256": "ca6d059086053356e7ded1e76d2d2cebda2ecb52ed8ea5cfc9c8f93eeb9ac722",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/006-Lody-pdf-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody pdf 关闭重开",
+          "sha256": "7fa304db2f3c9dfb50473fd93591f95c261ca0e0bb4290b06783b5434e841407",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "2420baccc84148c0429009915b235d397b82dcc3ea5482444e8d61bec48c23c1",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-739929d93bdbd69467f7-retry0-repeat0-13XVnx/trace-1.original.zip",
+          "sha256": "32dc7eb0491c3bf88b068e3757fee7a501af875b3faa2a4a9697ca86c7240e33",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制文件查看器按真实原件显示 / 例子: #2",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/manifest.json",
+      "manifestSha256": "ffe0151f095446ac2b3f213d011cb36369159633422f7233f6f9dc4680e24fbd",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/002-original",
+          "kind": "file",
+          "label": "Lody样本.docx",
+          "sha256": "a2d624a243f54951ba4dd2eb030ae7e0d2b57852f1a66c5bfe1e434dd6a5fac3",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/003-二进制来源.json",
+          "kind": "data",
+          "label": "二进制来源",
+          "sha256": "c3ebffdc100732eafacd9f779ee9138d4035b479c3c8ac93d4e5cdb799861382",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/004-Lody-docx-实际阅读与操作.native.png",
+          "kind": "screenshot",
+          "label": "Lody docx 实际阅读与操作",
+          "sha256": "94b38d07e3619959f8992e936de7de9636d19af74ce004c55f41ba73d557f037",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/005-Lody-docx-实际阅读与操作.capture.json",
+          "kind": "data",
+          "label": "Lody docx 实际阅读与操作 · 原生截取元数据",
+          "sha256": "adbe5d6998122edfb4f438173508fc25ec340132a34d73d866545b441a6c3dbd",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/006-Lody-docx-关闭重开.png",
+          "kind": "screenshot",
+          "label": "Lody docx 关闭重开",
+          "sha256": "606af499a49f69f60a518534764547eb12cf96363eb356b483965379dd748464",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "606af499a49f69f60a518534764547eb12cf96363eb356b483965379dd748464",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/7b08bd0dd3f0302dbe41-c638154780bc13aa5d4d-retry0-repeat0-TZNtjz/trace-1.original.zip",
+          "sha256": "00b72957d6bb245ffa2ad315efa1ca7d2f89b9a02dbc421407cc9341d457be7f",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / 员工交付的代码文件从消息直接打开高亮预览",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/manifest.json",
+      "manifestSha256": "a7f40cf8ce7cc927b0d9336d31ba7b2c65b264985cc11993e40eacc235585b43",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/002-c569692b-eb6d-4c5f-8ba9-c11087aa1cca-交付模块.ts",
+          "kind": "file",
+          "label": "交付模块.ts · 第 1 版",
+          "sha256": "60444ca01a8effa3d1346b9610e1123718d98707cf8e9669dba04867bf25b51e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/003-成果身份-c569692b-eb6d-4c5f-8ba9-c11087aa1cca.json",
+          "kind": "data",
+          "label": "成果身份 · c569692b-eb6d-4c5f-8ba9-c11087aa1cca",
+          "sha256": "a9fefc6c76858d4d18cadd0ee1c4829c4c1ba3ce7e719737a7c08f5ffc522049",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/004-员工在原消息交付代码.png",
+          "kind": "screenshot",
+          "label": "员工在原消息交付代码",
+          "sha256": "cefb77e08c71461b326f22d505381aaaf3e2bc797fc7286b95c9fc670bf67c73",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/005-员工交付代码的-Shiki-预览.png",
+          "kind": "screenshot",
+          "label": "员工交付代码的 Shiki 预览",
+          "sha256": "5910d976e3f1fe24fd141753e6b09ef2414eb757fb5586cf0108a05871494063",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "439a20b331bdf60b992552a48b1ab1102023e667c2631454e52f6e37df53e329",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-418fee7ecb0b3236f4c7-retry0-repeat0-ouBJpR/trace-1.original.zip",
+          "sha256": "ab49edf579378249e06b9a2e24dc8c98a808afba03b9d04afb2f27b14a6932cf",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody对比同一家族的两个固定成果版本",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/manifest.json",
+      "manifestSha256": "6928ff94bde635e04a08d47cbd80caedb7d6dd132520bf1fa21ce0bda4462232",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/002-2255a421-3957-4f09-908b-1736e285099a-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/003-成果身份-2255a421-3957-4f09-908b-1736e285099a.json",
+          "kind": "data",
+          "label": "成果身份 · 2255a421-3957-4f09-908b-1736e285099a",
+          "sha256": "35d4dec180764b0caffd11f872a2a2efeebb1dc60acbf58311f0e085ba2808c8",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "851f1eec1fbb88118d0ee4dd83ce62cb46dc6a3b24fb4ea3b11f8d39e62ac994",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/005-bdbc2574-2adf-4923-9c26-0d7fe350a250-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/006-成果身份-bdbc2574-2adf-4923-9c26-0d7fe350a250.json",
+          "kind": "data",
+          "label": "成果身份 · bdbc2574-2adf-4923-9c26-0d7fe350a250",
+          "sha256": "c715d8bd96ce3c0f5d4a49a73e551da7db499dde68902a5b131eac24239b5561",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/007-Lody-原成果-V1-V2-diff.native.png",
+          "kind": "screenshot",
+          "label": "Lody 原成果 V1/V2 diff",
+          "sha256": "888c77ce495782fcbf10851c47f2952bb45abcc8010eef8116872bdb2eb374a5",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/008-Lody-原成果-V1-V2-diff.capture.json",
+          "kind": "data",
+          "label": "Lody 原成果 V1/V2 diff · 原生截取元数据",
+          "sha256": "d37bf24f9e5362cb144cc1d7210251a485b4e873aff63119be2f063e7ac5ab9d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/009-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "a8953da4639c70b3c785a893fa9cf1cf3bedb315f6a3dbd884a835dd8a3f9e93",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-e8f02dcf8c911f17e151-retry0-repeat0-fSwbZC/trace-1.original.zip",
+          "sha256": "684f3c3b20029f3fc132954e0bd599bc74b95bd32eed42a932a883cd78f7c6d7",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "third",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody大文本对比加载真实worker并拒绝外改原件",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/manifest.json",
+      "manifestSha256": "6fa22be9874476422901eecece3eb08b2184ac94651d61a760fffac48e89a9a8",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/002-577f1e80-7d00-4431-809b-dccb62833f79-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "387ad15562ce9df4826301bc4739208f6104a9d62d46130dda8aa2e018ea404a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/003-成果身份-577f1e80-7d00-4431-809b-dccb62833f79.json",
+          "kind": "data",
+          "label": "成果身份 · 577f1e80-7d00-4431-809b-dccb62833f79",
+          "sha256": "0d26528232c6912b93ee5a49ec1541745b9747317e2afe45b7dc2deb884e8752",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "28e347db0599f772da21ec33e28012f499f4248ceeb19a11e5fe6e089db148fd",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/005-329b8f02-3b1c-4afe-9288-77d0e4ef9a26-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "8e28e5dca24c484a77d146e0638870e4c155a425999e58aa8249058e104d43d4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/006-成果身份-329b8f02-3b1c-4afe-9288-77d0e4ef9a26.json",
+          "kind": "data",
+          "label": "成果身份 · 329b8f02-3b1c-4afe-9288-77d0e4ef9a26",
+          "sha256": "f587148d58bb0594d33696d3176ea833b9fb13d8fa17da8e3791e36b2ae1de28",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/007-Lody-原成果-V1-V2-diff.native.png",
+          "kind": "screenshot",
+          "label": "Lody 原成果 V1/V2 diff",
+          "sha256": "70e1b9124b41e1512d075782dbb2d4575b6e68e63b207f0ff7d4ab3de7b57fd3",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/008-Lody-原成果-V1-V2-diff.capture.json",
+          "kind": "data",
+          "label": "Lody 原成果 V1/V2 diff · 原生截取元数据",
+          "sha256": "f63261a239ad331e4667e8a60fbafc5ac927882362e1e6d0475ca19760db63ec",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/009-大文本真实worker加载.json",
+          "kind": "data",
+          "label": "大文本真实worker加载",
+          "sha256": "cf582f452d1f20712891f131d46c12130f83473a6df8c3be0bf5dccd7151b729",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/010-外改旧版拒绝再次比较.png",
+          "kind": "screenshot",
+          "label": "外改旧版拒绝再次比较",
+          "sha256": "308b6b7695bd02b038a568c18bfbcfb4fdf188de20775ed2a2db56f1e561e21c",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/011-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "9dcd448fbac1680943c6c35e21cc180fc24ea7f9f3d37e7384077d646dc63667",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/third/scenarios/986cd38f4e206af421fb-f62843f6fb6ffaad4ca0-retry0-repeat0-aXbFzr/trace-1.original.zip",
+          "sha256": "b2d10de6f79f7dac6be248f2cbb9c37b03a4d412d12b9693107c5321c0284bee",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody二进制迟到预览不会恢复清空来源",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/manifest.json",
+      "manifestSha256": "c05a0409eb03a94d504809366e8bab8f77c1d859eba812f5d8af88cee5cbb3de",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/002-original",
+          "kind": "file",
+          "label": "Lody切换.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/003-original",
+          "kind": "file",
+          "label": "Lody切换.docx",
+          "sha256": "91f91de02fea18dd8ecf8645ff449ea524416c9ae5f1713af1229d8863655bd4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/004-真实材料清理后迟到字节不恢复文件标签.png",
+          "kind": "screenshot",
+          "label": "真实材料清理后迟到字节不恢复文件标签",
+          "sha256": "b411a73e0e06c2ced0e8702fedc8fa47eb6a0619b612788a50cfaa1ff4f49f42",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/005-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "b411a73e0e06c2ced0e8702fedc8fa47eb6a0619b612788a50cfaa1ff4f49f42",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-2057d770b8b8db26213f-retry0-repeat0-0RXL8X/trace-1.original.zip",
+          "sha256": "d208b7bff169c0359050169661fb85ba07984f590211aa552ccbd15f1ff45f23",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody迟到预览不会覆盖新文件且关闭停读",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/manifest.json",
+      "manifestSha256": "e005dbc99990c9a146640f43ce60d40f85e00b69f9229fe52c87eaf5e5ce5efe",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/002-original",
+          "kind": "file",
+          "label": "Lody切换.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/003-original",
+          "kind": "file",
+          "label": "Lody切换.docx",
+          "sha256": "8749d00f08465a76f071d3e2ec58dd7922d427a11dbe0609dbcd81982cc285f1",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/004-迟到PDF不覆盖DOCX原件.native.png",
+          "kind": "screenshot",
+          "label": "迟到PDF不覆盖DOCX原件",
+          "sha256": "16263851d2631b757581238831dd5767dbc9625ddc281d4a64b5da3ba2e618ce",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/005-迟到PDF不覆盖DOCX原件.capture.json",
+          "kind": "data",
+          "label": "迟到PDF不覆盖DOCX原件 · 原生截取元数据",
+          "sha256": "73018e553c1bc3e0b7303975a8aa916e7d44839719762566b1634d934572c9fa",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/006-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "150c02b74f996d4988de6c515b548353592c4d026399b318c41f6787af4c870d",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-3bTVvJ/trace-1.original.zip",
+          "sha256": "00f43c9b8fed382451ba0bba1c03a28454e990ca13c026a311872e125864451a",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody成果消息打开已发布二进制原件 / 例子: #1",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/manifest.json",
+      "manifestSha256": "a23eeeec1ad48457753377d2ac32e18de41298ed76ce1e2cde9197dc8c6f4642",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/002-53278770-f1e4-418f-b78a-877b2f6f62db-Lody成果.pdf",
+          "kind": "file",
+          "label": "Lody成果.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/003-53278770-f1e4-418f-b78a-877b2f6f62db-Lody成果.pdf",
+          "kind": "file",
+          "label": "Lody成果.pdf · 第 1 版",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/004-成果身份-53278770-f1e4-418f-b78a-877b2f6f62db.json",
+          "kind": "data",
+          "label": "成果身份 · 53278770-f1e4-418f-b78a-877b2f6f62db",
+          "sha256": "794312e8e171013a19342f83f63ec688fa76274003b610bba6b39b5d641f504a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/005-已发布-pdf-成果实际阅读.native.png",
+          "kind": "screenshot",
+          "label": "已发布 pdf 成果实际阅读",
+          "sha256": "43b01d75d974856beec095bab92144552871fe151321c45fb82b3de2b54580f8",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/006-已发布-pdf-成果实际阅读.capture.json",
+          "kind": "data",
+          "label": "已发布 pdf 成果实际阅读 · 原生截取元数据",
+          "sha256": "c25c4cfd513e619fdae0faf3aee8614652e43c6eda72b5633162a6fccf6c6635",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/007-已发布-pdf-关闭重开零业务变更.png",
+          "kind": "screenshot",
+          "label": "已发布 pdf 关闭重开零业务变更",
+          "sha256": "43b01d75d974856beec095bab92144552871fe151321c45fb82b3de2b54580f8",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/008-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "592029fe1996ef99dfc80535876ff370d04ef76618415a1cd16569c5ee6e8e7b",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-4b43f5ba3467352101c2-retry0-repeat0-KzT57g/trace-1.original.zip",
+          "sha256": "19b6eddcfca3481c5c93605703168787665d71ac6cf5c4e5b97951ab7d323e9c",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody成果消息打开已发布二进制原件 / 例子: #3",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/manifest.json",
+      "manifestSha256": "50728a8c68281f17480db568c19d0acd799c52316e55fe1afcc52ddb48499a70",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/002-0edf7a02-49e1-4747-9324-a1e8f5fa9f85-Lody成果.xlsx",
+          "kind": "file",
+          "label": "Lody成果.xlsx",
+          "sha256": "19c3d3958d3c7b0d90bea4b2f2f506997764c1999fe833f3874cabee715de635",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/003-0edf7a02-49e1-4747-9324-a1e8f5fa9f85-Lody成果.xlsx",
+          "kind": "file",
+          "label": "Lody成果.xlsx · 第 1 版",
+          "sha256": "19c3d3958d3c7b0d90bea4b2f2f506997764c1999fe833f3874cabee715de635",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/004-成果身份-0edf7a02-49e1-4747-9324-a1e8f5fa9f85.json",
+          "kind": "data",
+          "label": "成果身份 · 0edf7a02-49e1-4747-9324-a1e8f5fa9f85",
+          "sha256": "63b97ad3ffbb6b61cde20e352cb577bc35b3662ae78c86813d54170703364d29",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/005-已发布-xlsx-成果实际阅读.native.png",
+          "kind": "screenshot",
+          "label": "已发布 xlsx 成果实际阅读",
+          "sha256": "540a07bb2004b81dc20f08ac422ae72ade712204f70a61b8d2a8faee5cef6e6c",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/006-已发布-xlsx-成果实际阅读.capture.json",
+          "kind": "data",
+          "label": "已发布 xlsx 成果实际阅读 · 原生截取元数据",
+          "sha256": "d05ea9dd5929343714b52b5f4b06029279b007f41e6ae2ed87da02f6e699fcca",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/007-已发布-xlsx-关闭重开零业务变更.png",
+          "kind": "screenshot",
+          "label": "已发布 xlsx 关闭重开零业务变更",
+          "sha256": "c6b2d16fd6e646866e608201913c0d556b42114c4f605dace2e0903d124d3f0a",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/008-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "58eab76ba578b9d11adfe055aebd0272c9fc86a9737904761921a05b661fbbfd",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-52f1da0bc8f641e9dc01-retry0-repeat0-PNsFyX/trace-1.original.zip",
+          "sha256": "0d9bb6553da9820d7ebdaa9ec6426442b983ff669e4603743dbffbe98cd17bc1",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody成果消息打开已发布二进制原件 / 例子: #2",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/manifest.json",
+      "manifestSha256": "084ece178e54c8599d58a77d62a09a771fa3fa8b4a1f42b8516d4472e199c5d0",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/002-3976c83e-345a-431a-b42d-a08c5d7c5adc-Lody成果.docx",
+          "kind": "file",
+          "label": "Lody成果.docx",
+          "sha256": "b2d9e222745da8a23f9e57a176dfeb352b9b00216a59c94b32aab6ed2d73516b",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/003-3976c83e-345a-431a-b42d-a08c5d7c5adc-Lody成果.docx",
+          "kind": "file",
+          "label": "Lody成果.docx · 第 1 版",
+          "sha256": "b2d9e222745da8a23f9e57a176dfeb352b9b00216a59c94b32aab6ed2d73516b",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/004-成果身份-3976c83e-345a-431a-b42d-a08c5d7c5adc.json",
+          "kind": "data",
+          "label": "成果身份 · 3976c83e-345a-431a-b42d-a08c5d7c5adc",
+          "sha256": "e2c5c3461d0b0346397a6b0b8c760b09ecfc6b648828f8588f289297bba18882",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/005-已发布-docx-成果实际阅读.native.png",
+          "kind": "screenshot",
+          "label": "已发布 docx 成果实际阅读",
+          "sha256": "ea20795a151902c99c4aa2fc8aa1d1ff224b8c2666645aff8a5b9af6c0f097f7",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2680,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/006-已发布-docx-成果实际阅读.capture.json",
+          "kind": "data",
+          "label": "已发布 docx 成果实际阅读 · 原生截取元数据",
+          "sha256": "cc0e7002b1a24b43658e6a7eae49f2023131eea6dfceabfad985ae08200a7f30",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/007-已发布-docx-关闭重开零业务变更.png",
+          "kind": "screenshot",
+          "label": "已发布 docx 关闭重开零业务变更",
+          "sha256": "4f4ad08cba9099fab6de24cc810027684e3db969094e70b9c56e6949d56a5b1e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/008-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "920382db48dd2ae9fb084d9301bca94f7196e9ce14f9f0a241f9721d0d8202db",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-5d23260fca85adc4b9db-retry0-repeat0-LDxHzL/trace-1.original.zip",
+          "sha256": "07ebdaa0a5374a465928343960f168db0f83ba37cd1d73f41777b200adcc16a7",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody比较隔离同名不同家族并拒绝缺失原件",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/manifest.json",
+      "manifestSha256": "0f52813e035b3810f9b7396193bc86a66251baee67de3a84de803b3d39d34dda",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/002-47840487-2156-4006-917c-4deedd624597-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/003-成果身份-47840487-2156-4006-917c-4deedd624597.json",
+          "kind": "data",
+          "label": "成果身份 · 47840487-2156-4006-917c-4deedd624597",
+          "sha256": "b1c3ce54c16678734ab422a85976b5c437b945a3801c319de4118e03e808ca3d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/004-b4440688-0ebc-4771-8c7d-c7247e5a6a6c-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "b9edba3ba2ec17073dbc94e1beb511940d09605dcf661fb402ecf10fd16443fa",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/005-成果身份-b4440688-0ebc-4771-8c7d-c7247e5a6a6c.json",
+          "kind": "data",
+          "label": "成果身份 · b4440688-0ebc-4771-8c7d-c7247e5a6a6c",
+          "sha256": "016b948e1546c4cd44b3ce2ced2cf958d5f4da8c816282c8ce22f7239b0940de",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/006-c2c93c3c-d3f6-4392-956e-dca15d8fb3ec-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "71ed81a338fa8259eeb8afd3293d63460d03ffd7347ae94cf181c35c975bee40",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/007-成果身份-c2c93c3c-d3f6-4392-956e-dca15d8fb3ec.json",
+          "kind": "data",
+          "label": "成果身份 · c2c93c3c-d3f6-4392-956e-dca15d8fb3ec",
+          "sha256": "010eb6b9861c2017a6cbc31c5988e2e94b3f1906fd331dac843377c5a6c18889",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/008-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "5053c968584ab38587d08519c686b5117ed0a50f275eab74af162284399851f5",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/009-7d882f2a-8da3-421a-8589-63ea3b282976-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "62fe54e3b3002c336e3dabf68ef30803f0c93eb5dc1aec5e264b8966bb7aa572",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/010-成果身份-7d882f2a-8da3-421a-8589-63ea3b282976.json",
+          "kind": "data",
+          "label": "成果身份 · 7d882f2a-8da3-421a-8589-63ea3b282976",
+          "sha256": "a80fbd31dc6e261f484493ecde31963b775f6c291b53637c5f9ae529b128eefe",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/011-同名成果只对比原家族.native.png",
+          "kind": "screenshot",
+          "label": "同名成果只对比原家族",
+          "sha256": "15e9435c4646eeab57fccfb9da6772c975cc7ce04ddbbae8d81a342d6d2a1a7c",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/012-同名成果只对比原家族.capture.json",
+          "kind": "data",
+          "label": "同名成果只对比原家族 · 原生截取元数据",
+          "sha256": "038eda3bd569bf81114fb91b7eb0d00cccb72694ea626385ea3b43a17f0f0e07",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/013-缺失旧版拒绝diff且独立原件保留.png",
+          "kind": "screenshot",
+          "label": "缺失旧版拒绝diff且独立原件保留",
+          "sha256": "dbd2c940aaa6ad589f6880b9fbd95f9ab969dacc4d7a850793eeae1ed5b7b9bd",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/014-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "dbd2c940aaa6ad589f6880b9fbd95f9ab969dacc4d7a850793eeae1ed5b7b9bd",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-87844b378bec75483b97-retry0-repeat0-MPZc28/trace-1.original.zip",
+          "sha256": "6f6f65244c8715375497ced44730f1b330b2182a4ba8b73576541a0b50156963",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody成果消息打开已发布二进制原件 / 例子: #4",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/manifest.json",
+      "manifestSha256": "ac3e7528f66d4df075da16433aad062f170380757f149a648aeddcb2e9d61b75",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/002-ca3d464b-fdf7-434e-9a8a-50ad59adb89e-Lody成果.pptx",
+          "kind": "file",
+          "label": "Lody成果.pptx",
+          "sha256": "16a71d5bcf0160727bde13b3ec10e4a87e5fcf474a0db23d28d2bfa56cc6c733",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/003-ca3d464b-fdf7-434e-9a8a-50ad59adb89e-Lody成果.pptx",
+          "kind": "file",
+          "label": "Lody成果.pptx · 第 1 版",
+          "sha256": "16a71d5bcf0160727bde13b3ec10e4a87e5fcf474a0db23d28d2bfa56cc6c733",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/004-成果身份-ca3d464b-fdf7-434e-9a8a-50ad59adb89e.json",
+          "kind": "data",
+          "label": "成果身份 · ca3d464b-fdf7-434e-9a8a-50ad59adb89e",
+          "sha256": "873e0ed048743cb09e1103b38c431859d7cdeb1e002e30093b07d2f778edfb84",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/005-已发布-pptx-成果实际阅读.native.png",
+          "kind": "screenshot",
+          "label": "已发布 pptx 成果实际阅读",
+          "sha256": "b210202189a56fa1466521c052abb1c4b0cb182703530fcd8687f614c1515653",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/006-已发布-pptx-成果实际阅读.capture.json",
+          "kind": "data",
+          "label": "已发布 pptx 成果实际阅读 · 原生截取元数据",
+          "sha256": "e59d4f359ad454a2a331731d794e7beddfd4ccc4da2f1b8186b0d6129431e200",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/007-已发布-pptx-关闭重开零业务变更.png",
+          "kind": "screenshot",
+          "label": "已发布 pptx 关闭重开零业务变更",
+          "sha256": "f38e437c85a6e12048f7b0f1a84c4936ed91f821c64109ab5373936216c4fdbf",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/008-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "3bdb04f45a259b3d5d8afb7e863a13ac9801cc947b4da6e895d1faa65f476065",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-8e675ed55c8b9c226b46-retry0-repeat0-wGduBV/trace-1.original.zip",
+          "sha256": "01b10b94517448e2692710f0bf7ab490950ccb5cf15eb73827e407cc6fc72a57",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody比较的迟到回复不能恢复清空来源",
+      "originalStatus": "failed",
+      "resolvedStatus": "failed",
+      "manifest": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/manifest.json",
+      "manifestSha256": "baee75256632569f3973824b9934092be523de899c106caa5f6c4cd7b68f8a4d",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/002-66823433-0a10-45b2-ab07-0b6c28c2af88-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/003-成果身份-66823433-0a10-45b2-ab07-0b6c28c2af88.json",
+          "kind": "data",
+          "label": "成果身份 · 66823433-0a10-45b2-ab07-0b6c28c2af88",
+          "sha256": "92873b149d9d6903a330e23c7836be03bf26d794feb989bf6503954ff1d08313",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "a7204b738ada547426de6617e56251b42abdf3eca02fdc809705cfa6943d737d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/005-285d13ec-fd69-4ce1-9d08-20407e901feb-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/006-成果身份-285d13ec-fd69-4ce1-9d08-20407e901feb.json",
+          "kind": "data",
+          "label": "成果身份 · 285d13ec-fd69-4ce1-9d08-20407e901feb",
+          "sha256": "2312fa934cfccbd664fd766693c793ccbb58c9abaabd7468d1fb06d2a8385c02",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "f4b23ac7faf6cddd8b42968b90423ed9564a368fa198792f9479eae0d0b87db9",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-a8ffKB/trace-1.original.zip",
+          "sha256": "3562f15e108e0c627adc71b2479d849feacf8ed9ec5c9bb1022bd4af18fcefd1",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete-fixed",
+      "scenario": "用户材料按原件和明确共享范围进入已有聊天 / Lody迟到预览不会覆盖新文件且关闭停读",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/manifest.json",
+      "manifestSha256": "d1c359ebf25fba4ba1de62df2203f49b008829fd0cbc55869b55b96be459b10e",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/002-original",
+          "kind": "file",
+          "label": "Lody切换.pdf",
+          "sha256": "b6b1843c7b50b3bd2b87c1761a5408142e93098fcaabff41b9c91c498abb2c2f",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/003-original",
+          "kind": "file",
+          "label": "Lody切换.docx",
+          "sha256": "0b29787d949e53195c24b6dcbde73670354c541c49a48155fc68a62b1c259805",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/004-迟到PDF不覆盖DOCX原件.native.png",
+          "kind": "screenshot",
+          "label": "迟到PDF不覆盖DOCX原件",
+          "sha256": "a952d6b8599ff5ba2c0686ddf5bac6b35ac4c10431358e8e575b91e3deba5177",
+          "verified": true,
+          "captureSource": "Electron.webContents.capturePage()",
+          "pngDimensions": [
+            2580,
+            1720
+          ],
+          "metadataDimensionsMatch": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/005-迟到PDF不覆盖DOCX原件.capture.json",
+          "kind": "data",
+          "label": "迟到PDF不覆盖DOCX原件 · 原生截取元数据",
+          "sha256": "267ac019ee79332fbbc0f369ce31fb94d9a55ad5d41a15721ae719f0ab6d4035",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/006-关闭后卸载全部二进制查看器且停读.png",
+          "kind": "screenshot",
+          "label": "关闭后卸载全部二进制查看器且停读",
+          "sha256": "2505d23359a3efc74309f6d0d720272fd92db013957147d778a1acbda3a1c1d6",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/007-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "2505d23359a3efc74309f6d0d720272fd92db013957147d778a1acbda3a1c1d6",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/7b08bd0dd3f0302dbe41-8ea021018c53a993298c-retry0-repeat0-BJCnbj/trace-1.original.zip",
+          "sha256": "9cf0f8c4f650f5c62377b376d981d16b5fe01154c344220b233b122b69c27ec9",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    },
+    {
+      "batch": "complete-fixed",
+      "scenario": "用户按所见原件修订和采用明确成果版本 / Lody比较的迟到回复不能恢复清空来源",
+      "originalStatus": "passed",
+      "resolvedStatus": "passed",
+      "manifest": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/manifest.json",
+      "manifestSha256": "75ae5d525877df7a06371f8d5200529c60dfeaf35b994e00e276ea0a6a47a57f",
+      "evidence": [
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/001-第-1-次-pnpm-dev-启动.json",
+          "kind": "data",
+          "label": "第 1 次 pnpm dev 启动",
+          "sha256": "58b733b84db8058822fa27d4c0e0f5962ebb061e77e6a04ee42a308b2d97981d",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/002-881612b1-ec57-41a9-bc15-96234ed7eae4-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 1 版",
+          "sha256": "802d3c0683b403b338694162e4673d4184799b06b72a0371c3c6534ab32395b4",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/003-成果身份-881612b1-ec57-41a9-bc15-96234ed7eae4.json",
+          "kind": "data",
+          "label": "成果身份 · 881612b1-ec57-41a9-bc15-96234ed7eae4",
+          "sha256": "c25ddb55918337722c40542d63c5490f65be238316448a2eea02d079a2e8afb3",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/004-在同一聊天输入框修改所见版本.png",
+          "kind": "screenshot",
+          "label": "在同一聊天输入框修改所见版本",
+          "sha256": "97ff22a981ba90f2382a0b1cfab35d5705e079273dab7511388614bc7a23cfef",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/005-b182d9a1-0830-496c-9cd5-be722149a6e2-交付报告.md",
+          "kind": "file",
+          "label": "交付报告.md · 第 2 版",
+          "sha256": "a16f1163542163297221d067223fb538ed295e1a6e107d8092282be2a72e978e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/006-成果身份-b182d9a1-0830-496c-9cd5-be722149a6e2.json",
+          "kind": "data",
+          "label": "成果身份 · b182d9a1-0830-496c-9cd5-be722149a6e2",
+          "sha256": "f79e4f142cc4819387d275ea5b885d55ed0eecae0eefddf769c013883262be53",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/007-真实清理后迟到比较没有恢复旧版.png",
+          "kind": "screenshot",
+          "label": "真实清理后迟到比较没有恢复旧版",
+          "sha256": "b8825c3ad2b0cf96e3872bbec822a3d990f470f46f42942622679c9f673f349e",
+          "verified": true
+        },
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/008-第-1-次启动结束画面.png",
+          "kind": "screenshot",
+          "label": "第 1 次启动结束画面",
+          "sha256": "b8825c3ad2b0cf96e3872bbec822a3d990f470f46f42942622679c9f673f349e",
+          "verified": true
+        }
+      ],
+      "traces": [
+        {
+          "path": ".local/lody-migration-20261010/complete-fixed/scenarios/986cd38f4e206af421fb-c1d9d04ac510fa9a0b04-retry0-repeat0-SEdVGx/trace-1.original.zip",
+          "sha256": "923cf6abdabf28dfd912ca61d9645a3d463dbf6a942383d8111765ab63c071d1",
+          "preservedAndVerified": true
+        }
+      ],
+      "recordedGaps": [],
+      "humanReview": "pending"
+    }
+  ],
+  "visualReview": {
+    "reviewer": "Codex image inspection, user review still pending",
+    "inspected": [
+      "PDF/PPTX/DOCX/XLSX native operation frame",
+      "PDF/PPTX reopened reading frame",
+      "small V1/V2 diff native frame"
+    ],
+    "finding": "核读显示原内容和diff。PDF/PPTX在125%操作截图中正文被窄栏/当前滚动裁出；重开默认fit模式截图显示原正文。保留原缩放/滚动逻辑，未另改设计。"
+  },
+  "notes": [
+    "first running原manifest保留，以本批130退出和测试实际中断作resolvedStatus，不伪改原状态。",
+    "前两批8份trace缺失，原manifest/原件/截图仍存；第三批与final trace独立复制核hash。",
+    "raw logs/resource files在.local中，不随源码commit。JSON为可复查引用及hash。",
+    "20场为三个实际运行批次的逐场最新通过结果，非一次全20场运行；complete原两失败保留。清理后加载态最小宿主修正及多标签关闭断言分别在complete-fixed实测通过。"
+  ],
+  "additionalCommands": [
+    "BOAI_TEST_DEV_SERVER=1 BOAI_REVIEW_RUN_DIR=.local/lody-migration-20261010/complete pnpm exec playwright test --grep 'Lody成果消息|Lody比较隔离|Lody比较的迟到|Lody迟到预览不会|Lody二进制迟到' --workers=1",
+    "BOAI_TEST_DEV_SERVER=1 BOAI_REVIEW_RUN_DIR=.local/lody-migration-20261010/complete-fixed pnpm exec playwright test --grep 'Lody比较的迟到|Lody迟到预览不会' --workers=1"
+  ],
+  "additionalVisualReview": {
+    "assistantInspected": "complete four published PDF/DOCX/XLSX/PPTX native reading screenshots and two original failure states",
+    "visibleOriginalContent": true,
+    "humanReview": "pending"
+  }
+}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可选明确revisionContent与隔离原样本生成命令；命令经原聊天逐次批准/真实执行后才publish，默认原交付与修订保持。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 可独立准备原有文件协议端点，供 UI 新员工贯穿场景复用；可选确定聊天回复，默认成果场景行为保持。
  * [INPUT]: 隔离 Desktop、真实 Mastra HTTP 请求/工具回执、宿主成果 API 与 SQLite 原件。
@@ -35,7 +36,7 @@ function sendTool(response: ServerResponse, name: string, args: unknown, index: 
   response.end('data: [DONE]\n\n')
 }
 
-interface ArtifactProtocolOptions { askForSupplement?: boolean; askDuringExecution?: boolean; file?: { name: string; fileName: string; content: string }; chatReplies?: Record<string, string> }
+interface ArtifactProtocolOptions { askForSupplement?: boolean; askDuringExecution?: boolean; file?: { name: string; fileName: string; content: string; revisionContent?: string; command?: string }; chatReplies?: Record<string, string> }
 export async function prepareArtifactProtocol(runtime: Desktop, options: ArtifactProtocolOptions = {}) {
   const errors: string[] = [], runs = new Map<string, number>(), replacements: { runId: string; revisionRequestId: string }[] = []
   const executionQuestions: { runId: string; path: string; content: string; writeRequests: number }[] = []
@@ -79,7 +80,9 @@ export async function prepareArtifactProtocol(runtime: Desktop, options: Artifac
       const materialIds = [...new Set([...source.matchAll(/"materialId":"([0-9a-f-]{36})"/g), ...source.matchAll(/material:([0-9a-f-]{36}):text-v1:L2/g)].map(value => value[1]))]
       const version = revisionRequestId ? 'ARTIFACT_V2' : 'ARTIFACT_V1', text = `# 交付报告\n\n版本标记：${version}\n独立原件：REPORT_${runs.get(runId)}\n验收：逐项检查原件和来源。\n${materialIds.map(id => `材料依据：material:${id}:text-v1:L2`).join('\n')}\n`
       const path = `self:/runs/${runId}/${options.file?.fileName ?? 'report.md'}`, called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
-      if (!called.includes('write_file')) { sendTool(response, 'write_file', { path, content: options.file?.content ?? text }, index); return }
+      if (options.file?.command) {
+        if (!called.includes('execute_command')) { sendTool(response, 'execute_command', { command: options.file.command }, index); return }
+      } else if (!called.includes('write_file')) { sendTool(response, 'write_file', { path, content: (revisionRequestId ? options.file?.revisionContent ?? options.file?.content : options.file?.content) ?? text }, index); return }
       if (!called.includes('publish_artifact')) { sendTool(response, 'publish_artifact', { path, name: options.file?.name ?? '交付报告.md', ...(revisionRequestId ? { revisionRequestId } : {}) }, index); return }
       const artifactId = messages.filter(value => value.role === 'tool').map(value => { try { return JSON.parse(contentText(value.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
       if (!artifactId) throw new Error('真实 publish_artifact 没有返回可检查成果身份')
@@ -96,13 +99,13 @@ export async function prepareArtifactsDesktop(runtime: Desktop, options: Artifac
   const sourceRoot = join(await realpath(runtime.root), 'artifact-sources'); await mkdir(sourceRoot)
   const source = join(sourceRoot, '依据.txt'), materialText = '材料第一行\nARTIFACT_MATERIAL_EVIDENCE：真实原文依据。\n材料第三行\n'; await writeFile(source, materialText)
   await runtime.start()
-  const setup = await runtime.page.evaluate(async url => {
+  const setup = await runtime.page.evaluate(async ({ url, allowCommands }) => {
     const connection = await window.boai.request('saveConnection', { name: '成果离线协议', provider: 'openai-compatible', baseUrl: url, defaultModel: 'artifacts-fixture' }), snapshot = await window.boai.request('snapshot', undefined)
     const agent = snapshot.agents.find(value => value.id === 'researcher')!, { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
-    await window.boai.request('saveAgent', { ...input, name: '成果作者', connectionId: connection.id, modelId: 'artifacts-fixture', allowCommands: false, expectedConfigVersion: configVersion })
+    await window.boai.request('saveAgent', { ...input, name: '成果作者', connectionId: connection.id, modelId: 'artifacts-fixture', allowCommands, expectedConfigVersion: configVersion })
     const group = await window.boai.request('createConversation', { kind: 'group', title: '成果协作组', agentIds: ['researcher'] }), other = await window.boai.request('createConversation', { kind: 'direct', title: '独立成果私聊', agentIds: ['researcher'] })
     return { group, other, dataPath: (await window.boai.request('snapshot', undefined)).dataPath }
-  }, endpoint.url)
+  }, { url: endpoint.url, allowCommands: !!options.file?.command })
   return { ...setup, endpoint, source, materialText, errors, replacements, executionQuestions }
 }
 

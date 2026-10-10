@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 固定成果增加Lody PDF/Office及同家族只读diff；隐藏/失效卸载，清理后的changed不重新进入加载态。
  * [INPUT]: 固定成果 ID/版号/hash、实际预览/版本/采用记录、当前聊天与搜索来源失效 revision。
  * [OUTPUT]: 右侧核对固定版本并展示 Markdown 排版/Shiki 代码、版本及折叠来源记录；采用、修改和稍后处理留在原聊天成果消息。隐藏停读，清理/撤权/外改立即失效正文。
  * [POS]: 成果详情的受控数据/交互边界；不读取任意路径、不把外开当采用、不伪造审核或来源消息。
@@ -11,6 +12,8 @@ import { ARTIFACT_LIMITS, type ArtifactPreview, type ArtifactVersion } from '@sh
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, Loading } from '@/components/common'
 import { TextFilePreview } from '@/components/common/file-preview'
+import { BinaryFileViewer } from '@/components/common/lody/binary-file-viewer'
+import { ArtifactComparison } from './artifact-comparison'
 import { Button } from '@/components/ui/button'
 import { MaterialMarkdown } from '@/pages/conversations/-components/material-citations'
 import { materialErrorText } from '@/pages/conversations/-components/material-draft'
@@ -24,6 +27,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
   const [view, setView] = useState<{ preview: ArtifactPreview; detail: ConversationDetail; sourceRevision: number }>(), [loading, setLoading] = useState(false), [readError, setReadError] = useState('')
   const [externalArtifact, setExternalArtifact] = useState<Artifact>()
   const [refresh, setRefresh] = useState(0)
+  const [comparison, setComparison] = useState<{ currentId: string; versionId: string }>()
   const fixed = useRef({ id, requestId, hash: contentHash }), cleared = useRef(false)
   useEffect(() => {
     if (fixed.current.id !== id || fixed.current.requestId !== requestId) { fixed.current = { id, requestId, hash: contentHash } }
@@ -58,7 +62,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         cleared.current = true; sequence++; clearTimeout(timer); timer = undefined; setView(undefined); setExternalArtifact(undefined); setLoading(false); setReadError('来源聊天已清理或移除，本版成果不可用。'); return
       }
       if (event.type !== 'changed' || event.conversationId && event.conversationId !== conversationId) return
-      sequence++; setView(undefined); setExternalArtifact(undefined); setLoading(active)
+      sequence++; setView(undefined); setExternalArtifact(undefined); setLoading(active && !cleared.current)
       if (active && !cleared.current && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 120)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
@@ -70,6 +74,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
   const originalAuthor = artifact?.ownerAgentId, author = snapshot.agents.find(agent => agent.id === originalAuthor)
   const sourceMessage = detail?.messages.find(message => message.id === artifact?.sourceMessageId)
   const newer = preview?.versions.filter(version => artifact && version.contentVersion > artifact.contentVersion).sort((first, second) => first.contentVersion - second.contentVersion) ?? []
+  const comparedVersion = comparison?.currentId === artifact?.id ? preview?.versions.find(version => version.id === comparison?.versionId && version.logicalArtifactId === logicalArtifactId && version.id !== id) : undefined
   return <div className="detail-section file-preview-detail flex min-h-0 flex-1 flex-col gap-3" data-artifact-id={id}>
     {readError && <Banner>{readError}</Banner>}
     {readError && externalArtifact?.id === id && !cleared.current && <Button variant="ghost" size="sm" onClick={() => onOpenPath(externalArtifact.path)}>外部打开</Button>}
@@ -78,8 +83,12 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
     {artifact && preview && detail && <>
       <div className="flex shrink-0 flex-col gap-1"><h3 className="break-words">{artifact.name} · 第 {artifact.contentVersion} 版</h3><p className="field-hint">{author?.name ?? (sourceMessage && sourceMessage.senderId === originalAuthor ? sourceMessage.senderName : '已移除员工')}{artifact.publishedAt && <> · {new Date(artifact.publishedAt).toLocaleString('zh-CN')}</>}</p></div>
       {!!newer.length && <Banner kind="notice">有新版本。当前查看第 {artifact.contentVersion} 版。<Button variant="link" size="sm" onClick={() => onVersion(newer.at(-1)!)}>查看新版</Button></Banner>}
+      {file?.kind !== 'unsupported' && preview.versions.length > 1 && <div className="button-row" aria-label="成果版本对比选择">
+        {comparedVersion && <Button variant="secondary" size="sm" onClick={() => setComparison(undefined)}>返回正文</Button>}
+        {preview.versions.filter(version => version.id !== id).map(version => <Button key={version.id} variant={comparedVersion?.id === version.id ? 'secondary' : 'ghost'} size="sm" aria-pressed={comparedVersion?.id === version.id} onClick={() => setComparison({ currentId: id, versionId: version.id })}>对比第 {version.contentVersion} 版</Button>)}
+      </div>}
       <section className="flex min-h-0 flex-1 flex-col" aria-label={`成果第 ${artifact.contentVersion} 版正文`}>
-        {file && file.kind !== 'unsupported' ? <TextFilePreview key={artifact.id} name={artifact.name} text={file.text} kind={file.kind} language={'language' in file ? file.language : undefined} markdown={file.kind === 'markdown' ? <MaterialMarkdown source={{ content: file.text, materialSources: artifact.materialSources }} detail={detail} onPreview={onPreviewMaterial} /> : undefined} /> : <p className="field-hint">{file?.kind === 'unsupported' ? file.reason : '此文件暂不支持预览。'}</p>}
+        {comparedVersion ? <ArtifactComparison api={api} first={comparedVersion} second={artifact} active={active} sourceRevision={sourceRevision} /> : preview.binaryPreview ? <BinaryFileViewer key={`${artifact.id}:${artifact.contentHash}`} preview={preview.binaryPreview} name={artifact.name} active={active} /> : file && file.kind !== 'unsupported' ? <TextFilePreview key={artifact.id} name={artifact.name} text={file.text} kind={file.kind} language={'language' in file ? file.language : undefined} markdown={file.kind === 'markdown' ? <MaterialMarkdown source={{ content: file.text, materialSources: artifact.materialSources }} detail={detail} onPreview={onPreviewMaterial} /> : undefined} /> : <p className="field-hint">{file?.kind === 'unsupported' ? file.reason : '此文件暂不支持预览。'}</p>}
       </section>
       <details className="max-h-52 shrink-0 overflow-y-auto text-xs text-muted-foreground"><summary className="cursor-pointer">文件记录</summary>
       <div className="button-row">
