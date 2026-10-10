@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 单聊隐藏重复姓名、绝对悬停时间/外侧接收图标与左侧员工执行卡；群聊原姓名布局保持。
  * [OUTPUT]: 主视图切换的消息/composer容器保持DOM与布局，hidden彻底隐藏，任务文件主内容避开悬浮标题。
  * [INPUT]: 全局语义 token、单聊/群聊共享消息/审批/引用结构与群聊工作详情。
  * [OUTPUT]: 单聊与群聊共用52px标题栏与14px悬浮标题/渐隐、消息卡片/工具条、头像资料、悬停时间、镜像布局与窄窗适配；标题栏不展示阅读状态、说明或上下跳转按钮，保留16px消息渐隐衔接；群标题保留重叠头像与紧邻人数文字，浮层焦点辅助节点不影响位置；消息/工具条共用 Soft Card 边缘、工具条仅随消息悬停显示，两侧按钮顺序一致，用户气泡靠右且正文左对齐；composer 由 prompt-bar.css 管理。
@@ -31,6 +32,24 @@
 .chat-panel .message-row.user .message-meta { flex-direction:row-reverse;justify-content:flex-start }
 .chat-panel .message-row.user .message-bubble pre { text-align:left }
 .chat-panel .message-meta strong { font-size:1rem }
+.chat-panel:not(.group-chat) .message-main { position:relative }
+.chat-panel:not(.group-chat) .message-meta-direct { position:absolute;top:-20px;left:0;min-height:0;margin:0 }
+.chat-panel:not(.group-chat) .message-row.user .message-meta-direct { left:auto;right:0 }
+.chat-panel:not(.group-chat) .message-row.message-continuation .message-meta-direct { position:absolute;top:-20px }
+.chat-panel:not(.group-chat) .message-continuation .message-meta-direct time { display:block }
+.message-receipt { position:absolute;right:calc(100% + 8px);bottom:4px;display:inline-flex;align-items:center;color:var(--muted-foreground) }
+.message-receipt.is-received { color:var(--success) }
+.chat-question-action { margin-top:8px }
+.chat-panel .chat-execution-card { display:flex;align-items:center;gap:12px;width:fit-content;max-width:100%;margin-top:12px;padding:12px 16px;text-align:left }
+.chat-panel .message-execution-row .chat-execution-card { margin-top:0 }
+.chat-execution-content { display:flex;flex:1;flex-direction:column;gap:4px;min-width:0 }
+.chat-execution-content>:is(span,small) { color:var(--muted-foreground) }
+.execution-progress { margin:12px 0 }
+.execution-progress-entry { display:flex;gap:12px;align-items:flex-start;text-align:left }
+.execution-progress-entry>time { flex:none;font-size:11px;color:var(--muted-foreground) }
+.execution-progress-entry>div { flex:1;min-width:0 }
+.execution-progress-entry small { color:var(--muted-foreground) }
+.execution-progress-entry p { margin:4px 0 0;font-size:13px }
 .chat-panel .message-author.soft-button { position:relative;padding:0;background:transparent;color:var(--muted-foreground);box-shadow:none;line-height:inherit;text-align:left }
 .chat-panel .message-author strong { color:inherit;font-weight:500 }
 .chat-panel .message-author-at { position:absolute;right:100%;opacity:0 }

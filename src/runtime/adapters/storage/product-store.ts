@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 员工执行SQL在LIMIT前核当前成员/原来源/清理及可见范围，稳定分页只投影冻结配置；固定Trace按run/员工/会话有界读取，零业务写入。
  * [OUTPUT]: 工作/文件有界页与五组同条件计数同次SQL，变更代际同事务推进；范围变动使旧游标失效。
  * [INPUT]: 本地 SQLite 连接、当前聊天成员/附件接收范围与产品记录。
  * [OUTPUT]: 成员增删及材料deliveryScope变更同事务提升检索代际，旧员工筛选游标不能混入新接收范围。
@@ -24,6 +25,10 @@ import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLL
 import { advanceWorkViewClock, conversationFilesSql, conversationFileQuerySchema, readWorkViewCursor, workViewQuerySchema, workViewsSql, workViewCursor, workViewTargetSql } from '../../modules/collaboration/work-view-sql'
 import { WORK_VIEW_LIMITS, type WorkViewQuery, type WorkViewPage, type WorkViewItem, type ConversationFileQuery, type ConversationFilePage, type ConversationFileItem } from '../../../shared/domain/work-views'
 import type { WorkItem } from '../../../shared/domain/work'
+import type { EmployeeExecutionQuery, EmployeeExecutionSummary, ExecutionConfiguration } from '../../../shared/domain/employee-executions'
+import { EMPLOYEE_EXECUTION_LIMITS } from '../../../shared/domain/employee-executions'
+import type { AgentRun } from '../../../shared/domain'
+import type { StoredTraceSpan } from '../../../shared/domain/traces'
 
 const transactionAdmissionDelays = [10, 20, 40, 80, 160, 320]
 const advanceSearchClockSql = `INSERT INTO records(collection,id,value) SELECT '${SEARCH_INDEX_CLOCK_COLLECTION}','${SEARCH_INDEX_CLOCK_ID}',json_object('id','${SEARCH_INDEX_CLOCK_ID}','revision',1) WHERE changes()>0 ON CONFLICT(collection,id) DO UPDATE SET value=json_set(records.value,'$.revision',COALESCE(json_extract(records.value,'$.revision'),0)+1)`
@@ -96,6 +101,7 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS work_view_owner ON records(json_extract(value,'$.ownerAgentId'),json_extract(value,'$.status'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE collection IN ('materials','artifacts')", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
     ], 'write')
     // A reopened or restored database never trusts old bytes before bounded source verification.
     await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
@@ -104,6 +110,61 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
       return result.rows.map(row => JSON.parse(String(row.value)) as T)
+    })
+  }
+  get<T>(collection: string, id: string): Promise<T | undefined> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
+      return result.rows[0] ? JSON.parse(String(result.rows[0].value)) as T : undefined
+    })
+  }
+  queryEmployeeExecutions(query: EmployeeExecutionQuery): Promise<EmployeeExecutionSummary[]>
+  queryEmployeeExecutions(query: EmployeeExecutionQuery, runId: string): Promise<(EmployeeExecutionSummary & { run: AgentRun })[]>
+  queryEmployeeExecutions(query: EmployeeExecutionQuery, runId?: string): Promise<(EmployeeExecutionSummary & { run: AgentRun })[]> {
+    return this.enqueue(async () => {
+      const clauses = ["r.collection='runs'", "json_extract(r.value,'$.agentId')=?", "COALESCE(json_extract(c.value,'$.list.hidden'),0)=0",
+        "EXISTS(SELECT 1 FROM json_each(c.value,'$.agentIds') member WHERE member.value=?)",
+        "NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)"]
+      const args: (string | number)[] = [query.agentId, query.agentId]
+      if (query.conversationId) { clauses.push('c.id=?'); args.push(query.conversationId) }
+      if (runId) { clauses.push('r.id=?'); args.push(runId) }
+      if (query.cursor && !runId) {
+        clauses.push("(json_extract(r.value,'$.createdAt')<? OR (json_extract(r.value,'$.createdAt')=? AND r.id<?))")
+        args.push(query.cursor.createdAt, query.cursor.createdAt, query.cursor.id)
+      }
+      args.push(runId ? 1 : EMPLOYEE_EXECUTION_LIMITS.pageSize + 1)
+      const result = await this.client.execute({ sql: `SELECT ${runId ? 'r.value' : "json_remove(r.value,'$.toolEvents','$.draft','$.error')"} AS run,
+        json_extract(c.value,'$.title') AS title,
+        COALESCE(json_extract(s.value,'$.agent.executionBackend.kind'),json_extract(r.value,'$.backend.kind'),CASE WHEN s.id IS NOT NULL THEN 'mastra-model' ELSE 'unknown' END) AS kind,
+        json_extract(s.value,'$.runtimeProfile.name') AS profileName,
+        json_extract(s.value,'$.connection.name') AS connectionName,
+        COALESCE(NULLIF(json_extract(r.value,'$.backend.modelId'),''),json_extract(s.value,'$.agent.modelId')) AS modelId,
+        json_extract(s.value,'$.connection.defaultModel') AS defaultModel,
+        json_extract(s.value,'$.agent.configVersion') AS configVersion,
+        COALESCE(json_extract(s.value,'$.runtimeProfile.id'),json_extract(r.value,'$.backend.profileId')) AS profileId,
+        COALESCE(json_extract(s.value,'$.runtimeProfile.revision'),json_extract(r.value,'$.backend.profileRevision')) AS profileRevision,
+        COALESCE(json_extract(s.value,'$.runtimeProfile.verified.version'),json_extract(r.value,'$.backend.program.version')) AS programVersion
+        FROM records r JOIN records c ON c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId')
+        JOIN records employee ON employee.collection='agents' AND employee.id=json_extract(r.value,'$.agentId')
+        JOIN records source ON source.collection='messages' AND source.id=json_extract(r.value,'$.triggerMessageId') AND json_extract(source.value,'$.conversationId')=c.id
+        LEFT JOIN records s ON s.collection='snapshots' AND s.id=r.id
+        WHERE ${clauses.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT ?`, args })
+      return result.rows.map(row => {
+        const run = JSON.parse(String(row.run)) as AgentRun
+        const kind = String(row.kind) as ExecutionConfiguration['kind']
+        const label = String(row.profileName ?? row.connectionName ?? (kind === 'unknown' ? '执行配置尚未记录' : kind === 'mastra-model' ? '模型 API（历史配置未记录）' : kind === 'codex-local' ? 'Codex' : kind === 'claude-local' ? 'Claude' : 'ACP'))
+        return { run, conversationTitle: String(row.title), configuration: { kind, label, modelId: String(row.modelId || row.defaultModel || ''),
+          ...(row.configVersion != null ? { configVersion: Number(row.configVersion) } : {}),
+          ...(row.profileId != null ? { profileId: String(row.profileId) } : {}),
+          ...(row.profileRevision != null ? { profileRevision: Number(row.profileRevision) } : {}),
+          ...(row.programVersion != null ? { programVersion: String(row.programVersion) } : {}) } }
+      })
+    })
+  }
+  queryExecutionTrace(runId: string, agentId: string, conversationId: string): Promise<{ spans: StoredTraceSpan[]; truncated: boolean }> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({ sql: "SELECT value FROM records WHERE collection='traceSpans' AND json_extract(value,'$.runId')=? AND json_extract(value,'$.agentId')=? AND json_extract(value,'$.conversationId')=? ORDER BY rowid LIMIT ?", args: [runId, agentId, conversationId, EMPLOYEE_EXECUTION_LIMITS.traceSpans + 1] })
+      return { spans: result.rows.slice(0, EMPLOYEE_EXECUTION_LIMITS.traceSpans).map(row => JSON.parse(String(row.value)) as StoredTraceSpan), truncated: result.rows.length > EMPLOYEE_EXECUTION_LIMITS.traceSpans }
     })
   }
   queryWorkViews(query: WorkViewQuery): Promise<WorkViewPage> {

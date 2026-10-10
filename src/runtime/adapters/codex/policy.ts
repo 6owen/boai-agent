@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 Codex兼容版本显式列举0.159.3/0.161.0；无工具策略v6、宿主工具/审批和插件禁用边界保持。
  * [OUTPUT]: 策略v6在启动与线程同时显式启用系统代理策略；保留私有/公开证据分离及原生审批拒绝/read-only/空环境/禁用工具与宿主审批边界，旧聊天下一次明确交流重建原生映射。
  * [INPUT]: Codex实际配置中仅非秘密的MCP名称和模型提供方名。
  * [OUTPUT]: 禁止原生命令/子代理/插件/hooks/宿主技能继承，配合受控模型目录覆盖模型工具模式；空环境与宿主动态工具分开。
@@ -8,6 +9,10 @@
 
 // Apply these before initialize: inherited startup hooks/plugins must never run during a probe.
 export const CODEX_VERIFIED_VERSION = '0.159.3'
+// Keep compatibility explicit. A saved program still requires its own handshake,
+// and an executable/version change invalidates the saved verification.
+export const CODEX_SUPPORTED_VERSIONS: readonly string[] = [CODEX_VERIFIED_VERSION, '0.161.0']
+export const CODEX_MODEL_CATALOG_LIMITS = { pageSize: 100, maxPages: 8 } as const
 export const CODEX_EMPLOYEE_POLICY_VERSION = 6
 export const codexDisabledFeatures = [
   'shell_tool', 'unified_exec', 'view_image', 'image_generation', 'multi_agent', 'multi_agent_v2', 'apps', 'plugins', 'hooks',

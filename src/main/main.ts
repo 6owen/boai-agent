@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 放行已验证本机模型目录、员工有界执行清单和固定运行详情IPC；不新增执行或路径读取授权。
  * [OUTPUT]: 扫描候选按真实程序身份预填，无外部执行；未接入程序不生成可运行配置。
  * [OUTPUT]: 按已保存ID删除本机启动配置通过既有typed白名单，不接外部程序或登录目录清理参数。
  * [OUTPUT]: 目录登录预填与新草稿来源重核携明确ACP/原生Codex协议；旧ACP导入保持，不运行程序。
@@ -97,6 +98,7 @@ for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resum
 methods.add('setMessageReaction')
 methods.add('updateUserProfile')
 methods.add('getProfileActivity')
+for (const method of ['listEmployeeExecutions', 'getEmployeeExecution', 'listLaunchProfileModels'] as const) methods.add(method)
 methods.add('startCoreConversation')
 methods.add('getCoreConversationStart')
 methods.add('deleteAgent')

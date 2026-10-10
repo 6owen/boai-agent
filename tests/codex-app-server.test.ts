@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-10 新增进度精确来源/原始思维隔离/有界文本与真实Work参数结果持久检查，无真实供应商调用。
+ * [OUTPUT]: 2026-10-10 新增0.161.0/模型目录零推理/验证变化拒绝，以及原Work成果与员工执行IPC冻结来源/原生引用/零新增预算检查。
  * [OUTPUT]: 实际隔离进程核对系统代理启动/新建/恢复双作用域，原禁用工具/只读/审批/空环境及模型/无重试控制保持。
  * [OUTPUT]: 原生传输回退Trace只保留当前已提交线程的固定类别与有界时间；提交前/未知/错线程/迟到/超限和敏感串均不扩业务重试权。
  * [OUTPUT]: 首次Work前的原问题/失败追加按实际continuation接续，普通继续无关联；原请求/预算、单次文件与重启不重放。
@@ -25,17 +27,36 @@ import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { inspectProgram } from '../src/runtime/modules/backends/program'
-import { runCodexPhase, testCodexConnection, type CodexPhaseDiagnostic } from '../src/runtime/adapters/codex/turn'
+import { listCodexModels, runCodexPhase, testCodexConnection, type CodexPhaseDiagnostic } from '../src/runtime/adapters/codex/turn'
 import { observeCodexPhase } from '../src/runtime/adapters/codex/trace'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import type { LaunchProfile } from '../src/shared/domain/backends'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentHome, AutomationDefinition, AutomationOccurrence, ArtifactVersion, BudgetModelCall, Conversation, ConversationDetail, ConversationMaterial, DigitalAgent, InboxPage, MemoryEntry, Message, Resource, Snapshot, WorkBudget, WorkItem } from '../src/shared/domain'
+import { EXECUTION_PROGRESS_LIMITS, type ExecutionProgressEvent, type AgentHome, type AutomationDefinition, type AutomationOccurrence, type ArtifactVersion, type BudgetModelCall, type Conversation, type ConversationDetail, type ConversationMaterial, type DigitalAgent, type InboxPage, type MemoryEntry, type Message, type Resource, type Snapshot, type WorkBudget, type WorkItem } from '../src/shared/domain'
 import { AppService } from '../src/runtime/service'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
+import type { EmployeeExecutionDetail, EmployeeExecutionPage } from '../src/shared/domain/employee-executions'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
+it('exposes only current-turn public summaries/commentary and preserves the final response', async () => {
+  const events: Pick<ExecutionProgressEvent, 'id' | 'kind' | 'text'>[] = []
+  const result = await runCodexPhase({ ...await fixture('public-progress'), onProgress: async event => { events.push(event) } })
+  expect(result.text).toBe('员工回复：你好🌱')
+  expect(events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ kind: 'summary', text: '正在整理文档结构。' }),
+    expect.objectContaining({ kind: 'commentary', text: '正在准备交付文件。' }),
+    expect.objectContaining({ id: 'stage:turn_wait' }),
+  ]))
+  expect(JSON.stringify(events)).not.toContain('private-')
+})
+it('bounds external summary identities and text without discarding the actual result', async () => {
+  const events = new Map<string, Pick<ExecutionProgressEvent, 'id' | 'kind' | 'text'>>()
+  const result = await runCodexPhase({ ...await fixture('bounded-progress'), onProgress: async event => { events.set(event.id, event) } })
+  expect(result.text).toBe('员工回复：你好🌱')
+  expect([...events.values()].filter(event => event.kind !== 'stage').length).toBeLessThanOrEqual(EXECUTION_PROGRESS_LIMITS.events)
+  expect([...events.values()].every(event => event.text.length <= EXECUTION_PROGRESS_LIMITS.text)).toBe(true)
+})
 async function fixture(mode = '') {
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'boai-codex-protocol-'))); roots.push(cwd)
   if (mode) await writeFile(join(cwd, 'fixture-mode'), mode)
@@ -53,6 +74,16 @@ it('tests a real session without sending inference and never presents saved logi
   expect(input.profile.verified).toMatchObject({ name: 'Codex', version: '0.159.3', protocolVersion: 2 })
   await expect(fixture('login-missing')).rejects.toThrow('需要登录')
   await expect(fixture('unknown-version')).rejects.toThrow('尚未通过')
+})
+
+it('loads canonical native models without submitting inference and still rejects changed or unverified programs', async () => {
+  const input = await fixture('version-161')
+  expect(input.profile.verified?.version).toBe('0.161.0')
+  expect(await listCodexModels(input)).toEqual(['gpt-6.1-sol'])
+  await expect(readFile(join(input.cwd, 'turn-requests.txt'))).rejects.toThrow()
+  await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: undefined } })).rejects.toThrow('请先测试')
+  await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: { ...input.profile.verified!, version: '0.159.3' } } })).rejects.toThrow('版本已变化')
+  await expect(listCodexModels(await fixture('model-catalog-repeat'))).rejects.toThrow('游标没有推进')
 })
 
 it('uses actual no-environment/tool controls and preserves split UTF-8, current turn usage and resume identity', async () => {
@@ -330,7 +361,7 @@ it('lets native Codex publish a real managed artifact through the original Work 
     const saved = await service.handle('saveLaunchProfile', draft) as LaunchProfile
     const employee = await service.handle('saveAgent', { name: '本机交付同事', role: '交付文件', instructions: '', color: '#112233', connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: false, active: true, executionBackend: { kind: 'codex-local', profileId: saved.id } }) as DigitalAgent
     const conversation = await service.handle('createConversation', { kind: 'direct', title: 'Codex 文件交付', agentIds: [employee.id] }) as Conversation
-    await service.handle('sendMessage', { conversationId: conversation.id, content: 'NATIVE_FILE_TASK 请创建并交付 Markdown 文件。', mentionIds: [], requestId: 'native-file-task' })
+    await service.handle('sendMessage', { conversationId: conversation.id, content: 'NATIVE_FILE_TASK NATIVE_PUBLIC_PROGRESS 请创建并交付 Markdown 文件。', mentionIds: [], requestId: 'native-file-task' })
     await expect.poll(async () => (await store.load<WorkItem>('workItems'))[0]?.status, { timeout: 15000 }).toBe('delivered')
     const work = (await store.load<WorkItem>('workItems'))[0]!
     expect(work.artifactIds).toHaveLength(1)
@@ -347,6 +378,23 @@ it('lets native Codex publish a real managed artifact through the original Work 
     expect(detail.runs.find(run => run.workId === work.id)?.backend).toMatchObject({ kind: 'codex-local', externalInvocations: 1, toolControl: 'host-bridge' })
     expect(work.outcome?.evidence).toEqual([{ kind: 'artifact', reference: work.artifactIds[0] }])
     const runId = detail.runs.find(run => run.workId === work.id)!.id
+    const executions = await service.handle('listEmployeeExecutions', { agentId: employee.id }) as EmployeeExecutionPage
+    expect(executions.items.find(item => item.run.id === runId)?.configuration).toMatchObject({ kind: 'codex-local', label: saved.name, modelId: 'gpt-6.1-sol', configVersion: employee.configVersion })
+    expect(executions.items.every(item => !('toolEvents' in item.run) && !('draft' in item.run))).toBe(true)
+    const execution = await service.handle('getEmployeeExecution', { agentId: employee.id, runId }) as EmployeeExecutionDetail
+    expect(execution.work?.id).toBe(work.id)
+    expect(execution.artifacts.map(item => item.id)).toEqual(work.artifactIds)
+    expect(execution.run.backend).toMatchObject({ modelId: 'gpt-6.1-sol', turnId: 'fixture-turn' })
+    expect(execution.run.backend?.sessionId).toBeTruthy()
+    expect(execution.run.progress).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'summary', text: '正在整理文档结构。' })]))
+    expect(detail.runs.filter(run => run.phase !== 'execution').every(run => run.progress?.every(event => event.kind === 'stage'))).toBe(true)
+    expect(JSON.stringify(detail.runs.map(run => run.progress))).not.toContain('private-')
+    const write = execution.run.toolEvents.find(tool => tool.name === 'write_file')!
+    expect(write.input).toContain('codex-proof.md')
+    expect(write.detail).not.toBe(write.input)
+    expect(execution.spans.every(span => span.runId === runId && span.agentId === employee.id)).toBe(true)
+    await expect(service.handle('getEmployeeExecution', { agentId: 'bobo', runId })).rejects.toThrow('执行记录')
+    expect((await store.load<WorkBudget>('workBudgets'))[0].modelCalls).toBe(budget.modelCalls)
     await expect(service.handle('listExternalFiles', { runId })).rejects.toThrow('旧 ACP')
     await expect(service.handle('publishExternalArtifact', { runId, relativePath: 'codex-proof.md' })).rejects.toThrow('旧 ACP')
   } finally { await service.close(); await store.close() }

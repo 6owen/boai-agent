@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-10 共用RunCard显示有界真实阶段、Codex公开摘要/进度说明以及分离的工具参数/结果。
+ * [OUTPUT]: 2026-10-10 同一RunCard供会话与员工执行详情复用，状态/未知/工具/失败与原重试门禁保持。
  * [OUTPUT]: Codex/Claude均按实际外部请求显示计量与未知内部步骤。
  * [OUTPUT]: 调度尝试与实际已开始的本机请求分开，当前所示运行按externalInvocations计数，旧缺失/非法数保持未知；不改变预算。
  * [OUTPUT]: 本机Agent中断只提示核对后明确新请求，不展示宿主已拒绝的原运行重试按钮；API原重试边界保持。
@@ -16,6 +18,7 @@ import { ChevronRight, Terminal } from '@/components/icons'
 import type { AgentDelivery, AgentRun, ConversationDetail, Snapshot, WorkItem } from '@shared/domain'
 import { byCreatedAt, roundTime, type ActivityRound } from '../activity'
 import { runLabels, deliveryLabels, turnLabels, liveTurn, latestMemberDeliveries, failureSummary, workDispositionLabels } from '../presentation'
+import { ExecutionProgress } from './execution-progress'
 export function RoundDetail({ round, detail, snapshot, busy, onRetry, historical = false }: { round: ActivityRound; detail: ConversationDetail; snapshot: Snapshot; busy: boolean; onRetry: (id: string) => void; historical?: boolean }) {
   const turn = round.turn
   const roundDeliveries = (detail.deliveries ?? []).filter(delivery => turn && delivery.turnId === turn.id)
@@ -56,7 +59,9 @@ export function RoundDetail({ round, detail, snapshot, busy, onRetry, historical
   </section>
 }
 
-function RunCard({ run, work, onRetry, busy, historical, newerAttempt, canRetry }: { run: AgentRun; work?: WorkItem; onRetry: (id: string) => void; busy: boolean; historical: boolean; newerAttempt: boolean; canRetry: boolean }) {
+function toolDetail(value: string) { try { return JSON.stringify(JSON.parse(value), null, 2) } catch { return value } }
+
+export function RunCard({ run, work, onRetry, busy, historical, newerAttempt, canRetry }: { run: AgentRun; work?: WorkItem; onRetry: (id: string) => void; busy: boolean; historical: boolean; newerAttempt: boolean; canRetry: boolean }) {
   const phase = run.phase === 'decision' ? '参与判断' : run.phase === 'memory' ? '记忆整理' : run.phase === 'coordination' ? '历史协调任务' : run.responseKind === 'chat' ? '交流回复' : '任务执行'
   const failed = ['failed', 'interrupted'].includes(run.status)
   return <Card className="run-card gap-0 p-4" data-run-id={run.id}><CardContent className="p-0">
@@ -64,6 +69,7 @@ function RunCard({ run, work, onRetry, busy, historical, newerAttempt, canRetry 
     <div className="run-context"><span>{phase}</span><time dateTime={run.createdAt}>{roundTime(run.createdAt)}</time></div>
     {work && <p className="field-hint">交付目标：{work.deliverable}</p>}
     {run.disposition && <p className="field-hint">本次工作结果：{workDispositionLabels[run.disposition]}</p>}
+    <ExecutionProgress run={run} />
     {run.timing && <details className="tool-row soft-divider-top"><summary><ChevronRight size={12} />耗时与等待</summary><p className="field-hint">模型排队 {(run.timing.queueMs / 1000).toFixed(1)} 秒 · 执行阶段 {(run.timing.executionMs / 1000).toFixed(1)} 秒 · 资源等待 {((run.taskQueueMs ?? 0) / 1000).toFixed(1)} 秒 · 限流等待 {(run.timing.backoffMs / 1000).toFixed(1)} 秒</p></details>}
     {run.draft?.status === 'withheld' && <details className="tool-row soft-divider-top"><summary><ChevronRight size={12} />未发布的任务结果</summary><p className="field-hint">{run.draft.reason}</p><pre>{run.draft.text}</pre></details>}
     {failed && work?.requiresReview && <p className="historical-note">已有操作需要核对。请检查结果后，在会话中发送明确的后续要求。</p>}
@@ -71,7 +77,7 @@ function RunCard({ run, work, onRetry, busy, historical, newerAttempt, canRetry 
     {historical && <p className="historical-note">历史轮次中的运行，不代表当前消息的处理结果。</p>}
     {failed && run.phase === 'memory' && <p className="historical-note">记忆整理{run.status === 'interrupted' ? '中断' : '未完成'}，不会重新执行原任务。</p>}
     {run.error && <><p className="error-copy">{run.phase === 'memory' ? '记忆整理遇到问题，请查看错误详情。' : failureSummary(run.error)}</p><details className="error-details"><summary>错误详情</summary><pre>{run.error}</pre></details></>}
-    {[...run.toolEvents].sort(byCreatedAt).map(tool => <details className="tool-row soft-divider-top" key={tool.id}><summary><ChevronRight size={12} /><Terminal size={12} /><span>{tool.name}</span><small>{tool.status === 'running' ? '运行中' : tool.status === 'failed' ? '失败' : '完成'}</small></summary><pre>{tool.detail}</pre></details>)}
+    {[...run.toolEvents].sort(byCreatedAt).map(tool => <details className="tool-row soft-divider-top" key={tool.id}><summary><ChevronRight size={12} /><Terminal size={12} /><span>{tool.name}</span><small>{tool.status === 'running' ? '运行中' : tool.status === 'failed' ? '失败' : '完成'}</small></summary>{tool.input && <><h5>调用参数</h5><pre>{toolDetail(tool.input)}</pre></>}{(!tool.input || tool.status !== 'running') && <><h5>{tool.status === 'running' ? '调用参数' : tool.status === 'failed' ? '错误' : '返回结果'}</h5><pre>{toolDetail(tool.detail)}</pre></>}</details>)}
     {failed && run.backend && run.phase !== 'memory' && <p className="historical-note">本机 Agent 不会自动续跑；请核对已有结果后，在聊天中发送明确的后续要求。</p>}
     {failed && !run.backend && canRetry && !work?.requiresReview && run.phase !== 'memory' && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRetry(run.id)}>重试本轮{phase}</Button>}
   </CardContent></Card>

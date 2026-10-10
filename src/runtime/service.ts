@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-10 原Run有界持久进度/真实接收阶段与工具参数结果，取消/清理拒绝迟到事件；观测失败不重放业务。
+ * [OUTPUT]: 2026-10-10 用户恢复执行能力路线；新增员工有界执行清单/固定详情、已验证Codex模型目录及实际原生引用保存，Work/成果/审批与未知不重放保持。
  * [OUTPUT]: API顺序发言沿原事件和协调进度接续，不把触发消息自动登记为引用回复；明确引用和其他运行路径保持。
  * [OUTPUT]: API依赖接续必须提交本次结果声明；漏报复用原有界只读汇报，失败保留草稿且零操作重放，历史等待不冒充当前结果。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -43,6 +45,7 @@
 import { validateGroupInterpretation } from './modules/collaboration/group-coordination'
 import { automationDraftRequestSchema, validateAutomationDraft, type AutomationDraftTarget } from './modules/automations/automation-draft'
 import { teamSetupSchema } from '../shared/domain/team-creation'
+import { EXECUTION_PROGRESS_LIMITS } from '../shared/domain'
 import { CORE_AGENT_ID, CORE_TEAM_NAME_MAX_LENGTH, CORE_TEAM_REQUIREMENTS_MAX_LENGTH, isCoreAgent, type StartCoreConversationInput } from '../shared/domain/core-agent'
 import { TeamCreationService } from './modules/teams/team-creation'
 import { MaterialRepository } from './modules/materials/material-repository'
@@ -78,7 +81,8 @@ import { CodexEmployeeEngine } from './adapters/codex/engine'
 import { ClaudeEmployeeEngine } from './adapters/claude/engine'
 import { testClaudeProgram } from './adapters/claude/turn'
 import { backendProtocol, isNativeBackend } from '../shared/domain/backends'
-import { testCodexConnection } from './adapters/codex/turn'
+import { listCodexModels, testCodexConnection } from './adapters/codex/turn'
+import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '../shared/domain/employee-executions'
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
@@ -637,6 +641,22 @@ export class AppService {
     if(method==='pauseAutomation'||method==='deleteAutomation')return this.automations.pause(lookupSchema.parse(input).id,method==='deleteAutomation')
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
     if(method==='runAutomation'){const value=z.object({id,requestId:id}).strict().parse(input);return this.automations.run(value.id,value.requestId)}
+    if (method === 'listLaunchProfileModels') {
+      const profile = await this.serialize(async () => this.profiles.get(lookupSchema.parse(input).id))
+      if (profile.protocol !== 'codex-app-server') fail('此启动项不提供 Codex 模型目录')
+      const controller = new AbortController(), directory = join(this.dataPath, 'external-probes', `models-${randomUUID()}`)
+      this.externalTests.add(controller); this.externalProfileTests.set(controller, profile.id)
+      try {
+        const models = await listCodexModels({ profile, cwd: directory, privateHome: join(directory, 'home'), signal: controller.signal })
+        return await this.serialize(async () => {
+          const current = this.profiles.get(profile.id)
+          if (this.closing || this.backingUp || current.revision !== profile.revision || current.verified?.checkedAt !== profile.verified?.checkedAt) fail('读取期间启动项已变化，请重新获取模型列表')
+          return models
+        })
+      } finally {
+        try { await rm(directory, { recursive: true, force: true }) } finally { this.externalTests.delete(controller); this.externalProfileTests.delete(controller) }
+      }
+    }
     if(method==='testLaunchProfileDraft') {
       const controller=new AbortController(),directory=join(this.dataPath,'external-probes',`draft-${randomUUID()}`)
       this.externalTests.add(controller)
@@ -742,6 +762,30 @@ export class AppService {
         case 'updateConversationList': return this.updateConversationList(conversationListSchema.parse(input))
         case 'clearConversationHistory': { const value = z.object({ id, hide: z.boolean() }).strict().parse(input); return this.clearConversationHistory(value.id, value.hide) }
         case 'getConversation': return this.detail(lookupSchema.parse(input).id)
+        case 'listEmployeeExecutions': {
+          const query = z.object({ agentId: id, conversationId: id.optional(), cursor: z.object({ createdAt: z.string().datetime(), id }).strict().optional() }).strict().parse(input)
+          this.getAgent(query.agentId)
+          if (query.conversationId && !this.getConversation(query.conversationId).agentIds.includes(query.agentId)) fail('员工不属于此会话')
+          const rows = (await this.store.queryEmployeeExecutions(query)).filter(item => !this.clearingConversations.has(item.run.conversationId))
+          const items: EmployeeExecutionSummary[] = rows.slice(0, EMPLOYEE_EXECUTION_LIMITS.pageSize).map(({ run, ...item }) => ({ ...item, run: {
+            id: run.id, agentId: run.agentId, agentName: run.agentName, conversationId: run.conversationId, status: run.status, phase: run.phase, responseKind: run.responseKind,
+            createdAt: run.createdAt, finishedAt: run.finishedAt, workId: run.workId, triggerMessageId: run.triggerMessageId,
+          } }))
+          const last = items.at(-1)
+          return { items, ...(rows.length > EMPLOYEE_EXECUTION_LIMITS.pageSize && last ? { nextCursor: { id: last.run.id, createdAt: last.run.createdAt } } : {}) }
+        }
+        case 'getEmployeeExecution': {
+          const query = z.object({ agentId: id, runId: id }).strict().parse(input)
+          this.getAgent(query.agentId)
+          const item = (await this.store.queryEmployeeExecutions({ agentId: query.agentId }, query.runId))[0]
+          if (!item) fail('执行记录已清理或员工已不属于原会话')
+          this.getConversation(item!.run.conversationId)
+          const trace = await this.store.queryExecutionTrace(query.runId, query.agentId, item!.run.conversationId)
+          const work = item!.run.workId ? await this.store.get<WorkItem>('workItems', item!.run.workId!) : undefined
+          const published = [...this.artifacts.values()].filter(artifact => artifact.runId === query.runId && artifact.ownerAgentId === query.agentId && artifact.conversationId === item!.run.conversationId && artifact.registrationSource)
+          const artifacts = published.slice(0, EMPLOYEE_EXECUTION_LIMITS.artifacts).map(({ id, name, contentHash, contentVersion }) => ({ id, name, contentHash, contentVersion }))
+          return { ...item!, ...(work?.ownerAgentId === query.agentId && work.conversationId === item!.run.conversationId ? { work } : {}), spans: trace.spans, spansTruncated: trace.truncated, artifacts, artifactsTruncated: published.length > EMPLOYEE_EXECUTION_LIMITS.artifacts } satisfies EmployeeExecutionDetail
+        }
         case 'getConversationTrace': {
           const query = z.object({ conversationId: id, messageId: id, turnId: id.optional() }).strict().parse(input)
           this.getConversation(query.conversationId)
@@ -1979,7 +2023,7 @@ export class AppService {
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     if (runtimeProfile && isNativeBackend(backend)) run.backend = { kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
-      externalInvocations: 0, sessionPolicy: run.responseKind === 'chat' ? 'scoped' : 'fresh', toolControl: run.responseKind === 'task' ? 'host-bridge' : 'none' }
+      externalInvocations: 0, ...(backend.kind === 'claude-local' ? { modelId: agent.modelId || connection?.defaultModel } : {}), sessionPolicy: run.responseKind === 'chat' ? 'scoped' : 'fresh', toolControl: run.responseKind === 'task' ? 'host-bridge' : 'none' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
     const context: EngineContext = { groupCoordination, browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent) && !origin, artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
@@ -1993,6 +2037,29 @@ export class AppService {
         signal.throwIfAborted()
         return { content: verified.text }
       }),
+      onProgress: async event => {
+        // Observation has no effect authority and must never replay or fail business work.
+        try {
+          await this.serialize(async () => {
+            if (signal.aborted || terminal.has(run.status) || !this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
+            if (event.kind !== 'stage' && run.phase !== 'execution') return
+            const text = this.redact(event.text, apiKey).slice(0, EXECUTION_PROGRESS_LIMITS.text)
+            if (!text.trim()) return
+            const id = event.id.slice(0, 200), timestamp = now(), events = run.progress ??= []
+            const previous = events.find(value => value.id === id && value.kind === event.kind)
+            if (previous?.text === text) return
+            if (previous) { previous.text = text; previous.updatedAt = timestamp }
+            else { events.push({ id, kind: event.kind, text, createdAt: timestamp, updatedAt: timestamp }); if (events.length > EXECUTION_PROGRESS_LIMITS.events) events.shift() }
+            await this.store.write([record('runs', run)])
+            this.changed(run.conversationId)
+          })
+        } catch {
+          if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
+          const error = '执行进度未能保存，业务处理继续；请查看最终结果。'
+          try { await context.onTraceError?.(error) } catch { /* Observation failure never replays business. */ }
+          this.emit({ type: 'runtime-error', error })
+        }
+      },
       onTrace: async span => {
         if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
         const value: StoredTraceSpan = { ...span, conversationId: run.conversationId, runId: run.id, agentId: run.agentId, turnId: run.turnId }
@@ -2059,7 +2126,16 @@ export class AppService {
       context.work = view.workItems.find(work => work.id === run.workId)
       context.workBudget = view.workBudgets.find(budget => budget.id === context.work?.budgetId)
     }
-    if (runtimeProfile) context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private') }
+    if (runtimeProfile) {
+      context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private') }
+      context.onNativeExecution = receipt => this.serialize(async () => {
+        signal.throwIfAborted()
+        if (!isNativeBackend(run.backend) || terminal.has(run.status)) fail('此执行已退出，不再接收本机回执')
+        Object.assign(run.backend!, receipt)
+        await this.store.write([record('runs', run)])
+        this.changed(run.conversationId)
+      })
+    }
     if (isCoreAgent(agent) && conversation.purpose === 'core' && !origin && run.phase !== 'memory') {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
@@ -2381,7 +2457,8 @@ export class AppService {
       }
       context.onTool = async event => {
         if (!alive()) return
-        const index = run.toolEvents.findIndex(tool => tool.id === event.id), safe = { ...event, detail: this.redact(event.detail, key) }
+        const index = run.toolEvents.findIndex(tool => tool.id === event.id), previous = run.toolEvents[index]
+        const safe = { ...event, detail: this.redact(event.detail, key), input: previous?.input ?? (event.status === 'running' ? this.redact(event.detail, key) : event.input ? this.redact(event.input, key) : undefined) }
         if (index < 0) run.toolEvents.push(safe); else run.toolEvents[index] = safe
         await this.store.write([record('runs', run)]); if (alive()) this.changed(conversation.id)
       }
@@ -2663,6 +2740,7 @@ export class AppService {
       // The caller can cancel immediately, but the permit belongs to the actual adapter lifetime.
       this.activeAdapters.add(run.id)
       await this.observeActivity(run, () => this.userProfile.execution(run, 'start'))
+      await context.onProgress?.({ id: 'stage:employee_start', kind: 'stage', text: '员工已接收消息，正在处理' })
       try { signal.throwIfAborted(); return await operation({ ...context, signal, modelCallId, onUsage: context.onUsage ? async usage => {
         attemptUsage = usage
         const cumulative = { ...earlierAttempts }

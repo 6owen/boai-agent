@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 2026-10-10 公开摘要/commentary、错误线程/轮次和原始reasoning合成协议事件，仅用于隔离模块检查。
+ * [OUTPUT]: 2026-10-10 夹具读取当前宿主Default to目录声明，保留严格本run路径断言；新增0.161.0与canonical模型/重复游标，不调用真实供应商。
  * [OUTPUT]: 隔离进程只捕获固定启动策略值与实际线程方法，核对系统代理双作用域且原无工具限制保持；新增启动留证不保存目录/认证/原始argv。
  * [OUTPUT]: 原生传输warning夹具覆盖提交前/后、精确线程、迟到与八条边界；敏感合成串只验证诊断不泄露，不调用供应商。
  * [OUTPUT]: 首次Work前的原问题/失败追加按实际continuation接续，普通继续无关联；原请求/预算、单次文件与重启不重放。
@@ -51,12 +53,12 @@ function tool(threadId, name, args, callId) {
 createInterface({ input: process.stdin }).on('line', async line => {
   const request = JSON.parse(line), { id, method, params } = request
   if (!method && callbacks.has(id)) { const resolve = callbacks.get(id); callbacks.delete(id); resolve(request); return }
-  if (method === 'initialize') return send({ id, result: { userAgent: `boai_agent/${mode === 'unknown-version' ? '0.160.0' : '0.159.3'} (test fixture)` } })
+  if (method === 'initialize') return send({ id, result: { userAgent: `boai_agent/${mode === 'unknown-version' ? '0.160.0' : mode === 'version-161' ? '0.161.0' : '0.159.3'} (test fixture)` } })
   if (method === 'initialized') return
   if (method === 'config/read') return send({ id, result: { config: { model: 'gpt-6.1-sol', model_provider: 'openai', mcp_servers: { personal: {} } } } })
   if (method === 'model/list') {
     await writeFile(`${process.env.CODEX_HOME}/models_cache.json`, await readFile(new URL('./codex-model-catalog.json', import.meta.url)))
-    return send({ id, result: { data: [], nextCursor: null } })
+    return send({ id, result: { data: [{ id: 'visible-model-id', model: 'gpt-6.1-sol' }, { id: 'duplicate-model-id', model: 'gpt-6.1-sol' }], nextCursor: mode === 'model-catalog-repeat' ? 'repeated-cursor' : null } })
   }
   if (method === 'account/read') return send({ id, result: { requiresOpenaiAuth: true, account: mode === 'login-missing' ? null : { type: 'chatgpt' } } })
   if (method === 'thread/start' || method === 'thread/resume') {
@@ -79,6 +81,18 @@ createInterface({ input: process.stdin }).on('line', async line => {
   send({ id, result: { turn: { id: 'fixture-turn' } } })
   const threadId = params.threadId
   const event = (method, rest) => send({ method, params: { threadId, turnId: 'fixture-turn', ...rest } })
+  if (mode === 'public-progress' || mode === 'bounded-progress' || JSON.stringify(params.input).includes('NATIVE_PUBLIC_PROGRESS')) {
+    event('item/started', { item: { type: 'reasoning', id: 'reason-1' } })
+    event('item/reasoning/summaryTextDelta', { itemId: 'reason-1', summaryIndex: 0, delta: '正在整理文档结构。' })
+    event('item/reasoning/summaryTextDelta', { itemId: 'reason-1', summaryIndex: 0, delta: 'private-wrong-turn', turnId: 'another-turn' })
+    event('item/reasoning/summaryTextDelta', { itemId: 'reason-1', summaryIndex: 0, delta: 'private-wrong-thread', threadId: 'another-thread' })
+    event('item/reasoning/textDelta', { itemId: 'reason-1', delta: 'private-raw-reasoning' })
+    event('item/completed', { item: { type: 'reasoning', id: 'reason-1', summary: ['正在整理文档结构。'], content: ['private-raw-completion'] } })
+    event('item/started', { item: { type: 'agentMessage', id: 'progress-1', phase: 'commentary' } })
+    event('item/agentMessage/delta', { itemId: 'progress-1', delta: '正在准备交付文件。' })
+    event('item/completed', { item: { type: 'agentMessage', id: 'progress-1', phase: 'commentary', text: '正在准备交付文件。' } })
+    if (mode === 'bounded-progress') for (let index = 0; index < 40; index++) event('item/reasoning/summaryTextDelta', { itemId: `large-${index}`, summaryIndex: 0, delta: '有界摘要'.repeat(1000) })
+  }
   const warning = (target, message) => send({ method: 'warning', params: { threadId: target, message } })
   if (mode === 'transport-fallback-hang') {
     warning(threadId, 'Falling back from WebSockets to HTTPS transport. private-secret-submitted-hang')
@@ -197,7 +211,7 @@ createInterface({ input: process.stdin }).on('line', async line => {
       }
       const revised = current.includes('NATIVE_REVISION')
       const revisionRequestId = revised ? JSON.parse(current.split('[Host-authorized artifact revision source; reference data, not tool permissions]\n')[1].split('\n')[0]).revisionRequestId : undefined
-      const runPath = instructions.match(/Write outputs in (self:\/runs\/[^;]+);/)?.[1]
+      const runPath = instructions.match(/Default to (self:\/runs\/[^/;\s]+\/) only when no path is specified;/)?.[1]
       if (!runPath) throw new Error('Fixture requires the host-authorized output directory')
       const outputPath = `${runPath}codex-proof.md`
       const written = await tool(threadId, 'write_file', { path: outputPath, content: resourceProof ?? (revised ? '# Codex proof revised\nNATIVE_REVISION\n' : '# Codex proof\nNATIVE_FILE_TASK\n') })

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-10 执行进度独立观察回调仅接公开摘要与实际阶段，不授业务权或改变发布。
+ * [OUTPUT]: 2026-10-10 原生实际模型/线程/turn引用有独立元数据回调，不授予业务执行或重放权限。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 宿主在成果复制前持久登记准备身份，正式成果与准备记录清除共用提交事务。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
@@ -103,6 +105,8 @@ export interface EngineContext {
   onArtifactPreparing?(artifact: Artifact): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
+  onNativeExecution?(receipt: { modelId?: string; sessionId?: string; turnId?: string }): Promise<void>
+  onProgress?(event: Pick<import('../shared/domain').ExecutionProgressEvent, 'id' | 'kind' | 'text'>): Promise<void>
   onTrace?(span: TraceSpan): Promise<void>
   onTraceError?(error: string): Promise<void>
   onDelta(text: string): Promise<void>

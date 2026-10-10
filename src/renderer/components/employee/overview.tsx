@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 资料首页可直接打开本人执行详情，API/本机共用记录、Work/成果及原聊天导航；关闭隐藏停止读取。
  * [OUTPUT]: Codex同次读取启动项状态与员工资源说明；隐藏后迟到结果不覆盖当前配置。
  * [OUTPUT]: 本机Codex复用当前启动项只读核对，能力声明不继承无关配置。
  * [INPUT]: 员工已提交配置、DesktopApi、受管能力说明/同次启动项只读身份核对及共用有界 Work 视图。
@@ -18,17 +19,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SkillContent } from '@/pages/library/skill-content'
 import { WorkView } from '@/components/work-views/work-view'
 import { employeeCapabilityFacts } from './overview-state'
+import { EmployeeExecutionPane, type ExecutionSourceNavigation } from './execution-pane'
 
-export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onViewTasks, onOpenWork, onAutomation }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onViewTasks?(agentId: string): void; onOpenWork?(target: WorkViewTarget, current?: () => boolean): void; onAutomation?(origin: AutomationOrigin, current?: () => boolean, conversationId?: string): void }) {
+export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onViewTasks?(agentId: string): void; onOpenWork?(target: WorkViewTarget, current?: () => boolean): void; onAutomation?(origin: AutomationOrigin, current?: () => boolean, conversationId?: string): void; onOpenExecutionSource?: ExecutionSourceNavigation }) {
   const [home, setHome] = useState<AgentHome | null>(null)
   const [launchStatus, setLaunchStatus] = useState<LaunchProfileStatus>()
   const [skillId, setSkillId] = useState<string>()
+  const [executionOpen, setExecutionOpen] = useState(false)
   const [loading, setLoading] = useState(true), [error, setError] = useState('')
   const token = useRef(0)
   const [revision, setRevision] = useState(0)
   const resourceKey = JSON.stringify(snapshot.resources.filter(resource => agent.skillIds.includes(resource.id)).map(resource => [resource.id, resource.name, resource.path, resource.ownerAgentId]))
   const selectedSkill = snapshot.resources.find(resource => resource.id === skillId && resource.kind === 'skill' && agent.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === agent.id))
-  useEffect(() => { if (!active) setSkillId(undefined) }, [active])
+  useEffect(() => { if (!active) { setSkillId(undefined); setExecutionOpen(false) } }, [active])
   useEffect(() => {
     const request = ++token.current
     setHome(null); setLaunchStatus(undefined); setError('')
@@ -71,6 +74,8 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, on
       </div>)}</div>
       {!agent.skillIds.length && agent.executionBackend?.kind !== 'acp-local' && <p className="field-hint">尚未绑定技能，可在配置中从本机技能选择。</p>}
     </section>
+    <div className="mb-6"><Button variant="outline" onClick={() => setExecutionOpen(true)}>查看执行详情</Button></div>
+    <Dialog open={active && executionOpen} onOpenChange={setExecutionOpen}><DialogContent className="sm:max-w-[760px]"><DialogHeader><DialogTitle>{agent.name} · 执行详情</DialogTitle><DialogDescription>查看此员工的执行记录、工作与已发布成果。</DialogDescription></DialogHeader><div className="max-h-[65vh] overflow-y-auto">{executionOpen && <EmployeeExecutionPane key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active && executionOpen} onOpenSource={onOpenExecutionSource} />}</div></DialogContent></Dialog>
     <Separator />
     <section className="my-6 space-y-4" aria-label="员工当前负责工作">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-semibold">当前负责工作</h2>{onViewTasks && <Button variant="ghost" size="sm" onClick={() => onViewTasks(agent.id)}>查看全部任务</Button>}</div>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 核对Claude来源与宿主同规则、不自动回退及Codex/API混绑拒绝。
  * [INPUT]: 全局模型选择合同与隔离API/本机配置。
  * [OUTPUT]: 明确API来源不受列表顺序影响，本机按实际协议而非品牌绑定，失效/未测试/不适用连接拒绝提交且不自动回退。
  * [POS]: tests/agent-model-selection.test.ts；纯模块回归，不执行外部程序或E2E。
@@ -6,7 +7,7 @@
  */
 import { expect, it } from 'vitest'
 import type { Connection, LaunchProfile } from '../src/shared/domain'
-import { agentModelLabel, agentModelSelectionReady, agentRunMode, changeAgentRunMode, selectAgentProfile, type AgentModelSelection } from '../src/renderer/components/employee/agent-model-selection'
+import { agentModelConnections, agentModelLabel, agentModelSelectionReady, agentRunMode, changeAgentRunMode, selectAgentProfile, type AgentModelSelection } from '../src/renderer/components/employee/agent-model-selection'
 
 const connections: Connection[] = [
   { id: 'first', name: '日常连接', provider: 'openai', baseUrl: '', defaultModel: 'default-a', hasApiKey: true },
@@ -65,4 +66,14 @@ it('accepts an explicit model on a configured connection and refuses missing mod
   expect(agentModelSelectionReady(selected, noDefault, [])).toBe(true)
   expect(agentModelSelectionReady({ ...selected, modelId: '' }, noDefault, [])).toBe(false)
   expect(agentModelSelectionReady(selected, noDefault.map(connection => ({ ...connection, hasApiKey: false })), [])).toBe(false)
+})
+
+it('exposes only host-accepted Claude API sources and never enables a Codex/API mixed binding', () => {
+  const claude = profile('claude', 'claude-cli'), choice = selectAgentProfile(selected, claude)
+  const deepseek = { ...connections[0], id: 'deepseek', provider: 'openai-compatible' as const, baseUrl: 'https://api.deepseek.com/v1' }
+  expect(agentModelConnections(choice, [...connections, deepseek]).map(item => item.id)).toEqual(['chosen', 'deepseek'])
+  expect(agentModelSelectionReady({ ...choice, connectionId: 'first' }, connections, [claude])).toBe(false)
+  expect(agentModelSelectionReady({ ...choice, connectionId: 'deepseek' }, [deepseek], [claude])).toBe(true)
+  const codex = profile('codex', 'codex-app-server')
+  expect(agentModelSelectionReady({ ...selectAgentProfile(selected, codex), connectionId: 'chosen' }, connections, [codex])).toBe(false)
 })

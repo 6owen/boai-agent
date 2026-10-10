@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 消息卡支持外侧接收回执插槽，原工具条/表情/复制和引用语义保持。
  * [INPUT]: 公开消息、当前个人资料、共享表情目录、真实引用/Trace 回调、桌面请求封装与 Sonner 错误反馈。
  * [OUTPUT]: 复制/表情失败使用 Sonner，已知剪贴板权限错误使用简短中文，未知错误保留真实信息，复制标记仅在本次写入成功后显示；本人操作与表情回应统一显示当前配置名称，不重写历史名称；共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好；表情浮层开关不控制工具条显示。
  * [POS]: 单聊与群聊共用的消息交互；不改变模型上下文、轮次或工作状态。
@@ -28,7 +29,7 @@ function rememberReaction(emoji: ReactionEmoji) {
   try { const usage = reactionUsage(); usage[emoji] = Math.min((usage[emoji] ?? 0) + 1, 1_000_000); localStorage.setItem(REACTION_USAGE_KEY, JSON.stringify(usage)) } catch { /* Optional local presentation preference. */ }
 }
 
-export function MessageCard({ message, profile = defaultUserProfile, children, onReply, onTrace }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; onReply(): void; onTrace(): void }) {
+export function MessageCard({ message, profile = defaultUserProfile, children, receipt, onReply, onTrace }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void }) {
   const sender = messageDisplayName(message, profile)
   const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
   const reactionTrigger = useRef<HTMLButtonElement>(null)
@@ -77,6 +78,7 @@ export function MessageCard({ message, profile = defaultUserProfile, children, o
         {children}
         {!!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, names, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${names}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{names}</span></Button>)}</div>}
       </div>
+      {receipt}
       <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${sender} 的消息操作`}>
         <Popover open={open} onOpenChange={value => { setOpen(value); if (value) setUsage(reactionUsage()) }}>
           <PopoverTrigger render={<Button ref={reactionTrigger} variant="ghost" size="icon-sm" className="reaction-action" aria-label={`回应 ${sender} 的消息`} title="表情回应" disabled={message.status === 'streaming'} />}><ThumbsUp /></PopoverTrigger>

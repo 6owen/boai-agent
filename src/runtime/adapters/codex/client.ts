@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 明确支持0.159.3/0.161.0协议，当前程序/hash/验证版本仍逐次匹配；未知版本拒绝且不弱化工具或退出控制。
  * [OUTPUT]: 原生warning固定计数与other分开，仅计量接收/处理，不记录警告正文或推断业务终态。
  * [OUTPUT]: 停止后等待所有宿主请求实际退出并保留原失败原因；原生模型目录限定执行能力，不自动重放。
  * [OUTPUT]: 协议诊断只计量固定方法的接收/处理、待回执和字节数，不记录原消息、stderr或凭据。
@@ -12,7 +13,7 @@ import { mkdir } from 'node:fs/promises'
 import { StringDecoder } from 'node:string_decoder'
 import type { LaunchProfile } from '../../../shared/domain/backends'
 import { inspectProgram } from '../../modules/backends/program'
-import { CODEX_VERIFIED_VERSION, codexStartupArgs } from './policy'
+import { CODEX_SUPPORTED_VERSIONS, codexStartupArgs } from './policy'
 
 type JsonRecord = Record<string, unknown>
 type RpcId = string | number
@@ -98,7 +99,7 @@ export class CodexClient {
       const result = await client.request('initialize', { clientInfo: { name: 'boai_agent', title: 'BoAI Agent', version: '0.2.2' }, capabilities: { experimentalApi: true } })
       const version = string(result.userAgent, '程序版本').match(/^(?:boai_agent|Codex Desktop|codex_cli_rs|codex-cli|codex)[ /]([\d]+\.[\d]+\.[\d]+(?:[-+][\w.-]+)?)/i)?.[1]
       if (!version) throw new Error('Codex未返回可验证的程序版本')
-      if (version !== CODEX_VERIFIED_VERSION) throw new Error(`Codex ${version}尚未通过当前无工具策略验证；已验证版本为${CODEX_VERIFIED_VERSION}`)
+      if (!CODEX_SUPPORTED_VERSIONS.includes(version)) throw new Error(`Codex ${version}尚未通过当前协议兼容检查；支持版本为${CODEX_SUPPORTED_VERSIONS.join('、')}`)
       const verified = { name: 'Codex', version, protocolVersion: 2, checkedAt: new Date().toISOString() }
       if (input.profile.verified && (input.profile.verified.version !== version || input.profile.verified.name !== verified.name)) throw new Error('Codex版本已变化，请重新测试连接')
       client.notify('initialized', {})

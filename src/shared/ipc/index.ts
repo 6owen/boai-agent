@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 员工执行清单/固定运行详情与已验证本机模型目录的类型化合同，输入仅对象身份，输出不包含凭据。
  * [OUTPUT]: deleteLaunchProfile仅接已保存配置ID，删除产品配置并保留外部程序和业务历史。
  * [OUTPUT]: prepareDetectedLocalAgent只接受扫描候选身份并核对真实程序；原prepareLocalAgent保留明确协议及旧ACP缺省。
  * [OUTPUT]: 工作/文件有界查询和精确原目标解析沿类型化IPC；不增加执行或路径读取权限。
@@ -50,6 +51,9 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listEmployeeExecutions: { input: import('../domain/employee-executions').EmployeeExecutionQuery; output: import('../domain/employee-executions').EmployeeExecutionPage }
+  getEmployeeExecution: { input: { agentId: string; runId: string }; output: import('../domain/employee-executions').EmployeeExecutionDetail }
+  listLaunchProfileModels: { input: { id: string }; output: string[] }
   queryWorkViews: { input: import('../domain/work-views').WorkViewQuery; output: import('../domain/work-views').WorkViewPage }
   queryConversationFiles: { input: import('../domain/work-views').ConversationFileQuery; output: import('../domain/work-views').ConversationFilePage }
   resolveWorkViewTarget: { input: import('../domain/work-views').WorkViewTargetInput; output: import('../domain/work-views').WorkViewTarget }

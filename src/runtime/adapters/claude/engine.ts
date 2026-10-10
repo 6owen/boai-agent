@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-10 真实Claude线程引用写入原runs.backend，冻结API模型来源与业务阶段保持，不继承个人订阅。
  * [OUTPUT]: Claude真实阶段/协议与退出状态沿原Trace保存，最终计量错误标为原结算阶段；观测失败不重试或改变业务。
  * [INPUT]: 宿主授权员工上下文、已验证Claude程序及明确API来源。
  * [OUTPUT]: v11私有阶段沿原disabled门禁选择尚未完成的格式器并核对布尔错误回执；旧策略会话仅在明确新消息时重建，启动不重放。组织low，交付审核/用户问题/旧依赖默认，原预算与退出结算保持。
@@ -37,7 +38,8 @@ export class ClaudeEmployeeEngine extends NativeEmployeeEngine {
       const result = await runClaudePhase({ program: { executable: profile.executable, executableHash: profile.executableHash, runtime: profile.runtime, version: profile.verified.version },
         ...provider, apiKey: context.apiKey, cwd: directory.cwd, configDirectory: directory.privateHome, signal: context.signal,
         timeoutMs: input.timeoutMs ?? 120_000, instructions: input.instructions, prompt: input.prompt, images: input.images,
-        sessionId: input.threadId, ephemeral: input.ephemeral, outputSchema: input.outputSchema, effort, thinking, tools: input.tools, onSession: input.onSession, onDelta: input.onDelta, onStop: input.onStop,
+        sessionId: input.threadId, ephemeral: input.ephemeral, outputSchema: input.outputSchema, effort, thinking, tools: input.tools,
+        onSession: async sessionId => { await context.onNativeExecution?.({ sessionId }); await input.onSession?.(sessionId) }, onDelta: input.onDelta, onStop: input.onStop,
         onDiagnostic: value => { diagnostic = value },
         onUsage: async usage => {
           if (context.modelCallId) await context.onModelCallUsage?.(context.modelCallId, usage, false)

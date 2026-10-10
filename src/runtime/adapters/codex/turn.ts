@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-10 精确thread/turn接公开summary与commentary，原始reasoning/text不保存；有界限频进度不替代终态。
+ * [OUTPUT]: 2026-10-10 已验证配置可有界读取canonical model/list且零turn提交；实际模型/线程/提交回执可投影至员工执行记录。
  * [OUTPUT]: 仅当前已提交线程的固定WebSockets到HTTPS回退warning进入八条有界诊断；无turnId不推断旧轮归属，不记录原文或改变业务。
  * [OUTPUT]: 动态工具类型与Claude宿主桥共用NativeTool，Codex协议与调用方式保持。
  * [INPUT]: 已验证Codex启动项、宿主授权的文本/图片、会话引用和无工具阶段策略。
@@ -8,9 +10,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import type { LaunchProfile } from '../../../shared/domain/backends'
-import type { ModelUsage } from '../../../shared/domain'
+import { EXECUTION_PROGRESS_LIMITS, type ModelUsage, type ExecutionProgressEvent } from '../../../shared/domain'
 import { CodexClient, object, string } from './client'
-import { noToolsThread } from './policy'
+import { CODEX_MODEL_CATALOG_LIMITS, noToolsThread } from './policy'
 import { prepareCodexCatalog } from './catalog'
 
 export type { NativeTool as CodexDynamicTool } from '../native-task'
@@ -34,8 +36,10 @@ interface CodexPhaseInput {
   onUsage?(usage: ModelUsage): Promise<void>
   onSession?(threadId: string): Promise<void>
   onSubmitted?(threadId: string, turnId: string): Promise<void>
+  onModelSelected?(model: string): Promise<void>
   onDelta?(text: string): Promise<void>
   onDiagnostic?(diagnostic: CodexPhaseDiagnostic): Promise<void>
+  onProgress?(event: Pick<ExecutionProgressEvent, 'id' | 'kind' | 'text'>): Promise<void>
 }
 
 export interface CodexPhaseDiagnostic {
@@ -63,6 +67,12 @@ function errorCode(value: unknown): { code: string; httpStatusCode?: number } {
 }
 
 const textOnlyItems = new Set(['userMessage', 'agentMessage', 'reasoning', 'contextCompaction'])
+const visibleStages: Record<string, string> = {
+  bootstrap_start: '正在核对本机 Codex 配置', runtime_start: '正在启动本机 Codex',
+  thread_start: '正在建立执行会话', thread_resume: '正在继续原会话',
+  turn_start: '正在提交请求', turn_wait: 'Codex 已接收请求，正在处理',
+  event_drain: '正在核对执行结果', completed: '本机执行已结束',
+}
 
 export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>) {
   const { client, verified } = await CodexClient.start({ ...input, profile: { ...input.profile, verified: undefined } })
@@ -76,11 +86,37 @@ export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile'
   } finally { await client.close() }
 }
 
+export async function listCodexModels(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>): Promise<string[]> {
+  if (!input.profile.verified) throw new Error('请先测试当前 Codex 连接')
+  const { client } = await CodexClient.start(input)
+  try {
+    const models = new Set<string>()
+    let cursor: string | undefined
+    for (let page = 0; page < CODEX_MODEL_CATALOG_LIMITS.maxPages; page++) {
+      const result = await client.request('model/list', { limit: CODEX_MODEL_CATALOG_LIMITS.pageSize, ...(cursor ? { cursor } : {}) })
+      if (!Array.isArray(result.data) || result.data.length > CODEX_MODEL_CATALOG_LIMITS.pageSize) throw new Error('Codex 模型列表格式无效或超过单页上限')
+      for (const entry of result.data) {
+        const value = object(entry)
+        const model = typeof value.model === 'string' ? value.model : value.id
+        if (typeof model === 'string' && model.length && model.length <= 200) models.add(model)
+      }
+      if (!result.nextCursor) return [...models]
+      const next = string(result.nextCursor, '模型目录游标')
+      if (next === cursor) throw new Error('Codex 模型目录游标没有推进')
+      cursor = next
+    }
+    throw new Error('Codex 模型目录超出读取上限')
+  } finally { await client.close() }
+}
+
 export async function runCodexPhase(input: CodexPhaseInput) {
   if (!input.profile.verified) throw new Error('请先测试Codex连接')
   const startedAt = performance.now(), elapsed = () => Math.round(performance.now() - startedAt)
   const diagnostic: CodexPhaseDiagnostic = { outcome: 'failed', stage: 'bootstrap_start', elapsedMs: 0, stages: [], externalErrors: [] }
-  const stage = (name: string) => { diagnostic.stage = name; diagnostic.stages.push({ name, elapsedMs: elapsed() }) }
+  const stage = async (name: string) => {
+    diagnostic.stage = name; diagnostic.stages.push({ name, elapsedMs: elapsed() })
+    if (visibleStages[name]) await input.onProgress?.({ id: `stage:${name}`, kind: 'stage', text: visibleStages[name] })
+  }
   const timeout = new AbortController()
   const timer = setTimeout(() => timeout.abort(new Error('Codex阶段超时，未确认请求不得自动重试')), input.timeoutMs ?? 120_000)
   timer.unref()
@@ -90,6 +126,16 @@ export async function runCodexPhase(input: CodexPhaseInput) {
   const calls = new Map<string, { signature: string; promise: Promise<unknown> }>()
   const seenUsage = new Set<string>()
   const unknownUsage = new Set<string>()
+  const progress = new Map<string, { kind: 'summary' | 'commentary'; text: string; emittedAt: number }>()
+  const commentaryItems = new Set<string>()
+  const publishProgress = async (id: string, kind: 'summary' | 'commentary', value: string, append = false, force = false) => {
+    if (!progress.has(id) && progress.size >= EXECUTION_PROGRESS_LIMITS.events) return
+    const previous = progress.get(id), text = ((append ? previous?.text ?? '' : '') + value).slice(0, EXECUTION_PROGRESS_LIMITS.text)
+    const entry = { kind, text, emittedAt: previous?.emittedAt ?? 0 }; progress.set(id, entry)
+    if (text.trim() && (force || performance.now() - entry.emittedAt >= 250)) {
+      entry.emittedAt = performance.now(); await input.onProgress?.({ id, kind, text })
+    }
+  }
   let rejectCancelled!: (reason: unknown) => void
   const cancelled = new Promise<never>((_, reject) => { rejectCancelled = reject })
   void cancelled.catch(() => {})
@@ -114,18 +160,19 @@ export async function runCodexPhase(input: CodexPhaseInput) {
   try {
     // No inference occurs during this bootstrap; load the selected model's public
     // metadata before starting the process that will be allowed to execute a turn.
-    stage('bootstrap_start')
+    await stage('bootstrap_start')
     const bootstrap = await CodexClient.start({ ...input, signal })
     let config: Record<string, unknown>, model: string
     try {
-      stage('config_read'); config = object((await bootstrap.client.request('config/read', { includeLayers: false })).config)
+      await stage('config_read'); config = object((await bootstrap.client.request('config/read', { includeLayers: false })).config)
       model = string(input.model || config.model, '已配置模型')
-      stage('model_list')
+      await input.onModelSelected?.(model)
+      await stage('model_list')
       await bootstrap.client.request('model/list', {})
-      stage('catalog_prepare')
+      await stage('catalog_prepare')
       catalog = await prepareCodexCatalog(input.profile, input.cwd, input.privateHome, model)
     } finally { await bootstrap.client.close(); diagnostic.protocol = bootstrap.client.diagnostics() }
-    stage('runtime_start')
+    await stage('runtime_start')
     const started = await CodexClient.start({ ...input, signal, catalogPath: catalog.path,
       onRequest: async (method, params) => {
         try {
@@ -163,16 +210,26 @@ export async function runCodexPhase(input: CodexPhaseInput) {
           if (events.length < 8) events.push({ type: 'websocket_to_https_fallback', elapsedMs: elapsed() })
           return
         }
-        if (['item/started', 'item/completed', 'item/agentMessage/delta', 'thread/tokenUsage/updated', 'error'].includes(method)) {
+        if (['item/started', 'item/completed', 'item/agentMessage/delta', 'item/reasoning/summaryTextDelta', 'thread/tokenUsage/updated', 'error'].includes(method)) {
           await Promise.race([ready, cancelled])
-          if (params.turnId !== turnId) return
+          if (params.turnId !== turnId || turnEnded && method !== 'thread/tokenUsage/updated') return
         }
         if (method === 'item/started' || method === 'item/completed') {
           const item = object(params.item)
           if (!textOnlyItems.has(string(item.type, '事件类型')) && !(input.tools?.length && item.type === 'dynamicToolCall')) throw new Error('无工具阶段出现工具事件，已停止')
-          if (method === 'item/completed' && item.type === 'agentMessage' && typeof item.text === 'string') finalText = item.text
+          if (item.type === 'agentMessage' && item.phase === 'commentary' && typeof item.id === 'string') {
+            commentaryItems.add(item.id)
+            if (method === 'item/completed' && typeof item.text === 'string') await publishProgress(`commentary:${item.id}`, 'commentary', item.text, false, true)
+          } else if (method === 'item/completed' && item.type === 'agentMessage' && typeof item.text === 'string') finalText = item.text
+          if (method === 'item/completed' && item.type === 'reasoning' && typeof item.id === 'string' && Array.isArray(item.summary)) {
+            for (const [index, value] of item.summary.slice(0, EXECUTION_PROGRESS_LIMITS.events).entries()) if (typeof value === 'string') await publishProgress(`summary:${item.id}:${index}`, 'summary', value, false, true)
+          }
+        } else if (method === 'item/reasoning/summaryTextDelta') {
+          if (typeof params.itemId !== 'string' || !Number.isSafeInteger(params.summaryIndex) || Number(params.summaryIndex) < 0 || typeof params.delta !== 'string') return
+          await publishProgress(`summary:${params.itemId}:${params.summaryIndex}`, 'summary', params.delta, true)
         } else if (method === 'item/agentMessage/delta') {
           const delta = typeof params.delta === 'string' ? params.delta : ''
+          if (typeof params.itemId === 'string' && commentaryItems.has(params.itemId)) await publishProgress(`commentary:${params.itemId}`, 'commentary', delta, true)
           text += delta
           await input.onDelta?.(delta)
         } else if (method === 'thread/tokenUsage/updated') {
@@ -198,16 +255,16 @@ export async function runCodexPhase(input: CodexPhaseInput) {
     const options = { ...noToolsThread(input.cwd, config), baseInstructions: input.instructions,
       ...(input.tools?.length ? { dynamicTools: [{ type: 'namespace', name: 'boai', description: 'BoAI host-authorized work tools', tools: input.tools.map(({ name, description, inputSchema }) => ({ type: 'function', name, description, inputSchema, deferLoading: false })) }] } : {}),
       model }
-    stage(input.threadId ? 'thread_resume' : 'thread_start')
+    await stage(input.threadId ? 'thread_resume' : 'thread_start')
     const thread = input.threadId
       ? await client.request('thread/resume', { ...options, threadId: input.threadId, excludeTurns: true })
       : await client.request('thread/start', { ...options, ephemeral: input.ephemeral ?? false })
     threadId = string(object(thread.thread).id, '会话身份')
     if (input.threadId && input.threadId !== threadId) throw new Error('Codex会话身份发生变化')
-    stage('session_commit')
+    await stage('session_commit')
     await input.onSession?.(threadId)
     signal.throwIfAborted()
-    stage('turn_start')
+    await stage('turn_start')
     turnRequested = true
     const response = await client.request('turn/start', { threadId, environments: [],
       input: [{ type: 'text', text: input.prompt, text_elements: [] }, ...(input.images ?? []).map(url => ({ type: 'image', url }))],
@@ -215,16 +272,17 @@ export async function runCodexPhase(input: CodexPhaseInput) {
     })
     turnId = string(object(response.turn).id, '轮次身份')
     resolveReady()
-    stage('submission_commit')
+    await stage('submission_commit')
     await input.onSubmitted?.(threadId, turnId)
     if (pendingCompletion) complete(pendingCompletion)
-    stage('turn_wait')
+    await stage('turn_wait')
     await client.wait(completed)
-    stage('event_drain')
+    await stage('event_drain')
     await client.drain()
     signal.throwIfAborted()
+    for (const [id, entry] of progress) await publishProgress(id, entry.kind, entry.text, false, true)
     if (!(finalText || text).trim()) throw new Error('Codex没有返回可见内容')
-    stage('completed'); diagnostic.outcome = 'completed'
+    await stage('completed'); diagnostic.outcome = 'completed'
     return { text: finalText || text, threadId, turnId, usage, verified: started.verified }
   } finally {
     if (input.signal.aborted) diagnostic.outcome = 'cancelled'
