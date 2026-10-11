@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 当前原消息的真实Run/Work、宿主持久阶段、Codex公开摘要及原Trace导航。
  * [OUTPUT]: 已接收回执、聊天内执行卡与共用有界过程清单；不伪造消息、已读或模型思维链。
  * [POS]: 会话和员工执行详情共用的进度投影，审批/交付仍归原业务记录。
@@ -12,7 +13,7 @@ import { byCreatedAt } from '../activity'
 import { runLabels } from '../presentation'
 
 export function MessageReceipt({ runs }: { runs: AgentRun[] }) {
-  const received = runs.some(run => run.progress?.some(event => event.id === 'stage:employee_start') || run.backend?.turnId)
+  const received = runs.some(run => ['codex-local', 'claude-local'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
   const label = received ? '员工已接收这条消息' : runs.length && runs.every(run => !['queued', 'running', 'waiting_approval'].includes(run.status)) ? '已发送，接收回执未记录' : '已发送，等待员工处理'
   return <Tooltip><TooltipTrigger render={<span className={`message-receipt${received ? ' is-received' : ''}`} tabIndex={0} aria-label={label} />}>
     {received ? <Icon name="CircleCheck" /> : <Clock />}

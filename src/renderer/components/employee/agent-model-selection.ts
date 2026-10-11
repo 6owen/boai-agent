@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 恢复全局/员工/聊天共用本机入口，默认Codex草稿且不隐式选程序；Claude来源与后端共用纯校验，拒绝Codex/API混绑。
  * [INPUT]: 员工当前运行配置、API连接与已保存本机启动项。
  * [OUTPUT]: 共用前端开关开放本机Agent设置与选择；保留配置名称、协议映射和提交资格，不自动迁移员工绑定。
@@ -9,7 +10,7 @@ import type { Connection, ExecutionBackend, LaunchProfile } from '@shared/domain
 import { backendProtocol } from '@shared/domain/backends'
 import { claudeProvider } from '@shared/domain/claude-provider'
 
-export type AgentModelSelection = { executionBackend?: ExecutionBackend; connectionId: string; modelId: string }
+export type AgentModelSelection = { executionBackend?: ExecutionBackend; connectionId: string; modelId: string; nativeOptions?: import('@shared/domain/execution').NativeRuntimeOptions }
 // 全局只管理执行资源；员工绑定资源后仍保留原身份、记忆与工作。
 export const localAgentSetupEnabled = true
 export const agentRunModes = ([{ value: 'api', label: '模型 API' }, { value: 'local', label: '本机 Agent' }] as const).filter(mode => mode.value !== 'local' || localAgentSetupEnabled)
@@ -28,7 +29,7 @@ export function changeAgentRunMode(value: AgentModelSelection, mode: 'api' | 'lo
 
 export function selectAgentProfile(value: AgentModelSelection, profile: LaunchProfile): AgentModelSelection {
   const kind = profile.protocol === 'codex-app-server' ? 'codex-local' : profile.protocol === 'claude-cli' ? 'claude-local' : 'acp-local'
-  return { executionBackend: { kind, profileId: profile.id }, connectionId: kind === 'claude-local' ? value.connectionId : '', modelId: kind === 'claude-local' ? value.modelId : '' }
+  return { executionBackend: { kind, profileId: profile.id }, connectionId: kind === 'claude-local' && !profile.useExistingLogin ? value.connectionId : '', modelId: kind === 'claude-local' ? value.modelId : '' }
 }
 
 export function agentModelSelectionReady(value: AgentModelSelection, connections: Connection[], profiles: LaunchProfile[], allowTaskOnly = true): boolean {
@@ -36,7 +37,7 @@ export function agentModelSelectionReady(value: AgentModelSelection, connections
   if (backend && backend.kind !== 'mastra-model') {
     const profile = profiles.find(item => item.id === backend.profileId)
     if (!profile?.verified || (profile.protocol ?? 'acp') !== backendProtocol(backend.kind) || backend.kind === 'acp-local' && !allowTaskOnly) return false
-    if (backend.kind !== 'claude-local') return !value.connectionId && value.modelId.trim().length <= 200
+    if (backend.kind !== 'claude-local' || profile.useExistingLogin) return !value.connectionId && value.modelId.trim().length <= 200
     try { claudeProvider(connections.find(item => item.id === value.connectionId), value.modelId); return true } catch { return false }
   }
   const connection = connections.find(item => item.id === value.connectionId)

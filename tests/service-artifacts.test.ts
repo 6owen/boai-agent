@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [INPUT]: 真实 AppService/SQLite/受管成果原件、受控模型判断与原生 createTaskRuntime 文件发布。
  * [OUTPUT]: 复制未提交时不伪造历史成果、宿主核读后不二次读取外改、独立成果身份/明确修订版本、新根预算与目标隔离、核心新请求模型回退而旧回执只读、消息关系/最终回复事务与未知提交核对、发布工具权限和逐工具原版 hash 门禁、采用幂等与历史、材料授权失效、hash 清理冲突及封闭 SQLite 的异路径备份恢复不重放验收。
  * [POS]: D2 成果宿主集成验收；不调用真实模型，不替代 renderer 交互或 Electron BDD。
@@ -190,7 +191,7 @@ describe('service artifact delivery boundaries', () => {
       const runtime = await createTaskRuntime(context), invocation = { requestContext: new RequestContext(), observe: noopObserve }, path = `shared:/${first.artifact.managedRelativePath}`
       try {
         const result = await runtime.tools.read_file.execute!({ path }, invocation)
-        expect(result).toEqual({ path, content: V1 }); expect(JSON.stringify(result)).not.toContain(canary)
+        expect(result).toMatchObject({ path, content: V1 }); expect(JSON.stringify(result)).not.toContain(canary)
         expect(await readFile(first.artifact.path, 'utf8')).toBe(canary)
         await expect(runtime.tools.read_file.execute!({ path }, invocation)).rejects.toThrow()
         await context.onDelta('已核对正文保持完整，后改原件的再次读取已拒绝。')

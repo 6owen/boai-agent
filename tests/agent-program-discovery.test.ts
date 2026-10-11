@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [INPUT]: 隔离安装目录、登录来源及不会执行的程序夹具。
  * [OUTPUT]: 扫描只返回实际程序；原生协议/双登录来源保持，未知协议不冒充ACP，程序或来源变化拒绝陈旧候选。
  * [POS]: tests/agent-program-discovery.test.ts；离线模块测试，不执行外部Agent或读取真实登录。
@@ -34,7 +35,7 @@ it('reports only actual installed agents and keeps detected unsupported programs
     } else {
       const draft = f.discovery.detectedProfile(item.candidateId)
       expect(draft.protocol).toBe(item.name === 'Codex' ? 'codex-app-server' : 'claude-cli')
-      expect(draft.useExistingLogin).toBe(item.name === 'Codex')
+      expect(draft.useExistingLogin).toBe(true)
     }
   }
   expect(new LocalConfigDiscovery([]).scan({ userHome: f.root, env: {} }).agents).toEqual([])

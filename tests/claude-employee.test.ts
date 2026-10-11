@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: policy10完整聊天映射夹具在两次recover中零调用且原记录不改；明确新消息按当前策略重建，无resume，新会话实际完成后才允许后续增量；不代替旧应用升级证据。
  * [OUTPUT]: 私有decision/memory/report拒绝非布尔格式完成标记，即使后续success/结构相等；缺省/false成功与true拒绝后新ID纠正保持，无公开私有文本或业务工具。
  * [OUTPUT]: 新增数字诊断沿真实员工引擎进入原Trace并持久化；旧缺省字段仍未知，原失败只调用一次且不保存私有正文。
@@ -18,7 +19,7 @@ import { join, resolve } from 'node:path'
 import type { Artifact, Connection, Message, ModelUsage, ToolEvent, WorkOutcome, WorkDraft } from '../src/shared/domain'
 import type { EngineContext } from '../src/runtime/contracts'
 import type { TraceSpan } from '../src/shared/domain/traces'
-import { ClaudeEmployeeEngine } from '../src/runtime/adapters/claude/engine'
+import { LegacyClaudeEmployeeEngine as ClaudeEmployeeEngine } from '../src/runtime/adapters/claude/legacy-engine'
 import { claudeProvider } from '../src/runtime/adapters/claude/provider'
 import { type ClaudePhaseDiagnostic, verifyClaudeProgram } from '../src/runtime/adapters/claude/turn'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'

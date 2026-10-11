@@ -53,6 +53,7 @@ export interface TeamDraft extends TeamEditable {
   id: string; schemaVersion: 1; version: number; createdAt: string; updatedAt: string
   status: 'open' | 'committed' | 'cancelled'; generationStatus: TeamGenerationStatus
   executionBackend?: import('./backends').ExecutionBackend
+  nativeOptions?: import('./execution').NativeRuntimeOptions
   resolvedModelId?: string; connectionFingerprint?: string; planInputHash?: string; generationId?: string
   manuallyEdited: boolean; creationOperationId?: string; planHash?: string; validationErrors: string[]
 }
@@ -71,6 +72,7 @@ export interface TeamCreationOperation {
   version: number; status: 'accepted' | 'preparing' | 'ready_to_commit' | 'interrupted' | 'needs_attention' | 'committed' | 'cancelled'
   createdAt: string; committedAt?: string; attemptId?: string; cancelRequested?: boolean; error?: string
   executionBackend?: import('./backends').ExecutionBackend
+  nativeOptions?: import('./execution').NativeRuntimeOptions
   connectionId: string; connectionFingerprint: string; modelId: string
   agents: DigitalAgent[]; conversation?: Conversation; memberIds: { memberKey: string; agentId: string }[]; conversationId?: string
   files: { path: string; hash: string; status: 'pending' | 'writing' | 'ready' }[]; directories: string[]

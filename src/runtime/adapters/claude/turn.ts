@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
  * [OUTPUT]: 私有格式完成回执的is_error仅接受省略或布尔值；异常类型不确认完成，原唯一身份、三轮纠正、终态深相等及私有文本隔离保持。
  * [OUTPUT]: 原内容对象解析后、工具校验/文本回调完成前计固定类型桶，仅表示进入分支；未知/缺省/非字符串归other，不保存类型原文、正文、签名或工具参数，排队行不计桶。
  * [OUTPUT]: 当前会话api_retry的401/403立即拒绝并沿原监督器等待实际退出，只保留固定状态；其他重试状态保持原流程，不传播提供方错误正文。显式disabled桥及流式计量保持。
@@ -51,22 +52,23 @@ async function directories(cwd: string, configDirectory: string) {
 }
 
 /** Version check does not receive credentials or invoke a model. */
-export async function verifyClaudeProgram(input: { executable: string; cwd: string; configDirectory: string; signal: AbortSignal }): Promise<ClaudeProgram> {
+export async function verifyClaudeProgram(input: { executable: string; cwd: string; configDirectory: string; signal: AbortSignal; native?: boolean }): Promise<ClaudeProgram> {
   input.signal.throwIfAborted()
   const file = inspectProgram(input.executable, CLAUDE_PROGRAM_LIMIT)
   await directories(input.cwd, input.configDirectory)
   const lines: string[] = []
   await runClaudeProcess({ executable: file.path, runtime: file.runtime, args: ['--version'], cwd: input.cwd,
     env: claudeEnvironment(input.configDirectory), signal: input.signal, timeoutMs: 10_000, onLine: line => { lines.push(line) } })
-  if (lines.length !== 1 || lines[0] !== `${CLAUDE_VERIFIED_VERSION} (Claude Code)`) throw new Error(`Claude版本尚未验证；当前适配版本为${CLAUDE_VERIFIED_VERSION}`)
-  return { executable: file.path, executableHash: file.hash, runtime: file.runtime, version: CLAUDE_VERIFIED_VERSION }
+  const version = lines.length === 1 ? /^(\d+\.\d+\.\d+) \(Claude Code\)$/.exec(lines[0])?.[1] : undefined
+  if (!version || !input.native && version !== CLAUDE_VERIFIED_VERSION) throw new Error('Claude 程序版本无法识别或不支持旧阶段协议')
+  return { executable: file.path, executableHash: file.hash, runtime: file.runtime, version }
 }
 
 /** Program-only verification: no provider credentials, authentication claim or model request. */
 export async function testClaudeProgram(input: { profile: LaunchProfile; cwd: string; privateHome: string; signal: AbortSignal }): Promise<NonNullable<LaunchProfile['verified']>> {
   const { profile } = input
-  if (profile.protocol !== 'claude-cli' || profile.args.length || profile.useExistingLogin || profile.codexHome || profile.localConfigId) throw new Error('Claude程序配置不符合受管参数和明确API来源要求')
-  const program = await verifyClaudeProgram({ executable: profile.executable, cwd: input.cwd, configDirectory: input.privateHome, signal: input.signal })
+  if (profile.protocol !== 'claude-cli' || profile.args.length || profile.codexHome || profile.localConfigId) throw new Error('Claude程序配置不符合受管参数和明确API来源要求')
+  const program = await verifyClaudeProgram({ executable: profile.executable, cwd: input.cwd, configDirectory: input.privateHome, signal: input.signal, native: true })
   if (program.executableHash !== profile.executableHash || program.executable !== profile.executable || program.runtime !== profile.runtime) throw new Error('Claude程序已变化，请重新核对')
   return { name: 'Claude', version: program.version, protocolVersion: 1, checkedAt: new Date().toISOString() }
 }

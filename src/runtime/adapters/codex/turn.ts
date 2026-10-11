@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
  * [OUTPUT]: 2026-10-10 精确thread/turn接公开summary与commentary，原始reasoning/text不保存；有界限频进度不替代终态。
  * [OUTPUT]: 2026-10-10 已验证配置可有界读取canonical model/list且零turn提交；实际模型/线程/提交回执可投影至员工执行记录。
  * [OUTPUT]: 仅当前已提交线程的固定WebSockets到HTTPS回退warning进入八条有界诊断；无turnId不推断旧轮归属，不记录原文或改变业务。
@@ -75,12 +76,11 @@ const visibleStages: Record<string, string> = {
 }
 
 export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>) {
-  const { client, verified } = await CodexClient.start({ ...input, profile: { ...input.profile, verified: undefined } })
+  const { client, verified } = await CodexClient.start({ ...input, native: true, profile: { ...input.profile, verified: undefined } })
   try {
     const account = await client.request('account/read', { refreshToken: false })
     if (account.requiresOpenaiAuth && !account.account) throw new Error('Codex需要登录，请先在本机Codex完成登录')
-    const read = await client.request('config/read', { includeLayers: false })
-    await client.request('thread/start', { ...noToolsThread(input.cwd, object(read.config)), ephemeral: true, baseInstructions: 'Connection verification. No model invocation.' })
+    await client.request('thread/start', { cwd: input.cwd, ephemeral: true })
     await client.drain()
     return verified
   } finally { await client.close() }
@@ -88,7 +88,7 @@ export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile'
 
 export async function listCodexModels(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>): Promise<string[]> {
   if (!input.profile.verified) throw new Error('请先测试当前 Codex 连接')
-  const { client } = await CodexClient.start(input)
+  const { client } = await CodexClient.start({ ...input, native: true })
   try {
     const models = new Set<string>()
     let cursor: string | undefined

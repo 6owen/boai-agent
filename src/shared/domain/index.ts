@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 员工原生执行选项及实际session/turn/模型/上下文/费用元信息；可见计量不推算内部模型请求数。
  * [OUTPUT]: 2026-10-10 员工运行保留有界执行阶段/公开摘要/进度说明和工具原参数；接收回执与真人已读分开。
  * [OUTPUT]: 2026-10-10 原runs.backend可保存真实原生模型/线程/turn引用，旧记录缺失保持未知，不改变员工身份或Work权威。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -58,6 +59,7 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  nativeOptions?: import('./execution').NativeRuntimeOptions
   systemRole?: 'core'
   creationSource?: TeamCreationSource | BoboCollaborationSource
   thinkingLevel?: ThinkingLevel
@@ -183,7 +185,7 @@ export interface AgentRun {
   disposition?: WorkDisposition
   timing?: { queueMs: number; executionMs: number; backoffMs: number; rateLimitRetries: number }
   failureKind?: 'unsupported' | 'auth_required' | 'input_required' | 'budget_exhausted' | 'transport'
-  backend?: { program?: {name:string;version:string;executableHash:string}; sessionId?:string; turnId?:string; modelId?:string; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
+  backend?: { program?: {name:string;version:string;executableHash:string}; sessionId?:string; turnId?:string; inputAccepted?:boolean; modelId?:string; contextUsedTokens?:number; contextWindowTokens?:number; totalCostUsd?:number; options?:import('./execution').NativeRuntimeOptions; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
   id: string
   phase?: 'coordination' | 'decision' | 'execution' | 'memory'
   turnId?: string

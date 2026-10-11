@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 原生Work惰性认领；同事务核验获准依赖成果引用，保持同事归属、原预算及实际持有者。
  * [OUTPUT]: 暂不公开草稿只影响发布；已声明依赖等待、已确认副作用与无进展额度在原事务保留，未知操作仍阻止唤醒。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，回执同时比较具体kind与profile，禁止跨运行时借用预算身份。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -40,6 +41,8 @@ export interface WorkClaimInput {
   wakeId?: string; origin?: AutomationOrigin; materialSources?: MaterialReadRef[]; revisionRequestId?: string
   organization?: WorkOrganization
   priorDecision?: { runId: string; callIds: string[] }
+  /** Native turns claim product Work only when they actually call a product tool. */
+  nativeTurn?: boolean
 }
 
 export class WorkRepository {
@@ -254,7 +257,11 @@ export class WorkRepository {
       if (interactive && (!native || mixedGroup) || native && (work.collaborationRequestId || work.origin)) budget.callUnit = 'mixed'
       if (work.collaborationRequestId && (budget.accounting !== 'model-calls-v1' || budget.collaborationRequestId !== work.collaborationRequestId || budget.origin)) throw new WorkUnavailableError('不能改绑或复用另一工作的预算')
       if (interactive && input.priorDecision) await adoptInteractiveDecision(tx, work, budget, input.sourceMessageId, input.priorDecision)
-      else if (interactive && isNew) throw new WorkUnavailableError('交互新工作缺少原判断回执')
+      else if (interactive && isNew) {
+        const run = await tx.get<AgentRun>('runs', input.runId)
+        const agent = await tx.get<DigitalAgent>('agents', input.agentId)
+        if (!input.nativeTurn || !native || !run || run.phase !== 'execution' || run.status !== 'running' || run.agentId !== input.agentId || run.conversationId !== input.conversationId || run.triggerMessageId !== input.sourceMessageId || !sameBackendBinding(agent?.executionBackend, run.backend) || !actualSource || actualSource.conversationId !== input.conversationId || !run.backend?.sessionId) throw new WorkUnavailableError('交互新工作缺少原判断回执或当前原生会话执行权')
+      }
       else if (input.priorDecision) {
         if (!input.organization) throw new WorkUnavailableError('普通工作不能采用组织判断调用')
         await this.adoptOrganizationDecision(tx, work, budget, input.priorDecision)
@@ -373,7 +380,7 @@ export class WorkRepository {
         const conversation = await tx.get<Conversation>('conversations', run.conversationId)
         if (!current || current.status !== 'running' || current.agentId !== run.agentId || current.turnId !== run.turnId || current.conversationId !== run.conversationId || current.workId !== run.workId || JSON.stringify(current.origin) !== JSON.stringify(run.origin) || !turn || turn.conversationId !== run.conversationId || JSON.stringify(turn.origin) !== JSON.stringify(run.origin) || ['cancelled', 'interrupted', 'budget_exhausted'].includes(turn.status)) throw new WorkUnavailableError('自动化调用缺少当前真实运行、轮次或原始来源')
         if (current.phase !== run.phase || phase !== current.phase && !(phase === 'report' && current.phase === 'execution')) throw new WorkUnavailableError('自动化调用阶段与真实运行不一致')
-        if (!agent?.active || agent.allowCommands || agent.executionBackend?.kind === 'acp-local' || !conversation?.agentIds.includes(agent.id) || await tx.get('conversationCleanup', conversation.id)) throw new WorkUnavailableError('自动化员工或聊天授权已经变化')
+        if (!agent?.active || agent.allowCommands && !isNativeBackend(agent.executionBackend) || agent.executionBackend?.kind === 'acp-local' || !conversation?.agentIds.includes(agent.id) || await tx.get('conversationCleanup', conversation.id)) throw new WorkUnavailableError('自动化员工或聊天授权已经变化')
         if (!sameBackendBinding(agent.executionBackend, run.backend) || !sameBackendBinding(agent?.executionBackend, current.backend) || current.backend?.kind === 'acp-local' || native && (!isNativeBackend(agent.executionBackend) || current.backend?.profileId !== agent.executionBackend.profileId)) throw new WorkUnavailableError('自动化运行方式与当前员工不一致')
         if (JSON.stringify(budget.origin) !== JSON.stringify(run.origin) || budget.conversationId !== run.conversationId) throw new WorkUnavailableError('自动化调用不能改绑原始预算')
       }
@@ -463,10 +470,11 @@ export class WorkRepository {
   }
 
   /** The receipt and all publication records commit with the ownership check. */
-  settle(runId: string, outcome: WorkOutcome, receipt: { messageId: string; content: string; artifactIds: string[] }, records: StoredRecord[] = [], committedMessage?: (tx: RecordTransaction) => Promise<unknown>) {
+  settle(runId: string, outcome: WorkOutcome, receipt: { messageId: string; content: string; artifactIds: string[] }, records: StoredRecord[] = [], committedMessage?: (tx: RecordTransaction) => Promise<unknown>, referenceArtifacts?: (tx: RecordTransaction, work: WorkItem) => Promise<string[]>) {
     return this.store.transaction(async tx => {
       const { work, execution } = await this.holder(tx, runId)
-      const evidenceError = workEvidenceError(outcome, receipt, !!execution.pendingWait)
+      const references = referenceArtifacts ? await referenceArtifacts(tx, work) : []
+      const evidenceError = workEvidenceError(outcome, { ...receipt, artifactIds: [...receipt.artifactIds, ...references] }, !!execution.pendingWait)
       if (evidenceError) throw new Error(evidenceError)
       await assertCollaborationEvidence(tx, work, outcome)
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!

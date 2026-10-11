@@ -1,81 +1,178 @@
 /*
- * [OUTPUT]: 旧ACP按run停止入口不接管原生Codex的Work生命周期。
- * [INPUT]: 固定会话/消息/员工身份、桌面 Trace 查询和事件。
- * [OUTPUT]: 历史轮次下拉使用宿主有界当前来源请求摘要，所选旧轮继续原ID核读；无正文轮次元信息，按固定入口/轮次触发/运行消息 ID 分批核读，不回拉全历史；下拉字段统一使用 shadcn Select；轮次与员工筛选、异步刷新、原生调用树和折叠运行诊断；切换会话不漂移；ACP可直接停止所选原运行并等待执行器退出。
- * [POS]: 执行过程标签的数据边界。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
+ * [INPUT]: 会话执行历史、Rovai迁入的执行内容、BOAI现有详情容器。
+ * [OUTPUT]: 私聊隐藏头像栏；卡片固定次级header/通栏分隔和最大60vh/600px独立滚动；视图切换测量真实高度过渡，已打开内容保留、折叠停读，展示与折叠独立。
+ * [POS]: 执行面板数据边界，隐藏停读，更新保留展开/阅读位置。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react'
 import type { DesktopApi } from '@shared/ipc'
-import type { ConversationDetail, Snapshot } from '@shared/domain'
-import type { StoredTraceSpan } from '@shared/domain/traces'
-import { Banner, errorText, Loading } from '@/components/common'
+import type { Snapshot, AgentRun, DigitalAgent } from '@shared/domain'
+import type { ExecutionHistoryPage } from '@shared/domain/execution'
+import { Avatar, Banner, errorText, Loading } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { SelectField } from '@/components/ui/select-field'
-import { activityRounds, type ActivityRound } from '@/pages/conversations/activity'
-import { TraceDetail } from '@/pages/conversations/-components/trace-detail'
-import { RoundDetail } from '@/pages/conversations/-components/run-detail'
-import { readDetailMessages } from '@/pages/conversations/detail-reading'
-import { READING_LIMITS } from '@shared/domain/reading'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from '@/components/ui/popover'
+import { ChevronRight, Icon, Terminal, Workflow } from '@/components/icons'
+import { ExecutionFeed, type ExecutionView } from './execution-feed'
+import { ExecutionRunInfo } from './execution-record'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ExecutionAvatarRail } from './ExecutionAvatarRail'
+import { ExecutionReadingContext } from './useExecutionWindow'
+import { ExecutionContentCache } from './execution-content-cache'
 
-export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, busy, onRetry, onStop }: {
+const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
+export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot }: {
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy: boolean; onRetry(id: string): void; onStop(id: string): void
 }) {
-  const [roundId, setRoundId] = useState(''), [employee, setEmployee] = useState(agentId ?? '')
-  const [value, setValue] = useState<{ detail: ConversationDetail; spans: StoredTraceSpan[]; round?: ActivityRound; selection: string }>(), [error, setError] = useState('')
+  const [views, setViews] = useState<Record<string, ExecutionView>>({})
+  const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
+  const [error, setError] = useState(''), [loaded, setLoaded] = useState(false), [open, setOpen] = useState<Record<string, boolean>>({})
+  const historyScope = useRef(''), paged = useRef(false), caches = useRef(new Map<string, ExecutionContentCache>())
+  useEffect(() => { setEmployee(agentId ?? '') }, [agentId, messageId])
   useEffect(() => {
-    let disposed = false, request = 0, timer: ReturnType<typeof setTimeout> | undefined
+    if (!active) return
+    let disposed = false, inFlight = false, again = false, timer: ReturnType<typeof setTimeout> | undefined
     const load = async () => {
-      const token = ++request
+      if (inFlight) { again = true; return }
+      inFlight = true
       try {
-        const current = () => !disposed && token === request
-        const detail = await api.request('getConversationMetadata', { id: conversationId, includeTriggerSummaries: true })
-        if (!current()) return
-        const anchors = await readDetailMessages(api, conversationId, messageId ? [messageId] : [], current)
-        detail.messages = anchors.flatMap(item => item.status === 'available' && item.message ? [item.message] : [])
-        const rounds = activityRounds(detail), anchor = detail.messages.find(message => message.id === messageId)
-        if (messageId && !anchor) throw new Error(anchors[0]?.reason ?? '这条消息已被清理，执行记录不再可用。')
-        const round = roundId ? rounds.find(round => round.id === roundId) : anchor ? rounds.find(round => anchor.turnId ? round.turn?.id === anchor.turnId : round.runs.some(run => run.id === anchor.runId) || round.trigger?.id === anchor.id) : rounds[0]
-        if (roundId && !round) throw new Error('所选轮次已不可用，不会切换到其他轮次。')
-        const triggerId = round?.turn?.triggerMessageId ?? round?.runs[0]?.triggerMessageId ?? round?.trigger?.id
-        const items = await readDetailMessages(api, conversationId, [...(triggerId ? [triggerId] : []), ...(round?.runs.filter(run => !run.phase || run.phase === 'execution').map(run => run.messageId) ?? [])], current)
-        if (!current()) return
-        const trigger = items.find(item => item.messageId === triggerId)
-        if (triggerId && trigger?.status !== 'available') throw new Error(trigger?.reason ?? '原轮次来源消息已不可用。')
-        detail.messages = [...new Map([...detail.messages, ...items.flatMap(item => item.status === 'available' && item.message ? [item.message] : [])].map(message => [message.id, message])).values()]
-        const selectedRound = activityRounds(detail).find(item => item.id === round?.id)
-        const spans = triggerId ? await api.request('getConversationTrace', { conversationId, messageId: triggerId, turnId: round?.turn?.id }) : []
-        if (current()) { setValue({ detail, spans, round: selectedRound, selection: roundId }); setError('') }
-      } catch (e) { if (!disposed && token === request) { setValue(undefined); setError(errorText(e)) } }
+        const page = await api.request('listExecutionHistory', { conversationId, agentId: employee || undefined })
+        if (!disposed) {
+          setItems(previous => [...page.items, ...previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee))]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
+          if (messageId) { const target = page.items.find(item => item.run.triggerMessageId === messageId || item.run.messageId === messageId); if (target) setOpen(previous => ({ ...previous, [target.run.id]: true })) }
+        }
+      } catch (error) { if (!disposed) setError(errorText(error)) }
+      finally { inFlight = false; if (again && !disposed) { again = false; timer = setTimeout(() => void load(), 150) } }
     }
-    if (active) void load()
+    const scope = `${conversationId}:${employee}`
+    if (historyScope.current !== scope) { historyScope.current = scope; paged.current = false; setItems([]); setNext(undefined); setLoaded(false) }
+    void load()
     const unsubscribe = api.subscribe(event => {
-      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { setValue(undefined); setError('聊天记录已清理。'); request++; clearTimeout(timer); return }
-      if (!active) return
-      if (!(event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId)) && !(event.type === 'message' && event.message.conversationId === conversationId)) return
-      request++; setValue(undefined)
-      if (!timer) timer = setTimeout(() => { timer = undefined; void load() }, 160)
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { disposed = true; caches.current.clear(); setItems([]); setNext(undefined); setLoaded(true); return }
+      if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
-  }, [api, conversationId, messageId, active, roundId])
-  if (error) return <Banner>{error}</Banner>
-  if (!value || value.selection !== roundId) return <Loading />
-  const { detail, round } = value
-  if (!round) return <p className="empty-note">发送消息后，可以在这里查看执行过程。</p>
-  const rounds = activityRounds(detail), members = new Map(round.runs.map(run => [run.agentId, run.agentName]))
-  const runs = round.runs.filter(run => !employee || run.agentId === employee), runIds = new Set(runs.map(run => run.id))
-  const spans = value.spans.filter(span => runIds.has(span.runId))
-  const filtered = { ...detail, deliveries: detail.deliveries?.filter(item => !employee || item.agentId === employee) }
-  return <div className="detail-section trace-detail" data-turn-id={round.turn?.id}>
-    <div className="trace-filters">
-      <SelectField aria-label="执行轮次" value={round.id} onValueChange={selectedValue => setRoundId(selectedValue)} options={rounds.map(item => ({ value: item.id, label: `${item.trigger?.content.slice(0, READING_LIMITS.triggerSummaryCharacters) || detail.triggerSummaries?.[item.turn?.triggerMessageId ?? item.runs[0]?.triggerMessageId ?? ''] || '历史执行'} · ${new Date(item.createdAt).toLocaleTimeString('zh-CN')}` }))} />
-      {detail.conversation.kind === 'group' && <SelectField aria-label="筛选员工" value={employee} onValueChange={selectedValue => setEmployee(selectedValue)} options={[{ value: '', label: '全部员工' }, ...[...members].map(([id, name]) => ({ value: id, label: name }))]} />}
+  }, [api, conversationId, employee, active, messageId])
+  const loadMore = async () => {
+    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
+    catch (error) { setError(errorText(error)) }
+  }
+  const conversation = snapshot.conversations.find(value => value.id === conversationId)
+  const members = (conversation?.agentIds ?? []).map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))
+  return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    {conversation?.kind === 'group' && <div data-slot="execution-employees" className="group-members shrink-0">
+      <ExecutionAvatarRail members={members} items={[{ agentId: '', displayName: '总览', overview: true, statusLabel: '' }, ...members.map(agent => {
+        const status = items.find(item => item.run.agentId === agent.id)?.run.status
+        return { agentId: agent.id, displayName: agent.name, avatarRef: agent.avatar, color: agent.color, statusLabel: status ? labels[status] : '暂无执行' }
+      })]} selectedAgentId={employee} revealRequest={messageId ? 1 : 0} active={active} onOpen={setEmployee} />
+    </div>}
+    <ScrollArea className="h-full min-h-0 min-w-0 flex-1 overflow-hidden" viewportProps={{ className: 'execution-history-body min-w-0', id: 'agent-execution-drawer', 'aria-label': '执行' }}>
+    <div className="flex min-w-0 flex-col gap-4 p-4">
+      {error && <Banner>{error}</Banner>}{!loaded && !error && <Loading />}
+      <p className="m-0 text-sm text-muted-foreground">执行历史</p>
+      {items.map(({ run, trigger }, index) => {
+        const view = views[run.id] ?? 'rendered'
+        const live = ['running', 'queued', 'waiting_approval'].includes(run.status)
+        const expanded = open[run.id] ?? (live || index === 0)
+        const agent = members.find(value => value.id === run.agentId), name = agent?.name ?? run.agentName
+        if (!caches.current.has(run.id)) caches.current.set(run.id, new ExecutionContentCache())
+        const cache = caches.current.get(run.id)!
+        const opened = expanded || open[run.id] !== undefined
+        return <Card key={run.id} size="sm" className="min-w-0 shrink-0 gap-0 p-0" data-execution-run-id={run.id}>
+          <Collapsible open={expanded} onOpenChange={value => setOpen(previous => ({ ...previous, [run.id]: value }))}>
+          <CardHeader className="flex min-w-0 flex-row items-center gap-2 p-2">
+          <Popover>
+            <PopoverTrigger openOnHover render={<Button variant="ghost" size="content" className="shrink-0 p-1" aria-label={`查看 ${name} 的资料`} />}>
+              <Avatar small name={name} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} />
+            </PopoverTrigger>
+            <PopoverContent align="start"><PopoverHeader><PopoverTitle>{name}</PopoverTitle><PopoverDescription>{agent?.role || '数字员工'}</PopoverDescription></PopoverHeader></PopoverContent>
+          </Popover>
+          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="group/execution-heading flex h-[36px] min-w-0 flex-1 items-center gap-2 pl-1 text-left" />} aria-label={`${expanded ? '收起' : '展开'}执行：${trigger || name}`}>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium" title={trigger || name}>{trigger || name}</span>
+            <span data-slot="execution-collapse-icon" className="flex size-[36px] shrink-0 items-center justify-center"><ChevronRight className="size-4 text-muted-foreground transition-transform group-aria-expanded/execution-heading:rotate-90" /></span>
+          </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent keepMounted={opened}>
+            {opened && <ExecutionRunContent api={api} run={run} active={active && expanded} cache={cache} view={view} live={live}
+              onViewChange={value => setViews(previous => ({ ...previous, [run.id]: value }))} onError={setError} />}
+          </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      })}
+      {loaded && !items.length && <p className="text-sm text-muted-foreground">发送消息后，可在这里查看员工的执行过程。</p>}
+      {next && <Button variant="secondary" size="sm" onClick={() => void loadMore()}>加载更早的执行</Button>}
     </div>
-    {rounds.length > READING_LIMITS.triggerSummaries && <p className="field-hint">最近 {READING_LIMITS.triggerSummaries} 条请求显示已核对摘要，更早轮次按时间选择后核对原请求。</p>}
-    <p className="trace-trigger">{round.trigger?.content}</p>
-    {runs.filter(run => run.traceError).map(run => <Banner key={run.id}>部分执行记录未能保存：{run.traceError}</Banner>)}
-    {spans.length ? <TraceDetail key={`${round.id}:${employee}`} spans={spans} runs={runs} /> : <p className="field-hint">{runs.some(run => ['running', 'queued'].includes(run.status)) ? '执行记录正在生成…' : runs.some(run => run.backend) ? '外部员工未提供 Mastra Trace，可展开运行摘要。' : '这次执行没有采集到 Trace，可展开运行摘要。'}</p>}
-    {runs.filter(run => run.backend?.kind === 'acp-local' && ['queued', 'running', 'waiting_approval'].includes(run.status)).map(run => <Button key={run.id} variant="secondary" size="sm" disabled={busy} onClick={() => onStop(run.id)}>停止此外部任务</Button>)}
-    <details className="trace-run-summary soft-divider-top"><summary>运行摘要与错误</summary><RoundDetail round={{ ...round, runs }} detail={filtered} snapshot={snapshot} busy={busy} onRetry={onRetry} historical={round.id !== rounds[0]?.id} /></details>
-  </div>
+  </ScrollArea></div>
+}
+
+function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError }: {
+  api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view: ExecutionView; live: boolean
+  onViewChange(view: ExecutionView): void; onError(error: string): void
+}) {
+  const [following, setFollowing] = useState(true)
+  const viewport = useRef<HTMLDivElement>(null)
+  const transition = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), previousHeight = useRef<number | undefined>(undefined)
+  useLayoutEffect(() => {
+    const host = transition.current, body = content.current, from = previousHeight.current
+    previousHeight.current = undefined
+    if (!host || !body || from === undefined || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let animation: Animation | undefined, target = -1
+    // Measure the natural inner layout; animate only its outer clip, not the scroll viewport.
+    const resize = () => {
+      const height = body.getBoundingClientRect().height
+      if (Math.abs(height - target) < 0.5) return
+      const start = animation ? host.getBoundingClientRect().height : from
+      animation?.cancel()
+      target = height
+      if (Math.abs(start - height) < 0.5) { observer.disconnect(); return }
+      animation = host.animate([{ height: `${start}px` }, { height: `${height}px` }], { duration: 180, easing: 'ease' })
+      animation.onfinish = () => { observer.disconnect(); animation = undefined }
+    }
+    const observer = new ResizeObserver(resize)
+    observer.observe(body)
+    resize()
+    return () => { observer.disconnect(); animation?.cancel() }
+  }, [view])
+  const setReading = useCallback((value: boolean) => setFollowing(value), [])
+  const markReading = (host: HTMLElement) => { host.dataset.executionReadingIntent = String(performance.now()) }
+  return <ExecutionReadingContext value={setReading}><div ref={transition} className="min-w-0 overflow-hidden"><CardContent ref={content} className="soft-divider-top min-w-0 p-0">
+    <div data-slot="execution-content-toolbar" className="flex min-w-0 items-center justify-between gap-3 px-3 py-1 text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {run.usage?.totalTokens !== undefined && <span title={`${run.usage.totalTokens.toLocaleString()} tokens`}>{Intl.NumberFormat('en', { notation: 'compact' }).format(run.usage.totalTokens)} tokens</span>}
+        <time dateTime={run.createdAt} title={new Date(run.createdAt).toLocaleString('zh-CN')}>{new Date(run.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
+        <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
+      </div>
+      <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={view === 'rendered' ? '显示原生记录' : '显示过程视图'} onClick={() => {
+        previousHeight.current = transition.current?.getBoundingClientRect().height
+        setFollowing(false)
+        if (viewport.current) {
+          markReading(viewport.current)
+          delete viewport.current.dataset.executionAnchorKey
+          delete viewport.current.dataset.executionAnchorRun
+        }
+        onViewChange(view === 'rendered' ? 'raw' : 'rendered')
+      }} />}>{view === 'rendered' ? <Terminal /> : <Workflow />}</TooltipTrigger><TooltipContent>{view === 'rendered' ? '显示原生记录' : '显示过程视图'}</TooltipContent></Tooltip>
+    </div>
+    <Separator />
+    <ScrollArea className="max-h-[min(60vh,600px)] min-w-0" onPointerDownCapture={event => {
+      if (!(event.target as Element).closest('[data-slot="scroll-area-scrollbar"]') || !viewport.current) return
+      markReading(viewport.current); setFollowing(false)
+    }} viewportProps={{
+      ref: viewport, className: 'execution-drawer-body h-auto max-h-[min(60vh,600px)] min-w-0 overscroll-contain', 'aria-label': `${run.agentName}的执行内容`,
+      'data-following-latest': following ? 'true' : 'false', 'data-latest-execution-run': run.id,
+      onWheel: event => { markReading(event.currentTarget); if (event.deltaY < 0) setFollowing(false) },
+      onKeyDown: event => { markReading(event.currentTarget); if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) setFollowing(false) },
+      onTouchMove: event => { markReading(event.currentTarget); setFollowing(false) },
+    }}>
+      <div className="min-w-0 p-3">
+        <ExecutionFeed api={api} run={run} active={active} cache={cache} view={view} />
+        {live && run.backend && ['codex-local', 'claude-local'].includes(run.backend.kind) && <Button variant="secondary" size="sm" className="mt-4" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))}>停止本次执行</Button>}
+        {view === 'raw' && <ExecutionRunInfo run={run} />}
+      </div>
+    </ScrollArea>
+  </CardContent></div></ExecutionReadingContext>
 }

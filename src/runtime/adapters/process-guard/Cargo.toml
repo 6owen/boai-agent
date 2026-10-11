@@ -1,0 +1,23 @@
+# [INPUT]: Rovai独立进程树模块及Rust固定依赖。
+# [OUTPUT]: edition 2024监督二进制及最小平台依赖。
+# [POS]: 原生资源监督构建；不依赖Rovai产品Core。
+# [PROTOCOL]: 变化同步Header和所属.folder.md。
+[package]
+name = "boai-process-guard"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "boai-process-guard"
+path = "main.rs"
+
+[features]
+extended-tests = []
+
+[dependencies]
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }

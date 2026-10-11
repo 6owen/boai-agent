@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 单聊仅头像/消息及绝对定位悬停时间，原消息接收标记与员工执行卡按真实Run投影；原引用和旧固定版本未决请求保持。
  * [OUTPUT]: 现有聊天传递宿主API供统一两级模型配置读取实际本机连接，保存结果区分已保存、未提交和未确认，未知结果只读核对。
  * [OUTPUT]: 本机来源菜单复用当前员工设置与准确本机连接导航，原聊天/首发草稿和发送语义保持。
@@ -54,7 +55,7 @@ import { artifactRevisionTarget } from '@/components/detail-panel/artifact-state
 import { SelectField } from '@/components/ui/select-field'
 import type { ArtifactRevisionInput } from '@shared/domain/artifacts'
 import { MessageCard } from './message-card'
-import { ChatExecutionCard, MessageReceipt } from './execution-progress'
+import { MessageReceipt } from './execution-progress'
 import { AgentInfoPopover } from './agent-info-popover'
 import { draftContent } from '../inline-mentions'
 import { MaterialDraftBar, SentMaterialList, type MaterialDraftItem } from './material-list'
@@ -64,12 +65,10 @@ import type { ConversationReadingState, ConversationView } from '@shared/domain/
 import { Banner } from '@/components/common'
 import { useConversationReading } from './use-conversation-reading'
 import { READING_UI_LIMITS } from '../reading-state'
-import { chatQuestions, questionRequestTarget, type ChatQuestionTarget } from '../question-state'
-import { ChatQuestionCard, PendingQuestionReplies, type ChatQuestionReplies } from '../question-reply'
+import { type ChatQuestionReplies } from '../question-reply'
 export function ChatView({ view = 'chat', onViewChange, alternateView, api, pageActive, questionReplies, artifactActions, onTeamGroup, detail, snapshot, draft, setDraft, busy, onSend, onDetails, onConfigureAgent, onChangeConversationList, onEditTitle, onClear, onActivity, onTrace, onSettings, onProfile, onChangeAgent, configurationLocked, onApprove, onOpenPath, onPreviewArtifact, onAddMaterial, onDropMaterials, onPasteMaterials, onRemoveMaterial, onRetryMaterial, onPreviewMaterial, onDiscardSubmission, focusMessage, focusApproval, scrollPosition, onScrollPosition, onSearch, onReading, onLocation, onPage, paging, pageEdges, restoreAnchor }: { view?: 'chat' | 'tasks' | 'files'; onViewChange?(view: 'chat' | 'tasks' | 'files'): void; alternateView?: ReactNode; api: DesktopApi; pageActive: boolean; questionReplies: ChatQuestionReplies; artifactActions: ChatArtifacts; onTeamGroup(id: string): void; detail: ConversationView; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: () => void; onDetails: () => void; onConfigureAgent: (agent: DigitalAgent) => void; onChangeConversationList: (change: ConversationListChange) => void; onEditTitle: (conversation: Conversation) => void; onClear: (id: string, hide: boolean) => Promise<void>; onActivity: () => void; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: (agent?: DigitalAgent) => void; onProfile: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => Promise<ComposerAgentSaveResult>; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; onPreviewArtifact(artifact: Artifact): void; onAddMaterial(): void; onDropMaterials(files: File[]): void; onPasteMaterials(files?: File[]): void; onRemoveMaterial(item: MaterialDraftItem): void; onRetryMaterial(item: MaterialDraftItem): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void; onDiscardSubmission(): void; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void; onSearch(): void; onReading(state: ConversationReadingState): void; onLocation(messageId: string | undefined, following: boolean, offset?: number): void; onPage(direction: 'before' | 'after'): void; paging: boolean; pageEdges: { before: boolean; after: boolean }; restoreAnchor?: { messageId: string; offset?: number } }) {
   const conversation = detail.conversation
   const group = conversation.kind === 'group'
-  const questions = chatQuestions(detail)
   const questionPending = Object.values(questionReplies.values).some(request => request.conversationId === conversation.id)
   const artifactRequests = Object.values(artifactActions.values).filter(value => value.conversationId === conversation.id && (value.revision || value.adoption || value.acceptance))
   const artifactRevisionPending = artifactRequests.some(value => value.revision)
@@ -93,12 +92,9 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
   const active = activeRuns.length > 0 || activeTurns.length > 0
   const composerRef = useRef<PromptBarHandle>(null)
   const mention = (id: string) => { if (!replyMode && !sendingLocked) composerRef.current?.mention(id) }
-  const answer = (target: ChatQuestionTarget) => { if (!sendingLocked && pageActive) { setDraft({ ...draft, replyId: target.questionMessageId, questionReply: target, artifactRevision: undefined }); composerRef.current?.focus() } }
   const quote = (messageId: string) => {
     if (sendingLocked || !pageActive) return
-    const question = questions.find(question => question.questionMessageId === messageId && !question.answeredMessageId)
-    if (question) answer(question)
-    else { setDraft({ ...draft, replyId: messageId, questionReply: undefined, artifactRevision: undefined }); composerRef.current?.focus() }
+    setDraft({ ...draft, replyId: messageId, questionReply: undefined, artifactRevision: undefined }); composerRef.current?.focus()
   }
   const restoreRevision = (input: ArtifactRevisionInput, logicalArtifactId: string) => {
     const artifact = detail.artifacts.find(value => value.id === input.artifactId)
@@ -240,20 +236,15 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
             {useCard ? <MessageCard message={message} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)}>{body}</MessageCard> : body}
             {interruptedTurn && <div role="status" className="field-hint" data-interrupted-turn-id={interruptedTurn.id}><span>该轮处理已中断，已有回复和成果保留；未自动重新执行。</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>}
             {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>)}
-            {questions.filter(question => question.questionMessageId === message.id).map(question => <ChatQuestionCard key={question.questionId} question={question} busy={sendingLocked} active={pageActive} pending={questionReplies.values[question.itemId]} unavailableReason={!agent?.active || !members.some(member => member.id === agent.id) ? '原员工已停用或移出聊天，请核对员工设置。' : undefined} onReply={answer} />)}
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy || !pageActive} onApprove={onApprove} />)}
           </div>
         </article>
-        {!group && executionRuns.some(run => run.phase !== 'memory' && (run.workId || ['queued', 'running', 'waiting_approval', 'failed', 'interrupted'].includes(run.status))) && <article className="message-row agent message-execution-row" aria-label="员工处理进度">
-          <div className="message-avatar">{members[0] && <AgentInfoPopover agent={members[0]} resources={snapshot.resources} onConfigure={() => onConfigureAgent(members[0])} />}</div>
-          <div className="message-main"><ChatExecutionCard runs={executionRuns} work={executionWork} group={false} onOpen={() => onTrace(message)} /></div>
-        </article>}</Fragment>
+        </Fragment>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main"><div className="message-meta">{group && <strong>{approval.agentName}</strong>}</div><ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
-      <PendingQuestionReplies conversationId={conversation.id} replies={questionReplies} active={pageActive} onDiscard={request => { setDraft({ ...draft, text: draft.text.trim() ? draft.text : request.input.content, replyId: request.questionMessageId, questionReply: questionRequestTarget(request) }); composerRef.current?.focus() }} />
     </ScrollFade>
     <div className="composer-wrap" onDragEnter={event => { if (materialsAllowed && event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDraggingFiles(true) } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingFiles(false) }} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = materialsAllowed && !busy && !draft.submission ? 'copy' : 'none' } }} onDropCapture={event => { if (!event.dataTransfer.types.includes('Files')) return; event.preventDefault(); event.stopPropagation(); setDraggingFiles(false); if (materialsAllowed && !busy && !draft.submission) onDropMaterials(Array.from(event.dataTransfer.files)) }}>
       {draggingFiles && materialsAllowed && <p role="status" className="field-hint">拖入这里，将材料添加到当前会话草稿。</p>}

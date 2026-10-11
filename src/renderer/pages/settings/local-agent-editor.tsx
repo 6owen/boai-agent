@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 本机运行许可归入高级设置并默认勾选；折叠箭头仅使用共享展开旋转，收起向右、展开向下。
  * [OUTPUT]: 单个手动入口按精确命令名识别已接入协议；未知程序需明确兼容协议，原扫描/保存协议优先，不能自动冒充ACP。
  * [OUTPUT]: Claude受管参数和无个人登录；测试只显示程序核对，不冒充供应商认证或实际调用成功。
@@ -45,8 +46,8 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
     if (!form.executable.trim()) { setAdvanced(true); throw new Error('请填写启动命令。') }
     if (!form.acknowledged) throw new Error('请先确认允许此 Agent 在本机运行。')
     if (!protocol) { setAdvanced(true); throw new Error('尚不能识别这个程序的接入方式；如果它支持 ACP，请在高级设置中选择 ACP 兼容程序。') }
-    const useExistingLogin = protocol !== 'claude-cli' && form.useExistingLogin
-    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: protocol === 'claude-cli' ? undefined : initial.localConfigId, protocol, name: form.name.trim(), executable: form.executable.trim(), args: protocol === 'acp' ? form.args : [], runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin, codexHome: useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
+    const useExistingLogin = form.useExistingLogin
+    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: protocol === 'claude-cli' ? undefined : initial.localConfigId, protocol, name: form.name.trim(), executable: form.executable.trim(), args: protocol === 'acp' ? form.args : [], runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin, codexHome: protocol !== 'claude-cli' && useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
   }
   const submit = (operation: 'test' | 'save') => {
     if (working || !editor.current?.reportValidity()) return
@@ -93,9 +94,9 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
       <CollapsibleContent><div className="soft-divide-y">
         {!showCommand && commandFields}
         <ConnectionSettingRow label="接入协议" htmlFor={`${fieldId}-protocol`} icon={<Terminal />} hint="仅选择程序实际支持的协议；选择协议不会安装或增加程序能力。"><SelectField id={`${fieldId}-protocol`} value={form.protocol} onValueChange={value => set('protocol', value as typeof form.protocol)} options={[{ value: 'auto', label: '自动识别' }, { value: 'acp', label: 'ACP 兼容程序' }, { value: 'codex-app-server', label: 'Codex 原生程序' }, { value: 'claude-cli', label: 'Claude 原生程序' }]} /></ConnectionSettingRow>
-        {protocol === 'claude-cli' ? <p className="field-hint py-3">这里只核对程序版本，不读取订阅登录或调用模型。创建员工时选择兼容API连接与模型。</p> : <ConnectionSettingRow label="登录与配置" htmlFor={`${fieldId}-login`} icon={<Key />}>
+        <ConnectionSettingRow label="登录与配置" htmlFor={`${fieldId}-login`} icon={<Key />}>
           <label className="flex min-h-9 items-center gap-2"><Checkbox id={`${fieldId}-login`} checked={form.useExistingLogin} onCheckedChange={checked => set('useExistingLogin', checked)} /><span>使用本机已有配置</span></label>
-        </ConnectionSettingRow>}
+        </ConnectionSettingRow>
         {form.useExistingLogin && codexConfig && <ConnectionSettingRow label="Codex 配置目录" htmlFor={`${fieldId}-home`} icon={<FolderOpen />} hint="仅 Codex 需要；留空使用默认目录，扫描时会自动填写。"><Input id={`${fieldId}-home`} value={form.codexHome} onChange={event => set('codexHome', event.target.value)} placeholder="使用默认目录" /></ConnectionSettingRow>}
         {details}
         <div className="flex items-center gap-2 py-3">

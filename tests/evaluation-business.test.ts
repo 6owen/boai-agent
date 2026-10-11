@@ -202,3 +202,15 @@ it('does not replay an unknown Codex proposal and rejects source changes on resu
   await writeFile(join(source, sourceFile), 'external-change')
   await expect(runBusinessHillclimb(root, source, undefined, { runRound, propose })).rejects.toThrow('原工作树')
 })
+
+it('binds native evidence and readonly file hashes to judge input and sample identity',()=>{
+ const record=judgedRecord(),before=sampleHash(record)
+ record.nativeEvidence={items:[],completeRunIds:['run'],sourceFiles:[{label:'只读后原件',sha256:'actual-source-hash',contentHashMatched:true}]}
+ expect(sampleHash(record)).not.toBe(before)
+ const input=judgeInput(record)
+ expect(input.evidence.nativeEvidence).toEqual(record.nativeEvidence)
+ expect(input.evidence.nativeEvidenceNote).toContain('不能据此断言没有使用原生工具')
+ const withEvidence=sampleHash(record)
+ record.nativeEvidence.sourceFiles[0].contentHashMatched=false
+ expect(sampleHash(record)).not.toBe(withEvidence)
+})

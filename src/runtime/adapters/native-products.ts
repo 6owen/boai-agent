@@ -1,0 +1,102 @@
+/*
+ * [OUTPUT]: 2026-10-11 原生工具保留；增量send/read消息不建Work，文件/协作/核心管理才惰性认领，依赖成果不冒充本人文件。
+ * [INPUT]: 原生员工会话、已有Work/成果/组织服务。
+ * [OUTPUT]: 惰性认领真实产品工作；工作区系统路径别名归一仍经原文件边界核验，原生文件/命令/Skill能力保持。
+ * [POS]: BOAI业务边界与原生工具目录之间的薄桥。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+import { z } from 'zod'
+import path from 'node:path'
+import { realpath } from 'node:fs/promises'
+import type { EngineContext } from '../contracts'
+import type { NativeTool } from './native-task'
+import { createTaskRuntime } from './mastra/task-runtime'
+import { modelWorkOutcomeSchema, workDelegationSchema, workWaitSchema } from '../modules/collaboration/work-protocol'
+import { boboCollaborationPlanSchema, employeeCandidateQuerySchema } from '../../shared/domain/bobo-collaboration'
+import { isCoreAgent } from '../../shared/domain/core-agent'
+import { teamModelPlanSchema } from '../../shared/domain/team-creation'
+import { nativeActivity } from './native-events'
+import { contained } from '../modules/workspaces/file-access'
+
+export function createNativeProducts(context: EngineContext) {
+  let runtime: Promise<Awaited<ReturnType<typeof createTaskRuntime>>> | undefined
+  const organization = isCoreAgent(context.agent) && context.conversation.purpose === 'core' && !context.legacyTeamName
+  const reportShape = Object.fromEntries(Object.entries(modelWorkOutcomeSchema({ organization }).shape).filter(([key]) => key !== 'userQuestion'))
+  const definitions: { name: string; description: string; schema: z.ZodType }[] = [
+    { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
+    { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
+    { name: 'publish_artifact', description: 'Deliver an existing file from your employee conversation workspace as a BOAI chat attachment. path may be absolute or relative to cwd. When the current user asks to revise a previously delivered file, pass its actual replacesArtifactId to publish the next immutable version. Do not use replacement for unrelated new files. No separate report is required.', schema: z.object({ path: z.string(), name: z.string().max(150).optional(), replacesArtifactId: z.string().optional(), revisionRequestId: z.string().optional() }) },
+    { name: 'delegate_work', description: 'Assign a bounded task to another current BOAI employee using actual member IDs and a stable key. Repeated keys do not repeat work. Native subagents are distinct from employees.', schema: workDelegationSchema },
+    { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
+    { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. Cite actual results only. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
+  ]
+  if (isCoreAgent(context.agent) && context.legacyTeamName) definitions.push({ name: 'create_team', description: 'Create the explicitly requested named team and its independent employees, inheriting this employee execution configuration. Use the committed result for the final reply; do not repeat after an unknown receipt.', schema: teamModelPlanSchema })
+  const organizationFields = { mode: z.enum(['employee_creation', 'organize_only', 'organize_and_execute']), goal: z.string().min(1) }
+  if (organization) definitions.push(
+    { name: 'find_employees', description: 'Find saved BOAI employees for an explicitly requested organization. Supply the authorized mode and complete goal; this prepares administrative Work only.', schema: employeeCandidateQuerySchema.extend(organizationFields) },
+    { name: 'organize_collaboration', description: 'Create employees or organize a group for the explicitly authorized goal. Reuse existing IDs; only create missing roles. A committed receipt proves organization, not group business completion.', schema: boboCollaborationPlanSchema.extend(organizationFields) },
+  )
+  const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: z.toJSONSchema(schema, { io: 'input' }),
+    execute: async (input, callId) => {
+      context.signal.throwIfAborted()
+      const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
+      const emit = async (completed: boolean, result?: unknown, failed = false) => {
+        await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: input, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
+        await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : input) })
+      }
+      await emit(false)
+      try {
+        if (name === 'send_message') {
+          if (!context.publishNativeMessage) throw new Error('公开消息接口未接入')
+          const result = await context.publishNativeMessage(String(parsed.content), callId)
+          await emit(true, result); return result
+        }
+        if (name === 'read_messages') {
+          const eligible = context.messages.filter(message => parsed.beforeSequence === undefined || message.sequence < Number(parsed.beforeSequence))
+          const page = eligible.slice(-Number(parsed.limit))
+          const result = { messages: page.map(({ id, sequence, senderId, senderName, content, replyToMessageId }) => ({ id, sequence, senderId, senderName, content, replyToMessageId })), ...(eligible.length > page.length ? { beforeSequence: page[0].sequence } : {}) }
+          await emit(true, result); return result
+        }
+        if (!runtime) runtime = (async () => {
+          await context.ensureNativeWork?.(parsed.mode ? { key: 'bobo-organization', scope: String(parsed.goal), deliverable: '按用户要求发布组织', organization: { mode: parsed.mode as 'employee_creation', goal: String(parsed.goal) } } : undefined, typeof parsed.replacesArtifactId === 'string' ? parsed.replacesArtifactId : undefined)
+          if (!context.work) throw new Error('产品工作未接入')
+          return createTaskRuntime({ ...context, responseKind: 'task' })
+        })()
+        const product = await runtime
+        if (name === 'report_work') {
+          if (context.pendingWorkWait && parsed.disposition !== 'waiting') throw new Error('已登记依赖等待，请结束本轮等待实际结果')
+          await context.onWorkOutcome!(parsed as unknown as import('../../shared/domain').WorkOutcome)
+          const result = { recorded: true, publicationPending: true }; await emit(true, result); return result
+        }
+        const tool = product.tools[name as keyof typeof product.tools]
+        if (!tool) throw new Error('当前工作没有此产品工具')
+        delete parsed.mode; delete parsed.goal
+        if (parsed.replacesArtifactId) {
+          if (context.artifactRevision?.artifactId !== parsed.replacesArtifactId) throw new Error('请在本轮首次产品操作时指定要修订的原文件')
+          parsed.revisionRequestId = context.artifactRevision.id
+          delete parsed.replacesArtifactId
+        }
+        if (name === 'publish_artifact' && !String(parsed.path).startsWith('self:/')) {
+          const root = context.workspace!.root, absolute = path.resolve(context.runtimeDirectory?.cwd ?? context.workspace!.workPath, String(parsed.path))
+          // macOS may report /private/var for a workspace opened through /var.
+          // Resolve the root only: resolving the file here would hide symlinks
+          // from the existing publication boundary's per-component checks.
+          const matchedRoot = [root, await realpath(root)].find(candidate => contained(candidate, absolute))
+          if (!matchedRoot) throw new Error('请先将待交付文件保存到当前员工会话工作区，再发布附件')
+          const relative = path.relative(matchedRoot, absolute)
+          parsed.path = `self:/${relative.split(path.sep).join('/')}`
+        }
+        const result = await tool.execute!((tool.inputSchema as z.ZodType).parse(parsed) as never, { agent: { toolCallId: callId }, abortSignal: context.signal } as never)
+        if (name === 'publish_artifact') {
+          const artifact = (result as { artifact: { id: string } }).artifact
+          await context.onWorkOutcome?.({ disposition: 'delivered', summary: '已发布文件', evidence: [{ kind: 'artifact', reference: artifact.id }] })
+        }
+        if (name === 'organize_collaboration' && (result as {status?: string}).status === 'committed') {
+          await context.onWorkOutcome?.({ disposition: 'delivered', summary: '已发布组织', evidence: [{ kind: 'collaboration', reference: (result as { id: string }).id }] })
+        }
+        await emit(true, result); return result
+      } catch (error) { await emit(true, { error: error instanceof Error ? error.message : String(error) }, true); throw error }
+    },
+  }))
+  return { tools, dispose: async () => { if (runtime) await (await runtime.catch(() => undefined))?.dispose() } }
+}

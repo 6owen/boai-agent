@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [INPUT]: 有界配置扫描、当前扫描范围与用户选中的配置标识。
  * [OUTPUT]: 实际程序候选与独立协议/来源预填；选择时复查程序身份，未接入程序不可生成草稿；原API/ACP导入保持。
  * [POS]: main/local-configs 的模型连接用例，扫描不访问网络或修改源文件。
@@ -55,7 +56,7 @@ export class LocalConfigDiscovery {
       if (draft.executable !== candidate.executable) throw new Error('程序路径已变化，请重新扫描')
       return { ...draft, protocol: candidate.protocol }
     }
-    return { name: candidate.name, executable: program.path, runtime: program.runtime, protocol: candidate.protocol, args: [], useExistingLogin: candidate.protocol !== 'claude-cli', hostAccessAcknowledged: true }
+    return { name: candidate.name, executable: program.path, runtime: program.runtime, protocol: candidate.protocol, args: [], useExistingLogin: true, hostAccessAcknowledged: true }
   }
 
   launchProfile(configId: string, protocol: 'acp' | 'codex-app-server' = 'acp'): LaunchProfileInput {

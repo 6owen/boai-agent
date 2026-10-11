@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: 真实探测分别保留部分/完整计量，同请求仅一次最终回执；中途已知计数不再被探测器误报断言失败。
  * [INPUT]: 显式已保存连接、实际Claude与隔离内存工作/SQLite会话夹具。
  * [OUTPUT]: 共同员工阶段及原件验证；失败仅记录固定白名单原因，不保存供应商错误，不冒充产品Work/UI。
@@ -12,7 +13,7 @@ import { dirname, join } from 'node:path'
 import type { Artifact, Connection, Message, ModelUsage, WorkOutcome } from '../../src/shared/domain'
 import type { TraceSpan } from '../../src/shared/domain/traces'
 import type { ClaudePhaseInput } from '../../src/runtime/adapters/claude/turn'
-import { ClaudeEmployeeEngine } from '../../src/runtime/adapters/claude/engine'
+import { LegacyClaudeEmployeeEngine as ClaudeEmployeeEngine } from '../../src/runtime/adapters/claude/legacy-engine'
 import type { EngineContext } from '../../src/runtime/contracts'
 import type { NativePhase, NativePhaseInput } from '../../src/runtime/adapters/native-employee'
 import { ProductStore } from '../../src/runtime/adapters/storage/product-store'

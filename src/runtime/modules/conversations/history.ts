@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: 聊天清理同事务移除Codex/Claude各自会话映射，不复用旧外部历史。
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
  * [OUTPUT]: 另一会话仍引用的协作预算保留累计计数/期限，已清理调用只保留 hash 去重；不删另一群或员工。浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
@@ -110,7 +111,7 @@ export class ConversationHistory {
       const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['codexSessions', 'claudeSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of ['executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {

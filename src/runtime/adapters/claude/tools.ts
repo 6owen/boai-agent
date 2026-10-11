@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
+ * [OUTPUT]: 原生会话产品工具无固定48次限制；普通工具错误回给Agent处理，传输/身份故障保留。
  * [INPUT]: 本阶段冻结的宿主工具、Claude已公开的工具调用身份与阶段取消信号。
  * [OUTPUT]: 单阶段回环MCP桥；仅匹配调用执行、重复身份复用回执、关闭等待真实退出；只读诊断区分接收/执行/回执，无身份、参数或结果。
  * [POS]: Claude原生循环到BoAI宿主工具的专用协议桥，不拥有Work/审批/成果权威。
@@ -37,7 +39,7 @@ async function bodyOf(request: IncomingMessage) {
 }
 
 export async function createClaudeToolBridge(input: {
-  configDirectory: string; tools: NativeTool[]; signal: AbortSignal; onFailure(error: Error): void
+  native?: boolean; configDirectory: string; tools: NativeTool[]; signal: AbortSignal; onFailure(error: Error): void
 }) {
   input.signal.throwIfAborted()
   const tools = new Map(input.tools.map(tool => [tool.name, tool]))
@@ -61,7 +63,7 @@ export async function createClaudeToolBridge(input: {
     if (typeof id !== 'string' || !/^[\w-]{1,200}$/.test(id)) throw new Error('Claude工具请求缺少稳定调用身份')
     let call = calls.get(id)
     if (!call) {
-      if (calls.size >= MAX_CALLS) throw new Error('达到本阶段工具调用上限')
+      if (!input.native && calls.size >= MAX_CALLS) throw new Error('达到本阶段工具调用上限')
       let resolve!: (value: Announced) => void
       const ready = new Promise<Announced>(done => { resolve = done })
       call = { ready, resolve, received: false, started: false, returned: false, exited: false, completed: false, responsePrepared: false }; calls.set(id, call)
@@ -83,7 +85,7 @@ export async function createClaudeToolBridge(input: {
         const announced = await Promise.race([call.ready, stopped])
         check()
         const tool = tools.get(request.params.name)
-        if (!tool || announced.name !== request.params.name || !isDeepStrictEqual(announced.input, request.params.arguments)) throw new Error('Claude工具请求与本轮公开身份或参数不符')
+        if (!tool || announced.name !== request.params.name || !isDeepStrictEqual(announced.input, request.params.arguments)) throw fail(new Error('Claude工具请求与本轮公开身份或参数不符'))
         // Retransmission may use a different JSON-RPC id. Native tool-use identity
         // is the authority within this phase, never payload similarity alone.
         call.result ??= Promise.resolve().then(async () => {
@@ -100,8 +102,8 @@ export async function createClaudeToolBridge(input: {
         return { content: [{ type: 'text' as const, text }] }
       } catch (error) {
         failedRequests++
-        fail(error)
-        return { content: [{ type: 'text' as const, text: 'The host did not confirm this operation. Do not retry it or bypass the refusal.' }], isError: true }
+        if (!input.native) fail(error)
+        return { content: [{ type: 'text' as const, text: input.native && error instanceof Error ? error.message : 'The host did not confirm this operation. Do not retry it or bypass the refusal.' }], isError: true }
       }
     })()
     active.add(operation)

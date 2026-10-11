@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Markdown 文本、可选元素渲染覆盖与全局 CodeBlock。
- * [OUTPUT]: 共享 GFM 渲染；围栏/缩进代码使用 Shiki，行内代码保留普通排版；禁用原始 HTML、远程图片和隐式外链导航。
+ * [OUTPUT]: 共享安全GFM渲染及MarkdownContent排版入口；Typeset统一正文/列表/表格，Shiki展示代码；禁用原始HTML、远程图片和隐式外链导航。
  * [POS]: 会话与技能说明共用的 Markdown 展示入口，不引入业务 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -8,6 +8,7 @@ import type { ComponentProps } from 'react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from '@/components/ui/code-block'
+import { Typeset } from '@/components/ui/typeset'
 
 function MarkdownCode({ node, children }: ComponentProps<'pre'> & ExtraProps) {
   const code = node?.children[0]
@@ -26,4 +27,12 @@ const defaults: Components = {
 
 export function Markdown({ children, components }: { children: string; components?: Components }) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{ ...defaults, ...components }}>{children}</ReactMarkdown>
+}
+
+const typesetComponents: Components = {
+  table: ({ children }) => <div className="typeset-scroll" tabIndex={0} role="region" aria-label="表格，可横向滚动"><table>{children}</table></div>,
+}
+
+export function MarkdownContent({ children, components, ...props }: Omit<ComponentProps<typeof Typeset>, 'children'> & { children: string; components?: Components }) {
+  return <Typeset {...props}><Markdown components={{ ...typesetComponents, ...components }}>{children}</Markdown></Typeset>
 }

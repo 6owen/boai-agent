@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 持续原生会话按员工/聊天/来源隔离，固定实际输入和答复身份；清理/换绑/恢复撤销续用资格，重启不重放。
  * [INPUT]: 当前员工/聊天身份、已核读输入与 SQLite 产品仓库。
  * [OUTPUT]: 仅恢复完整已发布且来源仍获准的本机聊天；备份恢复/安装位置变化只撤销续用资格，原事实保留，新消息从获准上下文重建。
  * [POS]: 本机员工共同会话仓库；Codex/Claude分集合，原生turn和宿主完成身份分开。
@@ -8,6 +9,8 @@ import { createHash } from 'node:crypto'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import { decisionMessageData, visibleMessages } from './mastra/message-projection'
+import type { Message, ConversationMaterial, MaterialReadRef } from '../../shared/domain'
+import { isMaterialReadRevisionValid, isConversationMaterialVisible } from '../../shared/domain/materials'
 
 export const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 interface Session {
@@ -19,6 +22,8 @@ interface Session {
   sources: { id: string; hash: string }[]
   memories: { id: string; hash: string }[]
   materials?: { id: string; hash: string }[]
+  rawSources?: { id: string; hash: string }[]
+  materialRefs?: MaterialReadRef[]
 }
 export class NativeSessions {
   private readonly collection: string
@@ -41,25 +46,42 @@ export class NativeSessions {
     const id = digest([context.agent.id, context.conversation.id, 'chat'])
     return this.store.transaction(async tx => {
       const previous = await tx.get<Session>(collection, id)
-      const messages = visibleMessages(context)
+      const messages = context.nativeSourceIds ? context.messages.filter(message => message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence) : visibleMessages(context)
       // Hash the actual attributed input, not only prose: changing an author or
       // reply target invalidates the old transcript just like changing its text.
       const sources = messages.map(message => ({ id: message.id, hash: digest(decisionMessageData(message)) }))
-      const replies = previous ? messages.filter(message => message.runId === previous.runId && message.senderType === 'agent' && message.senderId === context.agent.id && digest(message.content) === previous.outputHash) : []
+      const authorized = new Set(context.nativeSourceIds ?? messages.map(message => message.id))
+      const sourceHash = (message: Message | undefined) => digest(message ? { ...decisionMessageData(message), status: message.status, materialIds: message.materialIds, materialSources: message.materialSources } : null)
+      const rawSources = context.nativeSourceIds ? await Promise.all(sources.map(async source => ({ id: source.id, hash: sourceHash(await tx.get<Message>('messages', source.id)) }))) : undefined
+      const oldRaw = previous?.rawSources ? await Promise.all(previous.rawSources.map(async source => authorized.has(source.id) && sourceHash(await tx.get<Message>('messages', source.id)) === source.hash)) : undefined
+      const previousRun = previous && await tx.get<import('../../shared/domain').AgentRun>('runs', previous.runId)
+      const savedReply = previousRun?.messageId && authorized.has(previousRun.messageId) ? await tx.get<Message>('messages', previousRun.messageId) : undefined
+      const replyCandidates = savedReply ? [savedReply] : messages
+      const replies = previous ? replyCandidates.filter(message => message.runId === previous.runId && message.senderType === 'agent' && message.senderId === context.agent.id && digest(message.content) === previous.outputHash) : []
       const previousReply = replies.length === 1 ? replies[0] : undefined
       const memories = (context.memory?.entries ?? []).map(entry => ({ id: entry.id, hash: digest(entry) }))
       const materials = (context.materialRefs ?? []).map(ref => ({ id: ref.id, hash: digest(ref) }))
+      const oldMaterials = previous?.materialRefs ? await Promise.all(previous.materialRefs.map(async ref => {
+        const material = await tx.get<ConversationMaterial>('materials', ref.id)
+        return !!material && material.status === 'ready' && material.contentHash === ref.contentHash && isMaterialReadRevisionValid(material, ref.revision) && isConversationMaterialVisible(material, context.conversation, context.agent.id)
+      })) : undefined
       const valid = previous?.sourceVersion === 2 && !previous.resumeInvalidated && previous.state === 'completed' && !!previous.threadId && (this.runtime === 'codex' ? !!previous.turnId : !!previous.completedInvocationId && previous.completedInvocationId === previous.runId) && previous.fingerprint === fingerprint
         && previous.agentId === context.agent.id && previous.conversationId === context.conversation.id
-        && (previous.memories ?? []).every(source => memories.some(memory => memory.id === source.id && memory.hash === source.hash))
-        && (previous.materials ?? []).every(source => materials.some(material => material.id === source.id && material.hash === source.hash))
-        && previous.sources.every(source => sources.some(current => current.id === source.id && current.hash === source.hash))
+        && (!!context.nativeSourceIds || (previous.memories ?? []).every(source => memories.some(memory => memory.id === source.id && memory.hash === source.hash)))
+        && (oldMaterials ? oldMaterials.every(Boolean) : (previous.materials ?? []).every(source => materials.some(material => material.id === source.id && material.hash === source.hash)))
+        && (oldRaw ? oldRaw.every(Boolean) : previous.sources.every(source => sources.some(current => current.id === source.id && current.hash === source.hash)))
         && !!previousReply
       // The previous reply is already the assistant output in the native thread.
       // Record its product identity without injecting its text as new user input.
       const knownIds = valid ? new Set([...previous.sources.map(source => source.id), previousReply.id]) : new Set<string>()
+      if (valid && context.nativeSourceIds) {
+        const actions = await tx.list<import('../../shared/domain/execution').NativeAction>('nativeActions')
+        for (const action of actions) if (action.runId === previous.runId && action.status === 'answered' && action.responseMessageId) knownIds.add(action.responseMessageId)
+        for (const message of messages) if (message.runId === previous.runId && message.senderId === context.agent.id) knownIds.add(message.id)
+      }
       const added = messages.filter(message => !knownIds.has(message.id))
-      const session: Session = { id, conversationId: context.conversation.id, agentId: context.agent.id, sourceVersion: 2, fingerprint, runId: context.runId, state: 'pending', memories, materials, sources, inputMessageIds: added.map(message => message.id) }
+      const merge = <T extends { id: string }>(old: T[] | undefined, fresh: T[]) => [...new Map([...(valid ? old ?? [] : []), ...fresh].map(value => [value.id, value])).values()]
+      const session: Session = { id, conversationId: context.conversation.id, agentId: context.agent.id, sourceVersion: 2, fingerprint, runId: context.runId, state: 'pending', memories, materials: merge(previous?.materials, materials), sources: merge(previous?.sources, sources), rawSources: rawSources ? merge(previous?.rawSources, rawSources) : undefined, materialRefs: merge(previous?.materialRefs, context.materialRefs ?? []), inputMessageIds: added.map(message => message.id) }
       await tx.put({ collection, id, value: session })
       return { session, threadId: valid ? previous.threadId : undefined,
         messages: added,

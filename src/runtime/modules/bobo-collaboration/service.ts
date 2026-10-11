@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 原 Work 持有者、真实用户消息、冻结员工方案、既有 TeamFiles 与 SQLite 发布钩子。
@@ -127,7 +128,7 @@ export class BoboCollaborationService {
       }
       const creationSource: BoboCollaborationSource = { kind: 'bobo-collaboration', operationId: id, requestId: organization.requestId }
       const agents: DigitalAgent[] = plan.newEmployees.map((member, index) => {
-        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: model.executionBackend, connectionId: model.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: model.executionBackend.kind === 'mastra-model', allowCommands: false, active: true })
+        const agentId = randomUUID(), definition = agentSchema.parse({ ...member, color: member.color ?? teamColors[index % teamColors.length], avatar: { kind: 'preset', id: avatarPresets[index % avatarPresets.length].id }, executionBackend: model.executionBackend, nativeOptions: model.nativeOptions, connectionId: model.connectionId, modelId: model.modelId, skillIds: [], knowledgeIds: [], allowBrowser: model.executionBackend.kind === 'mastra-model', allowCommands: false, active: true })
         return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource }
       })
       const groupConversationId = organization.mode === 'employee_creation' ? undefined : randomUUID()

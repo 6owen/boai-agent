@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-11 持久执行证据、内容按需读取及Rovai执行窗口/变化游标，完整数据与UI缓存窗口分开。
+ * [OUTPUT]: 执行历史/事件固定SQL分页，完整原文分段读取，列表不加载大正文；不丢弃持久原生结果。
  * [OUTPUT]: 2026-10-10 员工执行SQL在LIMIT前核当前成员/原来源/清理及可见范围，稳定分页只投影冻结配置；固定Trace按run/员工/会话有界读取，零业务写入。
  * [OUTPUT]: 工作/文件有界页与五组同条件计数同次SQL，变更代际同事务推进；范围变动使旧游标失效。
  * [INPUT]: 本地 SQLite 连接、当前聊天成员/附件接收范围与产品记录。
@@ -8,6 +10,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createClient, type Client } from '@libsql/client'
+import { executionWindowPage } from '../../modules/conversations/execution-window'
 import { mkdir, stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -116,6 +119,44 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
       return result.rows[0] ? JSON.parse(String(result.rows[0].value)) as T : undefined
+    })
+  }
+  queryExecutionHistory(query: import('../../../shared/domain/execution').ExecutionHistoryQuery) {
+    return this.enqueue(async () => {
+      const args: (string | number)[] = [query.conversationId]
+      const filters = ["r.collection='runs'", "json_extract(r.value,'$.conversationId')=?", "COALESCE(json_extract(r.value,'$.phase'),'execution')='execution'", "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
+      if (query.agentId) { filters.push("json_extract(r.value,'$.agentId')=?"); args.push(query.agentId) }
+      if (query.before) { filters.push("(json_extract(r.value,'$.createdAt')<? OR (json_extract(r.value,'$.createdAt')=? AND r.id<?))"); args.push(query.before.createdAt, query.before.createdAt, query.before.id) }
+      const result = await this.client.execute({ sql: `SELECT json_remove(r.value,'$.toolEvents','$.draft','$.progress') AS value, substr(json_extract(m.value,'$.content'),1,1000) AS trigger FROM records r JOIN records m ON m.collection='messages' AND m.id=json_extract(r.value,'$.triggerMessageId') WHERE ${filters.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT 21`, args })
+      return result.rows.map(row => ({ run: JSON.parse(String(row.value)) as AgentRun, trigger: String(row.trigger ?? '') }))
+    })
+  }
+  queryExecutionEvidence(runId: string, after = 0) {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({ sql: `SELECT CASE WHEN length(value)>24000 THEN json_set(json_remove(value,'$.canonical.diffProjection'),'$.payload',json_object('deferred',json('true')),'$.deferred',json('true')) ELSE value END AS value FROM records WHERE collection='executionEvidence' AND json_extract(value,'$.runId')=? AND json_extract(value,'$.sequence')>? ORDER BY json_extract(value,'$.sequence') LIMIT 101`, args: [runId, after] })
+      return result.rows.map(row => JSON.parse(String(row.value)) as import('../../../shared/domain/execution').ExecutionEvidence)
+    })
+  }
+  queryExecutionWindow(query: import('../../../shared/domain/execution').ExecutionWindowQuery) {
+    return this.enqueue(async () => {
+      const projection = "CASE WHEN length(value)>24000 THEN json_set(json_remove(value,'$.canonical.diffProjection'),'$.payload',json_object('deferred',json('true')),'$.deferred',json('true')) ELSE value END AS value"
+      const field = query.afterChangeSequence !== undefined ? 'revision' : 'sequence'
+      const forward = query.afterChangeSequence !== undefined || query.afterSequence !== undefined
+      const cursor = query.afterChangeSequence ?? query.afterSequence ?? query.beforeSequence
+      const sql = `SELECT ${projection} FROM records WHERE collection='executionEvidence' AND json_extract(value,'$.runId')=?${cursor == null ? '' : ` AND json_extract(value,'$.${field}')${forward ? '>' : '<'}?`} ORDER BY json_extract(value,'$.${field}') ${forward ? 'ASC' : 'DESC'} LIMIT ?`
+      const result = await this.client.execute({ sql, args: [query.runId, ...(cursor == null ? [] : [cursor]), query.limit + 1] })
+      const counter = await this.client.execute({ sql: "SELECT value FROM records WHERE collection='executionClocks' AND id=?", args: [query.runId] })
+      const active = query.afterChangeSequence !== undefined ? [] : (await this.client.execute({ sql: `SELECT ${projection} FROM records WHERE collection='executionEvidence' AND json_extract(value,'$.runId')=? AND json_extract(value,'$.canonical.phase')='started' ORDER BY json_extract(value,'$.sequence')`, args: [query.runId] })).rows
+      const parse = (rows: typeof result.rows) => rows.map(row => JSON.parse(String(row.value)) as import('../../../shared/domain/execution').ExecutionEvidence)
+      return executionWindowPage(query, parse(result.rows), counter.rows[0] ? JSON.parse(String(counter.rows[0].value)) : { sequence: 0, revision: 0 }, parse(active))
+    })
+  }
+  queryExecutionContent(runId: string, evidenceId: string, offset: number) {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({ sql: "SELECT substr(value,?,24000) AS content,length(value) AS contentLength,json_extract(value,'$.revision') AS revision FROM records WHERE collection='executionEvidence' AND id=? AND json_extract(value,'$.runId')=?", args: [offset + 1, evidenceId, runId] })
+      const row = result.rows[0]
+      if (!row) throw new Error('执行内容已清理')
+      return { content: String(row.content), length: Number(row.contentLength), revision: Number(row.revision), next: offset + 24000 < Number(row.contentLength) ? offset + 24000 : undefined }
     })
   }
   queryEmployeeExecutions(query: EmployeeExecutionQuery): Promise<EmployeeExecutionSummary[]>

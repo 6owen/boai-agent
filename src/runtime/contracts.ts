@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 原生会话/执行证据/交互/普通公开消息为独立可选合同，不要求原生引擎实现私有五阶段。
  * [OUTPUT]: 2026-10-10 执行进度独立观察回调仅接公开摘要与实际阶段，不授业务权或改变发布。
  * [OUTPUT]: 2026-10-10 原生实际模型/线程/turn引用有独立元数据回调，不授予业务执行或重放权限。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -75,7 +76,7 @@ export interface EngineContext {
   /** Host snapshot for routing only; the repository rechecks every reservation transaction. */
   workBudget?: WorkBudget
   /** Exact logical files of delivered, currently authorized dependency results; reads still recheck sources. */
-  dependencyArtifacts?: { artifactId: string; name: string; logicalPath: string; contentHash: string; workId: string; resultVersion: number }[]
+  dependencyArtifacts?: { artifactId: string; name: string; logicalPath: string; nativePath?: string; contentHash: string; workId: string; resultVersion: number }[]
   /** Host-verified committed organization receipts; model outcome references are not proof. */
   committedCollaborationIds?: string[]
   /** Waiting declared by this execution, retained when its private report is revised. */
@@ -105,7 +106,16 @@ export interface EngineContext {
   onArtifactPreparing?(artifact: Artifact): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
-  onNativeExecution?(receipt: { modelId?: string; sessionId?: string; turnId?: string }): Promise<void>
+  onNativeExecution?(receipt: { modelId?: string; sessionId?: string; turnId?: string; inputAccepted?: boolean; contextUsedTokens?: number; contextWindowTokens?: number; totalCostUsd?: number }): Promise<void>
+  onExecutionEvent?(event: import('../shared/domain/execution').ExecutionEvent): Promise<void>
+  requestNativeAction?(action: import('../shared/domain/execution').NativeActionInput, signal?: AbortSignal): Promise<import('../shared/domain/execution').NativeActionResponse>
+  /** Lazily creates product Work only for explicit collaboration/publication tools. */
+  ensureNativeWork?(intent?: import('../shared/domain').ParticipationDecision['work'], replacesArtifactId?: string): Promise<void>
+  /** Public messages use actual employee identity; tool-call identity is idempotent. */
+  publishNativeMessage?(content: string, callId: string): Promise<{ messageId: string; content: string }>
+  nativeArtifacts?: { id: string; name: string; version: number; sourcePath: string }[]
+  /** Current authorized source identities, including history outside the prompt window. */
+  nativeSourceIds?: string[]
   onProgress?(event: Pick<import('../shared/domain').ExecutionProgressEvent, 'id' | 'kind' | 'text'>): Promise<void>
   onTrace?(span: TraceSpan): Promise<void>
   onTraceError?(error: string): Promise<void>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 离线 Carbon/Solar 图标集合与图标尺寸。
  * [OUTPUT]: Solar 方框铅笔的空白会话入口图标；活动分享和图片下载图标； 消息回应点赞与复制图标；技能闪电、商店、目录与统计图标；新增执行过程 Carbon flow 图标；默认16px、允许父控件管理尺寸的 Carbon 图标、连接凭据/模型/列表切换/密钥显隐、通讯录、置顶、头像编辑/上传图标及 shadcn DOM/ref 适配。
  * [POS]: Renderer 图标真源；类名保持静态供构建提取。
@@ -8,6 +9,7 @@ import type { CSSProperties, ComponentProps } from 'react'
 
 // Keep full class names literal so Tailwind includes every mask in the offline bundle.
 const classes = {
+  Grid2X2: 'i-carbon-grid',
   ThumbsUp: 'i-carbon-thumbs-up',
   Copy: 'i-carbon-copy',
   Zap: 'i-carbon-flash',

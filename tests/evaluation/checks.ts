@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 原生完整执行和只读后工作区hash纳入评分输入及样本身份；旧无此字段样本hash保持。
  * [INPUT]: 保存的完整样本、评分侧答案、可选独立评审。
  * [OUTPUT]: 原确定性/语义评分及共享的合法评审引用ID；判分语义与旧样本hash不变，供judge明确引用合同。
  * [POS]: tests/evaluation/checks.ts。
@@ -9,7 +10,7 @@ import { relative } from 'node:path'
 import type { CheckResult, CheckSpec, EvaluationCase, EvaluationRecord, EvaluationScore, ExternalReview } from './schema'
 import { SCORER_VERSION } from './schema'
 import { checkMaterialDelivery } from './material-delivery'
-export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events, ...(record.delivery ? { delivery: record.delivery, deliveryContract: { contract: record.scenario?.delivery, prompt: record.scenario?.prompt, checks: record.scenario?.checks, semantic: record.scenario?.semantic } } : {}) })).digest('hex')
+export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events, ...(record.nativeEvidence ? { nativeEvidence: record.nativeEvidence } : {}), ...(record.delivery ? { delivery: record.delivery, deliveryContract: { contract: record.scenario?.delivery, prompt: record.scenario?.prompt, checks: record.scenario?.checks, semantic: record.scenario?.semantic } } : {}) })).digest('hex')
 export const reviewEvidenceIds = (record: EvaluationRecord) => new Set([...(record.detail?.messages.map(message => message.id) ?? []), ...record.artifacts.flatMap(artifact => [artifact.id, artifact.path].filter((id): id is string => !!id)), ...(record.detail?.runs.map(run => run.id) ?? []), ...(record.delivery?.materials.map(value => value.material.id) ?? []), ...(record.delivery?.beforeRestart?.revisionRequests.map(value => value.id) ?? []), ...(record.delivery?.beforeRestart?.previews.flatMap(value => value.adoption.events.map(event => event.id)) ?? [])])
 const result = (name: string, passed: boolean | undefined, reason: string, evidence: string[] = []): CheckResult => ({ name, status: passed === undefined ? 'incomplete' : passed ? 'passed' : 'failed', reason, evidence })
 function measured(record: EvaluationRecord) {

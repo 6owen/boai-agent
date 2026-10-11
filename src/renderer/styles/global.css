@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 加载shadcn Typeset及BOAI紧凑正文预设。
  * [INPUT]: Tailwind、视觉 token、桌面布局、Markdown/Shiki 排版、群聊与页面样式。
  * [OUTPUT]: 加载个人资料和本人头像布局；加载 Prompt Bar 真实成员/命令浮层；技能图标浮层与列表详情样式入口；唯一全局样式入口，加载独立 Shiki 明暗高亮；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类，统一禁用 ring/outline，保留表面阴影，输入/选择焦点和校验边缘由 skin.css 统一。
  * [POS]: 由 renderer/main.tsx 加载。
@@ -12,6 +13,7 @@
 @import './pages.css' layer(components);
 @import './skills.css' layer(components);
 @import './shiki.css' layer(components);
+@import './shadcn-typeset.css';
 @import '../components/ui/skin.css' layer(components);
 @import './group-chat.css' layer(components);
 @import './prompt-bar.css' layer(components);

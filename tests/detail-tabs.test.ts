@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [INPUT]: 详情标签/成果未决请求的纯状态转换与真实员工/连接配置。
  * [OUTPUT]: 固定修订回执必须匹配本人原请求与指定员工； 真实核心默认连接/显式连接保留与跨页迟到回执隔离；成果家族/明确版本/hash与主页面隔离、冻结请求的未知只读核对/重启统一 unknown（旧 null 不授权重发）/原身份重试；自动化新建草稿/按计划编辑去重、重命名与独立关闭；Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
  * [POS]: 多标签状态的模块回归。
@@ -55,13 +56,13 @@ it('reorders stable tab sessions without changing active selection and closes by
   expect(reduce(state, { type: 'close', key: 'activity:c' }).activeKey).toBe('activity:a')
 })
 
-it('reanchors an existing trace tab on icon open while preserving other employee and turn tabs', () => {
+it('reanchors the single conversation execution tab across employees and turns', () => {
   const target: DetailTarget = { type: 'trace', id: 'conversation', agentId: 'researcher', turnId: 'turn-1', messageId: 'reply-1', requestId: 'open-1' }
   const first = reduce(emptyDetailTabs, { type: 'open', target })
   const second = reduce(first, { type: 'open', target: { ...target, agentId: 'writer' } })
   const third = reduce(second, { type: 'open', target: { ...target, turnId: 'turn-2' } })
   const reopened = reduce(third, { type: 'open', target: { ...target, messageId: 'reply-2', requestId: 'open-2' } })
-  expect(reopened.tabs).toHaveLength(3)
+  expect(reopened.tabs).toHaveLength(1)
   expect(reopened.activeKey).toBe(first.activeKey)
   expect(reopened.tabs[0].target).toMatchObject({ messageId: 'reply-2', requestId: 'open-2' })
   expect(reopened.tabs.slice(1)).toEqual(third.tabs.slice(1))

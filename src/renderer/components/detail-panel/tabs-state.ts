@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: sidebar 页面作用域、打开/激活/排序/关闭与显隐动作，带稳定身份的详情目标。
  * [OUTPUT]: 聊天原问题不创建独立事项详情标签，明确 workId/requestId 重开更新工作定位；成果按聊天/逻辑家族复用标签，仅明确打开版本更新所审身份/hash；材料按会话/稳定材料身份复用独立标签，重开更新版本与来源行定位；员工配置请求复用同一标签并更新内部导航请求，不重建编辑器；定时任务创建模式复用同一新建标签；每个 sidebar 页面独立的标签/选中/显隐状态与命名空间；技能更新使用唯一常驻详情标签；商店标签按提供商和条目身份去重；执行过程标签按会话/轮次/员工去重，图标重开重新定位；移动保留选中项，关闭选中项后选择相邻标签。
  * [POS]: detail-panel 的纯状态转换，不依赖页面路由或持久化。
@@ -15,7 +16,7 @@ export function detailTargetKey(target: DetailTarget): string {
   if (target.type === 'skill-updates') return 'skill-updates'
   if (target.type === 'automation-editor') return `automation-editor:${target.id ?? 'new'}`
   if (target.type === 'marketplace') return `marketplace:${target.provider}:${target.id}`
-  if (target.type === 'trace') return `trace:${target.id}:${target.turnId ?? target.messageId ?? 'latest'}:${target.agentId ?? 'all'}`
+  if (target.type === 'trace') return `trace:${target.id}`
   if (target.type === 'material') return `material:${target.conversationId}:${target.id}`
   if (target.type === 'artifact') return `artifact:${target.conversationId}:${target.logicalArtifactId}`
   return target.type === 'schedule' ? 'schedule' : `${target.type}:${target.id}${target.type === 'agent' ? `:${target.conversationId ?? ''}` : ''}`

@@ -1,7 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: 显式删除仅移除产品内启动配置，外部程序、登录目录与既有业务记录保持。
  * [INPUT]: 启动项输入、可执行文件身份与产品存储。
- * [OUTPUT]: Codex/Claude专用协议参与严格输入与草稿身份；Claude不接受个人登录或额外参数，专用大小上限不影响旧ACP。
+ * [OUTPUT]: Codex/Claude专用协议参与严格输入与草稿身份；Claude沿用本机登录或显式API，不接受额外传输参数，专用大小上限不影响旧ACP。
  * [OUTPUT]: 当前单个已保存程序/hash和指定登录目录的只读核对；文件变化/不可用不借用旧握手证明当前能力，也不重跑或持久修改原验证。
  * [OUTPUT]: 短命令解析为固定绝对路径并自动识别 Node；版本化 ACP 启动项、只读草稿校验、精确配置/文件身份匹配的有界草稿验证回执，以及登录目录与会话测试记录。
  * [POS]: runtime/modules/backends 的启动配置仓储。
@@ -17,7 +18,7 @@ import { ProductStore } from '../../adapters/storage/product-store'
 import { inspectProgram, resolveProgram } from './program'
 import { CLAUDE_PROGRAM_LIMIT } from '../../adapters/claude/policy'
 const MAX_DRAFT_VERIFICATIONS = 32
-export const profileSchema=z.object({id:z.string().max(200).optional(),expectedRevision:z.number().int().positive().optional(),name:z.string().trim().min(1).max(100),executable:z.string().max(8000),args:z.array(z.string().max(8000)).max(32),protocol:z.enum(['acp','codex-app-server','claude-cli']).optional(),runtime:z.literal('node').optional(),codexHome:z.string().min(1).max(8000).optional(),localConfigId:z.string().regex(/^[a-f0-9]{64}$/).optional(),useExistingLogin:z.boolean(),hostAccessAcknowledged:z.literal(true)}).strict().refine(value=>value.protocol!=='codex-app-server'||value.args.length===0,{message:'Codex 使用受管 app-server 参数，不接受额外启动参数'}).refine(value=>!value.codexHome||value.useExistingLogin,{message:'指定 Codex 登录目录时必须启用现有登录'}).refine(value=>value.protocol!=='claude-cli'||(!value.args.length&&!value.useExistingLogin&&!value.codexHome&&!value.localConfigId),{message:'Claude使用受管参数和明确API来源，不接受个人登录、Codex配置或额外参数'})
+export const profileSchema=z.object({id:z.string().max(200).optional(),expectedRevision:z.number().int().positive().optional(),name:z.string().trim().min(1).max(100),executable:z.string().max(8000),args:z.array(z.string().max(8000)).max(32),protocol:z.enum(['acp','codex-app-server','claude-cli']).optional(),runtime:z.literal('node').optional(),codexHome:z.string().min(1).max(8000).optional(),localConfigId:z.string().regex(/^[a-f0-9]{64}$/).optional(),useExistingLogin:z.boolean(),hostAccessAcknowledged:z.literal(true)}).strict().refine(value=>value.protocol!=='codex-app-server'||value.args.length===0,{message:'Codex 使用受管 app-server 参数，不接受额外启动参数'}).refine(value=>!value.codexHome||value.useExistingLogin,{message:'指定 Codex 登录目录时必须启用现有登录'}).refine(value=>value.protocol!=='claude-cli'||(!value.args.length&&!value.codexHome&&!value.localConfigId),{message:'Claude使用原生登录或明确API来源，不接受Codex配置或额外参数'})
 export async function executableIdentity(path:string){return inspectProgram(path)}
 export class LaunchProfiles {
  private items=new Map<string,LaunchProfile>()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 恢复共用本机执行能力入口，Codex支持显式目录/手动模型，Claude仅列宿主认可的API来源；员工绑定仍按实际协议。
  * [INPUT]: 共用运行配置选择合同、实际API连接/本机启动项及受控草稿。
  * [OUTPUT]: 创建/配置/聊天共用模型API/本机入口，沿原协议/来源字段，已保存绑定不自动换绑。
@@ -11,6 +12,8 @@ import type { DesktopApi } from '@shared/ipc'
 import { Field } from '@/components/common'
 import { ModelPicker } from '@/components/common/model-picker'
 import { SelectField } from '@/components/ui/select-field'
+import { Input } from '@/components/ui/input'
+import type { NativeRuntimeOptions } from '@shared/domain/execution'
 import { agentModelConnections, agentRunMode, agentRunModes, changeAgentRunMode, localAgentSetupEnabled, modelConnectionOptions, selectAgentProfile, type AgentModelSelection } from './agent-model-selection'
 
 export { agentModelLabel, agentModelSelectionReady, type AgentModelSelection } from './agent-model-selection'
@@ -27,7 +30,9 @@ export function AgentModelFields({ api, value, connections, profiles, onChange, 
   const taskOnly = profile && (profile.protocol ?? 'acp') === 'acp'
   const localUnavailable = mode === 'local' && !localAgentSetupEnabled
   const modeOptions = localUnavailable ? [...agentRunModes, { value: 'local', label: '本机 Agent（暂不开放）', disabled: true }] : agentRunModes
-  const needsApi = mode === 'api' || localAgentSetupEnabled && backend?.kind === 'claude-local'
+  const needsApi = mode === 'api' || localAgentSetupEnabled && backend?.kind === 'claude-local' && !profile?.useExistingLogin
+  const native = mode === 'local' && (backend?.kind === 'codex-local' || backend?.kind === 'claude-local')
+  const option = <K extends keyof NativeRuntimeOptions>(key: K, selected: string) => onChange({ ...value, nativeOptions: { ...value.nativeOptions, [key]: selected || undefined } })
   return <>
     <Field label="运行方式" full={full} hint={localUnavailable ? '已保存的本机配置保留，可选择模型 API。' : undefined}><SelectField disabled={disabled} value={mode} onValueChange={selected => { if (selected === 'local' && !localAgentSetupEnabled) return; onChange(changeAgentRunMode(value, selected === 'local' ? 'local' : 'api')) }} options={modeOptions} /></Field>
     {localAgentSetupEnabled && mode === 'local' && <Field label="本机 Agent" full={full} hint={profileError || (!profiles.length ? '还没有本机连接，请先在设置 → 模型连接中扫描或手动添加。' : taskOnly ? '此连接仅支持显式任务，不支持普通聊天、群协作或资源绑定。' : '选择已添加并测试的本机连接；程序名称与运行协议由该配置决定。')}>
@@ -38,6 +43,13 @@ export function AgentModelFields({ api, value, connections, profiles, onChange, 
       ]} />
     </Field>}
     {localAgentSetupEnabled && mode === 'local' && backend?.kind === 'codex-local' && <ModelPicker key={`${profile?.id}:${profile?.revision}`} api={api} draft={{ defaultModel: value.modelId, baseUrl: '' }} catalogSource={`codex:${profile?.id}:${profile?.revision}:${profile?.verified?.checkedAt}`} fetchModels={() => api.request('listLaunchProfileModels', { id: profileId })} disabled={disabled || !profile?.verified} full={full} defaultOption="使用 Codex 默认模型" placeholder="留空使用 Codex 当前默认模型" onChange={modelId => onChange({ ...value, modelId })} />}
+    {native && backend?.kind === 'claude-local' && profile?.useExistingLogin && <Field label="模型" full={full}><Input value={value.modelId} disabled={disabled} placeholder="留空使用 Claude 默认模型，也可填写 sonnet、opus 或模型 ID" onChange={event => onChange({ ...value, modelId: event.target.value })} /></Field>}
+    {native && <Field label="思考强度" full={full}><Input value={value.nativeOptions?.effort ?? ''} disabled={disabled} placeholder="遵循本机 Agent 默认值" onChange={event => option('effort', event.target.value)} /></Field>}
+    {native && backend?.kind === 'codex-local' && <>
+      <Field label="操作批准" full={full}><SelectField disabled={disabled} value={value.nativeOptions?.codexApprovalPolicy ?? ''} onValueChange={value => option('codexApprovalPolicy', value)} options={[{ value: '', label: '遵循 Codex 配置' }, { value: 'untrusted', label: '非可信操作请求批准' }, { value: 'on-request', label: 'Agent 按需请求批准' }, { value: 'never', label: '不申请额外权限' }]} /></Field>
+      <Field label="运行权限" full={full}><SelectField disabled={disabled} value={value.nativeOptions?.codexSandbox ?? ''} onValueChange={value => option('codexSandbox', value)} options={[{ value: '', label: '遵循 Codex 配置' }, { value: 'read-only', label: '只读' }, { value: 'workspace-write', label: '允许工作区写入' }, { value: 'danger-full-access', label: '完全访问本机' }]} /></Field>
+    </>}
+    {native && backend?.kind === 'claude-local' && <Field label="运行权限" full={full}><SelectField disabled={disabled} value={value.nativeOptions?.claudePermissionMode ?? ''} onValueChange={value => option('claudePermissionMode', value)} options={[{ value: '', label: '默认权限' }, { value: 'default', label: '请求批准' }, { value: 'acceptEdits', label: '自动允许编辑文件' }, { value: 'plan', label: '计划模式' }, { value: 'dontAsk', label: '不申请额外权限' }, { value: 'bypassPermissions', label: '完全访问本机' }]} /></Field>}
     {needsApi && <>
       <Field label={mode === 'api' ? '模型连接' : 'Agent 的模型 API'} full={full} hint={mode === 'local' ? '此 Agent 需要额外指定模型来源；当前支持 Anthropic 接口与 DeepSeek 官方连接。' : !connections.length ? '还没有模型连接，请先在设置中添加。' : undefined}>
         <SelectField required disabled={disabled || !availableConnections.length} value={connection ? value.connectionId : ''} placeholder={value.connectionId && !connection ? '原模型连接不适用于此引擎' : '请选择模型连接'} onValueChange={connectionId => onChange({ ...value, connectionId, modelId: '' })} options={modelConnectionOptions(availableConnections)} />

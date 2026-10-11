@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 代码文本、语言标识与 Shiki 的本地语言/主题模块。
- * [OUTPUT]: 单例 JavaScript 引擎、聊天围栏与文件预览常用语言按需加载、明暗双色 tokens；未知语言/超长代码保留纯文本。
+ * [OUTPUT]: 单例JS引擎及按需语言/双色tokens，默认文字色允许通过CSS变量继承次级色而保留语法高亮；未知/超长代码保留原文。
  * [POS]: UI CodeBlock 的延迟加载高亮实现，不读取业务状态、不请求 CDN。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -79,5 +79,14 @@ export async function highlightCode(code: string, language: string) {
     languageLoads.set(grammar.id, loading)
   }
   await loading
-  return instance.codeToTokensWithThemes(code, { lang: grammar.id, themes: { light: 'github-light', dark: 'github-dark' } })
+  const themes = { light: 'github-light', dark: 'github-dark' }
+  const tokens = instance.codeToTokensWithThemes(code, { lang: grammar.id, themes })
+  for (const [mode, theme] of Object.entries(themes)) {
+    const foreground = instance.getTheme(theme).fg.toLowerCase()
+    for (const line of tokens) for (const token of line) {
+      const variant = token.variants[mode]
+      if (variant?.color?.toLowerCase() === foreground) variant.color = `var(--shiki-foreground, ${variant.color})`
+    }
+  }
+  return tokens
 }

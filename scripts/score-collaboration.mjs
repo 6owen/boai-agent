@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 新增native桌面证据导入，保留hash/原生完整步骤和失败；评分仍走原独立judge，无隐式模型调用。
  * [INPUT]: 保存的评估样本目录和可选评审/比较/校准文件，或数据集清单请求。
  * [OUTPUT]: 无网络调用的服务重评分/显式桌面证据导入、严格基线配对及报告；未知与人工待评不通过。
  * [POS]: scripts/score-collaboration.mjs。
@@ -10,20 +11,22 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 const args = process.argv.slice(2), option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1] }
 if (args.includes('--help')) {
-  process.stdout.write('pnpm eval:score --input DIR --output NEW_DIR [--source service|desktop] [--baseline DIR] [--reviews FILE] [--calibration FILE] [--strict]\npnpm eval:dataset\nNo model calls. Desktop reads a retained run directory and keeps semantic review pending. Reviews/calibration currently apply only to service records. --strict exits 1 for failed, 2 for incomplete/review-needed/incomparable baseline; default only generates a report.\n'); process.exit(0)
+  process.stdout.write('pnpm eval:score --input DIR --output NEW_DIR [--source service|desktop|native] [--baseline DIR] [--reviews FILE] [--calibration FILE] [--strict]\npnpm eval:dataset\nNo model calls. Desktop reads a retained run directory and keeps semantic review pending. Reviews/calibration currently apply only to service records. --strict exits 1 for failed, 2 for incomplete/review-needed/incomparable baseline; default only generates a report.\n'); process.exit(0)
 }
 const list = args.includes('--list'), input = option('--input'), output = option('--output')
 const source = option('--source') ?? 'service'
-if (!['service', 'desktop'].includes(source)) throw new Error('--source must be service or desktop')
-if (source === 'desktop' && (list || args.includes('--reviews') || args.includes('--calibration'))) throw new Error('桌面首版只核对原证据，不能使用服务评审标签或数据集清单冒充内容评审')
+if (!['service', 'desktop', 'native'].includes(source)) throw new Error('--source must be service, desktop or native')
+if (source !== 'service' && (list || args.includes('--reviews') || args.includes('--calibration'))) throw new Error('桌面首版只核对原证据，不能使用服务评审标签或数据集清单冒充内容评审')
 if (!list && (!input || !output)) throw new Error('--input and a new --output directory are required')
 const cache = resolve('.local/evaluation-tools'); await mkdir(cache, { recursive: true })
 const modulePath = join(cache, `offline-${process.pid}-${Date.now()}.mjs`)
 try {
-  await build({ stdin: { contents: 'export { rescore, rescoreDesktop } from "./tests/evaluation/rescore"; export { datasetManifest, validateFrozenHoldout } from "./tests/evaluation/matrix"', resolveDir: process.cwd() }, outfile: modulePath, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22' })
+  await build({ stdin: { contents: 'export { importNativeEvidence } from "./tests/evaluation/native-evidence"; export { rescore, rescoreDesktop } from "./tests/evaluation/rescore"; export { datasetManifest, validateFrozenHoldout } from "./tests/evaluation/matrix"', resolveDir: process.cwd() }, outfile: modulePath, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22' })
   const api = await import(pathToFileURL(modulePath).href)
   if (list) { await api.validateFrozenHoldout(); process.stdout.write(JSON.stringify(api.datasetManifest(), null, 2) + '\n') }
-  else {
+  else if (source === 'native') {
+    const rows = await api.importNativeEvidence(resolve(input), resolve(output)); process.stdout.write(JSON.stringify({ output: resolve(output), samples: rows.length, records: rows.filter(row => row.caseId).length, quality: 'pending independent judge; no model calls' }) + '\n')
+  } else {
     const read = async name => option(name) ? JSON.parse(await readFile(resolve(option(name)), 'utf8')) : undefined
     const baseline = option('--baseline') && resolve(option('--baseline'))
     const summary = source === 'desktop' ? await api.rescoreDesktop(resolve(input), resolve(output), { baseline }) : await api.rescore(resolve(input), resolve(output), { baseline, reviews: await read('--reviews'), calibration: await read('--calibration') })

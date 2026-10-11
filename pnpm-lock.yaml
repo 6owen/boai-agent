@@ -1,4 +1,4 @@
-# [INPUT]: BOAI manifest/workspace与固定Lody依赖。
+# [INPUT]: BOAI manifest/workspace、固定Lody依赖与Rovai呈现依赖。
 # [OUTPUT]: pnpm生成的精确解析/完整性与补丁锁；禁止手改依赖结果。
 # [POS]: 仓库依赖锁文件，版本事实见迁入来源清单。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
@@ -144,6 +144,9 @@ importers:
       remark-gfm:
         specifier: 4.0.1
         version: 4.0.1
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0
       shiki:
         specifier: 4.4.3
         version: 4.4.3
@@ -153,6 +156,9 @@ importers:
       sonner:
         specifier: 2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
       yaml:
         specifier: 2.9.1
         version: 2.9.1

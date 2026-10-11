@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行详情布局绑定常驻历史viewport，卡片全收起后仍保持面板flex和外层滚动。
  * [OUTPUT]: 员工配置面板常驻时，仅可见标签参与编辑区固定页脚布局，隐藏面板不占用页面空间。
  * [OUTPUT]: 右侧详情的实际宽度不超过内容框扣分割线的可用空间；窄窗/原生缩放仍保留会话手动分栏偏好，收窄的主内容不越列覆盖预览，不裁切预览到窗口外。
  * [INPUT]: Shell、公共控件和业务页面结构、共享 ScrollFade 滚动容器、只读文件预览，以及统一视觉 token；消息阅读交互由 group-chat.css 统一覆盖。
@@ -698,7 +699,7 @@ fieldset {
 .detail-section {
   padding:22px 19px
 }
-.detail-content:has(.file-preview-detail):not([hidden]),.detail-session:has(.file-preview-detail) { display:flex;min-height:0;flex:1;flex-direction:column;overflow:hidden }
+.detail-content:has(.execution-history-body):not([hidden]),.detail-session:has(.execution-history-body),.detail-content:has(.file-preview-detail):not([hidden]),.detail-session:has(.file-preview-detail) { display:flex;min-height:0;flex:1;flex-direction:column;overflow:hidden }
 .file-preview-detail>header,.file-preview-detail>details { flex-shrink:0 }
 .detail-section h2 {
   font-size:20px;

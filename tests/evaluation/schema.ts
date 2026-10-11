@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 原生完整执行和只读后工作区hash纳入评分输入及样本身份；旧无此字段样本hash保持。
  * [INPUT]: 版本化业务题、固定素材、公开运行记录与外部评审。
  * [OUTPUT]: 员工输入和评分侧答案分离的数据合同、事件脚本及可重评分记录；可选独立版本 MD-v1 交付证据保留旧样本合同。
  * [POS]: tests/evaluation/schema.ts。
@@ -39,6 +40,7 @@ export interface EvaluationRecord {
   scenario?: EvaluationCase; datasetVersion?: string; error?: string; runtimeErrors: string[]
   metadata: { label: string; revision: string; sourceHashes: Record<string, string>; model: string; provider: string; members: { id: string; name: string; role: string; instructions?: string }[]; promptHash?: string; datasetHash?: string; modelSignature?: string; team?: 'single' | 'multi'; requestLimit?: number }
   detail?: ConversationDetail; artifacts: ArtifactEvidence[]; events?: EventEvidence[]
+  nativeEvidence?: { items: import('../../src/shared/domain/execution').ExecutionEvidence[]; completeRunIds: string[]; sourceFiles: { label: string; sha256: string; contentHashMatched: boolean }[] }
   delivery?: MaterialDeliveryEvidence
   phases?: { phase: string; agentId: string; runId: string; startAt: number; endAt?: number }[]
   emitted?: { id: string; at: number; content: string; status: string }[]

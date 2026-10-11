@@ -1,10 +1,10 @@
 /*
  * [INPUT]: 代码文本、语言标识、可选行号/来源定位与按需加载的 Shiki tokens。
- * [OUTPUT]: 可复用代码块；React 文本节点渲染、明暗主题切换、流式输入防抖与迟到结果隔离，可选逐行定位，未识别或加载失败时保留原文。
+ * [OUTPUT]: 可复用代码块；React文本渲染/双色高亮/流式防抖/迟到隔离，支持紧凑详情及原生pre焦点键盘属性；高亮失败保留原文。
  * [POS]: 全局代码展示组件；定制样式位于 renderer/styles/shiki.css。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { Fragment, memo, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, memo, useEffect, useState, type ComponentProps, type CSSProperties } from 'react'
 import type { ThemedTokenWithVariants } from 'shiki/types'
 import { cn } from 'cn'
 import { FILE_PREVIEW_LIMITS } from '@shared/domain/file-preview'
@@ -23,7 +23,7 @@ function tokenStyle(token: ThemedTokenWithVariants): CSSProperties {
   return styles as CSSProperties
 }
 
-export const CodeBlock = memo(function CodeBlock({ code, language = '', className, lineNumbers = false, selectedLine, onLineSelect }: { code: string; language?: string; className?: string; lineNumbers?: boolean; selectedLine?: number; onLineSelect?(line: number): void }) {
+export const CodeBlock = memo(function CodeBlock({ code, language = '', className, density = 'default', lineNumbers = false, selectedLine, onLineSelect, ...props }: Omit<ComponentProps<'pre'>, 'children'> & { code: string; language?: string; density?: 'default' | 'compact'; lineNumbers?: boolean; selectedLine?: number; onLineSelect?(line: number): void }) {
   const [highlighted, setHighlighted] = useState<{ code: string; language: string; tokens: ThemedTokenWithVariants[][] } | null>(null)
   useEffect(() => {
     if (!language || !code) return
@@ -39,7 +39,7 @@ export const CodeBlock = memo(function CodeBlock({ code, language = '', classNam
   const lines = lineNumbers ? code.split(/\r\n?|\n/) : []
   const numbered = lineNumbers && lines.length <= FILE_PREVIEW_LIMITS.lines
   const renderTokens = (line: ThemedTokenWithVariants[]) => line.map((token, index) => <span className="shiki-token" style={tokenStyle(token)} key={index}>{token.content}</span>)
-  return <pre className={cn('shiki-code-block', numbered && 'shiki-numbered', className)} data-language={language || undefined}><code>{numbered ? lines.map((text, index) => <span className="shiki-line" data-file-line={index + 1} data-selected={selectedLine === index + 1 || undefined} key={index}>
+  return <pre {...props} className={cn('shiki-code-block', numbered && 'shiki-numbered', className)} data-density={density} data-language={language || undefined}><code>{numbered ? lines.map((text, index) => <span className="shiki-line" data-file-line={index + 1} data-selected={selectedLine === index + 1 || undefined} key={index}>
     {onLineSelect ? <Button variant="ghost" size="content" className="shiki-line-number" aria-label={`定位第 ${index + 1} 行`} aria-pressed={selectedLine === index + 1} onClick={() => onLineSelect(index + 1)}>{index + 1}</Button> : <span className="shiki-line-number" aria-hidden="true">{index + 1}</span>}
     <span className="shiki-line-content">{tokens?.[index] ? renderTokens(tokens[index]) : text || '\u00a0'}</span>
   </span>) : tokens ? tokens.map((line, index) => <Fragment key={index}>{renderTokens(line)}{index < tokens.length - 1 ? '\n' : null}</Fragment>) : code}</code></pre>

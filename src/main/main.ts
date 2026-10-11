@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-11 原生执行IPC白名单与原宿主处理接线；参数/生命周期仍归运行服务。
  * [OUTPUT]: 2026-10-10 放行已验证本机模型目录、员工有界执行清单和固定运行详情IPC；不新增执行或路径读取授权。
  * [OUTPUT]: 扫描候选按真实程序身份预填，无外部执行；未接入程序不生成可运行配置。
  * [OUTPUT]: 按已保存ID删除本机启动配置通过既有typed白名单，不接外部程序或登录目录清理参数。
@@ -85,6 +86,7 @@ const browsers = new BrowserService({
   },
 })
 const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'prepareDetectedLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'deleteLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+for (const method of ['listExecutionHistory', 'listExecutionWindow', 'listExecutionEvidence', 'getExecutionContent', 'listNativeActions', 'respondNativeAction', 'stopNativeExecution'] as const) methods.add(method)
 for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
 for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
@@ -141,7 +143,7 @@ function startRuntime() {
     // Only carry platform essentials into the worker. Model credentials arrive through the vault.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USER|SHELL|LANG|LC_.*|TMPDIR|TEMP|TMP|SystemRoot|APPDATA|LOCALAPPDATA|USERPROFILE)$/i.test(key)))
     const child = utilityProcess.fork(join(__dirname, '../runtime/worker.mjs'), [dataPath], {
-      serviceName: 'BoAI Agent Runtime', stdio: 'pipe', env,
+      serviceName: 'BoAI Agent Runtime', stdio: 'pipe', env: { ...env, BOAI_NATIVE_PROCESS_GUARD: join(__dirname,'../native/boai-process-guard').replace('app.asar/','app.asar.unpacked/') },
     })
     runtime = child
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)

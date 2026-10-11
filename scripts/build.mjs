@@ -4,11 +4,13 @@
  * [POS]: 项目构建入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import buildProcessGuard from './build-process-guard.mjs'
 import { copyFile } from 'node:fs/promises'
 import { build } from 'esbuild'
 import { build as buildRenderer } from 'vite'
 
 export async function buildHost() {
+  await buildProcessGuard()
   await Promise.all([
     build({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
     build({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
