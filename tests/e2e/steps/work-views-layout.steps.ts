@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
  * [OUTPUT]: 各关键节点仅用无rect的原生capturePage整幅截取与窗口/zoom/PNG元数据；旧layout5几何通过但缩放PNG可能裁切的证据缺口独立保留。
  * [INPUT]: 中文布局矩阵、既有真实材料/成果协议fixture、原生Electron窗口及生产工作视图。
  * [OUTPUT]: 五份真实工具交付和一个真实等待Work的九组合关键帧；看板全列适配时核列/主动作完整，实际溢出才滚动；无详情按钮核实无可见详情，恢复失败不覆盖原阶段；即时原件/实际等待/原生尺寸/卡片矩形/键盘/局部滚动后回可读源码首行留证、实际标签关闭和零业务变更。
@@ -278,7 +279,7 @@ When('用户逐组合检查工作视图的三种原生宽度和三种实际缩�
       const rect = await preview.boundingBox(), viewport = await runtime.page.evaluate(() => ({ width: innerWidth, height: innerHeight }))
       expect(rect!.width).toBeGreaterThan(0); expect(rect!.height).toBeGreaterThan(0); expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(viewport.width + 1)
       await expect(preview.getByRole('button', { name: /^(采用此版本|要求修改|允许这次执行)$/ })).toHaveCount(0)
-      await keyboardActivate(runtime.page, preview.getByRole('tab', { name: '源码', exact: true }))
+      await keyboardActivate(runtime.page, preview.getByRole('button', { name: '显示源码', exact: true }))
       await expect(preview.locator('.shiki-token').first()).toBeAttached()
       const body = preview.locator('[data-slot="scroll-fade"]').first()
       await localScroll(runtime, body)

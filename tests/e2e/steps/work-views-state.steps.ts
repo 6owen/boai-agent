@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
  * [INPUT]: WV-T01/T05/T09中文场景、生产三视图/材料API及明确预置历史。
  * [OUTPUT]: 附件草稿/锚点/隐藏阅读与同名全类型文件证据；实际原件移走、历史撤权和清空后迟到预览均不能保留旧正文。
  * [OUTPUT]: 核心/普通会话按确切标题按钮定位；本机图片来源先核对真实路径，源码逐行核对原文/空行并排除行号。
@@ -160,7 +161,7 @@ When('用户逐一从文件清单预览并切换明暗主题与源码', async ({
       await expectSourceLines(pre, sample.text!)
     } else if (sample.kind === 'markdown') {
       await expect(panel.locator('[data-file-preview-kind]')).toHaveAttribute('data-file-preview-kind', 'markdown'); await expect(panel.locator('h1')).toHaveText(sample.text!.split('\n')[0].slice(2))
-      await panel.getByRole('tab', { name: '源码', exact: true }).click(); await expectSourceLines(panel.locator('pre.shiki-code-block'), sample.text!); await panel.getByRole('tab', { name: '预览', exact: true }).click()
+      await panel.getByRole('button', { name: '显示源码', exact: true }).click(); await expectSourceLines(panel.locator('pre.shiki-code-block'), sample.text!); await panel.getByRole('button', { name: '显示预览', exact: true }).click()
     } else if (sample.kind === 'image') { await expect(panel.locator('img')).toBeVisible(); await expect.poll(() => panel.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true) }
     else await expect(panel).toContainText('暂不支持正文预览')
     await expect(panel.locator('script,iframe,svg')).toHaveCount(0)

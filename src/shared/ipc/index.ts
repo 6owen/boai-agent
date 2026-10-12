@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: openPath增加可选reveal动作，沿原宿主路径校验定位文件，不改变默认外部打开。
  * [OUTPUT]: 2026-10-11 原生执行历史/完整内容/窗口/交互/停止typed IPC；读面板不启动工作。
  * [OUTPUT]: 2026-10-10 员工执行清单/固定运行详情与已验证本机模型目录的类型化合同，输入仅对象身份，输出不包含凭据。
  * [OUTPUT]: deleteLaunchProfile仅接已保存配置ID，删除产品配置并保留外部程序和业务历史。
@@ -220,7 +221,7 @@ export interface Methods {
   clearMemory: { input: MemoryQuery & { expectedEpoch: number; requestId?: string }; output: MemoryView }
   // These three methods are handled by the desktop host, not by model tools.
   choosePath: { input: { kind: 'skill' | 'knowledge' }; output: string | null }
-  openPath: { input: { path: string }; output: void }
+  openPath: { input: { path: string; action?: 'open' | 'reveal' }; output: void }
   exportBackup: { input: undefined; output: string | null }
   setUnsavedChanges: { input: { dirty: boolean; source?: 'business' | 'appearance' }; output: void }
 }

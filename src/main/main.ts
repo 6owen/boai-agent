@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件打开可选reveal动作，完成同一realpath/受管根校验后在文件夹定位；默认外开和扩展名规则保持。
  * [OUTPUT]: 2026-10-11 原生执行IPC白名单与原宿主处理接线；参数/生命周期仍归运行服务。
  * [OUTPUT]: 2026-10-10 放行已验证本机模型目录、员工有界执行清单和固定运行详情IPC；不新增执行或路径读取授权。
  * [OUTPUT]: 扫描候选按真实程序身份预填，无外部执行；未接入程序不生成可运行配置。
@@ -249,15 +250,15 @@ function inside(root: string, target: string) {
 }
 
 async function openResource(input: unknown) {
-  if (!input || typeof (input as { path?: unknown }).path !== 'string') throw new Error('无效文件路径。')
-  const target = await realpath((input as { path: string }).path)
+  const value = z.object({ path: z.string().min(1), action: z.enum(['open', 'reveal']).optional() }).strict().parse(input)
+  const target = await realpath(value.path)
   const snapshot = await requestRuntime('snapshot') as Snapshot
   const roots = await Promise.all([...snapshot.conversations.map((c) => c.workspacePath), ...snapshot.resources.map((r) => r.path), ...snapshot.agents.map(a => join(dataPath, 'agents', a.id, 'workspace')), ...snapshot.agents.map(a => join(dataPath,'external-workspaces',a.id))].map((p) => realpath(p).catch(() => '')))
   const info = await stat(target)
   const dataRoot = await realpath(dataPath)
   if (!(info.isDirectory() && target === dataRoot) && !roots.some((root) => root && inside(root, target))) throw new Error('只能打开当前工作区或已导入的资源。')
   const safeExtensions = new Set(['.md', '.txt', '.markdown', '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.json', '.xlsx', '.docx', '.pptx', '.svg', '.log'])
-  if (!info.isDirectory() && !safeExtensions.has(extname(target).toLowerCase())) {
+  if (value.action === 'reveal' || !info.isDirectory() && !safeExtensions.has(extname(target).toLowerCase())) {
     shell.showItemInFolder(target)
     return
   }

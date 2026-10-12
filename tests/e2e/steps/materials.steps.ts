@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 源码隐藏行号栏，来源定位核对实际选中正文行。
+ * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
  * [OUTPUT]: Lody原PDF/Office真实发送/核源/阅读，延迟预览后的文件切换、隐藏停读与清理隔离，零新增模型调用。
  * [OUTPUT]: 可选审阅模式保留Markdown排版/源码、TypeScript/HTML关键帧及已发送原件与身份，不改变业务断言。
  * [INPUT]: D1 中文材料场景、生产 Electron UI/IPC、隔离原件与共享协议 fixture。
@@ -57,7 +59,7 @@ async function idle(runtime: Desktop, conversationId: string) {
 async function inspectPreview(runtime: Desktop, material: ConversationMaterial, expectedLine: string) {
   const preview = runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)
   await expect(preview).toBeVisible()
-  const source = preview.getByRole('tab', { name: '源码', exact: true })
+  const source = preview.getByRole('button', { name: '显示源码', exact: true })
   if (await source.isVisible()) await source.click()
   await expect(preview.locator('[data-file-line="2"] .shiki-line-content')).toHaveText(expectedLine)
   await preview.getByText('材料来源与解析记录', { exact: true }).click()
@@ -104,10 +106,10 @@ Then('聊天文件在右侧预览Markdown和Shiki源码且不执行业务操作'
   await expect(markdown.locator('pre.shiki-code-block')).toContainText('CHAT_MARKDOWN_CODE')
   await expect(markdown.locator('script, iframe')).toHaveCount(0)
   await runtime.reviewCheckpoint('Markdown 排版预览')
-  await markdown.getByRole('tab', { name: '源码', exact: true }).click()
+  await markdown.getByRole('button', { name: '显示源码', exact: true }).click()
   await expect(markdown.locator('[data-file-line="1"] .shiki-line-content')).toHaveText('# 可预览的聊天文档')
   await runtime.reviewCheckpoint('Markdown 源码与行号')
-  await markdown.getByRole('tab', { name: '预览', exact: true }).click()
+  await markdown.getByRole('button', { name: '显示预览', exact: true }).click()
   await expect(markdown.getByRole('heading', { name: '可预览的聊天文档', exact: true })).toBeVisible()
 
   const code = await open('preview.ts')
@@ -188,8 +190,8 @@ Then('员工只收到获准原文且回复来源可以定位', async ({ runtime,
   const source = page.locator(`#message-${researcher.id}`).getByRole('button', { name: '查看材料 报告.md 第 2 至 2 行', exact: true })
   await expect(source).toHaveCount(2); await source.first().click()
   const selected = page.locator(`[data-material-preview-id="${first.id}"]:visible`)
-  await expect(selected.getByRole('button', { name: '定位第 2 行', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(selected).toContainText(`来源定位：${first.id}:L2`)
+  await expect(selected.locator('[data-file-line="2"]')).toHaveAttribute('data-selected', 'true')
+  await expect(selected.locator('[data-slot="file-preview-header"] [role="heading"]')).toHaveAttribute('title', new RegExp(`来源定位：${first.id}:L2`))
   expect(current.workItems).toEqual([])
 })
 Then('材料详情切页后恢复且重启不重复调用模型', async ({ runtime, materialsState }) => {

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 文本文件滚动轨道延伸至面板右缘，19px/窄窗26px正文留白移入滚动内容；标题位置保持。
+ * [OUTPUT]: 文件预览容器上下留白12px，横向留白及其他详情页保持。
  * [OUTPUT]: 执行详情布局绑定常驻历史viewport，卡片全收起后仍保持面板flex和外层滚动。
  * [OUTPUT]: 员工配置面板常驻时，仅可见标签参与编辑区固定页脚布局，隐藏面板不占用页面空间。
  * [OUTPUT]: 右侧详情的实际宽度不超过内容框扣分割线的可用空间；窄窗/原生缩放仍保留会话手动分栏偏好，收窄的主内容不越列覆盖预览，不裁切预览到窗口外。
@@ -699,6 +701,14 @@ fieldset {
 .detail-section {
   padding:22px 19px
 }
+.detail-section.file-preview-detail {
+  --file-preview-inset:19px;
+  padding-inline:var(--file-preview-inset);
+  padding-top:12px;
+  padding-bottom:12px
+}
+.file-preview-scroll { margin-inline-end:calc(-1 * var(--file-preview-inset,0px)) }
+.file-preview-scroll-content { padding-inline-end:var(--file-preview-inset,0px) }
 .detail-content:has(.execution-history-body):not([hidden]),.detail-session:has(.execution-history-body),.detail-content:has(.file-preview-detail):not([hidden]),.detail-session:has(.file-preview-detail) { display:flex;min-height:0;flex:1;flex-direction:column;overflow:hidden }
 .file-preview-detail>header,.file-preview-detail>details { flex-shrink:0 }
 .detail-section h2 {
@@ -1694,6 +1704,7 @@ fieldset {
     padding-left:26px;
     padding-right:26px
   }
+  .detail-section.file-preview-detail { --file-preview-inset:26px }
   .employee-identity,.employee-tabs-bar {
     padding-left:26px;
     padding-right:26px

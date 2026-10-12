@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Rovai ExecutionToolGroup.tsx @ f9acc239 (MIT)，ToolCallDetail/键盘导航原实现。
- * [OUTPUT]: 直接迁入完整结果读取、缓存/重试、展开激活与焦点恢复；原始结果使用共享TypesetCode。
+ * [OUTPUT]: 完整结果读取、缓存/重试、展开激活与焦点恢复；键盘导航共用HTMLElement支持代码块和diff容器。
  * [POS]: BOAI执行工具详情；许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 变化同步Header和.folder.md。
  */
@@ -29,7 +29,7 @@ export function ToolOutputTruncationNotice({ visible }: { visible: boolean }): J
 }
 
 export function handleToolResultKeyDown(
-  event: ReactKeyboardEvent<HTMLPreElement>,
+  event: ReactKeyboardEvent<HTMLElement>,
   summary: HTMLElement | null
 ): void {
   if (event.key === 'Escape') {

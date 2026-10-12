@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 直接迁入的Rovai执行呈现/分组/可变高度列表、BOAI分页IPC与现有UI。
- * [OUTPUT]: 过程/原生记录两种互斥视图共用8px记录间距与滚动加载；窗口停读/重连时保留已加载正文，稳定卡片高度过渡；11px次级色详情/虚拟行/原生批准保持。
+ * [OUTPUT]: 过程中的整轮/工具文件差异复用全局Pierre DiffPreview；步骤组缓存恢复后React状态驱动折叠，原生记录/窗口/批准保持。
  * [POS]: 执行内容接线，外观统一使用BOAI现有组件；不处理模型权限或重新调度。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -12,10 +12,10 @@ import { buildLiveExecutionProgress, executionStepPublicTitle, type ExecutionSte
 import { groupConsecutiveToolItems, toolActivityGroupPresentation, type GroupedExecutionProgressItem } from '@shared/rovai/tool-grouping'
 import { Banner, errorText } from '@/components/common'
 import { MarkdownContent } from '@/components/common/markdown'
+import { DiffPreview } from '@/components/common/file-preview/diff-preview'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { ToolChip, ToolChips } from '@/components/ui/tool-chips'
-import { TypesetCode } from '@/components/ui/typeset'
 import { CodeBlock } from '@/components/ui/code-block'
 import { Input } from '@/components/ui/input'
 import { Check, LoaderCircle, Terminal, FileText, Pencil, Search, Settings, X, Clock } from '@/components/icons'
@@ -54,17 +54,19 @@ function ToolRow({ step, evidence, run }: { step: ExecutionStep; evidence: Execu
       {raw?.parentId && <p className="m-0 break-all text-xs text-muted-foreground">子执行 · {raw.parentId}</p>}
       {input !== undefined && <section className="flex min-w-0 flex-col gap-1.5"><div className="text-xs font-medium text-muted-foreground">参数</div><ToolCallDetail detail={pretty(input)} expanded={expanded} resultKey={`${run.id}:${step.id}:input`} title={title} summaryRef={toggle} inputOnly /></section>}
       {(result !== undefined || step.detail) && <section className="flex min-w-0 flex-col gap-1.5"><div className="text-xs font-medium text-muted-foreground">结果</div><ToolCallDetail detail={result === undefined ? step.detail : pretty(result)} expanded={expanded} resultKey={`${run.id}:${step.id}:result`} title={title} summaryRef={toggle} />{item.exitCode != null && <div className="text-xs text-muted-foreground">退出码 {String(item.exitCode)}</div>}</section>}
-      {step.fileChanges?.map((change, index) => <section key={`${change.path}:${index}`} className="flex min-w-0 flex-col gap-1.5"><div className="break-all text-xs font-medium">{change.path} <span className="text-muted-foreground">+{change.additions} −{change.deletions}</span></div><TypesetCode tabIndex={0} onKeyDown={event => handleToolResultKeyDown(event, toggle.current)}>{change.diff}</TypesetCode></section>)}
+      {step.fileChanges?.map((change, index) => <DiffPreview key={`${change.path}:${index}`} diff={change.diff} path={change.path} changeKind={change.changeKind} onKeyDown={event => { if (event.key === 'Escape') handleToolResultKeyDown(event, toggle.current) }} />)}
   </ToolChip>
 }
 
 function ExecutionItem({ item, evidence, run }: { item: GroupedExecutionProgressItem; evidence: ExecutionEvidence[]; run: AgentRun }) {
   const live = ['running', 'queued', 'waiting_approval'].includes(run.status)
   const retained = useContext(ExecutionContentContext)
-  const [localExpanded, setLocalExpanded] = useState(live)
   const groupKeys = item.kind === 'toolGroup' ? item.items.map(value => `${run.id}:${value.key}`) : [`${run.id}:${item.key}`]
-  const expanded = groupKeys.some(key => retained?.get<boolean>(`group:${key}`)) || localExpanded
-  const setExpanded = (value: boolean) => { for (const key of groupKeys) retained?.set(`group:${key}`, value); setLocalExpanded(value) }
+  const [expanded, setLocalExpanded] = useState(() => {
+    const saved = groupKeys.map(key => retained?.get<boolean>(`group:${key}`)).filter(value => value !== undefined)
+    return saved.length ? saved.some(Boolean) : live
+  })
+  const setExpanded = (value: boolean) => { setLocalExpanded(value); for (const key of groupKeys) retained?.set(`group:${key}`, value) }
   if (item.kind === 'narration') return <ExecutionNarration preview={item.body} />
   if (item.kind === 'tool') return <ToolRow step={item.step} evidence={evidence} run={run} />
   if (item.kind === 'toolGroup') {
@@ -93,7 +95,7 @@ function EvidenceRow({ api, event, events, run, read }: { api: DesktopApi; event
   return <div className={event.parentId ? 'ml-3 border-l border-border pl-3' : 'min-w-0'}>
     {event.parentId && <p className="m-0 mb-2 break-all text-xs text-muted-foreground">子执行 · {String(object(object(parent?.payload).item).name ?? object(object(parent?.payload).item).tool ?? event.parentId)}</p>}
     {progress.length ? progress.map(item => <ExecutionItem key={item.key} item={item} evidence={events} run={run} />) : <ToolChip title={title} chip={title} icon={typeof diff === 'string' ? FileText : Settings} open={expanded} onOpenChange={setExpanded}>
-      {typeof diff === 'string' ? <CodeBlock code={diff} language="diff" density="compact" /> : <ExecutionRecordFields value={event.payload} />}
+      {typeof diff === 'string' ? <DiffPreview diff={diff} /> : <ExecutionRecordFields value={event.payload} />}
     </ToolChip>}
   </div>
 }

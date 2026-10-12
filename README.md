@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 执行过程的整轮/工具文件差异共用全局DiffPreview与既有Pierre查看器，紧凑主题、多文件patch和原文回退；验证见13组06 §138。
+[OUTPUT]: 文件预览统一归common/file-preview，Markdown预览/源码为文本子组件；源码隐藏行号栏并保留引用定位，文本滚动条贴边。
 [OUTPUT]: 2026-10-11现行原生员工macOS实现与本轮测试/评测已收口；完整批次、修复复测、原失败和未认证范围唯一见13组06 §122。
 [OUTPUT]: 2026-10-11持续原生员工与Rovai执行接线已实施；原Rust进程监督随build/dev构建，实际成绩唯一归13组06 §122。
 [OUTPUT]: 2026-10-11补充：Rovai功能逻辑能迁就迁，视觉呈现统一使用BOAI现有组件/主题/字体/间距/图标；外观适配不削减原生能力，仅文档。
@@ -189,6 +191,8 @@ pnpm start
 ## Skills 与知识
 
 会话与技能正文通过 [共享 Markdown](src/renderer/components/common/markdown.tsx) 使用 [CodeBlock](src/renderer/components/ui/code-block.tsx) 的 Shiki 高亮，语言/主题随应用打包并按需加载；未知语言或高亮失败仍显示原文。明暗主题与代码块样式统一在 [shiki.css](src/renderer/styles/shiki.css)，行内代码保持普通排版。
+
+成果文件和聊天附件共用 [FilePreview](src/renderer/components/common/file-preview/index.tsx)，标题栏、Markdown/源码、代码/文本、PDF/Office和图片预览集中在 `components/common/file-preview/`。Markdown正文与源码分别复用共享Markdown和CodeBlock，源码不显示行号栏，但保留引用行定位及高亮。文本预览与源码的滚动条贴面板右缘，正文留白和固定标题栏保持。PDF/Office继续使用既有Lody查看器；文件读取、来源核验与业务操作由调用页面管理。
 
 侧栏只有一个“技能”入口，顶部本地/收藏/商城 Tabs 共用列表与详情布局。技能页发现本机全局、Agent 与启用插件技能，支持收藏/分组；目录默认使用宿主和渲染器缓存，有效缓存切回页面不重新请求目录；本地/收藏使用 TanStack Virtual 按可见区域渲染，搜索与排序复用索引，手动扫描或安装/更新后刷新；商城支持 skills.sh / ClawHub / SkillHub 的搜索、详情和安装。搜索右侧一个操作图标向右展开导入、重新扫描、检查更新和导出菜单；导入内容保留紧凑浮层，移除安装记录和底部关闭按钮，空闲时可按 Esc 或点击外部关闭。批量检查在技能页自己的右侧“技能更新”标签中完成；单项进度、差异和升级放在详情标题图标的 Popover，正文不显示更新状态卡片。目录、ZIP、公开 HTTPS 技能包和 GitHub 仓库先展示实际包内容，再固定安装到 `~/.agents/skills`，不创建员工 Resource 或自动绑定。资料库主页面和导航已删除，旧启动位置回退到会话；已保存资源和员工绑定保留。
 
