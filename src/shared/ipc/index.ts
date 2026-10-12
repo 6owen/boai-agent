@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工渠道绑定、连接/停止/解除、保存回执核对和独立平台发送结果；不公开平台入站或已保存凭据接口。
  * [OUTPUT]: openPath增加可选reveal动作，沿原宿主路径校验定位文件，不改变默认外部打开。
  * [OUTPUT]: 2026-10-11 原生执行历史/完整内容/窗口/交互/停止typed IPC；读面板不启动工作。
  * [OUTPUT]: 2026-10-10 员工执行清单/固定运行详情与已验证本机模型目录的类型化合同，输入仅对象身份，输出不包含凭据。
@@ -53,6 +54,13 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listChannelBindings: { input: { agentId: string }; output: import('../domain/channels').ChannelBindingState[] }
+  saveChannelBinding: { input: import('../domain/channels').ChannelBindingInput; output: import('../domain/channels').ChannelBindingState }
+  getChannelBindingReceipt: { input: { agentId: string; requestId: string }; output: import('../domain/channels').ChannelBindingState | null }
+  connectChannelBinding: { input: import('../domain/channels').ChannelBindingAction; output: void }
+  disconnectChannelBinding: { input: import('../domain/channels').ChannelBindingAction; output: void }
+  removeChannelBinding: { input: import('../domain/channels').ChannelBindingAction; output: void }
+  listChannelDeliveries: { input: { agentId: string }; output: import('../domain/channels').ChannelDelivery[] }
   listExecutionHistory: { input: import('../domain/execution').ExecutionHistoryQuery; output: import('../domain/execution').ExecutionHistoryPage }
   listExecutionEvidence: { input: import('../domain/execution').ExecutionEvidenceQuery; output: import('../domain/execution').ExecutionEvidencePage }
   listExecutionWindow: { input: import('../domain/execution').ExecutionWindowQuery; output: import('../rovai/contracts').AgentRunExecutionBlockPage | import('../rovai/contracts').AgentRunExecutionBlockChanges }

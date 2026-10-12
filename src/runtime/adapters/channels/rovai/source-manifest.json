@@ -1,0 +1,41 @@
+{
+  "repository": "https://github.com/murray17/rovai-ai",
+  "commit": "f9acc2395283d49f0ce247dc0af2207c155f6eb6",
+  "files": [
+    {
+      "source": "apps/desktop/src/main/dingtalk-inbound.ts",
+      "target": "src/runtime/adapters/channels/rovai/dingtalk-inbound.ts",
+      "sourceSha256": "a52cbf0e3a00b7fe868121a2214837610608b726989e7a1b0776ba0dabd2c3d4",
+      "adaptation": "BOAI documentation header only",
+      "targetSha256": "aa684ab1f28c54c7d2a6c26e43c4dc31219329caa4365a121206badf62b63c16"
+    },
+    {
+      "source": "apps/desktop/src/main/dingtalk-stream-registry.ts",
+      "target": "src/runtime/adapters/channels/rovai/dingtalk-stream-registry.ts",
+      "sourceSha256": "0afd652aba10197e581b5c1597576379340fd91200f86df95d3e71d02dc08963",
+      "adaptation": "BOAI documentation header only",
+      "targetSha256": "9eb42ece791a0c0f6a3027171fbbe2c11a0501c9009bdcf856fe30506b57da0a"
+    },
+    {
+      "source": "apps/desktop/src/main/dingtalk-open-api.ts",
+      "target": "src/runtime/adapters/channels/rovai/dingtalk-open-api.ts",
+      "sourceSha256": "fa81c3cf0d4cdcb36f90a55966d91bd827f53b950d5ed945e9cbbb01f03999e8",
+      "adaptation": "BOAI documentation header only",
+      "targetSha256": "38066162d3098e4a12667f5c2afd12ff8df030e41d31ac2950986b78f159c26b"
+    },
+    {
+      "source": "apps/desktop/src/main/channel-inbound-attachments.ts",
+      "target": "src/runtime/adapters/channels/rovai/channel-inbound-attachments.ts",
+      "sourceSha256": "0f7c6b6efdb267b8aabe71ac47deb70687f53abfa71e93425d6c5deac18a4768",
+      "adaptation": "BOAI header; per-import byte limit 100 MiB to 20 MiB and download timeout 60s to 30s to match bounded conversation attachments",
+      "targetSha256": "7ee3cd2fa2e5da279a90c679e803ff09a5b2b7405942859c2857ba47bbd28d97"
+    },
+    {
+      "source": "apps/desktop/src/main/dingtalk-inbound-attachments.ts",
+      "target": "src/runtime/adapters/channels/rovai/dingtalk-inbound-attachments.ts",
+      "sourceSha256": "a55914fcfaf4f811cdf2d8354adf27bf27800cb30281c11b5842d427be9d5a84",
+      "adaptation": "BOAI documentation header only",
+      "targetSha256": "4a2e80f8de88a6c14899467401eddcdc3c3b6f2a40c6f2d853f9d7346053d435"
+    }
+  ]
+}

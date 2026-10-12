@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工渠道配置和回执操作加入受控白名单，网络入站只能由runtime适配器接收。
  * [OUTPUT]: 文件打开可选reveal动作，完成同一realpath/受管根校验后在文件夹定位；默认外开和扩展名规则保持。
  * [OUTPUT]: 2026-10-11 原生执行IPC白名单与原宿主处理接线；参数/生命周期仍归运行服务。
  * [OUTPUT]: 2026-10-10 放行已验证本机模型目录、员工有界执行清单和固定运行详情IPC；不新增执行或路径读取授权。
@@ -97,6 +98,7 @@ for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) 
 for (const method of ['acceptTeamCreation', 'getTeamCreation', 'resumeTeamCreation', 'generateTeamPlan', 'cancelTeamGeneration', 'openTeamDraft', 'saveTeamDraft', 'getTeamDraft', 'abandonTeamDraft', 'listTeamCreationRecovery'] as const) methods.add(method)
 for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
 methods.add('testLocalConnection')
+for (const method of ['listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
 for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resumeAutomation'] as const) methods.add(method)
 methods.add('setMessageReaction')
 methods.add('updateUserProfile')

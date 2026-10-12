@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第16组直接迁入的Rovai钉钉MIT许可与固定来源清单随runtime构建分发。
  * [INPUT]: 宿主/渲染进程源码与离线素材许可。
  * [OUTPUT]: dist 桌面构建及随包分发的 Base46、Geist、Lobe Icons、本地配置扫描与迁入浏览器源码许可/NOTICE；专用工具栏 preload 和三 HTML 入口。
  * [POS]: 项目构建入口。
@@ -17,6 +18,8 @@ export async function buildHost() {
     build({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     build({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  await copyFile('src/runtime/adapters/channels/rovai/LICENSE.txt', 'dist/runtime/rovai-channels-LICENSE.txt')
+  await copyFile('src/runtime/adapters/channels/rovai/source-manifest.json', 'dist/runtime/rovai-channels-source-manifest.json')
 }
 if (process.argv[1]?.endsWith('build.mjs')) {
   await buildHost()

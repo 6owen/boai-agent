@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 触发来源仅对本机user本人显示“你”，外部渠道保留真实发送者名称。
  * [OUTPUT]: 2026-10-10 共用RunCard显示有界真实阶段、Codex公开摘要/进度说明以及分离的工具参数/结果。
  * [OUTPUT]: 2026-10-10 同一RunCard供会话与员工执行详情复用，状态/未知/工具/失败与原重试门禁保持。
  * [OUTPUT]: Codex/Claude均按实际外部请求显示计量与未知内部步骤。
@@ -43,7 +44,7 @@ export function RoundDetail({ round, detail, snapshot, busy, onRetry, historical
   const active = runs.some(run => ['queued', 'running', 'waiting_approval'].includes(run.status)) || Boolean(turn && liveTurn(turn.status))
   return <section className={`activity-round${historical ? ' is-history' : ''}`} aria-label={historical ? '历史轮次详情' : '本轮详情'} data-turn-id={turn?.id}>
     <div className="round-context"><span className="pill">{historical ? '历史记录' : '本轮'}</span><time dateTime={round.createdAt}>{roundTime(round.createdAt)}</time></div>
-    <p className="round-trigger"><strong>触发消息</strong><span>{round.trigger ? `${round.trigger.senderType === 'user' ? '你' : round.trigger.senderName}：${round.trigger.content}` : '原始消息不可用，此处保留运行记录。'}</span></p>
+    <p className="round-trigger"><strong>触发消息</strong><span>{round.trigger ? `${round.trigger.senderType === 'user' && round.trigger.senderId === 'user' ? '你' : round.trigger.senderName}：${round.trigger.content}` : '原始消息不可用，此处保留运行记录。'}</span></p>
     <h3>{turn ? turnLabels[turn.status].replace('本轮', historical ? '该轮' : '本轮') : runs.length ? '运行记录' : '等待开始处理'}</h3>
     {turn?.reason && <p className="field-hint">{turn.status === 'failed' ? failureSummary(turn.reason) : turn.reason}</p>}
     {turn && <p className="field-hint">{historical ? '该轮' : '本轮'}{nativeRuns.length ? '处理尝试' : '模型调用'} {turn.modelCalls} 次 · 公开消息 {turn.publicMessages} 条</p>}

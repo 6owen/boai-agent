@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 外部渠道会话/消息保留真实平台发送者，和本机本人身份分离。
  * [OUTPUT]: 2026-10-11 员工原生执行选项及实际session/turn/模型/上下文/费用元信息；可见计量不推算内部模型请求数。
  * [OUTPUT]: 2026-10-10 员工运行保留有界执行阶段/公开摘要/进度说明和工具原参数；接收回执与真人已读分开。
  * [OUTPUT]: 2026-10-10 原runs.backend可保存真实原生模型/线程/turn引用，旧记录缺失保持未知，不改变员工身份或Work权威。
@@ -15,6 +16,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { LocalUserProfile } from './profile'
+import type { ChannelConversationSource, ChannelMessageSource } from './channels'
 import type { MemoryContextRef } from './memory'
 import type { ConversationMaterial, MaterialReadRef } from './materials'
 import type { ArtifactExtension } from './artifacts'
@@ -94,11 +96,12 @@ export interface Resource {
   ownerAgentId?: string
 }
 export interface Conversation {
+  channel?: ChannelConversationSource
   memoryContextRef?: MemoryContextRef
   memoryScope?: 'employee' | 'conversation'
   creationSource?: TeamCreationSource | BoboCollaborationSource
   teamSetup?: TeamSetup
-  purpose?: 'personal' | 'automation' | 'core'
+  purpose?: 'personal' | 'automation' | 'core' | 'channel'
   automationId?: string
   occurrenceId?: string
   list?: { hidden?: boolean; pinned?: boolean; order?: number }
@@ -130,6 +133,7 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  channel?: ChannelMessageSource
   collaborationRequestId?: string
   /** Real core generation source; this is not a fabricated group run. */
   collaborationSource?: { operationId: string; sourceRunId: string; modelCallId?: string; toolCallId: string }

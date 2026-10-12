@@ -1,0 +1,72 @@
+/*
+ * [INPUT]: 已保存员工与平台安装、外部发送者和平台会话身份。
+ * [OUTPUT]: 渠道绑定/连接状态、可信消息来源、独立平台发送回执；公开合同不含已保存凭据。
+ * [POS]: 第16组跨进程渠道合同。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+export const CHANNEL_PLATFORMS = ['feishu', 'lark', 'telegram', 'dingtalk'] as const
+export type ChannelPlatform = typeof CHANNEL_PLATFORMS[number]
+export const CHANNEL_NAMES: Record<ChannelPlatform, string> = { feishu: '飞书', lark: 'Lark', telegram: 'Telegram', dingtalk: '钉钉' }
+export interface ChannelBinding {
+  id: string
+  agentId: string
+  platform: ChannelPlatform
+  appId: string
+  robotCode?: string
+  name: string
+  allowedUserIds: string[]
+  allowedChatIds: string[]
+  enabled: boolean
+  revision: number
+  hasCredential: boolean
+  botUserId?: string
+  botUserName?: string
+  installedAt: string
+  updatedAt: string
+}
+export interface ChannelBindingInput {
+  id?: string
+  agentId: string
+  platform: ChannelPlatform
+  appId: string
+  robotCode?: string
+  name: string
+  credential?: string
+  allowedUserIds: string[]
+  allowedChatIds: string[]
+  expectedRevision?: number
+  botUserId?: string
+  requestId: string
+}
+export interface ChannelBindingState extends ChannelBinding {
+  status: 'disconnected' | 'connecting' | 'connected' | 'failed'
+  detail?: string
+  pendingDeliveries: number
+}
+export interface ChannelBindingAction { id: string; expectedRevision: number }
+export interface ChannelConversationSource {
+  platform: ChannelPlatform
+  tenantId: string
+  chatId: string
+  kind: 'direct' | 'group'
+  threadId?: string
+  bindingId?: string
+  userId?: string
+}
+export interface ChannelMessageSource extends ChannelConversationSource {
+  replyThreadId?: string
+  bindingId: string
+  eventId: string
+  userId: string
+}
+export interface ChannelDelivery {
+  id: string
+  bindingId: string
+  conversationId: string
+  messageId: string
+  status: 'sending' | 'sent' | 'failed' | 'unknown'
+  detail?: string
+  externalMessageIds?: string[]
+  createdAt: string
+  updatedAt: string
+}

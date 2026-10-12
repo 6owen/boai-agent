@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 现成员工渠道接线，外部来源沿原消息事务与执行路径；附件准备/成果核源、未知发送和恢复不重放。
  * [OUTPUT]: 2026-10-11 持续原生turn、真实输入受理/普通公开消息、惰性Work与获准依赖成果；原生正文/过程分离，API原阶段保持。
  * [OUTPUT]: 第13组原生员工直接持续turn；惰性产品Work、完整执行事件/原生请求和实际停止，API阶段保持。
  * [OUTPUT]: 2026-10-10 原Run有界持久进度/真实接收阶段与工具参数结果，取消/清理拒绝迟到事件；观测失败不重放业务。
@@ -89,7 +90,7 @@ import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeE
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
-import { cp, lstat, mkdir, readdir, readFile, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, mkdtemp, realpath, readdir, readFile, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, WorkBudget, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
@@ -111,6 +112,9 @@ import { ResourceCleanups } from './modules/resources/resource-cleanups'
 import { SkillLibraryExport, planSkillLibraryExportSchema, exportSkillLibrarySchema } from './modules/resources/skill-library-export'
 import { SkillCollectionRepository, collectionChangeSchema, detachSkillRecords } from './modules/resources/skill-collections'
 import { ProductStore, type RecordTransaction, type StoredRecord } from './adapters/storage/product-store'
+import { EmployeeChannels, type ChannelAttachment, type ChannelTransportFactory } from './modules/channels/channel-service'
+import { channelTransportFactory } from './adapters/channels/mastra-channels'
+import type { ChannelConversationSource, ChannelMessageSource } from '../shared/domain/channels'
 import { WorkViewRepository } from './modules/collaboration/work-view-repository'
 import { workViewQuerySchema, conversationFileQuerySchema, workViewTargetSchema, conversationFileTargetSchema } from './modules/collaboration/work-view-sql'
 import { ConversationReadingRepository } from './modules/conversations/reading-repository'
@@ -219,6 +223,7 @@ export class AppService {
   private connections = new Map<string, Connection>()
   private conversations = new Map<string, Conversation>()
   private readonly executions: ExecutionRepository
+  private readonly channels: EmployeeChannels
   private resources = new Map<string, Resource>()
   private messages = new Map<string, Message>()
   private runs = new Map<string, AgentRun>()
@@ -247,7 +252,7 @@ export class AppService {
   private initialized = false
   readonly dataPath: string
 
-  constructor(private readonly options: { browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.executions = new ExecutionRepository(this.store, id => this.changed(id))
@@ -395,6 +400,14 @@ export class AppService {
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
       changed:()=>this.emit({type:'changed'}),notify:()=>this.emit({type:'automation:notice'}),
     })
+    this.channels = new EmployeeChannels(this.store, options.secrets, options.channelTransport ?? channelTransportFactory(this.dataPath, options.secrets), {
+      critical: operation => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return operation() }),
+      agent: id => this.getAgent(id),
+      conversation: (source, agentIds) => this.channelConversation(source, agentIds),
+      prepare: (conversationId, eventKey, attachments) => this.prepareChannelMaterials(conversationId, eventKey, attachments),
+      accept: (conversationId, event, source, requestId, agentIds, materials) => this.sendMessage({ conversationId, content: event.text, requestId, mentionIds: agentIds, materialSelections: materials.length ? materials : undefined }, undefined, undefined, false, undefined, undefined, undefined, source, event.userName),
+      files: message => this.channelFiles(message), changed: () => this.changed(),
+    })
   }
 
   takeAutomationNotice() { return this.notifications.take() }
@@ -479,6 +492,7 @@ export class AppService {
     for (const conversation of this.conversations.values()) if (!this.clearingConversations.has(conversation.id)) await this.conversationArtifacts(conversation, true)
     this.initialized = true
     await this.automations.init()
+    await this.channels.init()
     this.memoryTimer = setInterval(() => {
       if (this.closing || this.backingUp || this.runControllers.size || this.activeAdapters.size) return
       void this.serialize(async () => { if (await this.memory.maintain()) await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) }).catch(() => this.emit({ type: 'runtime-error', error: '记忆整理未完成，将在空闲时重新核对；没有重新执行模型或工具。' }))
@@ -486,7 +500,7 @@ export class AppService {
     this.memoryTimer.unref()
   }
 
-  private emit(event: AppEvent) { if (!this.closing) this.options.emit(clone(event)) }
+  private emit(event: AppEvent) { if (!this.closing) { if (event.type === 'message') this.channels?.published(event.message); this.options.emit(clone(event)) } }
   private changed(conversationId?: string) { this.automations?.observe(); this.emit({ type: 'changed', ...(conversationId ? { conversationId } : {}) }) }
   private getConversation(id: string): Conversation { if (this.clearingConversations.has(id)) fail('此会话清理尚未完成，请重试清空聊天记录'); return this.conversations.get(id) ?? fail('会话不存在') }
   private getAgent(id: string): DigitalAgent { return this.employees.get(id) }
@@ -503,6 +517,16 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    if (method === 'listChannelBindings' || method === 'listChannelDeliveries') {
+      const value = z.object({ agentId: id }).strict().parse(input)
+      return method === 'listChannelBindings' ? this.channels.list(value.agentId) : this.channels.deliveries(value.agentId)
+    }
+    if (method === 'saveChannelBinding') return this.channels.save(input as import('../shared/domain/channels').ChannelBindingInput)
+    if (method === 'getChannelBindingReceipt') {
+      const value = z.object({ agentId: id, requestId: id }).strict().parse(input)
+      return this.channels.receipt(value.agentId, value.requestId)
+    }
+    if (method === 'connectChannelBinding' || method === 'disconnectChannelBinding' || method === 'removeChannelBinding') return this.channels.action(input as import('../shared/domain/channels').ChannelBindingAction, method === 'connectChannelBinding' ? 'connect' : method === 'disconnectChannelBinding' ? 'disconnect' : 'remove')
     if (method === 'cancelRun') {
       const value = z.object({ conversationId: id, workId: id.optional(), runId: id.optional() }).strict().refine(value => !(value.workId && value.runId), '请选择一个停止对象').parse(input)
       if (value.runId) {
@@ -1239,6 +1263,7 @@ export class AppService {
     if ([...this.runs.values()].some(run => agentIds.includes(run.agentId) && (this.runControllers.has(run.id) || this.activeAdapters.has(run.id)))) fail('员工仍有任务执行或收尾，请停止并等待结束后再删除')
     const ownedResourceIds = [...this.resources.values()].filter(resource => resource.ownerAgentId && agentIds.includes(resource.ownerAgentId)).map(resource => resource.id)
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
+    await this.channels.detachEmployees(agentIds)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
     for (const agentId of agentIds) await this.cancelEmployee(agentId, '员工已删除')
     await this.clearBrowserTaskRecords(scope => agentIds.includes(scope.agentId))
@@ -1459,7 +1484,7 @@ export class AppService {
     if (previous?.purpose === 'core' && (input.agentIds.length !== 1 || input.agentIds[0] !== CORE_AGENT_ID)) fail('核心会话不能改绑其他员工')
     if (!previous && input.kind === 'direct' && input.agentIds[0] === CORE_AGENT_ID) fail('请在核心助手中发送非空首条消息，再建立会话')
     if (!previous && input.kind === 'direct') {
-      const existing = [...this.conversations.values()].find(conversation => conversation.kind === 'direct' && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.agentIds[0] === input.agentIds[0])
+      const existing = [...this.conversations.values()].find(conversation => conversation.kind === 'direct' && !conversation.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.agentIds[0] === input.agentIds[0])
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
@@ -1485,6 +1510,61 @@ export class AppService {
     this.changed(conversation.id); return clone(conversation)
   }
 
+  private async channelConversation(source: ChannelConversationSource, agentIds: string[]): Promise<Conversation> {
+    const conversationId = 'channel-' + createHash('sha256').update(JSON.stringify(source)).digest('hex')
+    const previous = this.conversations.get(conversationId)
+    const agents = agentIds.map(id => this.getAgent(id))
+    if (agents.some(agent => !agent.active || agent.executionBackend?.kind === 'acp-local')) fail('渠道需要启用的API或原生员工，旧ACP任务入口不可接入。')
+    if (previous) {
+      this.getConversation(previous.id)
+      const members = [...new Set([...previous.agentIds, ...agentIds])]
+      if (members.length !== previous.agentIds.length) {
+        const updated = { ...previous, agentIds: members, configVersion: (previous.configVersion ?? 1) + 1, updatedAt: now() }
+        await this.store.write([record('conversations', updated)]); this.conversations.set(updated.id, updated); this.changed(updated.id)
+        return updated
+      }
+      return previous
+    }
+    const conversation: Conversation = { id: conversationId, kind: source.kind, purpose: 'channel', channel: source, memoryScope: 'conversation', title: `${source.platform} · ${source.kind === 'direct' ? agents[0].name : source.chatId}`, agentIds: [...new Set(agentIds)], mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], createdAt: now(), updatedAt: now(), configVersion: 1 }
+    await mkdir(conversation.workspacePath, { recursive: true })
+    await this.store.transaction(async tx => { if (await tx.get('conversationCleanup', conversation.id)) fail('原渠道聊天清理待核对'); await tx.put(record('conversations', conversation)) })
+    this.conversations.set(conversation.id, conversation); this.changed(conversation.id)
+    return conversation
+  }
+  private async prepareChannelMaterials(conversationId: string, eventKey: string, attachments: ChannelAttachment[]) {
+    if (attachments.length > MATERIAL_LIMITS.perMessage) fail('渠道消息附件超过当前聊天上限，请拆分发送。')
+    if (!attachments.length) return []
+    const directory = await mkdtemp(join(await realpath(this.dataPath), 'channel-input-'))
+    try {
+      const materials = []
+      for (const [ordinal, attachment] of attachments.entries()) {
+        if (attachment.size !== undefined && attachment.size > MATERIAL_LIMITS.attachmentBytes) fail('渠道附件超过当前聊天容量上限。')
+        const bytes = await attachment.read()
+        if (bytes.length > MATERIAL_LIMITS.attachmentBytes) fail('渠道附件超过当前聊天容量上限。')
+        const name = basename(attachment.name).slice(0, 200) || `attachment-${ordinal}.bin`
+        const path = join(directory, `${ordinal}.input`)
+        await writeFile(path, bytes, { mode: 0o600, flag: 'wx' })
+        const material = await this.materials.prepare({ conversationId, path, name, requestId: `${eventKey}-attachment-${ordinal}`, deliveryScope: 'conversation' })
+        if (material.status !== 'ready') fail('渠道附件未准备成功；未单独执行正文。')
+        materials.push({ id: material.id, revision: material.revision })
+      }
+      return materials
+    } finally { await rm(directory, { recursive: true, force: true }) }
+  }
+  private async channelFiles(message: Message) {
+    if (!message.runId) return []
+    const conversation = this.getConversation(message.conversationId)
+    const files = []
+    for (const artifact of (await this.conversationArtifacts(conversation)).filter(artifact => artifact.runId === message.runId && artifact.ownerAgentId === message.senderId)) {
+      if (!artifact.id || !artifact.contentHash) fail('渠道成果缺少固定来源。')
+      const preview = await this.artifactRepository.preview(artifact.id!, artifact.contentHash, message.senderId)
+      if (!preview.artifact.path) fail('成果没有可核对原件路径。')
+      const bytes = await readFile(preview.artifact.path!)
+      if (createHash('sha256').update(bytes).digest('hex') !== artifact.contentHash) fail('渠道成果原件已变化。')
+      files.push({ name: artifact.name, bytes })
+    }
+    return files
+  }
   private nextMessage(conversationId: string, values: Pick<Message, 'senderType' | 'senderId' | 'senderName' | 'content' | 'status'> & Partial<Pick<Message, 'runId' | 'id'>>): Message {
     return { id: randomUUID(), conversationId, sequence: Math.max(0, ...this.conversationMessages(conversationId).map(message => message.sequence)) + 1, createdAt: now(), ...values }
   }
@@ -1528,10 +1608,10 @@ export class AppService {
     if (this.conversationBusy(source.conversation.id) || [...this.activeAdapters].some(id => this.runs.get(id)?.conversationId === source.conversation.id)) fail('原聊天仍有实际执行，请稍后补充')
     return this.sendMessage({ conversationId: source.conversation.id, content: input.content, requestId: input.requestId, mentionIds: [source.agentId], replyToMessageId: source.message.id }, undefined, undefined, false, undefined, source)
   }
-  private async sendMessage(input: z.infer<typeof sendSchema>, origin?: AutomationOrigin, commit?: (message: Message, records: StoredRecord[]) => Promise<void>, humanReply = false, renewBudget?: AutomationBudgetRenewalInput, questionReply?: QuestionSource, automationQuestionReply?: InboxReplyRelation) {
+  private async sendMessage(input: z.infer<typeof sendSchema>, origin?: AutomationOrigin, commit?: (message: Message, records: StoredRecord[]) => Promise<void>, humanReply = false, renewBudget?: AutomationBudgetRenewalInput, questionReply?: QuestionSource, automationQuestionReply?: InboxReplyRelation, channelSource?: ChannelMessageSource, channelUserName?: string) {
     if (this.clearingConversations.has(input.conversationId)) fail('此会话清理尚未完成，不能受理或读取原消息')
     const relation = automationQuestionReply ?? (questionReply ? { questionId: questionReply.question.id, questionRevision: questionReply.question.revision, questionMessageId: questionReply.message.id, ...(questionReply.work ? { workId: questionReply.work.id } : {}) } : undefined)
-    const fingerprint = JSON.stringify({ kind: 'message', ...input, ...(origin?{origin}:{}), ...(humanReply ? { humanReply } : {}), ...(renewBudget ? { renewBudget } : {}), ...(relation ? { inboxReply: relation } : {}) })
+    const fingerprint = JSON.stringify({ kind: 'message', ...input, ...(channelSource ? { channelSource } : {}), ...(origin?{origin}:{}), ...(humanReply ? { humanReply } : {}), ...(renewBudget ? { renewBudget } : {}), ...(relation ? { inboxReply: relation } : {}) })
     const receiptFingerprint = createHash('sha256').update(fingerprint).digest('hex')
     const receipt = await this.store.transaction(async tx => {
       if (await tx.get('conversationCleanup', input.conversationId)) fail('此会话正在清理，不能受理或读取原消息')
@@ -1560,6 +1640,7 @@ export class AppService {
     if (input.replyToMessageId && this.messages.get(input.replyToMessageId)?.conversationId !== conversation.id) fail('引用消息不属于当前会话')
     if (input.stopPrevious) await this.cancelConversation(conversation.id)
     const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content: input.content, status: 'completed' })
+    if (channelSource) { message.channel = channelSource; message.senderId = 'channel-user:' + createHash('sha256').update(JSON.stringify([channelSource.platform, channelSource.tenantId, channelSource.userId])).digest('hex'); message.senderName = channelUserName || channelSource.userId }
     if(origin){message.origin=origin;if(!humanReply){message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}}
     message.mentionIds = input.mentionIds; message.replyToMessageId = input.replyToMessageId
     if (input.materialSelections?.length) message.materialIds = input.materialSelections.map(selection => selection.id)
@@ -2522,9 +2603,9 @@ export class AppService {
           if (replacesArtifactId && !context.artifactRevision) {
             if (context.work) fail('本轮工作已建立，请在首次发布时指定原文件')
             const artifact = service.artifacts.get(replacesArtifactId) ?? fail('原文件不存在'), source = service.messages.get(run.triggerMessageId!) ?? fail('原消息不存在')
-            if (artifact.ownerAgentId !== run.agentId || artifact.conversationId !== run.conversationId || source.senderType !== 'user' || source.senderId !== 'user' || source.origin) fail('修订须引用当前员工在本聊天交付的文件与本次用户消息')
+            if (artifact.ownerAgentId !== run.agentId || artifact.conversationId !== run.conversationId || source.senderType !== 'user' || (!source.channel && source.senderId !== 'user') || source.origin) fail('修订须引用当前员工在本聊天交付的文件与本次用户消息')
             const input = { conversationId: run.conversationId, artifactId: artifact.id, contentHash: artifact.contentHash ?? fail('原文件缺少内容身份'), targetAgentId: run.agentId, content: source.content, requestId: `native-revision-${run.id}` }
-            context.artifactRevision = await service.store.transaction(tx => service.artifactRepository.commitRevision(tx, input, source))
+            context.artifactRevision = await service.store.transaction(tx => source.channel ? service.artifactRepository.commitChannelRevision(tx, input, source) : service.artifactRepository.commitRevision(tx, input, source))
           }
           await prepareWork(intent)
           if (this.modelCallId && context.workBudget?.sourceMessageId && !run.origin && !run.collaborationRequestId) await service.works.reserveInteractiveCall(run, this.modelCallId, 'execution')
@@ -3206,6 +3287,8 @@ export class AppService {
       const backupClient = createClient({ url: pathToFileURL(databaseFile).href })
       try {
         // Browser profiles and private page receipts are not part of a portable business backup.
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false')) WHERE collection='channelBindings'")
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.status','unknown','$.detail','备份恢复后仅核对历史发送，未自动重发。') WHERE collection='channelDeliveries' AND json_extract(value,'$.status')='sending'")
         await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
         await backupClient.execute("UPDATE records SET value=json_object('id',id,'argumentHash',json_extract(value,'$.argumentHash'),'conversationId',coalesce(json_extract(value,'$.lease.conversationId'),json_extract(value,'$.conversationId')),'status','cleared') WHERE collection='browserActions'")
         await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: ['automationRuntime', 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
@@ -3228,6 +3311,7 @@ export class AppService {
   async close() {
     if (this.closing) return
     this.closing = true
+    await this.channels.close()
     if (this.memoryTimer) clearInterval(this.memoryTimer)
     for (const timer of this.workTimers.values()) clearTimeout(timer)
     this.workTimers.clear()

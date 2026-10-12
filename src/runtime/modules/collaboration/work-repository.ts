@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道修订按已提交外部请求者/可信来源认领独立新根；本机本人、旧预算与自动化边界保持。
  * [OUTPUT]: 2026-10-11 原生Work惰性认领；同事务核验获准依赖成果引用，保持同事归属、原预算及实际持有者。
  * [OUTPUT]: 暂不公开草稿只影响发布；已声明依赖等待、已确认副作用与无进展额度在原事务保留，未知操作仍阻止唤醒。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，回执同时比较具体kind与profile，禁止跨运行时借用预算身份。
@@ -145,7 +146,8 @@ export class WorkRepository {
     const request = await tx.get<ArtifactRevisionRequest>('artifactRevisionRequests', requestId)
     if (!request || request.conversationId !== conversationId) throw new WorkUnavailableError('修订请求已清理或不属于当前会话')
     const message = await tx.get<Message>('messages', request.messageId)
-    if (!message || message.conversationId !== conversationId || message.senderType !== 'user' || message.senderId !== 'user' || message.origin || message.status !== 'completed' || message.content.trim() !== request.content) throw new WorkUnavailableError('修订必须来源于一致的本人新用户消息，不能继承自动化请求')
+    const senderMatches = request.channelSource ? !!message?.channel && message.senderId === request.requesterId && JSON.stringify(message.channel) === JSON.stringify(request.channelSource) : message?.senderId === 'user'
+    if (!message || message.conversationId !== conversationId || message.senderType !== 'user' || !senderMatches || message.origin || message.status !== 'completed' || message.content.trim() !== request.content) throw new WorkUnavailableError('修订必须来源于一致的本人新用户消息，不能继承自动化请求')
     const conversation = await tx.get<Conversation>('conversations', conversationId)
     if (!conversation || await tx.get('conversationCleanup', conversationId)) throw new WorkUnavailableError('修订所属会话已清理或不存在')
     for (const id of new Set([request.targetAgentId, agentId])) {

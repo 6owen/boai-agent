@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 外部渠道原生修订核对同平台/聊天原成果与当前机器人/发送者授权，单独记录请求者；本机采用/原修订资格保持。
  * [OUTPUT]: 仅明确预览在原hash核读后返回PDF/Office字节；文本采用/修订/index门禁和原20MiB发布限制保持。
  * [OUTPUT]: Claude成果修订使用同一版本/请求合同，受理前核对明确API来源和已验证本机程序。
  * [OUTPUT]: 未提交发布保留精确相对路径/hash/来源指纹，禁止历史导入；登记与准备记录清除同事务，清理沿原hash门禁。
@@ -16,6 +17,8 @@ import { isAbsolute, join, parse, relative, resolve, sep } from 'node:path'
 import { isCoreAgent } from '../../../shared/domain/core-agent'
 import type { AgentRun, Connection, Conversation, DigitalAgent, Message, WorkItem } from '../../../shared/domain'
 import type { MaterialReadRef } from '../../../shared/domain/materials'
+import type { ChannelBinding, ChannelMessageSource } from '../../../shared/domain/channels'
+import type { ChannelTarget } from '../channels/channel-service'
 import type { LaunchProfile } from '../../../shared/domain/backends'
 import { previewBinaryFile, previewFile } from '../../../shared/domain/file-preview'
 import { ARTIFACT_LIMITS, type ArtifactAcceptance, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAcceptanceStatus, type ArtifactAdoptionCurrent, type ArtifactAdoptionEvent, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactAdoptionState, type ArtifactPreview, type ArtifactPublication, type ArtifactRegistration, type ArtifactRevisionInput, type ArtifactRevisionPrepared, type ArtifactRevisionRequest, type ArtifactRevisionSource, type ArtifactVersion } from '../../../shared/domain/artifacts'
@@ -210,6 +213,7 @@ export class ArtifactRepository {
     let previous: ArtifactVersion | undefined, revisionRequest: ArtifactRevisionRequest | undefined
     if (binding.revisionRequestId) {
       revisionRequest = await this.revision(tx, binding.revisionRequestId)
+      if (revisionRequest.channelSource) await this.authorizeChannelRevision(tx, revisionRequest, (await tx.get<Message>('messages', revisionRequest.messageId))!)
       if (revisionRequest.conversationId !== conversation.id || revisionRequest.targetAgentId !== publication.ownerAgentId || !work || work.parentWorkId || work.origin || work.id !== revisionRequest.rootWorkId || work.revisionRequestId !== revisionRequest.id || work.sourceMessageId !== revisionRequest.messageId) throw new Error('只有明确修订请求的新根工作负责人可以发布新版')
       previous = await this.version(tx, revisionRequest.artifactId)
       if (previous.conversationId !== conversation.id || previous.logicalArtifactId !== revisionRequest.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
@@ -294,7 +298,8 @@ export class ArtifactRepository {
     const request = await tx.get<ArtifactRevisionRequest>('artifactRevisionRequests', requestId)
     if (!request) throw new Error('原修订请求不存在或提交尚未完整核对')
     const message = await tx.get<Message>('messages', request.messageId)
-    if (!receipt || receipt.fingerprint !== request.fingerprint || !message || message.conversationId !== request.conversationId || message.senderType !== 'user' || message.senderId !== 'user' || message.origin || message.status !== 'completed' || message.content !== request.content) throw new Error('修订请求与已提交的固定本人消息不一致')
+    const senderMatches = request.channelSource ? !!message?.channel && message.senderId === request.requesterId && digest(JSON.stringify(message.channel)) === digest(JSON.stringify(request.channelSource)) : message?.senderId === 'user'
+    if (!receipt || receipt.fingerprint !== request.fingerprint || !message || message.conversationId !== request.conversationId || message.senderType !== 'user' || !senderMatches || message.origin || message.status !== 'completed' || message.content !== request.content) throw new Error('修订请求与已提交的固定本人消息不一致')
     return request
   }
   async revisionReceipt(requestId: string): Promise<ArtifactRevisionRequest | null> {
@@ -325,7 +330,23 @@ export class ArtifactRepository {
       return { input: normalized.input, artifact: clone(artifact), ...(receipt ? { request: clone(await this.revision(tx, input.requestId)) } : {}) }
     })
   }
-  async commitRevision(tx: RecordTransaction, input: ArtifactRevisionInput, message: Pick<Message, 'id' | 'conversationId' | 'senderType' | 'senderId' | 'content'>): Promise<ArtifactRevisionRequest> {
+  async commitChannelRevision(tx: RecordTransaction, input: ArtifactRevisionInput, message: Message): Promise<ArtifactRevisionRequest> {
+    await this.authorizeChannelRevision(tx, input, message)
+    return this.commitRevision(tx, input, message, message.channel)
+  }
+  private async authorizeChannelRevision(tx: RecordTransaction, input: Pick<ArtifactRevisionInput, 'conversationId' | 'artifactId' | 'targetAgentId'>, message: Message) {
+    const source = message.channel, artifact = await this.version(tx, input.artifactId)
+    // artifact.sourceMessageId names the published reply, not its requester.
+    const originalRun = artifact.runId ? await tx.get<AgentRun>('runs', artifact.runId) : undefined
+    const originalWork = artifact.sourceWorkId ? await tx.get<WorkItem>('workItems', artifact.sourceWorkId) : undefined
+    const originalId = originalWork?.sourceMessageId ?? originalRun?.triggerMessageId
+    const original = originalId ? await tx.get<Message>('messages', originalId) : undefined
+    const conversation = await this.conversation(tx, input.conversationId)
+    if (!source || !conversation.channel || source.platform !== conversation.channel.platform || source.chatId !== conversation.channel.chatId || source.tenantId !== conversation.channel.tenantId || source.kind === 'direct' && conversation.channel.userId !== source.userId || message.senderType !== 'user' || message.senderId !== `channel-user:${digest(JSON.stringify([source.platform, source.tenantId, source.userId]))}` || original?.conversationId !== message.conversationId || artifact.conversationId !== message.conversationId || artifact.ownerAgentId !== input.targetAgentId) throw new Error('渠道修订只能引用当前获准平台聊天交付的原文件。')
+    const bindings = await tx.list<ChannelBinding>('channelBindings'), targets = await tx.list<ChannelTarget>('channelTargets')
+    if (!bindings.some(binding => binding.agentId === input.targetAgentId && binding.platform === source.platform && binding.allowedUserIds.includes(source.userId) && (source.kind === 'direct' ? binding.id === source.bindingId : binding.allowedChatIds.includes(source.chatId) && targets.some(target => target.bindingId === binding.id && target.conversationId === conversation.id)))) throw new Error('渠道发送者或员工绑定已失去修订授权。')
+  }
+  async commitRevision(tx: RecordTransaction, input: ArtifactRevisionInput, message: Pick<Message, 'id' | 'conversationId' | 'senderType' | 'senderId' | 'content'>, channelSource?: ChannelMessageSource): Promise<ArtifactRevisionRequest> {
     const normalized = this.normalizedRevision(input), receipt = await tx.get<Tombstone>('artifactRevisionReceipts', input.requestId)
     if (receipt) {
       if (receipt.cleared || receipt.fingerprint !== normalized.fingerprint) throw new Error(receipt.cleared ? '原修订请求已清理，旧请求不能重新执行' : '修订 requestId 已用于不同内容')
@@ -338,8 +359,9 @@ export class ArtifactRepository {
     if (artifact.conversationId !== input.conversationId) throw new Error('修订成果不属于当前聊天')
     await this.checked(tx, artifact, input.contentHash, input.targetAgentId)
     const committed = await tx.get<Message>('messages', identifier(message.id))
-    if (!committed || committed.conversationId !== input.conversationId || committed.senderType !== 'user' || committed.senderId !== 'user' || committed.origin || committed.content !== message.content || message.senderType !== 'user' || message.senderId !== 'user' || message.conversationId !== input.conversationId || committed.content !== normalized.input.content || committed.status !== 'completed') throw new Error('修订关系必须与同事务的固定本人原消息一致')
-    const request: ArtifactRevisionRequest = { id: input.requestId, fingerprint: normalized.fingerprint, conversationId: input.conversationId, artifactId: artifact.id, contentHash: artifact.contentHash, logicalArtifactId: artifact.logicalArtifactId, targetAgentId: input.targetAgentId, content: normalized.input.content, messageId: committed.id, createdAt: new Date().toISOString() }
+    const senderMatches = channelSource ? !!committed && committed.senderId === message.senderId && digest(JSON.stringify(committed.channel)) === digest(JSON.stringify(channelSource)) : committed?.senderId === 'user' && message.senderId === 'user'
+    if (!committed || committed.conversationId !== input.conversationId || committed.senderType !== 'user' || !senderMatches || committed.origin || committed.content !== message.content || message.senderType !== 'user' || message.conversationId !== input.conversationId || committed.content !== normalized.input.content || committed.status !== 'completed') throw new Error('修订关系必须与同事务的固定本人原消息一致')
+    const request: ArtifactRevisionRequest = { id: input.requestId, fingerprint: normalized.fingerprint, conversationId: input.conversationId, artifactId: artifact.id, contentHash: artifact.contentHash, logicalArtifactId: artifact.logicalArtifactId, targetAgentId: input.targetAgentId, content: normalized.input.content, messageId: committed.id, ...(channelSource ? { requesterId: committed.senderId, channelSource: clone(channelSource) } : {}), createdAt: new Date().toISOString() }
     await tx.put(record('artifactRevisionRequests', request)); await tx.put(record('artifactRevisionReceipts', { id: request.id, conversationId: request.conversationId, fingerprint: request.fingerprint } satisfies Tombstone))
     await this.finishAcceptance(tx, artifact.id, 'revision_requested')
     return clone(request)
@@ -348,6 +370,7 @@ export class ArtifactRepository {
     return this.store.transaction(async tx => {
       const request = await this.revision(tx, requestId)
       if (request.conversationId !== conversationId || request.targetAgentId !== agentId) throw new Error('修订来源不属于当前获准负责人')
+      if (request.channelSource) await this.authorizeChannelRevision(tx, { ...request, targetAgentId: agentId }, (await tx.get<Message>('messages', request.messageId))!)
       await this.target(tx, conversationId, agentId)
       const artifact = await this.version(tx, request.artifactId)
       if (artifact.conversationId !== conversationId || artifact.logicalArtifactId !== request.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
