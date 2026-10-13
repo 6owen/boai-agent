@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-12运行中回答来源和材料与消息同事务登记，未知输入投递不续用旧session；明确新消息才重建，不自动重发。
  * [OUTPUT]: 2026-10-11 持续原生会话按员工/聊天/来源隔离，固定实际输入和答复身份；清理/换绑/恢复撤销续用资格，重启不重放。
  * [INPUT]: 当前员工/聊天身份、已核读输入与 SQLite 产品仓库。
  * [OUTPUT]: 仅恢复完整已发布且来源仍获准的本机聊天；备份恢复/安装位置变化只撤销续用资格，原事实保留，新消息从获准上下文重建。
@@ -8,11 +9,13 @@
 import { createHash } from 'node:crypto'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
+import type { RecordTransaction } from './storage/product-store'
 import { decisionMessageData, visibleMessages } from './mastra/message-projection'
 import type { Message, ConversationMaterial, MaterialReadRef } from '../../shared/domain'
 import { isMaterialReadRevisionValid, isConversationMaterialVisible } from '../../shared/domain/materials'
 
 export const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+const sourceHash = (message: Message | undefined) => digest(message ? { ...decisionMessageData(message), status: message.status, materialIds: message.materialIds, materialSources: message.materialSources } : null)
 interface Session {
   id: string; conversationId: string; agentId: string; fingerprint: string; runId: string
   sourceVersion?: 2
@@ -24,6 +27,15 @@ interface Session {
   materials?: { id: string; hash: string }[]
   rawSources?: { id: string; hash: string }[]
   materialRefs?: MaterialReadRef[]
+}
+
+/** Accepted live input joins the session's source fence in the message transaction. */
+export async function recordNativeInput(tx: RecordTransaction, runtime: 'codex' | 'claude', runId: string, agentId: string, conversationId: string, message: Message, original: Message) {
+  const collection = `${runtime}Sessions`, id = digest([agentId, conversationId, 'chat']), current = await tx.get<Session>(collection, id)
+  if (!current || current.runId !== runId || current.state !== 'pending' || current.resumeInvalidated) throw new Error('原生输入所属会话已结束或失效')
+  const merge = <T extends { id: string }>(old: T[] | undefined, fresh: T[]) => [...new Map([...(old ?? []), ...fresh].map(value => [value.id, value])).values()]
+  const refs = message.materialSources ?? []
+  await tx.put({ collection, id, value: { ...current, sources: merge(current.sources, [{ id: message.id, hash: digest(decisionMessageData(message)) }]), rawSources: merge(current.rawSources, [{ id: original.id, hash: sourceHash(original) }]), materialRefs: merge(current.materialRefs, refs), materials: merge(current.materials, refs.map(ref => ({ id: ref.id, hash: digest(ref) }))), inputMessageIds: [...new Set([...current.inputMessageIds, message.id])] } })
 }
 export class NativeSessions {
   private readonly collection: string
@@ -51,10 +63,10 @@ export class NativeSessions {
       // reply target invalidates the old transcript just like changing its text.
       const sources = messages.map(message => ({ id: message.id, hash: digest(decisionMessageData(message)) }))
       const authorized = new Set(context.nativeSourceIds ?? messages.map(message => message.id))
-      const sourceHash = (message: Message | undefined) => digest(message ? { ...decisionMessageData(message), status: message.status, materialIds: message.materialIds, materialSources: message.materialSources } : null)
       const rawSources = context.nativeSourceIds ? await Promise.all(sources.map(async source => ({ id: source.id, hash: sourceHash(await tx.get<Message>('messages', source.id)) }))) : undefined
       const oldRaw = previous?.rawSources ? await Promise.all(previous.rawSources.map(async source => authorized.has(source.id) && sourceHash(await tx.get<Message>('messages', source.id)) === source.hash)) : undefined
       const previousRun = previous && await tx.get<import('../../shared/domain').AgentRun>('runs', previous.runId)
+      const previousActions = previous ? (await tx.list<import('../../shared/domain/execution').NativeAction>('nativeActions')).filter(action => action.runId === previous.runId && action.kind === 'input' && action.status === 'answered') : []
       const savedReply = previousRun?.messageId && authorized.has(previousRun.messageId) ? await tx.get<Message>('messages', previousRun.messageId) : undefined
       const replyCandidates = savedReply ? [savedReply] : messages
       const replies = previous ? replyCandidates.filter(message => message.runId === previous.runId && message.senderType === 'agent' && message.senderId === context.agent.id && digest(message.content) === previous.outputHash) : []
@@ -70,6 +82,7 @@ export class NativeSessions {
         && (!!context.nativeSourceIds || (previous.memories ?? []).every(source => memories.some(memory => memory.id === source.id && memory.hash === source.hash)))
         && (oldMaterials ? oldMaterials.every(Boolean) : (previous.materials ?? []).every(source => materials.some(material => material.id === source.id && material.hash === source.hash)))
         && (oldRaw ? oldRaw.every(Boolean) : previous.sources.every(source => sources.some(current => current.id === source.id && current.hash === source.hash)))
+        && previousActions.every(action => action.delivery === 'submitted')
         && !!previousReply
       // The previous reply is already the assistant output in the native thread.
       // Record its product identity without injecting its text as new user input.

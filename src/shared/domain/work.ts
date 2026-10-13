@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
  * [OUTPUT]: 本机交互预算/请求固定原消息来源及external-turn计量，判断/执行/记忆共账本；保留旧字段兼容，不冒充内部逐模型限额。
  * [INPUT]: 用户请求、员工工作意图、执行权与可检查结果。
@@ -78,6 +79,8 @@ export interface WorkWake {
   createdAt: string
 }
 export interface WorkItem {
+  /** Native execution has no BOAI usage or budget limits; shared budgets account for API work only. */
+  budgetPolicy?: 'native'
   organization?: WorkOrganization
   /** Shared budget authority, never a cross-conversation parent relation. */
   collaborationRequestId?: string

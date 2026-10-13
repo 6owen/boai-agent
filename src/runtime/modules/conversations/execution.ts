@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-12消息回答可组合原事务，接受/提交/未知分别记录；多候选和私密输入不误入普通等待队列，重启不重放。
  * [INPUT]: 真实运行事件、用户原生交互回应、产品SQLite事务。
  * [OUTPUT]: 完整执行证据分块合并/稳定位置/代际；待决原生请求只接受明确回答，重启标为中断且不重放。
  * [POS]: 执行事实仓库，不承担原生工具循环或另建业务调度。
@@ -6,17 +7,21 @@
  */
 import { recordValue } from '../../adapters/native-events'
 import { createHash } from 'node:crypto'
-import type { AgentRun } from '../../../shared/domain'
+import type { AgentRun, Message } from '../../../shared/domain'
 import type { ExecutionEvent, ExecutionEvidence, NativeAction, NativeActionInput, NativeActionResponse } from '../../../shared/domain/execution'
-import type { ProductStore } from '../../adapters/storage/product-store'
+import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
+type MessageAnswer = { content: string; commit(): void; rollback(): Promise<void> }
 export class ExecutionRepository {
-  private pending = new Map<string, { resolve(response: NativeActionResponse): void; reject(error: unknown): void }>()
+  private pending = new Map<string, { resolve(response: NativeActionResponse): void; reject(error: unknown): void; message?(tx: RecordTransaction, message: Message): Promise<MessageAnswer> }>()
   constructor(private readonly store: ProductStore, private readonly changed: (conversationId: string) => void) {}
   async recover() {
     await this.store.transaction(async tx => {
-      for (const action of await tx.list<NativeAction>('nativeActions')) if (action.status === 'pending') await tx.put({ collection: 'nativeActions', id: action.id, value: { ...action, status: 'interrupted' } })
+      for (const action of await tx.list<NativeAction>('nativeActions')) {
+        if (action.status === 'pending') await tx.put({ collection: 'nativeActions', id: action.id, value: { ...action, status: 'interrupted' } })
+        else if (action.status === 'answered' && action.delivery && action.delivery !== 'unknown' && (await tx.get<AgentRun>('runs', action.runId))?.status !== 'completed') await tx.put({ collection: 'nativeActions', id: action.id, value: { ...action, delivery: 'unknown' } })
+      }
     })
   }
   async append(run: AgentRun, event: ExecutionEvent) {
@@ -43,14 +48,14 @@ export class ExecutionRepository {
     })
     this.changed(run.conversationId)
   }
-  async request(run: AgentRun, input: NativeActionInput, signal: AbortSignal, onReady?: () => Promise<void>): Promise<NativeActionResponse> {
+  async request(run: AgentRun, input: NativeActionInput, signal: AbortSignal, onReady?: () => Promise<void>, message?: (tx: RecordTransaction, message: Message) => Promise<MessageAnswer>): Promise<NativeActionResponse> {
     signal.throwIfAborted()
     const id = identity(run.id, input.id), action: NativeAction = { ...input, id, runId: run.id, conversationId: run.conversationId, agentId: run.agentId, createdAt: new Date().toISOString(), status: 'pending' }
     if (this.pending.has(id) || await this.store.get<NativeAction>('nativeActions', id)) throw new Error('原生请求身份已使用，不能重复执行')
     let resolve!: (response: NativeActionResponse) => void, reject!: (error: unknown) => void
     const response = new Promise<NativeActionResponse>((done, fail) => { resolve = done; reject = fail }); void response.catch(() => {})
     const abort = () => reject(signal.reason)
-    this.pending.set(id, { resolve, reject }); signal.addEventListener('abort', abort, { once: true })
+    this.pending.set(id, { resolve, reject, message }); signal.addEventListener('abort', abort, { once: true })
     try {
       await this.store.write([{ collection: 'nativeActions', id, value: action }]); this.changed(run.conversationId)
       signal.throwIfAborted(); await onReady?.(); return await response
@@ -64,20 +69,45 @@ export class ExecutionRepository {
     return (await this.store.load<NativeAction>('nativeActions')).some(action => action.runId === runId && action.kind === 'approval' && action.status === 'pending' && this.pending.has(action.id))
   }
   async inputForMessage(conversationId: string, recipients: string[]) {
-    const candidates = (await this.store.load<NativeAction>('nativeActions')).filter(action => action.conversationId === conversationId && action.kind === 'input' && action.status === 'pending' && this.pending.has(action.id) && !action.questions?.some(question => question.isSecret) && (!recipients.length || recipients.includes(action.agentId)))
-    return candidates.length === 1 ? candidates[0] : undefined
+    const candidates = (await this.store.load<NativeAction>('nativeActions')).filter(action => action.conversationId === conversationId && action.kind === 'input' && action.status === 'pending' && this.pending.has(action.id) && (!recipients.length || recipients.includes(action.agentId)))
+    if (candidates.some(action => action.questions?.some(question => question.isSecret))) throw new Error('此原生请求包含私密输入，请在执行面板回应')
+    if (candidates.length > 1) throw new Error('有多个原生问题正在等待，请@具体员工或在执行面板回应原请求')
+    return candidates[0]
   }
-  async respond(id: string, response: NativeActionResponse, responseMessageId?: string) {
+  async answerMessage(tx: RecordTransaction, id: string, message: Message) {
+    const waiting = this.pending.get(id), action = await tx.get<NativeAction>('nativeActions', id)
+    if (!waiting?.message || action?.status !== 'pending' || action.kind !== 'input' || action.conversationId !== message.conversationId) throw new Error('原生问题已结束或不能接收此消息')
+    const prepared = await waiting.message(tx, message)
+    try {
+      const deliver = await this.respondInTransaction(tx, id, { answers: Object.fromEntries((action.questions ?? []).map(question => [question.id, [prepared.content]])) }, message.id)
+      return { deliver: async () => { prepared.commit(); await deliver() }, rollback: prepared.rollback }
+    } catch (error) { await prepared.rollback(); throw error }
+  }
+  async respondInTransaction(tx: RecordTransaction, id: string, response: NativeActionResponse, responseMessageId?: string) {
     const waiting = this.pending.get(id)
     if (!waiting) throw new Error('此请求已结束，请查看原执行结果')
-    const action = await this.store.transaction(async tx => {
+    const action = await tx.get<NativeAction>('nativeActions', id)
+    if (!action || action.status !== 'pending') throw new Error('原生请求已被回答或中断')
+    if (action.kind === 'approval' && !action.options.some(option => option.id === response.option)) throw new Error('批准选项不属于此请求')
+    if (action.kind === 'input' && action.questions?.some(question => !response.answers?.[question.id]?.length)) throw new Error('请回答原生请求的问题')
+    const persisted = action.questions?.some(question => question.isSecret) ? undefined : response
+    await tx.put({ collection: 'nativeActions', id, value: { ...action, status: 'answered', response: persisted, responseMessageId, delivery: 'accepted' } })
+    return async () => {
+      if (this.pending.get(id) !== waiting) { await this.delivery(id, 'unknown'); return }
+      waiting.resolve(response); this.changed(action.conversationId)
+    }
+  }
+  async respond(id: string, response: NativeActionResponse, responseMessageId?: string) {
+    const deliver = await this.store.transaction(tx => this.respondInTransaction(tx, id, response, responseMessageId))
+    await deliver()
+  }
+  private async delivery(id: string, delivery: 'submitted' | 'unknown') {
+    await this.store.transaction(async tx => {
       const action = await tx.get<NativeAction>('nativeActions', id)
-      if (!action || action.status !== 'pending') throw new Error('原生请求已被回答或中断')
-      if (action.kind === 'approval' && !action.options.some(option => option.id === response.option)) throw new Error('批准选项不属于此请求')
-      if (action.kind === 'input' && action.questions?.some(question => !response.answers?.[question.id]?.length)) throw new Error('请回答原生请求的问题')
-      const persisted = action.questions?.some(question => question.isSecret) ? undefined : response
-      await tx.put({ collection: 'nativeActions', id, value: { ...action, status: 'answered', response: persisted, responseMessageId } }); return action
+      if (action?.status === 'answered') await tx.put({ collection: 'nativeActions', id, value: { ...action, delivery } })
     })
-    waiting.resolve(response); this.changed(action.conversationId)
+  }
+  async submitted(runId: string, nativeId: string) {
+    await this.delivery(identity(runId, nativeId), 'submitted')
   }
 }

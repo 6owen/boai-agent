@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 2026-10-12保留公开初始化目录和原生/API模型身份，容量匹配原生条目且带来源；账号/私有字段排除，回应写入独立记账。
  * [OUTPUT]: 工具结果同时核对原生双错误标记，保留原始结果与真实文件活动；不从create猜测新增。
  * [INPUT]: Rovai claude.rs/claude_control.rs @ f9acc239 (MIT)、已核对程序和持续员工session。
  * [OUTPUT]: stream-json双向控制、原生登录/工具/插件、公开过程和完整工具参数结果；用户批准精确回传。
@@ -17,7 +19,27 @@ import { claudeProvider } from './provider'
 import { runClaudeProcess } from './process'
 import { createClaudeToolBridge } from './tools'
 import { claudeInput } from './input'
-import { ClaudeUsage } from './usage'
+import type { NativeAgentInfo } from '../../../shared/domain/execution'
+
+/** Keep public directory fields only; account, PID and private extension data never reach BOAI. */
+export function claudePublicInfo(input: unknown): NativeAgentInfo {
+  const frame = recordValue(input), result: NativeAgentInfo = {}
+  const strings = (values: unknown) => Array.isArray(values) ? values.filter((value): value is string => typeof value === 'string') : undefined
+  const entries = (values: unknown, key: 'value' | 'name', fields: string[]) => Array.isArray(values) ? values.flatMap(raw => {
+    const value = typeof raw === 'string' ? { [key]: raw } : recordValue(raw)
+    if (typeof value[key] !== 'string') return []
+    return [Object.fromEntries([key, ...fields].filter(field => typeof value[field] === 'string').map(field => [field, value[field]]))]
+  }) : undefined
+  if (Array.isArray(frame.models)) result.models = frame.models.flatMap(raw => {
+    const value = recordValue(raw); if (typeof value.value !== 'string') return []
+    return [{ value: value.value, ...(typeof value.displayName === 'string' ? { displayName: value.displayName } : {}), ...(typeof value.description === 'string' ? { description: value.description } : {}), ...(typeof value.supportsEffort === 'boolean' ? { supportsEffort: value.supportsEffort } : {}), ...(strings(value.supportedEffortLevels) ? { supportedEffortLevels: strings(value.supportedEffortLevels) } : {}) }]
+  })
+  if (Array.isArray(frame.commands)) result.commands = entries(frame.commands, 'name', ['description', 'argumentHint']) as NativeAgentInfo['commands']
+  if (Array.isArray(frame.agents)) result.agents = entries(frame.agents, 'name', ['description', 'model']) as NativeAgentInfo['agents']
+  if (Array.isArray(frame.tools)) result.tools = strings(frame.tools)
+  if (Array.isArray(frame.mcp_servers)) result.mcpServers = entries(frame.mcp_servers, 'name', ['status']) as NativeAgentInfo['mcpServers']
+  return result
+}
 
 export async function runClaudeConversation(context: EngineContext, input: NativeConversationInput) {
   const profile = context.runtimeProfile, directory = context.runtimeDirectory
@@ -31,7 +53,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   const bootstrap = join(directory.privateHome, `bootstrap-${randomUUID()}.txt`)
   await writeFile(bootstrap, input.instructions, { flag: 'wx', mode: 0o600 })
   const bridge = await createClaudeToolBridge({ native: true, configDirectory: directory.privateHome, tools: input.tools, signal, onFailure: error => controller.abort(error) })
-  const sessionId = input.threadId ?? randomUUID(), initializeId = randomUUID(), usage = new ClaudeUsage()
+  const sessionId = input.threadId ?? randomUUID(), initializeId = randomUUID()
   const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS: '1' }
   delete env.CLAUDECODE; delete env.CLAUDE_CODE_ENTRYPOINT
   if (!profile.useExistingLogin) {
@@ -51,7 +73,8 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   const controls = new Map<string, AbortController>(), pending = new Set<Promise<void>>()
   const emit = context.onExecutionEvent ?? (async () => {})
   let endedAt = 0, resultWaitAt = 0, turnInProgress = false
-  let inputAccepted = false, contextModel: string | undefined, contextUsed: number | undefined
+  let inputAccepted = false, contextModel: string | undefined, nativeModel: string | undefined
+  let nativeInfo: NativeAgentInfo = {}
   const initializedAt = Date.now()
   // Port of Rovai ClaudeControl's initialization/end fences, not a task deadline.
   const watchdog = setInterval(() => {
@@ -76,7 +99,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     }
   }
   try {
-    await input.onSession(sessionId); await context.onNativeExecution?.({ sessionId })
+    await input.onSession(sessionId); await context.onNativeExecution?.({ sessionId, ...(context.agent.modelId ? { selectedModelId: context.agent.modelId } : {}) })
     await runClaudeProcess({ executable: profile.executable, runtime: profile.runtime, args, env, cwd: directory.cwd, privateHome: directory.privateHome, signal, native: true,
       onReady: (send, finish) => { write = send; end = finish; write(JSON.stringify({ type: 'control_request', request_id: initializeId, request: { subtype: 'initialize' } }) + '\n') },
       onLine: async line => {
@@ -88,6 +111,8 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
         if (frame.type === 'control_response') {
           if (frame.response?.request_id !== initializeId || initialized || frame.response?.subtype !== 'success') throw new Error('Claude 控制协议初始化失败')
           initialized = true; state = undefined
+          nativeInfo = { ...nativeInfo, ...claudePublicInfo(frame.response.response) }
+          if (Object.keys(nativeInfo).length) await context.onNativeExecution?.({ nativeInfo })
           write(JSON.stringify(prompt) + '\n'); await input.onSubmitted(sessionId, context.runId); return
         }
         if (frame.type === 'control_cancel_request') { controls.get(frame.request_id)?.abort(new Error('Claude 已撤回此请求')); return }
@@ -106,18 +131,15 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
               ? { behavior: 'allow', updatedInput: input, ...(response.option === 'session' ? { updatedPermissions: request.permission_suggestions } : {}) }
               : { behavior: 'deny', message: '用户拒绝此操作。请尊重该决定。' }
             write(JSON.stringify({ type: 'control_response', response: { subtype: 'success', request_id: id, response: decision } }) + '\n')
+            await context.onNativeActionSubmitted?.(id)
           })()
           pending.add(operation); void operation.catch(error => { if (!local.signal.aborted) controller.abort(error) }).finally(() => { pending.delete(operation); controls.delete(id); maybeEnd() }); return
         }
         if (frame.type === 'stream_event') {
           const event = recordValue(frame.event), parentId = frame.parent_tool_use_id ?? undefined, stream = parentId ?? 'main'
-          const count = !parentId ? usage.update(event) : undefined; if (count) await context.onUsage?.(count)
           if (event.type === 'message_start' && !parentId) {
             contextModel = event.message?.model
-            const raw = recordValue(event.message?.usage), fields = ['input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens']
-            const known = fields.filter(key => typeof raw[key] === 'number')
-            contextUsed = known.length ? known.reduce((sum, key) => sum + Number(raw[key]), 0) : undefined
-            await context.onNativeExecution?.({ ...(contextModel ? { modelId: contextModel } : {}), ...(contextUsed !== undefined ? { contextUsedTokens: contextUsed } : {}) })
+            await context.onNativeExecution?.({ ...(contextModel ? { reportedModelId: contextModel, ...(!nativeModel ? { modelId: contextModel, modelIdSource: 'api-event' as const } : {}) } : {}) })
           }
           if (event.type === 'message_start') { messageIds.set(stream, String(event.message?.id ?? frame.uuid)); if (!parentId) turnInProgress = true }
           const messageId = messageIds.get(stream) ?? String(frame.uuid)
@@ -156,11 +178,17 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
         } else if (frame.type === 'result') {
           hasResult = true; turnInProgress = false; finalText = typeof frame.result === 'string' ? frame.result : ''
           if (frame.is_error || frame.subtype !== 'success') resultError = (frame.errors ?? [frame.result ?? frame.subtype]).join('\n')
-          const window = contextModel ? frame.modelUsage?.[contextModel]?.contextWindow : undefined
-          await context.onNativeExecution?.({ ...(typeof frame.total_cost_usd === 'number' ? { totalCostUsd: frame.total_cost_usd } : {}), ...(typeof window === 'number' ? { contextWindowTokens: window } : {}) })
-          const count = usage.finish(frame.usage)
-          if (count) { await context.onUsage?.(count); if (context.modelCallId) await context.onModelCallUsage?.(context.modelCallId, count, true) }
+          const models = recordValue(frame.modelUsage), matched = nativeModel ?? (contextModel && Object.keys(models).length === 1 && Object.hasOwn(models, contextModel) ? contextModel : undefined)
+          const window = matched ? recordValue(models[matched]).contextWindow : undefined
+          await context.onNativeExecution?.({ ...(typeof window === 'number' && Number.isSafeInteger(window) && window > 0 ? { contextWindowTokens: window, contextWindowSource: { modelId: matched!, event: 'result.modelUsage' as const, sessionId, runId: context.runId } } : { contextWindowTokens: undefined, contextWindowSource: undefined }) })
         } else if (frame.type === 'system') {
+          if (frame.subtype === 'init') {
+            const publicInfo = claudePublicInfo(frame)
+            if (publicInfo.agents) publicInfo.agents = publicInfo.agents.map(agent => ({ ...nativeInfo.agents?.find(previous => previous.name === agent.name), ...agent }))
+            nativeInfo = { ...nativeInfo, ...publicInfo }
+            if (typeof frame.model === 'string' && frame.model) nativeModel = frame.model
+            await context.onNativeExecution?.({ nativeInfo, ...(nativeModel ? { modelId: nativeModel, modelIdSource: 'native-init' as const } : {}) })
+          }
           if (frame.subtype === 'session_state_changed') state = frame.state
           if (frame.subtype === 'task_started' && ['local_agent', 'local_workflow'].includes(frame.task_type)) tasks.add(frame.task_id)
           if (frame.subtype === 'task_notification' || frame.subtype === 'task_updated' && ['completed', 'failed', 'stopped', 'cancelled'].includes(frame.patch?.status)) tasks.delete(frame.task_id)

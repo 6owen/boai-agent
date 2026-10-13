@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 2026-10-12原生交互身份关联实际回应写入，材料路径沿原会话接收；不改变工具目录和所选权限。
  * [INPUT]: Rovai codex.rs @ f9acc239 (MIT)、原生会话、用户权限选择与追加的产品工具。
  * [OUTPUT]: 原生工具/配置的持续turn、完整公开事件、真实审批和用量；不改模型目录、不划分私有模型阶段。
  * [POS]: Codex员工生产会话驱动；协议移植来源许可见shared/rovai/LICENSE。
@@ -6,7 +8,6 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { EngineContext } from '../../contracts'
-import type { ModelUsage } from '../../../shared/domain'
 import type { NativeConversationInput } from '../native-conversation'
 import { codexExecutionEvent, recordValue } from '../native-events'
 import { CodexClient, object, string } from './client'
@@ -24,13 +25,13 @@ export async function runCodexConversation(context: EngineContext, input: Native
   const { runtimeProfile: profile, runtimeDirectory: directory, signal } = context
   if (!profile?.verified || !directory) throw new Error('请先测试本机 Codex 连接')
   let threadId = input.threadId ?? '', turnId = '', finalText = '', completedTurn: Record<string, unknown> | undefined
-  let usage: ModelUsage = {}, resolveDone!: () => void, rejectDone!: (error: Error) => void
+  let resolveDone!: () => void, rejectDone!: (error: Error) => void
   const done = new Promise<void>((resolve, reject) => { resolveDone = resolve; rejectDone = reject }); void done.catch(() => {})
   let releaseReady!: () => void
   const ready = new Promise<void>(resolve => { releaseReady = resolve })
   const calls = new Map<string, { signature: string; result: Promise<unknown> }>()
   const children = new Map<string, { parentId: string; turnId?: string }>()
-  const usageReceipts = new Set<string>()
+  const answeredActions = new WeakMap<object, string>()
   const complete = (turn: Record<string, unknown>) => {
     if (!turnId) { completedTurn = turn; return }
     if (turn.id !== turnId) return
@@ -56,6 +57,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
       }
       if (!context.requestNativeAction) throw new Error('原生交互未接入')
       const id = `${turnId}:${String(params.itemId ?? params.callId ?? randomUUID())}:${method}`
+      answeredActions.set(params, id)
       if (method === 'item/tool/requestUserInput') {
         const response = await context.requestNativeAction({ id, method, kind: 'input', title: '需要你的回复', detail: params,
           options: [], questions: Array.isArray(params.questions) ? params.questions as never : [] }, signal)
@@ -68,6 +70,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
       }
       throw new Error(`当前版本未支持原生交互 ${method}，请求已保留且未自动批准`)
     },
+    onResponseSent: async (_, params) => { const id = answeredActions.get(params); if (id) await context.onNativeActionSubmitted?.(id) },
     onNotification: async (method, params) => {
       const child = children.get(String(params.threadId))
       if (params.threadId && params.threadId !== threadId && !child) return
@@ -89,13 +92,8 @@ export async function runCodexConversation(context: EngineContext, input: Native
         if (item.type === 'agentMessage' && item.phase !== 'commentary' && typeof item.text === 'string') finalText = item.text
       }
       if (method === 'thread/tokenUsage/updated') {
-        const tokens = recordValue(params.tokenUsage), raw = recordValue(tokens.last), receipt = JSON.stringify(tokens.total)
-        await context.onNativeExecution?.({ ...(typeof raw.totalTokens === 'number' ? { contextUsedTokens: raw.totalTokens } : {}), ...(typeof tokens.modelContextWindow === 'number' ? { contextWindowTokens: tokens.modelContextWindow } : {}) })
-        if (!usageReceipts.has(receipt)) {
-          usageReceipts.add(receipt)
-          for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (typeof raw[field] === 'number') usage[field] = (usage[field] ?? 0) + raw[field]
-          await context.onUsage?.({ ...usage })
-        }
+        const tokens = recordValue(params.tokenUsage)
+        if (typeof tokens.modelContextWindow === 'number') await context.onNativeExecution?.({ contextWindowTokens: tokens.modelContextWindow })
       }
       if (method === 'turn/completed') complete(object(params.turn))
     },
@@ -122,7 +120,6 @@ export async function runCodexConversation(context: EngineContext, input: Native
     if (completedTurn) complete(completedTurn)
     await client.wait(done); await client.drain(); signal.throwIfAborted()
     await context.onDelta(finalText)
-    if (context.modelCallId) await context.onModelCallUsage?.(context.modelCallId, usage, true)
     return { text: finalText }
   } finally {
     controller.abort(new Error('Codex 原生turn已退出')); releaseReady()

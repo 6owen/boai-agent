@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，承接判断时保留明确的未知完整性；回执比较具体kind与profile，不跨运行时借用身份。
  * [INPUT]: 已核对的交互Work、原判断回执、当前运行与SQLite事务。
  * [OUTPUT]: 本机/API共用原请求预算；记忆须有本轮明确delivered公开回执，旧waiting消息不借后来交付取得维护权；父子工作不重建额度或延长期限。
@@ -20,10 +21,11 @@ export async function adoptInteractiveDecision(tx: RecordTransaction, work: Work
   if (!sameBackendBinding(agent?.executionBackend, run?.backend) || run.activityError || calls.length !== prior.callIds.length || calls.some(call => !prior.callIds.includes(call.id))) throw new WorkUnavailableError('工作判断必须保留全部实际调用与原运行方式')
   // The original decision consumes time too. Adoption can only shorten, never renew.
   if (!Number.isFinite(Date.parse(run.createdAt))) throw new WorkUnavailableError('本机判断缺少可信开始时间')
-  budget.deadlineAt = new Date(Math.min(Date.parse(budget.deadlineAt), Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
+  if (!native) budget.deadlineAt = new Date(Math.min(Date.parse(budget.deadlineAt), Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
   for (const id of prior.callIds) {
     const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
     if (!call || call.runId !== run.id || call.conversationId !== work.conversationId || call.phase !== 'decision' || !Number.isFinite(Date.parse(call.startedAt)) || (call.callUnit === 'external-turn') !== native) throw new WorkUnavailableError('工作判断缺少匹配计量的唯一请求记录')
+    if (native) continue
     const previous = await tx.get<BudgetModelCall>('budgetModelCalls', id)
     if (call.budgetOwned && previous?.budgetId !== budget.id) throw new WorkUnavailableError('本机判断已属于另一预算')
     await reserveBudgetCall(tx, budget, { id, conversationId: work.conversationId, sourceMessageId: work.sourceMessageId, runId: run.id, turnId: run.turnId, phase: 'decision', agentId: run.agentId, workId: work.id, ...(native ? { callUnit: 'external-turn' } : {}) })

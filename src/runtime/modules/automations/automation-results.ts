@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 文件证据同时保留精确artifactId和实际已提交交付messageId，支持原消息导航；不推断旧记录来源。
- * [OUTPUT]: 本机/API混合请求计量随原预算只读投影；未知用量与运行交付保持分离。
+ * [OUTPUT]: API计量随原预算只读投影；本机/混合范围由受理或实际运行来源判定，本机不展示用量预算。
  * [INPUT]: 同一次自动化的持久来源、轮次/工作/正文、已核查文件与实际执行器占用。
  * [OUTPUT]: 同轮多员工按各自公开问题回执保留未答等待，不由回复一个turn推断全部员工问题已答；旧完成/同伴失败轮次仅沿确切已提交Run/Work问题只读投影等待，不改写轮次或恢复执行。
  * [OUTPUT]: 已公开未回答问题优先于工作等待，活跃执行/审批和实际取消仍优先；普通消息不能解除等待。
@@ -9,6 +10,7 @@
  * [POS]: 自动化结果的纯投影；不调用模型、不执行或恢复工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isNativeBackend } from '../../../shared/domain/backends'
 import type { AgentRun, Artifact, AutomationOccurrence, AutomationOrigin, DiscussionTurn, DecisionRecord, Message, WorkBudget, WorkItem, WorkWake } from '../../../shared/domain'
 import { workBudgetExhausted } from '../collaboration/work-budget'
 import { workEvidenceError } from '../collaboration/work-protocol'
@@ -102,7 +104,8 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   }
   const finishedAt = [...turns.map(turn => turn.finishedAt), ...runs.map(run => run.finishedAt), ...works.map(work => work.updatedAt), o.finishedAt].filter((time): time is string => !!time).sort().at(-1) ?? o.startedAt
   const budget = input.budget?.id === o.budgetId && input.budget?.accounting === 'model-calls-v1' ? input.budget : undefined
-  return { status, deliveryStatus, turnIds: [...turnIds], waitingTurnIds: waitingTurns.map(turn => turn.id), workIds: [...workIds], rootWorkIds: works.filter(work => !work.parentWorkId).map(work => work.id),
+  const budgetScope = o.budgetScope ?? (runs.some(run => isNativeBackend(run.backend)) ? runs.every(run => isNativeBackend(run.backend)) ? 'native' as const : 'mixed' as const : undefined)
+  return { ...(budgetScope ? { budgetScope } : {}), status, deliveryStatus, turnIds: [...turnIds], waitingTurnIds: waitingTurns.map(turn => turn.id), workIds: [...workIds], rootWorkIds: works.filter(work => !work.parentWorkId).map(work => work.id),
     runIds: [...runIds], resultMessageIds: messages.map(message => message.id), resultEvidence: evidence,
     modelCalls: budget?.modelCalls ?? turns.reduce((sum, turn) => sum + turn.modelCalls, 0), usage: budget?.usage ?? usage, usageIncomplete: budget?.usageIncomplete ?? true,
     ...(budget ? { budget: { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),

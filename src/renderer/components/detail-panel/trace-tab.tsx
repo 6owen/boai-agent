@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 会话执行历史、Rovai迁入的执行内容、BOAI现有详情容器。
  * [OUTPUT]: 私聊隐藏头像栏；卡片固定次级header/通栏分隔和最大60vh/600px独立滚动；视图切换测量真实高度过渡，已打开内容保留、折叠停读，展示与折叠独立。
  * [POS]: 执行面板数据边界，隐藏停读，更新保留展开/阅读位置。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { isNativeBackend } from '@shared/domain/backends'
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react'
 import type { DesktopApi } from '@shared/ipc'
 import type { Snapshot, AgentRun, DigitalAgent } from '@shared/domain'
@@ -142,7 +144,7 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
   return <ExecutionReadingContext value={setReading}><div ref={transition} className="min-w-0 overflow-hidden"><CardContent ref={content} className="soft-divider-top min-w-0 p-0">
     <div data-slot="execution-content-toolbar" className="flex min-w-0 items-center justify-between gap-3 px-3 py-1 text-muted-foreground">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {run.usage?.totalTokens !== undefined && <span title={`${run.usage.totalTokens.toLocaleString()} tokens`}>{Intl.NumberFormat('en', { notation: 'compact' }).format(run.usage.totalTokens)} tokens</span>}
+        {!isNativeBackend(run.backend) && run.usage?.totalTokens !== undefined && <span title={`${run.usage.totalTokens.toLocaleString()} tokens`}>{Intl.NumberFormat('en', { notation: 'compact' }).format(run.usage.totalTokens)} tokens</span>}
         <time dateTime={run.createdAt} title={new Date(run.createdAt).toLocaleString('zh-CN')}>{new Date(run.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>

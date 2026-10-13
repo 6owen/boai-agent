@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 触发来源仅对本机user本人显示“你”，外部渠道保留真实发送者名称。
  * [OUTPUT]: 2026-10-10 共用RunCard显示有界真实阶段、Codex公开摘要/进度说明以及分离的工具参数/结果。
  * [OUTPUT]: 2026-10-10 同一RunCard供会话与员工执行详情复用，状态/未知/工具/失败与原重试门禁保持。
@@ -40,15 +41,13 @@ export function RoundDetail({ round, detail, snapshot, busy, onRetry, historical
   }
   const runs = [...round.runs].sort(byCreatedAt)
   const nativeRuns = runs.filter(run => isNativeBackend(run.backend))
-  const nativeRequests = nativeRuns.every(run => Number.isSafeInteger(run.backend!.externalInvocations) && run.backend!.externalInvocations >= 0) ? nativeRuns.reduce((sum, run) => sum + run.backend!.externalInvocations, 0) : undefined
   const active = runs.some(run => ['queued', 'running', 'waiting_approval'].includes(run.status)) || Boolean(turn && liveTurn(turn.status))
   return <section className={`activity-round${historical ? ' is-history' : ''}`} aria-label={historical ? '历史轮次详情' : '本轮详情'} data-turn-id={turn?.id}>
     <div className="round-context"><span className="pill">{historical ? '历史记录' : '本轮'}</span><time dateTime={round.createdAt}>{roundTime(round.createdAt)}</time></div>
     <p className="round-trigger"><strong>触发消息</strong><span>{round.trigger ? `${round.trigger.senderType === 'user' && round.trigger.senderId === 'user' ? '你' : round.trigger.senderName}：${round.trigger.content}` : '原始消息不可用，此处保留运行记录。'}</span></p>
     <h3>{turn ? turnLabels[turn.status].replace('本轮', historical ? '该轮' : '本轮') : runs.length ? '运行记录' : '等待开始处理'}</h3>
     {turn?.reason && <p className="field-hint">{turn.status === 'failed' ? failureSummary(turn.reason) : turn.reason}</p>}
-    {turn && <p className="field-hint">{historical ? '该轮' : '本轮'}{nativeRuns.length ? '处理尝试' : '模型调用'} {turn.modelCalls} 次 · 公开消息 {turn.publicMessages} 条</p>}
-    {nativeRuns.length > 0 && <p className="field-hint">当前记录中的本机请求：{nativeRequests === undefined ? '未知' : `${nativeRequests} 次`}；本机 Agent 内部模型调用次数未知。</p>}
+    {turn && <p className="field-hint">{historical ? '该轮' : '本轮'}{nativeRuns.length === runs.length ? '' : `API调用 ${turn.modelCalls} 次 · `}公开消息 {turn.publicMessages} 条</p>}
     {deliveries.length > 0 && <><h4>成员状态</h4><p className="field-hint">每位员工一条状态；各次尝试保留在下方运行记录中。</p>{deliveries.map(delivery => <div className="delivery-row" key={delivery.agentId}><span>{snapshot.agents.find(agent => agent.id === delivery.agentId)?.name ?? '已移除员工'}</span><small>{memberLabel(delivery)}</small>{delivery.error && (delivery.status === 'interrupted' || (delivery.status === 'failed' && (!unresolved || unresolved.has(delivery.id)))) && <p className="error-copy">{failureSummary(delivery.error)}</p>}</div>)}</>}
     <h4>{historical ? '该轮' : '本轮'}运行记录 · {runs.length}</h4>
     {runs.map((run, index) => {

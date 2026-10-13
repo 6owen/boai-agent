@@ -1,7 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-12受管原生输入副本排他写入/实际字节与hash核验，外改保持；原选取路径不外泄，受管副本路径可交付，不拦截原生工具。
  * [INPUT]: 宿主已有受管根、获准源文件、受管材料身份与取消信号。
  * [OUTPUT]: 受管根系统别名规范化但源路径和根内链接仍拒绝、有界原件字节/hash、显式严格文本解码、安全栅格图片字节识别、排他写入与保留外改的清理。
- * [POS]: materials 的确定性文件边界，路径不进入持久材料或模型上下文。
+ * [POS]: materials 的确定性文件边界，原选取路径不进入材料/模型上下文，原生副本只提供受管路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash } from 'node:crypto'
@@ -127,6 +128,38 @@ export async function readMaterialOriginal(dataPath: string, conversationId: str
     if (contentHash !== expectedHash) throw new Error('受管材料已被外部修改，已保留文件')
     return { bytes: source.bytes, size: source.bytes.length, contentHash }
   } finally { await source.handle.close() }
+}
+
+/** Native input copies are host-owned, hash-bound files, not a native tool sandbox. */
+function nativeCopyTarget(dataPath: string, relativePath: string) {
+  if (!/^agents\/[a-zA-Z0-9_-]+\/workspace\/sessions\/[a-zA-Z0-9_-]+\/\.(codex|claude)-private\/material-inputs\/[a-f0-9]{64}\.[a-zA-Z0-9]{1,12}$/.test(relativePath)) throw new Error('无效原生材料副本位置')
+  return join(dataPath, ...relativePath.split('/'))
+}
+export async function readNativeMaterialCopy(dataPath: string, relativePath: string, expectedHash: string): Promise<MaterialBytes> {
+  const source = await readBytes(nativeCopyTarget(await realpath(dataPath), relativePath))
+  try {
+    await source.verify()
+    if (hash(source.bytes) !== expectedHash) throw new Error('原生材料副本已外改，原文件保持')
+    return { bytes: source.bytes, size: source.bytes.length, contentHash: expectedHash }
+  } finally { await source.handle.close() }
+}
+export async function writeNativeMaterialCopy(dataPath: string, relativePath: string, bytes: Buffer) {
+  const root = await realpath(dataPath), file = nativeCopyTarget(root, relativePath)
+  await checkMaterialPath(file, true); await mkdir(dirname(file), { recursive: true }); await checkMaterialPath(dirname(file))
+  let created = false
+  try {
+    const handle = await open(file, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o400)
+    created = true
+    try { await handle.writeFile(bytes); await handle.sync() } finally { await handle.close() }
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error }
+  await readNativeMaterialCopy(root, relativePath, hash(bytes))
+  return { path: file, created }
+}
+export async function cleanupNativeMaterialCopy(dataPath: string, relativePath: string, expectedHash: string) {
+  const file = nativeCopyTarget(await realpath(dataPath), relativePath)
+  try { await readNativeMaterialCopy(dataPath, relativePath, expectedHash) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
+  await unlink(file)
 }
 
 /** Only remove the tracked original and an empty directory. Never recursively remove unknown files. */

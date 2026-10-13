@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 事务受理等待当前运行配置核对，失败先登记跳过，不创建聊天、预算或投递。
  * [INPUT]: 自动化定义/触发、宿主许可判断与 ProductStore 事务。
  * [OUTPUT]: 原自动化问题仅解除固定问题，原Work补充与消息/容量同事务，其他原问题保持等待；旧完成/同伴失败轮次须在同事务以确切已提交Run/Work问题核对，不重写原轮次或恢复业务。
@@ -6,9 +7,10 @@
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isNativeBackend } from '../../../shared/domain/backends'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import type { AgentRun, DiscussionTurn, DecisionRecord, Message, WorkItem, WorkBudget } from '../../../shared/domain'
+import type { DigitalAgent, Conversation, AgentRun, DiscussionTurn, DecisionRecord, Message, WorkItem, WorkBudget } from '../../../shared/domain'
 import type { AutomationDefinition, AutomationDispatch, AutomationInput, AutomationOccurrence, AutomationOrigin, AutomationMonitorCheckpoint, AutomationMonitorRead } from '../../../shared/domain/automations'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { checkWorkBudget, newWorkBudget, WorkUnavailableError } from '../collaboration/work-budget'
@@ -52,7 +54,7 @@ export async function resumeAutomationExecution(tx: RecordTransaction, origin: A
   if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt || !['failed', 'running', 'waiting_work', 'waiting_user', 'waiting_approval'].includes(o.status)) throw new Error('本次自动化已停止或需要核对，请从计划明确发起新一轮')
   const budget = o.budgetId && await tx.get<WorkBudget>('workBudgets', o.budgetId)
   if (!budget || budget.accounting !== 'model-calls-v1') throw new Error('旧自动化没有可信的原始调用预算，请明确发起新一轮')
-  checkWorkBudget(budget)
+  if (!o.budgetScope) checkWorkBudget(budget)
   const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && pendingOccurrence.has(item.status))
   if (others.some(item => item.automationId === o.automationId || item.conversationId === conversationId && activeOccurrence.has(item.status)) || others.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) throw new Error('其他自动化正在执行或等待，不能继续本次运行')
   o.status = 'running'; o.stateVersion++; o.deliveryStatus = o.resultEvidence?.length ? 'partial' : 'pending'
@@ -248,6 +250,9 @@ export class AutomationRepository {
       let dispatch: AutomationDispatch | undefined
       if (!reason) {
         dispatch = { schemaVersion: 1, id, requestId: `automation-${id}`, status: 'pending', definition: structuredClone(d), origin: { kind: 'automation', automationId: d.id, occurrenceId: id, name: d.name, authorizedFingerprint: d.authorizedFingerprint } }
+        const conversation = await tx.get<Conversation>('conversations', o.conversationId)
+        const members = await Promise.all((conversation?.agentIds ?? []).map(id => tx.get<DigitalAgent>('agents', id)))
+        if (members.some(member => isNativeBackend(member?.executionBackend))) o.budgetScope = members.every(member => isNativeBackend(member?.executionBackend)) ? 'native' : 'mixed'
         const budget = newWorkBudget(`automation-budget-${id}`, { origin: dispatch.origin!, conversationId: o.conversationId })
         o.budgetId = budget.id; o.budget = { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs }
         await tx.put(row('workBudgets', budget)); await tx.put(row('automationOccurrences', o))

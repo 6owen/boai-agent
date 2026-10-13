@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 新交互工作承接已知但不完整的本机判断用量，unknownCalls及完整性随原请求保持。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
  * [INPUT]: 真实SQLite连接、本机判断回执及原Work公开交付。
@@ -52,23 +53,38 @@ async function fixture(native = true, mixed = false, decisionComplete?: boolean)
   return { store, works, connect, work, task, decision, claim, budget, publish }
 }
 
-it('adopts known native decision usage without turning a partial receipt into complete budget accounting', async () => {
+it('does not adopt historical native usage into the API ledger', async () => {
   const f = await fixture(true, false, false)
-  expect(await f.budget()).toMatchObject({ usage: known, unknownCalls: 1, usageIncomplete: true })
-  expect((await f.store.load<BudgetModelCall>('budgetModelCalls'))[0]).toMatchObject({ usage: known, usageComplete: false })
+  expect(await f.budget()).toMatchObject({ usage: {}, modelCalls: 0, runs: 0, unknownCalls: 0, usageIncomplete: false })
+  expect(await f.store.load('budgetModelCalls')).toEqual([])
+  expect(f.work.budgetPolicy).toBe('native')
 })
 
-it('adopts the actual decision once, counts time from that decision, and atomically reserves the remaining allowance', async () => {
-  const f = await fixture(), before = await f.budget()
-  expect(before).toMatchObject({ sourceMessageId: 'source', callUnit: 'external-turn', accounting: 'model-calls-v1', modelCalls: 1, usage: known, unknownCalls: 0 })
+it('keeps API decision time and atomic call limits in a mixed group', async () => {
+  const f = await fixture(false, true), before = await f.budget()
+  expect(before).toMatchObject({ modelCalls: 1, usage: known })
   expect(Date.parse(before.deadlineAt)).toBe(Date.parse(f.decision.createdAt) + WORK_DURATION_MS)
   await f.store.write([row('workBudgets', { ...before, maxModelCalls: 3 })])
   const other = new WorkRepository(await f.connect())
   const results = await Promise.allSettled([f.works.reserveInteractiveCall(f.task, 'a', 'execution'), other.reserveInteractiveCall(f.task, 'b', 'execution'), f.works.reserveInteractiveCall(f.task, 'c', 'execution')])
   expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(2)
-  const calls = (await f.store.load<BudgetModelCall>('budgetModelCalls')).filter(call => call.phase === 'execution')
-  await other.reserveInteractiveCall(f.task, calls[0].id, 'execution')
   expect(await f.budget()).toMatchObject({ modelCalls: 3, unknownCalls: 2, deadlineAt: before.deadlineAt })
+})
+
+it('allows native effects, delivery and explicit retry after every former budget limit is exhausted', async () => {
+  const f = await fixture(), before = await f.budget()
+  const expired = { ...before, maxModelCalls: 0, maxRuns: 0, maxOutputTokens: 0, maxWorkItems: 0, maxRetries: 0, maxReportRefreshes: 0, maxNoProgress: 0, deadlineAt: new Date(0).toISOString() }
+  await f.store.write([row('workBudgets', expired)])
+  await f.works.reserveInteractiveCall(f.task, 'native-call', 'execution')
+  await f.works.release(f.task.id, 'failed'); await f.works.authorizeRetry(f.work.id, f.task.agentId)
+  const work = (await f.store.load<WorkItem>('workItems'))[0]
+  await f.works.claim({ ...f.claim, runId: 'retry', priorDecision: undefined, intent: { ...intent, workId: work.id, expectedVersion: work.version } })
+  await f.works.markEffect('retry'); await f.works.confirmEffect('retry')
+  await f.works.reserveReport('retry')
+  await f.works.settle('retry', { disposition: 'delivered', summary: 'Done', evidence: [{ kind: 'answer', reference: 'Done' }] }, { messageId: 'answer', content: 'Done', artifactIds: [] })
+  expect((await f.store.load<WorkItem>('workItems'))[0].status).toBe('delivered')
+  expect(await f.budget()).toEqual(expired)
+  expect(await f.store.load('budgetModelCalls')).toEqual([])
 })
 
 it.each(['runtime', 'profile'] as const)('rejects a mismatched native %s in an invocation or changed employee binding without charging the original budget', async mismatch => {
@@ -80,7 +96,7 @@ it.each(['runtime', 'profile'] as const)('rejects a mismatched native %s in an i
   await f.store.write([row('agents', { ...agent, executionBackend: { kind: backend.kind, profileId: backend.profileId } })])
   await expect(f.works.reserveInteractiveCall(f.task, 'changed-binding-call', 'execution')).rejects.toThrow('原交互工作')
   expect(await f.budget()).toEqual(before)
-  expect((await f.store.load<BudgetModelCall>('budgetModelCalls')).map(call => call.id)).toEqual(['decision-call'])
+  expect(await f.store.load('budgetModelCalls')).toEqual([])
 })
 
 async function otherDecision(f: Awaited<ReturnType<typeof fixture>>, native: boolean) {
@@ -89,26 +105,23 @@ async function otherDecision(f: Awaited<ReturnType<typeof fixture>>, native: boo
   return { ...f.claim, agentId: 'other', runId: 'other-task', intent: { ...intent, key: 'independent' }, priorDecision: { runId: decision.id, callIds: ['other-call'] } }
 }
 
-it.each([true, false])('shares one original ledger when the first independent root is native=%s, while retaining per-call units and atomic limits', async native => {
-  const f = await fixture(native, true), before = await f.budget(), claim = await otherDecision(f, !native)
+it.each([true, false])('accounts only for API calls in a mixed ledger with native first=%s', async native => {
+  const f = await fixture(native, true), claim = await otherDecision(f, !native)
   const work = await f.works.claim(claim)
-  const other: AgentRun = { ...f.task, id: claim.runId, agentId: 'other', workId: work.id, backend: !native ? { ...f.decision.backend!, kind: 'codex-local', profileId: 'profile', profileRevision: 1, externalInvocations: 1, sessionPolicy: 'fresh', toolControl: 'none' } : undefined }
+  const other: AgentRun = { ...f.task, id: claim.runId, agentId: 'other', workId: work.id, backend: !native ? { kind: 'codex-local', profileId: 'profile', profileRevision: 1, externalInvocations: 1, sessionPolicy: 'fresh', toolControl: 'none' } : undefined }
   await f.store.write([row('runs', other)])
-  expect(work.budgetId).toBe(f.work.budgetId); expect(work.rootWorkId).toBe(work.id)
-  expect(await f.budget()).toMatchObject({ callUnit: 'mixed', modelCalls: 2, runs: 2, unknownCalls: 0, deadlineAt: new Date(Date.parse(before.deadlineAt) - 1000).toISOString() })
-  const budget = await f.budget(); await f.store.write([row('workBudgets', { ...budget, maxModelCalls: 4 })])
-  const second = new WorkRepository(await f.connect())
-  await Promise.all([f.works.reserveInteractiveCall(f.task, 'first-task-call', 'execution'), second.reserveInteractiveCall(other, 'other-task-call', 'execution')])
-  await expect(second.reserveInteractiveCall(other, 'excess-call', 'execution')).rejects.toThrow('上限')
-  await expect(second.reserveInteractiveCall(other, 'first-task-call', 'execution')).rejects.toThrow('另一请求')
-  await f.works.settleInteractiveCall(f.task.id, 'first-task-call', known)
-  await second.settleInteractiveCall(other.id, 'other-task-call', known)
-  expect(await f.budget()).toMatchObject({ modelCalls: 4, unknownCalls: 1, usageIncomplete: true })
-  const calls = await f.store.load<BudgetModelCall>('budgetModelCalls')
-  expect(calls.find(call => call.id === 'first-task-call')?.callUnit).toBe(native ? 'external-turn' : undefined)
-  expect(calls.find(call => call.id === 'other-task-call')?.callUnit).toBe(native ? undefined : 'external-turn')
-  await f.works.settleInteractiveCall(native ? f.task.id : other.id, native ? 'first-task-call' : 'other-task-call', known, true)
-  expect(await f.budget()).toMatchObject({ unknownCalls: 0, usageIncomplete: false, usage: { inputTokens: 20, outputTokens: 28, totalTokens: 48 } })
+  expect(work.budgetId).toBe(f.work.budgetId)
+  expect(await f.budget()).toMatchObject({ modelCalls: 1, runs: 1, usage: known })
+  const api = native ? other : f.task, local = native ? f.task : other
+  const budget = await f.budget(); await f.store.write([row('workBudgets', { ...budget, maxModelCalls: 2 })])
+  await f.works.reserveInteractiveCall(api, 'api-call', 'execution')
+  await expect(f.works.reserveInteractiveCall(api, 'api-excess', 'execution')).rejects.toThrow('上限')
+  await f.works.reserveInteractiveCall(local, 'native-call', 'execution')
+  await f.works.settleInteractiveCall(local.id, 'native-call', { outputTokens: 999999 }, true)
+  await f.works.markEffect(local.id); await f.works.confirmEffect(local.id)
+  await f.works.settleInteractiveCall(api.id, 'api-call', known, true)
+  expect(await f.budget()).toMatchObject({ modelCalls: 2, runs: 1, unknownCalls: 0, usage: { inputTokens: 10, outputTokens: 14, totalTokens: 24 } })
+  expect((await f.store.load<BudgetModelCall>('budgetModelCalls')).some(call => call.callUnit === 'external-turn')).toBe(false)
   await f.works.cancelTree(f.work.id, 'Stop only this root')
   expect((await f.store.load<WorkItem>('workItems')).find(item => item.id === work.id)?.status).toBe('running')
 })
@@ -123,7 +136,7 @@ it.each([true, false])('delegates native=%s parent to the other backend without 
   const claimed = await f.works.claim({ conversationId: 'chat', sourceMessageId: 'source', agentId: 'other', runId: 'child-task', wakeId: child.wakeId, intent: { ...proposal, workId: child.id, expectedVersion: child.version } })
   const task: AgentRun = { ...f.task, id: 'child-task', workId: claimed.id, agentId: 'other', turnId: 'child-turn', backend: native ? undefined : { kind: 'codex-local', profileId: 'profile', profileRevision: 1, externalInvocations: 0, sessionPolicy: 'fresh', toolControl: 'host-bridge' } }
   await f.store.write([row('runs', task)]); await f.works.reserveInteractiveCall(task, 'child-call', 'execution')
-  expect(await f.budget()).toMatchObject({ deadlineAt: before.deadlineAt, runs: 2, modelCalls: 2, workItems: 2 })
+  expect(await f.budget()).toMatchObject({ deadlineAt: before.deadlineAt, runs: 1, modelCalls: 1, workItems: 1 })
   const group = (await f.store.load<Conversation>('conversations'))[0]
   await f.store.write([row('conversations', { ...group, agentIds: ['employee'] })])
   await expect(f.works.reserveInteractiveCall(task, 'revoked-call', 'execution')).rejects.toThrow('原交互工作')
@@ -142,7 +155,7 @@ it('rejects incomplete API decision adoption and a mismatched backend receipt wi
   expect(await f.budget()).toEqual(before)
   await f.store.write([row('profileModelCalls', call)])
   await f.works.claim({ ...claim, priorDecision: { ...claim.priorDecision, callIds: ['other-call', 'repair-call'] } })
-  expect(await f.budget()).toMatchObject({ modelCalls: 3, unknownCalls: 0 })
+  expect(await f.budget()).toMatchObject({ modelCalls: 2, unknownCalls: 0 })
 })
 
 it('charges API post-delivery memory in a mixed group to the same ledger without another Work execution', async () => {
@@ -155,7 +168,7 @@ it('charges API post-delivery memory in a mixed group to the same ledger without
 })
 
 it('charges one post-delivery memory request without reacquiring the Work or creating another budget', async () => {
-  const f = await fixture(), memory = await f.publish(), before = (await f.store.load<WorkItem>('workItems'))[0], initial = await f.budget()
+  const f = await fixture(false, true), memory = await f.publish(), before = (await f.store.load<WorkItem>('workItems'))[0], initial = await f.budget()
   await f.works.reserveInteractiveCall(memory, 'memory-call', 'memory')
   await f.works.reserveInteractiveCall(memory, 'memory-call', 'memory')
   await expect(f.works.reserveInteractiveCall(memory, 'another-memory', 'memory')).rejects.toThrow('已有请求')
@@ -167,7 +180,7 @@ it('charges one post-delivery memory request without reacquiring the Work or cre
 })
 
 it.each(['calls', 'deadline', 'foreign-turn', 'review', 'waiting-publication'])('refuses %s maintenance without changing delivered facts or making a new reservation', async condition => {
-  const f = await fixture(), memory = await f.publish(), budget = await f.budget(), work = (await f.store.load<WorkItem>('workItems'))[0]
+  const f = await fixture(false, true), memory = await f.publish(), budget = await f.budget(), work = (await f.store.load<WorkItem>('workItems'))[0]
   if (condition === 'calls') await f.store.write([row('workBudgets', { ...budget, maxModelCalls: budget.modelCalls })])
   if (condition === 'deadline') await f.store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString() })])
   if (condition === 'foreign-turn') { memory.turnId = 'foreign'; await f.store.write([row('runs', memory)]) }
@@ -179,23 +192,16 @@ it.each(['calls', 'deadline', 'foreign-turn', 'review', 'waiting-publication'])(
   expect(await f.store.load('workItems')).toEqual(before)
 })
 
-it('keeps observed usage incomplete until the external terminal receipt, including after stop and later missing fields', async () => {
-  const f = await fixture()
+it('ignores late native accounting without creating records or incomplete activity', async () => {
+  const f = await fixture(), before = await f.budget()
   await f.works.reserveInteractiveCall(f.task, 'task-call', 'execution')
-  await f.works.settleInteractiveCall(f.task.id, 'task-call', known)
   await f.works.release(f.task.id, 'failed')
-  expect(await f.budget()).toMatchObject({ unknownCalls: 1, usageIncomplete: true, usage: { inputTokens: 10, outputTokens: 14, totalTokens: 24 } })
   await f.works.settleInteractiveCall(f.task.id, 'task-call', known, true)
-  expect(await f.budget()).toMatchObject({ unknownCalls: 0, usageIncomplete: false })
-  await f.works.settleInteractiveCall(f.task.id, 'task-call', { inputTokens: 6 }, true)
-  await f.works.settleInteractiveCall(f.task.id, 'task-call', { inputTokens: 6 }, true)
-  expect(await f.budget()).toMatchObject({ unknownCalls: 1, usageIncomplete: true, usage: { inputTokens: 11, outputTokens: 14, totalTokens: 24 } })
-  const calls = await f.store.load<BudgetModelCall>('budgetModelCalls')
-  const activity = aggregateActivity({ calls: [], budgets: calls, messages: [], runs: [f.decision, f.task], works: [], intervals: [], skills: [], resources: [] }, { from: '2026-01-01', to: '2026-12-31', timezone: 'UTC' })
-  expect(activity.totalTokens).toBe(12); expect(activity.unknownCalls).toBe(1)
-  await f.store.write([], calls.map(call => ({ collection: 'budgetModelCalls', id: call.id })))
-  await f.works.settleInteractiveCall(f.task.id, 'task-call', known, true)
+  await f.works.settleInteractiveCall(f.task.id, 'task-call', { inputTokens: -1 }, true)
+  expect(await f.budget()).toEqual(before)
   expect(await f.store.load('budgetModelCalls')).toEqual([])
+  const activity = aggregateActivity({ calls: [], budgets: [], messages: [], runs: [f.decision, f.task], works: [], intervals: [], skills: [], resources: [] }, { from: '2026-01-01', to: '2026-12-31', timezone: 'UTC' })
+  expect(activity.totalTokens).toBeNull(); expect(activity.unknownCalls).toBe(0);expect(activity.unrecordedRuns).toBe(0)
 })
 
 it('does not reconstruct a legacy native budget or accept a new task without a real decision receipt', async () => {

@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [INPUT]: 员工固定身份、可见会话范围、类型化执行查询和原聊天导航。
  * [OUTPUT]: API/本机共用员工执行详情，历史冻结配置、实际工具/Trace/Work/成果；隐藏停读、迟到隔离、明确停止原工作，不另建聊天或重跑任务。
  * [POS]: 员工资料下属的执行能力视图。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isNativeBackend } from '@shared/domain/backends'
 import { useEffect, useRef, useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { EMPLOYEE_EXECUTION_LIMITS } from '@shared/domain/employee-executions'
@@ -103,8 +105,7 @@ export function EmployeeExecutionPane({ api, agent, snapshot, active, conversati
         <div className="flex flex-wrap gap-2">{onOpenSource && <Button variant="outline" size="sm" disabled={busy} onClick={openSource}><MessageCircle />查看原聊天</Button>}{detail.work && ['queued', 'running', 'waiting_approval'].includes(detail.run.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={stop}>停止此工作</Button>}</div>
         {detail.run.status === 'waiting_approval' && <p className="field-hint">这次执行正在等待批准，请在原聊天中处理。</p>}
         <RunCard run={detail.run} work={detail.work} busy={busy} historical={false} newerAttempt={false} canRetry={false} onRetry={() => {}} />
-        {detail.run.backend && <p className="field-hint">本机请求 {Number.isSafeInteger(detail.run.backend.externalInvocations) ? detail.run.backend.externalInvocations : '未知'} 次 · 内部模型调用次数未知</p>}
-        {detail.run.usage && <p className="field-hint">输入 {detail.run.usage.inputTokens ?? '未知'} tokens · 输出 {detail.run.usage.outputTokens ?? '未知'} tokens</p>}
+        {!isNativeBackend(detail.run.backend) && detail.run.usage && <p className="field-hint">输入 {detail.run.usage.inputTokens ?? '未知'} tokens · 输出 {detail.run.usage.outputTokens ?? '未知'} tokens</p>}
         {detail.run.traceError && <Banner>{detail.run.traceError}</Banner>}
         {detail.spans.length > 0 && <TraceDetail spans={detail.spans} runs={[detail.run]} />}
         {detail.spansTruncated && <p className="field-hint">这里只显示前 {EMPLOYEE_EXECUTION_LIMITS.traceSpans} 条执行记录，完整记录可在原聊天查看。</p>}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [INPUT]: 第13组11现行原生合同、实际AppService和隔离协议进程。
  * [OUTPUT]: 原生失败/未知副作用、路径别名且不放行符号链接、子执行、完整分页、运行切换、审批和并发的生产接线回归。
  * [POS]: 替代旧claude-product及Codex五阶段产品断言；旧阶段传输测试仍保留。
@@ -95,12 +96,12 @@ describe.each(['codex','claude'] as const)('%s 原生生命周期',runtime=>{
   await f.restart();expect((await f.detail()).messages.filter(message=>message.senderType==='agent')).toEqual(messages)
  })
 
- it('shows only reported context capacity and native cost, separate from total turn usage',async()=>{
+ it('keeps reported model capacity without BOAI native usage or cost accounting',async()=>{
   const f=await setup(),d=await f.wait(await f.send('你好'))
   expect(d.runs[0].backend?.contextWindowTokens).toBe(200000)
-  expect(d.runs[0].backend?.contextUsedTokens).toBe(runtime==='codex'?15:10)
-  expect(d.runs[0].backend?.totalCostUsd).toBe(runtime==='claude'?0.001:undefined)
-  expect(d.runs[0].usage?.totalTokens).toBe(15)
+  expect(d.runs[0].backend?.contextUsedTokens).toBeUndefined()
+  expect(d.runs[0].backend?.totalCostUsd).toBeUndefined()
+  expect(d.runs[0].usage).toBeUndefined()
  })
 
  it('deduplicates public/final whitespace without discarding the native session',async()=>{

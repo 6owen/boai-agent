@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 文件证据以原交付消息入口展示，不在普通结果列表输出内部UUID；旧无消息映射记录仍可返回本次聊天核对。
  * [OUTPUT]: 本机外部回合与API模型请求按原预算标明计量单位，追加额度保留口径和未知内部次数。
  * [INPUT]: 自动化分页历史、会话结果、DesktopApi 与共享控件。
@@ -22,8 +23,8 @@ import { Textarea } from '@/components/ui/textarea'
 export const occurrenceStatusLabels:Record<AutomationOccurrence['status'],string>={admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',waiting_work:'等待工作',cancelling:'正在停止',completed:'运行结束',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}
 const deliveries: Record<AutomationOccurrence['deliveryStatus'], string> = { pending: '尚待交付', delivered: '已交付', no_change: '没有变化', partial: '部分结果', blocked: '未交付', unknown: '交付待核对' }
 
-const requestUnit = (o: AutomationOccurrence) => o.budget?.callUnit === 'mixed' ? 'API／本机请求' : o.budget?.callUnit === 'external-turn' ? '本机请求' : '模型请求'
-const exhausted = (o: AutomationOccurrence) => !!o.budget && (o.budget.exhausted || Date.parse(o.budget.deadlineAt) <= Date.now() || (o.modelCalls ?? 0) >= o.budget.maxModelCalls || o.budget.runs >= o.budget.maxRuns || (o.usage?.outputTokens ?? 0) >= o.budget.maxOutputTokens)
+const requestUnit = (_o: AutomationOccurrence) => 'API请求'
+const exhausted = (o: AutomationOccurrence) => o.budgetScope !== 'native' && !!o.budget && (o.budget.exhausted || Date.parse(o.budget.deadlineAt) <= Date.now() || (o.modelCalls ?? 0) >= o.budget.maxModelCalls || o.budget.runs >= o.budget.maxRuns || (o.usage?.outputTokens ?? 0) >= o.budget.maxOutputTokens)
 
 function usageLabel(o: AutomationOccurrence) {
   const usage = o.usage
@@ -126,10 +127,9 @@ function AutomationOccurrenceCard({ api, active, occurrence: o, expanded, onRefr
       <div className="connection-card-top"><strong>{o.name}</strong><span className="pill"><span>{occurrenceStatusLabels[o.status]}</span> · <span>{deliveries[o.deliveryStatus]}</span></span></div>
       <p>{new Date(o.startedAt).toLocaleString()} · {o.source === 'manual' ? '手动触发' : '定时触发'}</p>{o.reason && <p>{o.reason}</p>}
       <details><summary>运行明细</summary>
-      <p className="field-hint">{o.taskKind === 'monitor' ? '数据检查 · 未调用模型' : <>{o.resultMessageIds.length} 条结果 · {o.runIds.length} 条运行记录{o.modelCalls !== undefined ? ` · ${o.modelCalls} 次${requestUnit(o)}` : ''} · {usageLabel(o)}</>}</p>
-      {o.taskKind !== 'monitor' && o.budget && <p className="field-hint">本次累计预算：{o.modelCalls ?? 0}/{o.budget.maxModelCalls} 次{requestUnit(o)} · {o.budget.runs}/{o.budget.maxRuns} 次工作执行 · 当前期限 {new Date(o.budget.deadlineAt).toLocaleString()}</p>}
-      {o.budget?.callUnit && <p className="field-hint">本机请求按外部回合计数，Agent 内部模型调用次数未知；未完整返回的用量继续标记为未知。</p>}
-      {!!o.budget?.renewals?.length && <details><summary>额度追加记录（{o.budget.renewals.length} 次）</summary>{o.budget.renewals.map(grant => <p className="field-hint" key={grant.id}>{new Date(grant.createdAt).toLocaleString()} · {requestUnit(o)}上限 {grant.before.maxModelCalls} → {grant.after.maxModelCalls} · 工作执行上限 {grant.before.maxRuns} → {grant.after.maxRuns} · 追加前已用 {grant.used.modelCalls} 次请求、{grant.used.runs} 次工作执行{grant.used.usageIncomplete ? '，用量仍不完整' : ''} · 截止 {new Date(grant.after.deadlineAt).toLocaleString()}<Button variant="ghost" size="sm" onClick={() => onConversation(o.conversationId, grant.messageId)}>定位确认消息</Button></p>)}</details>}
+      <p className="field-hint">{o.taskKind === 'monitor' ? '数据检查 · 未调用模型' : <>{o.resultMessageIds.length} 条结果 · {o.runIds.length} 条运行记录{o.budgetScope !== 'native' && <>{o.modelCalls !== undefined ? ` · ${o.modelCalls} 次API请求` : ''} · {usageLabel(o)}</>}</>}</p>
+      {o.taskKind !== 'monitor' && o.budgetScope !== 'native' && o.budget && <p className="field-hint">本次累计预算：{o.modelCalls ?? 0}/{o.budget.maxModelCalls} 次{requestUnit(o)} · {o.budget.runs}/{o.budget.maxRuns} 次工作执行 · 当前期限 {new Date(o.budget.deadlineAt).toLocaleString()}</p>}
+      {o.budgetScope !== 'native' && !!o.budget?.renewals?.length && <details><summary>额度追加记录（{o.budget.renewals.length} 次）</summary>{o.budget.renewals.map(grant => <p className="field-hint" key={grant.id}>{new Date(grant.createdAt).toLocaleString()} · {requestUnit(o)}上限 {grant.before.maxModelCalls} → {grant.after.maxModelCalls} · 工作执行上限 {grant.before.maxRuns} → {grant.after.maxRuns} · 追加前已用 {grant.used.modelCalls} 次请求、{grant.used.runs} 次工作执行{grant.used.usageIncomplete ? '，用量仍不完整' : ''} · 截止 {new Date(grant.after.deadlineAt).toLocaleString()}<Button variant="ghost" size="sm" onClick={() => onConversation(o.conversationId, grant.messageId)}>定位确认消息</Button></p>)}</details>}
       <NoticeReceipts notices={o.notices ?? []} legacy={o.notificationDelivered} />
       </details>
       <div className="button-row">{onOccurrence && <Button variant="ghost" size="sm" onClick={() => onOccurrence(o.id)}>查看本次结果</Button>}{o.messageId && <Button variant="secondary" size="sm" onClick={() => onConversation(o.conversationId, o.resultMessageIds.at(-1) ?? o.messageId)}>打开会话与结果</Button>}{['running', 'admitted', 'waiting_approval', 'waiting_user', 'waiting_work'].includes(o.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { await api.request('stopAutomation', { id: o.id }); await onRefresh() })}>停止本次</Button>}</div>

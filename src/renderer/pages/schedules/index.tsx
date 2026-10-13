@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 执行说明统一模型API/本机Agent分类，受支持协议与命令限制保持。
  * [INPUT]: 自动化投影、明确阅读位置、Shell 页面活跃状态与现有编辑标签/分栏。
  * [OUTPUT]: 说明按实际开放API、本机Codex和Claude受控文件/知识任务，旧ACP和命令自动执行保持限制。
@@ -103,4 +104,4 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
     </main>
   </div>
 }
-export function ScheduleDetail(){return <div className="detail-section"><h2>定时执行说明</h2><p>应用打开、最小化或 macOS 关闭窗口后仍可执行；真正退出或休眠期间不执行。</p><p>报告任务使用原有员工和群协作流程，结果保留在会话中。数据监控按保存的规则检查已发布文件，比较证据和失败原因保留在执行记录中。</p><p>支持模型 API 和已验证且具备相应能力的本机 Agent 员工执行受控文件、知识任务。需要模型 API 的本机 Agent 须明确配置模型来源。员工须关闭命令权限；外部 ACP 与命令脚本暂不支持自动执行。</p><p>暂停未来计划不会停止当前执行；需要时在执行记录中停止本次。运行明细保留用量、通知回执和预算；额度追加需明确确认。</p></div>}
+export function ScheduleDetail(){return <div className="detail-section"><h2>定时执行说明</h2><p>应用打开、最小化或 macOS 关闭窗口后仍可执行；真正退出或休眠期间不执行。</p><p>报告任务使用原有员工和群协作流程，结果保留在会话中。数据监控按保存的规则检查已发布文件，比较证据和失败原因保留在执行记录中。</p><p>支持模型 API 和已验证且具备相应能力的本机 Agent 员工执行受控文件、知识任务。需要模型 API 的本机 Agent 须明确配置模型来源。员工须关闭命令权限；外部 ACP 与命令脚本暂不支持自动执行。</p><p>暂停未来计划不会停止当前执行；需要时在执行记录中停止本次。运行明细保留通知回执；API员工显示用量和预算，本机Agent自主执行。</p></div>}

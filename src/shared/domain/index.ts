@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-13DiscussionTurn总输出和API输出配额独立保存；原生用量保持真实记录。
+ * [OUTPUT]: 原生执行backend复用独立信息回执，选定/原生/API模型和容量来源分别保留，不回填旧历史。
  * [OUTPUT]: 外部渠道会话/消息保留真实平台发送者，和本机本人身份分离。
  * [OUTPUT]: 2026-10-11 员工原生执行选项及实际session/turn/模型/上下文/费用元信息；可见计量不推算内部模型请求数。
  * [OUTPUT]: 2026-10-10 员工运行保留有界执行阶段/公开摘要/进度说明和工具原参数；接收回执与真人已读分开。
@@ -189,7 +191,7 @@ export interface AgentRun {
   disposition?: WorkDisposition
   timing?: { queueMs: number; executionMs: number; backoffMs: number; rateLimitRetries: number }
   failureKind?: 'unsupported' | 'auth_required' | 'input_required' | 'budget_exhausted' | 'transport'
-  backend?: { program?: {name:string;version:string;executableHash:string}; sessionId?:string; turnId?:string; inputAccepted?:boolean; modelId?:string; contextUsedTokens?:number; contextWindowTokens?:number; totalCostUsd?:number; options?:import('./execution').NativeRuntimeOptions; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
+  backend?: import('./execution').NativeExecutionReceipt & { program?: {name:string;version:string;executableHash:string}; options?:import('./execution').NativeRuntimeOptions; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
   id: string
   phase?: 'coordination' | 'decision' | 'execution' | 'memory'
   turnId?: string
@@ -249,7 +251,7 @@ export interface ConversationDetail {
 }
 
 export type TurnStatus = 'queued' | 'evaluating' | 'responding' | 'executing' | 'waiting_user' | 'completed' | 'cancelled' | 'failed' | 'interrupted' | 'budget_exhausted'
-export interface DiscussionTurn { coordination?: import('./group-coordination').GroupCoordination; collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number }
+export interface DiscussionTurn { coordination?: import('./group-coordination').GroupCoordination; collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number; apiTokenEstimate?: number }
 export interface AgentDelivery { observedEventId?: string; id: string; turnId: string; conversationId: string; agentId: string; eventId: string; eventIds?: string[]; supersededByDeliveryId?: string; status: 'pending' | 'evaluating' | 'ready' | 'waiting' | 'passed' | 'responding' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'skipped'; observedThroughSequence: number; error?: string; updatedAt: string }
 export interface ParticipationDecision {
   work?: WorkIntent

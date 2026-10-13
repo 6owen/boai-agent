@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 实际本机阶段退出时完成普通聊天观测，保留已知部分/未知用量、已完整终态及原预算归属，不创建缺失调用或改API记录。
  * [OUTPUT]: 本机流式三个计数字段齐全仍须最终回执；中途计量保留但活动未知，最终字段缺失不继承旧值。
  * [OUTPUT]: 外部turn后续未知用量不可继承早期完整计量；API既有回执兼容。
@@ -74,7 +75,7 @@ test('native adapter exit finishes a failed unmetered call without inventing zer
   await repo.finishExternal('native')
   const [entry] = await store.load<ProfileModelCall>('profileModelCalls')
   expect(entry.finishedAt).toBeTruthy(); expect(entry.usage).toBeUndefined(); expect(entry.usageComplete).toBe(false)
-  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 1, incomplete: true })
+  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 0, incomplete: false })
 })
 
 test('native adapter exit preserves partial counts and cannot rewrite complete, budget-owned or legacy observations', async () => {
@@ -100,7 +101,7 @@ test('a native external turn with later missing usage remains unknown instead of
   const entries = await store.load<{ usage: unknown }>('profileModelCalls')
   expect(entries[0].usage).toEqual({ inputTokens: 20 })
   const result = await repo.activity(range)
-  expect(result.incomplete).toBe(true); expect(result.unknownCalls).toBe(1)
+  expect(result.incomplete).toBe(false); expect(result.unknownCalls).toBe(0)
 })
 
 test('native partial usage is retained but cannot become a complete activity total before its final receipt', async () => {
@@ -110,11 +111,11 @@ test('native partial usage is retained but cannot become a complete activity tot
   const usage = { inputTokens: 20, outputTokens: 5, totalTokens: 25 }
   await repo.settle('native', usage, false)
   expect((await store.load<{ usage: unknown; usageComplete: boolean }>('profileModelCalls'))[0]).toMatchObject({ usage, usageComplete: false })
-  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 1, incomplete: true })
+  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 0, incomplete: false })
   await repo.settle('native', usage, true)
-  expect(await repo.activity(range)).toMatchObject({ totalTokens: 25, unknownCalls: 0, incomplete: false })
+  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 0, incomplete: false })
   await repo.settle('native', { inputTokens: 20 }, true)
-  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 1, incomplete: true })
+  expect(await repo.activity(range)).toMatchObject({ totalTokens: null, unknownCalls: 0, incomplete: false })
 })
 
 test('restart and a complete SQLite backup restore profile and evidence without merging target records', async () => {

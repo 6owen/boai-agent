@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 原生时钟与唯一账本保持；异步运行配置核对覆盖保存、受理、执行、监控与明确补充。
  * [INPUT]: 产品事务账本、原生日程适配器与宿主许可/消息投递。
  * [OUTPUT]: 固定原问题消息的接续提交保留其他未答轮次，并与原Work补充共用事务。
@@ -333,6 +334,7 @@ export class AutomationService {
     }
   }
   private armDeadline(o: AutomationOccurrence) {
+    if (o.budgetScope) return // API members retain per-run deadlines; native tasks have no BOAI deadline.
     const deadline = o.budget ? Date.parse(o.budget.deadlineAt) : Date.parse(o.startedAt) + AUTOMATION_RUN_MS
     const timer = setTimeout(() => { void this.stop(o.id, '达到本次自动化的时间预算', 'budget', deadline).catch(error => { this.error = String(error) }) }, Math.max(0, deadline - Date.now()))
     timer.unref(); this.timers.set(o.id, timer)
@@ -341,7 +343,7 @@ export class AutomationService {
     return this.serialize(async () => {
       await this.hooks.critical(async () => {
         await this.refresh(); const o = this.occurrences.get(id)
-        if (!o || !pendingOccurrence.has(o.status)) return
+        if (!o || !pendingOccurrence.has(o.status) || cause === 'budget' && o.budgetScope) return
         // The elapsed timer is authoritative even after a wall-clock rollback;
         // the persisted deadline only fences callbacks from an earlier allowance.
         if (expectedDeadline !== undefined && expectedDeadline !== (o.budget ? Date.parse(o.budget.deadlineAt) : Date.parse(o.startedAt) + AUTOMATION_RUN_MS)) return

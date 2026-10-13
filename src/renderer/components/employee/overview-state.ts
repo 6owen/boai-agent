@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude能力说明覆盖已接核心团队/组织群，程序验证与API认证分开，自动化沿明确程序/API来源与原预算开放。
  * [OUTPUT]: Claude分别呈现程序核对、API来源与单聊/普通群分工/文件/四类图片传输；视觉理解取决于模型，不借用Codex协作/订阅声明。
@@ -18,7 +19,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
   const checked = profile && launchStatus && launchStatus.profile.id === profile.id && launchStatus.profile.revision === profile.revision && launchStatus.profile.executableHash === profile.executableHash ? launchStatus : undefined
   const mismatchedCheck = Boolean(profile && launchStatus && !checked)
   const dependencyUnavailable = checked?.status === 'unavailable', changed = checked?.status === 'changed'
-  let nativeConnection: EmployeeCapabilityFact | undefined = agent.executionBackend?.kind === 'codex-local' ? { id: 'connection', name: '本机 Codex', status: !profile ? '启动项不可用' : mismatchedCheck ? '当前启动项待核对' : dependencyUnavailable ? '执行依赖不可用' : changed ? '连接验证已失效' : profile.verified ? '已记录连接验证' : '连接待核对', detail: checked?.status !== 'available' ? checked?.detail ?? '当前依赖待核对。' : '单聊、普通群聊与文件任务；无需模型 API。命令仅按员工设置逐次批准。内部模型调用次数未知，已知用量按外部请求累计。材料、已绑定技能/知识与来源关联记忆沿宿主规则接入；普通群支持分工和结果等待；支持 bobo 组织群；关闭命令权限后可用于定时任务，连接验证不代表交付。' } : undefined
+  let nativeConnection: EmployeeCapabilityFact | undefined = agent.executionBackend?.kind === 'codex-local' ? { id: 'connection', name: '本机 Codex', status: !profile ? '启动项不可用' : mismatchedCheck ? '当前启动项待核对' : dependencyUnavailable ? '执行依赖不可用' : changed ? '连接验证已失效' : profile.verified ? '已记录连接验证' : '连接待核对', detail: checked?.status !== 'available' ? checked?.detail ?? '当前依赖待核对。' : '单聊、普通群聊与文件任务；无需模型 API。命令仅按员工设置逐次批准。材料、已绑定技能/知识与来源关联记忆沿宿主规则接入；普通群支持分工和结果等待；支持 bobo 组织群；关闭命令权限后可用于定时任务，连接验证不代表交付。' } : undefined
   if (agent.executionBackend?.kind === 'claude-local') nativeConnection = {
     id: 'connection', name: '本机 Claude', status: !profile ? '启动项不可用' : mismatchedCheck ? '当前程序待核对' : dependencyUnavailable ? '程序不可用' : changed ? '程序核对已失效' : profile.verified ? '已记录程序核对' : '程序待核对',
     detail: checked?.status !== 'available' ? checked?.detail ?? '当前依赖待核对。' : '已核对本机程序版本；这不证明API认证或实际交付。支持独立员工单聊、普通群分工与结果等待、宿主文件任务及PNG、JPEG、GIF、WebP图片输入；图片理解取决于所选模型。支持核心助手建团队与组织群；关闭命令权限后可用于定时任务。',
@@ -39,7 +40,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
   const facts: EmployeeCapabilityFact[] = [nativeConnection ?? { id: 'model', name: '模型连接', status: connection && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。配置存在不代表连接或输出效果已验证。` : '请在配置中选择连接与模型。' }, {
     id: 'commands', name: '命令授权', status: agent.allowCommands ? '可申请 · 逐次批准' : '未启用', detail: agent.allowCommands ? '配置允许申请命令执行；具体命令仍在原员工聊天请求批准，当前资料不执行检查。' : '当前员工不能申请执行主机命令。',
   }]
-  if (agent.executionBackend?.kind === 'claude-local') facts.splice(1, 0, { id: 'model', name: 'Claude模型来源', status: connection?.hasApiKey && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。由本机Claude调用，不额外使用API父模型；实际用量按外部阶段记录，内部模型调用次数未知。` : '请在员工配置中选择兼容API连接和模型。' })
+  if (agent.executionBackend?.kind === 'claude-local') facts.splice(1, 0, { id: 'model', name: 'Claude模型来源', status: connection?.hasApiKey && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。由本机Claude调用，不额外使用API父模型；由原生Agent自主执行。` : '请在员工配置中选择兼容API连接和模型。' })
   const currentEnvironment = home?.agentId === agent.id && home.configVersion === agent.configVersion ? home.environment : undefined
   for (const id of agent.skillIds) {
     const resource = snapshot.resources.find(item => item.id === id && item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent.id))

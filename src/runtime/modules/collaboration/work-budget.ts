@@ -1,7 +1,8 @@
 /*
- * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 普通群/组织/自动化共用工作身份；共享预算只约束API请求，本机持有的Work不受额度和期限限制。
  * [INPUT]: 工作/自动化/本机交互预算、唯一请求身份、供应商用量和 SQLite 事务。
- * [OUTPUT]: 本机外部请求沿原消息共账本；部分后续用量不把此前已知字段冒充完整回执。
+ * [OUTPUT]: 历史本机外部请求回执保留，新请求和晚到计量不再写入API预算；原身份校验保持。
  * [OUTPUT]: 唯一初始工厂仅新完整组织协作固定48次，其余24；不接受模型额度或提升原存储值，16000输出与5分钟绝对期限及其他上限保留。
  * [OUTPUT]: 自动化或真实协作请求的唯一共用账本、执行前幂等预留、逐调用幂等结算/未知用量与已清理请求拒绝；普通交流不创建预算。
  * [POS]: WorkRepository 与自动化受理复用的预算规则；不创建工作、不执行模型或重试。
@@ -23,7 +24,8 @@ export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; c
 export function workBudgetExhausted(budget: WorkBudget) {
   return Date.now() >= Date.parse(budget.deadlineAt) || budget.modelCalls >= budget.maxModelCalls || budget.runs >= budget.maxRuns || (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens || budget.workItems >= budget.maxWorkItems || budget.retries >= budget.maxRetries || budget.reportRefreshes >= budget.maxReportRefreshes || budget.noProgress >= budget.maxNoProgress
 }
-export function checkWorkBudget(budget: WorkBudget) {
+export function checkWorkBudget(budget: WorkBudget, policy?: 'native') {
+  if (policy === 'native') return
   if (budget.noProgress >= budget.maxNoProgress) throw new WorkUnavailableError('达到原始工作的无进展接续上限')
   if (budget.modelCalls >= budget.maxModelCalls || (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens || Date.now() >= Date.parse(budget.deadlineAt)) throw new WorkUnavailableError('达到原始工作的调用、用量或时间上限')
 }
@@ -40,6 +42,7 @@ export async function reserveBudgetCall(tx: RecordTransaction, budget: WorkBudge
     if (previous.budgetId !== budget.id || previous.runId !== input.runId || previous.turnId !== input.turnId || previous.phase !== input.phase || previous.conversationId !== input.conversationId || previous.collaborationRequestId !== input.collaborationRequestId || previous.sourceMessageId !== input.sourceMessageId || previous.workId !== input.workId || previous.agentId !== input.agentId || previous.callUnit !== (input.callUnit ?? (budget.callUnit === 'external-turn' ? 'external-turn' : undefined))) throw new Error('模型调用标识已用于另一请求')
     return previous
   }
+  if (input.callUnit === 'external-turn') return // Native protocol identity is stored on the run/session, not the API ledger.
   checkWorkBudget(budget)
   const call: BudgetModelCall = { ...input, ...(input.callUnit || budget.callUnit === 'external-turn' ? { callUnit: input.callUnit ?? 'external-turn' as const } : {}), budgetId: budget.id, usage: {}, usageComplete: false, reservedAt: new Date().toISOString() }
   budget.modelCalls++; budget.unknownCalls = (budget.unknownCalls ?? 0) + 1; budget.usageIncomplete = true
@@ -49,7 +52,7 @@ export async function reserveBudgetCall(tx: RecordTransaction, budget: WorkBudge
 export async function settleBudgetCall(tx: RecordTransaction, id: string, runId: string, usage: ModelUsage, externalComplete = true) {
   const call = await tx.get<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls', id)
   if (!call) return // History cleanup removed this receipt; never recreate its private references.
-  if ('status' in call) return // Shared counters are retained, but cleared private sources never reappear.
+  if ('status' in call || call.callUnit === 'external-turn') return // Shared counters are retained, but cleared private sources never reappear.
   if (call.runId !== runId) throw new Error('模型用量不属于该运行')
   const budget = await tx.get<WorkBudget>('workBudgets', call.budgetId)
   if (!budget) throw new Error('模型调用预算缺失')

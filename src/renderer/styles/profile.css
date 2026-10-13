@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
- * [OUTPUT]: 系统本人头像及个人头像编辑按钮统一圆角方形，复用全局小圆角；聊天本人头像含可点击资料入口并沿用共享消息镜像布局；头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享；资料编辑沿用主题控件高度、共用横向行和 Separator。
+ * [OUTPUT]: 点阵层挂在分享弹窗内部并覆盖内容含 padding，弹窗不播放入退场动画，背景与关闭按钮保持可见；固定视口并裁切外溢，不显示尺寸/定位辅助标记；中性细点复用主题；系统本人头像及个人头像编辑按钮统一圆角方形，复用全局小圆角；聊天本人头像含可点击资料入口并沿用共享消息镜像布局；头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享；资料编辑沿用主题控件高度、共用横向行和 Separator。
  * [POS]: global.css 加载的个人资料局部布局，不维护独立主题。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -89,6 +89,7 @@
 }
 
 .profile-share-dialog { background:var(--background);overflow-y:auto }
+.profile-share-dialog > .t-gen { position:absolute;z-index:0 }
 .profile-share-close { position:absolute;top:20px;right:20px;z-index:1 }
 .profile-share-body { display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:44px;padding:76px 32px 28px;min-width:0 }
 .profile-share-card { width:min(100%,800px);flex-shrink:0;border-radius:28px;box-shadow:var(--shadow-popover) }
@@ -101,3 +102,13 @@
   .profile-share-body { gap:28px;padding:76px 16px 24px }
   .profile-share-card { border-radius:16px }
 }
+
+/* Keep the upstream drawing monochrome and aligned with the app's selected theme. */
+.t-gen {
+  /* The share dialog scrolls internally; its overlay must not create a document scrollbar. */
+  position:fixed;overflow:clip;
+  --gen-line:var(--muted-foreground);--gen-strong:var(--muted-foreground);--gen-ink:var(--border);
+  --gen-surface:var(--background);--gen-text:var(--foreground);--gen-muted:var(--muted-foreground);
+  --gen-font:var(--font-mono);--gen-dot:1.6px;
+}
+.t-gen-label,.t-gen-reticle,.t-gen-handle,.t-gen-guide:not(.t-gen-guide--scan) { display:none }

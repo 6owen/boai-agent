@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 原生信息记录分别展示选定/初始化/API模型、公开目录及容量来源，复用原只读CodeBlock。
  * [INPUT]: 原执行证据、完整内容读取回调与共享UI。
  * [OUTPUT]: 原生记录及运行信息默认收起，JSON使用紧凑Shiki，结构化字段继承11px次级色；保留展开状态和按需读取。
  * [POS]: 执行面板展示组件，保留事件原文，不更改调用、过滤或持久数据。
@@ -44,6 +46,6 @@ export function ExecutionRunInfo({ run }: { run: AgentRun }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   return <div className="mt-4"><ToolChip title="运行信息" label="运行信息" chip={run.backend?.program?.name ?? run.agentName} open={open} onOpenChange={setOpen} triggerRef={trigger}>
-    <CodeBlock code={JSON.stringify({ runtime: run.backend?.program?.name, model: run.backend?.modelId, session: run.backend?.sessionId, turn: run.backend?.turnId, contextUsedTokens: run.backend?.contextUsedTokens, contextWindowTokens: run.backend?.contextWindowTokens, reportedCostUsd: run.backend?.totalCostUsd, options: run.backend?.options, status: run.status, finishedAt: run.finishedAt }, null, 2)} language="json" density="compact" className="max-h-96" tabIndex={0} aria-label="运行信息原生记录" onKeyDown={event => handleToolResultKeyDown(event, trigger.current)} />
+    <CodeBlock code={JSON.stringify({ runtime: run.backend?.program?.name, model: run.backend?.modelId, selectedModel: run.backend?.selectedModelId, apiReportedModel: run.backend?.reportedModelId, modelSource: run.backend?.modelIdSource, nativeInfo: run.backend?.nativeInfo, session: run.backend?.sessionId, turn: run.backend?.turnId, contextWindowTokens: run.backend?.contextWindowTokens, contextWindowSource: run.backend?.contextWindowSource, options: run.backend?.options, status: run.status, finishedAt: run.finishedAt }, null, 2)} language="json" density="compact" className="max-h-96" tabIndex={0} aria-label="运行信息原生记录" onKeyDown={event => handleToolResultKeyDown(event, trigger.current)} />
   </ToolChip></div>
 }

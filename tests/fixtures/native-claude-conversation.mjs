@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 高用量及待决追问合同夹具；原件/公开模型目录与缺失保持，零模型。
  * [INPUT]: 原生Claude合同的隔离消息与本机MCP桥。
  * [OUTPUT]: 真实双向stdio/HTTP、工具文件与批准夹具；不是模型质量证据。
  * [POS]: 持续Claude生产驱动回归。
  * [PROTOCOL]: 变化同步Header和.folder.md。
  */
-import { business } from './native-business.mjs'
+import { business, consumeNativeMaterials } from './native-business.mjs'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 import { readFile, appendFile, writeFile } from 'node:fs/promises'
@@ -36,15 +38,19 @@ await appendFile('native-thread-requests.jsonl',JSON.stringify({method:process.a
 createInterface({input:process.stdin}).on('line',async line=>{
  const frame=JSON.parse(line)
  if(frame.type==='control_response'){callbacks.get(frame.response.request_id)?.(frame.response.response);callbacks.delete(frame.response.request_id);return}
- if(frame.type==='control_request'){emit({type:'control_response',response:{subtype:'success',request_id:frame.request_id,response:{}}});return}
+ if(frame.type==='control_request'){
+  emit({type:'control_response',response:{subtype:'success',request_id:frame.request_id,response:arg('--model')==='missing-meta-fixture'?{}:{models:[{value:'alias-fixture',displayName:'fixture-main[1m]',description:'Public native model'}],commands:[{name:'native-command',description:'Public command'}],agents:[{name:'native-worker',description:'Public agent'}],account:{token:'PRIVATE_ACCOUNT_TOKEN'},pid:process.pid}}});return
+ }
  if(frame.type!=='user')return
  try {
  const raw=typeof frame.message.content==='string'?frame.message.content:frame.message.content.find(v=>v.type==='text').text
  const prompt=JSON.parse(raw),text=prompt.messages.map(m=>m.content).join('\n')
+ const selected=arg('--model'),resolved=selected==='alias-fixture'?'fixture-main[1m]':selected==='missing-meta-fixture'?undefined:'fixture'
+ emit({type:'system',subtype:'init',...(resolved?{model:resolved}:{}),tools:['Read','Bash'],agents:['native-worker'],account:{token:'PRIVATE_SYSTEM_TOKEN'}})
  await appendFile('native-turn-requests.jsonl',JSON.stringify({input:[{type:'text',text:raw}]})+'\n')
  emit({type:'system',subtype:'session_state_changed',state:'working'})
  const id=randomUUID(),stream=event=>emit({type:'stream_event',event})
- stream({type:'message_start',message:{id,model:'fixture',usage:{input_tokens:10,cache_creation_input_tokens:0,cache_read_input_tokens:0,output_tokens:0}}})
+ stream({type:'message_start',message:{id,model:'fixture',usage:{input_tokens:text.includes('NATIVE_CONFLICTING_USAGE')?1000:10,cache_creation_input_tokens:0,cache_read_input_tokens:0,output_tokens:0}}})
  stream({type:'content_block_start',index:0,content_block:{type:'thinking',thinking:'private-reasoning-must-not-persist'}})
  stream({type:'content_block_start',index:1,content_block:{type:'text',text:''}})
  stream({type:'content_block_delta',index:1,delta:{type:'text_delta',text:'正在处理原生请求。'}})
@@ -64,7 +70,14 @@ createInterface({input:process.stdin}).on('line',async line=>{
  }
  let reply=await business(prompt,tool)??'普通回复'
  if(text.includes('NATIVE_APPROVAL')){const answer=await ask('Bash',{command:'write permission-marker'});if(answer.behavior==='allow'){await writeFile('permission-marker','approved');reply='已批准并写入'}else reply='已拒绝，未执行'}
- if(text.includes('NATIVE_QUESTION')){const answer=await ask('AskUserQuestion',{questions:[{question:'这个文档针对什么产品？'}]});reply='收到普通聊天回复：'+answer.updatedInput.answers['这个文档针对什么产品？']}
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_QUESTION')){
+  if(text.includes('NATIVE_HIGH_USAGE'))stream({type:'message_delta',usage:{output_tokens:29653}})
+  const answer=await ask('AskUserQuestion',{questions:[{question:'这个文档针对什么产品？'}]})
+  const content=answer.updatedInput.answers['这个文档针对什么产品？']
+  if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(content)
+  reply='收到普通聊天回复：'+content
+ }
+ else if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(text)
  if(text.includes('NATIVE_WAIT'))await new Promise(resolve=>setTimeout(resolve,5000))
  if(text.includes('NATIVE_PUBLISH')||text.includes('NATIVE_REVISE')){
   await writeFile('native-document.md','# 原生文件\n实际内容\n')
@@ -80,7 +93,8 @@ createInterface({input:process.stdin}).on('line',async line=>{
   emit({type:'user',message:{content:[{type:'tool_result',tool_use_id:'shell',content:'完整输出🌱'.repeat(30000)}]}})
   emit({type:'system',subtype:'plugin/newOperation',title:'原生插件事件',result:'full extension'})
  }
- emit({type:'result',subtype:'success',result:reply,total_cost_usd:0.001,modelUsage:{fixture:{contextWindow:200000}},usage:{input_tokens:10,cache_creation_input_tokens:0,cache_read_input_tokens:0,output_tokens:5}})
+ const modelUsage=selected==='alias-fixture'?{'fixture-main[1m]':{contextWindow:1000000},...(!text.includes('NATIVE_METADATA_NEXT')?{fixture:{contextWindow:200000}}:{})}:selected==='missing-meta-fixture'?{}:{fixture:{contextWindow:200000}}
+ emit({type:'result',subtype:'success',result:reply,total_cost_usd:0.001,modelUsage,usage:{input_tokens:10,cache_creation_input_tokens:0,cache_read_input_tokens:0,output_tokens:text.includes('NATIVE_HIGH_USAGE')?29653:5}})
  emit({type:'system',subtype:'session_state_changed',state:'idle'})
  }catch(error){emit({type:'result',subtype:'error',is_error:true,errors:[String(error)]});emit({type:'system',subtype:'session_state_changed',state:'idle'})}
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-12原生选定/初始化/API模型与公开目录有独立回执，传输提交不冒充接收；普通通信不新增模型阶段。
  * [OUTPUT]: 2026-10-11 原生会话/执行证据/交互/普通公开消息为独立可选合同，不要求原生引擎实现私有五阶段。
  * [OUTPUT]: 2026-10-10 执行进度独立观察回调仅接公开摘要与实际阶段，不授业务权或改变发布。
  * [OUTPUT]: 2026-10-10 原生实际模型/线程/turn引用有独立元数据回调，不授予业务执行或重放权限。
@@ -106,7 +107,9 @@ export interface EngineContext {
   onArtifactPreparing?(artifact: Artifact): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
-  onNativeExecution?(receipt: { modelId?: string; sessionId?: string; turnId?: string; inputAccepted?: boolean; contextUsedTokens?: number; contextWindowTokens?: number; totalCostUsd?: number }): Promise<void>
+  onNativeExecution?(receipt: import('../shared/domain/execution').NativeExecutionReceipt): Promise<void>
+  /** A successful transport write is not a native acknowledgement. */
+  onNativeActionSubmitted?(nativeId: string): Promise<void>
   onExecutionEvent?(event: import('../shared/domain/execution').ExecutionEvent): Promise<void>
   requestNativeAction?(action: import('../shared/domain/execution').NativeActionInput, signal?: AbortSignal): Promise<import('../shared/domain/execution').NativeActionResponse>
   /** Lazily creates product Work only for explicit collaboration/publication tools. */

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 高原生用量/提问/发布合同夹具；原回答消费原件，无真实模型调用。
  * [INPUT]: 隔离原生协议测试的逐轮消息。
  * [OUTPUT]: 真实stdio进程/文件副作用/原生批准与工具回执；明确为离线夹具，不调用模型。
  * [POS]: 第13组持续本机会话合同夹具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { business } from './native-business.mjs'
+import { business, consumeNativeMaterials } from './native-business.mjs'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 import { writeFile, appendFile } from 'node:fs/promises'
@@ -49,10 +50,14 @@ createInterface({input:process.stdin}).on('line',async line=>{
   const answer=await ask('item/commandExecution/requestApproval',{threadId,turnId,itemId:'shell',command:'write permission-marker'})
   if(answer.result.decision==='accept'){await writeFile('permission-marker','approved');reply='已批准并写入'}else reply='已拒绝，未执行'
  }
- if(text.includes('NATIVE_QUESTION')){
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_QUESTION')){
+  if(text.includes('NATIVE_HIGH_USAGE'))ev('thread/tokenUsage/updated',{tokenUsage:{last:{inputTokens:10,outputTokens:29653,totalTokens:29663},total:{inputTokens:10,outputTokens:29653,totalTokens:29663}}})
   const answer=await ask('item/tool/requestUserInput',{threadId,turnId,itemId:'question',questions:[{id:'product',question:'这个文档针对什么产品？'}]})
-  reply='收到普通聊天回复：'+answer.result.answers.product.answers.join(' ')
+  const content=answer.result.answers.product.answers.join(' ')
+  if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(content)
+  reply='收到普通聊天回复：'+content
  }
+ else if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(text)
  if(text.includes('NATIVE_WAIT')) await new Promise(resolve => setTimeout(resolve,5000))
  if(text.includes('NATIVE_PUBLISH') || text.includes('NATIVE_REVISE')){
   await writeFile('native-document.md','# 原生文件\n实际内容\n')
@@ -69,6 +74,7 @@ createInterface({input:process.stdin}).on('line',async line=>{
   ev('plugin/newOperation',{itemId:'extension',title:'原生插件事件',result:'full extension'})
  }
  ev('item/completed',{item:{id:'answer',type:'agentMessage',phase:'final_answer',text:reply}})
- ev('thread/tokenUsage/updated',{tokenUsage:{modelContextWindow:200000,last:{inputTokens:10,outputTokens:5,totalTokens:15},total:{inputTokens:10,outputTokens:5,totalTokens:15}}})
+ const outputTokens=text.includes('NATIVE_HIGH_USAGE')?29653:5
+ ev('thread/tokenUsage/updated',{tokenUsage:{modelContextWindow:200000,last:{inputTokens:10,outputTokens,totalTokens:10+outputTokens},total:{inputTokens:10,outputTokens,totalTokens:10+outputTokens}}})
  ev('turn/completed',{turn:{id:turnId,status:'completed'}})
 })

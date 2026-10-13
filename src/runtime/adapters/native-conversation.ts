@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 输入投影v2包含真实材料路径，旧投影首次明确新消息时保守重建；历史保留，启动不重放。
  * [OUTPUT]: 2026-10-11 同一员工聊天一条消息一次持续原生turn；普通公开消息与final去重，真实输出身份支持重启续聊。
  * [INPUT]: 员工身份、普通IM增量、原生运行时和可选产品协作工具。
  * [OUTPUT]: 每员工×会话独立持续原生session；一条消息一次turn，无额外判断/汇报/记忆模型调用。
@@ -24,7 +25,7 @@ export abstract class NativeConversationEngine {
   async recover(dataPath: string) { await recoverNativeProcesses(dataPath,this.runtime); return this.sessions.recover(dataPath) }
   protected abstract conversation(context: EngineContext, input: NativeConversationInput): Promise<{ text: string }>
   async run(context: EngineContext) {
-    const fingerprint = digest(['native-conversation-v1', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch])
+    const fingerprint = digest(['native-conversation-v2', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch])
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
     const nativeContext = { ...context, publishNativeMessage: context.publishNativeMessage ? async (content: string, callId: string) => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: 本机/API逐请求计量、部分回执未知与伪造运行/来源/阶段拒绝，保留原期限和唯一账本。
  * [INPUT]: 真实独立 SQLite 连接、自动化受理和复用的工作预算/逐调用账本。
@@ -13,6 +14,7 @@ import { join } from 'node:path'
 import type { AgentRun, AutomationOccurrence, BudgetModelCall, Message, WorkBudget } from '../src/shared/domain'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { activateAutomationExecution, AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
+import { AutomationService } from '../src/runtime/modules/automations/automation-service'
 import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
 import { WORK_DURATION_MS } from '../src/runtime/modules/collaboration/work-budget'
 
@@ -38,7 +40,7 @@ async function fixture() {
   return { store, repository, works, connect, admit, budget }
 }
 const intent = { key: 'main', scope: '核查', deliverable: '可检查结果' }
-it.each(['codex-local', 'claude-local'] as const)('counts %s turns and API calls separately in one occurrence, retains unknown partial usage and rejects a forged runtime or source', async kind => {
+it.each(['codex-local', 'claude-local'] as const)('excludes %s from API occurrence accounting while rejecting a forged runtime or source', async kind => {
   const f = await fixture(), entry = await f.admit()
   const native: AgentRun = { ...entry.run, backend: { kind, profileId: 'profile', profileRevision: 1, sessionPolicy: 'fresh', toolControl: 'none', externalInvocations: 0 } }
   const turn = { id: native.turnId!, conversationId: native.conversationId, origin: entry.origin, status: 'running' }
@@ -55,19 +57,19 @@ it.each(['codex-local', 'claude-local'] as const)('counts %s turns and API calls
   const known = { inputTokens: 5, outputTokens: 7, totalTokens: 12 }
   await f.works.settleAutomationCall(native.id, 'native-decision', known)
   await f.works.settleAutomationCall(api.id, 'api-decision', known)
-  expect(await f.budget(original.id)).toMatchObject({ callUnit: 'mixed', modelCalls: 2, unknownCalls: 1, usageIncomplete: true, deadlineAt: original.deadlineAt, usage: { inputTokens: 10, outputTokens: 14, totalTokens: 24 } })
+  expect(await f.budget(original.id)).toMatchObject({ modelCalls: 1, unknownCalls: 0, usageIncomplete: false, deadlineAt: original.deadlineAt, usage: known })
   await f.works.settleAutomationCall(native.id, 'native-decision', known, true)
   expect(await f.budget(original.id)).toMatchObject({ unknownCalls: 0, usageIncomplete: false })
   await f.works.settleAutomationCall(native.id, 'native-decision', { outputTokens: 9 }, true)
-  expect(await f.budget(original.id)).toMatchObject({ unknownCalls: 1, usageIncomplete: true, usage: { outputTokens: 16 } })
+  expect(await f.budget(original.id)).toMatchObject({ unknownCalls: 0, usageIncomplete: false, usage: known })
   await f.works.reserveAutomationCall(native, 'native-decision', 'decision')
   await expect(f.works.reserveAutomationCall({ ...native, backend: undefined }, 'forged-kind', 'decision')).rejects.toThrow('运行方式')
   await expect(f.works.reserveAutomationCall({ ...native, origin: { ...entry.origin, authorizedFingerprint: 'forged' } }, 'forged-source', 'decision')).rejects.toThrow('来源')
   await expect(f.works.reserveAutomationCall(native, 'forged-phase', 'execution')).rejects.toThrow('阶段')
   await f.store.write([row('agents', { id: 'lead', active: false, executionBackend: { kind, profileId: 'profile' } })])
   await expect(f.works.reserveAutomationCall(native, 'disabled', 'decision')).rejects.toThrow('授权')
-  expect((await f.store.load<BudgetModelCall>('budgetModelCalls')).sort((a, b) => a.id.localeCompare(b.id)).map(call => [call.id, call.callUnit])).toEqual([['api-decision', undefined], ['native-decision', 'external-turn']])
-  expect(await f.budget(original.id)).toMatchObject({ modelCalls: 2, deadlineAt: original.deadlineAt })
+  expect((await f.store.load<BudgetModelCall>('budgetModelCalls')).sort((a, b) => a.id.localeCompare(b.id)).map(call => [call.id, call.callUnit])).toEqual([['api-decision', undefined]])
+  expect(await f.budget(original.id)).toMatchObject({ modelCalls: 1, deadlineAt: original.deadlineAt })
 })
 
 it('creates a bounded budget before any work exists and gives a new occurrence its own budget', async () => {
@@ -271,4 +273,24 @@ it.each(['unconfirmed-effect', 'manually-stopped-work'] as const)('does not use 
   const o = (await f.repository.updateOccurrence(entry.occurrence.id, entry.occurrence.stateVersion, { status: 'failed' }))!
   await expect(f.works.renewAutomation(entry.origin, 'chat', { expectedVersion: o.stateVersion, allowance: 'standard-v1' }, renewalRecords(entry, 'unsafe'))).rejects.toThrow('核对')
   expect(await f.budget(work.budgetId)).toEqual(before)
+})
+
+it.each(['native', 'mixed', 'api'] as const)('freezes %s automation scope and applies occurrence budget cancellation only to API-only execution', async scope => {
+  const f = await fixture()
+  const native = { id: 'lead', active: true, executionBackend: { kind: 'claude-local', profileId: 'profile' } }
+  const api = { id: 'api', active: true, executionBackend: { kind: 'mastra-model' } }
+  await f.store.write([row('agents', native), row('agents', api), row('conversations', { id: 'chat', agentIds: scope === 'native' ? ['lead'] : scope === 'mixed' ? ['lead', 'api'] : ['api'] })])
+  const entry = await f.admit()
+  expect(entry.occurrence.budgetScope).toBe(scope === 'api' ? undefined : scope)
+  let cancellations = 0
+  const service = new AutomationService(f.store, '', { critical: op => op(), validate: () => 'permission', busy: () => false, dispatch: async () => { throw Error('must not replay') }, inspect: async () => undefined, cancel: async () => { cancellations++ }, changed: () => {}, notify: () => {} })
+  cleanups.push(() => service.close())
+  await service.stop(entry.occurrence.id, '达到本次自动化的时间预算', 'budget')
+  expect(cancellations).toBe(scope === 'api' ? 1 : 0)
+  if (scope !== 'api') {
+    expect((await f.repository.view()).occurrences[0].status).toBe('running')
+    await service.stop(entry.occurrence.id)
+    expect(cancellations).toBe(1)
+    expect((await f.repository.view()).occurrences[0].cancellationCause).toBe('user')
+  }
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite、bobo 核心来源/组织工作、群启动 CAS、原调用回执和会话清理。
  * [OUTPUT]: 新完整协作48/其他24首次事务、根子同ID共原期限；人为旧24重启/明确重认领/群根/子工作保持24，模型无法指定额度，输出等原限制不变。
@@ -327,18 +328,18 @@ describe('independent group root and original shared budget', () => {
   })
 })
 
-it('native organization and an API child retain individual units, incomplete receipts and the first decision deadline', async () => {
+it('native organization and an API child share ownership while only the API child consumes budget', async () => {
   const f = await fixture('organize_and_execute', true, true)
   const budget = () => f.store.transaction(tx => tx.get<WorkBudget>('workBudgets', f.work.budgetId))
-  expect(await budget()).toMatchObject({ callUnit: 'mixed', modelCalls: 2, unknownCalls: 1 })
-  expect(Date.parse((await budget())!.deadlineAt)).toBe(Date.parse(f.decisionRun.createdAt) + 300000)
+  expect(await budget()).toMatchObject({ callUnit: 'mixed', modelCalls: 0, unknownCalls: 0 })
+  expect(Date.parse((await budget())!.deadlineAt)).toBeGreaterThan(Date.parse(f.decisionRun.createdAt) + 300000)
   await f.works.reserveCollaborationCall(f.organizationRun, 'native-execution', 'execution')
   await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { inputTokens: 10, outputTokens: 2, totalTokens: 12 })
-  expect((await budget())!.unknownCalls).toBe(2)
+  expect((await budget())!.unknownCalls).toBe(0)
   await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { inputTokens: 10, outputTokens: 2, totalTokens: 12 }, true)
-  expect((await budget())!.unknownCalls).toBe(1)
+  expect((await budget())!.unknownCalls).toBe(0)
   await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { outputTokens: 4 }, true)
-  expect((await budget())!.unknownCalls).toBe(2)
+  expect((await budget())!.unknownCalls).toBe(0)
   const { root, run, prepared } = await claimRoot(f)
   const child = await f.works.delegate(run.id, { key: 'api-child', ownerAgentId: 'researcher', scope: '核查', deliverable: '核查结果' })
   const api = f.run('api-child-run', { agentId: 'researcher', backend: undefined, conversationId: f.group.id, turnId: prepared.turn.id, triggerMessageId: f.announcement.id, workId: child.id })
@@ -350,7 +351,7 @@ it('native organization and an API child retain individual units, incomplete rec
   const call = (await f.store.load<BudgetModelCall>('budgetModelCalls')).find(call => call.id === 'api-call')!
   expect(call.callUnit).toBeUndefined(); expect(call.usageComplete).toBe(true)
   expect(child.budgetId).toBe(root.budgetId); expect(root.budgetId).toBe(f.work.budgetId)
-  expect(Date.parse((await budget())!.deadlineAt)).toBe(Date.parse(f.decisionRun.createdAt) + 300000)
+  expect(Date.parse((await budget())!.deadlineAt)).toBeGreaterThan(Date.parse(f.decisionRun.createdAt) + 300000)
   const changed = { ...f.agents[0], executionBackend: { kind: 'mastra-model' as const } }
   await f.store.write([row('agents', changed)])
   await expect(f.works.reserveCollaborationCall(run, 'wrong-runtime', 'execution')).rejects.toThrow('运行方式')

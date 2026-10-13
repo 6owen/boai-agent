@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已提交个人资料、活跃页面标记、变更事件和只读活动接口。
- * [OUTPUT]: 首次权威资料快照前禁用所有编辑/头像写入入口，真实版本变化仍保留冲突保护；直接选头像/恢复默认小老虎并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
+ * [OUTPUT]: 资料页正常直接显示，点阵动画仅在分享弹窗中播放。首次权威资料快照前禁用所有编辑/头像写入入口，真实版本变化仍保留冲突保护；直接选头像/恢复默认小老虎并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
  * [POS]: 复用设置文档布局的个人资料页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,10 +47,10 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
   ] : []
   return <section className="settings-document profile-document">
     <header className="settings-document-heading"><h2>个人资料</h2><div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!ready || !activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div></header>
-    <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={!ready || avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
-    {!ready && <Loading>正在读取个人资料…</Loading>}
     {avatarError && <Banner>{avatarError}</Banner>}
     {error && <Banner>{error}<Button variant="link" onClick={() => setRetry(value => value + 1)}>重试</Button></Banner>}
+    <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={!ready || avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
+    {!ready && <Loading>正在读取个人资料…</Loading>}
     {!activity && !error && <Loading>正在读取本机活动…</Loading>}
     {activity && <><Card className="profile-metrics grid gap-0 p-0" aria-label="个人活动摘要">{metrics.map(metric => <div key={metric.label} title={metric.hint}><strong>{metric.value}</strong><span>{metric.label}</span></div>)}</Card>
       <ActivityChart activity={activity} />

@@ -1,13 +1,30 @@
 /*
+ * [OUTPUT]: 实际核读交付材料路径与字节/hash，显式原生路径不走产品材料工具；是离线协议动作，不冒充模型输出。
  * [INPUT]: 隔离协议夹具中的当前工作、员工ID和真实产品工具。
  * [OUTPUT]: 核心组织、委派接续、路径别名/符号链接及真实成果的确定性业务动作。
  * [POS]: 两种原生传输共享合同用例；不模拟模型质量。
  * [PROTOCOL]: 变化同步Header和.folder.md。
  */
-import { writeFile, realpath, symlink } from 'node:fs/promises'
+import { writeFile, realpath, symlink, readFile, appendFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
+/** Read the delivered bytes independently of host projection/receipt assertions. */
+export async function consumeNativeMaterials(content) {
+ const reads=[]
+ for(const line of content.split('\n')) {
+  let reference
+  try { reference=JSON.parse(line) } catch { continue }
+  if(!reference.referenceData || typeof reference.nativePath!=='string')continue
+  const bytes=await readFile(reference.nativePath),hash=createHash('sha256').update(bytes).digest('hex')
+  if(hash!==reference.contentHash)throw Error('native material bytes differ from authorized original')
+  const read={path:reference.nativePath,hash,bytes:bytes.toString('hex'),size:bytes.length}
+  reads.push(read);await appendFile('native-material-reads.jsonl',JSON.stringify(read)+'\n')
+ }
+ return reads
+}
 export async function business(prompt,tool){
  const work=prompt.currentWork,text=prompt.messages.map(m=>m.content).join('\n')+'\n'+(work?.scope??'')
+ if(prompt.messages.at(-1)?.content.startsWith('NATIVE_EXPLICIT_PATH\n'))return readFile(JSON.parse(prompt.messages.at(-1).content.split('\n')[1]).path,'utf8')
  if(text.includes('NATIVE_CANONICAL_PATH')||text.includes('NATIVE_SYMLINK_PATH')){
   await writeFile('canonical.md','# 实际原件\n')
   const symbolic=text.includes('NATIVE_SYMLINK_PATH')

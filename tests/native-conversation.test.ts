@@ -1,20 +1,65 @@
 /*
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 2026-10-13高原生用量的最终发布/重启及同run材料回答回归；原接线合同保持，协议夹具不认证真实模型。
  * [INPUT]: 第13组原生员工规范和隔离stdio协议进程。
  * [OUTPUT]: 连续会话、真实文件登记、普通消息回答、权限拒绝与完整大输出；不把夹具视为真实模型评测。
  * [POS]: 生产AppService/本机驱动集成合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readFile, rm, realpath, writeFile, mkdir, copyFile, chmod, stat } from 'node:fs/promises'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, readFile, rm, realpath, writeFile, mkdir, copyFile, chmod, stat, readdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { nativeFixture } from './fixtures/native-product'
+import { createHash } from 'node:crypto'
+import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
 import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../src/shared/domain/execution'
 const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it('keeps an ordinary native turn above 16000 running through final reply and restart, without BOAI usage accounting',async()=>{
+ const f=await setup(),first=await f.wait(await f.send('NATIVE_HIGH_USAGE'))
+ expect(first.runs[0].status,first.runs[0].error).toBe('completed')
+ expect(first.runs[0].usage).toBeUndefined()
+ expect(first.turns?.[0]).toMatchObject({status:'completed',modelCalls:0})
+ expect(first.turns?.[0].tokenEstimate).toBeUndefined()
+ expect(first.workItems).toHaveLength(0);expect(first.messages.some(m=>m.senderType==='agent'&&m.status==='completed')).toBe(true)
+ await f.restart();expect((await f.detail()).runs.map(r=>r.id)).toEqual(first.runs.map(r=>r.id))
+ const next=await f.wait(await f.send('继续普通聊天'))
+ expect(next.runs.at(-1)?.status).toBe('completed')
+ expect(next.runs.at(-1)?.backend?.sessionId).toBe(first.runs[0].backend?.sessionId)
+})
+it('publishes native delivery Work above the former output cap without charging a BOAI budget',async()=>{
+ const f=await setup(),detail=await f.wait(await f.send('NATIVE_HIGH_USAGE NATIVE_PUBLISH'))
+ expect(detail.runs[0].status,detail.runs[0].error).toBe('completed')
+ expect(detail.workItems?.[0]).toMatchObject({status:'delivered',budgetPolicy:'native'})
+ expect(detail.artifacts).toHaveLength(1)
+ expect(detail.workBudgets?.[0]).toMatchObject({modelCalls:0,runs:0,usage:{}})
+ expect(detail.runs[0].usage).toBeUndefined()
+})
+it('does not let contradictory native usage override successful output and file delivery',async()=>{
+ const f=await setup(),detail=await f.wait(await f.send('NATIVE_CONFLICTING_USAGE NATIVE_PUBLISH'))
+ expect(detail.runs[0].status,detail.runs[0].error).toBe('completed')
+ expect(detail.workItems?.[0].status).toBe('delivered');expect(detail.artifacts).toHaveLength(1)
+ expect(detail.runs[0].usage).toBeUndefined();expect(detail.runs[0].backend?.totalCostUsd).toBeUndefined()
+ expect(detail.runs[0].backend?.contextUsedTokens).toBeUndefined()
+})
+it('allows a high-usage native question to receive material in the same run',async()=>{
+ const f=await setup(),message=await f.send('NATIVE_HIGH_USAGE NATIVE_QUESTION NATIVE_READ_MATERIALS')
+ await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
+ const path=join(f.root,'high-usage-input.json');await writeFile(path,'{"source":"HIGH_USAGE_ORIGINAL_29653"}')
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../src/shared/domain').ConversationMaterial
+ await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'请读取这一份原件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]})
+ const detail=await f.wait(message);expect(detail.runs.map(r=>r.status)).toEqual(['completed'])
+ const actions=await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId:detail.runs[0].id}) as NativeAction[]
+ expect(actions[0]).toMatchObject({status:'answered',delivery:'submitted'})
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ expect(await readFile(join(cwd,'native-material-reads.jsonl'),'utf8')).toContain(Buffer.from('HIGH_USAGE_ORIGINAL_29653').toString('hex'))
+})
+
 
 it('keeps native tools and a persistent session; no private decision/report/memory calls or restart replay',async()=>{
  const f=await setup();const first=await f.wait(await f.send('你好'));const second=await f.wait(await f.send('继续讨论'))
@@ -46,6 +91,132 @@ it('answers a native clarification as a normal message in the same turn',async()
  await expect.poll(async()=>((await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId:d!.runs[0].id})) as NativeAction[]).some(a=>a.status==='pending')).toBe(true)
  await f.send('白噪音小程序');d=await f.wait(m)
  expect(d.runs).toHaveLength(1);expect(d.messages.some(m=>m.content==='收到普通聊天回复：白噪音小程序')).toBe(true)
+})
+it.each(['正文和文本','只附原件'] as const)('delivers %s to the waiting native request once and preserves sources through restart',async kind=>{
+ const f=await setup(),first=await f.send('NATIVE_QUESTION NATIVE_READ_MATERIALS')
+ let action:NativeAction|undefined,runId=''
+ await expect.poll(async()=>{runId=(await f.detail()).runs[0]?.id??'';if(!runId)return;action=(await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as NativeAction[])[0];return action?.status}).toBe('pending')
+ const bytes=Buffer.from(kind==='正文和文本'?'源材料：甲方项目原文':'{"amount":731,"original":"文件原件"}'),path=join(f.root,kind==='正文和文本'?'request.md':'request.json')
+ await writeFile(path,bytes)
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial
+ const input={conversationId:f.chat.id,content:kind==='正文和文本'?'项目资料见附件':'',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]}
+ const answer=await f.service.handle('sendMessage',input) as Message
+ const d=await f.wait(first)
+ expect(d.runs.map(r=>r.status)).toEqual(['completed']);expect(d.runs[0].error).toBeUndefined()
+ expect((await f.service.handle('sendMessage',input) as Message).id).toBe(answer.id)
+ const saved=(await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as NativeAction[])[0]
+ expect(saved.status).toBe('answered');expect(saved.responseMessageId).toBe(answer.id)
+ expect(JSON.stringify(saved.response)).toContain(kind==='正文和文本'?'源材料：甲方项目原文':'nativePath')
+ expect(d.messages.find(m=>m.senderType==='agent'&&m.content.startsWith('收到普通聊天回复'))?.materialSources?.map(r=>r.id)).toContain(material.id)
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ if(kind==='只附原件'){
+  const reads=(await readFile(join(cwd,'native-material-reads.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+  expect(reads).toHaveLength(1);expect(reads[0].bytes).toBe(bytes.toString('hex'));expect(reads[0].hash).toBe(createHash('sha256').update(bytes).digest('hex'))
+ }
+ await f.restart();expect((await f.detail()).runs).toHaveLength(1)
+ const next=await f.wait(await f.send('继续，只回答当前消息'))
+ expect(next.runs.at(-1)?.backend?.sessionId).toBe(d.runs[0].backend?.sessionId)
+ const prompt=JSON.parse(JSON.parse((await readFile(join(cwd,'native-turn-requests.jsonl'),'utf8')).trim().split('\n').at(-1)!).input[0].text)
+ expect(prompt.messages.map((m:Message)=>m.content)).toEqual(['继续，只回答当前消息'])
+ await f.service.handle('setMaterialAuthorization',{id:material.id,expectedRevision:material.revision,authorizedAgentIds:[]})
+ const revoked=await f.wait(await f.send('来源撤权后的新消息'))
+ expect(revoked.runs.at(-1)?.backend?.sessionId).not.toBe(d.runs[0].backend?.sessionId)
+})
+it('provides actual image and ordinary file bytes to native tools on the first turn',async()=>{
+ const f=await setup(),files=[{name:'one.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwmHAAAAKkAZGL4t77AAAAAElFTkSuQmCC','base64')},{name:'payload.json',bytes:Buffer.from('{"value":731}')}]
+ const selections=[]
+ for(const file of files){const path=join(f.root,file.name);await writeFile(path,file.bytes);const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial;selections.push({id:material.id,revision:material.revision})}
+ const message=await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'NATIVE_READ_MATERIALS',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:selections}) as Message
+ const d=await f.wait(message);expect(d.runs[0].status,d.runs[0].error).toBe('completed')
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ const reads=(await readFile(join(cwd,'native-material-reads.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(reads.map(read=>read.bytes).sort()).toEqual(files.map(file=>file.bytes.toString('hex')).sort())
+})
+it.skipIf(runtime!=='claude')('matches Claude capacity to the initialized native model instead of its API alias or helper',async()=>{
+ const f=await setup(),{id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
+ await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,modelId:'alias-fixture'})
+ const first=await f.wait(await f.send('NATIVE_METADATA'))
+ const backend=first.runs[0].backend as any
+ expect(first.runs[0].status).toBe('completed');expect(backend.modelId).toBe('fixture-main[1m]')
+ expect(backend.selectedModelId).toBe('alias-fixture');expect(backend.reportedModelId).toBe('fixture')
+ expect(backend.contextWindowTokens).toBe(1000000);expect(backend.contextWindowSource.modelId).toBe('fixture-main[1m]')
+ expect(backend.nativeInfo.commands).toEqual([{name:'native-command',description:'Public command'}])
+ expect(JSON.stringify(first)).not.toContain('PRIVATE_ACCOUNT_TOKEN');expect(JSON.stringify(first)).not.toContain('PRIVATE_SYSTEM_TOKEN')
+ await f.restart();const next=await f.wait(await f.send('NATIVE_METADATA_NEXT'))
+ expect(next.runs.at(-1)?.backend?.contextWindowTokens).toBe(1000000)
+ expect(next.runs.at(-1)?.backend?.sessionId).toBe(backend.sessionId)
+})
+it.skipIf(runtime!=='claude')('keeps executing when optional Claude model directories or capacity are absent',async()=>{
+ const f=await setup(),{id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
+ await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,modelId:'missing-meta-fixture'})
+ const d=await f.wait(await f.send('原文指令照常执行'))
+ expect(d.runs[0].status,d.runs[0].error).toBe('completed');expect(d.runs[0].backend?.contextWindowTokens).toBeUndefined()
+ expect(d.runs[0].backend?.externalInvocations).toBe(1);expect(d.workItems).toHaveLength(0)
+})
+it('does not release a native answer or keep an exported copy when its message transaction fails',async()=>{
+ const f=await setup(),first=await f.send('NATIVE_QUESTION NATIVE_READ_MATERIALS')
+ await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
+ const runId=(await f.detail()).runs[0].id
+ const path=join(f.root,'fault.json');await writeFile(path,'{"value":913}')
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../src/shared/domain').ConversationMaterial
+ const input={conversationId:f.chat.id,content:'核对这个原件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]}
+ const original=ProductStore.prototype.transaction
+ const spy=vi.spyOn(ProductStore.prototype,'transaction').mockImplementation(function(this:ProductStore,callback:any){return original.call(this,async tx=>callback({...tx,put:async(value:any)=>{if(value.collection==='messageReceipts'&&value.id===input.requestId)throw Error('SQLITE_FULL injected before message acceptance');await tx.put(value)}})) as any})
+ try { await expect(f.service.handle('sendMessage',input)).rejects.toThrow('SQLITE_FULL') } finally { spy.mockRestore() }
+ const before=await f.detail();expect(before.messages.some(m=>m.content===input.content)).toBe(false)
+ expect((await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as NativeAction[])[0].status).toBe('pending')
+ const privateHome=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,runtime==='codex'?'.codex-private':'.claude-private')
+ expect(await readdir(join(privateHome,'material-inputs'))).toEqual([])
+ const reader=await ProductStore.openReadOnly(join(f.root,'boai.sqlite'))
+ try { expect(await reader.load('materialNativeCopies')).toEqual([]) } finally { await reader.close() }
+ await f.service.handle('sendMessage',input);const d=await f.wait(first)
+ expect(d.runs.map(r=>r.status)).toEqual(['completed']);expect(d.messages.filter(m=>m.content===input.content)).toHaveLength(1)
+})
+it('cancels an active native run when newly answered material is revoked and removes only its tracked copy',async()=>{
+ const f=await setup(),first=await f.send('NATIVE_QUESTION NATIVE_READ_MATERIALS NATIVE_WAIT')
+ await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
+ const path=join(f.root,'revoke.json');await writeFile(path,'{"actual":317}')
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial
+ await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'使用附件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]})
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ await expect.poll(async()=>readFile(join(cwd,'native-material-reads.jsonl'),'utf8').catch(()=>''),{timeout:5000}).toContain('317'.split('').map(c=>c.charCodeAt(0).toString(16)).join(''))
+ const read=JSON.parse((await readFile(join(cwd,'native-material-reads.jsonl'),'utf8')).trim())
+ await f.service.handle('setMaterialAuthorization',{id:material.id,expectedRevision:material.revision,authorizedAgentIds:[]})
+ const d=await f.wait(first);expect(d.runs[0].status).toBe('cancelled')
+ await expect(stat(read.path)).rejects.toThrow('ENOENT');expect(await readFile(path,'utf8')).toBe('{"actual":317}')
+ await f.restart();expect((await f.detail()).runs).toHaveLength(1)
+})
+it('requires a target when multiple employees are awaiting native input instead of queuing a deadlock',async()=>{
+ const f=await setup(),{id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
+ const second=await f.service.handle('saveAgent',{...input,name:'第二位提问员工'}) as DigitalAgent
+ const chat=await f.service.handle('createConversation',{kind:'group',title:'两个原生问题',agentIds:[f.agent.id,second.id]}) as Conversation
+ await f.service.handle('sendMessage',{conversationId:chat.id,content:'NATIVE_QUESTION',mentionIds:[],requestId:crypto.randomUUID()})
+ const detail=()=>f.service.handle('getConversation',{id:chat.id}) as Promise<ConversationDetail>
+ await expect.poll(async()=>(await detail()).messages.filter(m=>m.content==='这个文档针对什么产品？').length).toBe(2)
+ await expect(f.service.handle('sendMessage',{conversationId:chat.id,content:'尚未选定回答对象',mentionIds:[],requestId:crypto.randomUUID()})).rejects.toThrow('多个原生问题')
+ expect((await detail()).messages.some(m=>m.content==='尚未选定回答对象')).toBe(false)
+ for(const employee of [f.agent,second])await f.service.handle('sendMessage',{conversationId:chat.id,content:'回答给'+employee.name,mentionIds:[employee.id],requestId:crypto.randomUUID()})
+ await expect.poll(async()=>(await detail()).runs.filter(r=>r.status==='completed').length).toBe(2)
+ expect((await detail()).runs).toHaveLength(2)
+})
+it('excludes native input copies from backup even before a native run is registered',async()=>{
+ const f=await setup(),privateRelative=join('agents',f.agent.id,'workspace','sessions',f.chat.id,runtime==='codex'?'.codex-private':'.claude-private'),privateHome=join(f.root,privateRelative)
+ await mkdir(join(privateHome,'material-inputs'),{recursive:true});await writeFile(join(privateHome,'material-inputs','orphan-original'),'PRIVATE_COPY_MUST_NOT_EXPORT')
+ const backup=await mkdtemp(join(tmpdir(),'boai-native-private-backup-'));disposals.push(()=>rm(backup,{recursive:true,force:true}));await f.service.backup(backup)
+ await expect(stat(join(backup,privateRelative))).rejects.toThrow('ENOENT')
+ const receipt=JSON.parse(await readFile(join(backup,'backup.json'),'utf8'))
+ expect(receipt.excludedNativeRuntimeHomes).toContain(privateRelative)
+})
+it('keeps an explicit user path intact for native tools even when it is not a BOAI attachment',async()=>{
+ const f=await setup(),path=join(f.root,'explicit-original.dat');await writeFile(path,'EXPLICIT_NATIVE_FILE_TOKEN')
+ const {id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
+ await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,allowCommands:false})
+ const content='NATIVE_EXPLICIT_PATH\n'+JSON.stringify({path}),d=await f.wait(await f.send(content))
+ expect(d.runs[0].status,d.runs[0].error).toBe('completed');expect(d.workItems).toHaveLength(0)
+ expect(d.messages.some(m=>m.content==='EXPLICIT_NATIVE_FILE_TOKEN')).toBe(true)
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ const prompt=JSON.parse(JSON.parse((await readFile(join(cwd,'native-turn-requests.jsonl'),'utf8')).trim()).input[0].text)
+ expect(prompt.messages[0].content).toBe(content)
 })
 it('refuses native operations when the user denies permission',async()=>{
  const f=await setup(),m=await f.send('NATIVE_APPROVAL');let runId='',action:NativeAction|undefined

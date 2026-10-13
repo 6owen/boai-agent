@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-12成功写入回应后独立通知提交事实，等待该观察结束；不重发、不当作原生接收确认。
  * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
  * [OUTPUT]: 原生路径核对当前程序及必需协议，以Rovai进程归属确认真实退出；旧阶段版本白名单只适用于兼容入口。
  * [OUTPUT]: 原生warning固定计数与other分开，仅计量接收/处理，不记录警告正文或推断业务终态。
@@ -46,6 +47,7 @@ export interface CodexClientInput {
   signal: AbortSignal
   onNotification?(method: string, params: JsonRecord): Promise<void>
   onRequest?(method: string, params: JsonRecord): Promise<unknown>
+  onResponseSent?(method: string, params: JsonRecord): Promise<void>
 }
 
 export class CodexClient {
@@ -207,13 +209,13 @@ export class CodexClient {
     const method = message.method, params = message.params === undefined ? {} : object(message.params)
     if (id !== undefined) {
       const operation = Promise.resolve().then(() => this.input.onRequest ? this.input.onRequest(method, params) : Promise.reject(new Error('此阶段未授权工具请求')))
-      this.requests.add(operation)
-      void operation.finally(() => this.requests.delete(operation)).catch(() => {})
-      void operation.then(result => { this.input.signal.throwIfAborted(); this.write({ id, result }) }, error => {
+      const submitted = operation.then(async result => { this.input.signal.throwIfAborted(); this.write({ id, result }); await this.input.onResponseSent?.(method, params) }, error => {
         const detail = error instanceof Error ? error.message : 'Unsupported runtime request'
         this.write({ id, error: { code: -32601, message: detail } })
         if (this.input.native) this.fail(new Error(`Codex ${method}: ${detail}`))
-      }).catch(() => {})
+      })
+      this.requests.add(submitted)
+      void submitted.finally(() => this.requests.delete(submitted)).catch(() => {})
     } else {
       const key = diagnosticMethod(method), counts = this.notificationCounts[key] ??= { received: 0, handled: 0 }
       counts.received++

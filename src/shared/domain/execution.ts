@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-12原生回应接受/提交/未知与公开模型/目录/容量来源合同；提交不等于接收。
  * [INPUT]: 原生执行事件、实际运行身份与Rovai执行呈现合同。
  * [OUTPUT]: 可分页重读的执行证据和原生交互请求；正文按需读取，不截断持久内容。
  * [POS]: 员工执行面板与运行时共用合同。
@@ -35,8 +36,24 @@ export type NativeActionInput = {
 export type NativeAction = NativeActionInput & {
   runId: string; conversationId: string; agentId: string; createdAt: string
   status: 'pending' | 'answered' | 'interrupted'; response?: NativeActionResponse; responseMessageId?: string
+  /** User acceptance and transport submission are distinct; submission is not native receipt proof. */
+  delivery?: 'accepted' | 'submitted' | 'unknown'
 }
 export type NativeActionResponse = { option?: string; answers?: Record<string, string[]> }
+export type NativeAgentInfo = {
+  models?: { value: string; displayName?: string; description?: string; supportsEffort?: boolean; supportedEffortLevels?: string[] }[]
+  commands?: { name: string; description?: string; argumentHint?: string }[]
+  agents?: { name: string; description?: string; model?: string }[]
+  tools?: string[]
+  mcpServers?: { name: string; status?: string }[]
+}
+export type NativeExecutionReceipt = {
+  modelId?: string; selectedModelId?: string; reportedModelId?: string; modelIdSource?: 'native-init' | 'api-event'
+  sessionId?: string; turnId?: string; inputAccepted?: boolean
+  contextUsedTokens?: number; contextWindowTokens?: number; totalCostUsd?: number
+  contextWindowSource?: { modelId: string; event: 'result.modelUsage'; sessionId: string; runId: string }
+  nativeInfo?: NativeAgentInfo
+}
 export type NativeRuntimeOptions = {
   effort?: string
   codexApprovalPolicy?: 'untrusted' | 'on-request' | 'never'

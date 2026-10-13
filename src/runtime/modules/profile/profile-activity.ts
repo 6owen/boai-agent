@@ -1,11 +1,12 @@
 /*
- * [OUTPUT]: 本机请求不完整回执保持未知，新增计量明确完整性；三个已知计数字段仍不能代替外部终态，旧历史不重解释。
- * [OUTPUT]: 本机Agent活动以外部请求计供应商累计用量，并标注内部模型次数未知。
+ * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
+ * [OUTPUT]: 个人用量只聚合API回执；本机历史回执不参与token或未知计量统计，活动时间/技能记录保持。
  * [INPUT]: 保留的调用回执、运行、本人消息、工作执行区间和技能激活。
  * [OUTPUT]: 同一快照的时区日桶、全部保留摘要、完整性与技能排行；缺少实际开始时间的旧预算不摊入日桶。
  * [POS]: 个人活动的确定性聚合；不从模型/预算汇总推测使用量。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isNativeBackend } from '../../../shared/domain/backends'
 import { createHash } from 'node:crypto'
 import type { AgentRun, BudgetModelCall, Message, ModelUsage, Resource, WorkItem } from '../../../shared/domain'
 import { isPersonalMessage, type ProfileActivity, type ProfileActivityQuery } from '../../../shared/domain/profile'
@@ -38,14 +39,16 @@ export function unionDuration(intervals: { from: string; to: string }[]): number
 }
 export function aggregateActivity(evidence: ActivityEvidence, range: ProfileActivityQuery, now = new Date().toISOString()): ProfileActivity {
   const today = dayAt(now, range.timezone)!, runIds = new Set(evidence.runs.map(run => run.id))
-  const calls = new Map(evidence.calls.filter(call => runIds.has(call.runId)).map(call => [call.id, call]))
+  const nativeRunIds = new Set([...evidence.calls, ...evidence.budgets].filter(call => call.callUnit === 'external-turn').map(call => call.runId))
+  const apiRunIds = new Set(evidence.runs.filter(run => !isNativeBackend(run.backend) && !nativeRunIds.has(run.id)).map(run => run.id))
+  const calls = new Map(evidence.calls.filter(call => apiRunIds.has(call.runId) && call.callUnit !== 'external-turn').map(call => [call.id, call]))
   // Automation owns the sole receipt. Its observation stores only timing/preferences.
-  for (const call of evidence.budgets) if (runIds.has(call.runId)) {
+  for (const call of evidence.budgets) if (apiRunIds.has(call.runId) && call.callUnit !== 'external-turn') {
     const metadata = calls.get(call.id)
     calls.set(call.id, { ...metadata, ...(call.callUnit ? { callUnit: call.callUnit } : {}), id: call.id, runId: call.runId, conversationId: call.conversationId, phase: call.phase, startedAt: metadata?.startedAt ?? '', budgetOwned: true, usageComplete: call.usageComplete, usage: call.settledAt && (call.callUnit !== 'external-turn' || call.usageComplete) ? call.usage : undefined })
   }
   const recordedRuns = new Set([...calls.values()].map(call => call.runId))
-  const missing = evidence.runs.filter(run => !recordedRuns.has(run.id) || run.activityError)
+  const missing = evidence.runs.filter(run => apiRunIds.has(run.id) && (!recordedRuns.has(run.id) || run.activityError))
   const buckets = new Map<string, { tokens: number; known: number; unknownCalls: number; calls: number }>()
   const bucket = (date: string) => { if (!buckets.has(date)) buckets.set(date, { tokens: 0, known: 0, unknownCalls: 0, calls: 0 }); return buckets.get(date)! }
   let totalTokens = 0, knownCalls = 0, unknownCalls = 0, undated = 0
