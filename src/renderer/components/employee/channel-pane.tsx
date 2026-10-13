@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已保存员工、受控渠道IPC与BOAI原表单/未保存守卫。
- * [OUTPUT]: 渠道绑定、授权范围、连接/停止/解除和发送结果；保存未知冻结原请求并只读核对。
+ * [OUTPUT]: 渠道绑定、明确群白名单、连接及平台事件/消息受理观察和发送结果；保存未知冻结原请求并只读核对。
  * [POS]: 员工详情渠道区域，隐藏停读；凭据不进入快照。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -56,6 +56,7 @@ export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; a
     {bindings.map(binding => <Card key={binding.id} className="connection-card gap-0 p-4"><CardContent className="p-0">
       <strong>{binding.name}</strong><p>{CHANNEL_NAMES[binding.platform]} · {binding.appId}</p><p><span className="pill">{statusNames[binding.status]}</span>{binding.botUserId && <span className="pill">机器人：{binding.botUserId}</span>}</p>
       {binding.detail && <p className="field-hint">{binding.detail}</p>}<p className="field-hint">已授权用户：{binding.allowedUserIds.join('、')} {binding.allowedChatIds.length > 0 && ` · 已授权群：${binding.allowedChatIds.join('、')}`}</p>
+      {binding.lastInbound ? <p className="field-hint">最近消息：{new Date(binding.lastInbound.receivedAt).toLocaleString()} · {binding.lastInbound.detail}</p> : binding.lastEventAt ? <p className="field-hint">已收到平台消息事件，但尚未进入员工会话，请核对连接提示。</p> : binding.enabled && binding.status === 'connected' && <p className="field-hint">本次运行尚未收到平台消息。{(binding.platform === 'feishu' || binding.platform === 'lark') && '请核对飞书的接收消息事件订阅，并使用长连接接收事件。'}</p>}
       <div className="button-row">
         <Button variant="secondary" size="sm" disabled={busy || unconfirmed || binding.status === 'connecting'} onClick={() => { void act(binding, binding.enabled ? 'disconnectChannelBinding' : 'connectChannelBinding') }}>{binding.enabled ? '停止连接' : '连接'}</Button>
         <Button variant="ghost" size="sm" disabled={busy || binding.enabled || unconfirmed || dirty} onClick={() => { const value = { platform: binding.platform, appId: binding.appId, name: binding.name, credential: '', users: binding.allowedUserIds.join('\n'), chats: binding.allowedChatIds.join('\n'), botUserId: binding.botUserId ?? '', robotCode: binding.robotCode ?? '' }; setDraft(value); setBaseline(value); setEditing(binding); requestId.current = crypto.randomUUID(); frozen.current = undefined }}>编辑绑定</Button>
@@ -74,7 +75,7 @@ export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; a
         <Field label={draft.platform === 'telegram' ? 'Bot ID' : draft.platform === 'dingtalk' ? 'AppKey' : 'App ID'} hint={draft.platform === 'telegram' ? '可留空，从Bot Token前缀读取。当前使用long polling，连接会停用该bot的已有webhook；同一个bot只交给一个宿主。' : undefined}><Input disabled={!!editing} required={draft.platform !== 'telegram'} value={draft.appId} onChange={event => setDraft(current => ({ ...current, appId: event.target.value }))} /></Field>
         <Field label={draft.platform === 'telegram' ? 'Bot Token' : 'App Secret'} hint={editing ? '留空沿用已保存凭据。' : '保存到系统加密凭据库，不进入聊天或快照。'}><Input type="password" autoComplete="off" required={!editing} value={draft.credential} onChange={event => setDraft(current => ({ ...current, credential: event.target.value }))} /></Field>
         <Field label="授权用户 ID" hint={draft.platform === 'feishu' || draft.platform === 'lark' ? '填写平台用户的Open ID，每行一个。只接收这些用户的消息。' : draft.platform === 'telegram' ? '填写Telegram数字用户ID，每行一个。' : '填写钉钉senderStaffId，每行一个。'}><Textarea required rows={3} value={draft.users} onChange={event => setDraft(current => ({ ...current, users: event.target.value }))} /></Field>
-        <Field label="授权群 ID" hint="可选，每行一个。群消息还须来自授权用户，并明确提及机器人。"><Textarea rows={2} value={draft.chats} onChange={event => setDraft(current => ({ ...current, chats: event.target.value }))} /></Field>
+        <Field label="授权群 ID" hint="每行一个。留空只接收私聊；群消息须来自这里的群和授权用户，并明确提及机器人。"><Textarea rows={2} value={draft.chats} onChange={event => setDraft(current => ({ ...current, chats: event.target.value }))} /></Field>
         {draft.platform === 'dingtalk' && <Field label="Robot Code" hint="可选，未填写时使用AppKey。已有应用的机器人Code不同于AppKey时单独填写。"><Input disabled={!!editing} value={draft.robotCode} onChange={event => setDraft(current => ({ ...current, robotCode: event.target.value }))} /></Field>}
         {draft.platform === 'dingtalk' && <Field label="机器人群提及 ID" hint="多机器人群填写机器人对应的chatbotUserId / dingtalkId，用于将平台提及准确关联到员工。"><Input value={draft.botUserId} onChange={event => setDraft(current => ({ ...current, botUserId: event.target.value }))} /></Field>}
         <div className="button-row"><Button type="submit" disabled={!ids(draft.users).length}>{editing ? '保存绑定' : '添加绑定'}</Button>{editing && <Button type="button" variant="ghost" onClick={() => { reset(); guard.saved() }}>取消编辑</Button>}</div>

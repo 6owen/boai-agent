@@ -1,6 +1,6 @@
 /*
  * [INPUT]: ProductStore、vault、原员工/会话/消息受理和现成渠道Transport。
- * [OUTPUT]: 稳定绑定和外部会话来源、显式发送者授权、单次业务受理及独立发送结果；未知不重放。
+ * [OUTPUT]: 稳定绑定和外部会话来源、显式发送者授权、单次业务受理及独立发送结果；显示平台事件/受理结果，失败只用固定原因或白名单码，不回显凭据/载荷。
  * [POS]: 第16组业务接线；不自建平台协议或员工执行循环。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -25,7 +25,7 @@ export interface ChannelTransport {
   send(target: ChannelTarget, text: string, files: ChannelOutputFile[]): Promise<string[]>
 }
 export interface ChannelTarget { id: string; bindingId: string; conversationId: string; externalThreadId: string; userId: string; chatId: string; kind: 'direct' | 'group' }
-export type ChannelTransportFactory = (binding: ChannelBinding, credential: string, receive: (event: ChannelInbound) => Promise<void>, failed: () => void) => Promise<ChannelTransport>
+export type ChannelTransportFactory = (binding: ChannelBinding, credential: string, receive: (event: ChannelInbound) => Promise<void>, failed: () => void, observed?: () => void) => Promise<ChannelTransport>
 interface StoredBinding extends ChannelBinding { credentialRef: string }
 interface ChannelHooks {
   critical<T>(operation: () => Promise<T>): Promise<T>
@@ -42,11 +42,32 @@ const actionSchema = z.object({ id, expectedRevision: z.number().int().positive(
 const key = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const time = () => new Date().toISOString()
+function connectionFailureDetail(error: unknown) {
+  const reasons: Record<string, string> = {
+    ERR_INVALID_URL: '渠道请求地址无效（ERR_INVALID_URL），请更新BOAI后重新连接。',
+    ENOTFOUND: '渠道域名解析失败（ENOTFOUND），请检查网络或代理。',
+    ECONNREFUSED: '平台连接被拒绝（ECONNREFUSED），请检查网络或代理。',
+    ECONNRESET: '平台连接被中断（ECONNRESET），请检查网络或代理。',
+    ETIMEDOUT: '平台连接超时（ETIMEDOUT），请检查网络或代理。',
+    permission_denied: '平台权限不足，请核对应用权限及已发布版本。',
+    credential_missing: '已保存的渠道凭据不可用，请停止连接后重新填写凭据。',
+  }
+  // SDK errors may wrap HTTP errors; never copy their message, URL or headers.
+  for (let depth = 0; depth < 4 && error && typeof error === 'object'; depth++) {
+    const value = error as { code?: unknown; cause?: unknown; response?: { data?: { code?: unknown } } }
+    if (typeof value.code === 'string' && Object.hasOwn(reasons, value.code)) return reasons[value.code]
+    const code = typeof value.code === 'number' ? value.code : value.response?.data?.code
+    if (typeof code === 'number' && Number.isSafeInteger(code) && code > 0 && code < 10_000_000_000) return `平台未接受连接（错误码 ${code}），请核对机器人能力、应用发布、凭据和权限。`
+    error = value.cause
+  }
+  return '连接未建立。请核对机器人凭据、网络、事件订阅及平台权限。'
+}
 
 export class EmployeeChannels {
   private bindings = new Map<string, StoredBinding>()
   private live = new Map<string, ChannelTransport>()
   private states = new Map<string, { status: ChannelBindingState['status']; detail?: string }>()
+  private health = new Map<string, Pick<ChannelBindingState, 'lastEventAt' | 'lastInbound'>>()
   private lifecycle = new Map<string, Promise<unknown>>()
   private output: Promise<unknown> = Promise.resolve()
   private inputs = new Set<Promise<void>>()
@@ -71,7 +92,7 @@ export class EmployeeChannels {
       const { credentialRef: _, ...publicBinding } = binding
       const state = this.states.get(binding.id) ?? { status: 'disconnected' as const }
       const hasCredential = !!await this.secrets.get(binding.credentialRef).catch(() => undefined)
-      return { ...publicBinding, ...state, hasCredential, ...(state.status === 'connected' && !this.live.get(binding.id)?.connected() ? { status: 'disconnected' as const, detail: '平台连接当前不可用。' } : {}), pendingDeliveries: deliveries.filter(value => value.bindingId === binding.id && value.status !== 'sent').length }
+      return { ...publicBinding, ...state, ...this.health.get(binding.id), hasCredential, ...(state.status === 'connected' && !this.live.get(binding.id)?.connected() ? { status: 'disconnected' as const, detail: '平台连接当前不可用。' } : {}), pendingDeliveries: deliveries.filter(value => value.bindingId === binding.id && value.status !== 'sent').length }
     }))
   }
   async receipt(agentId: string, requestId: string) {
@@ -126,7 +147,7 @@ export class EmployeeChannels {
       await this.disconnect(binding.id)
       if (operation === 'connect') await this.connect(binding.id)
       if (operation === 'remove') await this.hooks.critical(async () => {
-        await this.store.transaction(tx => tx.remove('channelBindings', binding.id)); this.bindings.delete(binding.id); this.states.delete(binding.id)
+        await this.store.transaction(tx => tx.remove('channelBindings', binding.id)); this.bindings.delete(binding.id); this.states.delete(binding.id); this.health.delete(binding.id)
         await this.secrets.delete(binding.credentialRef)
         await this.secrets.delete(`channel-encryption-${binding.id}`)
       })
@@ -143,22 +164,25 @@ export class EmployeeChannels {
     try {
       this.hooks.agent(binding.agentId)
       const credential = await this.secrets.get(binding.credentialRef)
-      if (!credential) throw new Error('credential_missing')
+      if (!credential) throw Object.assign(new Error('credential_missing'), { code: 'credential_missing' })
       transport = await this.factory(binding, credential, event => {
         const task = this.receive(id, event); this.inputs.add(task)
         void task.finally(() => this.inputs.delete(task)).catch(() => undefined)
         return task
-      }, () => { this.states.set(id, { status: 'failed', detail: '平台连接或消息处理失败，请核对配置与权限。' }); this.hooks.changed() })
+      }, () => { this.states.set(id, { status: 'failed', detail: '平台连接或消息处理失败，请核对配置与权限。' }); this.hooks.changed() }, () => {
+        if (!this.closing && this.bindings.has(id)) { this.health.set(id, { ...this.health.get(id), lastEventAt: time() }); this.hooks.changed() }
+      })
       this.live.set(id, transport)
       const identity = await transport.start()
       if (this.closing || !this.bindings.get(id)?.enabled) { await transport.stop(); this.live.delete(id); return }
       const updated = { ...binding, botUserId: identity.botUserId ?? binding.botUserId, botUserName: identity.botUserName }
       await this.store.write([record('channelBindings', updated)]); this.bindings.set(id, updated)
       this.states.set(id, { status: 'connected' }); this.hooks.changed()
-    } catch {
+    } catch (error) {
       if (transport) await transport.stop().catch(() => undefined)
-      this.live.delete(id); this.states.set(id, { status: 'failed', detail: '连接未建立。请核对机器人凭据、网络、事件订阅及平台权限。' }); this.hooks.changed()
-      throw new Error('渠道连接失败，请核对配置后重试。')
+      const detail = connectionFailureDetail(error)
+      this.live.delete(id); this.states.set(id, { status: 'failed', detail }); this.hooks.changed()
+      throw new Error(detail)
     }
   }
   private async disconnect(id: string) {
@@ -168,17 +192,27 @@ export class EmployeeChannels {
     this.live.delete(id); this.states.set(id, { status: 'disconnected' })
   }
   async receive(bindingId: string, event: ChannelInbound) {
-    if (event.isBot || !event.eventId || !event.userId || this.closing) return
-    await this.hooks.critical(async () => {
+    if (this.closing) return
+    const receivedAt = time()
+    const observed = (status: NonNullable<ChannelBindingState['lastInbound']>['status'], detail: string, conversationId?: string) => {
+      if (this.closing || !this.bindings.has(bindingId)) return
+      this.health.set(bindingId, { ...this.health.get(bindingId), lastEventAt: receivedAt, lastInbound: { receivedAt, status, detail, ...(conversationId ? { conversationId } : {}) } }); this.hooks.changed()
+    }
+    if (event.isBot) { observed('ignored', '机器人消息不触发员工。'); return }
+    if (!event.eventId || !event.userId) { observed('ignored', '平台消息缺少有效来源身份，未受理。'); return }
+    try { await this.hooks.critical(async () => {
       const binding = this.binding(bindingId)
-      if (!binding.enabled || !binding.allowedUserIds.includes(event.userId) || (event.kind === 'group' && (!event.mentioned || !binding.allowedChatIds.includes(event.chatId)))) return
+      if (!binding.enabled) { observed('ignored', '渠道已停止，消息未受理。'); return }
+      if (!binding.allowedUserIds.includes(event.userId)) { observed('ignored', '发送者不在授权用户中，消息未受理。'); return }
+      if (event.kind === 'group' && !binding.allowedChatIds.includes(event.chatId)) { observed('ignored', '消息来自未配置的授权群，未受理。'); return }
+      if (event.kind === 'group' && !event.mentioned) { observed('ignored', '群消息未明确提及机器人，未受理。'); return }
       if (event.text.length > 100_000 || [event.eventId, event.tenantId, event.chatId, event.userId].some(value => !value || value.length > 512)) throw new Error('渠道消息来源或正文超出当前范围。')
       const candidates = event.kind === 'direct' ? [binding] : [...this.bindings.values()].filter(other => other.enabled && other.platform === binding.platform && other.allowedUserIds.includes(event.userId) && other.allowedChatIds.includes(event.chatId) && (other.id === binding.id || !!other.botUserId && event.mentionedUserIds.includes(other.botUserId) || !!other.botUserName && event.mentionedUserIds.includes(other.botUserName)))
       for (const candidate of candidates) this.hooks.agent(candidate.agentId)
       const source: ChannelConversationSource = { platform: binding.platform, tenantId: event.tenantId, chatId: event.chatId, kind: event.kind, ...(event.threadId ? { threadId: event.threadId } : {}), ...(event.kind === 'direct' ? { bindingId, userId: event.userId } : {}) }
       const requestId = `channel-${key([source, event.eventId])}`
       const existing = await this.store.get<{ messageId?: string; cleared?: boolean }>('messageReceipts', requestId)
-      if (existing) return
+      if (existing) { observed('ignored', '重复平台消息，未重复调用员工。'); return }
       const conversation = await this.hooks.conversation(source, [...new Set(candidates.map(candidate => candidate.agentId))])
       for (const candidate of candidates) {
         const target: ChannelTarget = { id: `${conversation.id}:${candidate.id}`, bindingId: candidate.id, conversationId: conversation.id, externalThreadId: event.externalThreadId, userId: event.userId, chatId: event.chatId, kind: event.kind }
@@ -186,7 +220,8 @@ export class EmployeeChannels {
       }
       const materials = await this.hooks.prepare(conversation.id, requestId, event.attachments)
       await this.hooks.accept(conversation.id, event, { ...source, bindingId, eventId: event.eventId, userId: event.userId, replyThreadId: event.externalThreadId }, requestId, candidates.map(candidate => candidate.agentId), materials)
-    })
+      observed('accepted', '消息已进入员工会话，处理结果见会话。', conversation.id)
+    }) } catch (error) { observed('failed', '消息受理失败，请核对员工模型配置、材料和执行记录。'); throw error }
   }
   published(message: Message) {
     if (message.senderType !== 'agent' || message.status !== 'completed' || this.closing) return

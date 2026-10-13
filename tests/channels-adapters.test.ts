@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际Mastra Channels/厂商适配器和受控平台边界夹具。
- * [OUTPUT]: 自定义handler不执行默认模型、独立域/会话、飞书附件补接和原会话回发；不代替真实平台联调。
+ * [OUTPUT]: 自定义handler不执行默认模型、转换后的官方域/独立会话、飞书附件补接和原会话回发；不代替真实平台联调。
  * [POS]: 第16组SDK接线验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -32,7 +32,7 @@ describe('real channel SDK wiring with simulated platform', () => {
     for (const value of [binding('feishu-app', 'feishu'), binding('lark-app', 'lark')]) {
       const transport = await factory(value, 'secret', async event => { events.push(event) }, failures); transports.push(transport); await transport.start()
     }
-    expect(platform.channels.map(channel => channel.domain)).toEqual(['feishu', 'lark'])
+    expect(platform.channels.map(channel => channel.domain)).toEqual(['https://open.feishu.cn', 'https://open.larksuite.com'])
     for (const channel of platform.channels) await channel.handlers.get('message')!({ messageId: 'om-1', chatId: 'oc-same', chatType: 'p2p', chatMode: 'p2p', senderId: 'owner', senderName: '用户', senderType: 'user', content: '正文', resources: [{ type: 'file', fileKey: 'resource', fileName: 'notes.txt' }], mentions: [], mentionedBot: false, createTime: Date.now(), raw: { sender: { tenant_key: 'tenant' } } })
     await until(() => events.length === 2)
     expect(events[0].threadId).toBeUndefined(); expect(events[0].tenantId).toBe('tenant'); expect(events[0].attachments).toHaveLength(1)

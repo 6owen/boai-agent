@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppService原事务/执行路径、隔离SQLite、现成transport合同的受控夹具。
- * [OUTPUT]: 绑定/凭据隔离、真实来源、连续聊天/重启、重复事件、发送未知、附件失败与多机器人群的业务回归。
+ * [OUTPUT]: 绑定/凭据隔离、平台事件/受理与拒绝的安全观察、真实来源、连续聊天/重启、重复事件、发送未知、附件失败与多机器人群回归。
  * [POS]: 第16组离线集成验证；不冒充真实平台或真实供应商通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -32,16 +32,18 @@ class Engine implements AgentEngine {
   }
   async run(context: EngineContext) { this.contexts.push(context); await context.onDelta(`答复-${context.agent.id}`) }
 }
-async function fixture() {
+async function fixture(connectFailure?: unknown) {
   const root = await mkdtemp(join(tmpdir(), 'boai-channels-')); roots.push(root)
   const secrets = new Secrets(), engine = new Engine()
   const incoming = new Map<string, (event: ChannelInbound) => Promise<void>>()
+  const observed = new Map<string, () => void>()
   const sent: { bindingId: string; text: string; files: string[]; externalThreadId: string }[] = []
   const failSend = new Set<string>()
-  const factory: ChannelTransportFactory = async (binding, _credential, receive) => {
+  const factory: ChannelTransportFactory = async (binding, _credential, receive, _failed, received) => {
     let connected = false
     incoming.set(binding.id, receive)
-    return { start: async () => { connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
+    if (received) observed.set(binding.id, received)
+    return { start: async () => { if (connectFailure !== undefined) throw connectFailure; connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
   }
   const create = async () => { const service = new AppService({ dataPath: root, secrets, engine, channelTransport: factory, emit: () => {} }); services.push(service); await service.init(); return service }
   const service = await create()
@@ -52,7 +54,7 @@ async function fixture() {
   }
   const save = (agentId = 'writer', platform: ChannelBindingInput['platform'] = 'feishu', appId = platform + '-' + agentId) => service.handle('saveChannelBinding', { agentId, platform, appId, name: `${platform}-${agentId}`, credential: 'fixture-secret', allowedUserIds: ['owner'], allowedChatIds: ['group'], requestId: `${platform}-${appId}` }) as Promise<ChannelBindingState>
   const connect = async (binding: ChannelBindingState) => { await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision }); return (await service.handle('listChannelBindings', { agentId: binding.agentId }) as ChannelBindingState[]).find(value => value.id === binding.id)! }
-  return { root, secrets, engine, incoming, sent, failSend, service, create, save, connect }
+  return { root, secrets, engine, incoming, observed, sent, failSend, service, create, save, connect }
 }
 const event = (overrides: Partial<ChannelInbound> = {}): ChannelInbound => ({ eventId: 'event-1', tenantId: 'tenant', chatId: 'private', externalThreadId: 'lark:private:event-1', kind: 'direct', userId: 'owner', userName: '外部用户', text: '你好', isBot: false, mentioned: true, mentionedUserIds: [], attachments: [], ...overrides })
 async function until(predicate: () => Promise<boolean> | boolean) { for (let i = 0; i < 400; i++) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 10)) }; throw new Error('Channel fixture timeout') }
@@ -60,6 +62,49 @@ async function channels(service: AppService) { return ((await service.handle('sn
 async function detail(service: AppService, id: string) { return service.handle('getConversation', { id }) as Promise<ConversationDetail> }
 
 describe('employee channel business connection', () => {
+  it('distinguishes platform delivery, authorization rejection and accepted messages without exposing message text', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    f.observed.get(binding.id)!()
+    let state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastEventAt).toBeTruthy(); expect(state.lastInbound).toBeUndefined()
+    await f.incoming.get(binding.id)!(event({ userId: 'unapproved', text: 'private text' }))
+    state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastInbound).toMatchObject({ status: 'ignored', detail: expect.stringContaining('授权用户') })
+    expect(JSON.stringify(state)).not.toContain('private text'); expect(await channels(f.service)).toHaveLength(0)
+    await f.incoming.get(binding.id)!(event())
+    await until(() => f.sent.length === 1)
+    state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastInbound).toMatchObject({ status: 'accepted', conversationId: (await channels(f.service))[0].id })
+    await f.incoming.get(binding.id)!(event())
+    state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastInbound).toMatchObject({ status: 'ignored', detail: expect.stringContaining('重复') })
+    expect(f.sent).toHaveLength(1)
+  })
+  it('reports group authorization and acceptance failures with safe fixed reasons', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'other' }))
+    let state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastInbound).toMatchObject({ status: 'ignored', detail: expect.stringContaining('授权群') })
+    await expect(f.incoming.get(binding.id)!(event({ attachments: [{ name: 'notes.txt', read: async () => { throw new Error('Authorization fixture-secret private-file'); } }] }))).rejects.toThrow('private-file')
+    state = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    expect(state.lastInbound).toMatchObject({ status: 'failed' })
+    expect(JSON.stringify(state)).not.toMatch(/fixture-secret|private-file|Authorization/)
+    expect(f.engine.contexts).toHaveLength(0)
+  })
+  it.each([
+    ['ERR_INVALID_URL', '请求地址无效'],
+    ['ENOTFOUND', '域名解析失败'],
+    [99991663, '99991663'],
+    ['unknown-sdk-code', '连接未建立'],
+  ])('shows only the safe connection reason for %s, never SDK credentials', async (code, expected) => {
+    const error = new Error('SDK context: app_secret=fixture-secret Authorization=fixture-token', { cause: Object.assign(new Error('private platform response'), { code }) })
+    const f = await fixture(error), binding = await f.save()
+    await expect(f.connect(binding)).rejects.toThrow(expected)
+    const states = await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[]
+    expect(states[0].status).toBe('failed'); expect(states[0].detail).toContain(expected)
+    expect(JSON.stringify(states)).not.toMatch(/fixture-secret|fixture-token|private platform response|SDK context/)
+    expect(f.engine.contexts).toHaveLength(0)
+  })
   it('saves one bot per employee without leaking its credential, and checks an unknown save by original request', async () => {
     const f = await fixture(), binding = await f.save()
     expect(await f.save()).toEqual(binding)

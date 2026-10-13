@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已保存员工与平台安装、外部发送者和平台会话身份。
- * [OUTPUT]: 渠道绑定/连接状态、可信消息来源、独立平台发送回执；公开合同不含已保存凭据。
+ * [OUTPUT]: 渠道绑定/连接状态、平台事件及消息受理观察、可信消息来源、独立平台发送回执；公开合同不含已保存凭据或入站正文。
  * [POS]: 第16组跨进程渠道合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -42,6 +42,8 @@ export interface ChannelBindingState extends ChannelBinding {
   status: 'disconnected' | 'connecting' | 'connected' | 'failed'
   detail?: string
   pendingDeliveries: number
+  lastEventAt?: string
+  lastInbound?: { receivedAt: string; status: 'accepted' | 'ignored' | 'failed'; detail: string; conversationId?: string }
 }
 export interface ChannelBindingAction { id: string; expectedRevision: number }
 export interface ChannelConversationSource {

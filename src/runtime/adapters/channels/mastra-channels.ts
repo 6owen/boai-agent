@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Mastra 1.71 Channels、TelegramProvider 0.2.2、飞书/Lark适配器0.3.0与channel0.7.1、Rovai钉钉模块。
- * [OUTPUT]: 每绑定独立应用期连接，自定义handler只进入BOAI；飞书附件与状态补接原厂资源能力。
+ * [OUTPUT]: 每绑定独立应用期连接，自定义handler只进入BOAI；保留官方域名，飞书资源/原始消息事件观察使用原厂能力，无入站正文日志。
  * [POS]: 第16组现成平台适配；不运行默认Agent模型，不公开凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -53,13 +53,13 @@ export function normalizeChatInbound(binding: ChannelBinding, thread: Pick<Threa
 }
 
 export function channelTransportFactory(dataPath: string, secrets: SecretStore): ChannelTransportFactory {
-  return async (binding, credential, receive, failed) => {
+  return async (binding, credential, receive, failed, observed) => {
     if (binding.platform === 'dingtalk') return dingTalk(binding, credential, receive, failed)
     await mkdir(join(dataPath, 'channel-state'), { recursive: true })
     const storage = new LibSQLStore({ id: `channel-${binding.id}`, url: pathToFileURL(join(dataPath, 'channel-state', `${binding.id}.sqlite`)).href })
     await storage.init()
     let running = false
-    const handler: ChannelHandler = async (thread, message) => { await receive(normalizeChatInbound(binding, thread, message)) }
+    const handler: ChannelHandler = async (thread, message) => { if (binding.platform === 'telegram') observed?.(); await receive(normalizeChatInbound(binding, thread, message)) }
     const handlers: ChannelHandlers = { onDirectMessage: handler, onMention: handler, onSubscribedMessage: handler, onAction: false, onSlashCommand: false }
     let channels: AgentChannels | undefined
     let larkChannel: LarkChannel | undefined
@@ -77,7 +77,8 @@ export function channelTransportFactory(dataPath: string, secrets: SecretStore):
         }
       }
       const adapter = new EmployeeLarkAdapter({ appId: binding.appId, appSecret: credential, domain: binding.platform, userName: binding.name, logger: logger(failed), channelFactory: options => {
-        larkChannel = createLarkChannel({ ...options, domain: binding.platform, includeRawInMessage: true, resolveChatMode: true, keepalive: { enabled: true }, httpTimeoutMs: 20_000 })
+        larkChannel = createLarkChannel({ ...options, includeRawInMessage: true, resolveChatMode: true, keepalive: { enabled: true }, httpTimeoutMs: 20_000 })
+        if (observed) larkChannel.onRawEvent('im.message.receive_v1', observed)
         return larkChannel
       } })
       channels = new AgentChannels({ adapters: { lark: adapter }, handlers, tools: false, userName: binding.name, threadContext: { maxMessages: 0, addSystemMessage: false }, chatOptions: { logger: logger(failed) } })
