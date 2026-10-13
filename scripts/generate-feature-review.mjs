@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 后台运行桌面场景归F11设置分类，保留原11类分组。
  * [OUTPUT]: 员工渠道桌面场景归F01/F11；仅文件级场景映射，不宣称真实平台或条款全覆盖。
  * [OUTPUT]: 原生员工新合同映射既有功能组；规范化list来源显式保留原日志hash与核对方式，不冒充官方JSON reporter。
  * [OUTPUT]: 编辑部多轮协作归F01/F02/F03/F05/F11，沿原真实模型/开发启动口径。
@@ -21,7 +22,7 @@ import { basename, extname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { pathToFileURL } from 'node:url'
 
 const FEATURES = [
-  ['F01', '员工与 IM 沟通', ['employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','creation','contacts','conversation-list','group-chat','composer','collaboration','employee-tabs','avatars','group-settings','ui','work-views','employee-overview','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '独立员工的署名、消息顺序与日常交流。', ['员工身份是否清楚','群内交流是否容易跟随','发送与附件操作是否顺手']],
+  ['F01', '员工与 IM 沟通', ['background-runtime','employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','creation','contacts','conversation-list','group-chat','composer','collaboration','employee-tabs','avatars','group-settings','ui','work-views','employee-overview','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '独立员工的署名、消息顺序与日常交流。', ['员工身份是否清楚','群内交流是否容易跟随','发送与附件操作是否顺手']],
   ['F02', '材料输入与文件预览', ['native-execution','editorial-collaboration','mastra-mainline','materials','artifacts','detail-panel','detail-tabs','work-views','work-views-state','work-views-complete','work-views-layout'], '从聊天文件直接阅读 Markdown、代码和附件。', ['文件是否好读','排版与源码切换是否清楚','读文件时能否继续交流']],
   ['F03', '员工交付、修改与采用', ['native-execution','editorial-collaboration','mastra-mainline','claude-employee','artifacts','inbox','work-views','work-views-state','work-views-complete','work-views-layout'], '在员工交付消息内处理成果，并在同一输入框要求修改。', ['交付是否清楚','修改是否符合聊天习惯','不同版本和采用结果是否易懂']],
   ['F04', '审批、补充与失败处理', ['native-execution','codex-employee','claude-employee','inbox','group-chat','history','team-creation','browser-migration','work-views','employee-overview','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '在原聊天处理审批、补充问题和失败后的核对。', ['审批对象是否明确','补充问题是否容易操作','失败和未知结果是否解释清楚']],
@@ -31,7 +32,7 @@ const FEATURES = [
   ['F08', '定时任务与监控', ['native-execution','codex-employee','claude-employee','schedule-simplification','extensions','automation-monitor','automation-recovery','work-views-scope','work-views-complete'], '创建任务、查看触发聊天、变化监控与历史结果。', ['创建过程是否清楚','提醒是否有用','失败与历史是否容易找到']],
   ['F09', '内置浏览器', ['browser-migration'], '应用内置浏览器的导航、窗口、下载和网页操作。', ['浏览操作是否自然','窗口导航是否清楚','下载和错误反馈是否明确']],
   ['F10', '搜索、历史与阅读位置', ['reading','search-upgrade','history','work-views','employee-overview','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '从关键词回到确切消息和文件版本。', ['结果是否容易理解','定位的上下文是否足够','返回与阅读位置是否自然']],
-  ['F11', '设置、数据恢复与外部任务', ['employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','upgrade','skills','extensions','automation-recovery','desktop','local-connections','profile','appearance','pages','detail-panel','detail-tabs','work-views','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '查看设置、主题、恢复和外部任务的实际边界。', ['设置是否容易理解','恢复结果是否清楚','中断和未知状态是否易处理']],
+  ['F11', '设置、数据恢复与外部任务', ['background-runtime','employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','upgrade','skills','extensions','automation-recovery','desktop','local-connections','profile','appearance','pages','detail-panel','detail-tabs','work-views','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '查看设置、主题、恢复和外部任务的实际边界。', ['设置是否容易理解','恢复结果是否清楚','中断和未知状态是否易处理']],
 ].map(([id,title,files,goal,focus]) => ({id,title,files:files.map(name=>`${name}.feature`),goal,focus}))
 const sha = bytes => createHash('sha256').update(bytes).digest('hex')
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))

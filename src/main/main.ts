@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 托盘后台常驻/登录启动、统一窗口重开；真正退出等待 runtime 的实际 exit。
  * [OUTPUT]: 员工渠道配置和回执操作加入受控白名单，网络入站只能由runtime适配器接收。
  * [OUTPUT]: 文件打开可选reveal动作，完成同一realpath/受管根校验后在文件夹定位；默认外开和扩展名规则保持。
  * [OUTPUT]: 2026-10-11 原生执行IPC白名单与原宿主处理接线；参数/生命周期仍归运行服务。
@@ -44,6 +45,9 @@ import type { Snapshot } from '../shared/domain'
 import { MATERIAL_LIMITS } from '../shared/domain/materials'
 import { MaterialSources } from './material-sources'
 import { readClipboardMaterialPaths } from './clipboard-material-files'
+import { DesktopSettingsStore } from './desktop-settings'
+import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
+import { stopRuntime } from './runtime-shutdown'
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
@@ -56,7 +60,8 @@ let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['outp
 let ready: Promise<void> | null = null
 let quitting = false
 let quitApproved = false
-let stopped: (() => void) | null = null
+let creatingWindow: Promise<void> | null = null
+let initialized: Promise<void> | undefined
 const dirtySources = new Set<string>()
 const hasUnsavedChanges = () => dirtySources.size > 0
 let confirmingClose = false
@@ -68,6 +73,11 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
 }, decodeImage)
 const localConfigs = new LocalConfigDiscovery()
+const desktopSettings = new DesktopSettingsStore(join(legacyDataPath, 'desktop-settings.json'), {
+  platform: process.platform, packaged: app.isPackaged, executable: process.execPath,
+  get: options => app.getLoginItemSettings(options), set: options => app.setLoginItemSettings(options),
+}, () => { background.refresh(); sendEvent({ type: 'desktop:changed', settings: desktopSettings.snapshot() }) })
+const background = new BackgroundTray(desktopSettings, () => { void showMainWindow().catch(error => dialog.showErrorBox('无法打开主窗口', String(error))) }, () => app.quit(), message => { void (initialized ?? app.whenReady()).then(showMainWindow).then(() => dialog.showMessageBox(window!, { type: 'warning', message })).catch(() => {}) })
 const selectedPaths = new Set<string>()
 const materialSources = new MaterialSources(join(dataPath, 'material-sources'), error => sendEvent({ type: 'runtime-error', error: `临时附件清理失败：${String(error)}` }))
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>()
@@ -98,6 +108,8 @@ for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) 
 for (const method of ['acceptTeamCreation', 'getTeamCreation', 'resumeTeamCreation', 'generateTeamPlan', 'cancelTeamGeneration', 'openTeamDraft', 'saveTeamDraft', 'getTeamDraft', 'abandonTeamDraft', 'listTeamCreationRecovery'] as const) methods.add(method)
 for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
 methods.add('testLocalConnection')
+methods.add('getDesktopSettings')
+methods.add('updateDesktopSettings')
 for (const method of ['listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
 for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resumeAutomation'] as const) methods.add(method)
 methods.add('setMessageReaction')
@@ -131,8 +143,7 @@ const automationNotifications = new AutomationNotificationConsumer({
     const notice = new Notification({ title: 'BoAI 定时任务', body: record.kind === 'attention' ? '本次运行需要处理，点击查看记录。' : '本次运行已有结果，点击查看记录。' })
     notice.on('failed', (_event, error) => failed(error))
     notice.on('click', () => { pendingAutomationNavigation = { automationId: record.automationId, occurrenceId: record.occurrenceId, conversationId: record.conversationId, messageId: record.messageId }; void (async () => {
-      if (!window || window.isDestroyed()) await createWindow()
-      window?.show(); window?.focus()
+      await showMainWindow()
       sendEvent({ type: 'automation:navigate' })
     })().catch(error => sendEvent({ type: 'runtime-error', error: String(error) })) })
     notice.show()
@@ -153,7 +164,7 @@ function startRuntime() {
     child.on('message', async (message) => {
       if (runtime !== child) return
       if (message?.type === 'ready') { clearTimeout(timer); resolveReady(); flushAutomationNotifications(); return }
-      if (message?.type === 'stopped') { stopped?.(); return }
+      if (message?.type === 'stopped') return
       if (message?.type === 'response') {
         const response = message.response as RpcResponse
         const request = pending.get(response.id)
@@ -197,7 +208,6 @@ function startRuntime() {
       void browserConnectionDrain.catch(() => {})
       runtime = null
       ready = null
-      stopped?.()
       const error = new Error(`本地运行服务已退出（${code}），下一次操作会重新启动。`)
       rejectReady(error)
       for (const request of pending.values()) { clearTimeout(request.timer); request.reject(error) }
@@ -297,6 +307,12 @@ function registerIpc() {
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
+    if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
+    if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
+    if (method === 'updateDesktopSettings') {
+      const value = z.object({ patch: z.object({ runInBackground: z.boolean().optional(), startHidden: z.boolean().optional(), openAtLogin: z.boolean().optional() }).strict(), expectedRevision: z.number().int().nonnegative() }).strict().parse(input)
+      return desktopSettings.update(value.patch, value.expectedRevision)
+    }
     if (method === 'chooseMaterialSource') {
       z.undefined().parse(input)
       const selection = await dialog.showOpenDialog(window, { title: '添加聊天材料', properties: ['openFile'] })
@@ -443,7 +459,7 @@ function installMenu() {
   ]))
 }
 
-async function createWindow() {
+async function createWindow(show = true) {
   dirtySources.clear()
   window = new BrowserWindow({
     width: 1340, height: 900, minWidth: 760, minHeight: 640, title: 'BoAI Agent',
@@ -451,8 +467,11 @@ async function createWindow() {
     show: false,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, zoomFactor: appearance.snapshot().preferences.zoomFactor },
   })
-  window.once('ready-to-show', () => window?.show())
-  window.on('close', event => {
+  const mainWindow = window
+  mainWindow.once('ready-to-show', () => { if (show && !quitting && !mainWindow.isDestroyed()) mainWindow.show() })
+  mainWindow.on('closed', () => { if (window === mainWindow) window = null })
+  mainWindow.on('close', event => {
+    if (!quitting && background.shouldHide()) { event.preventDefault(); hideMainWindow(mainWindow); return }
     if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void confirmDiscard(() => window?.close()) }
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -470,6 +489,16 @@ async function createWindow() {
   } else await window.loadURL(pathToFileURL(join(__dirname, '../renderer/index.html')).href)
 }
 
+async function showMainWindow() {
+  if (quitting) return
+  if (creatingWindow) await creatingWindow
+  if (!window || window.isDestroyed()) {
+    creatingWindow = createWindow()
+    try { await creatingWindow } finally { creatingWindow = null }
+  }
+  if (window && !window.isDestroyed() && !quitting) { cancelWindowHide(window); if (window.isMinimized()) window.restore(); window.show(); window.focus() }
+}
+
 async function confirmDiscard(continueClose: () => void) {
   if (confirmingClose || !window) return
   confirmingClose = true
@@ -483,37 +512,37 @@ async function confirmDiscard(continueClose: () => void) {
 
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  app.on('second-instance', () => { window?.restore(); window?.focus() })
-  app.whenReady().then(async () => {
+  app.on('second-instance', () => { void (initialized ?? app.whenReady()).then(showMainWindow) })
+  initialized = app.whenReady().then(async () => {
     await prepareV2DataRoot(legacyDataPath)
     await appearance.init()
+    await desktopSettings.init()
     nativeTheme.themeSource=appearance.snapshot().preferences.mode
     nativeTheme.on('updated',()=>appearance.systemChanged())
     protocol.handle('boai-asset',async request=>{try{const url=new URL(request.url);if(url.hostname!=='appearance'||url.search||url.hash)throw new Error('无效路径');const asset=await appearance.asset(decodeURIComponent(url.pathname.slice(1)));return new Response(new Uint8Array(asset.bytes),{headers:{'Content-Type':asset.type,'Cache-Control':'no-store'}})}catch{return new Response('Not found',{status:404})}})
     registerIpc()
     installMenu()
-    await createWindow()
+    background.init()
+    creatingWindow = createWindow(!desktopSettings.hiddenAtLogin(process.argv))
+    try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
     void startRuntime().catch((error) => sendEvent({ type: 'runtime-error', error: error.message }))
-    app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow() })
+    app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
-  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })
   app.on('before-quit', (event) => {
     if (quitApproved) return
-    if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void confirmDiscard(() => app.quit()); return }
+    if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void showMainWindow().then(() => confirmDiscard(() => app.quit())); return }
     event.preventDefault()
     if (quitting) return
     quitting = true
     const child = runtime
-    const runtimeExit = child ? new Promise<void>(resolveExit => {
-      const timeout = setTimeout(() => child.kill(), 8_000)
-      stopped = () => { clearTimeout(timeout); child.kill(); resolveExit() }
-      child.postMessage({ type: 'shutdown' })
-    }) : Promise.resolve()
+    const runtimeExit = child ? stopRuntime(child) : Promise.resolve()
     // A timeout may terminate the worker, but never counts as Chromium action exit.
-    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close()]).then(() => { quitApproved = true; app.quit() }).catch(error => {
+    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
       quitting = false
-      dialog.showErrorBox('浏览器尚未退出', error instanceof Error ? error.message : String(error))
+      void showMainWindow()
+      dialog.showErrorBox('应用尚未退出', error instanceof Error ? error.message : String(error))
     })
   })
 }

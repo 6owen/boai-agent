@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
  * [OUTPUT]: 受管 artifacts 目录中的真实文件/已交付历史群聊、单聊长历史和真实聊天/Trace 离线回复、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
@@ -12,7 +13,7 @@ import type { Desktop } from './desktop'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import type { Message, WorkItem, Artifact } from '../../../src/shared/domain'
 
-export async function prepareGroupChat(runtime: Desktop) {
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   const server = createServer(async (request, response) => {
     try {
@@ -86,7 +87,7 @@ export async function prepareGroupChat(runtime: Desktop) {
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
   ]) } finally { await store.close() }
   await runtime.start()
-  await resizeGroupWindow(runtime, 1487, 1058)
+  if (emulateViewport) await resizeGroupWindow(runtime, 1487, 1058)
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   return { ...setup, state, artifacts }
 }

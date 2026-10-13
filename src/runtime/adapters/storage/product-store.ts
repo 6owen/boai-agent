@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 父工作计数的文本亲和索引匹配关联SQL，避免每个列表项扫描全会话历史。
  * [OUTPUT]: 2026-10-11 持久执行证据、内容按需读取及Rovai执行窗口/变化游标，完整数据与UI缓存窗口分开。
  * [OUTPUT]: 执行历史/事件固定SQL分页，完整原文分段读取，列表不加载大正文；不丢弃持久原生结果。
  * [OUTPUT]: 2026-10-10 员工执行SQL在LIMIT前核当前成员/原来源/清理及可见范围，稳定分页只投影冻结配置；固定Trace按run/员工/会话有界读取，零业务写入。
@@ -103,6 +104,7 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS work_view_scope ON records(json_extract(value,'$.conversationId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_owner ON records(json_extract(value,'$.ownerAgentId'),json_extract(value,'$.status'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS work_view_parent_text ON records(CAST(json_extract(value,'$.parentWorkId') AS TEXT),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE collection IN ('materials','artifacts')", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
     ], 'write')

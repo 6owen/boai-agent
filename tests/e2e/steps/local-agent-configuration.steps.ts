@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真正窗口关闭的未保存测试显式关闭后台常驻，保留原原生关闭/草稿断言。
  * [OUTPUT]: 核心助手未发送首发的正常/受理前后未知保存沿原配置，草稿与零业务调用分别核对；两次实际重启不重放，只有明确发送才建立核心聊天并调用当前本机员工。
  * [OUTPUT]: 同程序独立profile正常保存及切回保留员工/聊天历史，保存与两次重启无调用；明确新消息用当前profile重建原生thread，不把正常换绑继承为其他程序/模型验证。
  * [OUTPUT]: 保存答复故障复用agent-config-save原IPC支撑，原正常/核心/未知/重启断言保持。
@@ -376,6 +377,8 @@ Then('未知员工保存由真实原生关闭弹窗继续或放弃后重启不�
   test.setTimeout(900000)
   expect(process.env.BOAI_NATIVE_DIALOG_COORD_DIR).toBeTruthy()
   const { employee, kind, agent, read, chat, editor, open, store, facts, sessionCollection } = await configurationContext(runtime)
+  const desktop = await runtime.page.evaluate(() => window.boai.request('getDesktopSettings', undefined))
+  await runtime.page.evaluate(revision => window.boai.request('updateDesktopSettings', { patch: { runInBackground: false }, expectedRevision: revision }), desktop.revision)
   const coordinator = process.env.BOAI_NATIVE_DIALOG_COORD_DIR!
   await mkdir(coordinator, { recursive: true })
   const code = `NATIVE_CLOSE_${randomUUID()}`

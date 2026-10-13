@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面后台偏好与真实登录项状态的 typed 白名单；不暴露路径/命令。
  * [OUTPUT]: 员工渠道绑定、连接/停止/解除、保存回执核对和独立平台发送结果；不公开平台入站或已保存凭据接口。
  * [OUTPUT]: openPath增加可选reveal动作，沿原宿主路径校验定位文件，不改变默认外部打开。
  * [OUTPUT]: 2026-10-11 原生执行历史/完整内容/窗口/交互/停止typed IPC；读面板不启动工作。
@@ -30,6 +31,7 @@ import type { LaunchProfile, LaunchProfileInput, LaunchProfileStatus } from '../
 import type { ConversationListChange } from '../domain/conversation-list'
 import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
+import type { DesktopPatch, DesktopSettings } from './desktop'
 import type { LocalConfigScanResult } from '../domain/local-configs'
 import type { StoredTraceSpan } from '../domain/traces'
 import type { LocalSkillCatalog, LocalSkillDetail, ScanSkillSourceInput, SkillInstallation, SkillPreview, SkillCollections, SkillCollectionAction, SkillDetail, SkillFileContent, SkillScan, SkillOperation, InstallSkillsInput, SkillUpdateCheck, UpdateSkillInput, ResourceCleanup, PlanSkillLibraryExportInput, ExportSkillLibraryInput, SkillLibraryExportPlan, SkillUpdateBatch } from '../domain/skills'
@@ -40,6 +42,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'desktop:changed'; settings: DesktopSettings }
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
   | { type: 'automation:notice' }
@@ -179,6 +182,8 @@ export interface Methods {
   sendExternalTask: { input: { conversationId: string; content: string; requestId: string }; output: Message }
   getExternalTaskReceipt: { input: { conversationId: string; requestId: string }; output: Message | null }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
+  getDesktopSettings: { input: undefined; output: DesktopSettings }
+  updateDesktopSettings: { input: { patch: DesktopPatch; expectedRevision: number }; output: DesktopSettings }
   updateAppearance: { input: { patch: AppearancePatch; expectedRevision: number }; output: AppearanceSnapshot }
   importAppearanceBackground: { input: undefined; output: AppearanceSnapshot | null }
   removeAppearanceBackground: { input: undefined; output: AppearanceSnapshot }

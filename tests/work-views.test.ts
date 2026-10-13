@@ -1,19 +1,21 @@
 /*
  * [INPUT]: 真实SQLite工作、材料、成果及当前会话权限；有界查询与点击解析。
- * [OUTPUT]: 根/本人子工作AND、计数与父子展开同口径旧消息授权、全来源/无Work边界、全量计数/游标、真实文件家族及当前审批原卡/消息固定身份和失效回归。
+ * [OUTPUT]: 原工作视图授权/计数/游标回归；万项保留总3秒/100页1秒，记录实测并核对旧比较与缺索引兼容。
  * [POS]: WV0模块意图验收；读取不得写业务状态或制造任务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
+import { createClient } from '@libsql/client'
+import { pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentRun, Approval, WorkItem, Conversation, Message } from '../src/shared/domain'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { WorkViewRepository } from '../src/runtime/modules/collaboration/work-view-repository'
 import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
-import { conversationFileQuerySchema, workViewQuerySchema, workViewTargetSchema } from '../src/runtime/modules/collaboration/work-view-sql'
+import { conversationFileQuerySchema, workViewQuerySchema, workViewTargetSchema, workViewsSql } from '../src/runtime/modules/collaboration/work-view-sql'
 
 const stores: ProductStore[] = [], roots: string[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -34,14 +36,34 @@ describe('工作视图唯一事实与有界读取', () => {
   it('一万项历史每组超过两页，默认30/最大100并在3秒内读取全量计数和有界页', async () => {
     const store = await fixture(), statuses: WorkItem['status'][] = ['ready', 'running', 'waiting', 'delivered', 'failed']
     await store.write(Array.from({ length: 10_000 }, (_, index) => row('workItems', work(`scale-${String(index).padStart(5, '0')}`, { status: statuses[index % statuses.length] }))))
-    const start = performance.now(), first = await query(store, { group: 'running' })
+    const start = performance.now(), first = await query(store, { group: 'running' }), firstEnd = performance.now()
     expect(first.items).toHaveLength(30); expect(first.total).toBe(2000)
     expect(first.counts).toEqual({ ready: 2000, running: 2000, waiting: 2000, delivered: 2000, ended: 2000 })
-    const next = await query(store, { group: 'running', cursor: first.nextCursor })
+    const next = await query(store, { group: 'running', cursor: first.nextCursor }), nextEnd = performance.now()
     expect(new Set([...first.items, ...next.items].map(value => value.work.id)).size).toBe(60)
     expect((await query(store, { limit: 100 })).items).toHaveLength(100)
-    expect(performance.now() - start).toBeLessThan(3000)
+    const end = performance.now()
+    process.stdout.write(`WORK_VIEW_PERFORMANCE ${JSON.stringify({ items: 10_000, firstMs: firstEnd - start, nextMs: nextEnd - firstEnd, maxPageMs: end - nextEnd, totalMs: end - start, budgetMs: 3000, maxPageBudgetMs: 1000 })}\n`)
+    expect(end - start).toBeLessThan(3000)
+    expect(end - nextEnd).toBeLessThan(1000)
   }, 15_000)
+  it('父子计数索引升级保持旧文本比较、会话和材料来源语义', async () => {
+    const store = await fixture()
+    await store.write([row('workItems', work('root')), row('workItems', work('child', { parentWorkId: 'root', rootWorkId: 'root' })), row('conversations', conversation('other')), row('workItems', work('foreign', { conversationId: 'other', parentWorkId: 'root', rootWorkId: 'root' })), row('workItems', work('stale', { parentWorkId: 'root', rootWorkId: 'root', materialSources: [{ id: 'missing', conversationId: 'direct', revision: 1, contentHash: 'hash', parseVersion: 'text-v1' }] }))])
+    const client = createClient({ url: pathToFileURL(join(roots.at(-1)!, 'product.sqlite')).href })
+    try {
+      for (const input of [{}, { conversationId: 'direct' }, { parentWorkId: 'root' }, { ownerAgentId: 'alice' }]) {
+        const sql = workViewsSql(workViewQuerySchema.parse(input))
+        const previous = { ...sql, sql: sql.sql.replace("CAST(json_extract(child.value,'$.parentWorkId') AS TEXT)=page.id", "json_extract(child.value,'$.parentWorkId')=page.id") }
+        expect((await client.execute(sql)).rows).toEqual((await client.execute(previous)).rows)
+      }
+      expect((await query(store)).items.find(item => item.work.id === 'root')!.childCount).toBe(1)
+      // An old/read-only database lacking the new index still returns the same facts.
+      const indexed = await query(store)
+      await client.execute('DROP INDEX work_view_parent_text')
+      expect(await query(store)).toEqual(indexed)
+    } finally { client.close() }
+  })
   it('从全量匹配根工作计五组，不把第一页分列或Run作为工作', async () => {
     const store = await fixture(), statuses: WorkItem['status'][] = ['ready', 'running', 'waiting', 'blocked', 'delivered', 'failed', 'cancelled', 'interrupted']
     await store.write(Array.from({ length: 240 }, (_, index) => row('workItems', work(`work-${String(index).padStart(4, '0')}`, { status: statuses[index % statuses.length] }))))
