@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 生产渠道工厂、实际飞书事件Dispatcher/Channel/Chat/Mastra和隔离模型HTTP协议服务。
  * [OUTPUT]: 原始私聊/群提及事件形成用户消息，调用员工绑定模型并回发；隔离平台网络，不代替真实平台验收。
+ * [OUTPUT]: 真实厂商getChatInfo协议的群名进入会话标题，不改变原房间身份。
  * [POS]: 第16组端到端协议回归，补原转换后消息夹具缺口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -21,7 +22,7 @@ vi.mock('@larksuite/channel', async importOriginal => {
     const request = async (config: { url: string; data?: unknown }) => {
       if (config.url.includes('/auth/')) return { code: 0, tenant_access_token: 'fixture-token', expire: 7200 }
       if (config.url.includes('/bot/v3/info')) return { code: 0, bot: { open_id: 'ou_fixture_bot', app_name: 'Fixture bot' } }
-      if (config.url.includes('/im/v1/chats/')) return { code: 0, data: { chat_id: config.url.split('/').at(-1), chat_mode: config.url.endsWith('oc_direct') ? 'p2p' : 'group' } }
+      if (config.url.includes('/im/v1/chats/')) return { code: 0, data: { chat_id: config.url.split('/').at(-1), chat_mode: config.url.endsWith('oc_direct') ? 'p2p' : 'group', name: '飞书协议测试群' } }
       if (config.url.includes('/im/v1/messages')) {
         platform.sends.push({ url: config.url, data: config.data })
         return { code: 0, data: { message_id: `om_reply_${platform.sends.length}` } }
@@ -88,6 +89,7 @@ describe('raw Feishu event to employee API and platform reply', () => {
       throw new Error(JSON.stringify({ stage: 'receive', binding: await f.service.handle('listChannelBindings', { agentId: f.agent.id }), requests: f.requests.length }))
     }
     const conversation = ((await f.service.handle('snapshot', undefined)) as Snapshot).conversations.find(value => value.channel)!
+    if (kind === 'group') await expect.poll(async () => ((await f.service.handle('snapshot', undefined)) as Snapshot).conversations.find(value => value.id === conversation.id)?.title).toBe('飞书协议测试群 · 飞书')
     const detail = () => f.service.handle('getConversation', { id: conversation.id }) as Promise<ConversationDetail>
     try {
       await expect.poll(async () => (await detail()).messages.filter(value => value.senderType === 'agent' && value.status === 'completed').length, { timeout: 5000 }).toBe(1)

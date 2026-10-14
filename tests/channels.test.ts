@@ -1,5 +1,9 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：BOAI/本人平台两创建顺序隔离、旧归一/别名保留后新渠道房间、真实阅读提示/隐藏恢复/重启回归。
+ * [OUTPUT]: 员工各自渠道群上下文/无本地镜像、旧单员工原位及多员工历史/未知回执、单绑定限制回归。
  * [OUTPUT]: 2026-10-14 跨入口主私聊/其他用户隔离、两个群回复链、迁移回执/重启、忙时拒绝与100次去重压力回归。
+ * [OUTPUT]: 群名慢查询不阻塞回复、100次事件缓存、重启持久化及失败/停止后的旧查询回归。
+ * [OUTPUT]: 清理隐藏后重启，新渠道消息恢复原私聊/群条目，重复/未授权/未提及/材料失败不恢复。
  * [INPUT]: AppService原事务/执行路径、隔离SQLite、现成transport合同的受控夹具。
  * [OUTPUT]: 绑定/凭据隔离、平台事件/受理与拒绝的安全观察、真实来源、连续聊天/重启、重复事件、发送未知、附件失败与多机器人群回归。
  * [POS]: 第16组离线集成验证；不冒充真实平台或真实供应商通过。
@@ -9,12 +13,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash, randomUUID } from 'node:crypto'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
 import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
 import type { ChannelBindingState, ChannelDelivery, ChannelBindingInput } from '../src/shared/domain/channels'
 import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../src/shared/domain'
 import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
+import { isChannelConversation, mainConversations, sortedConversations } from '../src/shared/domain/conversation-list'
 
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { await Promise.all(services.splice(0).map(service => service.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -33,7 +40,7 @@ class Engine implements AgentEngine {
   }
   async run(context: EngineContext) { this.contexts.push(context); await context.onDelta(`答复-${context.agent.id}`) }
 }
-async function fixture(connectFailure?: unknown) {
+async function fixture(connectFailure?: unknown, groupName?: (chatId: string) => Promise<string | undefined>) {
   const root = await mkdtemp(join(tmpdir(), 'boai-channels-')); roots.push(root)
   const secrets = new Secrets(), engine = new Engine()
   const incoming = new Map<string, (event: ChannelInbound) => Promise<void>>()
@@ -44,7 +51,7 @@ async function fixture(connectFailure?: unknown) {
     let connected = false
     incoming.set(binding.id, receive)
     if (received) observed.set(binding.id, received)
-    return { start: async () => { if (connectFailure !== undefined) throw connectFailure; connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
+    return { groupName, start: async () => { if (connectFailure !== undefined) throw connectFailure; connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
   }
   const create = async () => { const service = new AppService({ dataPath: root, secrets, engine, channelTransport: factory, emit: () => {} }); services.push(service); await service.init(); return service }
   const service = await create()
@@ -59,42 +66,202 @@ async function fixture(connectFailure?: unknown) {
 }
 const event = (overrides: Partial<ChannelInbound> = {}): ChannelInbound => ({ eventId: 'event-1', tenantId: 'tenant', chatId: 'private', externalThreadId: 'lark:private:event-1', kind: 'direct', userId: 'owner', userName: '外部用户', text: '你好', isBot: false, mentioned: true, mentionedUserIds: [], attachments: [], ...overrides })
 async function until(predicate: () => Promise<boolean> | boolean) { for (let i = 0; i < 400; i++) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 10)) }; throw new Error('Channel fixture timeout') }
-async function channels(service: AppService) { return ((await service.handle('snapshot', undefined)) as Snapshot).conversations.filter(value => value.channel) }
+async function channels(service: AppService) { return ((await service.handle('snapshot', undefined)) as Snapshot).conversations.filter(value => isChannelConversation(value) && !value.mergedInto) }
 async function detail(service: AppService, id: string) { return service.handle('getConversation', { id }) as Promise<ConversationDetail> }
 
+// Old installations may contain multiple bindings. Seed only this isolated database.
+async function legacySibling(f: Awaited<ReturnType<typeof fixture>>, binding: ChannelBindingState, platform: ChannelBindingInput['platform'], appId: string) {
+  await f.service.close()
+  const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+  const old = (await store.load<ChannelBindingState & { credentialRef: string }>('channelBindings')).find(value => value.id === binding.id)!
+  const sibling = { ...old, id: randomUUID(), platform, appId }
+  try { await store.write([{ collection: 'channelBindings', id: sibling.id, value: sibling }]) } finally { await store.close() }
+  f.service = await f.create()
+  await until(async () => (await f.service.handle('listChannelBindings', { agentId: binding.agentId }) as ChannelBindingState[]).every(value => value.status === 'connected'))
+  return (await f.service.handle('listChannelBindings', { agentId: binding.agentId }) as ChannelBindingState[]).find(value => value.id === sibling.id)!
+}
+
 describe('employee channel business connection', () => {
-  it.each([false, true])('unifies explicitly linked owner with local room, local-first=%s, and routes replies to the initiating bot', async localFirst => {
+  it('projects channel new replies without scanning history or pretending they were seen, and clears the badge only on verified observation', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0]
+    expect(room.channelUnreadCount).toBe(1)
+    const view = await f.service.handle('getConversationView', { conversationId: room.id }) as import('../src/shared/domain/reading').ConversationView
+    expect((await channels(f.service))[0].channelUnreadCount).toBe(1)
+    const completions = view.messagePage.items.flatMap(item => item.completion ? [{ messageId: item.completion.messageId, epoch: item.completion.epoch, ordinal: item.completion.ordinal, contentHash: item.completion.contentHash }] : [])
+    await f.service.handle('observeConversationReading', { conversationId: room.id, epoch: view.reading.epoch, expectedRevision: view.reading.revision, completions })
+    expect((await channels(f.service))[0].channelUnreadCount).toBe(0)
+    await f.service.handle('updateConversationList', { id: mainConversations(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations)[0].id, action: 'hide' })
+    await f.incoming.get(binding.id)!(event());
+    expect(mainConversations(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations)).toHaveLength(0)
+    await f.incoming.get(binding.id)!(event({ eventId: 'new-event' })); await until(() => f.sent.length === 2)
+    expect(mainConversations(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations)).toHaveLength(1)
+    expect((await channels(f.service))[0].channelUnreadCount).toBe(1)
+  })
+  it('allows one new binding per employee, verifies the same receipt, and permits replacing an unbound bot', async () => {
+    const f = await fixture(), first = await f.save()
+    expect(await f.save()).toEqual(first)
+    await expect(f.save('writer', 'lark', 'another-bot')).rejects.toThrow('一个渠道绑定')
+    expect(f.secrets.values.size).toBe(1)
+    await f.save('researcher')
+    await f.service.handle('removeChannelBinding', { id: first.id, expectedRevision: first.revision })
+    const next = await f.save('writer', 'lark', 'replacement-bot')
+    expect(next.platform).toBe('lark')
+    expect(await f.service.handle('listChannelBindings', { agentId: 'writer' })).toHaveLength(1)
+  })
+  it('preserves a legacy single-employee group identity and blocks BOAI group configuration while local clear/hide still works', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'group' })); await until(() => f.sent.length === 1)
+    const original = (await channels(f.service))[0], before = await detail(f.service, original.id)
+    await f.service.close()
+    const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+    const { agentId: _, ...legacySource } = original.channel!
+    try { await store.write([{ collection: 'conversations', id: original.id, value: { ...original, channel: legacySource } }]) } finally { await store.close() }
+    const restarted = await f.create()
+    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'group', eventId: 'new-group-event' })); await until(() => f.sent.length === 2)
+    expect(await channels(restarted)).toHaveLength(1)
+    expect((await channels(restarted))[0]).toMatchObject({ id: original.id, configVersion: original.configVersion, channel: { agentId: 'writer' } })
+    expect((await detail(restarted, original.id)).messages.map(message => message.id)).toEqual(expect.arrayContaining(before.messages.map(message => message.id)))
+    await expect(restarted.handle('createConversation', { id: original.id, expectedConfigVersion: original.configVersion, kind: 'group', title: '本地改名', agentIds: ['writer', 'researcher'] })).rejects.toThrow('渠道会话不能修改')
+    await expect(restarted.handle('deleteConversation', { id: original.id })).rejects.toThrow('不能解散')
+    await restarted.handle('clearConversationHistory', { id: original.id, hide: true })
+    expect((await channels(restarted))[0]).toMatchObject({ id: original.id, list: { hidden: true } })
+  })
+  it('retains shared legacy group history and cleared/unknown receipts without replay, while new events enter each employee channel', async () => {
+    const f = await fixture(), writer = await f.connect(await f.save()), researcher = await f.connect(await f.save('researcher'))
+    const input = event({ kind: 'group', chatId: 'group' })
+    await f.incoming.get(writer.id)!(input); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0], history = await detail(f.service, room.id)
+    await f.service.close()
+    const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+    const { agentId: _, ...legacySource } = room.channel!
+    const legacyId = 'channel-' + createHash('sha256').update(JSON.stringify(legacySource)).digest('hex')
+    const shared = { ...room, id: legacyId, workspacePath: join(f.root, 'workspaces', legacyId), channel: legacySource, agentIds: ['writer', 'researcher'] }
+    const legacyKey = (id: string) => 'channel-' + createHash('sha256').update(JSON.stringify([legacySource, id])).digest('hex')
+    try {
+      await store.transaction(async tx => {
+        await tx.remove('conversations', room.id)
+        await tx.put({ collection: 'conversations', id: shared.id, value: shared })
+        for (const message of history.messages) await tx.put({ collection: 'messages', id: message.id, value: { ...message, conversationId: shared.id } })
+        for (const run of history.runs) await tx.put({ collection: 'runs', id: run.id, value: { ...run, conversationId: shared.id } })
+        for (const id of ['cleared-old', 'unknown-old']) await tx.put({ collection: 'messageReceipts', id: legacyKey(id), value: { id: legacyKey(id), conversationId: shared.id, ...(id === 'cleared-old' ? { cleared: true } : {}) } })
+      })
+    } finally { await store.close() }
+    const restarted = await f.create()
+    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'researcher' }) as ChannelBindingState[])[0].status === 'connected' && (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+    for (const eventId of ['cleared-old', 'unknown-old']) for (const binding of [writer, researcher]) await f.incoming.get(binding.id)!(event({ ...input, eventId }))
+    expect(f.sent).toHaveLength(1)
+    await expect(restarted.handle('sendMessage', { conversationId: shared.id, content: '不继续旧协作', requestId: 'legacy-local', mentionIds: [] })).rejects.toThrow('仅保留历史')
+    for (const binding of [writer, researcher]) await f.incoming.get(binding.id)!(event({ ...input, eventId: 'fresh-event' }))
+    await until(() => f.sent.length === 3)
+    const rooms = await channels(restarted)
+    expect(rooms).toHaveLength(3)
+    const { channelUnreadCount: _unread, ...savedShared } = shared
+    expect(rooms.find(value => value.id === shared.id)).toMatchObject(savedShared)
+    expect((await detail(restarted, shared.id)).messages.map(message => message.id)).toEqual(history.messages.map(message => message.id))
+    expect(rooms.filter(value => value.id !== shared.id).map(value => value.agentIds)).toEqual(expect.arrayContaining([['writer'], ['researcher']]))
+  })
+  it.each(['direct', 'group'] as const)('restores the same hidden %s item only when a new authorized platform message is committed after restart', async kind => {
+    const f = await fixture(), binding = await f.connect(await f.save('writer', 'feishu', 'hidden-bot', { ownerUserId: 'owner' }))
+    const input = event({ kind, ...(kind === 'group' ? { chatId: 'group' } : {}) })
+    await f.incoming.get(binding.id)!(input); await until(() => f.sent.length === 1)
+    const room = f.engine.contexts[0].conversation
+    await f.service.handle('clearConversationHistory', { id: room.id, hide: true })
+    await f.service.close(); const restarted = await f.create()
+    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+    const snapshot = () => restarted.handle('snapshot', undefined) as Promise<Snapshot>
+    const visible = async () => sortedConversations((await snapshot()).conversations).some(value => value.id === room.id)
+    expect(await visible()).toBe(false)
+    await f.incoming.get(binding.id)!(input)
+    await f.incoming.get(binding.id)!(event({ ...input, eventId: 'unapproved', userId: 'stranger' }))
+    if (kind === 'group') await f.incoming.get(binding.id)!(event({ ...input, eventId: 'not-mentioned', mentioned: false }))
+    await expect(f.incoming.get(binding.id)!(event({ ...input, eventId: 'failed-material', attachments: [{ name: 'broken.txt', read: async () => { throw new Error('download failed') } }] }))).rejects.toThrow('download failed')
+    expect(await visible()).toBe(false); expect(f.sent).toHaveLength(1)
+    await f.incoming.get(binding.id)!(event({ ...input, eventId: 'new-after-restart', text: '下午好' })); await until(() => f.sent.length === 2)
+    expect(await visible()).toBe(true)
+    expect((await snapshot()).conversations.filter(value => value.id === room.id)).toHaveLength(1)
+    expect((await snapshot()).conversations.find(value => value.id === room.id)).toMatchObject({ configVersion: room.configVersion, title: room.title, list: { hidden: false, pinned: false } })
+    expect((await detail(restarted, room.id)).messages.filter(message => message.senderType === 'user').map(message => message.content)).toEqual(['下午好'])
+    await restarted.close(); const again = await f.create()
+    expect(sortedConversations(((await again.handle('snapshot', undefined)) as Snapshot).conversations).some(value => value.id === room.id)).toBe(true)
+    expect(f.sent).toHaveLength(2)
+  })
+  it('fetches group names without blocking replies, caches repeated events and persists only the title across restart/rename', async () => {
+    let resolve!: (name: string) => void
+    const lookup = vi.fn(() => new Promise<string>(done => { resolve = done }))
+    const f = await fixture(undefined, lookup), binding = await f.connect(await f.save())
+    const group = event({ kind: 'group', chatId: 'group' })
+    await f.incoming.get(binding.id)!(group); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0]
+    expect(room.title).toBe('feishu · group')
+    for (let index = 0; index < 100; index++) await f.incoming.get(binding.id)!(group)
+    await f.incoming.get(binding.id)!(event({ ...group, eventId: 'next', text: '继续聊' })); await until(() => f.sent.length === 2)
+    expect(lookup).toHaveBeenCalledExactlyOnceWith('group')
+    resolve('  研发\n讨论群  '); await until(async () => (await channels(f.service))[0].title === '研发 讨论群 · 飞书')
+    expect((await channels(f.service))[0]).toMatchObject({ id: room.id, channel: room.channel, configVersion: room.configVersion, updatedAt: room.updatedAt })
+    await f.service.close(); const restarted = await f.create()
+    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+    expect((await channels(restarted))[0]).toMatchObject({ id: room.id, title: '研发 讨论群 · 飞书' })
+    lookup.mockResolvedValue('改名后的群')
+    await f.incoming.get(binding.id)!(event({ ...group, eventId: 'after-restart' })); await until(() => f.sent.length === 3)
+    await until(async () => (await channels(restarted))[0].title === '改名后的群 · 飞书')
+    expect(await channels(restarted)).toHaveLength(1)
+    expect((await channels(restarted))[0]).toMatchObject({ id: room.id, configVersion: room.configVersion })
+  })
+  it('keeps delivery connected with a cached failed lookup and never queries unapproved groups or private chats', async () => {
+    const lookup = vi.fn(async () => { throw new Error('platform_permission_denied') })
+    const f = await fixture(undefined, lookup), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'not-allowed' }))
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'group', mentioned: false }))
+    expect(lookup).not.toHaveBeenCalled()
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    expect(lookup).not.toHaveBeenCalled()
+    for (const eventId of ['group-first', 'group-second']) {
+      await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'group', eventId }))
+      await until(() => f.sent.length === (eventId === 'group-first' ? 2 : 3))
+    }
+    expect(lookup).toHaveBeenCalledExactlyOnceWith('group')
+    expect((await channels(f.service)).find(room => room.kind === 'group')?.title).toBe('feishu · group')
+    expect((await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status).toBe('connected')
+  })
+  it('discards the result of a group name query after its binding disconnects', async () => {
+    let resolve!: (name: string) => void
+    const f = await fixture(undefined, () => new Promise<string>(done => { resolve = done })), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event({ kind: 'group', chatId: 'group' })); await until(() => f.sent.length === 1)
+    await f.service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    resolve('迟到的群名'); await f.service.close()
+    const restarted = await f.create()
+    expect((await channels(restarted))[0].title).toBe('feishu · group')
+  })
+  it.each([false, true])('separates linked owner platform history from BOAI, local-first=%s, and resumes only its own context', async localFirst => {
     const f = await fixture()
     const open = () => f.service.handle('createConversation', { kind: 'direct', title: '写手', agentIds: ['writer'] }) as Promise<Conversation>
     const first = localFirst ? await open() : undefined
     const binding = await f.connect(await f.save('writer', 'feishu', 'owner-bot', { ownerUserId: 'owner', allowedUserIds: ['owner', 'colleague'] }))
-    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
-    const main = await open()
+    await f.incoming.get(binding.id)!(event({ text: '手机私聊消息' })); await until(() => f.sent.length === 1)
+    const main = await open(), phone = f.engine.contexts[0].conversation
     if (first) expect(main.id).toBe(first.id)
-    expect(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations.filter(room => !room.mergedInto && room.kind === 'direct')).toHaveLength(1)
-    let result = await detail(f.service, main.id)
-    expect(result.messages[0]).toMatchObject({ channel: { owner: true }, senderType: 'user' })
-    expect(result.messages[0].senderId).not.toBe('user')
+    expect(phone.id).not.toBe(main.id)
+    expect((await detail(f.service, phone.id)).messages[0]).toMatchObject({ channel: { owner: true }, senderType: 'user' })
+    expect((await detail(f.service, main.id)).messages).toHaveLength(0)
     await f.service.handle('sendMessage', { conversationId: main.id, content: 'BOAI 本地继续', mentionIds: [], requestId: 'local-owner-message' })
-    await until(() => f.engine.contexts.length === 2 && f.engine.contexts.at(-1)?.messages.some(message => message.content === 'BOAI 本地继续') === true)
     await until(async () => (await detail(f.service, main.id)).runs.every(run => run.status === 'completed'))
     expect(f.sent).toHaveLength(1)
-    const second = await f.connect(await f.save('writer', 'lark', 'second-bot', { ownerUserId: 'owner' }))
-    await f.incoming.get(second.id)!(event({ eventId: 'second-owner', externalThreadId: 'lark:another:second', chatId: 'another' }))
-    await until(() => f.sent.length === 2)
-    expect(f.sent[1]).toMatchObject({ bindingId: second.id, externalThreadId: 'lark:another:second' })
-    result = await detail(f.service, main.id)
-    expect(result.messages.filter(message => message.senderType === 'user')).toHaveLength(3)
-    expect(f.engine.contexts.at(-1)?.conversation.id).toBe(main.id)
-    expect(f.engine.contexts.at(-1)?.messages.map(message => message.content)).toContain('BOAI 本地继续')
-    await f.incoming.get(binding.id)!(event({ eventId: 'colleague', userId: 'colleague', userName: '同事' })); await until(() => f.sent.length === 3)
+    expect(f.engine.contexts.at(-1)?.messages.map(message => message.content)).not.toContain('手机私聊消息')
+    await f.incoming.get(binding.id)!(event({ eventId: 'phone-next', text: '手机继续讨论' })); await until(() => f.sent.length === 2)
+    expect(f.engine.contexts.at(-1)?.conversation.id).toBe(phone.id)
+    expect(f.engine.contexts.at(-1)?.messages.map(message => message.content)).toContain('手机私聊消息')
+    expect(f.engine.contexts.at(-1)?.messages.map(message => message.content)).not.toContain('BOAI 本地继续')
+    await f.incoming.get(binding.id)!(event({ eventId: 'colleague', userId: 'colleague' })); await until(() => f.sent.length === 3)
     const other = (await channels(f.service)).find(room => room.channel?.userId === 'colleague')!
-    expect(other.id).not.toBe(main.id)
-    expect((await detail(f.service, other.id)).messages.some(message => message.content === 'BOAI 本地继续')).toBe(false)
+    expect(other.id).not.toBe(main.id); expect(other.id).not.toBe(phone.id)
+    const before = await detail(f.service, phone.id)
     await f.service.close(); const restarted = await f.create()
-    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[]).every(value => value.status === 'connected'))
-    await f.incoming.get(binding.id)!(event()); expect(f.sent).toHaveLength(3)
-    expect((await detail(restarted, main.id)).messages).toHaveLength(result.messages.length)
+    await until(async () => (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+    await f.incoming.get(binding.id)!(event({ text: '手机私聊消息' })); expect(f.sent).toHaveLength(3)
+    expect((await detail(restarted, phone.id)).messages.map(message => message.id)).toEqual(before.messages.map(message => message.id))
   })
   it('keeps group rooms independent while different reply chains share the same group', async () => {
     const f = await fixture(), binding = await f.connect(await f.save('writer', 'feishu', 'group-bot', { ownerUserId: 'owner', allowedChatIds: ['group', 'group-2'] }))
@@ -115,9 +282,8 @@ describe('employee channel business connection', () => {
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
     expect((await channels(f.service))[0].id).not.toBe(local.id)
   })
-  it('merges old private history atomically without replay, preserves receipts and old read links', async () => {
-    const f = await fixture()
-    const local = await f.service.handle('createConversation', { kind: 'direct', title: '写手', agentIds: ['writer'] }) as Conversation
+  it('retains old merged history and receipt aliases, then routes new owner messages to a fresh independent room without replay', async () => {
+    const f = await fixture(), local = await f.service.handle('createConversation', { kind: 'direct', title: '写手', agentIds: ['writer'] }) as Conversation
     const input = { conversationId: local.id, content: '原本地消息', mentionIds: [], requestId: 'before-merge' }
     const accepted = await f.service.handle('sendMessage', input) as Message
     await until(async () => (await detail(f.service, local.id)).runs.every(run => run.status === 'completed'))
@@ -126,23 +292,27 @@ describe('employee channel business connection', () => {
     const old = (await channels(f.service))[0], history = await detail(f.service, old.id)
     await f.service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
     binding = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
-    const saved = await f.service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'owner-link' }) as ChannelBindingState
-    const merged = await detail(f.service, local.id)
+    await f.service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'owner-link' })
+    expect((await detail(f.service, old.id)).messages.map(message => message.id)).toEqual(history.messages.map(message => message.id))
+    await f.service.close()
+    const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+    try { await store.transaction(tx => mergeRooms(tx, { ...local, mainPrivate: true, channel: old.channel }, [old])) } finally { await store.close() }
+    const restarted = await f.create(), merged = await detail(restarted, local.id)
     expect(merged.messages.map(message => message.id)).toEqual(expect.arrayContaining([accepted.id, ...history.messages.map(message => message.id)]))
-    expect(new Set(merged.messages.map(message => message.sequence)).size).toBe(merged.messages.length)
-    expect(merged.messages.filter(message => history.messages.some(old => old.id === message.id)).every(message => message.originalConversationId === old.id)).toBe(true)
-    expect(merged.runs.filter(run => run.phase === 'execution')).toHaveLength(2)
-    expect((await detail(f.service, old.id)).conversation.id).toBe(local.id)
-    expect((await f.service.handle('sendMessage', input) as Message).id).toBe(accepted.id)
-    expect(f.engine.contexts).toHaveLength(2); expect(f.sent).toHaveLength(1)
-    await f.connect(saved)
+    expect((await detail(restarted, old.id)).conversation.id).toBe(local.id)
+    expect((await restarted.handle('sendMessage', input) as Message).id).toBe(accepted.id)
+    const saved = (await restarted.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
+    await restarted.handle('connectChannelBinding', { id: saved.id, expectedRevision: saved.revision })
     await f.incoming.get(binding.id)!(event()); expect(f.sent).toHaveLength(1)
-    const reading = await f.service.handle('getConversationReading', { conversationId: local.id }) as { completionCount: number; unreadCount: number }
-    expect(reading.completionCount).toBe(2); expect(reading.unreadCount).toBe(2)
-    await expect(f.service.handle('sendMessage', { ...input, conversationId: old.id, requestId: 'new-old-destination' })).rejects.toThrow('主私聊')
-    await f.service.close(); const restarted = await f.create()
+    await f.incoming.get(binding.id)!(event({ eventId: 'fresh-owner', text: '新的手机私聊' })); await until(() => f.sent.length === 2)
+    const phone = (await channels(restarted))[0]
+    expect(phone.id).not.toBe(local.id); expect(phone.id).not.toBe(old.id)
+    expect((await detail(restarted, phone.id)).messages.filter(message => message.senderType === 'user').map(message => message.content)).toEqual(['新的手机私聊'])
     expect((await detail(restarted, local.id)).messages.map(message => message.id)).toEqual(merged.messages.map(message => message.id))
-    expect(f.engine.contexts).toHaveLength(2); expect(f.sent).toHaveLength(1)
+    await restarted.close(); const again = await f.create()
+    expect((await detail(again, local.id)).messages.map(message => message.id)).toEqual(merged.messages.map(message => message.id))
+    expect((await channels(again))[0].id).toBe(phone.id)
+    expect(f.engine.contexts).toHaveLength(3); expect(f.sent).toHaveLength(2)
   })
   it('keeps room and route counts bounded under repeated platform events and local opens', async () => {
     const f = await fixture(), binding = await f.connect(await f.save('writer', 'feishu', 'stress-owner', { ownerUserId: 'owner' }))
@@ -155,13 +325,14 @@ describe('employee channel business connection', () => {
     const elapsedMs = performance.now() - started
     expect(elapsedMs).toBeLessThan(3000)
     const snapshot = (await f.service.handle('snapshot', undefined)) as Snapshot
-    expect(snapshot.conversations).toHaveLength(1)
+    expect(snapshot.conversations).toHaveLength(2)
+    expect(mainConversations(snapshot.conversations)).toHaveLength(1)
     const reader = await ProductStore.openReadOnly(join(snapshot.dataPath, 'boai.sqlite'))
     try { expect(await reader.load('channelTargets')).toHaveLength(1); expect(await reader.load('messageReceipts')).toHaveLength(1) } finally { await reader.close() }
-    process.stdout.write(`ROOM_ROUTE_PRESSURE ${JSON.stringify({ duplicateEvents: 100, localOpens: 100, elapsedMs, budgetMs: 3000, rooms: 1, targets: 1, replies: f.sent.length })}\n`)
+    process.stdout.write(`ROOM_ROUTE_PRESSURE ${JSON.stringify({ duplicateEvents: 100, localOpens: 100, elapsedMs, budgetMs: 3000, rooms: 2, mainItems: 1, targets: 1, replies: f.sent.length })}\n`)
     expect(f.engine.contexts).toHaveLength(1); expect(f.sent).toHaveLength(1)
   })
-  it('rejects owner history convergence while the local room is running, leaving binding and both rooms intact', async () => {
+  it('saves owner attribution while an unrelated local room runs without merging or disturbing its work', async () => {
     const f = await fixture(), local = await f.service.handle('createConversation', { kind: 'direct', title: '写手', agentIds: ['writer'] }) as Conversation
     let binding = await f.connect(await f.save())
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
@@ -173,10 +344,11 @@ describe('employee channel business connection', () => {
     try {
       await f.service.handle('sendMessage', { conversationId: local.id, content: '正在执行', mentionIds: [], requestId: 'busy-room' })
       await until(async () => (await detail(f.service, local.id)).runs.some(run => run.status === 'running'))
-      await expect(f.service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'busy-owner-link' })).rejects.toThrow('相关聊天仍有执行')
-      expect((await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].ownerUserId).toBeUndefined()
+      const saved = await f.service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'busy-owner-link' }) as ChannelBindingState
+      expect(saved.ownerUserId).toBe('owner')
+      expect((await detail(f.service, local.id)).runs.some(run => run.status === 'running')).toBe(true)
       expect(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations.filter(room => !room.mergedInto)).toHaveLength(2)
-      expect(await f.service.handle('getChannelBindingReceipt', { agentId: 'writer', requestId: 'busy-owner-link' })).toBeNull()
+      expect(await f.service.handle('getChannelBindingReceipt', { agentId: 'writer', requestId: 'busy-owner-link' })).toMatchObject({ id: binding.id })
     } finally { release() }
   })
   it('distinguishes platform delivery, authorization rejection and accepted messages without exposing message text', async () => {
@@ -259,12 +431,20 @@ describe('employee channel business connection', () => {
     expect(await channels(restarted)).toHaveLength(1)
   })
   it('keeps different users and Feishu/Lark namespaces separate and disconnects only the selected binding', async () => {
-    const f = await fixture(), feishu = await f.connect(await f.save()), lark = await f.connect(await f.save('writer', 'lark'))
+    const f = await fixture(), feishu = await f.connect(await f.save()), lark = await legacySibling(f, feishu, 'lark', 'lark-writer')
     await f.incoming.get(feishu.id)!(event()); await f.incoming.get(lark.id)!(event()); await until(() => f.sent.length === 2)
     expect(await channels(f.service)).toHaveLength(2)
     await f.service.handle('disconnectChannelBinding', { id: feishu.id, expectedRevision: feishu.revision })
     await f.incoming.get(feishu.id)!(event({ eventId: 'stopped' })); await f.incoming.get(lark.id)!(event({ eventId: 'lark-new' })); await until(() => f.sent.length === 3)
     expect(f.sent.at(-1)?.bindingId).toBe(lark.id)
+  })
+  it('uses only the initiating bot for a group reply on grandfathered multiple bindings of the same employee', async () => {
+    const f = await fixture(), first = await f.connect(await f.save()), second = await legacySibling(f, first, 'feishu', 'old-second-bot')
+    await f.incoming.get(first.id)!(event({ kind: 'group', chatId: 'group', eventId: 'first', externalThreadId: 'lark:group:first' })); await until(() => f.sent.length === 1)
+    await f.incoming.get(second.id)!(event({ kind: 'group', chatId: 'group', eventId: 'second', externalThreadId: 'lark:group:second' }))
+    await until(() => f.sent.some(value => value.bindingId === second.id && value.externalThreadId === 'lark:group:second'))
+    expect(f.sent.map(value => value.bindingId)).toEqual([first.id, second.id])
+    expect(await channels(f.service)).toHaveLength(1)
   })
   it('prepares a real attachment before execution, and does not run only the text when another attachment fails', async () => {
     const f = await fixture(), binding = await f.connect(await f.save())
@@ -275,15 +455,28 @@ describe('employee channel business connection', () => {
     await expect(f.incoming.get(binding.id)!(event({ eventId: 'broken', attachments: [{ name: 'broken.txt', read: bad }] }))).rejects.toThrow('download failed')
     expect(f.engine.contexts).toHaveLength(1); expect((await detail(f.service, conversation.id)).messages.filter(message => message.senderType === 'user')).toHaveLength(1)
   })
-  it('aggregates a group event received by two robots, while each employee replies through its own bot', async () => {
+  it('isolates the same group event for each employee and never mirrors local channel messages', async () => {
     const f = await fixture(), writer = await f.connect(await f.save()), researcher = await f.connect(await f.save('researcher'))
     const input = event({ kind: 'group', chatId: 'group', mentionedUserIds: ['bot-feishu-writer', 'bot-feishu-researcher'] })
     await Promise.all([f.incoming.get(writer.id)!(input), f.incoming.get(researcher.id)!(input)])
     await until(() => f.sent.length === 2)
-    expect(await channels(f.service)).toHaveLength(1); expect(f.engine.contexts).toHaveLength(2)
+    const rooms = await channels(f.service)
+    expect(rooms).toHaveLength(2); expect(f.engine.contexts).toHaveLength(2)
     expect(new Set(f.sent.map(value => value.bindingId))).toEqual(new Set([writer.id, researcher.id]))
-    const result = await detail(f.service, (await channels(f.service))[0].id)
-    expect(result.messages.filter(message => message.senderType === 'user')).toHaveLength(1)
+    for (const room of rooms) {
+      expect(room.agentIds).toHaveLength(1)
+      const result = await detail(f.service, room.id)
+      expect(result.messages.filter(message => message.senderType === 'user')).toHaveLength(1)
+      expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.senderId)).toEqual(room.agentIds)
+    }
+    const writerRoom = rooms.find(room => room.agentIds[0] === 'writer')!
+    await f.service.handle('sendMessage', { conversationId: writerRoom.id, content: 'BOAI群内本地讨论', mentionIds: [], requestId: 'local-channel' })
+    await until(async () => (await detail(f.service, writerRoom.id)).messages.some(message => message.senderType === 'agent' && message.sequence > 2 && message.status === 'completed'))
+    expect(f.sent).toHaveLength(2)
+    await f.incoming.get(researcher.id)!(event({ ...input, eventId: 'researcher-next' })); await until(() => f.sent.length === 3)
+    expect(f.engine.contexts.at(-1)?.messages.some(message => message.content === 'BOAI群内本地讨论')).toBe(false)
+    await Promise.all([f.incoming.get(writer.id)!(input), f.incoming.get(researcher.id)!(input)])
+    expect(f.sent).toHaveLength(3)
   })
   it('keeps cleared event identities and preserves history when unbinding', async () => {
     const f = await fixture(), binding = await f.connect(await f.save())

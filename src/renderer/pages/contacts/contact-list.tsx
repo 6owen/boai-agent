@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
+ * [OUTPUT]: 通讯录群聊只列BOAI群，外部渠道在会话页管理查看，不提供本地群成员编辑。
  * [OUTPUT]: 核心助手独立置顶，群聊与联系人各自折叠，普通员工按全局顺序平面展示；加号菜单的通讯录管理入口承接批量管理；员工/群聊右键资料、配置、发消息和删除确认，保留搜索、拖拽/键盘排序与本机折叠状态。
  * [POS]: contacts 左侧列表；界面操作通过类型化 IPC 持久化，不修改会话顺序。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -9,6 +10,7 @@ import { cn } from 'cn'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import { sortedContacts } from '@shared/domain/contact-list'
+import { isChannelConversation } from '@shared/domain/conversation-list'
 import type { DesktopApi } from '@shared/ipc'
 import { Avatar, Banner, useMutation } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
@@ -58,7 +60,7 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   const disabled = busy || preferences.busy || mutation.busy || !value
   const sortingDisabled = disabled || Boolean(deleting || managerOpen)
   const search = query.trim().toLocaleLowerCase()
-  const groups = sortedContacts(snapshot.conversations.filter(item => item.kind === 'group'), value?.groupOrder ?? [], item => item.title).filter(item => item.title.toLocaleLowerCase().includes(search))
+  const groups = sortedContacts(snapshot.conversations.filter(item => item.kind === 'group' && !item.mergedInto && !isChannelConversation(item)), value?.groupOrder ?? [], item => item.title).filter(item => item.title.toLocaleLowerCase().includes(search))
   const ordinaryAgents = snapshot.agents.filter(agent => !isCoreAgent(agent))
   const assistants = snapshot.agents.filter(isCoreAgent).filter(agent => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search))
   const contacts = sortedContacts(ordinaryAgents, value?.agentOrder ?? [], agent => agent.name).filter(agent => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search))

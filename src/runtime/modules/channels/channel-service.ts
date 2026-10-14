@@ -1,5 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：本人ID不再合并历史，逐来源/绑定回发与旧回执去重保持；停止、凭据及未知保存核对不变。
+ * [OUTPUT]: 入站按绑定员工分别受理，兼容旧共享/清理回执去重；新增每员工一个绑定，既有多绑定保留。
  * [OUTPUT]: 2026-10-14 明确本人账号同事务关联、主私聊解析和逐触发来源回发，取消最近平台目标回退。
+ * [OUTPUT]: 授权群名称异步读取与有界缓存；失败保留原标题，停止/换绑后的旧查询不写回。
  * [INPUT]: ProductStore、vault、原员工/会话/消息受理和现成渠道Transport。
  * [OUTPUT]: 稳定绑定和外部会话来源、显式发送者授权、单次业务受理及独立发送结果；显示平台事件/受理结果，失败只用固定原因或白名单码，不回显凭据/载荷。
  * [POS]: 第16组业务接线；不自建平台协议或员工执行循环。
@@ -9,7 +12,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { DigitalAgent, Message, Conversation, MaterialSelection, AgentRun, WorkItem, WorkBudget } from '../../../shared/domain'
 import { CHANNEL_PLATFORMS, type ChannelBinding, type ChannelBindingAction, type ChannelBindingInput, type ChannelBindingState, type ChannelConversationSource, type ChannelDelivery, type ChannelMessageSource } from '../../../shared/domain/channels'
-import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
+import type { ProductStore } from '../../adapters/storage/product-store'
 import type { SecretStore } from '../../contracts'
 
 export interface ChannelAttachment { name: string; size?: number; read(): Promise<Buffer> }
@@ -23,6 +26,7 @@ export interface ChannelTransport {
   start(): Promise<{ botUserId?: string; botUserName?: string }>
   stop(): Promise<void>
   connected(): boolean
+  groupName?(chatId: string): Promise<string | undefined>
   send(target: ChannelTarget, text: string, files: ChannelOutputFile[]): Promise<string[]>
 }
 export interface ChannelTarget { id: string; bindingId: string; conversationId: string; externalThreadId: string; userId: string; chatId: string; kind: 'direct' | 'group' }
@@ -32,7 +36,7 @@ interface ChannelHooks {
   critical<T>(operation: () => Promise<T>): Promise<T>
   agent(id: string): DigitalAgent
   conversation(source: ChannelConversationSource, agentIds: string[], owner: boolean): Promise<Conversation>
-  linkOwner(binding: ChannelBinding, tx: RecordTransaction): Promise<() => void>
+  groupName(conversationId: string, source: ChannelConversationSource, name: string): Promise<void>
   prepare(conversationId: string, eventKey: string, attachments: ChannelAttachment[]): Promise<MaterialSelection[]>
   accept(conversationId: string, event: ChannelInbound, source: ChannelMessageSource, requestId: string, agentIds: string[], materials: MaterialSelection[]): Promise<Message>
   files(message: Message): Promise<ChannelOutputFile[]>
@@ -73,6 +77,9 @@ export class EmployeeChannels {
   private lifecycle = new Map<string, Promise<unknown>>()
   private output: Promise<unknown> = Promise.resolve()
   private inputs = new Set<Promise<void>>()
+  // Each binding authorizes at most 100 chat IDs. Disconnect drops its cache.
+  private groupNames = new Map<string, Map<string, { refreshAt: number }>>()
+  private metadata = new Set<Promise<void>>()
   private closing = false
   constructor(private store: ProductStore, private secrets: SecretStore, private factory: ChannelTransportFactory, private hooks: ChannelHooks) {}
 
@@ -118,6 +125,7 @@ export class EmployeeChannels {
       if (prior && prior.revision !== value.expectedRevision) throw new Error('渠道配置已更新，请刷新核对。')
       if (prior?.enabled || (prior && this.lifecycle.has(prior.id))) throw new Error('请先停止连接，再修改渠道配置。')
       if ([...this.bindings.values()].some(binding => binding.id !== prior?.id && binding.platform === value.platform && binding.appId === value.appId)) throw new Error('该机器人已绑定其他员工，请先核对原绑定。')
+      if (!prior && [...this.bindings.values()].some(binding => binding.agentId === value.agentId)) throw new Error('每名员工只能新增一个渠道绑定，请先解除现有绑定。')
       if (!prior && !value.credential) throw new Error('请输入机器人凭据。')
       const ownerUserId = value.ownerUserId === undefined ? prior?.ownerUserId : value.ownerUserId ?? undefined
       if (ownerUserId && !value.allowedUserIds.includes(ownerUserId)) throw new Error('本人用户 ID 必须在授权用户中。')
@@ -125,15 +133,12 @@ export class EmployeeChannels {
       const credentialRef = value.credential ? `channel-${randomUUID()}` : prior!.credentialRef
       if (value.credential) await this.secrets.set(credentialRef, value.credential)
       const binding: StoredBinding = { id: prior?.id ?? randomUUID(), agentId: value.agentId, platform: value.platform, appId: value.appId, robotCode: value.robotCode ?? prior?.robotCode, name: value.name, allowedUserIds: [...new Set(value.allowedUserIds)], allowedChatIds: [...new Set(value.allowedChatIds)], credentialRef, hasCredential: true, enabled: false, revision: (prior?.revision ?? 0) + 1, botUserId: value.botUserId ?? prior?.botUserId, botUserName: prior?.botUserName, installedAt: prior?.installedAt ?? time(), updatedAt: time() }
-      let install = () => {}
       await this.store.transaction(async tx => {
         const current = prior ? await tx.get<StoredBinding>('channelBindings', prior.id) : undefined
         if (prior && current?.revision !== prior.revision) throw new Error('渠道配置已更新。')
-        install = await this.hooks.linkOwner({ ...binding, ownerUserId }, tx)
         await tx.put(record('channelBindings', { ...binding, ownerUserId })); await tx.put(record('channelBindingReceipts', { id: value.requestId, fingerprint, bindingId: binding.id }))
       })
       binding.ownerUserId = ownerUserId
-      install()
       this.bindings.set(binding.id, binding); this.states.set(binding.id, { status: 'disconnected' }); this.hooks.changed()
       // Never erase a credential when commit status is unknown.
       if (prior && prior.credentialRef !== credentialRef) await this.secrets.delete(prior.credentialRef)
@@ -195,9 +200,27 @@ export class EmployeeChannels {
   }
   private async disconnect(id: string) {
     const transport = this.live.get(id)
+    this.groupNames.delete(id)
     await transport?.stop()
     await this.output
     this.live.delete(id); this.states.set(id, { status: 'disconnected' })
+  }
+  private refreshGroupName(binding: StoredBinding, conversationId: string, source: ChannelConversationSource) {
+    const transport = this.live.get(binding.id)
+    if (this.closing || source.kind !== 'group' || !transport?.groupName) return
+    let names = this.groupNames.get(binding.id)
+    if (!names) { names = new Map(); this.groupNames.set(binding.id, names) }
+    if ((names.get(source.chatId)?.refreshAt ?? 0) > Date.now()) return
+    const entry = { refreshAt: Infinity }
+    names.set(source.chatId, entry)
+    const current = () => !this.closing && this.live.get(binding.id) === transport && this.bindings.get(binding.id)?.enabled && this.bindings.get(binding.id)?.revision === binding.revision && this.groupNames.get(binding.id) === names
+    // Platform I/O must never hold the runtime critical section or delay a reply.
+    const task = Promise.resolve().then(() => transport.groupName!(source.chatId)).then(async value => {
+      const name = value?.replace(/\s+/g, ' ').trim().slice(0, 200)
+      entry.refreshAt = Date.now() + (name ? 5 * 60_000 : 60_000)
+      if (name && current()) await this.hooks.critical(async () => { if (current()) await this.hooks.groupName(conversationId, source, name) })
+    }).catch(() => { entry.refreshAt = Date.now() + 60_000 }).finally(() => { this.metadata.delete(task) })
+    this.metadata.add(task)
   }
   async receive(bindingId: string, event: ChannelInbound) {
     if (this.closing) return
@@ -215,20 +238,20 @@ export class EmployeeChannels {
       if (event.kind === 'group' && !binding.allowedChatIds.includes(event.chatId)) { observed('ignored', '消息来自未配置的授权群，未受理。'); return }
       if (event.kind === 'group' && !event.mentioned) { observed('ignored', '群消息未明确提及机器人，未受理。'); return }
       if (event.text.length > 100_000 || [event.eventId, event.tenantId, event.chatId, event.userId].some(value => !value || value.length > 512)) throw new Error('渠道消息来源或正文超出当前范围。')
-      const candidates = event.kind === 'direct' ? [binding] : [...this.bindings.values()].filter(other => other.enabled && other.platform === binding.platform && other.allowedUserIds.includes(event.userId) && other.allowedChatIds.includes(event.chatId) && (other.id === binding.id || !!other.botUserId && event.mentionedUserIds.includes(other.botUserId) || !!other.botUserName && event.mentionedUserIds.includes(other.botUserName)))
-      for (const candidate of candidates) this.hooks.agent(candidate.agentId)
-      const source: ChannelConversationSource = { platform: binding.platform, tenantId: event.tenantId, chatId: event.chatId, kind: event.kind, ...(event.threadId ? { threadId: event.threadId } : {}), ...(event.kind === 'direct' ? { bindingId, userId: event.userId } : {}) }
+      this.hooks.agent(binding.agentId)
+      const legacySource: ChannelConversationSource = { platform: binding.platform, tenantId: event.tenantId, chatId: event.chatId, kind: event.kind, ...(event.threadId ? { threadId: event.threadId } : {}), ...(event.kind === 'direct' ? { bindingId, userId: event.userId } : {}) }
+      const source = event.kind === 'group' ? { ...legacySource, agentId: binding.agentId } : legacySource
       const requestId = `channel-${key([source, event.eventId])}`
       const existing = await this.store.get<{ messageId?: string; cleared?: boolean }>('messageReceipts', requestId)
-      if (existing) { observed('ignored', '重复平台消息，未重复调用员工。'); return }
-      const conversation = await this.hooks.conversation(source, [...new Set(candidates.map(candidate => candidate.agentId))], event.kind === 'direct' && binding.ownerUserId === event.userId)
-      for (const candidate of candidates) {
-        const target: ChannelTarget = { id: `${conversation.id}:${candidate.id}`, bindingId: candidate.id, conversationId: conversation.id, externalThreadId: event.externalThreadId, userId: event.userId, chatId: event.chatId, kind: event.kind }
-        await this.store.write([record('channelTargets', target)])
-      }
+      const legacyReceipt = event.kind === 'group' && await this.store.get('messageReceipts', `channel-${key([legacySource, event.eventId])}`)
+      if (existing || legacyReceipt) { observed('ignored', '重复平台消息，未重复调用员工。'); return }
+      const conversation = await this.hooks.conversation(source, [binding.agentId], event.kind === 'direct' && binding.ownerUserId === event.userId)
+      const target: ChannelTarget = { id: `${conversation.id}:${binding.id}`, bindingId, conversationId: conversation.id, externalThreadId: event.externalThreadId, userId: event.userId, chatId: event.chatId, kind: event.kind }
+      await this.store.write([record('channelTargets', target)])
       const materials = await this.hooks.prepare(conversation.id, requestId, event.attachments)
-      await this.hooks.accept(conversation.id, event, { ...source, bindingId, eventId: event.eventId, userId: event.userId, replyThreadId: event.externalThreadId, ...(binding.ownerUserId === event.userId ? { owner: true } : {}) }, requestId, candidates.map(candidate => candidate.agentId), materials)
+      await this.hooks.accept(conversation.id, event, { ...source, bindingId, eventId: event.eventId, userId: event.userId, replyThreadId: event.externalThreadId, ...(binding.ownerUserId === event.userId ? { owner: true } : {}) }, requestId, [binding.agentId], materials)
       observed('accepted', '消息已进入员工会话，处理结果见会话。', conversation.id)
+      this.refreshGroupName(binding, conversation.id, source)
     }) } catch (error) { observed('failed', '消息受理失败，请核对员工模型配置、材料和执行记录。'); throw error }
   }
   published(message: Message) {
@@ -243,7 +266,7 @@ export class EmployeeChannels {
         let origin: ChannelMessageSource | undefined
         for (const id of sourceIds) { const source = await this.store.get<Message>('messages', id); if (source?.senderType === 'user' && source.conversationId === message.conversationId) { origin = source.channel; break } }
         // A local trigger has no external destination. Never fall back to a recent user.
-        if (!origin?.replyThreadId || origin.kind !== savedTarget.kind || origin.platform !== this.bindings.get(savedTarget.bindingId)?.platform || origin.kind === 'direct' && origin.bindingId !== savedTarget.bindingId) continue
+        if (!origin?.replyThreadId || origin.kind !== savedTarget.kind || origin.platform !== this.bindings.get(savedTarget.bindingId)?.platform || origin.bindingId !== savedTarget.bindingId) continue
         const target = { ...savedTarget, externalThreadId: origin.replyThreadId, userId: origin.userId, chatId: origin.chatId }
         const binding = this.bindings.get(target.bindingId), transport = this.live.get(target.bindingId)
         if (!binding?.enabled || !binding.allowedUserIds.includes(target.userId) || target.kind === 'group' && !binding.allowedChatIds.includes(target.chatId)) continue
@@ -276,5 +299,8 @@ export class EmployeeChannels {
       await this.disconnect(binding.id)
     }
   }
-  async close() { this.closing = true; await Promise.allSettled([...this.lifecycle.values()]); await Promise.all([...this.live.keys()].map(id => this.disconnect(id))); await Promise.allSettled([...this.inputs]); await this.output }
+  async close() {
+    this.closing = true
+    await Promise.allSettled([...this.lifecycle.values()]); await Promise.all([...this.live.keys()].map(id => this.disconnect(id))); await Promise.allSettled([...this.inputs, ...this.metadata]); await this.output
+  }
 }

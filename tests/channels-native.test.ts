@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：Codex/Claude分别续用BOAI和渠道session；旧归一原件/本地修订/备份预览/hash清理保留，零API模型调用。
  * [OUTPUT]: 2026-10-14 迁移前交付、明确新消息修订、原生session重建、备份恢复预览及原件hash清理回归。
  * [OUTPUT]: 2026-10-14 Codex/Claude本人渠道与BOAI共用原生session、成果修订、重启零重放协议回归。
  * [INPUT]: 第13组现有Codex/Claude stdio夹具、生产AppService与受控渠道传输。
@@ -11,6 +12,9 @@ import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { nativeFixture } from './fixtures/native-product'
+import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
+import { isChannelConversation } from '../src/shared/domain/conversation-list'
 import { AppService } from '../src/runtime/service'
 import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
 import type { ChannelBindingState } from '../src/shared/domain/channels'
@@ -19,7 +23,7 @@ import type { Snapshot, ConversationDetail } from '../src/shared/domain'
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close() })
 describe.each(['codex', 'claude'] as const)('%s employee contacted through channel', runtime => {
-  it('preserves a delivered channel file across owner history migration and revises it only on a new message', async () => {
+  it('retains files from already merged history while new channel input and BOAI revisions use independent native rooms', async () => {
     const native = await nativeFixture(runtime, disposals)
     await native.service.close()
     const secrets = new Map<string, string>(), sent: string[] = []
@@ -28,7 +32,8 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
       receive = handler; let connected = false
       return { start: async () => { connected = true; return {} }, stop: async () => { connected = false }, connected: () => connected, send: async (_target, text) => { sent.push(text); return ['file-reply'] } }
     }
-    const service = new AppService({ dataPath: native.root, engine: { run: async () => { throw new Error('no API execution') }, test: async () => '' }, secrets: { get: async id => secrets.get(id), set: async (id, value) => { secrets.set(id, value) }, delete: async id => { secrets.delete(id) } }, channelTransport: factory, emit: () => {} })
+    const options = { dataPath: native.root, engine: { run: async () => { throw new Error('no API execution') }, test: async () => '' }, secrets: { get: async (id: string) => secrets.get(id), set: async (id: string, value: string) => { secrets.set(id, value) }, delete: async (id: string) => { secrets.delete(id) } }, channelTransport: factory, emit: () => {} }
+    let service = new AppService(options)
     disposals.push(() => service.close()); await service.init()
     let binding = await service.handle('saveChannelBinding', { agentId: native.agent.id, platform: 'feishu', appId: 'migration-app', name: '文件迁移', credential: 'fixture', allowedUserIds: ['owner'], allowedChatIds: [], requestId: 'file-bind' }) as ChannelBindingState
     await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
@@ -41,6 +46,10 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     await service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
     binding = (await service.handle('listChannelBindings', { agentId: native.agent.id }) as ChannelBindingState[])[0]
     binding = await service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'file-owner-link' }) as ChannelBindingState
+    await service.close()
+    const store = new ProductStore(join(native.root, 'boai.sqlite')); await store.init()
+    try { await store.transaction(tx => mergeRooms(tx, { ...native.chat, mainPrivate: true, channel: old.channel }, [old])) } finally { await store.close() }
+    service = new AppService(options); await service.init()
     const read = () => service.handle('getConversation', { id: native.chat.id }) as Promise<ConversationDetail>
     const merged = await read()
     expect(merged.artifacts).toHaveLength(1)
@@ -48,7 +57,11 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     expect(merged.messages.map(message => message.id)).toEqual(before.messages.map(message => message.id))
     expect(merged.runs.map(run => run.id)).toEqual(before.runs.map(run => run.id)); expect(sent).toHaveLength(1)
     await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
-    await receive(input('revise', 'NATIVE_REVISE 修改刚才文件'))
+    await receive(input('new-phone', '你好')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)
+    const phone = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(room => isChannelConversation(room) && !room.mergedInto)!
+    expect(phone.id).not.toBe(native.chat.id)
+    expect((await service.handle('getConversation', { id: phone.id }) as ConversationDetail).artifacts).toHaveLength(0)
+    await service.handle('sendMessage', { conversationId: native.chat.id, content: 'NATIVE_REVISE 修改刚才文件', mentionIds: [], requestId: 'local-revision' })
     await expect.poll(async () => ['completed', 'failed'].includes((await read()).runs.at(-1)?.status ?? ''), { timeout: 15000 }).toBe(true)
     const execution = await read()
     expect(execution.runs.at(-1)?.status, JSON.stringify({ messages: execution.messages.map(message => message.content), runs: execution.runs.map(run => ({ status: run.status, error: run.error })), artifacts: execution.artifacts })).toBe('completed')
@@ -86,16 +99,18 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
     const input = (eventId: string, text: string): ChannelInbound => ({ eventId, text, tenantId: 'tenant', chatId: 'direct', externalThreadId: `lark:direct:${eventId}`, kind: 'direct', userId: 'owner', userName: '外部用户', isBot: false, mentioned: false, mentionedUserIds: [], attachments: [] })
     const detail = async () => {
-      const conversation = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(conversation => owner ? conversation.mainPrivate : conversation.channel)!
+      const conversation = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(conversation => isChannelConversation(conversation) && !conversation.mergedInto)!
       return service.handle('getConversation', { id: conversation.id }) as Promise<ConversationDetail>
     }
     await receive(input('first', '你好')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(1)
     if (owner) {
       const room = (await detail()).conversation
       const local = await service.handle('createConversation', { kind: 'direct', title: native.agent.name, agentIds: [native.agent.id] }) as typeof room
-      expect(local.id).toBe(room.id)
-      await service.handle('sendMessage', { conversationId: room.id, content: '本地继续', mentionIds: [], requestId: 'native-local-message' })
-      await expect.poll(async () => (await detail()).runs.at(-1)?.status, { timeout: 15000 }).toBe('completed')
+      expect(local.id).not.toBe(room.id)
+      await service.handle('sendMessage', { conversationId: local.id, content: '本地继续', mentionIds: [], requestId: 'native-local-message' })
+      await expect.poll(async () => (await service.handle('getConversation', { id: local.id }) as ConversationDetail).runs.at(-1)?.status, { timeout: 15000 }).toBe('completed')
+      const localSession = (await service.handle('getConversation', { id: local.id }) as ConversationDetail).runs.at(-1)?.backend?.sessionId
+      expect(localSession).not.toBe((await detail()).runs[0].backend?.sessionId)
       expect(sent).toHaveLength(1)
     }
     await receive(input('second', '继续讨论')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)
@@ -109,7 +124,7 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     await receive(input('first', '你好')); expect(sent).toHaveLength(2)
     await receive(input('third', '继续讨论')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(3)
     result = await detail()
-    expect(result.runs).toHaveLength(owner ? 4 : 3); expect(result.runs.at(-1)!.backend?.sessionId).toBe(sessionId)
+    expect(result.runs).toHaveLength(3); expect(result.runs.at(-1)!.backend?.sessionId).toBe(sessionId)
     await receive(input('publish', 'NATIVE_PUBLISH')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(4)
     result = await detail(); expect(result.artifacts).toHaveLength(1); expect(files[3]).toHaveLength(1)
     expect(files[3][0].content).toBe('# 原生文件\n实际内容\n')

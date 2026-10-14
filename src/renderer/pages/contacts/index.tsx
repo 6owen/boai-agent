@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-10 通讯录资料透传员工执行详情的固定原聊天导航，不复制员工/聊天，原配置保存与返回守卫保持。
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
+ * [OUTPUT]: 旧偏好选中的渠道房间仅显示渠道信息，不再进入BOAI群编辑器。
  * [OUTPUT]: 配置页返回/保存共单一滚动吸顶操作行，无发消息或底部保存/取消；保存仍提交原表单，返回沿未保存守卫。
  * [OUTPUT]: 员工资料先显示身份职责、实际能力和有界当前工作，发消息/配置及精确工作/原定时触发导航保留独立身份；隐藏停止读取；群资料人数跟随成员标题，删除与团队编辑沿原未保存守卫。
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
@@ -15,6 +16,8 @@ import { Avatar, GuardContext } from '@/components/common'
 import { EmployeeDetail } from '@/components/employee'
 import { EmployeeOverview } from '@/components/employee/overview'
 import { GroupEditor } from '@/components/employee/editors'
+import { ChannelConversationInfo } from '@/components/employee/channel-conversation-info'
+import { isChannelConversation } from '@shared/domain/conversation-list'
 import { MessageCircle, Settings } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -70,6 +73,7 @@ function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, 
   const agent = selected?.kind === 'agent' ? snapshot.agents.find(item => item.id === selected.id) : undefined
   const group = selected?.kind === 'group' ? snapshot.conversations.find(item => item.id === selected.id && item.kind === 'group') : undefined
   if (!selected || (!agent && !group)) return <IllustratedEmpty kind="contacts" />
+  if (group && isChannelConversation(group)) return <ChannelConversationInfo conversation={group} snapshot={snapshot} onOpenAgent={id => onSelect({ kind: 'agent', id })} />
   const name = agent?.name ?? group!.title
   const resources = (ids: string[]) => ids.map(id => snapshot.resources.find(resource => resource.id === id)?.name ?? '资料已移除').join('、') || '未绑定'
   const members = group?.agentIds.map(id => snapshot.agents.find(item => item.id === id)).filter((item): item is DigitalAgent => Boolean(item)) ?? []

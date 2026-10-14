@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Mastra 1.71 Channels、TelegramProvider 0.2.2、飞书/Lark适配器0.3.0与channel0.7.1、Rovai钉钉模块。
  * [OUTPUT]: 每绑定独立应用期连接，自定义handler只进入BOAI；保留官方域名，飞书资源/原始消息事件观察使用原厂能力，无入站正文日志。
+ * [OUTPUT]: 飞书/Lark群名称复用应用期Channel的getChatInfo，不另建凭据或请求客户端。
  * [POS]: 第16组现成平台适配；不运行默认Agent模型，不公开凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -107,6 +108,7 @@ export function channelTransportFactory(dataPath: string, secrets: SecretStore):
       },
       async stop() { running = false; await channels?.sdk?.shutdown(); await mastra.shutdown() },
       connected() { const state = larkChannel?.getConnectionStatus?.()?.state; return running && (!state || state === 'connected') },
+      async groupName(chatId) { return running && larkChannel ? (await larkChannel.getChatInfo(chatId)).name : undefined },
       async send(target, text, files) {
         if (!running) throw new Error('channel_disconnected')
         const ids: string[] = []

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：主列表一员工一项、员工渠道私聊/群范围隔离及原排序分类回归。
+ * [OUTPUT]: 渠道/普通/核心分别排序置顶，本人主私聊仍归普通分类。
  * [OUTPUT]: 2026-10-14 归档及自动化聊天退出主列表，员工主私聊与多个群保持可见。
  * [INPUT]: 会话列表排序和纯更新规则。
  * [OUTPUT]: 手动顺序不随消息跳动、核心/普通分类与置顶边界及隐藏不删除记录的回归验证；核心标题 trim/长度/可见范围校验不改变身份、排序与授权配置。
@@ -7,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { Conversation } from '../src/shared/domain'
-import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../src/shared/domain/conversation-list'
+import { channelConversations, mainConversations, CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../src/shared/domain/conversation-list'
 const conversation = (id: string, time: string): Conversation => ({ id, kind: 'group', title: id, agentIds: ['researcher'], mode: 'natural', workspacePath: `/work/${id}`, sharedKnowledgeIds: [], createdAt: time, updatedAt: time, configVersion: 3 })
 const names = (items: Conversation[]) => sortedConversations(items).map(item => item.id)
 const change = (items: Conversation[], action: ConversationListChange) => {
@@ -15,6 +17,34 @@ const change = (items: Conversation[], action: ConversationListChange) => {
   return items.map(item => updates.find(update => update.id === item.id) ?? item)
 }
 describe('conversation list preferences', () => {
+  it('shows one BOAI item per employee while employee channel lists isolate both private and group rooms', () => {
+    const main = { ...conversation('main', '2026-01-01'), kind: 'direct' as const, mainPrivate: true }
+    const legacyMain = { ...main, id: 'old-local', createdAt: '2025-12-31' }
+    const phone = { ...main, id: 'phone', mainPrivate: undefined, channel: { platform: 'feishu' as const, tenantId: 'tenant', chatId: 'p2p', kind: 'direct' as const, bindingId: 'bot', userId: 'owner' } }
+    const group = { ...conversation('external-group', '2026-01-02'), channel: { ...phone.channel, kind: 'group' as const, chatId: 'group', agentId: 'researcher' } }
+    const other = { ...phone, id: 'other-employee', agentIds: ['writer'] }
+    const internal = conversation('BOAI-group', '2026-01-02')
+    const original = [main, legacyMain, phone, group, other, internal]
+    expect(mainConversations(original).map(room => room.id)).toEqual(['BOAI-group', 'main'])
+    expect(channelConversations(original, 'researcher').map(room => room.id)).toEqual(['external-group', 'phone'])
+    expect(channelConversations(original, 'writer').map(room => room.id)).toEqual(['other-employee'])
+    expect(original).toHaveLength(6)
+  })
+  it('keeps channel ordering and pins separate while an owner main private stays in ordinary conversations', () => {
+    const source = { platform: 'feishu' as const, tenantId: 'tenant', chatId: 'group', kind: 'group' as const, agentId: 'researcher' }
+    const channelA = { ...conversation('channel-a', '2026-01-01'), channel: source }
+    const channelB = { ...channelA, id: 'channel-b', createdAt: '2026-01-02' }
+    const main = { ...channelA, id: 'main', kind: 'direct' as const, mainPrivate: true, list: { order: 7 } }
+    const ordinary = conversation('ordinary', '2026-01-02')
+    const original = [main, ordinary, channelA, channelB]
+    expect(() => change(original, { id: channelA.id, action: 'move', targetId: main.id, placement: 'before' })).toThrow('同一会话分类')
+    const moved = change(original, { id: channelA.id, action: 'move', targetId: channelB.id, placement: 'before' })
+    expect(moved[0]).toBe(main); expect(moved[1]).toBe(ordinary)
+    const pinned = change(moved, { id: channelB.id, action: 'pin', pinned: true })
+    expect(pinned[0]).toBe(main); expect(pinned[1]).toBe(ordinary)
+    const regular = change(pinned, { id: main.id, action: 'move', targetId: ordinary.id, placement: 'before' })
+    expect(regular[2]).toBe(pinned[2]); expect(regular[3]).toBe(pinned[3])
+  })
   it('keeps one main private item, separate groups, and excludes archived aliases and automation rooms', () => {
     const main = { ...conversation('main', '2026-01-01'), kind: 'direct' as const, mainPrivate: true }
     const alias = { ...main, id: 'old', mergedInto: main.id, list: { hidden: false } }

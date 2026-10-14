@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：只读批量完成/可见状态投影用于渠道新回复提示，不创建历史完成或伪造阅读。
  * [INPUT]: ProductStore 的真实发布事务、已提交消息、同事务来源验证 hook 及本人可见的固定完成快照。
  * [OUTPUT]: 会话内单调完成身份、幂等发布、连续阅读边界/有界缺口、独立锚点 CAS、旧历史未知与清理 epoch；备份与重启只保留已提交事实。
  * [POS]: conversations 的个人阅读权威；不完成 Work，不调用模型，不把开始顺序当完成顺序。
@@ -19,6 +20,15 @@ export function completionHash(message: Message): string { return createHash('sh
 
 export class ConversationReadingRepository {
   constructor(private store: ProductStore, private hooks: ConversationReadingHooks = {}) {}
+  /** Read-only projection: never creates clocks or marks unseen messages as read. */
+  async unreadCounts(): Promise<Map<string, number>> {
+    const [clocks, states] = await Promise.all([this.store.load<Clock>('conversationCompletionClocks'), this.store.load<SavedState>('conversationReadingStates')])
+    const byId = new Map(states.map(state => [state.id, state]))
+    return new Map(clocks.map(clock => {
+      const saved = byId.get(clock.id), state = saved?.epoch === clock.epoch ? saved : undefined
+      return [clock.id, Math.max(0, clock.ordinal - (state?.boundary ?? 0) - (state?.sparseSeen.length ?? 0))]
+    }))
+  }
   private async source(tx: RecordTransaction, message: Message): Promise<void> {
     if (this.hooks.validateMessage) await this.hooks.validateMessage(tx, message)
     else if (message.materialIds?.length || message.materialSources?.length) throw new Error('含材料消息需接入当前来源核对后才能保存阅读事实')

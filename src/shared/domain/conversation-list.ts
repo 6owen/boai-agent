@@ -1,5 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-14现行分离合同：BOAI主列表每员工一个入口，渠道私聊/群归员工页面；排序、隐藏与核心历史边界保持。
  * [OUTPUT]: 2026-10-14 主列表排除归档房间与自动化专用聊天；实际主私聊归一由运行时完成。
+ * [OUTPUT]: 渠道会话与核心/普通会话分别排序；本人主私聊仍为普通会话。
  * [INPUT]: 会话记录、列表操作与最近消息时间。
  * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；核心助手与普通会话独立排序；可见核心会话的有界标题更新仅改标题，保留身份、偏好与授权配置。
  * [POS]: 会话列表的跨进程排序真源，不改变聊天历史或群配置。
@@ -9,6 +11,14 @@ import type { Conversation } from './index'
 import { isCoreConversation } from './core-agent'
 
 export const CONVERSATION_TITLE_MAX_LENGTH = 200
+
+export function isChannelConversation(conversation: Conversation) {
+  return Boolean(conversation.channel && !conversation.mainPrivate)
+}
+
+export function conversationSection(conversation: Conversation) {
+  return isCoreConversation(conversation) ? 'core' : isChannelConversation(conversation) ? 'channel' : 'ordinary'
+}
 
 export type ConversationListChange =
   | { id: string; action: 'rename'; title: string }
@@ -25,11 +35,25 @@ export function sortedConversations(conversations: Conversation[], messageTimes:
     time(b).localeCompare(time(a)) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
 }
 
+export function mainConversations(conversations: Conversation[], messageTimes: Record<string, string> = {}) {
+  const employees = new Set<string>()
+  return sortedConversations(conversations, messageTimes).filter(item => {
+    if (isChannelConversation(item)) return false
+    if (item.kind !== 'direct' || isCoreConversation(item)) return true
+    if (employees.has(item.agentIds[0])) return false
+    employees.add(item.agentIds[0]); return true
+  })
+}
+
+export function channelConversations(conversations: Conversation[], agentId: string, messageTimes: Record<string, string> = {}) {
+  return sortedConversations(conversations, messageTimes).filter(item => isChannelConversation(item) && item.agentIds.includes(agentId))
+}
+
 export function conversationListUpdates(conversations: Conversation[], change: ConversationListChange, messageTimes: Record<string, string> = {}): Conversation[] {
   const item = conversations.find(item => item.id === change.id)
   if (!item) throw new Error('会话不存在')
   const visible = sortedConversations(conversations, messageTimes)
-  const sameSection = (other: Conversation) => isCoreConversation(other) === isCoreConversation(item)
+  const sameSection = (other: Conversation) => conversationSection(other) === conversationSection(item)
   const putFirst = (pinned: boolean) => [item, ...visible.filter(other => other.id !== item.id && sameSection(other) && Boolean(other.list?.pinned) === pinned)]
     .map((item, order) => ({ ...item, list: { ...item.list, hidden: false, pinned, order } }))
   if (change.action === 'hide') return [{ ...item, list: { hidden: true, pinned: false } }]
