@@ -1,14 +1,15 @@
 /*
  * [INPUT]: 分享图片首次就绪、弹窗可见状态、真实 DOM 与原版 transitions.dev 运行时。
- * [OUTPUT]: 全屏弹窗始终作为最外层容器，原版点阵层移入弹窗并仅渐显内容；背景/关闭按钮保持可见，结束只清理内部动画且不改变 Canvas 原件。
+ * [OUTPUT]: 内容首帧隐藏，原版动画接管后解除准备态；全屏弹窗始终可见，点阵层移入弹窗并仅渐显内容；取消恢复内容且不改变 Canvas 原件。
  * [POS]: 个人资料分享局部动效生命周期，不参与业务读取或保存。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { generate } from './generation/ui-generation.js'
 
 export function useShareGeneration(ready: boolean) {
   const ref = useRef<HTMLDivElement>(null), played = useRef(false)
+  const [pending, setPending] = useState(true)
   useLayoutEffect(() => {
     const element = ref.current
     const dialog = element?.closest<HTMLElement>('.profile-share-dialog')
@@ -21,6 +22,7 @@ export function useShareGeneration(ready: boolean) {
       cancelAnimationFrame(frame)
       run?.cancel()
       element.style.opacity = opacity
+      setPending(false)
     }
     const onScroll = (event: Event) => {
       // Scrolling a nested child does not move the share content container.
@@ -65,10 +67,12 @@ export function useShareGeneration(ready: boolean) {
         if (disposed) return
         element.style.opacity = opacity
         const rect = element.getBoundingClientRect()
-        if (!rect.width || !rect.height) return
+        if (!rect.width || !rect.height) { cancel(); return }
         width = rect.width; height = rect.height
         layerObserver.observe(document.body, { childList: true })
         run = generate(element, { mode: 'skeleton', keys: 0 })
+        // generate() synchronously owns inline opacity before preparation CSS is removed.
+        setPending(false)
         played.current = true
         observer.observe(element)
         void run.finished.then(detach)
@@ -76,5 +80,5 @@ export function useShareGeneration(ready: boolean) {
     }).catch(cancel)
     return () => { cancel(); detach() }
   }, [ready])
-  return ref
+  return { ref, pending }
 }

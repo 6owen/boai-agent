@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 员工职责定位对齐HEAD已有ARIA名称；保存前配置有效隔离模型来源，六标签尺寸沿现行布局核对，原未保存/键盘/样式断言保持。
  * [INPUT]: 员工共享标签页中文场景、旧资料库启动偏好、Electron fixture 与产品 API。
+ * [OUTPUT]: 验证共享滑动层实际中间帧、选中对齐和减少动态效果；保留草稿保护、键盘及明暗窄窗验收。
  * [OUTPUT]: 会话菜单入口、分类面板语义、草稿保护、键盘切换及跨页面/主题/窄窗视觉验收；资料库无主导航和页面，旧偏好重载回会话，技能入口的本地/收藏/商城分类保留。
  * [POS]: tests/e2e/steps/employee-tabs.steps.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -34,6 +35,40 @@ Given('在通讯录中编辑研究员配置', async ({ runtime }) => {
   await expect(page.getByRole('tab', { selected: true })).toHaveText('配置')
   await expect(page.getByRole('tabpanel', { name: '配置', exact: true })).toBeVisible()
   await expect(page.getByRole('tabpanel')).toHaveCount(1)
+})
+
+Then('共享标签选中层平滑移动且尊重减少动态效果', async ({ runtime }) => {
+  const page = runtime.page
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  const list = page.getByRole('tablist', { name: '员工详情分类' })
+  const pill = list.locator('[data-slot=tabs-indicator]')
+  const aligned = () => list.evaluate(element => {
+    const active = element.querySelector('[aria-selected=true]')!.getBoundingClientRect()
+    const marker = element.querySelector('[data-slot=tabs-indicator]')!.getBoundingClientRect()
+    return Math.max(Math.abs(marker.x - active.x), Math.abs(marker.y - active.y), Math.abs(marker.width - active.width), Math.abs(marker.height - active.height)) < 1
+  })
+  await expect(pill).toBeVisible()
+  await expect.poll(aligned).toBe(true)
+  const movement = await list.evaluate(async element => {
+    const marker = element.querySelector<HTMLElement>('[data-slot=tabs-indicator]')!
+    const positions: number[] = [marker.getBoundingClientRect().x]
+    const destination = Array.from(element.querySelectorAll<HTMLElement>('[role=tab]')).find(tab => tab.textContent === '记忆')!
+    destination.click()
+    for (let frame = 0; frame < 10; frame++) {
+      await new Promise(requestAnimationFrame)
+      positions.push(marker.getBoundingClientRect().x)
+    }
+    return { positions, destination: destination.getBoundingClientRect().x, duration: getComputedStyle(marker).transitionDuration }
+  })
+  expect(movement.duration).toContain('0.25s')
+  expect(movement.positions.some(x => x > movement.positions[0]! + 1 && x < movement.destination - 1)).toBe(true)
+  await expect(list.getByRole('tab', { name: '记忆', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(aligned).toBe(true)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await list.getByRole('tab', { name: '配置', exact: true }).click()
+  await expect(pill).toHaveCSS('transition-duration', '0s')
+  await expect.poll(aligned).toBe(true)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
 })
 
 When('切换员工标签时继续编辑或放弃修改', async ({ runtime }) => {

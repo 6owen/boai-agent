@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 窗口滑动层覆盖关闭按钮所在整项，切换/键盘排序/关闭/缩放后与真实选中项对齐。
  * [INPUT]: 多标签中文场景、Electron fixture 和真实本地数据。
  * [OUTPUT]: T2 来源聊天筛选跨会话保持；按 Base UI 选中标签读取当前员工记忆；会话菜单入口、浏览器式标签浅深色悬停、去重、草稿/滚动保留、独立表单保存、拖拽/键盘排序、会话范围和窄窗验证。
  * [POS]: tests/e2e/steps/detail-tabs.steps.ts。
@@ -148,5 +149,28 @@ Then('跨会话和窄窗口中的详情标签仍保持独立', async ({ runtime 
   const active = tabs.getByRole('tab', { selected: true })
   await active.focus(); await active.press('ArrowLeft'); await page.keyboard.press('Enter')
   await expect(tabs.getByRole('tab', { name: '研究员', exact: true })).toHaveAttribute('aria-selected', 'true')
+  expect(runtime.errors).toEqual([])
+})
+
+Then('窗口滑动层在切换排序关闭和缩放后对齐', async ({ runtime }) => {
+  const page = runtime.page
+  const tabs = page.getByRole('tablist', { name: '详情标签' })
+  const aligned = () => tabs.evaluate(element => {
+    const selected = element.querySelector('.detail-tab[data-selected=true]')!.getBoundingClientRect()
+    const pill = element.querySelector('[data-slot=tabs-indicator]')!.getBoundingClientRect()
+    return Math.max(Math.abs(pill.x - selected.x), Math.abs(pill.y - selected.y), Math.abs(pill.width - selected.width), Math.abs(pill.height - selected.height)) < 1
+  })
+  await expect.poll(aligned).toBe(true)
+  await tabs.getByRole('tab', { name: '任务与产物', exact: true }).click()
+  await expect.poll(aligned).toBe(true)
+  await tabs.getByRole('tab', { name: '研究员', exact: true }).click()
+  await tabs.getByRole('tab', { name: '研究员', exact: true }).press('Alt+ArrowLeft')
+  await expect(tabs.getByRole('tab')).toHaveText(['研究员', '任务与产物'])
+  await expect.poll(aligned).toBe(true)
+  await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))
+  await expect.poll(aligned).toBe(true)
+  await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveText(['任务与产物'])
+  await expect.poll(aligned).toBe(true)
   expect(runtime.errors).toEqual([])
 })

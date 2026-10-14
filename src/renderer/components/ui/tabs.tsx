@@ -1,6 +1,6 @@
 /*
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
- * [OUTPUT]: 紧凑 Soft、线形和可独立关闭的窗口标签变体，统一横纵方向和键盘语义。
+ * [OUTPUT]: 紧凑 Soft、线形和可独立关闭的窗口标签变体共用滑动选中层，保留 Base UI 横纵方向、受控选择和键盘语义。
  * [POS]: components/ui 的 tabs 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,6 +9,7 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { TabsSlidingIndicator } from "./tabs-indicator"
 
 function Tabs({
   className,
@@ -47,15 +48,19 @@ const tabsListVariants = cva(
 function TabsList({
   className,
   variant = "default",
+  children,
   ...props
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
+      className={cn("t-tabs", tabsListVariants({ variant }), className)}
       {...props}
-    />
+    >
+      <TabsSlidingIndicator />
+      {children}
+    </TabsPrimitive.List>
   )
 }
 
@@ -64,6 +69,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
+        "t-tab",
         "soft-tabs-trigger relative inline-flex h-full shrink-0 items-center justify-center gap-1.5 border-0 px-2.5 py-1 text-sm leading-5 font-medium whitespace-nowrap group-data-vertical/tabs:h-[28px] group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}

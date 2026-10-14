@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已提交资料、已有活动快照或独立只读活动请求、离线头像与当前全局主题/圆角 token。
- * [OUTPUT]: 页面/头像菜单共用全屏分享；全屏弹窗作为稳定外层容器，Canvas 挂载和图片就绪后在弹窗内部播放内容点阵绘制/渐显，关闭清理且不修改 Canvas/PNG；独立加载/错误重试、圆角方形本人头像及统一小老虎默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
+ * [OUTPUT]: 页面/头像菜单共用全屏分享；内容从首帧隐藏，Canvas 就绪后交给内部点阵渐显，错误时正常展示；弹窗背景稳定，关闭清理且不修改 Canvas/PNG；独立加载/错误重试、圆角方形本人头像及统一小老虎默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
  * [POS]: 个人资料分享弹窗；画布既是预览也是导出源，不依赖截图服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -106,7 +106,7 @@ export function ProfileShare({ api, profile = defaultUserProfile, activity: prov
   return <Dialog open onOpenChange={open => { if (!open) onClose() }}>
     <DialogContent className="profile-share-dialog bg-background fixed top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none" style={{ animation: 'none' }} showCloseButton={false} finalFocus={finalFocus}>
       <DialogClose render={<Button variant="ghost" size="icon-lg" className="profile-share-close" aria-label="关闭分享" />}><X size={24} /></DialogClose>
-      <div ref={generation} className="profile-share-body">
+      <div ref={generation.ref} className="profile-share-body" data-generation-pending={generation.pending && !loadError && !imageError ? 'true' : undefined}>
         <DialogTitle className="text-3xl font-medium">分享你的活动</DialogTitle>
         {activity ? <Card className="profile-share-card gap-0 p-0"><canvas ref={setCanvas} width={1280} height={660} role="img" aria-label={`${profile.displayName}的 BoAI 活动，累计 ${tokenText(activity.totalTokens)} Token${activity.incomplete ? '，部分用量未记录' : ''}`} /></Card> : loadError ? <Banner>{loadError}<Button variant="link" onClick={() => setRetry(value => value + 1)}>重试</Button></Banner> : <p role="status">正在读取本机活动…</p>}
         {(imageError || error) && <Banner>{imageError || error}</Banner>}
