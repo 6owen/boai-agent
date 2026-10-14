@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 成果保存归一前的受管存储房间，业务房间/路径/hash分别表达。
  * [OUTPUT]: 渠道修订保存独立外部请求者及可信来源，固定本人采用与旧修订入口不扩权。
  * [OUTPUT]: 固定版本预览DTO可含非持久PDF/Office核源字节；不进入成果持久记录。
  * [INPUT]: 宿主复制时 hash 的真实成果发布、明确用户修订来源与固定本人采用/待验收请求。
@@ -45,6 +46,8 @@ export interface ArtifactPublication {
   materialSources?: MaterialReadRef[]
 }
 export interface ArtifactVersion extends ArtifactPublication, ArtifactExtension {
+  /** Original managed workspace after room history convergence; bytes never move implicitly. */
+  storageConversationId?: string
   id: string
   conversationId: string
   logicalArtifactId: string

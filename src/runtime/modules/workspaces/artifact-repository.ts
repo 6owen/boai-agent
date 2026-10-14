@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-14 归一成果按已核对旧房间关系读取/备份恢复/hash清理，不搬动或错删原件。
+ * [OUTPUT]: 2026-10-14 本人渠道消息可修订主私聊当前员工成果；核对真实渠道/本人关联而非强制渠道房间。
  * [OUTPUT]: 外部渠道原生修订核对同平台/聊天原成果与当前机器人/发送者授权，单独记录请求者；本机采用/原修订资格保持。
  * [OUTPUT]: 仅明确预览在原hash核读后返回PDF/Office字节；文本采用/修订/index门禁和原20MiB发布限制保持。
  * [OUTPUT]: Claude成果修订使用同一版本/请求合同，受理前核对明确API来源和已验证本机程序。
@@ -27,8 +29,8 @@ import { contained, MAX_FILE_BYTES } from './file-access'
 
 interface Tombstone { id: string; conversationId: string; fingerprint: string; cleared?: boolean }
 type StoredArtifact = ArtifactPublication & Partial<ArtifactVersion>
-interface Cleanup { id: string; conversationId: string; managedRelativePath: string; contentHash: string; status: 'pending' | 'conflict'; error?: string }
-interface PublicationIntent { id: string; conversationId: string; managedRelativePath: string; contentHash: string; fingerprint: string }
+interface Cleanup { id: string; conversationId: string; storageConversationId?: string; managedRelativePath: string; contentHash: string; status: 'pending' | 'conflict'; error?: string }
+interface PublicationIntent { id: string; conversationId: string; storageConversationId?: string; managedRelativePath: string; contentHash: string; fingerprint: string }
 interface Options {
   validateSources?(refs: MaterialReadRef[], agentId: string | undefined, conversationId: string, tx: RecordTransaction): Promise<void>
   checkpoint?(stage: 'after-read' | 'before-adoption-commit' | 'before-acceptance-commit' | 'before-cleanup', id: string): Promise<void>
@@ -104,6 +106,14 @@ export class ArtifactRepository {
     if (!artifact || !known(artifact)) throw new Error('成果不存在或尚未经过宿主核对')
     return artifact
   }
+  private async storageRoom(tx: RecordTransaction, artifact: { conversationId: string; storageConversationId?: string }) {
+    if (!artifact.storageConversationId) return artifact.conversationId
+    let room = await tx.get<Conversation>('conversations', artifact.storageConversationId)
+    const seen = new Set<string>()
+    while (room?.mergedInto && !seen.has(room.id)) { seen.add(room.id); room = await tx.get<Conversation>('conversations', room.mergedInto) }
+    if (room?.id !== artifact.conversationId) throw new ContentError('成果原存储房间与当前聊天归一关系失效')
+    return artifact.storageConversationId
+  }
   private async location(conversationId: string, file?: string, managedRelativePath?: string, allowMissing = false, verifyLinks = true) {
     const dataRoot = await realpath(this.dataPath), workspace = join(dataRoot, 'workspaces', identifier(conversationId))
     let target: string
@@ -148,7 +158,7 @@ export class ArtifactRepository {
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
     if (artifact.contentStatus === 'removed' || !artifact.contentHash) throw new Error(artifact.contentError ?? '成果尚无可信内容身份')
     await this.sourceRefs(tx, artifact, artifact.conversationId, agentId)
-    const actual = await this.bytes(artifact.conversationId, artifact.id, undefined, artifact.managedRelativePath, readText === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
+    const actual = await this.bytes(await this.storageRoom(tx, artifact), artifact.id, undefined, artifact.managedRelativePath, readText === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
     if (actual.contentHash !== artifact.contentHash) throw new ContentError('成果已被外部修改，原文件已保留')
     const filePreview = requirePreview ? previewFile(artifact.name, actual.bytes) : undefined
     if (filePreview?.kind === 'unsupported' && !allowUnsupported) throw new Error(filePreview.reason)
@@ -342,7 +352,10 @@ export class ArtifactRepository {
     const originalId = originalWork?.sourceMessageId ?? originalRun?.triggerMessageId
     const original = originalId ? await tx.get<Message>('messages', originalId) : undefined
     const conversation = await this.conversation(tx, input.conversationId)
-    if (!source || !conversation.channel || source.platform !== conversation.channel.platform || source.chatId !== conversation.channel.chatId || source.tenantId !== conversation.channel.tenantId || source.kind === 'direct' && conversation.channel.userId !== source.userId || message.senderType !== 'user' || message.senderId !== `channel-user:${digest(JSON.stringify([source.platform, source.tenantId, source.userId]))}` || original?.conversationId !== message.conversationId || artifact.conversationId !== message.conversationId || artifact.ownerAgentId !== input.targetAgentId) throw new Error('渠道修订只能引用当前获准平台聊天交付的原文件。')
+    const binding = source ? await tx.get<ChannelBinding>('channelBindings', source.bindingId) : undefined
+    const linkedOwner = source?.kind === 'direct' && conversation.mainPrivate && binding?.ownerUserId === source.userId && binding.agentId === input.targetAgentId
+    const externalRoom = !!source && !!conversation.channel && source.platform === conversation.channel.platform && source.chatId === conversation.channel.chatId && source.tenantId === conversation.channel.tenantId && (source.kind !== 'direct' || conversation.channel.userId === source.userId)
+    if (!source || !(linkedOwner || externalRoom) || message.senderType !== 'user' || message.senderId !== `channel-user:${digest(JSON.stringify([source.platform, source.tenantId, source.userId]))}` || original?.conversationId !== message.conversationId || artifact.conversationId !== message.conversationId || artifact.ownerAgentId !== input.targetAgentId) throw new Error('渠道修订只能引用当前获准聊天交付的原文件。')
     const bindings = await tx.list<ChannelBinding>('channelBindings'), targets = await tx.list<ChannelTarget>('channelTargets')
     if (!bindings.some(binding => binding.agentId === input.targetAgentId && binding.platform === source.platform && binding.allowedUserIds.includes(source.userId) && (source.kind === 'direct' ? binding.id === source.bindingId : binding.allowedChatIds.includes(source.chatId) && targets.some(target => target.bindingId === binding.id && target.conversationId === conversation.id)))) throw new Error('渠道发送者或员工绑定已失去修订授权。')
   }
@@ -528,11 +541,11 @@ export class ArtifactRepository {
   async invalidateConversation(tx: RecordTransaction, conversationId: string): Promise<void> {
     identifier(conversationId)
     for (const intent of (await tx.list<PublicationIntent>('artifactPublicationIntents')).filter(value => value.conversationId === conversationId)) {
-      await tx.put(record('artifactCleanups', { id: intent.id, conversationId, managedRelativePath: intent.managedRelativePath, contentHash: intent.contentHash, status: 'pending' } satisfies Cleanup))
+      await tx.put(record('artifactCleanups', { id: intent.id, conversationId, storageConversationId: intent.storageConversationId, managedRelativePath: intent.managedRelativePath, contentHash: intent.contentHash, status: 'pending' } satisfies Cleanup))
       await tx.remove('artifactPublicationIntents', intent.id)
     }
     for (const artifact of (await tx.list<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId)) {
-      if (known(artifact) && artifact.contentHash && artifact.managedRelativePath) await tx.put(record('artifactCleanups', { id: artifact.id, conversationId, managedRelativePath: artifact.managedRelativePath, contentHash: artifact.contentHash, status: 'pending' } satisfies Cleanup))
+      if (known(artifact) && artifact.contentHash && artifact.managedRelativePath) await tx.put(record('artifactCleanups', { id: artifact.id, conversationId, storageConversationId: artifact.storageConversationId, managedRelativePath: artifact.managedRelativePath, contentHash: artifact.contentHash, status: 'pending' } satisfies Cleanup))
       await tx.remove('artifacts', artifact.id)
     }
     for (const collection of ['artifactRevisionRequests', 'artifactAdoptionEvents', 'artifactAdoptionCurrent', 'artifactAcceptances']) for (const value of await tx.list<{ id: string; conversationId: string }>(collection)) if (value.conversationId === conversationId) await tx.remove(collection, value.id)
@@ -543,11 +556,12 @@ export class ArtifactRepository {
     for (const cleanup of cleanups) {
       try {
         await this.options.checkpoint?.('before-cleanup', cleanup.id)
-        const location = await this.location(conversationId, undefined, cleanup.managedRelativePath, true)
+        const storageId = await this.store.transaction(tx => this.storageRoom(tx, cleanup))
+        const location = await this.location(storageId, undefined, cleanup.managedRelativePath, true)
         let exists = true
         try { await lstat(location.path) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') exists = false; else throw error }
         if (exists) {
-          const actual = await this.bytes(conversationId, cleanup.id, undefined, cleanup.managedRelativePath)
+          const actual = await this.bytes(storageId, cleanup.id, undefined, cleanup.managedRelativePath)
           if (actual.contentHash !== cleanup.contentHash) throw new ContentError('成果已被外部修改，原文件已保留')
           await unlink(actual.path)
         }

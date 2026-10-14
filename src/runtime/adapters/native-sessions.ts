@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 房间历史合并保守撤销原生线程续用资格，明确新消息才重建。
  * [OUTPUT]: 2026-10-12运行中回答来源和材料与消息同事务登记，未知输入投递不续用旧session；明确新消息才重建，不自动重发。
  * [OUTPUT]: 2026-10-11 持续原生会话按员工/聊天/来源隔离，固定实际输入和答复身份；清理/换绑/恢复撤销续用资格，重启不重放。
  * [INPUT]: 当前员工/聊天身份、已核读输入与 SQLite 产品仓库。
@@ -19,7 +20,7 @@ const sourceHash = (message: Message | undefined) => digest(message ? { ...decis
 interface Session {
   id: string; conversationId: string; agentId: string; fingerprint: string; runId: string
   sourceVersion?: 2
-  resumeInvalidated?: 'restored-backup' | 'installation-changed' | 'unverified-installation'
+  resumeInvalidated?: 'restored-backup' | 'installation-changed' | 'unverified-installation' | 'room-merged'
   state: 'pending' | 'completed'; threadId?: string; turnId?: string; outputHash?: string; completedInvocationId?: string
   inputMessageIds: string[]
   sources: { id: string; hash: string }[]

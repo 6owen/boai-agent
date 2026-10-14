@@ -1,10 +1,15 @@
 /*
+ * [OUTPUT]: 2026-10-14 迁移前交付、明确新消息修订、原生session重建、备份恢复预览及原件hash清理回归。
+ * [OUTPUT]: 2026-10-14 Codex/Claude本人渠道与BOAI共用原生session、成果修订、重启零重放协议回归。
  * [INPUT]: 第13组现有Codex/Claude stdio夹具、生产AppService与受控渠道传输。
  * [OUTPUT]: 外部渠道沿真实原生驱动连续会话，API模型零调用、重启零重放及新消息接续；不代替真实供应商。
  * [POS]: 第16组CH11本机协议集成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterEach, describe, expect, it } from 'vitest'
+import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { nativeFixture } from './fixtures/native-product'
 import { AppService } from '../src/runtime/service'
 import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
@@ -14,7 +19,59 @@ import type { Snapshot, ConversationDetail } from '../src/shared/domain'
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close() })
 describe.each(['codex', 'claude'] as const)('%s employee contacted through channel', runtime => {
-  it('keeps the same native session and does not execute a Mastra model or replay on restart', async () => {
+  it('preserves a delivered channel file across owner history migration and revises it only on a new message', async () => {
+    const native = await nativeFixture(runtime, disposals)
+    await native.service.close()
+    const secrets = new Map<string, string>(), sent: string[] = []
+    let receive!: (event: ChannelInbound) => Promise<void>
+    const factory: ChannelTransportFactory = async (_binding, _credential, handler) => {
+      receive = handler; let connected = false
+      return { start: async () => { connected = true; return {} }, stop: async () => { connected = false }, connected: () => connected, send: async (_target, text) => { sent.push(text); return ['file-reply'] } }
+    }
+    const service = new AppService({ dataPath: native.root, engine: { run: async () => { throw new Error('no API execution') }, test: async () => '' }, secrets: { get: async id => secrets.get(id), set: async (id, value) => { secrets.set(id, value) }, delete: async id => { secrets.delete(id) } }, channelTransport: factory, emit: () => {} })
+    disposals.push(() => service.close()); await service.init()
+    let binding = await service.handle('saveChannelBinding', { agentId: native.agent.id, platform: 'feishu', appId: 'migration-app', name: '文件迁移', credential: 'fixture', allowedUserIds: ['owner'], allowedChatIds: [], requestId: 'file-bind' }) as ChannelBindingState
+    await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    const input = (eventId: string, text: string): ChannelInbound => ({ eventId, text, tenantId: 'tenant', chatId: 'direct', externalThreadId: `lark:direct:${eventId}`, kind: 'direct', userId: 'owner', userName: '外部本人', isBot: false, mentioned: false, mentionedUserIds: [], attachments: [] })
+    await receive(input('publish', 'NATIVE_PUBLISH')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(1)
+    const old = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(room => room.channel)!
+    const before = await service.handle('getConversation', { id: old.id }) as ConversationDetail
+    expect(before.artifacts).toHaveLength(1)
+    binding = (await service.handle('listChannelBindings', { agentId: native.agent.id }) as ChannelBindingState[])[0]
+    await service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    binding = (await service.handle('listChannelBindings', { agentId: native.agent.id }) as ChannelBindingState[])[0]
+    binding = await service.handle('saveChannelBinding', { id: binding.id, expectedRevision: binding.revision, agentId: binding.agentId, platform: binding.platform, appId: binding.appId, name: binding.name, allowedUserIds: binding.allowedUserIds, allowedChatIds: binding.allowedChatIds, ownerUserId: 'owner', requestId: 'file-owner-link' }) as ChannelBindingState
+    const read = () => service.handle('getConversation', { id: native.chat.id }) as Promise<ConversationDetail>
+    const merged = await read()
+    expect(merged.artifacts).toHaveLength(1)
+    expect(merged.artifacts[0]).toMatchObject({ id: before.artifacts[0].id, path: before.artifacts[0].path, contentHash: before.artifacts[0].contentHash })
+    expect(merged.messages.map(message => message.id)).toEqual(before.messages.map(message => message.id))
+    expect(merged.runs.map(run => run.id)).toEqual(before.runs.map(run => run.id)); expect(sent).toHaveLength(1)
+    await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    await receive(input('revise', 'NATIVE_REVISE 修改刚才文件'))
+    await expect.poll(async () => ['completed', 'failed'].includes((await read()).runs.at(-1)?.status ?? ''), { timeout: 15000 }).toBe(true)
+    const execution = await read()
+    expect(execution.runs.at(-1)?.status, JSON.stringify({ messages: execution.messages.map(message => message.content), runs: execution.runs.map(run => ({ status: run.status, error: run.error })), artifacts: execution.artifacts })).toBe('completed')
+    await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)
+    const revised = await read()
+    expect(revised.artifacts).toHaveLength(2); expect(revised.artifacts[1].contentVersion).toBe(2)
+    expect(revised.runs.at(-1)?.backend?.sessionId).not.toBe(before.runs[0].backend?.sessionId)
+    const destination = await mkdtemp(join(tmpdir(), 'boai-room-file-restore-'))
+    disposals.push(() => rm(destination, { recursive: true, force: true }))
+    await service.backup(destination)
+    const restored = new AppService({ dataPath: destination, engine: { run: async () => { throw new Error('restore must not execute') }, test: async () => '' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {} })
+    disposals.push(() => restored.close()); await restored.init()
+    for (const artifact of revised.artifacts) {
+      const preview = await restored.handle('getArtifactPreview', { id: artifact.id, expectedHash: artifact.contentHash }) as import('../src/shared/domain/artifacts').ArtifactPreview
+      expect(preview.artifact.contentHash).toBe(artifact.contentHash)
+    }
+    expect(sent).toHaveLength(2); expect((await restored.handle('getConversation', { id: native.chat.id }) as ConversationDetail).runs).toHaveLength(revised.runs.length)
+    await restored.close()
+    await service.handle('clearConversationHistory', { id: native.chat.id, hide: false })
+    for (const artifact of revised.artifacts) await expect(stat(artifact.path)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect((await read()).artifacts).toHaveLength(0)
+  }, 30000)
+  it.each([false, true])('owner link %s keeps the same native session and does not execute a Mastra model or replay on restart', async owner => {
     const native = await nativeFixture(runtime, disposals)
     await native.service.close()
     const secrets = new Map<string, string>(), sent: string[] = [], files: { name: string; content: string }[][] = []
@@ -25,14 +82,22 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     }
     const options = { dataPath: native.root, engine: { run: async () => { throw new Error('Channel must not invoke API model for native employee') }, test: async () => { throw new Error('API model must not run') } }, secrets: { get: async (id: string) => secrets.get(id), set: async (id: string, value: string) => { secrets.set(id, value) }, delete: async (id: string) => { secrets.delete(id) } }, channelTransport: factory, emit: () => {} }
     let service = new AppService(options); await service.init(); disposals.push(() => service.close())
-    const binding = await service.handle('saveChannelBinding', { agentId: native.agent.id, platform: 'feishu', appId: 'fixture-app', name: '原生渠道', credential: 'fixture-secret', allowedUserIds: ['owner'], allowedChatIds: [], requestId: 'fixture-bind' }) as ChannelBindingState
+    const binding = await service.handle('saveChannelBinding', { agentId: native.agent.id, platform: 'feishu', appId: 'fixture-app', name: '原生渠道', credential: 'fixture-secret', allowedUserIds: ['owner'], allowedChatIds: [], ...(owner ? { ownerUserId: 'owner' } : {}), requestId: 'fixture-bind' }) as ChannelBindingState
     await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
     const input = (eventId: string, text: string): ChannelInbound => ({ eventId, text, tenantId: 'tenant', chatId: 'direct', externalThreadId: `lark:direct:${eventId}`, kind: 'direct', userId: 'owner', userName: '外部用户', isBot: false, mentioned: false, mentionedUserIds: [], attachments: [] })
     const detail = async () => {
-      const conversation = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(conversation => conversation.channel)!
+      const conversation = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(conversation => owner ? conversation.mainPrivate : conversation.channel)!
       return service.handle('getConversation', { id: conversation.id }) as Promise<ConversationDetail>
     }
     await receive(input('first', '你好')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(1)
+    if (owner) {
+      const room = (await detail()).conversation
+      const local = await service.handle('createConversation', { kind: 'direct', title: native.agent.name, agentIds: [native.agent.id] }) as typeof room
+      expect(local.id).toBe(room.id)
+      await service.handle('sendMessage', { conversationId: room.id, content: '本地继续', mentionIds: [], requestId: 'native-local-message' })
+      await expect.poll(async () => (await detail()).runs.at(-1)?.status, { timeout: 15000 }).toBe('completed')
+      expect(sent).toHaveLength(1)
+    }
     await receive(input('second', '继续讨论')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)
     let result = await detail()
     expect(result.runs.every(run => run.phase === 'execution' && run.status === 'completed')).toBe(true)
@@ -44,7 +109,7 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     await receive(input('first', '你好')); expect(sent).toHaveLength(2)
     await receive(input('third', '继续讨论')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(3)
     result = await detail()
-    expect(result.runs).toHaveLength(3); expect(result.runs[2].backend?.sessionId).toBe(sessionId)
+    expect(result.runs).toHaveLength(owner ? 4 : 3); expect(result.runs.at(-1)!.backend?.sessionId).toBe(sessionId)
     await receive(input('publish', 'NATIVE_PUBLISH')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(4)
     result = await detail(); expect(result.artifacts).toHaveLength(1); expect(files[3]).toHaveLength(1)
     expect(files[3][0].content).toBe('# 原生文件\n实际内容\n')

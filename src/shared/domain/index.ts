@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 员工主私聊标记、旧房间归档关系及消息原房间来源合同。
  * [OUTPUT]: 2026-10-13DiscussionTurn总输出和API输出配额独立保存；原生用量保持真实记录。
  * [OUTPUT]: 原生执行backend复用独立信息回执，选定/原生/API模型和容量来源分别保留，不回填旧历史。
  * [OUTPUT]: 外部渠道会话/消息保留真实平台发送者，和本机本人身份分离。
@@ -98,6 +99,10 @@ export interface Resource {
   ownerAgentId?: string
 }
 export interface Conversation {
+  /** Owner's persistent private room; channel is a message source, not its identity. */
+  mainPrivate?: boolean
+  /** Historical room retained for provenance, no longer a sending destination. */
+  mergedInto?: string
   channel?: ChannelConversationSource
   memoryContextRef?: MemoryContextRef
   memoryScope?: 'employee' | 'conversation'
@@ -135,6 +140,8 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  /** Stable room provenance after explicit history convergence. */
+  originalConversationId?: string
   channel?: ChannelMessageSource
   collaborationRequestId?: string
   /** Real core generation source; this is not a fabricated group run. */

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 事务内精确选择房间引用记录，供显式空闲历史归一，普通消息查询门槛保持。
  * [OUTPUT]: 父工作计数的文本亲和索引匹配关联SQL，避免每个列表项扫描全会话历史。
  * [OUTPUT]: 2026-10-11 持久执行证据、内容按需读取及Rovai执行窗口/变化游标，完整数据与UI缓存窗口分开。
  * [OUTPUT]: 执行历史/事件固定SQL分页，完整原文分段读取，列表不加载大正文；不丢弃持久原生结果。
@@ -68,6 +69,7 @@ function invalidateSearchBodies(collection: string, id: string, value?: string) 
 
 export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface RecordTransaction {
+  conversationRecords(ids: string[]): Promise<StoredRecord[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string): Promise<T[]>
   firstUnreadCompletion(query: FirstUnreadCompletionSqlQuery): Promise<ConversationCompletion | undefined>
@@ -347,6 +349,12 @@ export class ProductStore {
       const transaction = await this.beginWriteTransaction()
       try {
         const result = await operation({
+          conversationRecords: async ids => {
+            if (!ids.length) return []
+            const placeholders = ids.map(() => '?').join(',')
+            const result = await transaction.execute({ sql: `SELECT collection,id,value FROM records WHERE collection<>'conversations' AND EXISTS(SELECT 1 FROM json_tree(records.value) ref WHERE ref.type='text' AND ref.value IN (${placeholders}) AND (ref.key IN ('conversationId','sourceConversationId','groupConversationId','coreConversationId') OR ref.fullkey LIKE '%.conversation.id' OR ref.fullkey LIKE '$.conversationIds[%]'))`, args: ids })
+            return result.rows.map(row => ({ collection: String(row.collection), id: String(row.id), value: JSON.parse(String(row.value)) }))
+          },
           get: async <R>(collection: string, id: string) => {
             const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
             return result.rows.length ? JSON.parse(String(result.rows[0].value)) as R : undefined

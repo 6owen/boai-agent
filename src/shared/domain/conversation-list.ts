@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 主列表排除归档房间与自动化专用聊天；实际主私聊归一由运行时完成。
  * [INPUT]: 会话记录、列表操作与最近消息时间。
  * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；核心助手与普通会话独立排序；可见核心会话的有界标题更新仅改标题，保留身份、偏好与授权配置。
  * [POS]: 会话列表的跨进程排序真源，不改变聊天历史或群配置。
@@ -18,7 +19,7 @@ export type ConversationListChange =
 
 export function sortedConversations(conversations: Conversation[], messageTimes: Record<string, string> = {}) {
   const time = (item: Conversation) => [item.lastMessageAt ?? '', messageTimes[item.id] ?? ''].sort().at(-1)!
-  return conversations.filter(item => !item.list?.hidden).sort((a, b) =>
+  return conversations.filter(item => !item.list?.hidden && !item.mergedInto && item.purpose !== 'automation').sort((a, b) =>
     Number(Boolean(b.list?.pinned)) - Number(Boolean(a.list?.pinned)) ||
     (a.list?.order ?? -1) - (b.list?.order ?? -1) ||
     time(b).localeCompare(time(a)) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))

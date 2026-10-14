@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14已选旧房间归档后自动定位主房间，沿用稳定消息ID和原页面，不在归档房间继续发送。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 员工执行详情经来源/current与可见会话核对导航原聊天；复用原主页面/未保存守卫，不新建会话。
  * [OUTPUT]: 聊天及核心首发统一选择模型API/本机Agent；底部原子保存含后端与具体来源，区分真实保存回执/尚未提交/未知，刷新失败不改已保存事实，保留配置版本/实际退出门禁。
@@ -212,6 +213,12 @@ export function AppShell() {
   const panel = detailTabs.shown ? activeTab?.target : undefined, selectedId = route.conversationId
   const conversation = snapshot.conversations.find(c => c.id === selectedId)
   const currentDetail = detail?.conversation.id === selectedId ? detail : null
+  useEffect(() => {
+    const target = snapshot.conversations.find(room => room.id === selectedRef.current)?.mergedInto
+    if (!target) return
+    const next = { ...routeRef.current, conversationId: target }
+    routeRef.current = next; selectedRef.current = target; setRoute(next)
+  }, [snapshot.conversations])
   useEffect(() => { const trigger = detailTrigger.current; if (!panel && trigger?.scope === route.page && trigger.element?.isConnected) trigger.element.focus() }, [Boolean(panel), route.page])
 
   const refreshSnapshot = useCallback(async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 归档及自动化聊天退出主列表，员工主私聊与多个群保持可见。
  * [INPUT]: 会话列表排序和纯更新规则。
  * [OUTPUT]: 手动顺序不随消息跳动、核心/普通分类与置顶边界及隐藏不删除记录的回归验证；核心标题 trim/长度/可见范围校验不改变身份、排序与授权配置。
  * [POS]: 会话展示偏好的模块测试；真实 IPC/重启由 Electron BDD 验证。
@@ -14,6 +15,12 @@ const change = (items: Conversation[], action: ConversationListChange) => {
   return items.map(item => updates.find(update => update.id === item.id) ?? item)
 }
 describe('conversation list preferences', () => {
+  it('keeps one main private item, separate groups, and excludes archived aliases and automation rooms', () => {
+    const main = { ...conversation('main', '2026-01-01'), kind: 'direct' as const, mainPrivate: true }
+    const alias = { ...main, id: 'old', mergedInto: main.id, list: { hidden: false } }
+    const task = { ...main, id: 'task', purpose: 'automation' as const }
+    expect(new Set(names([main, alias, task, conversation('group-a', '2026-01-02'), conversation('group-b', '2026-01-02')]))).toEqual(new Set(['main', 'group-a', 'group-b']))
+  })
   it('renames only a visible core conversation without changing its identity, ordering or authorization', () => {
     const core: Conversation = { ...conversation('core', '2026-01-01'), kind: 'direct', purpose: 'core', agentIds: ['bobo'], list: { pinned: true, order: 2 }, memoryScope: 'employee', sharedKnowledgeIds: ['existing-source'] }
     const ordinary = conversation('ordinary', '2026-01-02')

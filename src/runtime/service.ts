@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 本人主私聊跨入口、群按稳定身份共用、空闲历史归一及旧只读定位；外部身份权限保持。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 本机调用保留原生请求身份、来源/权限和执行生命周期，不采集计量；Work/自动化/组织的API预算仍核对。
  * [OUTPUT]: 2026-10-12附件回答/消息回执/来源同事务受理，提交后回应原生请求；首发/回答统一原件交付，原生信息按来源记录；私有输入副本不备份。
@@ -89,6 +90,7 @@ import { CodexEmployeeEngine } from './adapters/codex/engine'
 import { ClaudeEmployeeEngine } from './adapters/claude/engine'
 import { testClaudeProgram } from './adapters/claude/turn'
 import { backendProtocol, isNativeBackend } from '../shared/domain/backends'
+import { mergeRooms } from './modules/conversations/room-migration'
 import { listCodexModels, testCodexConnection } from './adapters/codex/turn'
 import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '../shared/domain/employee-executions'
 import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
@@ -407,7 +409,8 @@ export class AppService {
     this.channels = new EmployeeChannels(this.store, options.secrets, options.channelTransport ?? channelTransportFactory(this.dataPath, options.secrets), {
       critical: operation => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return operation() }),
       agent: id => this.getAgent(id),
-      conversation: (source, agentIds) => this.channelConversation(source, agentIds),
+      conversation: (source, agentIds, owner) => this.channelConversation(source, agentIds, owner),
+      linkOwner: (binding, tx) => this.linkChannelOwner(binding, tx),
       prepare: (conversationId, eventKey, attachments) => this.prepareChannelMaterials(conversationId, eventKey, attachments),
       accept: (conversationId, event, source, requestId, agentIds, materials) => this.sendMessage({ conversationId, content: event.text, requestId, mentionIds: agentIds, materialSelections: materials.length ? materials : undefined }, undefined, undefined, false, undefined, undefined, undefined, source, event.userName),
       files: message => this.channelFiles(message), changed: () => this.changed(),
@@ -493,7 +496,7 @@ export class AppService {
     await Promise.all(['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces', 'materials'].map(folder => mkdir(join(this.dataPath, folder), { recursive: true })))
     await this.resourceCleanups.init(); await this.skillUpdates.init(); await this.skillLibrary.init(); await this.skills.init()
     // Discover historical directory-only files before any new execution can copy an unpublished original.
-    for (const conversation of this.conversations.values()) if (!this.clearingConversations.has(conversation.id)) await this.conversationArtifacts(conversation, true)
+    for (const conversation of this.conversations.values()) if (!conversation.mergedInto && !this.clearingConversations.has(conversation.id)) await this.conversationArtifacts(conversation, true)
     this.initialized = true
     await this.automations.init()
     await this.channels.init()
@@ -506,7 +509,12 @@ export class AppService {
 
   private emit(event: AppEvent) { if (!this.closing) { if (event.type === 'message') this.channels?.published(event.message); this.options.emit(clone(event)) } }
   private changed(conversationId?: string) { this.automations?.observe(); this.emit({ type: 'changed', ...(conversationId ? { conversationId } : {}) }) }
-  private getConversation(id: string): Conversation { if (this.clearingConversations.has(id)) fail('此会话清理尚未完成，请重试清空聊天记录'); return this.conversations.get(id) ?? fail('会话不存在') }
+  private getConversation(id: string): Conversation {
+    if (this.clearingConversations.has(id)) fail('此会话清理尚未完成，请重试清空聊天记录')
+    const room = this.conversations.get(id) ?? fail('会话不存在')
+    if (room.mergedInto) fail('此聊天已归入员工主私聊或群聊，请从主会话继续操作。')
+    return room
+  }
   private getAgent(id: string): DigitalAgent { return this.employees.get(id) }
   private getConnection(id: string): Connection { return this.connections.get(id) ?? fail('请先为员工配置模型连接') }
   private validateResources(resourceIds: string[], kind: Resource['kind']) {
@@ -521,6 +529,12 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    if (input && typeof input === 'object' && (method.startsWith('get') || method.startsWith('list') || method.startsWith('query') || method === 'searchConversations' || method === 'resolveConversationSearchTarget')) {
+      const value = input as { id?: string; conversationId?: string }
+      const field = ['getConversation', 'getConversationMetadata'].includes(method) ? 'id' : 'conversationId'
+      const oldId = value[field], room = oldId ? this.conversations.get(oldId) : undefined
+      if (room?.mergedInto) input = { ...value, [field]: room.mergedInto }
+    }
     if (method === 'listChannelBindings' || method === 'listChannelDeliveries') {
       const value = z.object({ agentId: id }).strict().parse(input)
       return method === 'listChannelBindings' ? this.channels.list(value.agentId) : this.channels.deliveries(value.agentId)
@@ -1238,6 +1252,7 @@ export class AppService {
   }
 
   private async updateConversationList(change: ConversationListChange) {
+    this.getConversation(change.id)
     const times = Object.fromEntries([...this.conversations.keys()].map(id => [id, this.conversationMessages(id).at(-1)?.createdAt ?? '']))
     const updates = conversationListUpdates([...this.conversations.values()], change, times).map(item => change.action === 'rename' ? { ...item, updatedAt: now() } : item)
     await this.store.write(updates.map(item => record('conversations', item)))
@@ -1251,7 +1266,9 @@ export class AppService {
   }
 
   private async deleteGroup(id: string) {
+    // Cleanup recovery must still be able to retry a fenced group.
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
+    if (conversation.mergedInto) fail('此群聊已归一，请从主群聊继续操作。')
     if (conversation.kind !== 'group') fail('只能通过通讯录解散群聊')
     this.assertConversationIdle(id)
     await this.automations.detachContacts([], [id])
@@ -1488,7 +1505,7 @@ export class AppService {
     if (previous?.purpose === 'core' && (input.agentIds.length !== 1 || input.agentIds[0] !== CORE_AGENT_ID)) fail('核心会话不能改绑其他员工')
     if (!previous && input.kind === 'direct' && input.agentIds[0] === CORE_AGENT_ID) fail('请在核心助手中发送非空首条消息，再建立会话')
     if (!previous && input.kind === 'direct') {
-      const existing = [...this.conversations.values()].find(conversation => conversation.kind === 'direct' && !conversation.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.agentIds[0] === input.agentIds[0])
+      const existing = [...this.conversations.values()].find(conversation => !conversation.mergedInto && conversation.kind === 'direct' && (conversation.mainPrivate || !conversation.channel) && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.agentIds[0] === input.agentIds[0])
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
@@ -1496,6 +1513,7 @@ export class AppService {
     if (memoryContextRef) await this.validateMemoryContext(memoryContextRef, input.agentIds)
     const conversation: Conversation = { ...previous, ...definition, ...(memoryContextRef !== undefined ? { memoryContextRef: memoryContextRef ?? undefined } : {}), ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
+    if (conversation.kind === 'direct' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core') conversation.mainPrivate = true
     await this.store.write([record('conversations', conversation)]); this.conversations.set(conversation.id, conversation)
     if (previous) {
       const removed = previous.agentIds.filter(id => !conversation.agentIds.includes(id))
@@ -1514,11 +1532,50 @@ export class AppService {
     this.changed(conversation.id); return clone(conversation)
   }
 
-  private async channelConversation(source: ChannelConversationSource, agentIds: string[]): Promise<Conversation> {
-    const conversationId = 'channel-' + createHash('sha256').update(JSON.stringify(source)).digest('hex')
-    const previous = this.conversations.get(conversationId)
+  private installRoomMigration(records: StoredRecord[]) {
+    for (const record of records) if (['conversations', 'messages', 'runs', 'requests', 'snapshots', 'approvals', 'artifacts'].includes(record.collection)) {
+      ;(this[record.collection as 'conversations'] as Map<string, unknown>).set(record.id, record.value)
+    }
+    this.scheduler.installRoomMigration(records)
+  }
+  private async assertRoomsIdle(rooms: Conversation[], tx: RecordTransaction) {
+    const ids = new Set(rooms.map(room => room.id))
+    if ((await tx.list<import('../shared/domain').ConversationMaterial>('materials')).some(material => ids.has(material.conversationId) && material.status === 'preparing')) fail('相关聊天仍在准备材料，请完成后再归一。')
+    if (rooms.some(room => this.conversationBusy(room.id)) || [...this.activeAdapters].some(id => ids.has(this.runs.get(id)?.conversationId ?? '')) || [...this.runs.values()].some(run => ids.has(run.conversationId) && !terminal.has(run.status)) || (await tx.list<WorkItem>('workItems')).some(work => ids.has(work.conversationId) && (work.requiresReview || !['delivered', 'cancelled', 'failed', 'budget_exhausted', 'interrupted'].includes(work.status))) || (await tx.list<import('../shared/domain/channels').ChannelDelivery>('channelDeliveries')).some(delivery => ids.has(delivery.conversationId) && delivery.status === 'sending')) fail('相关聊天仍有执行或待处理工作，请结束后再关联本人账号。')
+    for (const room of rooms) if (this.clearingConversations.has(room.id) || await tx.get('conversationCleanup', room.id)) fail('聊天清理待核对，不能归一历史。')
+  }
+  private async linkChannelOwner(binding: import('../shared/domain/channels').ChannelBinding, tx: RecordTransaction) {
+    if (!binding.ownerUserId) return () => {}
+    const rooms = [...this.conversations.values()].filter(room => !room.mergedInto && room.kind === 'direct' && room.agentIds.length === 1 && room.agentIds[0] === binding.agentId && room.purpose !== 'automation' && (room.mainPrivate || !room.channel || room.channel.bindingId === binding.id && room.channel.userId === binding.ownerUserId)).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+    if (!rooms.length) return () => {}
+    const target = rooms.find(room => room.mainPrivate || !room.channel) ?? rooms[0]
+    const older = rooms.filter(room => room.id !== target.id && room.purpose !== 'core')
+    if (!target.mainPrivate || older.length) await this.assertRoomsIdle([target, ...older], tx)
+    const merged = { ...target, mainPrivate: true, title: this.getAgent(binding.agentId).name, purpose: target.purpose === 'core' ? 'core' as const : 'personal' as const }
+    const changes = await mergeRooms(tx, merged, older)
+    return () => { this.installRoomMigration(changes); this.changed(target.id) }
+  }
+  private async channelConversation(source: ChannelConversationSource, agentIds: string[], owner = false): Promise<Conversation> {
     const agents = agentIds.map(id => this.getAgent(id))
     if (agents.some(agent => !agent.active || agent.executionBackend?.kind === 'acp-local')) fail('渠道需要启用的API或原生员工，旧ACP任务入口不可接入。')
+    if (source.kind === 'group' && agents.some(isCoreAgent)) fail('普通外部群不能添加核心助手，请使用受控核心协作入口。')
+    if (owner) {
+      const existing = [...this.conversations.values()].filter(room => !room.mergedInto && room.kind === 'direct' && room.agentIds[0] === agentIds[0] && room.purpose !== 'automation' && (room.mainPrivate || !room.channel)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+      const main = [...this.conversations.values()].find(room => room.mainPrivate && !room.mergedInto && room.agentIds[0] === agentIds[0] && room.kind === 'direct' && room.purpose !== 'automation')
+      if (main || existing) return main ?? existing!
+      if (agentIds[0] !== CORE_AGENT_ID) return this.saveConversation(conversationSchema.parse({ kind: 'direct', title: this.getAgent(agentIds[0]).name, agentIds }))
+    }
+    const { threadId: _, ...unthreaded } = source
+    const roomSource = source.kind === 'group' ? { platform: source.platform, tenantId: source.tenantId, chatId: source.chatId, kind: source.kind } : unthreaded
+    const legacy = [...this.conversations.values()].filter(room => !room.mergedInto && !room.mainPrivate && room.kind === source.kind && room.channel?.platform === source.platform && room.channel.tenantId === source.tenantId && room.channel.chatId === source.chatId && (source.kind === 'group' || room.channel.bindingId === source.bindingId && room.channel.userId === source.userId))
+    let conversationId = legacy[0]?.id ?? 'channel-' + createHash('sha256').update(JSON.stringify(roomSource)).digest('hex')
+    // An unlinked account starts a new external room; it cannot reopen the archived owner room.
+    if (this.conversations.get(conversationId)?.mergedInto || this.conversations.get(conversationId)?.mainPrivate) conversationId = 'channel-' + randomUUID()
+    if (legacy.length > 1) {
+      const changes = await this.store.transaction(async tx => { await this.assertRoomsIdle(legacy, tx); return mergeRooms(tx, { ...legacy[0], channel: roomSource }, legacy.slice(1)) })
+      this.installRoomMigration(changes)
+    }
+    const previous = this.conversations.get(conversationId)
     if (previous) {
       this.getConversation(previous.id)
       const members = [...new Set([...previous.agentIds, ...agentIds])]
@@ -1529,7 +1586,7 @@ export class AppService {
       }
       return previous
     }
-    const conversation: Conversation = { id: conversationId, kind: source.kind, purpose: 'channel', channel: source, memoryScope: 'conversation', title: `${source.platform} · ${source.kind === 'direct' ? agents[0].name : source.chatId}`, agentIds: [...new Set(agentIds)], mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], createdAt: now(), updatedAt: now(), configVersion: 1 }
+    const conversation: Conversation = { id: conversationId, kind: source.kind, purpose: owner ? 'core' : 'channel', ...(owner ? { mainPrivate: true } : { channel: roomSource }), memoryScope: 'conversation', title: owner ? agents[0].name : `${source.platform} · ${source.kind === 'direct' ? source.userId : source.chatId}`, agentIds: [...new Set(agentIds)], mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], createdAt: now(), updatedAt: now(), configVersion: 1 }
     await mkdir(conversation.workspacePath, { recursive: true })
     await this.store.transaction(async tx => { if (await tx.get('conversationCleanup', conversation.id)) fail('原渠道聊天清理待核对'); await tx.put(record('conversations', conversation)) })
     this.conversations.set(conversation.id, conversation); this.changed(conversation.id)
@@ -1629,6 +1686,7 @@ export class AppService {
     const existing = this.requests.get(input.requestId)
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
     const conversation = clone(this.getConversation(input.conversationId))
+    if (conversation.mergedInto) fail('此聊天已归入员工主私聊，请从主私聊发送新消息。')
     if (conversation.agentIds.includes(CORE_AGENT_ID) && !this.getAgent(CORE_AGENT_ID).connectionId) await this.ensureCoreConnection()
     let revision: ArtifactRevisionInput | undefined
     if (input.artifactRevision) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 安装已提交的空闲房间历史迁移，仅更新原缓存，不重新调度或运行启动恢复。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 调度轮次只累计API用量；本机不受API16000输出、调用或时长截断，API预算取消与本机执行信号分离。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -67,6 +68,12 @@ export class GroupScheduler {
   private cancelling = new Map<string, number>()
   private closing = false
   constructor(private store: ProductStore, private hooks: SchedulerHooks) {}
+  /** Install committed idle-room history without running startup recovery or scheduling it. */
+  installRoomMigration(records: StoredRecord[]) {
+    for (const record of records) if (['turns', 'events', 'deliveries', 'decisions', 'contributions', 'grants'].includes(record.collection)) {
+      ;(this[record.collection as 'turns'] as Map<string, unknown>).set(record.id, record.value)
+    }
+  }
   async init() {
     for (const name of ['turns', 'events', 'deliveries', 'decisions', 'contributions', 'grants'] as const) {
       const records = await this.store.load<{ id: string }>(name)

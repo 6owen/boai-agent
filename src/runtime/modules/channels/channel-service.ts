@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 明确本人账号同事务关联、主私聊解析和逐触发来源回发，取消最近平台目标回退。
  * [INPUT]: ProductStore、vault、原员工/会话/消息受理和现成渠道Transport。
  * [OUTPUT]: 稳定绑定和外部会话来源、显式发送者授权、单次业务受理及独立发送结果；显示平台事件/受理结果，失败只用固定原因或白名单码，不回显凭据/载荷。
  * [POS]: 第16组业务接线；不自建平台协议或员工执行循环。
@@ -8,7 +9,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { DigitalAgent, Message, Conversation, MaterialSelection, AgentRun, WorkItem, WorkBudget } from '../../../shared/domain'
 import { CHANNEL_PLATFORMS, type ChannelBinding, type ChannelBindingAction, type ChannelBindingInput, type ChannelBindingState, type ChannelConversationSource, type ChannelDelivery, type ChannelMessageSource } from '../../../shared/domain/channels'
-import type { ProductStore } from '../../adapters/storage/product-store'
+import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 import type { SecretStore } from '../../contracts'
 
 export interface ChannelAttachment { name: string; size?: number; read(): Promise<Buffer> }
@@ -30,14 +31,15 @@ interface StoredBinding extends ChannelBinding { credentialRef: string }
 interface ChannelHooks {
   critical<T>(operation: () => Promise<T>): Promise<T>
   agent(id: string): DigitalAgent
-  conversation(source: ChannelConversationSource, agentIds: string[]): Promise<Conversation>
+  conversation(source: ChannelConversationSource, agentIds: string[], owner: boolean): Promise<Conversation>
+  linkOwner(binding: ChannelBinding, tx: RecordTransaction): Promise<() => void>
   prepare(conversationId: string, eventKey: string, attachments: ChannelAttachment[]): Promise<MaterialSelection[]>
   accept(conversationId: string, event: ChannelInbound, source: ChannelMessageSource, requestId: string, agentIds: string[], materials: MaterialSelection[]): Promise<Message>
   files(message: Message): Promise<ChannelOutputFile[]>
   changed(): void
 }
 const id = z.string().trim().min(1).max(512)
-const inputSchema = z.object({ id: id.optional(), agentId: id, platform: z.enum(CHANNEL_PLATFORMS), appId: id, robotCode: id.optional(), name: z.string().trim().min(1).max(100), credential: z.string().min(1).max(8000).optional(), allowedUserIds: z.array(id).min(1).max(100), allowedChatIds: z.array(id).max(100), expectedRevision: z.number().int().positive().optional(), botUserId: id.optional(), requestId: id }).strict()
+const inputSchema = z.object({ id: id.optional(), agentId: id, platform: z.enum(CHANNEL_PLATFORMS), appId: id, robotCode: id.optional(), name: z.string().trim().min(1).max(100), credential: z.string().min(1).max(8000).optional(), allowedUserIds: z.array(id).min(1).max(100), allowedChatIds: z.array(id).max(100), ownerUserId: id.nullable().optional(), expectedRevision: z.number().int().positive().optional(), botUserId: id.optional(), requestId: id }).strict()
 const actionSchema = z.object({ id, expectedRevision: z.number().int().positive() }).strict()
 const key = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
@@ -117,15 +119,21 @@ export class EmployeeChannels {
       if (prior?.enabled || (prior && this.lifecycle.has(prior.id))) throw new Error('请先停止连接，再修改渠道配置。')
       if ([...this.bindings.values()].some(binding => binding.id !== prior?.id && binding.platform === value.platform && binding.appId === value.appId)) throw new Error('该机器人已绑定其他员工，请先核对原绑定。')
       if (!prior && !value.credential) throw new Error('请输入机器人凭据。')
+      const ownerUserId = value.ownerUserId === undefined ? prior?.ownerUserId : value.ownerUserId ?? undefined
+      if (ownerUserId && !value.allowedUserIds.includes(ownerUserId)) throw new Error('本人用户 ID 必须在授权用户中。')
       if (value.platform === 'telegram' && value.credential && value.appId !== value.credential.split(':')[0]) throw new Error('Bot ID与Bot Token的真实机器人身份不一致。')
       const credentialRef = value.credential ? `channel-${randomUUID()}` : prior!.credentialRef
       if (value.credential) await this.secrets.set(credentialRef, value.credential)
       const binding: StoredBinding = { id: prior?.id ?? randomUUID(), agentId: value.agentId, platform: value.platform, appId: value.appId, robotCode: value.robotCode ?? prior?.robotCode, name: value.name, allowedUserIds: [...new Set(value.allowedUserIds)], allowedChatIds: [...new Set(value.allowedChatIds)], credentialRef, hasCredential: true, enabled: false, revision: (prior?.revision ?? 0) + 1, botUserId: value.botUserId ?? prior?.botUserId, botUserName: prior?.botUserName, installedAt: prior?.installedAt ?? time(), updatedAt: time() }
+      let install = () => {}
       await this.store.transaction(async tx => {
         const current = prior ? await tx.get<StoredBinding>('channelBindings', prior.id) : undefined
         if (prior && current?.revision !== prior.revision) throw new Error('渠道配置已更新。')
-        await tx.put(record('channelBindings', binding)); await tx.put(record('channelBindingReceipts', { id: value.requestId, fingerprint, bindingId: binding.id }))
+        install = await this.hooks.linkOwner({ ...binding, ownerUserId }, tx)
+        await tx.put(record('channelBindings', { ...binding, ownerUserId })); await tx.put(record('channelBindingReceipts', { id: value.requestId, fingerprint, bindingId: binding.id }))
       })
+      binding.ownerUserId = ownerUserId
+      install()
       this.bindings.set(binding.id, binding); this.states.set(binding.id, { status: 'disconnected' }); this.hooks.changed()
       // Never erase a credential when commit status is unknown.
       if (prior && prior.credentialRef !== credentialRef) await this.secrets.delete(prior.credentialRef)
@@ -213,13 +221,13 @@ export class EmployeeChannels {
       const requestId = `channel-${key([source, event.eventId])}`
       const existing = await this.store.get<{ messageId?: string; cleared?: boolean }>('messageReceipts', requestId)
       if (existing) { observed('ignored', '重复平台消息，未重复调用员工。'); return }
-      const conversation = await this.hooks.conversation(source, [...new Set(candidates.map(candidate => candidate.agentId))])
+      const conversation = await this.hooks.conversation(source, [...new Set(candidates.map(candidate => candidate.agentId))], event.kind === 'direct' && binding.ownerUserId === event.userId)
       for (const candidate of candidates) {
         const target: ChannelTarget = { id: `${conversation.id}:${candidate.id}`, bindingId: candidate.id, conversationId: conversation.id, externalThreadId: event.externalThreadId, userId: event.userId, chatId: event.chatId, kind: event.kind }
         await this.store.write([record('channelTargets', target)])
       }
       const materials = await this.hooks.prepare(conversation.id, requestId, event.attachments)
-      await this.hooks.accept(conversation.id, event, { ...source, bindingId, eventId: event.eventId, userId: event.userId, replyThreadId: event.externalThreadId }, requestId, candidates.map(candidate => candidate.agentId), materials)
+      await this.hooks.accept(conversation.id, event, { ...source, bindingId, eventId: event.eventId, userId: event.userId, replyThreadId: event.externalThreadId, ...(binding.ownerUserId === event.userId ? { owner: true } : {}) }, requestId, candidates.map(candidate => candidate.agentId), materials)
       observed('accepted', '消息已进入员工会话，处理结果见会话。', conversation.id)
     }) } catch (error) { observed('failed', '消息受理失败，请核对员工模型配置、材料和执行记录。'); throw error }
   }
@@ -233,8 +241,10 @@ export class EmployeeChannels {
         const budget = work?.budgetId ? await this.store.get<WorkBudget>('workBudgets', work.budgetId) : undefined
         const sourceIds = [run?.triggerMessageId, work?.sourceMessageId, budget?.sourceMessageId].filter((id): id is string => !!id)
         let origin: ChannelMessageSource | undefined
-        for (const id of sourceIds) { const source = await this.store.get<Message>('messages', id); if (source?.channel && source.conversationId === message.conversationId) { origin = source.channel; break } }
-        const target = origin?.replyThreadId ? { ...savedTarget, externalThreadId: origin.replyThreadId, userId: origin.userId } : savedTarget
+        for (const id of sourceIds) { const source = await this.store.get<Message>('messages', id); if (source?.senderType === 'user' && source.conversationId === message.conversationId) { origin = source.channel; break } }
+        // A local trigger has no external destination. Never fall back to a recent user.
+        if (!origin?.replyThreadId || origin.kind !== savedTarget.kind || origin.platform !== this.bindings.get(savedTarget.bindingId)?.platform || origin.kind === 'direct' && origin.bindingId !== savedTarget.bindingId) continue
+        const target = { ...savedTarget, externalThreadId: origin.replyThreadId, userId: origin.userId, chatId: origin.chatId }
         const binding = this.bindings.get(target.bindingId), transport = this.live.get(target.bindingId)
         if (!binding?.enabled || !binding.allowedUserIds.includes(target.userId) || target.kind === 'group' && !binding.allowedChatIds.includes(target.chatId)) continue
         const deliveryId = key([target.bindingId, message.id])

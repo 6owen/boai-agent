@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 本人已关联渠道消息展示当前本人名称/头像与平台来源，外部权限身份保持。
  * [OUTPUT]: 外部渠道消息显示实际平台/发送者与独立头像，不冒充本机本人或定时任务。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 单聊仅头像/消息及绝对定位悬停时间，原消息接收标记与员工执行卡按真实Run投影；原引用和旧固定版本未决请求保持。
@@ -208,7 +209,7 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
         const previous = messageRows[index - 1]?.message
         const attachedApprovals = approvalGroups.byMessage.get(message.id) ?? []
         const continued = continuesMessage(previous, message, Boolean(attachedApprovals.length || previous && approvalGroups.byMessage.has(previous.id)))
-        const sender = messageDisplayName(message, snapshot.userProfile)
+        const sender = message.channel?.owner ? snapshot.userProfile?.displayName ?? '我' : messageDisplayName(message, snapshot.userProfile)
         const useCard = message.senderType !== 'system'
         const canMention = !replyMode && !sendingLocked && group && message.senderType === 'agent' && agent?.active && members.some(member => member.id === agent.id)
         const mentioned = members.filter(member => message.mentionIds?.includes(member.id))
@@ -217,7 +218,7 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
         const executionRuns = sourceRuns.filter(run => run.phase !== 'memory')
         const executionWork = detail.workItems?.find(work => executionRuns.some(run => run.workId === work.id))
         const body = <>
-            {message.channel && <p className="field-hint">{CHANNEL_NAMES[message.channel.platform]} · {message.senderName}</p>}
+            {message.channel && <p className="field-hint">{CHANNEL_NAMES[message.channel.platform]} · {message.channel.owner ? '我' : message.senderName}</p>}
             {message.replyToMessageId && <div className="quoted-message">{quoted ? <><strong>回复 {messageDisplayName(quoted, snapshot.userProfile)}：</strong><span>{quoted.content.trim().split('\n')[0].slice(0, 120)}</span></> : '原消息已不可用'}</div>}
             <div className="message-bubble markdown">{group && !!mentioned.length && <span className="message-mentions">{mentioned.map(member => <button type="button" className="message-mention" key={member.id} onClick={() => mention(member.id)}>@{member.name}</button>)}</span>}{message.content ? <MaterialMarkdown message={message} detail={detail} onPreview={onPreviewMaterial} /> : message.status === 'streaming' ? <span className="typing-indicator"><i /><i /><i /></span> : !message.materialIds?.length && <span className="muted">暂无公开内容</span>}</div>
             {!!message.materialIds?.length && <><SentMaterialList api={api} pageActive={pageActive} materials={(detail.materials ?? []).filter(material => message.materialIds?.includes(material.id))} onPreview={onPreviewMaterial} />{message.materialIds.some(id => !detail.materials?.some(material => material.id === id)) && <p role="status" className="field-hint">部分材料已清理或不可用。</p>}</>}
@@ -227,7 +228,7 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
             {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
         </>
         return <Fragment key={message.id}><article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={`message-${message.id}`} data-reading-message-id={message.id}>
-          <div className="message-avatar">{isPersonalMessage(message) ? <UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} /> : message.channel ? <Avatar name={message.senderName} seed={message.senderId} />: message.senderType === 'user' ? <span className="avatar automation-avatar" aria-hidden="true">定</span> : message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} />}</div>
+          <div className="message-avatar">{isPersonalMessage(message) || message.channel?.owner ? <UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} /> : message.channel ? <Avatar name={message.senderName} seed={message.senderId} />: message.senderType === 'user' ? <span className="avatar automation-avatar" aria-hidden="true">定</span> : message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} />}</div>
           <div className="message-main">
             <div className={`message-meta${!group ? ' message-meta-direct' : ''}`}>
               {group && <>

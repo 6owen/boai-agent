@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14 明确本人账号关联与渠道消息本人展示归属，外部消息不获得桌面管理权限。
  * [INPUT]: 已保存员工与平台安装、外部发送者和平台会话身份。
  * [OUTPUT]: 渠道绑定/连接状态、平台事件及消息受理观察、可信消息来源、独立平台发送回执；公开合同不含已保存凭据或入站正文。
  * [POS]: 第16组跨进程渠道合同。
@@ -8,6 +9,8 @@ export const CHANNEL_PLATFORMS = ['feishu', 'lark', 'telegram', 'dingtalk'] as c
 export type ChannelPlatform = typeof CHANNEL_PLATFORMS[number]
 export const CHANNEL_NAMES: Record<ChannelPlatform, string> = { feishu: '飞书', lark: 'Lark', telegram: 'Telegram', dingtalk: '钉钉' }
 export interface ChannelBinding {
+  /** Explicitly linked account of the BOAI owner, scoped to this bot. */
+  ownerUserId?: string
   id: string
   agentId: string
   platform: ChannelPlatform
@@ -25,6 +28,7 @@ export interface ChannelBinding {
   updatedAt: string
 }
 export interface ChannelBindingInput {
+  ownerUserId?: string | null
   id?: string
   agentId: string
   platform: ChannelPlatform
@@ -56,6 +60,8 @@ export interface ChannelConversationSource {
   userId?: string
 }
 export interface ChannelMessageSource extends ChannelConversationSource {
+  /** Display attribution only; external messages never acquire desktop management rights. */
+  owner?: boolean
   replyThreadId?: string
   bindingId: string
   eventId: string
