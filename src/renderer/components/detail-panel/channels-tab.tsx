@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道列表Popover省略重复标题，清除外层padding/gap以统一紧凑8px内边距。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 同一有界阅读生命周期用于渠道镜像与独立内部讨论，后者不显示渠道列表或嵌套入口。
  * [OUTPUT]: 未选渠道/不可用复用IllustratedEmpty和会话标题布局，ScrollArea正文保留标题渐隐；列表入口始终可用。
@@ -141,8 +142,8 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
       {current && error && <Banner>{error}</Banner>}
     </div>
     </div>
-    {!internal && <PopoverContent keepMounted align="end" className="channel-picker" aria-label="选择渠道会话" onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
-      <ConversationList {...listProps} onBack={undefined} channelAgent={agent} selectedId={id ?? null} selectionRequest={target.requestId}
+    {!internal && <PopoverContent keepMounted align="end" className="channel-picker p-0 gap-0" aria-label="选择渠道会话" onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
+      <ConversationList {...listProps} showHeading={false} onBack={undefined} channelAgent={agent} selectedId={id ?? null} selectionRequest={target.requestId}
         onSelect={id => { listProps.onSelect(id); setPickerOpen(false) }} />
     </PopoverContent>}
   </Popover>

@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 渠道草稿断言兼容普通textarea与群聊contenteditable输入，不改变业务发送步骤。
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
+ * [OUTPUT]: 渠道文件通过正文选区发起修改，不依赖已退役的header按钮。
+ * [OUTPUT]: 渠道发送编辑区/目标搜索/键盘换行与明确提交/草稿恢复/固定操作栏的真实Electron检查。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 空渠道/空消息插画、52px共享标题与16px渐隐衔接，以及真实ScrollArea滚动和主草稿保持的桌面检查。
  * [OUTPUT]: 侧边聊天与标题栏Popover；同一渠道内资料/执行/文件替换、返回与未保存守卫，不递归追加标签。
@@ -15,6 +19,7 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test } from '../support/test'
+import { selectPreviewLine } from '../support/file-preview'
 import { prepareGroupChat } from '../support/group-chat'
 import { ConversationReadingRepository } from '../../../src/runtime/modules/conversations/reading-repository'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
@@ -39,12 +44,13 @@ const selectChannel = async (page: Page, name: string) => {
   await expect(picker).toBeHidden()
 }
 
-const internalDraft = async (page: Page, text: string, check = false) => {
-  await channelPanel(page).getByRole('button', { name: '与员工内部讨论', exact: true }).click()
+const channelDraft = async (page: Page, text: string, check = false) => {
   const input = channelPanel(page).getByRole('textbox', { name: '消息内容', exact: true })
-  if (check) await expect(input).toHaveValue(text)
-  else await input.fill(text)
-  await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
+  if (check) {
+    if (await input.getAttribute('contenteditable') === 'true') await expect(input).toHaveText(text)
+    else await expect(input).toHaveValue(text)
+  } else await input.fill(text)
+
 }
 
 
@@ -78,7 +84,7 @@ Then('右侧容器在切换内容与跨页重开时保持统一宽度', async ({
     return [selector, { x: box.x, y: box.y, width: box.width, height: box.height }]
   })))
   await selectChannel(page, '飞书 · 研究员')
-  await internalDraft(page, '容器切换保留渠道草稿')
+  await channelDraft(page, '容器切换保留渠道草稿')
   await resize(640)
   const wide = await geometry()
   await runtime.reviewNativeCheckpoint('统一容器-宽渠道与主聊天')
@@ -90,13 +96,13 @@ Then('右侧容器在切换内容与跨页重开时保持统一宽度', async ({
   await runtime.reviewNativeCheckpoint('统一容器-窄内容沿用宽度与主聊天位置')
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   await expect.poll(geometry).toEqual(wide)
-  await internalDraft(page, '容器切换保留渠道草稿', true)
+  await channelDraft(page, '容器切换保留渠道草稿', true)
   await resize(320)
   const narrow = await geometry()
   await expect(channelPanel(page).locator('.channel-list-container')).toHaveCount(0)
   const chatBounds = (await channelPanel(page).locator('.channel-chat-stage').boundingBox())!
   expect(chatBounds.width).toBe(320)
-  await expect(channelPanel(page).getByRole('button', { name: '与员工内部讨论', exact: true })).toBeInViewport()
+  await expect(channelPanel(page).getByRole('textbox', { name: '消息内容', exact: true })).toBeInViewport()
   await channelPanel(page).getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '渠道信息', exact: true }).click()
   await expect.poll(geometry).toEqual(narrow)
@@ -166,7 +172,7 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
     expect(await container.evaluate(element => element.isConnected && element === document.querySelector('.detail-panel'))).toBe(true)
     expect(await container.evaluate(element => element.getBoundingClientRect().width)).toBe(initialWidth)
   }
-  await internalDraft(page, '侧边渠道独立草稿')
+  await channelDraft(page, '侧边渠道独立草稿')
   await panel.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '渠道信息', exact: true }).click()
   const info = page.locator('.detail-section[aria-label="渠道信息"]')
@@ -184,7 +190,7 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
   await runtime.reviewNativeCheckpoint('渠道二级详情-员工编辑守卫与单容器')
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
-  await internalDraft(page, '侧边渠道独立草稿', true)
+  await channelDraft(page, '侧边渠道独立草稿', true)
   await panel.getByRole('button', { name: '打开执行面板', exact: true }).click()
   await unchanged()
   await expect(page.locator('.channel-detail-header')).toContainText('执行')
@@ -196,7 +202,7 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
   await runtime.reviewNativeCheckpoint('渠道文件预览-单容器替换且来源固定')
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   await expect(panel.getByRole('tab', { name: /聊天|文件|任务/ })).toHaveCount(0)
-  await internalDraft(page, '侧边渠道独立草稿', true)
+  await channelDraft(page, '侧边渠道独立草稿', true)
   await expect(mainChat(page).getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('主员工草稿保持')
   await expect(page.locator('.channel-detail-view')).toHaveCount(0)
   await expect(tabs.getByRole('tab')).toHaveText(['研究员的渠道'])
@@ -244,7 +250,7 @@ Then('渠道私聊群筛选及搜索任务定位进入正确页面', async ({ ru
   const groupGroup = picker.getByRole('group', { name: '渠道群聊', exact: true })
   await selectChannel(page, '飞书 · 研究员')
   await expect(panel.locator('.channel-chat-stage').getByText('手机飞书私聊的历史消息', { exact: true })).toBeVisible()
-  await internalDraft(page, '渠道私聊草稿')
+  await channelDraft(page, '渠道私聊草稿')
   await openPicker(page)
   await expect(picker.getByRole('tab', { name: /全部|私聊|群聊/ })).toHaveCount(0)
   await picker.getByRole('button', { name: '私聊', exact: true }).click()
@@ -252,7 +258,7 @@ Then('渠道私聊群筛选及搜索任务定位进入正确页面', async ({ ru
   await expect(groupGroup).toBeVisible()
   await groupGroup.getByRole('button', { name: '研发A群 · 飞书', exact: true }).click()
   await expect(picker).toBeHidden()
-  await internalDraft(page, '渠道群聊草稿')
+  await channelDraft(page, '渠道群聊草稿')
   await openPicker(page)
   await expect(privateGroup).toBeHidden()
   await picker.getByRole('button', { name: '群聊', exact: true }).click()
@@ -277,7 +283,7 @@ Then('渠道私聊群筛选及搜索任务定位进入正确页面', async ({ ru
   await search.getByRole('textbox', { name: '搜索关键词', exact: true }).fill('手机飞书私聊的历史消息')
   await search.locator('[data-search-kind="message"][data-search-result-id="legacy-feishu-owner-message"]').click()
   await expect(panel.locator('.channel-chat-stage').getByText('手机飞书私聊的历史消息', { exact: true })).toBeVisible()
-  await internalDraft(page, '渠道私聊草稿', true)
+  await channelDraft(page, '渠道私聊草稿', true)
   await openPicker(page)
   await picker.getByRole('button', { name: '私聊', exact: true }).click()
   await picker.getByRole('textbox', { name: '搜索会话', exact: true }).fill('研发')
@@ -298,7 +304,7 @@ Then('渠道私聊群筛选及搜索任务定位进入正确页面', async ({ ru
   await expect(panel.locator('.channel-chat-stage').getByText('手机飞书私聊的历史消息', { exact: true })).toBeVisible()
   await expect(mainChat(page).getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('主聊天未发送的草稿')
   await selectChannel(page, '研发A群 · 飞书')
-  await internalDraft(page, '渠道群聊草稿', true)
+  await channelDraft(page, '渠道群聊草稿', true)
   await runtime.reviewNativeCheckpoint('搜索和历史任务-侧边聊天固定来源与独立草稿')
 })
 
@@ -315,7 +321,7 @@ Then('渠道详情反复打开和本地处理后的空闲资源保持有界', as
     await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   }
   const message = async (index: number) => {
-    const internalId = await page.evaluate(async index => { const room = await window.boai.request('ensureChannelDiscussion', { conversationId: 'feishu-group-a' }); await window.boai.request('sendMessage', { conversationId: room.id, content: '单聊统一交互验收', mentionIds: [], requestId: `channel-resource-${index}` }); return room.id }, index)
+    const internalId = await page.evaluate(async index => { const room = { id: 'feishu-group-a' }; await window.boai.request('sendMessage', { conversationId: room.id, content: '单聊统一交互验收', mentionIds: [], requestId: `channel-resource-${index}` }); return room.id }, index)
     await expect.poll(() => page.evaluate(async id => (await window.boai.request('getConversation', { id })).messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length, internalId)).toBe(index + 1)
   }
   const cdp = await page.context().newCDPSession(page)
@@ -386,21 +392,20 @@ Then('BOAI群仍有成员配置而外部群不在通讯录群聊中', async ({ r
   await runtime.reviewNativeCheckpoint('BOAI内部群-独立多员工配置')
 })
 
-Then('渠道内部讨论沿独立单员工会话执行且重启保留', async ({ runtime }) => {
+Then('渠道原会话可直接续聊且重启保留', async ({ runtime }) => {
   await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await runtime.page.getByRole('button', { name: '与研究员对话', exact: true }).click()
   await runtime.page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
   await selectChannel(runtime.page, '研发A群 · 飞书')
-  await channelPanel(runtime.page).getByRole('button', { name: '与员工内部讨论', exact: true }).click()
   await channelPanel(runtime.page).getByRole('textbox', { name: '消息内容' }).fill('单聊统一交互验收')
   await channelPanel(runtime.page).getByRole('button', { name: '发送消息', exact: true }).click()
   await expect(runtime.page.getByText('研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。', { exact: true })).toBeVisible()
   await expect(mainChat(runtime.page).getByText('研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。', { exact: true })).toHaveCount(0)
-  const read = () => runtime.page.evaluate(async () => { const room = (await window.boai.request('snapshot', undefined)).conversations.find(room => room.channelDiscussion?.conversationId === 'feishu-group-a')!; return window.boai.request('getConversation', { id: room.id }) })
+  const read = () => runtime.page.evaluate(() => window.boai.request('getConversation', { id: 'feishu-group-a' }))
   const before = await read()
   expect(before.conversation.agentIds).toEqual(['researcher'])
-  expect(before.conversation.purpose).toBe('channel-internal')
-  expect((await runtime.page.evaluate(() => window.boai.request('getConversation', { id: 'feishu-group-a' }))).messages).toHaveLength(0)
+  expect(before.conversation.id).toBe('feishu-group-a')
+  expect(before.messages.some(message => message.senderType === 'agent')).toBe(true)
   expect(before.messages.filter(message => message.senderType === 'user').every(message => !message.channel)).toBe(true)
   await runtime.reviewNativeCheckpoint('渠道会话-本地输入与单员工回复')
   await runtime.restart()
@@ -602,51 +607,77 @@ Then('空渠道与空消息共用全局空态且标题和滚动布局一致', as
   await runtime.reviewNativeCheckpoint('渠道空消息-共享空态与ScrollArea')
 })
 
-Then('渠道内部引用和固定文件修改不会写入对外时间线', async ({ runtime }) => {
+Then('渠道记录直接续聊并从回答工具条明确发送到渠道', async ({ runtime }) => {
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await mainChat(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('主聊天草稿保持')
   await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
   await selectChannel(page, '飞书 · 研究员')
   const container = page.locator('.detail-panel'), width = await container.evaluate(element => element.getBoundingClientRect().width)
+  const read = () => page.evaluate(() => window.boai.request('getConversation', { id: 'legacy-feishu-private' }))
+  const beforeRooms = (await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(room => room.id)
   await expect(channelPanel(page).getByRole('tab', { name: /聊天|任务|文件/ })).toHaveCount(0)
-  await expect(channelPanel(page).getByRole('textbox', { name: '消息内容', exact: true })).toHaveCount(0)
-  await channelPanel(page).getByRole('button', { name: '内部讨论', exact: true }).click()
-  await expect(channelPanel(page)).toContainText('已引用渠道消息 · 仅内部讨论')
-  await channelPanel(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('单聊统一交互验收')
+  await expect(channelPanel(page).getByRole('button', { name: /内部讨论/ })).toHaveCount(0)
+  const composer = channelPanel(page).getByRole('textbox', { name: '消息内容', exact: true })
+  await expect(composer).toBeVisible()
+  const original = channelPanel(page).locator('[data-reading-message-id="legacy-feishu-owner-message"]')
+  await original.hover()
+  await original.getByRole('button', { name: /引用.*的消息/ }).click()
+  await expect(composer).toBeFocused()
+  await composer.fill('单聊统一交互验收')
   await channelPanel(page).getByRole('button', { name: '发送消息', exact: true }).click()
   await expect(channelPanel(page).getByText('研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。', { exact: true })).toBeVisible()
-  const state = await page.evaluate(async () => { const rooms = (await window.boai.request('snapshot', undefined)).conversations; const internal = rooms.find(room => room.channelDiscussion?.conversationId === 'legacy-feishu-private')!; return { internal: await window.boai.request('getConversation', { id: internal.id }), channel: await window.boai.request('getConversation', { id: 'legacy-feishu-private' }) } })
-  expect(state.internal.messages.find(message => message.senderType === 'user')?.channelReference?.messageId).toBe('legacy-feishu-owner-message')
-  expect(state.channel.messages.map(message => message.id)).toEqual(['legacy-feishu-owner-message'])
-  await runtime.reviewNativeCheckpoint('渠道内部讨论-明确引用与独立上下文')
-  await channelPanel(page).getByRole('button', { name: '发送到渠道…', exact: true }).click()
-  const publish = page.locator('div[aria-label="发送到渠道"]')
-  await expect(publish.getByRole('textbox', { name: '发送到渠道的内容' })).toHaveValue(/研究员：单聊和群聊保持一致/)
-  await expect(publish.getByRole('button', { name: '发送到渠道', exact: true })).toBeDisabled()
+  const state = await read(), answer = state.messages.filter(message => message.senderType === 'agent').at(-1)!
+  expect(state.messages.find(message => message.senderId === 'user')?.replyToMessageId).toBe('legacy-feishu-owner-message')
+  expect(state.messages.map(message => message.id)).toContain('legacy-feishu-owner-message')
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(room => room.id).sort()).toEqual([...beforeRooms].sort())
+  expect(await page.evaluate(({ id, messageId }) => window.boai.request('listChannelMessageDeliveries', { conversationId: id, messageIds: [messageId] }), { id: state.conversation.id, messageId: answer.id })).toHaveLength(0)
+  await runtime.reviewNativeCheckpoint('渠道原记录-直接输入与同一历史')
+  const answerRow = channelPanel(page).locator(`[data-reading-message-id="${answer.id}"]`)
+  await answerRow.hover()
+  const forward = answerRow.getByRole('button', { name: '发送到渠道', exact: true })
+  await expect(forward).toBeVisible()
+  await runtime.reviewNativeCheckpoint('渠道回答-悬停工具条发送入口')
+  await forward.click()
+  await expect(page.getByText('原渠道绑定或收件人授权已失效，未发送。', { exact: true })).toBeVisible()
+  expect((await read()).messages.map(message => message.id)).toEqual(state.messages.map(message => message.id))
+  await expect(page.getByRole('form', { name: '发送到渠道', exact: true })).toHaveCount(0)
   expect(await container.evaluate(element => element.getBoundingClientRect().width)).toBe(width)
-  await runtime.reviewNativeCheckpoint('显式发布-原渠道目标必选与机器人身份')
-  await publish.getByRole('combobox', { name: '渠道回复目标', exact: true }).click()
-  await page.getByRole('option', { name: '外部本人 · 手机飞书私聊的历史消息', exact: true }).click()
-  await publish.getByRole('button', { name: '发送到渠道', exact: true }).click()
-  await expect(publish).toContainText('发送受理结果待核对')
-  await expect(publish).toContainText('原渠道绑定或收件人授权已失效')
-  await publish.getByRole('button', { name: '核对原发送结果', exact: true }).click()
-  await expect(publish).toContainText('原请求尚未受理')
-  expect((await page.evaluate(() => window.boai.request('getConversation', { id: 'legacy-feishu-private' }))).messages.map(message => message.id)).toEqual(['legacy-feishu-owner-message'])
-  await runtime.reviewNativeCheckpoint('显式发布-失效绑定阻止发送且只核对原请求')
-  await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
+  await runtime.reviewNativeCheckpoint('明确发送-撤权拒绝且保留原回答')
+  const resize = page.getByRole('separator', { name: '调整详情宽度', exact: true })
+  await resize.press('Home')
+  await expect.poll(() => container.evaluate(element => element.getBoundingClientRect().width)).toBe(360)
+  await composer.fill('在这条记录中继续聊的草稿')
+  await expect(channelPanel(page).getByRole('button', { name: '发送消息', exact: true })).toBeInViewport()
+  await runtime.reviewNativeCheckpoint('渠道原记录-窄面板输入与发送')
+  for (let current = 360; current < width; current += 10) await resize.press('ArrowLeft')
+  const publish = page.getByRole('form', { name: '发送到渠道', exact: true }), editor = publish.getByRole('textbox', { name: '发送到渠道的内容' }), send = publish.getByRole('button', { name: '发送', exact: true })
   await channelPanel(page).getByRole('button', { name: '查看渠道文件', exact: true }).click()
   await page.locator('.channel-detail-body').getByRole('button', { name: '渠道资料.md', exact: true }).click()
   const file = page.locator('[data-artifact-id="channel-panel-file"]')
-  await file.getByRole('button', { name: '让员工修改', exact: true }).click()
-  await page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('补充一段说明，只在内部处理。')
+  await file.getByRole('button', { name: '文件操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '发送到渠道…', exact: true }).click()
+  await expect(editor).toHaveValue('')
+  await expect(publish).toContainText('渠道资料.md')
+  await expect(send).toBeDisabled()
+  await publish.getByRole('button', { name: '选择回复消息', exact: true }).click()
+  await page.getByRole('option', { name: /外部本人.*手机飞书私聊的历史消息/ }).click()
+  await expect(send).toBeEnabled()
+  await expect(editor).toBeFocused()
+  await expect(page.getByRole('combobox', { name: '搜索渠道消息', exact: true })).toBeHidden()
+  await runtime.reviewNativeCheckpoint('渠道发送-独立文件草稿与可选说明')
+  await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
+  await channelPanel(page).getByRole('button', { name: '查看渠道文件', exact: true }).click()
+  await page.locator('.channel-detail-body').getByRole('button', { name: '渠道资料.md', exact: true }).click()
+
+  await selectPreviewLine(file)
+  await page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('补充一段说明，只在BOAI保留。')
   await page.getByRole('button', { name: '发送文件修改', exact: true }).click()
-  await expect.poll(() => page.evaluate(async () => { const rooms = (await window.boai.request('snapshot', undefined)).conversations; const internal = rooms.find(room => room.channelDiscussion?.conversationId === 'legacy-feishu-private')!; return (await window.boai.request('getConversation', { id: internal.id })).messages.some(message => message.artifactRevisionRequestId && message.content.includes('只在内部处理')) })).toBe(true)
-  expect((await page.evaluate(() => window.boai.request('getConversation', { id: 'legacy-feishu-private' }))).messages.map(message => message.id)).toEqual(['legacy-feishu-owner-message'])
+  await expect.poll(async () => (await read()).messages.some(message => message.artifactRevisionRequestId && message.content.includes('只在BOAI保留'))).toBe(true)
+  expect((await read()).messages.map(message => message.id)).toEqual(expect.arrayContaining(state.messages.map(message => message.id)))
   await expect(mainChat(page).getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('主聊天草稿保持')
   await expect(container).toHaveCount(1)
   expect(await container.evaluate(element => element.getBoundingClientRect().width)).toBe(width)
-  await runtime.reviewData('渠道镜像与内部请求隔离', state)
-  await runtime.reviewNativeCheckpoint('渠道文件修改-固定来源独立执行')
+  await runtime.reviewData('渠道同记录续聊与明确外发', state)
+  await runtime.reviewNativeCheckpoint('渠道文件修改-保留原会话且不外发')
 })

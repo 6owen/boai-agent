@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主题选项仅列可用插件配色，停用回退值与保留的原选择分开显示。
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
  * [OUTPUT]: 图片换肤直接启用 Craft Scenic，预览/更换/移除并恢复原模式；退役旧透明度叠加。
  * [OUTPUT]: 下拉字段统一使用 shadcn Select；外观按实际内容宽度换行，图片动作在窄栏仍可达；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/背景图片设置，保留即时预览、保存与错误重试。
@@ -9,7 +10,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/ui/select-field'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from '@/components/ui/field'
-import { themes, resolveAppearanceTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
+import { availableThemes, resolveTheme, resolveAppearanceTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
+import { usePlugins } from '@/stores/plugins'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
 import { Banner } from '@/components/common'
 import lightPreview from '@/assets/mode-light.webp'
@@ -32,9 +34,11 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
 
 export function AppearanceSettings() {
   const { preview, status, error } = useAppearance()
+  const disabledIds = usePlugins(state => state.settings.disabledIds)
+  const themes = availableThemes(disabledIds)
   const p = preview.preferences, mode = preview.resolvedMode
   const scenic = Boolean(p.background.assetId)
-  const theme = resolveAppearanceTheme(p, mode)
+  const theme = resolveAppearanceTheme(p, mode, disabledIds)
   const setColor = (key: keyof ThemeOverrides, value: string | null) => previewAppearance({ customColors: { [mode]: { [key]: value } } })
   return <section className="appearance-settings settings-document">
     <header className="settings-document-heading">
@@ -55,7 +59,7 @@ export function AppearanceSettings() {
       <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
         {(['light', 'dark'] as const).filter(value => scenic ? value === 'dark' : p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
-          <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={p.themeIds[value]} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
+          <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={resolveTheme(value, p.themeIds[value], disabledIds).id} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
         </div>)}
         <div className="appearance-row">
           <span>强调色</span>
@@ -73,6 +77,7 @@ export function AppearanceSettings() {
           <SelectField id="appearance-zoom" value={p.zoomFactor} onValueChange={selectedValue => previewAppearance({ zoomFactor: Number(selectedValue) })} options={zoomFactors.map(value => ({ value: value, label: `${Math.round(value * 100)}%${value === 1 ? '（默认）' : ''}` }))} />
         </div>
       </CardContent></Card>
+      {preview.resolvedThemeId !== p.themeIds[mode] && <p className="field-hint mt-2">原主题插件已停用，暂用 BoAI 配色。重新启用插件后恢复原选择。</p>}
       <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">
         <h3 id="appearance-advanced-heading" className="settings-section-title">背景图片</h3>
         <Card className="gap-0 p-0"><CardContent><FieldGroup className="soft-divide-y gap-0">

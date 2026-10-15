@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
  * [OUTPUT]: 2026-10-10 交付文件仅保留预览，不显示采用/要求修改/稍后处理栏；旧未决请求仍可核对与恢复。
  * [INPUT]: 原员工交付消息中的成果身份、当前聊天与持久采用/修订/待验收请求。
  * [OUTPUT]: 紧凑文件卡只负责预览；旧未知请求在原聊天只读核对，固定版本修订使用同一composer。
@@ -30,11 +31,11 @@ export function PendingArtifactActions({ pending, artifacts, actions, active, on
       const artifact = artifacts.find(value => value.id === request.input.artifactId)
       const label = labels[kind], busy = !active || actions.busy.has(key) || request.status === 'pending'
       return <div key={kind} className="flex flex-col gap-1" role="region" aria-label={`未决${label}请求`}>
-        <strong>{label} · {artifact?.name ?? '原文件已不可用'}{artifact?.contentVersion ? ` · 第 ${artifact.contentVersion} 版` : kind === 'acceptance' ? ` · 第 ${pending.acceptance!.input.contentVersion} 版` : ' · 原版本'}</strong>
+        <strong>{label} · {artifact?.name ?? '原文件已不可用'}</strong>
         {kind === 'revision' && <p className="whitespace-pre-wrap break-words">{pending.revision!.input.content}</p>}
-        <p className="field-hint">{request.status === 'not_accepted' ? '已确认原请求尚未受理。' : '保留原文件版本和请求，核对后继续。'}</p>
+        <p className="field-hint">{request.status === 'not_accepted' ? '已确认原请求尚未受理。' : '保留原文件和请求，核对后继续。'}</p>
         <div className="button-row flex-wrap"><Button size="sm" variant="secondary" disabled={busy} onClick={() => void actions.execute(pending, kind)}>{request.status === 'unknown' ? `核对${label}结果` : request.status === 'pending' ? '正在提交…' : `重试原${label}请求`}</Button>
-        {request.status === 'not_accepted' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { if (actions.discard(pending, kind) && kind === 'revision') onRestoreRevision(pending.revision!.input, pending.logicalArtifactId) }}>{kind === 'revision' ? '放弃未受理请求并编辑此版' : `放弃未受理${label}`}</Button>}</div>
+        {request.status === 'not_accepted' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { if (actions.discard(pending, kind) && kind === 'revision') onRestoreRevision(pending.revision!.input, pending.logicalArtifactId) }}>{kind === 'revision' ? '放弃未受理请求并编辑文件' : `放弃未受理${label}`}</Button>}</div>
       </div>
     })}
     {actions.errors[key] && <p role="alert" className="field-hint">{actions.errors[key]}</p>}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [INPUT]: Q1/Q2 中文场景、生产 Electron 搜索 Dialog/IPC、原生材料选择与真实成果修订。
  * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 正文独有关键词的有界命中/覆盖、材料与旧版固定导航，外改失败无旧摘录、重启与清理零业务重放和关闭迟到隔离。
  * [POS]: 搜索升级业务步骤；支撑层只控制协议/文件/回执传输，检索和事务均走真实实现。
@@ -88,7 +89,7 @@ Then('搜索只打开所选第一版成果并保留原件身份', async ({ runti
   await expect(dialog(runtime).locator('[data-search-result-id]')).toHaveCount(1)
   await expect(row).toContainText('正文命中'); await expect(row).toContainText('第 1 版'); await row.click()
   await expect(dialog(runtime)).toHaveCount(0)
-  await expect(panel(runtime, state.artifact!.id).getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText(SEARCH_ARTIFACT_BODY)
+  await expect(panel(runtime, state.artifact!.id).getByRole('region', { name: '文件正文', exact: true })).toContainText(SEARCH_ARTIFACT_BODY)
   expect((await artifactRecords(state.fixture!.dataPath)).adoptionCurrent).toEqual([])
 })
 When('用户重启后重新搜索原成果正文', async ({ runtime, searchUpgradeState: state }) => {

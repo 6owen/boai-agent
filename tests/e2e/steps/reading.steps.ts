@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
  * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本、跨页面全局检索及当前详情作用域与个人浏览 API。
  * [OUTPUT]: 四项检索筛选均为 sm、28px 等高/全局 text-xs 字号/14px图标，明暗同款 secondary 的 card/渐变/无外侧阴影输入边缘/零边框并留真实顶栏截图，默认四筛选文字/图标同为muted、时间选中正文色/图标仍muted及清除恢复占位，时间聚焦/展开保持中性边缘；长选项限高及真实排列末项滚动/选中、日历实际起止日筛选与清除；隐藏会话的四类结果/筛选/旧目标全部隔离、显式恢复正常检索且清理删除不回流旧内容；固定搜索消息后清空不显示缺失提示，删除后迟到真实 IPC 拒绝不污染空态；标题菜单搜索本会话固定当前身份及默认空条件；常驻名称输入不取代全局顶栏图标入口和32px关键词输入/无筛选混合搜索/精确定位及关闭停读；双向滚动自动有界补页、短聊天空页后跟随/长正文顶部保持、分页期间真实流式正文和反向滚动锚点不被旧快照覆盖；真实完成次序/阅读缺口与独立锚点重启、清理代际及原件失效的业务断言。
@@ -733,8 +734,8 @@ When('用户搜索文件名并打开第一版结果', async ({ runtime, readingS
 })
 Then('预览仍是原版且查询没有采用成果', async ({ runtime, readingState }) => {
   const first = readingState.artifacts!.find(item => item.contentVersion === 1)!, panel = artifact(runtime, first.id)
-  await expect(panel.getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('ARTIFACT_V1')
-  await expect(panel.getByRole('region', { name: '成果第 1 版正文', exact: true })).not.toContainText('ARTIFACT_V2')
+  await expect(panel.getByRole('region', { name: '文件正文', exact: true })).toContainText('ARTIFACT_V1')
+  await expect(panel.getByRole('region', { name: '文件正文', exact: true })).not.toContainText('ARTIFACT_V2')
   const records = await readingRecords(readingState.files!.dataPath); expect(records.works).toHaveLength(2); expect(records.acceptances).toEqual([])
   expect(readingState.files!.endpoint.requests).toHaveLength(readingState.calls!)
 })
@@ -747,7 +748,7 @@ Then('失效结果不展示旧正文也不猜测跳到新版', async ({ runtime,
   const resolved = await runtime.page.evaluate(target => window.boai.request('resolveConversationSearchTarget', target), readingState.target!)
   expect(resolved).toMatchObject({ id: first.id, status: 'unavailable', target: readingState.target }); expect(resolved.name).toBeUndefined(); expect(resolved.excerpt).toBeUndefined(); expect(resolved.reason).toBeTruthy()
   const row = runtime.page.locator(`[data-search-result-id="${first.id}"]:visible`); await expect(row).toBeDisabled(); await expect(row).not.toContainText('ARTIFACT_V1')
-  await expect(artifact(runtime, first.id).getByRole('region', { name: '成果第 1 版正文', exact: true })).toHaveCount(0)
+  await expect(artifact(runtime, first.id).getByRole('region', { name: '文件正文', exact: true })).toHaveCount(0)
   await expect(artifact(runtime, first.id)).not.toContainText('ARTIFACT_V1')
   await expect(artifact(runtime, second.id)).toHaveCount(0)
   const preview = await runtime.page.evaluate(async id => { try { await window.boai.request('getArtifactPreview', { id }); return 'accepted' } catch (error) { return String(error) } }, first.id)

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
+ * [OUTPUT]: 内部答复明确外发仅携带本轮实际渠道引用，具体内容草稿独立；发送页返回同一渠道容器。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 文件预览编辑归独立文件会话，不再由Shell改写原聊天草稿/导航；历史未决草稿兼容保持。
  * [OUTPUT]: 渠道侧边聊天与单个详情视图共用员工根标签；列表Popover、返回及替换经本标签守卫，来源导航显式携带容器身份，不递归开面板。
@@ -804,7 +806,7 @@ export function AppShell() {
   const viewEmployeeTasks = (agentId: string) => navigate(() => { setTaskFilters({ ...emptyWorkFilters, ownerAgentId: agentId }); applyRoute({ ...routeRef.current, page: 'tasks' }) })
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'channel-discussion' ? '内部讨论' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const title = item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' ? '执行过程' : item.type === 'activity' ? '任务与产物' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
     const name = item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
@@ -838,24 +840,16 @@ export function AppShell() {
     const showPanel = (target: Panel) => openPanel(target, scope, undefined, undefined, withinKey)
     const id = room.id, channel = isChannelConversation(room), internal = room.purpose === 'channel-internal', pane = channel || internal ? 'chat' : conversationPanes[id] ?? 'chat'
     const parentId = channel ? id : room.channelDiscussion?.conversationId
-    const discuss = (message?: ChannelChatWindow['detail']['messages'][number]) => {
-      const originPanel = panelRef.current, originPage = routeRef.current.page
-      void action(async () => {
-        const discussion = await api!.request('ensureChannelDiscussion', { conversationId: id })
-        await refreshSnapshot()
-        if (panelRef.current !== originPanel || routeRef.current.page !== originPage) return
-        if (message) {
-          const draft = drafts.current.get(discussion.id) ?? EMPTY_DRAFT
-          if (draft.submission) throw new Error('请先核对内部讨论中尚未确认的发送。')
-          const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([message.id, message.conversationId, message.content, message.status])))
-          if (panelRef.current !== originPanel || routeRef.current.page !== originPage) return
-          drafts.current.set(discussion.id, { ...draft, channelReference: { conversationId: id, messageId: message.id, contentHash: Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('') } }); bumpDrafts()
-        }
-        showPanel({ type: 'channel-discussion', id: discussion.id, agentId: room.agentIds[0]!, requestId: crypto.randomUUID() })
-      })
-    }
     return <ChatView {...window} headerActions={headerActions} key={id} api={api!} snapshot={snapshot} view={pane} onViewChange={pane => changeConversationPane(pane, id)}
-      onDiscuss={channel ? discuss : undefined} onPublish={parentId ? message => showPanel({ type: 'channel-publish', id: parentId, sourceMessageId: message?.channel ? message.id : undefined, content: internal ? message?.content : undefined, requestId: crypto.randomUUID() }) : undefined} onFiles={parentId ? () => showPanel({ type: 'channel-files', id }) : undefined}
+      onPublish={channel ? message => {
+        if (!message) return
+        void action(async () => {
+          const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([message.id, message.conversationId, message.content, message.status])))
+          const contentHash = Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('')
+          await api!.request('publishChannelReply', { conversationId: id, messageId: message.id, contentHash, requestId: `channel-reply:${message.id}:${contentHash}` })
+          await refreshSnapshot()
+        })
+      } : undefined} onFiles={parentId ? () => showPanel({ type: 'channel-files', id }) : undefined}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       alternateView={!channel && !internal && <><div hidden={pane !== 'tasks'}><WorkView api={api!} snapshot={snapshot} active={active && pane === 'tasks'} conversationId={id} onNavigate={(target, current) => openWorkSource(target, current, withinKey)} onAutomation={openWorkAutomation} /></div><div hidden={pane !== 'files'}><ConversationFiles api={api!} snapshot={snapshot} active={active && pane === 'files'} conversationId={id} onPreview={(row, current) => previewConversationFile(row, current, withinKey)} onNavigate={(target, current) => openWorkSource(target, current, withinKey)} /></div></>}
       questionReplies={questionReplies} artifactActions={artifactActions} onSearch={() => { setSearchRequest({ conversationId: id, requestId: crypto.randomUUID() }); setConversationSearchOpen(true) }}
@@ -915,7 +909,7 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
-            {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} />}
+            {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}
             {target.type === 'channel-files' && <ConversationFiles api={api} snapshot={snapshot} active={active} conversationId={target.id} onPreview={(row, current) => previewConversationFile(row, current, withinKey)} onNavigate={(source, current) => openWorkSource(source, current, withinKey)} />}
             {target.type === 'channel-discussion' && snapshot.agents.find(agent => agent.id === target.agentId) && <ChannelsTab internal api={api} agent={snapshot.agents.find(agent => agent.id === target.agentId)!} target={{ type: 'channels', id: target.agentId, conversationId: target.id, requestId: target.requestId, focusMessage: target.focusMessage }} active={active} chatActive={!conversationSearchOpen} onMaterials={materialDrafts.reconcile}
               listProps={{ snapshot, selectedId: target.id, previews, messageTimes, drafts: drafts.current, busy, onSelect: () => {}, onChange: changeConversationList, onClear: clearConversationHistory, onEditTitle: setEditingTitle, onCreate: type => openCreation({ type }), onCreateCore: createCoreConversation, onConfigureCore: () => {} }}

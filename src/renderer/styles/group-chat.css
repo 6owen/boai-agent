@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道发送复用composer表面，编辑区自适应容器、操作栏常驻，引用搜索用有界ScrollArea。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 消息ScrollArea外层管理标题重叠，viewport保留渐隐/阅读padding；无Tabs的共享空态标题不占第二行。
  * [OUTPUT]: 聊天标题根据自身可用宽度折行，主聊天与右侧聊天共用；右侧标签切换不再控制主聊天高度。
@@ -198,3 +199,24 @@
   .chat-panel:has(.chat-header > [data-slot=tabs]) .messages-scroll-area { margin-top:72px }
   .conversation-secondary-body { padding-top:100px }
 }
+
+/* Channel publication uses the shared composer surface and the existing panel size. */
+.channel-publish-compose { display:flex; flex:1; flex-direction:column; min-width:0; min-height:0; height:100%; padding:16px 20px 20px; gap:16px; container-type:inline-size }
+.channel-publish-destination { display:flex; align-items:center; flex:none; gap:10px; font-size:14px; line-height:1.5 }
+.channel-publish-reply { display:flex; flex:none; flex-direction:column; gap:6px }
+.channel-publish-quote { margin:0; border-left:2px solid var(--border); padding-left:10px; font-size:13px; line-height:1.5; overflow-wrap:anywhere }
+.channel-publish-fields, .channel-publish-field { display:flex; flex:1; min-height:120px }
+.channel-publish-editor.chat-composer { display:flex; flex:1; flex-direction:column; min-height:0; height:100%; gap:12px }
+.channel-publish-editor [data-slot=input-group-control] { flex:1; min-height:64px; padding:4px; line-height:1.7; overflow-y:auto }
+.channel-publish-editor .channel-publish-actions { display:flex; flex-direction:column; align-items:stretch; gap:12px; flex:none; width:100%; padding:0; cursor:default }
+.channel-publish-file { display:flex; min-width:0; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius); background:var(--muted); font-size:13px }
+.channel-publish-file>span { flex:1; min-width:0 }
+.channel-publish-feedback { flex:none; display:flex; flex-direction:column; align-items:flex-start; gap:8px; font-size:13px }
+.channel-publish-feedback:empty { display:none }
+.channel-publish-feedback p { margin:0 }
+.channel-publish-feedback .banner { width:100%; margin:0 }
+.channel-publish-picker { width:360px; max-width:calc(100vw - 32px); padding:6px }
+.channel-publish-options { max-height:min(260px,40vh) }
+.channel-publish-options>[data-slot=scroll-area-viewport] { height:auto; max-height:inherit }
+.channel-publish-options [data-slot=command-item] { min-width:0; padding:10px 8px; align-items:flex-start; white-space:normal }
+@container (max-width:320px) { .channel-publish-actions>div>span { font-size:11px } }

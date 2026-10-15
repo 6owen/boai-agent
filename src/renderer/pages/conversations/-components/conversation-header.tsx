@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 渠道菜单不提供置顶，普通会话置顶与核心标题编辑保持。
+ * [OUTPUT]: 渠道标题保持单行，取消重复的“渠道会话”副标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道镜像移除常驻三Tabs，文件和执行以Header入口进入同容器详情。
  * [OUTPUT]: 导出ConversationHeaderLayout供渠道空态共用标题/操作栏，渐隐滚动与宽度规则沿共享聊天布局。
@@ -50,7 +52,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
   const channel = isChannelConversation(conversation)
   const openDetails = (open: () => void) => { trigger.current?.focus(); open() }
   return <>
-    <ConversationHeaderLayout title={conversation.title} description={channel ? '渠道会话' : undefined}
+    <ConversationHeaderLayout title={conversation.title}
       tabs={!channel && conversation.purpose !== 'channel-internal' && onViewChange && <Tabs value={view} onValueChange={value => onViewChange(value as 'chat' | 'tasks' | 'files')} className="pointer-events-auto shrink-0"><TabsList aria-label="会话视图"><TabsTrigger value="chat">聊天</TabsTrigger><TabsTrigger value="tasks">任务</TabsTrigger><TabsTrigger value="files">文件</TabsTrigger></TabsList></Tabs>}>
         {headerActions}
         {onFiles && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看渠道文件" onClick={onFiles} />}><FolderOpen /></TooltipTrigger><TooltipContent>文件</TooltipContent></Tooltip>}
@@ -67,7 +69,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => openDetails(onDetails)}><Settings />{channel ? '渠道信息' : '配置'}</DropdownMenuItem>
-              {isCoreConversation(conversation) ? <DropdownMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</DropdownMenuItem> : <DropdownMenuItem disabled={busy} onClick={() => onChange({ id: conversation.id, action: 'pin', pinned: !conversation.list?.pinned })}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</DropdownMenuItem>}
+              {isCoreConversation(conversation) ? <DropdownMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</DropdownMenuItem> : !channel && <DropdownMenuItem disabled={busy} onClick={() => onChange({ id: conversation.id, action: 'pin', pinned: !conversation.list?.pinned })}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</DropdownMenuItem>}
               <DropdownMenuItem onClick={() => openDetails(onActivity)}><FolderOpen />任务与产物</DropdownMenuItem>
               <DropdownMenuItem onClick={() => openDetails(onSearch)}><Search />搜索本会话</DropdownMenuItem>
             </DropdownMenuGroup>

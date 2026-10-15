@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 可选审阅模式留存原问题补充、未知回执、原消息拒绝与稍后处理/采用画面。
  * [INPUT]: D5 聊天中文场景、原任务/问题/审批/成果资格与真实 Desktop/工具协议。
  * [OUTPUT]: 原员工聊天卡片审批/采用/稍后验收及同一composer修改；原问题关联/普通聊天不解除等待、原Work预算接续/未知只核对和固定版本资格。
@@ -49,7 +50,7 @@ async function openArtifact(runtime: Desktop, artifact: ArtifactVersion, title: 
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
   await runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${title}`) }).click()
   await runtime.page.locator(`#message-${artifact.sourceMessageId}`).getByRole('button', { name: `打开 ${artifact.name}`, exact: true }).click()
-  await expect(artifactPanel(runtime, artifact.id).getByRole('region', { name: `成果第 ${artifact.contentVersion} 版正文`, exact: true })).toBeVisible()
+  await expect(artifactPanel(runtime, artifact.id).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
 }
 
 Given('一个真实文件任务已经公开需要补充的问题', async ({ runtime, inboxState }) => {

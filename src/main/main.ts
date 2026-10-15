@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
+ * [OUTPUT]: 内置插件固定配置/首帧快照/严格启停IPC；退出等待配置原子保存，外观沿可用插件解析。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: IPC允许内部渠道讨论、明确外发及消息级发送回执，宿主仍校验来源。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
@@ -49,6 +51,7 @@ import type { Snapshot } from '../shared/domain'
 import { MATERIAL_LIMITS } from '../shared/domain/materials'
 import { MaterialSources } from './material-sources'
 import { readClipboardMaterialPaths } from './clipboard-material-files'
+import { PluginSettingsStore } from './plugin-settings'
 import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
@@ -75,7 +78,11 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
   nativeTheme.themeSource = value.preferences.mode
   if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
-}, decodeImage)
+}, decodeImage, () => pluginSettings.snapshot().disabledIds)
+const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
+  sendEvent({ type: 'plugins:changed', settings })
+  appearance.systemChanged()
+})
 const localConfigs = new LocalConfigDiscovery()
 const desktopSettings = new DesktopSettingsStore(join(legacyDataPath, 'desktop-settings.json'), {
   platform: process.platform, packaged: app.isPackaged, executable: process.execPath,
@@ -112,9 +119,11 @@ for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) 
 for (const method of ['acceptTeamCreation', 'getTeamCreation', 'resumeTeamCreation', 'generateTeamPlan', 'cancelTeamGeneration', 'openTeamDraft', 'saveTeamDraft', 'getTeamDraft', 'abandonTeamDraft', 'listTeamCreationRecovery'] as const) methods.add(method)
 for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
 methods.add('testLocalConnection')
+methods.add('getPluginSettings')
+methods.add('setPluginEnabled')
 methods.add('getDesktopSettings')
 methods.add('updateDesktopSettings')
-for (const method of ['ensureChannelDiscussion', 'publishChannelMessage', 'listChannelMessageDeliveries', 'listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
+for (const method of ['publishChannelReply', 'publishChannelMessage', 'listChannelMessageDeliveries', 'listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
 for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resumeAutomation'] as const) methods.add(method)
 methods.add('setMessageReaction')
 methods.add('updateUserProfile')
@@ -285,6 +294,7 @@ async function openResource(input: unknown) {
 }
 
 function registerIpc() {
+  ipcMain.on('boai:plugins-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = pluginSettings.snapshot() })
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
   ipcMain.handle('boai:material-file', async (event, input: unknown) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
@@ -314,6 +324,8 @@ function registerIpc() {
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
+    if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
+    if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
     if (method === 'updateDesktopSettings') {
       const value = z.object({ patch: z.object({ runInBackground: z.boolean().optional(), startHidden: z.boolean().optional(), openAtLogin: z.boolean().optional() }).strict(), expectedRevision: z.number().int().nonnegative() }).strict().parse(input)
@@ -521,6 +533,7 @@ else {
   app.on('second-instance', () => { void (initialized ?? app.whenReady()).then(showMainWindow) })
   initialized = app.whenReady().then(async () => {
     await prepareV2DataRoot(legacyDataPath)
+    await pluginSettings.init()
     await appearance.init()
     await desktopSettings.init()
     nativeTheme.themeSource=appearance.snapshot().preferences.mode
@@ -545,7 +558,7 @@ else {
     const child = runtime
     const runtimeExit = child ? stopRuntime(child) : Promise.resolve()
     // A timeout may terminate the worker, but never counts as Chromium action exit.
-    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
+    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), pluginSettings.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
       quitting = false
       void showMainWindow()
       dialog.showErrorBox('应用尚未退出', error instanceof Error ? error.message : String(error))

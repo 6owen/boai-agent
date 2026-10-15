@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 原版SelectionActions横向展开五动作；员工Select为同排trigger，不展示位置/选文/员工下方表单。
  * [OUTPUT]: 渠道文件修改在独立内部会话执行，不触发平台回发；来源/hash仍固定。
@@ -70,8 +71,7 @@ export function FileEditSession({ api, snapshot, edits, conversationId, source, 
     if (content.length > 12_000) { setError('修改要求与选中文本合计最多12000字，请缩短后发送。'); return }
     setPreparing(true)
     try {
-      const execution = room?.channel && !room.mainPrivate ? await api.request('ensureChannelDiscussion', { conversationId }) : undefined
-      const request: FileEditRequest = { id: crypto.randomUUID(), source: target, ...(execution ? { executionConversationId: execution.id } : {}), agentId, content, createdAt: new Date().toISOString(), status: 'pending' }
+      const request: FileEditRequest = { id: crypto.randomUUID(), source: target, agentId, content, createdAt: new Date().toISOString(), status: 'pending' }
       setError(''); setRequestId(request.id)
       if (await edits.execute(request, 'send')) { setText(''); setAnnotation({}) }
     } catch (failure) { setError(errorText(failure)) }

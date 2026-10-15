@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首帧带已核验插件启停快照，避免停用项在异步初始化前误激活。
  * [OUTPUT]: 工作视图的有界查询/原目标解析复用通用类型化请求桥，无额外窗口或路径接口。
  * [INPUT]: Electron IPC、真实 File/有界字节与 shared/ipc 合同。
  * [OUTPUT]: 截图/复制图片及无路径任意File有界上传至宿主私有来源；真实 paste 系统文件引用只返回身份/名称。
@@ -13,6 +14,7 @@ import type { AppEvent, DesktopApi, MaterialFileSourceInput } from '../shared/ip
 import { MATERIAL_LIMITS } from '../shared/domain/materials'
 
 const api: DesktopApi = {
+  initialPlugins: ipcRenderer.sendSync('boai:plugins-initial'),
   initialAppearance: ipcRenderer.sendSync('boai:appearance-initial'),
   selectSkillFile: (file, kind) => ipcRenderer.invoke('boai:skill-file', { path: webUtils.getPathForFile(file), kind }),
   selectMaterialFile: async file => {

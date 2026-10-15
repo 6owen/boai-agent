@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置插件管理/主题恢复场景归F11，预览生命周期仍沿F02成果分组。
  * [OUTPUT]: 文件侧边编辑与真实员工文件修改归F02/F03，原批次成绩和模型来源分别记录。
  * [OUTPUT]: Hermes 真实长文件编辑能力验收纳入 F03 交付/修改审阅，单场不代替完整功能认证。
  * [OUTPUT]: 真实画布网站员工操作验收归F01/F04/F09；原页面PNG按图像预览，保持原kind和hash。
@@ -36,7 +37,7 @@ const FEATURES = [
   ['F08', '定时任务与监控', ['employee-automations','employee-automations-real','native-execution','codex-employee','claude-employee','schedule-simplification','extensions','automation-monitor','automation-recovery','work-views-scope','work-views-complete'], '创建任务、查看触发聊天、变化监控与历史结果。', ['创建过程是否清楚','提醒是否有用','失败与历史是否容易找到']],
   ['F09', '内置浏览器', ['browser-migration','employee-browser-real','browser-agent-capability'], '应用内置浏览器的导航、窗口、下载和网页操作。', ['浏览操作是否自然','窗口导航是否清楚','下载和错误反馈是否明确']],
   ['F10', '搜索、历史与阅读位置', ['reading','search-upgrade','history','work-views','employee-overview','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '从关键词回到确切消息和文件版本。', ['结果是否容易理解','定位的上下文是否足够','返回与阅读位置是否自然']],
-  ['F11', '设置、数据恢复与外部任务', ['background-runtime','employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','upgrade','skills','extensions','automation-recovery','desktop','local-connections','profile','appearance','pages','detail-panel','detail-tabs','work-views','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '查看设置、主题、恢复和外部任务的实际边界。', ['设置是否容易理解','恢复结果是否清楚','中断和未知状态是否易处理']],
+  ['F11', '设置、数据恢复与外部任务', ['application-plugins','background-runtime','employee-channels','native-execution','editorial-collaboration','mastra-mainline','codex-employee','claude-employee','upgrade','skills','extensions','automation-recovery','desktop','local-connections','profile','appearance','pages','detail-panel','detail-tabs','work-views','work-views-state','work-views-scope','work-views-complete','work-views-layout'], '查看设置、主题、恢复和外部任务的实际边界。', ['设置是否容易理解','恢复结果是否清楚','中断和未知状态是否易处理']],
 ].map(([id,title,files,goal,focus]) => ({id,title,files:files.map(name=>`${name}.feature`),goal,focus}))
 const sha = bytes => createHash('sha256').update(bytes).digest('hex')
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))

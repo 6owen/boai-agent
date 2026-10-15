@@ -1,11 +1,13 @@
 /*
- * [INPUT]: Base46 色板、显示模式与外观偏好。
+ * [INPUT]: 内置主题插件贡献、显示模式、启停快照与外观偏好。
+ * [OUTPUT]: BoAI保底主题始终存在，停用插件只影响有效配色、不覆盖原选择。
  * [OUTPUT]: 图片存在时沿 Craft Scenic 使用深色，保留原模式/颜色供移除恢复；旧 imageOpacity 仅兼容存储。
  * [OUTPUT]: 外观偏好合同与语义 token；状态背景复用12%颜色混合为不透明表面，供提示卡片/堆叠/关闭按钮共用；Soft 主操作跟随强调色并选择可读前景。
  * [POS]: shared/appearance，主进程与 Renderer 共用的外观真源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import palettes from './base46.json'
+import { applicationPlugins } from '../plugins/catalog'
+import { APPLICATION_PLUGIN_API } from '../plugins/types'
 export type ColorMode = 'light' | 'dark'
 export type InterfaceFont = 'system' | 'geist'
 export interface ThemeOverrides { accent: string | null; background: string | null; foreground: string | null }
@@ -19,14 +21,15 @@ export interface AppearanceSnapshot { preferences: AppearancePreferences; revisi
 export interface AppearancePatch { mode?: AppearancePreferences['mode']; themeIds?: Partial<AppearancePreferences['themeIds']>; background?: { imageOpacity: number }; fontFamily?: InterfaceFont; zoomFactor?: number; customColors?: Partial<Record<ColorMode, Partial<ThemeOverrides>>> }
 export const appearanceDefaults: AppearancePreferences = { schemaVersion: 1, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 1 }, fontFamily: 'geist', zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
 export interface Theme { id: string; name: string; mode: ColorMode; background: string; surface: string; foreground: string; muted: string; border: string; accent: string }
-export const themes: Theme[] = [
+const coreThemes: Theme[] = [
   { id: 'boai-light', name: 'BoAI 明亮', mode: 'light', background: '#f6f6f6', surface: '#ffffff', foreground: '#0d0d0d', muted: '#5d5d5d', border: '#e5e5e5', accent: '#2563eb' },
   { id: 'boai-dark', name: 'BoAI 深色', mode: 'dark', background: '#171717', surface: '#212121', foreground: '#ffffff', muted: '#cdcdcd', border: '#3d3d3d', accent: '#93b8ff' },
-  { id: 'vscode-plus-light', name: 'VS Code Plus', mode: 'light', background: '#f6f6f6', surface: '#ffffff', foreground: '#000000', muted: '#606060', border: '#eaeaea', accent: '#007acc' },
-  { id: 'vscode-plus-dark', name: 'VS Code Plus', mode: 'dark', background: '#181818', surface: '#1e1e1e', foreground: '#cccccc', muted: '#b0b0b0', border: '#3c3c3c', accent: '#4daafc' },
-  ...palettes.map(p => ({ id: p.id, name: p.id === 'nord' ? 'Nord' : p.mode === 'light' ? 'Catppuccin Latte' : 'Catppuccin Mocha', mode: p.mode as ColorMode, background: p.base_16.base00, surface: p.base_16.base01, foreground: p.base_16.base05, muted: p.base_16.base05, border: p.base_16.base03, accent: p.base_16.base0D })),
 ]
-export function resolveTheme(mode: ColorMode, id: string) { return themes.find(t => t.mode === mode && t.id === id) ?? themes.find(t => t.id === `boai-${mode}`)! }
+export function availableThemes(disabledIds: readonly string[] = []): Theme[] {
+  return [...coreThemes, ...applicationPlugins.filter(plugin => plugin.apiVersion === APPLICATION_PLUGIN_API && !disabledIds.includes(plugin.id)).flatMap(plugin => plugin.contributions.flatMap(item => item.type === 'theme' ? item.themes : []))]
+}
+export const themes = availableThemes()
+export function resolveTheme(mode: ColorMode, id: string, disabledIds: readonly string[] = []) { return availableThemes(disabledIds).find(t => t.mode === mode && t.id === id) ?? coreThemes.find(t => t.id === `boai-${mode}`)! }
 function contrast(a:string,b:string){const luminance=(hex:string)=>{const c=hex.slice(1).match(/../g)!.map(x=>parseInt(x,16)/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);return c[0]*0.2126+c[1]*0.7152+c[2]*0.0722};const x=luminance(a),y=luminance(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05)}
 function blend(foreground: string, background: string, amount: number) {
   return '#' + [1, 3, 5].map(offset => {
@@ -99,10 +102,10 @@ export function themeTokens(theme: Theme): Record<string,string> {
 export function resolveAppearanceMode(preferences: AppearancePreferences, systemMode: ColorMode): ColorMode {
   return preferences.background.assetId ? 'dark' : preferences.mode === 'system' ? systemMode : preferences.mode
 }
-export function resolveAppearanceTheme(preferences: AppearancePreferences, mode: ColorMode): Theme {
+export function resolveAppearanceTheme(preferences: AppearancePreferences, mode: ColorMode, disabledIds: readonly string[] = []): Theme {
   const overrides = preferences.customColors[mode]
   // Scenic owns the glass and foreground; retain custom solid colors for removal.
-  return customizeTheme(resolveTheme(mode, preferences.themeIds[mode]), preferences.background.assetId
+  return customizeTheme(resolveTheme(mode, preferences.themeIds[mode], disabledIds), preferences.background.assetId
     ? { accent: overrides.accent, background: null, foreground: null }
     : overrides)
 }

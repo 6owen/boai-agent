@@ -1,0 +1,13 @@
+<!--
+[INPUT]: 用户渠道列表弹层和菜单截图；16组03 §17、本批实际桌面及源码。
+[OUTPUT]: 弹层去标题、统一8px边距和内容高度；渠道不提供置顶入口。定向桌面先断言失败后通过。
+[POS]: 渠道列表紧凑布局审阅。
+[PROTOCOL]: 更新时同步Header和所属.folder.md。
+-->
+# 渠道列表弹层与菜单精简
+
+渠道列表取消重复标题。Popover通过布局工具类去掉额外padding/gap，列表统一8px内边距、4px搜索间隔；高度随内容收缩，有界滚动保持。主会话列表仍有原标题。渠道详情和列表右键菜单移除置顶/取消置顶，旧置顶图标不显示；普通会话置顶保持，既有数据没有改写。
+
+类型和定向renderer ESLint通过。既有`@channel-navigation`实际pnpm dev Electron场景[最终通过](final/index.html)，覆盖搜索/折叠/选择关闭、Escape焦点、草稿保留、搜索与任务定位。已检查原生整幅Popover截图，标题消失且边距收紧。
+
+[首批失败](first/index.html)发生在已经完成Popover检查后的群聊草稿断言：旧辅助方法对contenteditable调用toHaveValue。修正为按实际textarea/contenteditable检查value/text后同场通过，没有改写业务步骤或放宽预期草稿。两批各1050项输入，结束时hash均不变；保留官方JSON、trace、图片及原失败。没有新增低影响UI的单元测试，没有真实平台/供应商或安装包测试。本次未额外做菜单截图，置顶移除经源码与类型检查核对。

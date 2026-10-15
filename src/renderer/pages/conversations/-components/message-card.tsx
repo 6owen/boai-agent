@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 渠道投递状态归发送按钮Tooltip，悬停与键盘焦点可查，不常驻正文。
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-10 消息卡支持外侧接收回执插槽，原工具条/表情/复制和引用语义保持。
  * [INPUT]: 公开消息、当前个人资料、共享表情目录、真实引用/Trace 回调、桌面请求封装与 Sonner 错误反馈。
  * [OUTPUT]: 复制/表情失败使用 Sonner，已知剪贴板权限错误使用简短中文，未知错误保留真实信息，复制标记仅在本次写入成功后显示；本人操作与表情回应统一显示当前配置名称，不重写历史名称；共用 Soft Card 边缘的消息/工具条、实测宽度定位、保持焦点和亮度的持久表情操作及本机常用偏好；表情浮层开关不控制工具条显示。
@@ -9,9 +11,10 @@ import { defaultUserProfile, messageDisplayName, type LocalUserProfile } from '@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '@shared/domain'
 import { reactionEmojis, type ReactionEmoji } from '@shared/domain/message-reactions'
-import { Check, Copy, Reply, ThumbsUp, Workflow } from '@/components/icons'
+import { Check, Copy, Reply, Share, ThumbsUp, Workflow } from '@/components/icons'
 import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { getDesktopClient } from '@/services/request/desktop-client'
 
@@ -29,7 +32,7 @@ function rememberReaction(emoji: ReactionEmoji) {
   try { const usage = reactionUsage(); usage[emoji] = Math.min((usage[emoji] ?? 0) + 1, 1_000_000); localStorage.setItem(REACTION_USAGE_KEY, JSON.stringify(usage)) } catch { /* Optional local presentation preference. */ }
 }
 
-export function MessageCard({ message, profile = defaultUserProfile, children, receipt, onReply, onTrace }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void }) {
+export function MessageCard({ message, profile = defaultUserProfile, children, receipt, onReply, onTrace, onPublish, publishDisabled, publishDescription }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void; onPublish?(): void; publishDisabled?: boolean; publishDescription?: string }) {
   const sender = messageDisplayName(message, profile)
   const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
   const reactionTrigger = useRef<HTMLButtonElement>(null)
@@ -90,6 +93,7 @@ export function MessageCard({ message, profile = defaultUserProfile, children, r
         </Popover>
         <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${sender} 的消息`} title="引用回复" onClick={onReply}><Reply /></Button>
         <Button variant="ghost" size="icon-sm" aria-label={`复制 ${sender} 的消息`} title={copied ? '已复制' : '复制消息'} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>
+        {onPublish && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="发送到渠道" disabled={publishDisabled} focusableWhenDisabled onClick={onPublish} />}><Share /></TooltipTrigger><TooltipContent className="whitespace-pre-wrap">{publishDescription ?? '发送到渠道'}</TooltipContent></Tooltip>}
         {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${sender} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
       </div>
     </div>

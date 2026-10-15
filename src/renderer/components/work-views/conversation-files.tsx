@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已发送材料/已发布成果的有界宿主清单、真实版本链和固定原件预览回调。
- * [OUTPUT]: 当前会话文件筛选、最新/本人采用版分离、历史版本分页及原消息导航；文件卡保持自然高度不收缩，同id原件/hash/权限版本变化使迟到预览失效，重核期间保留滚动位置；不混入草稿/私有文件，不采用/审批或修改成果。
+ * [OUTPUT]: 当前会话文件筛选、文件预览与原消息导航，不展示版号/采用状态或历史版本入口；文件卡保持自然高度不收缩，同id原件/hash/权限版本变化使迟到预览失效，重核期间保留滚动位置；不混入草稿/私有文件，不采用/审批或修改成果。
  * [POS]: 会话文件主视图，右侧内容预览继续使用已有材料/成果标签。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -57,15 +57,15 @@ function FilesResults({ query, state, change, ...props }: Omit<ConversationFiles
   return <>
     {page && <p className="m-0 text-xs text-muted-foreground">已加载 {page.items.length} / {page.total} 项 · 输入材料与已发布成果</p>}
     <ScrollFade ref={scroller} className="flex min-h-0 flex-1 flex-col gap-3 pb-1" onScroll={event => { if (props.active && page && !loading) positions.set(positionKey, event.currentTarget.scrollTop) }} aria-busy={loading}>
-      {page?.items.map(item => <FileRow key={item.kind + ':' + item.id} {...props} item={item} onPreview={preview} selection={state.selected} selected={selectedFileMatches(state.selected, item)} expanded={Boolean(item.logicalArtifactId && state.expanded.includes(item.logicalArtifactId))} onExpand={() => { if (!item.logicalArtifactId) return; change({ expanded: state.expanded.includes(item.logicalArtifactId) ? state.expanded.filter(id => id !== item.logicalArtifactId) : [...state.expanded, item.logicalArtifactId] }) }} />)}
+      {page?.items.map(item => <FileRow key={item.kind + ':' + item.id} {...props} item={item} onPreview={preview} selected={selectedFileMatches(state.selected, item)} />)}
       {loading && <Loading />}{error && <Banner>{error}<Button size="sm" variant="ghost" onClick={reload}>重新读取</Button></Banner>}
       {page && !page.items.length && !loading && <p className="my-4 text-sm text-muted-foreground">暂无符合条件的文件。发送材料或员工发布成果后会显示在这里。</p>}
       {page?.nextCursor && <Button size="sm" variant="ghost" disabled={loading} onClick={() => void loadMore()}>加载更多 · 已显示 {page.items.length} / {page.total}</Button>}
     </ScrollFade>
   </>
 }
-interface FileRowProps { api: DesktopApi; active: boolean; conversationId: string; item: ConversationFileItem; selected?: boolean; selection?: FileSelection; expanded?: boolean; onExpand?(): void; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void; historical?: boolean }
-function FileRow({ item, historical, ...props }: FileRowProps) {
+interface FileRowProps { api: DesktopApi; active: boolean; conversationId: string; item: ConversationFileItem; selected?: boolean; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
+function FileRow({ item, ...props }: FileRowProps) {
   const [error, setError] = useState(''), [opening, setOpening] = useState(false), generation = useRef(0), current = useRef({ active: props.active, item }); current.current = { active: props.active, item }
   useEffect(() => { current.current.active = props.active; setOpening(false); setError(''); return () => { current.current.active = false; generation.current++ } }, [props.active, item.id, item.contentHash, item.revision, item.status])
   const visible = (token: number) => current.current.active && generation.current === token && fileRowTargetMatches(item, current.current.item)
@@ -80,18 +80,10 @@ function FileRow({ item, historical, ...props }: FileRowProps) {
     <CardContent className="flex flex-col gap-2">
       <div className="flex items-start gap-2"><FileText className="mt-0.5 shrink-0 text-muted-foreground" /><Button variant="link" size="content" className="min-w-0 justify-start whitespace-normal break-all text-left font-medium" disabled={!props.active} onClick={preview}>{item.name}</Button></div>
       <p className="m-0 flex flex-wrap gap-x-2 text-xs text-muted-foreground"><span>{item.kind === 'material' ? '输入材料' : '员工交付'}</span><span>{item.actorName || '发送人未知'}</span><span>{item.fileType.toUpperCase()} · {sizeText(item.size)}</span><span>{new Date(item.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></p>
-      {item.kind === 'artifact' && <p className="m-0 text-xs text-muted-foreground">{historical ? '内容版本' : '最新内容'} v{item.contentVersion ?? '未知'} · {item.adopted ? `本人采用 v${item.adopted.contentVersion}` : '尚未采用'}{!historical && item.adopted && item.adopted.artifactId !== item.id ? ' · 最新版未采用' : ''}</p>}
       {statusLabel[item.status] && <p role="status" className="m-0 text-sm text-muted-foreground">{statusLabel[item.status]}{item.error ? `：${item.error}` : ''}</p>}
       <div className="flex flex-wrap gap-1"><Button variant="secondary" size="sm" disabled={!props.active} onClick={preview}>预览</Button><Button variant="ghost" size="sm" disabled={!item.sourceMessageId || opening || !props.active} onClick={() => void openSource()}>查看原消息</Button>{!item.sourceMessageId && <span className="self-center text-xs text-muted-foreground">原消息未知</span>}
-        {!historical && (item.versionCount ?? 0) > 1 && <Button size="sm" variant="ghost" aria-expanded={props.expanded} onClick={props.onExpand}>{props.expanded ? '收起' : '历史版本'} · {item.versionCount}</Button>}
       </div>
       {opening && <Loading>正在核对来源…</Loading>}{error && <Banner>{error}</Banner>}
-      {!historical && props.expanded && item.logicalArtifactId && <FileVersions {...props} logicalArtifactId={item.logicalArtifactId} />}
     </CardContent>
   </Card>
-}
-function FileVersions({ logicalArtifactId, ...props }: Omit<FileRowProps, 'item'> & { logicalArtifactId: string }) {
-  const query = { conversationId: props.conversationId, logicalArtifactId, limit: 30 }
-  const { page, loading, error, reload, loadMore } = usePagedQuery<ConversationFileItem, string, ConversationFilePage>({ api: props.api, active: props.active, queryKey: 'file-versions:' + JSON.stringify(query), conversationId: props.conversationId, read: cursor => props.api.request('queryConversationFiles', { ...query, cursor }), identity: item => item.id })
-  return <div className="flex flex-col gap-3 border-l pl-3" aria-label="成果真实版本链">{page?.items.map(item => <FileRow {...props} key={item.id} item={item} historical selected={selectedFileMatches(props.selection, item)} />)}{loading && <Loading />}{error && <Banner>{error}<Button variant="ghost" size="sm" onClick={reload}>重新读取版本</Button></Banner>}{page?.nextCursor && <Button variant="ghost" size="sm" disabled={loading} onClick={() => void loadMore()}>加载更多版本</Button>}</div>
 }

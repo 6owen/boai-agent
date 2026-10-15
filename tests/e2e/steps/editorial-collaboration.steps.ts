@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 群报数/接龙/编辑部全部顺序场景在BDD中直接核对真实前文输入与时间先后，不仅在批后手工审计。
  * [OUTPUT]: 固定公告三轮更正/重启/结束静默及发布摘要实际80–120字断言纳入v1用例集，原五轮输入与断言保持。
  * [OUTPUT]: 独立三轮限字验证与完整五轮共用真实重启零重放；不拼接场景结果。
@@ -167,7 +168,7 @@ Then('写手交付关联原稿的新版本且原稿不变', async ({ runtime, ed
   expect(newWork.budgetId).not.toBe(originalWork.budgetId)
   await runtime.reviewData('修订原件与独立新根', { v1: state.v1, v2: state.v2, originalWork, newWork, revision, revised })
   await runtime.page.locator(`#message-${state.v2!.sourceMessageId}`).getByRole('button', { name: `打开 ${state.v2!.name}`, exact: true }).click()
-  await expect(runtime.page.getByRole('region', { name: '成果第 2 版正文', exact: true })).toContainText('周六早上')
+  await expect(runtime.page.getByRole('region', { name: '文件正文', exact: true })).toContainText('周六早上')
   await runtime.reviewNativeCheckpoint('原聊天打开第二版文章正文')
 })
 When('用户请编辑复核修订稿并由策划提炼发布文案', async ({ runtime, editorial }) => send(runtime, editorial, SECOND, '编辑'))

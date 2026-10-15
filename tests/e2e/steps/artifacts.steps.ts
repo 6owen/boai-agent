@@ -1,10 +1,13 @@
 /*
+ * [OUTPUT]: 文件标题/菜单无版号、历史、对比或记录；通过原消息打开交付文件，迟到预览清理仍核验。
+ * [OUTPUT]: 主进程启停文本插件时当前正文节点保持，关闭重开回退/恢复不改业务原件。
+ * [OUTPUT]: 真实文本/附件/PDF/Office入口核对内置插件身份，沿原稳定阅读/修改/清理断言。
  * [OUTPUT]: 后台事件保留正文/选区/滚动/二进制与diff节点；文件修改完成自动切版一次，回看旧版不被抢回。
  * [OUTPUT]: 直接迁入原版SelectionActions：横向展开五动作、同排员工Select、24px/无聚焦线及收起后真实提交；无下方表单。
  * [OUTPUT]: Selection Actions同一Popover直接提交/结果，验证零底部会话、草稿隔离与未知重启只核对。
  * [OUTPUT]: 文件预览内修改/独立草稿/选文Popover、实际新版本和主区不跳转回归。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
- * [OUTPUT]: 代码预览回归按现行入口检查“让员工修改”，不再寻找已退役的聊天采用按钮；采用零记录断言保持。
+ * [OUTPUT]: 标题修改按钮退役，修改流程由正文选区触发；原采用零记录、固定来源与未知不重放断言保持。
  * [OUTPUT]: 源码隐藏行号栏，来源定位核对实际选中正文行。
  * [OUTPUT]: 成果版本/对比/记录改从header菜单访问；固定版本、来源和无额外业务写入断言保持。
  * [OUTPUT]: Lody四格式经原批准命令/真实工具发布后核hash阅读；同名家族隔离、缺失与迟到diff清理，零额外业务写入。
@@ -21,6 +24,7 @@ import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { nextMaterialDialog } from '../support/materials'
 import { observeWorkViews } from '../support/work-views'
+import { selectPreviewLine, selectPreviewText } from '../support/file-preview'
 import { sampleDocx, sampleXlsx, samplePptx, createSamplePdf } from '../../lody/office-viewer-files'
 import { messageDraft } from '../support/editor-controls'
 import { artifactDetail, artifactOriginal, artifactPendingRequests, artifactRecords, artifactReplyFault, changeArtifactOriginal, prepareArtifactsDesktop, removeArtifactOriginal } from '../support/artifacts'
@@ -78,36 +82,26 @@ async function openArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   expect(message).toBeDefined()
   await runtime.page.locator(`#message-${message!.id}`).getByRole('button', { name: `打开 ${artifact.name}`, exact: true }).click()
   await expect(panel(runtime.page, artifact)).toBeVisible()
-  await expect(panel(runtime.page, artifact).getByRole('region', { name: `成果第 ${artifact.contentVersion} 版正文`, exact: true })).toBeVisible()
+  await expect(panel(runtime.page, artifact).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
   await expect(panel(runtime.page, artifact).getByRole('button', { name: /^(采用此版本|要求修改|稍后处理)$/ })).toHaveCount(0)
-  await openFileRecords(runtime, artifact)
+  await expectFileActions(runtime, artifact)
 }
-async function openFileRecords(runtime: Desktop, artifact: ArtifactVersion, keepOpen = false) {
-  await panel(runtime.page, artifact).getByRole('button', { name: '文件操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '文件记录', exact: true }).click()
-  await expect(runtime.page.getByRole('dialog', { name: '文件记录', exact: true })).toBeVisible()
-  if (!keepOpen) { await runtime.page.keyboard.press('Escape'); await expect(runtime.page.getByRole('dialog', { name: '文件记录', exact: true })).toBeHidden() }
-}
-async function expectAdoptionRecord(runtime: Desktop, artifact: ArtifactVersion, text: string) {
-  await openFileRecords(runtime, artifact, true)
-  const record = runtime.page.getByRole('dialog', { name: '文件记录', exact: true }).getByRole('region', { name: '采用记录', exact: true })
-  await expect(record).toBeVisible()
-  await expect(record).toContainText(text)
-  await runtime.page.keyboard.press('Escape')
-  await expect(runtime.page.getByRole('dialog', { name: '文件记录', exact: true })).toBeHidden()
-}
-async function version(runtime: Desktop, artifact: ArtifactVersion, number: number) {
-  await panel(runtime.page, artifact).getByRole('button', { name: '文件操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '历史版本', exact: true }).hover()
-  await runtime.page.getByRole('menuitem', { name: `第 ${number} 版`, exact: true }).click()
-  const selected = (await artifactDetail(runtime, artifact.conversationId)).artifacts.find(value => value.logicalArtifactId === artifact.logicalArtifactId && value.contentVersion === number) as ArtifactVersion
-  await openFileRecords(runtime, selected)
-}
-async function compareVersion(runtime: Desktop, view: Locator, number: number, expectedCount?: number) {
+async function expectFileActions(runtime: Desktop, artifact: ArtifactVersion) {
+  const view = panel(runtime.page, artifact)
+  await expect(view.locator('[data-slot="file-preview-header"] [role="heading"]')).toHaveAttribute('title', artifact.name)
   await view.getByRole('button', { name: '文件操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '版本对比', exact: true }).hover()
-  if (expectedCount !== undefined) await expect(runtime.page.getByRole('menuitem', { name: /^对比第 / })).toHaveCount(expectedCount)
-  await runtime.page.getByRole('menuitem', { name: `对比第 ${number} 版`, exact: true }).click()
+  await expect(runtime.page.getByRole('menuitem', { name: /文件记录|历史版本|版本对比|查看最新版本/ })).toHaveCount(0)
+  await expect(runtime.page.getByRole('menuitem', { name: '外部打开', exact: true })).toBeVisible()
+  await runtime.page.keyboard.press('Escape')
+}
+async function expectAdoptionRecord(runtime: Desktop, artifact: ArtifactVersion, contentVersion?: number) {
+  const preview = await runtime.page.evaluate(value => window.boai.request('getArtifactPreview', { id: value.id, expectedHash: value.contentHash }), artifact)
+  if (contentVersion === undefined) expect(preview.adoption.current).toBeNull()
+  else expect(preview.adoption.current?.contentVersion).toBe(contentVersion)
+}
+async function openDeliveredFile(runtime: Desktop, artifact: ArtifactVersion, number: number) {
+  const selected = (await artifactDetail(runtime, artifact.conversationId)).artifacts.find(value => value.logicalArtifactId === artifact.logicalArtifactId && value.contentVersion === number) as ArtifactVersion
+  await openArtifact(runtime, selected)
 }
 // Exercise the real event subscription and host reads without introducing a new business request.
 async function backgroundPreviewCheck(runtime: Desktop, conversationId: string, node: Locator, method = 'getArtifactPreview') {
@@ -183,7 +177,7 @@ Then('右侧显示Shiki高亮原代码且预览不代表采用', async ({ runtim
   await expect(view.locator('.shiki-token').first()).toBeVisible()
   for (const [index, line] of CODE_ARTIFACT_TEXT.trimEnd().split('\n').entries()) await expect(view.locator(`[data-file-line="${index + 1}"] .shiki-line-content`)).toHaveText(line)
   await expect(view.locator('script, iframe')).toHaveCount(0)
-  await expect(view.getByRole('button', { name: '让员工修改', exact: true })).toBeEnabled()
+  await expect(view.getByRole('button', { name: /^(让员工修改|修改选中内容)$/ })).toHaveCount(0)
   const after = await artifactRecords(artifactsState.fixture!.dataPath)
   expect(after.adoptionEvents).toEqual([])
   expect(after.messages).toEqual(before.messages)
@@ -219,7 +213,7 @@ When('用户明确要求修改第一版报告', async ({ runtime, artifactsState
 When('用户从文件预览提交修改并自动看到第二版', async ({ runtime, artifactsState: state }) => {
   await initial(runtime, state)
   const original = state.originals[0]
-  await panel(runtime.page, original).getByRole('button', { name: '让员工修改', exact: true }).click()
+  await selectPreviewLine(panel(runtime.page, original))
   await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('补充明确验收条件，并发布修订后的报告。')
   await runtime.page.getByRole('button', { name: '发送文件修改', exact: true }).click()
   await runtime.page.keyboard.press('Escape')
@@ -241,9 +235,9 @@ When('其他入口通过原宿主请求修订当前文件', async ({ runtime, ar
 })
 Then('新版发布后当前审阅仍是第一版且原交付保持', async ({ runtime, artifactsState }) => {
   const fixture = artifactsState.fixture!, original = artifactsState.originals[0], v2 = artifactsState.v2!, view = panel(runtime.page, original), detail = await artifactDetail(runtime, fixture.group.id)
-  await expect(view.getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('ARTIFACT_V1')
+  await expect(view.getByRole('region', { name: '文件正文', exact: true })).toContainText('ARTIFACT_V1')
   await view.getByRole('button', { name: '文件操作', exact: true }).click()
-  await expect(runtime.page.getByRole('menuitem', { name: '查看最新版本', exact: true })).toBeVisible()
+  await expect(runtime.page.getByRole('menuitem', { name: '查看最新版本', exact: true })).toHaveCount(0)
   await runtime.page.keyboard.press('Escape')
   expect(await artifactOriginal(original)).toContain('ARTIFACT_V1'); expect(await artifactOriginal(v2)).toContain('ARTIFACT_V2')
   expect(v2).toMatchObject({ logicalArtifactId: original.logicalArtifactId, previousArtifactId: original.id, contentVersion: 2 })
@@ -270,11 +264,10 @@ Then('新版发布后当前审阅仍是第一版且原交付保持', async ({ ru
   await runtime.reviewData('实际聊天与修订关系', { messages: detail.messages.map(({ id, senderId, senderType, content, createdAt }) => ({ id, senderId, senderType, content, createdAt })), v1: original.id, v2: v2.id, previousArtifactId: v2.previousArtifactId, originalWorkId: original.sourceWorkId, revisionWorkId: v2.sourceWorkId })
 })
 When('用户打开并采用第二版报告', async ({ runtime, artifactsState }) => {
-  await panel(runtime.page, artifactsState.originals[0]).getByRole('button', { name: '文件操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '查看最新版本', exact: true }).click()
+  await openArtifact(runtime, artifactsState.v2!)
   const view = panel(runtime.page, artifactsState.v2!)
-  await openFileRecords(runtime, artifactsState.v2!)
-  await expect(view.getByRole('region', { name: '成果第 2 版正文', exact: true })).toContainText('ARTIFACT_V2')
+  await expectFileActions(runtime, artifactsState.v2!)
+  await expect(view.getByRole('region', { name: '文件正文', exact: true })).toContainText('ARTIFACT_V2')
   await expect(view).not.toContainText('审核通过')
   await card(runtime.page, artifactsState.v2!).getByRole('button', { name: '采用此版本', exact: true }).click()
   await expect(card(runtime.page, artifactsState.v2!).getByRole('button', { name: '已采用此版本', exact: true })).toBeDisabled()
@@ -285,10 +278,10 @@ Then('版本和采用随切页切聊天与重启保留且不重放工具', async
   await runtime.page.getByRole('button', { name: '通讯录', exact: true }).click(); await expect(runtime.page.locator('[data-artifact-id]:visible')).toHaveCount(0)
   await runtime.page.getByRole('button', { name: '会话', exact: true }).click(); await expect(panel(runtime.page, v2)).toBeVisible()
   await selectChat(runtime, fixture.other.title); await selectChat(runtime, fixture.group.title)
-  await expectAdoptionRecord(runtime, v2, '当前采用：第 2 版')
+  await expectAdoptionRecord(runtime, v2, 2)
   const before = await artifactRecords(fixture.dataPath)
   await runtime.restart(); await selectChat(runtime, fixture.group.title); await openArtifact(runtime, original)
-  await expectAdoptionRecord(runtime, original, '当前采用：第 2 版'); await version(runtime, original, 2)
+  await expectAdoptionRecord(runtime, original, 2); await openDeliveredFile(runtime, original, 2)
   await expect(card(runtime.page, v2).getByRole('button', { name: '已采用此版本', exact: true })).toBeDisabled()
   await panel(runtime.page, v2).getByRole('button', { name: '查看材料 依据.txt 第 2 至 2 行', exact: true }).click()
   await expect(runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)).toContainText('ARTIFACT_MATERIAL_EVIDENCE')
@@ -309,7 +302,7 @@ Then('同名报告各有独立内容身份与版本家族', async ({ runtime, ar
   expect(first.name).toBe(second.name); expect(first.contentHash).not.toBe(second.contentHash); expect(first.id).not.toBe(second.id)
   for (const artifact of artifactsState.originals) {
     expect(artifact.logicalArtifactId).toBe(artifact.id); expect(artifact.contentVersion).toBe(1); expect(artifact.previousArtifactId).toBeUndefined()
-    await openArtifact(runtime, artifact); await expect(panel(runtime.page, artifact).locator('[data-slot="file-preview-header"] [role="heading"]')).toHaveAttribute('title', `${artifact.name}\n第 1 版`)
+    await openArtifact(runtime, artifact); await expect(panel(runtime.page, artifact).locator('[data-slot="file-preview-header"] [role="heading"]')).toHaveAttribute('title', artifact.name)
   }
 })
 When('用户采用第一份同名报告并重复明确选择同版', async ({ runtime, artifactsState }) => {
@@ -323,7 +316,7 @@ Then('采用只记录一次且另一份报告没有被采用', async ({ runtime,
   const records = await artifactRecords(artifactsState.fixture!.dataPath), [first, second] = artifactsState.originals
   expect(records.adoptionEvents).toHaveLength(1); expect(records.adoptionCurrent).toHaveLength(1); expect(records.adoptionCurrent[0].artifactId).toBe(first.id)
   expect(new Set(records.adoptionReceipts.map(value => value.eventId)).size).toBe(1)
-  await openArtifact(runtime, second); await expectAdoptionRecord(runtime, second, '未记录人工采用')
+  await openArtifact(runtime, second); await expectAdoptionRecord(runtime, second)
   await expect(card(runtime.page, second).getByRole('button', { name: '采用此版本', exact: true })).toBeEnabled()
 })
 
@@ -364,7 +357,7 @@ Then('普通发送保留草稿且不修订或改绑原成果', async ({ runtime,
   expect(fixture.replacements).toEqual([])
   expect(fixture.errors).toEqual([])
 })
-When('用户取得报告的第一版和第二版', async ({ runtime, artifactsState }) => { await initial(runtime, artifactsState); await createV2(runtime, artifactsState); await version(runtime, artifactsState.originals[0], 2) })
+When('用户取得报告的第一版和第二版', async ({ runtime, artifactsState }) => { await initial(runtime, artifactsState); await createV2(runtime, artifactsState); await openDeliveredFile(runtime, artifactsState.originals[0], 2) })
 When('用户采用第二版后回复与采用回执暂时失联', async ({ runtime, artifactsState }) => {
   artifactsState.fault = await artifactReplyFault(runtime, 'adoption')
   await card(runtime.page, artifactsState.v2!).getByRole('button', { name: '采用此版本', exact: true }).click()
@@ -373,8 +366,8 @@ When('用户采用第二版后回复与采用回执暂时失联', async ({ runti
   artifactsState.frozen = state.submissions[0]; artifactsState.beforeRecovery = await artifactRecords(artifactsState.fixture!.dataPath); artifactsState.calls = artifactsState.fixture!.endpoint.requests.length
 })
 Then('切到旧版与关闭详情仍冻结第二版采用身份', async ({ runtime, artifactsState }) => {
-  await version(runtime, artifactsState.v2!, 1); await expectFrozen(runtime, artifactsState, 'adoption')
-  await expect(chat(runtime.page).getByRole('region', { name: '未决采用请求', exact: true })).toContainText(`采用 · ${artifactsState.v2!.name} · 第 2 版`)
+  await openDeliveredFile(runtime, artifactsState.v2!, 1); await expectFrozen(runtime, artifactsState, 'adoption')
+  await expect(chat(runtime.page).getByRole('region', { name: '未决采用请求', exact: true })).toContainText(`采用 · ${artifactsState.v2!.name}`)
   await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click(); await expectFrozen(runtime, artifactsState, 'adoption')
   expect((await artifactsState.fault!.inspect()).submissions).toHaveLength(1)
 })
@@ -389,10 +382,10 @@ Then('只恢复原采用回执且后续采用旧版保留真实历史', async ({
   const fixture = artifactsState.fixture!, original = artifactsState.originals[0], fault = await artifactsState.fault!.inspect(), records = await artifactRecords(fixture.dataPath)
   expect(fault.submissions).toHaveLength(0); expect(fault.lookups).toEqual([(artifactsState.frozen as ArtifactAdoptionInput).requestId])
   expect(records.adoptionEvents).toEqual(artifactsState.beforeRecovery!.adoptionEvents)
-  await expectAdoptionRecord(runtime, original, '当前采用：第 2 版')
+  await expectAdoptionRecord(runtime, original, 2)
   await card(runtime.page, original).getByRole('button', { name: '采用此版本', exact: true }).click()
   await expect(card(runtime.page, original).getByRole('button', { name: '已采用此版本', exact: true })).toBeDisabled()
-  await expectAdoptionRecord(runtime, original, '当前采用：第 1 版')
+  await expectAdoptionRecord(runtime, original, 1)
   expect((await artifactRecords(fixture.dataPath)).adoptionEvents.map(value => value.contentVersion)).toEqual([2, 1])
   expect(fixture.endpoint.requests).toHaveLength(artifactsState.calls!)
 })
@@ -407,7 +400,7 @@ When('用户要求修改第一版后回复与消息回执暂时失联', async ({
   artifactsState.beforeRecovery = await artifactRecords(fixture.dataPath); artifactsState.calls = fixture.endpoint.requests.length
 })
 Then('新版和详情关闭都不能覆盖原修改要求与身份', async ({ runtime, artifactsState }) => {
-  await version(runtime, artifactsState.originals[0], 2); const view = panel(runtime.page, artifactsState.v2!)
+  await openDeliveredFile(runtime, artifactsState.originals[0], 2); const view = panel(runtime.page, artifactsState.v2!)
   await expect(chat(runtime.page)).toContainText((artifactsState.frozen as ArtifactRevisionInput).content)
   await expect(view.getByRole('textbox', { name: '修改要求', exact: true })).toHaveCount(0)
   await expect(card(runtime.page, artifactsState.v2!).getByRole('button', { name: '要求修改', exact: true })).toBeDisabled(); await expectFrozen(runtime, artifactsState, 'revision')
@@ -446,7 +439,7 @@ Then('原版本不可预览且陈旧内容身份不能采用', async ({ runtime,
   // The still-visible stale button is the user's real attempt; host byte identity must refuse it.
   await card(runtime.page, first).getByRole('button', { name: '采用此版本', exact: true }).click()
   await expect(chat(runtime.page)).toContainText('外部修改')
-  await expect(view.getByRole('region', { name: '成果第 1 版正文', exact: true })).toHaveCount(0)
+  await expect(view.getByRole('region', { name: '文件正文', exact: true })).toHaveCount(0)
   const rejected = await runtime.page.evaluate(async artifacts => {
     const failures: string[] = []
     for (const artifact of artifacts) { try { await window.boai.request('getArtifactPreview', { id: artifact.id, expectedHash: artifact.contentHash }); failures.push('unexpected success') } catch (error) { failures.push(String(error)) } }
@@ -475,7 +468,7 @@ Then('清理门禁保留外改文件且其他聊天成果仍可使用', async ({
   const refused = await runtime.page.evaluate(async id => { try { await window.boai.request('getArtifactPreview', { id }); return 'unexpected success' } catch (error) { return String(error) } }, original.id)
   expect(refused).not.toBe('unexpected success')
   await selectChat(runtime, fixture.other.title); await openArtifact(runtime, other)
-  await expect(panel(runtime.page, other).getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('ARTIFACT_V1')
+  await expect(panel(runtime.page, other).getByRole('region', { name: '文件正文', exact: true })).toContainText('ARTIFACT_V1')
   await card(runtime.page, other).getByRole('button', { name: '采用此版本', exact: true }).click()
   await expect(card(runtime.page, other).getByRole('button', { name: '已采用此版本', exact: true })).toBeDisabled()
   const calls = fixture.endpoint.requests.length
@@ -485,36 +478,15 @@ Then('清理门禁保留外改文件且其他聊天成果仍可使用', async ({
   expect(fixture.endpoint.requests).toHaveLength(calls)
 })
 
-Then('Lody只读对比显示两版差异且不产生业务写入', async ({ runtime, artifactsState }) => {
-  const fixture = artifactsState.fixture!, original = artifactsState.originals[0], v2 = artifactsState.v2!, view = panel(runtime.page, v2)
-  const before = await artifactRecords(fixture.dataPath), calls = fixture.endpoint.requests.length
-  await compareVersion(runtime, view, 1)
-  const comparison = view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })
-  await expect(comparison.locator('diffs-container pre')).toBeVisible()
-  await expect(comparison.locator('diffs-container pre')).toContainText('ARTIFACT_V1')
-  await expect(comparison.locator('diffs-container pre')).toContainText('ARTIFACT_V2')
-  await backgroundPreviewCheck(runtime, fixture.group.id, comparison.locator('diffs-container pre'))
-  await runtime.reviewNativeCheckpoint('Lody 原成果 V1/V2 diff')
-  const after = await artifactRecords(fixture.dataPath)
-  expect(after.adoptionEvents).toEqual(before.adoptionEvents); expect(after.revisions).toEqual(before.revisions)
-  expect(after.workItems).toEqual(before.workItems); expect(after.messages).toEqual(before.messages)
-  expect(fixture.endpoint.requests).toHaveLength(calls)
-  await view.getByRole('button', { name: '返回正文', exact: true }).click()
-  await expect(view).toContainText('ARTIFACT_V2')
-})
 
 Given('成果协作组已连接大文本真实工具协议模型', async ({ runtime, artifactsState }) => {
   const common = Array.from({ length: 5_000 }, (_, index) => `COMMON_${String(index).padStart(4, '0')}：固定原件内容保持。\n`).join('')
   expect(common.length * 2).toBeGreaterThan(200_000)
   artifactsState.fixture = await prepareArtifactsDesktop(runtime, { file: { name: '交付报告.md', fileName: 'report.md', content: `ARTIFACT_V1\n${common}`, revisionContent: `ARTIFACT_V2\n${common}` } })
-  await runtime.page.evaluate(() => {
-    const HostWorker = window.Worker, urls: string[] = []
-    Object.assign(window, { __lodyPreviewWorkerUrls: urls })
-    window.Worker = class extends HostWorker { constructor(url: string | URL, options?: WorkerOptions) { urls.push(String(url)); super(url, options) } }
-  })
 })
 Then('执行事件后台核源保留长文滚动选区和源码模式', async ({ runtime, artifactsState: state }) => {
   const original = state.originals[0], view = panel(runtime.page, original)
+  await expect(view.locator('[data-preview-plugin="boai.preview.text"]')).toBeVisible()
   await view.getByRole('button', { name: '显示源码', exact: true }).click()
   const line = view.locator('[data-file-line="120"]')
   await expect(line).toBeAttached()
@@ -530,17 +502,6 @@ Then('执行事件后台核源保留长文滚动选区和源码模式', async ({
   expect(await line.evaluate(element => ({ top: element.closest('.file-preview-scroll')!.scrollTop, selection: window.getSelection()!.toString() }))).toEqual(before)
   await runtime.reviewData('正文后台复核仍保留阅读位置与选区', before)
   await runtime.reviewNativeCheckpoint('后台复核保留长文源码选区与滚动')
-})
-Then('Lody大文本worker已加载且外改旧版不能再次对比', async ({ runtime, artifactsState }) => {
-  const urls = await runtime.page.evaluate(() => (window as typeof window & { __lodyPreviewWorkerUrls: string[] }).__lodyPreviewWorkerUrls)
-  expect(urls.some(url => url.includes('diff-parse.worker'))).toBe(true)
-  await runtime.reviewData('大文本真实worker加载', { urls, versions: artifactsState.originals.map(value => ({ id: value.id, contentHash: value.contentHash })) })
-  await changeArtifactOriginal(artifactsState.originals[0], 'EXTERNAL_ARTIFACT_PRESERVED')
-  const view = panel(runtime.page, artifactsState.v2!)
-  await compareVersion(runtime, view, 1)
-  await expect(view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })).toContainText('外部修改')
-  await expect(view.locator('diffs-container')).toHaveCount(0)
-  await runtime.reviewCheckpoint('外改旧版拒绝再次比较')
 })
 
 Given('员工经原命令批准和成果工具发布Lody样本 {string}', async ({ runtime, artifactsState }, kind: string) => {
@@ -567,6 +528,7 @@ Then('Lody成果查看器读取已发布原件且关闭重开不执行业务', a
   const artifact = artifactsState.originals[0], kind = artifactsState.binaryKind!, fixture = artifactsState.fixture!
   const before = await artifactRecords(fixture.dataPath)
   const check = async () => {
+    await expect(panel(runtime.page, artifact).locator(`[data-preview-plugin="boai.preview.${kind === 'pdf' ? 'pdf' : 'office'}"]`)).toBeVisible()
     const viewer = panel(runtime.page, artifact).locator(`[data-binary-viewer="${kind}"]`)
     if (kind === 'pdf') await expect(viewer.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
     else if (kind === 'xlsx') await expect(viewer.getByRole('grid', { name: 'Revenue worksheet grid' })).toBeVisible()
@@ -586,47 +548,25 @@ Then('Lody成果查看器读取已发布原件且关闭重开不执行业务', a
   await runtime.reviewCheckpoint(`已发布 ${kind} 关闭重开零业务变更`)
 })
 
-Then('Lody版本比较只列原家族且缺失旧版拒绝读取', async ({ runtime, artifactsState }) => {
-  const fixture = artifactsState.fixture!, original = artifactsState.originals[0], independent = artifactsState.originals[1]
-  await requestRevision(runtime, original)
-  const detail = await settled(runtime, fixture.group.id, 3)
-  const v2 = artifactsState.v2 = detail.artifacts.find(value => value.previousArtifactId === original.id) as ArtifactVersion
-  expect(v2.logicalArtifactId).toBe(original.logicalArtifactId)
-  expect(independent.logicalArtifactId).not.toBe(original.logicalArtifactId)
-  await reviewArtifact(runtime, v2); await version(runtime, original, 2)
-  const view = panel(runtime.page, v2), before = await artifactRecords(fixture.dataPath), calls = fixture.endpoint.requests.length
-  await compareVersion(runtime, view, 1, 1)
-  await expect(view.locator('diffs-container pre')).toContainText('REPORT_1')
-  await expect(view.locator('diffs-container pre')).not.toContainText('REPORT_2')
-  await runtime.reviewNativeCheckpoint('同名成果只对比原家族')
-  await view.getByRole('button', { name: '返回正文', exact: true }).click()
-  await removeArtifactOriginal(original)
-  await compareVersion(runtime, view, 1)
-  await expect(view.locator('diffs-container')).toHaveCount(0)
-  await expect(view.getByRole('region', { name: '成果版本对比 第1版到第2版', exact: true })).toContainText(/不存在|来源已变化/)
-  const after = await artifactRecords(fixture.dataPath)
-  expect(after.adoptionEvents).toEqual(before.adoptionEvents); expect(after.revisions).toEqual(before.revisions); expect(after.messages).toEqual(before.messages); expect(after.workItems).toEqual(before.workItems)
-  expect(fixture.endpoint.requests).toHaveLength(calls)
-  await runtime.reviewCheckpoint('缺失旧版拒绝diff且独立原件保留')
-})
 
-Then('Lody迟到比较在清空来源后不能恢复旧正文', async ({ runtime, artifactsState }) => {
+Then('迟到预览在清空来源后不能恢复旧正文', async ({ runtime, artifactsState }) => {
   const fixture = artifactsState.fixture!, v2 = artifactsState.v2!, calls = fixture.endpoint.requests.length
   const observation = await observeWorkViews(runtime, 'getArtifactPreview')
-  await compareVersion(runtime, panel(runtime.page, v2), 1)
+  await runtime.app.evaluate(({ BrowserWindow }, id) => {
+    for (const window of BrowserWindow.getAllWindows()) window.webContents.send('boai:event', { type: 'changed', conversationId: id })
+  }, fixture.group.id)
   await expect.poll(async () => (await observation.inspect()).delayed).toBe(true)
   await runtime.page.evaluate(id => window.boai.request('clearConversationHistory', { id, hide: false }), fixture.group.id)
   await observation.release()
-  await expect(runtime.page.locator('diffs-container')).toHaveCount(0)
   const view = panel(runtime.page, v2)
-  await expect(view).toContainText('来源聊天已清理或移除，本版成果不可用。')
-  await expect(view.getByRole('region', { name: '成果第 2 版正文', exact: true })).toHaveCount(0)
-  await expect(view.getByText('正在核对成果版本…', { exact: true })).toHaveCount(0)
+  await expect(view).toContainText('来源聊天已清理或移除，文件不可用。')
+  await expect(view.getByRole('region', { name: '文件正文', exact: true })).toHaveCount(0)
+  await expect(view.getByText('正在读取文件…', { exact: true })).toHaveCount(0)
   const after = await artifactRecords(fixture.dataPath)
   expect(after.artifacts.filter(value => value.conversationId === fixture.group.id)).toEqual([])
   expect(after.messages.filter(value => value.conversationId === fixture.group.id)).toEqual([])
   expect(fixture.endpoint.requests).toHaveLength(calls)
-  await runtime.reviewCheckpoint('真实清理后迟到比较没有恢复旧版')
+  await runtime.reviewCheckpoint('真实清理后迟到预览没有恢复文件')
 })
 
 
@@ -664,7 +604,7 @@ When('用户在代码预览选中一行并向员工发送标注修改', async ({
   await actions.getByRole('textbox', { name: '文件修改要求', exact: true }).press('Escape')
   await expect(actions).toBeHidden()
   expect((await artifactRecords(state.fixture!.dataPath)).messages).toHaveLength(before.messages.length)
-  await view.getByRole('button', { name: '修改选中内容', exact: true }).click()
+  await selectPreviewText(view.locator('[data-file-line="1"] .shiki-line-content'))
   await expect(actions).toBeVisible()
   expect(await view.boundingBox()).toEqual(previewBounds)
   await actions.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('')
@@ -706,11 +646,11 @@ Then('标注修改产生真实新版本且原代码和其他行保持', async ({
   await reviewArtifact(runtime, state.originals[0]); await reviewArtifact(runtime, state.v2!)
   await expect(runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })).toBeHidden()
   await runtime.reviewNativeCheckpoint('本次修改交付后自动预览新版')
-  await version(runtime, state.v2!, 1)
+  await openDeliveredFile(runtime, state.v2!, 1)
   await backgroundPreviewCheck(runtime, state.originals[0].conversationId, panel(runtime.page, state.originals[0]).locator('[data-file-line="1"]'))
   await expect(panel(runtime.page, state.originals[0])).toBeVisible()
-  await version(runtime, state.originals[0], 2)
-  await panel(runtime.page, state.v2!).getByRole('button', { name: '让员工修改', exact: true }).click()
+  await openDeliveredFile(runtime, state.originals[0], 2)
+  await selectPreviewLine(panel(runtime.page, state.v2!))
   await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('继续基于当前查看版本修改')
   await expect(runtime.page.getByRole('button', { name: '发送文件修改', exact: true })).toBeEnabled()
   await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('')
@@ -724,9 +664,9 @@ When('用户从附件预览选择内容并发送独立修改请求', async ({ ru
   }, material.conversationId)
   await panel(runtime.page, original).getByRole('button', { name: '查看材料 依据.txt 第 2 至 2 行', exact: true }).click()
   const view = runtime.page.locator(`[data-material-preview-id="${material.id}"]:visible`)
+  await expect(view.locator('[data-preview-plugin="boai.preview.text"]')).toBeVisible()
   await backgroundPreviewCheck(runtime, material.conversationId, view.locator('[data-file-line="2"]'), 'getMaterialPreview')
   await view.locator('[data-file-line="2"]').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element); window.getSelection()!.removeAllRanges(); window.getSelection()!.addRange(range); element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })) })
-  await view.getByRole('button', { name: '修改选中内容', exact: true }).click()
   const actions = runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })
   const more = actions.getByRole('button', { name: '更多修改选项', exact: true })
   if (await more.count()) await more.click()
@@ -761,14 +701,12 @@ Then('附件来源保留在原消息且新请求携带固定版本', async ({ ru
   await runtime.reviewData('附件修改来源与新交付', { material, message, artifacts: records.artifacts })
 })
 
-Then('二进制预览可填写修改要求并关闭而不执行业务', async ({ runtime, artifactsState: state }) => {
+Then('二进制预览标题没有修改按钮且不执行业务', async ({ runtime, artifactsState: state }) => {
   const original = state.originals[0], before = await artifactRecords(state.fixture!.dataPath), calls = state.fixture!.endpoint.requests.length
   await openArtifact(runtime, original)
-  await panel(runtime.page, original).getByRole('button', { name: '让员工修改', exact: true }).click()
-  await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('调整第 1 页 / 工作表 Sheet1 的 B2 / 第二段的说明。')
-  await runtime.reviewCheckpoint('二进制预览的单行修改草稿-' + state.binaryKind)
-  await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).press('Escape')
-  await expect(runtime.page.getByLabel('文件修改标注', { exact: true })).toHaveCount(0)
+  await expect(panel(runtime.page, original).getByRole('button', { name: /^(让员工修改|修改选中内容)$/ })).toHaveCount(0)
+  await expect(runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })).toBeHidden()
+  await runtime.reviewCheckpoint('二进制预览无标题修改入口-' + state.binaryKind)
   const after = await artifactRecords(state.fixture!.dataPath)
   expect(after.messages).toEqual(before.messages); expect(after.revisions).toEqual(before.revisions); expect(after.artifacts).toEqual(before.artifacts)
   expect(state.fixture!.endpoint.requests).toHaveLength(calls)
@@ -779,7 +717,7 @@ When('文件面板提交修改后响应与回执暂时失联', async ({ runtime,
   const original = state.originals[0]
   state.fault = await artifactReplyFault(runtime, 'revision')
   await openArtifact(runtime, original)
-  await panel(runtime.page, original).getByRole('button', { name: '让员工修改', exact: true }).click()
+  await selectPreviewLine(panel(runtime.page, original))
   await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill('仅把 EMPLOYEE_CODE_PREVIEW 改为 EMPLOYEE_CODE_EDITED，其余保持。')
   await runtime.page.getByRole('button', { name: '发送文件修改', exact: true }).click()
   await expect(runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })).toContainText('提交结果待核对')
@@ -794,13 +732,13 @@ Then('文件编辑关闭重开和重启保留原请求且不重复执行', async
   expect(frozen[0].source).toMatchObject({ id: original.id, contentHash: original.contentHash })
   await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await openArtifact(runtime, original)
-  await panel(runtime.page, original).getByRole('button', { name: '让员工修改', exact: true }).click()
+  await selectPreviewLine(panel(runtime.page, original))
   await expect(runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })).toContainText('提交结果待核对')
   expect(await requests()).toEqual(frozen)
   const origin = new URL(runtime.page.url()).origin
   await runtime.restart(); expect(new URL(runtime.page.url()).origin).toBe(origin)
   await selectChat(runtime, fixture.group.title); await openArtifact(runtime, original)
-  await panel(runtime.page, original).getByRole('button', { name: '让员工修改', exact: true }).click()
+  await selectPreviewLine(panel(runtime.page, original))
   await expect(runtime.page.getByRole('dialog', { name: '选文修改操作', exact: true })).toContainText('提交结果待核对')
   expect(await requests()).toEqual(frozen)
   expect(fixture.endpoint.requests).toHaveLength(calls)
@@ -816,4 +754,35 @@ Then('文件编辑关闭重开和重启保留原请求且不重复执行', async
   expect((await requests())[0]).toMatchObject({ id: frozen[0].id, status: 'accepted' })
   await runtime.reviewData('文件侧边请求重启只读核对', { frozen, after: await requests(), messageIds: after.messages.map(message => message.id), revisions: after.revisions })
   await runtime.reviewNativeCheckpoint('文件侧边修改-重启后核对同一结果')
+})
+
+Then('停用文本插件保留当前正文而重开回退并可恢复', async ({ runtime, artifactsState: state }) => {
+  const artifact = state.originals[0], view = panel(runtime.page, artifact)
+  await expect(view.locator('pre.shiki-code-block')).toBeVisible()
+  const original = await view.locator('pre.shiki-code-block').elementHandle()
+  const setEnabled = (enabled: boolean) => runtime.page.evaluate(async enabled => {
+    const before = await window.boai.request('getPluginSettings', undefined)
+    return window.boai.request('setPluginEnabled', { id: 'boai.preview.text', enabled, expectedRevision: before.revision })
+  }, enabled)
+  // Exercise the production IPC while the reader remains in the foreground; settings UI is tested separately.
+  await setEnabled(false)
+  await expect(view.locator('[data-preview-plugin="boai.preview.text"]')).toBeVisible()
+  expect(await view.locator('pre.shiki-code-block').evaluate((node, original) => node === original, original)).toBe(true)
+  await runtime.reviewNativeCheckpoint('停用文本插件当前代码阅读不刷新')
+  await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await openArtifact(runtime, artifact)
+  await expect(view).toContainText('此格式的预览暂不可用')
+  await expect(view.locator('pre.shiki-code-block')).toHaveCount(0)
+  await expect(view.getByRole('button', { name: '文件操作', exact: true })).toBeEnabled()
+  await runtime.reviewNativeCheckpoint('重新打开使用宿主回退且文件操作保留')
+  await setEnabled(true)
+  await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await openArtifact(runtime, artifact)
+  await expect(view.locator('pre.shiki-code-block')).toBeVisible()
+  await expect(view.locator('[data-preview-plugin="boai.preview.text"]')).toBeVisible()
+  expect(await artifactOriginal(artifact)).toBe(CODE_ARTIFACT_TEXT)
+  expect(await artifactRecords(state.fixture!.dataPath)).toEqual(state.beforeRecovery)
+  expect(state.fixture!.endpoint.requests).toHaveLength(state.calls!)
+  expect(runtime.errors).toEqual([])
+  await runtime.reviewNativeCheckpoint('重新启用恢复预览且原件保持')
 })

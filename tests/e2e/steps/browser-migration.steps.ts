@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 隐藏输入/按键/两类选择实际POST，7次截图切页关闭与5次空闲资源检查。
  * [OUTPUT]: 群聊UI固定网页引用与真实隐藏页面新帧PNG像素核验；引用零模型副作用。
  * [INPUT]: BRM4 中文意图、原生产窗口/工具/授权/SQLite、真实本地网页和离线模型协议。
@@ -99,7 +100,7 @@ When('用户检索浏览器成果并重启', async ({ runtime, browserMigrationS
   await runtime.page.getByRole('button',{name:'搜索会话内容',exact:true}).click()
   const dialog=runtime.page.getByRole('dialog',{name:'搜索会话内容',exact:true});await dialog.getByRole('textbox',{name:'搜索关键词',exact:true}).fill(BROWSER_BODY_MARKER)
   await dialog.locator(`[data-search-result-id="${state.artifact!.id}"]`).click()
-  await expect(runtime.page.locator(`[data-artifact-id="${state.artifact!.id}"]:visible`).getByRole('region',{name:'成果第 1 版正文',exact:true})).toContainText(BROWSER_BODY_MARKER)
+  await expect(runtime.page.locator(`[data-artifact-id="${state.artifact!.id}"]:visible`).getByRole('region',{name:'文件正文',exact:true})).toContainText(BROWSER_BODY_MARKER)
   state.calls = state.fixture!.endpoint.requests.length; state.actions = (await browserRecords(state.fixture!.dataPath)).actions.length; await runtime.restart()
 })
 Then('成果固定版本仍可检索且没有浏览器或模型重放', async ({ runtime, browserMigrationState: state }) => {

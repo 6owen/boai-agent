@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件停用只回退有效配色，不覆盖已保存主题选择；显式选择停用配色拒绝。
  * [INPUT]: 外观偏好、图片文件与系统明暗状态。
  * [OUTPUT]: 图片模式解析为深色，原明暗偏好与托管图片持久化保持。
  * [OUTPUT]: 经校验、可迁移的主题、字体、缩放及分模式颜色持久化。
@@ -38,7 +39,7 @@ export class AppearanceStore {
  private diagnostic?: string
  private readOnly = false
  private tail: Promise<unknown> = Promise.resolve()
- constructor(readonly root: string, private systemDark: () => boolean, private changed: (value: AppearanceSnapshot) => void, private decode: (data: Buffer) => { width: number; height: number } | Promise<{width:number;height:number}>) {}
+ constructor(readonly root: string, private systemDark: () => boolean, private changed: (value: AppearanceSnapshot) => void, private decode: (data: Buffer) => { width: number; height: number } | Promise<{width:number;height:number}>, private disabledPlugins: () => readonly string[] = () => []) {}
  async init() {
   await mkdir(join(this.root,'assets'),{recursive:true})
   try {
@@ -53,7 +54,7 @@ export class AppearanceStore {
    if(this.preferences.background.assetId) try { await this.asset(this.preferences.background.assetId) } catch { this.preferences.background.assetId=null;this.diagnostic='背景文件不可用，已使用纯色背景。' }
   } catch(error) { if((error as NodeJS.ErrnoException).code!=='ENOENT')this.diagnostic='外观配置无法读取，已使用默认外观；原文件保留。' }
  }
- snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=resolveAppearanceMode(this.preferences,this.systemDark()?'dark':'light');return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode]).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
+ snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=resolveAppearanceMode(this.preferences,this.systemDark()?'dark':'light');return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode],this.disabledPlugins()).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
  systemChanged() { this.sequence++; this.changed(this.snapshot()) }
  private serialize<T>(fn:()=>Promise<T>) { const next=this.tail.then(fn);this.tail=next.catch(()=>{});return next }
  private async commit(preferences:AppearancePreferences, expectedRevision:number) {
@@ -63,7 +64,7 @@ export class AppearanceStore {
   await writeFile(tmp,JSON.stringify({revision,preferences},null,2),{mode:0o600});await rename(tmp,join(this.root,'settings.json'))
   this.preferences=preferences;this.revision=revision;this.sequence++;this.diagnostic=undefined;const result=this.snapshot();this.changed(result);return this.snapshot()
  }
- update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch),p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode])p.themeIds[mode]=resolveTheme(mode,value.themeIds[mode]).id;return this.commit(p,revision) }) }
+ update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch),p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode]) { const requested=resolveTheme(mode,value.themeIds[mode]);if(resolveTheme(mode,requested.id,this.disabledPlugins()).id!==requested.id)throw new Error('此主题插件已停用，请先启用。');p.themeIds[mode]=requested.id };return this.commit(p,revision) }) }
  import(path:string) { return this.serialize(async()=>{ if((await stat(path)).size>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const bytes=await readFile(path);if(bytes.length>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const format=imageFormat(bytes);imageDimensions(bytes,format);const size=await this.decode(bytes);if(!size.width||!size.height||size.width>8192||size.height>8192||size.width*size.height>32000000)throw new Error('图片尺寸无效或超过 8192 边长 / 3200 万像素。');const assetId=`${randomUUID()}.${format}`;await writeFile(join(this.root,'assets',assetId),bytes,{mode:0o600});return this.commit({...this.preferences,background:{...this.preferences.background,assetId}},this.revision) }) }
  remove() { return this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId:null}},this.revision)) }
  reset() { return this.serialize(()=>this.commit(structuredClone(appearanceDefaults),this.revision)) }

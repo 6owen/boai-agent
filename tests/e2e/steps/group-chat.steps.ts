@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 文件外开通过header操作菜单进入，原真实宿主路径核对保持。
  * [OUTPUT]: 会话和全局任务按真实Work/run/approval身份回到原员工审批卡，原拒绝/双击允许/单次执行和零伪交付断言保持。
  * [OUTPUT]: 原工作记录经会话菜单任务与产物进入，父子/审批/文件/关闭焦点断言保留；/files进入主区域文件视图，回聊天后草稿与工作身份不变。
@@ -63,7 +64,7 @@ Then('任务面板展示真实父子工作且文件可以打开', async ({ runti
   await runtime.app.evaluate(({ shell }) => { shell.openPath = async path => { (globalThis as unknown as { groupOpened: string }).groupOpened = path; return '' } })
   await page.locator('#message-history-writer').getByRole('button', { name: '打开 竞品分析报告.md', exact: true }).click()
   const preview = page.getByRole('tabpanel', { name: '竞品分析报告.md', exact: true })
-  await expect(preview.getByRole('region', { name: '成果第 1 版正文', exact: true })).toContainText('群聊验收的离线报告。')
+  await expect(preview.getByRole('region', { name: '文件正文', exact: true })).toContainText('群聊验收的离线报告。')
   await preview.getByRole('button', { name: '文件操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '外部打开', exact: true }).click()
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.artifacts[1].path))

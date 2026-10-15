@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [INPUT]: 员工固定身份、可见会话范围、类型化执行查询和原聊天导航。
  * [OUTPUT]: API/本机共用员工执行详情，历史冻结配置、实际工具/Trace/Work/成果；隐藏停读、迟到隔离、明确停止原工作，不另建聊天或重跑任务。
@@ -109,7 +110,7 @@ export function EmployeeExecutionPane({ api, agent, snapshot, active, conversati
         {detail.run.traceError && <Banner>{detail.run.traceError}</Banner>}
         {detail.spans.length > 0 && <TraceDetail spans={detail.spans} runs={[detail.run]} />}
         {detail.spansTruncated && <p className="field-hint">这里只显示前 {EMPLOYEE_EXECUTION_LIMITS.traceSpans} 条执行记录，完整记录可在原聊天查看。</p>}
-        {detail.artifacts.length > 0 && <div className="space-y-2"><h4>已发布成果</h4>{detail.artifacts.map(item => <p key={item.id} className="field-hint">{item.name}{item.contentVersion ? ` · 第 ${item.contentVersion} 版` : ''}</p>)}</div>}
+        {detail.artifacts.length > 0 && <div className="space-y-2"><h4>已发布成果</h4>{detail.artifacts.map(item => <p key={item.id} className="field-hint">{item.name}</p>)}</div>}
         {detail.artifactsTruncated && <p className="field-hint">这里只显示前 {EMPLOYEE_EXECUTION_LIMITS.artifacts} 个成果，完整清单可在原聊天查看。</p>}
       </>}
     </> : <>

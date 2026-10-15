@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置增加内置插件管理，沿原分类/文档布局与启停真源。
  * [OUTPUT]: 运行选项入口接后台常驻与真实系统登录项状态。
  * [OUTPUT]: 分类成功切换后仅内容区播放 transitions-dev panel reveal；首次/后台不播放，结束释放变换，不重挂当前表单。
  * [OUTPUT]: 原模型连接页接具体本机配置导航，隐藏状态传递到本机读取与编辑器。
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { AppearanceSettings } from './appearance'
 import { DataSettings } from './data'
 import { DesktopSettingsPage } from './desktop'
+import { PluginSettingsPage } from './plugins'
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { LoaderCircle, HardDrive, Sparkles, Settings, Search, Contact } from '@/components/icons/index'
 import type { Snapshot } from '@shared/domain'
@@ -20,7 +22,7 @@ import type { DesktopApi } from '@shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
-export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'desktop'
+export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'desktop' | 'plugins'
 export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onSkill, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onSkill: (id: string) => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
@@ -50,7 +52,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
   }, [tab, active])
   const groups = [
     { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, { id: 'appearance', label: '外观', icon: Settings }, { id: 'desktop', label: '运行选项', icon: Settings }] },
-    { label: '工作空间', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
+    { label: '工作空间', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'plugins', label: '插件', icon: Settings }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
   ] as const
   const matches = groups.flatMap(group => [...group.items]).filter(item => item.label.toLowerCase().includes(search.trim().toLowerCase()))
   return <div className="settings-page"><nav className="page-subnav" aria-label="设置分类">
@@ -61,13 +63,14 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
       return items.length > 0 && <div className="settings-nav-group" key={group.label}><p>{group.label}</p>{items.map(item => <Button variant="ghost" size="content" key={item.id} className={tab === item.id ? 'selected' : ''} aria-current={tab === item.id ? 'page' : undefined} onClick={() => guard.navigate(() => { setTab(item.id) })}><item.icon size={16} />{item.label}</Button>)}</div>
     })}
     {!matches.length && <p className="settings-search-empty">没有匹配的设置</p>}</div>
-  </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'connections' || tab === 'profile' || tab === 'desktop' ? ' settings-document-content' : ''}`}>
+  </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'connections' || tab === 'profile' || tab === 'desktop' || tab === 'plugins' ? ' settings-document-content' : ''}`}>
     <div ref={content} className="settings-page-transition t-panel-slide" data-open="true" data-settled="true">
     {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice" onClose={() => setNotice('')}>{notice}</Banner>}
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onSkill={onSkill} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings />}
     {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
+    {tab === 'plugins' && <PluginSettingsPage />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
     {busy && <p className="inline-loading"><LoaderCircle className="spinner" size={16} />正在处理…</p>}
   </div></div></div>

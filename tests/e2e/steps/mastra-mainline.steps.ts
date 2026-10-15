@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 按当前统一模型控件显式选择已准备的API连接，原连续IM/文件版本/重启断言保持。
  * [INPUT]: 单场中文 Mastra 主线场景、生产 Electron UI/IPC 和实际宿主文件链。
  * [OUTPUT]: UI 新员工绑定 API、同聊两轮上下文、真实 V1/V2；修订沿固定成果/hash/请求与新根Work核对原发布消息，重启零模型重放及明确新消息单次续聊。
@@ -36,7 +37,7 @@ async function send(runtime: Desktop, content: string) {
 }
 async function openArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await runtime.page.locator(`#message-${artifact.sourceMessageId}`).getByRole('button', { name: `打开 ${artifact.name}`, exact: true }).click()
-  await expect(panel(runtime.page, artifact).getByRole('region', { name: `成果第 ${artifact.contentVersion} 版正文`, exact: true })).toBeVisible()
+  await expect(panel(runtime.page, artifact).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
 }
 async function reviewArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await runtime.reviewFile(`${artifact.name} · 第 ${artifact.contentVersion} 版`, artifact.path, { required: true, expectedSha256: artifact.contentHash })

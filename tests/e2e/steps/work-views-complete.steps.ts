@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 恢复后的文件清单不提供历史版本入口，核对当前文件及原始存储记录。
  * [INPUT]: 隔离Electron、真实材料/成果/原问题/备份API与可控模型协议及回执传输故障。
  * [OUTPUT]: 判断/实际执行期定时固定问题补充和原草稿单次副作用、未知修订跨三视图/重启与独立备份恢复的同次事实、原件和关键帧。
  * [POS]: WV-T06/T10/T12完整业务步骤，不替代宿主事务或文件工具。
@@ -242,10 +243,10 @@ Then('工作与文件可从新视图准确读取且没有重放模型工具或�
   await pane(runtime, '任务'); await expect(workCard(runtime, state.original!.sourceWorkId!)).toContainText('已交付')
   await pane(runtime, '文件')
   const row = runtime.page.locator(`[data-file-id="${state.revised!.id}"]:visible`).first()
-  await expect(row).toContainText('最新内容 v2 · 本人采用 v1 · 最新版未采用')
-  await row.getByRole('button', { name: /^历史版本/ }).click()
-  await runtime.page.locator(`[data-file-id="${state.original!.id}"]:visible`).first().getByRole('button', { name: '预览', exact: true }).click()
-  await expect(runtime.page.locator(`[data-artifact-id="${state.original!.id}"]:visible`)).toContainText('ARTIFACT_V1')
+  await expect(row).toContainText(state.revised!.name)
+  await expect(row.getByRole('button', { name: /^历史版本/ })).toHaveCount(0)
+  await row.getByRole('button', { name: '预览', exact: true }).click()
+  await expect(runtime.page.locator(`[data-artifact-id="${state.revised!.id}"]:visible`)).toContainText('ARTIFACT_V2')
   const restored = await artifactRecords(join(state.restored!, 'v2'))
   expect(restored.adoptionEvents).toEqual(state.before!.adoptionEvents); expect(restored.adoptionCurrent).toEqual(state.before!.adoptionCurrent)
   expect(restored.artifacts.map(a => [a.id, a.contentHash, a.logicalArtifactId, a.contentVersion])).toEqual(state.before!.artifacts.map(a => [a.id, a.contentHash, a.logicalArtifactId, a.contentVersion]))

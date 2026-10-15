@@ -1,17 +1,16 @@
 /*
+ * [OUTPUT]: 渠道回执仅供回答悬停工具条提示，不渲染独立来源/处理/送达状态块。
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
- * [INPUT]: 当前有界消息页、真实执行与渠道投递回执。
- * [OUTPUT]: 隐藏停读的批量回执读取；执行摘要和送达状态分开，固定发布文件可预览。
- * [POS]: 渠道镜像消息的轻量状态与动作。
+ * [INPUT]: 当前有界消息页与渠道投递回执。
+ * [OUTPUT]: 隐藏停读的批量回执读取和工具条投递提示文字。
+ * [POS]: 渠道消息的投递状态读取。
  * [PROTOCOL]: 修改时同步Header及所属.folder.md。
  */
 import { useEffect, useState } from 'react'
-import type { ConversationDetail, Message } from '@shared/domain'
-import type { ChannelArtifactReference, ChannelDelivery } from '@shared/domain/channels'
+import type { Message } from '@shared/domain'
+import type { ChannelDelivery } from '@shared/domain/channels'
 import type { DesktopApi } from '@shared/ipc'
-import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { ChevronRight, MoreHorizontal } from '@/components/icons'
 
 export function useChannelDeliveries(api: DesktopApi, conversationId: string, messages: Message[], active: boolean) {
   const ids = JSON.stringify(messages.filter(message => message.senderType === 'agent').map(message => message.id).slice(-80))
@@ -36,18 +35,6 @@ export function useChannelDeliveries(api: DesktopApi, conversationId: string, me
   return state.conversationId === conversationId ? state.items : []
 }
 const deliveryLabels = { sending: '正在发送到渠道', sent: '已送达渠道', failed: '未送达渠道', unknown: '送达结果待核对' }
-export function ChannelMessageStatus({ deliveries, message, runs, work, onTrace, onDiscuss, onPublish, onArtifact }: {
-  deliveries: ChannelDelivery[]; message: Message; runs: ConversationDetail['runs']; work?: NonNullable<ConversationDetail['workItems']>[number]
-  onTrace(): void; onDiscuss(): void; onPublish?(): void; onArtifact(ref: ChannelArtifactReference): void
-}) {
-  const receipts = deliveries.filter(item => item.messageId === message.id)
-  const running = runs.some(run => ['running', 'queued', 'waiting_approval'].includes(run.status))
-  const failed = runs.some(run => ['failed', 'interrupted', 'cancelled'].includes(run.status))
-  const execution = work?.status === 'delivered' ? '处理已完成' : work && ['failed', 'cancelled', 'interrupted'].includes(work.status) ? '处理未完成' : work && ['running', 'ready'].includes(work.status) ? '正在处理' : work?.status === 'waiting' || work?.status === 'blocked' ? '等待补充或审批' : running ? '正在处理' : failed ? '处理未完成' : runs.length ? '处理已结束' : '已接收'
-  return <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground" aria-label="渠道消息状态">
-    {message.channel && <div className="flex flex-wrap items-center gap-2"><Button variant="ghost" size="xs" className="text-muted-foreground" aria-label="查看执行过程" onClick={onTrace}>{execution}<ChevronRight /></Button><Button variant="ghost" size="xs" onClick={onDiscuss}>内部讨论</Button>{onPublish && <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label="渠道消息操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={onPublish}>发送到渠道…</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}</div>}
-    {message.senderType === 'agent' && message.status === 'completed' && <span role="status">{receipts.length ? receipts.map(item => deliveryLabels[item.status]).join(' · ') : '尚无渠道发送回执'}</span>}
-    {receipts.filter(item => item.detail && item.status !== 'sent').map(item => <span key={item.id}>{item.detail}</span>)}
-    {message.channelPublication?.artifacts.map(ref => <Button key={ref.id} size="sm" variant="secondary" className="self-start" onClick={() => onArtifact(ref)}>{ref.name}</Button>)}
-  </div>
+export function channelDeliveryDescription(receipts: ChannelDelivery[]): string | undefined {
+  return receipts.length ? receipts.map(item => `${deliveryLabels[item.status]}${item.detail && item.status !== 'sent' ? `：${item.detail}` : ''}`).join('\n') : undefined
 }

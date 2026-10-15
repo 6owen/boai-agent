@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标题修改入口移除，原日期/Word实际内容由正文选区打开浮层。
  * [OUTPUT]: 原版横向SelectionActions直接填写要求；自动选文定位保留，不再填写独立位置表单。
  * [OUTPUT]: 真实修改从选文Popover直接提交；来源标注在更多选项展开，结果仍核对真实交付。
  * [OUTPUT]: 真实文件修改要求从文件侧边会话提交，结果入口同面板；主聊天只用于初始附件输入。
@@ -20,6 +21,7 @@ import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
 import { prepareV2DataRoot } from '../../../src/main/migration'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import { nextMaterialDialog } from '../support/materials'
+import { selectPreviewText } from '../support/file-preview'
 import { artifactRecords } from '../support/artifacts'
 import { archiveNativeFinalReview } from '../support/native-final-review'
 import { test as base } from '../support/test'
@@ -36,7 +38,7 @@ export const test = base.extend<{ fileEdit: State }>({ fileEdit: async ({ runtim
 } })
 const { Given, When, Then } = createBdd(test)
 async function selectDate(view: Locator) {
-  await expect(view.getByRole('button', { name: /^(让员工修改|修改选中内容)$/ })).toBeVisible()
+  await expect(view.locator('[data-file-preview-kind]')).toBeVisible()
   const source = view.getByRole('button', { name: '显示源码', exact: true })
   if (await source.count()) await source.click()
   const line = view.locator('[data-file-line]').filter({ hasText: '截止日期：' })
@@ -115,7 +117,7 @@ When('用户在Word预览标注第二段并让员工修改', async ({ runtime: d
   await d.page.locator('.messages').getByRole('button', { name: /计划.docx/ }).click()
   const view = d.page.locator(`[data-material-preview-id="${s.material!.id}"]:visible`)
   await expect(view).toContainText('Revenue increased across all regions.')
-  await view.getByRole('button', { name: '让员工修改', exact: true }).click()
+  await selectPreviewText(view.getByText('Revenue increased across all regions.', { exact: true }))
   await sendAndWait(d, s, 1, '修改引用的 Word 文件：只把第二段 Revenue increased across all regions. 改成 Revenue increased by 12% across all regions.，保持标题、其他内容和页面格式。交付有效的计划.docx 文件。')
 })
 Then('真实Word新文件可以预览且原文件和页面格式保持', async ({ runtime: d, fileEdit: s }) => {

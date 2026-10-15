@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
  * [INPUT]: 普通搜索 Dialog 的活跃状态、可选类型/可见会话/员工与shadcn Calendar日期范围、稳定 SQL/索引代际游标、正文命中与覆盖回执和点击来源复核。
  * [OUTPUT]: 顶部统一关键词、单行 sm 同款 secondary 类型/会话/员工/时间筛选和混合结果，时间未选占位与其他筛选同色、选中后显示正文色；正文摘录/位置、多词原词高亮、索引覆盖与有界失败可见，明确继续回填不调用模型；范围与会话列表可见配置一致，日期按本地起止日筛选；查询刷新不注销有效导航，关闭/条件改变/来源清理隔离迟到响应，所选来源移除时拒绝控件自动回退全部范围。
  * [POS]: 全局顶栏搜索图标与本会话搜索共用的普通 Dialog 内容，关键词输入沿用32px公共高度；复用宿主检索，不使用 CommandDialog，不读取任意路径。
@@ -123,7 +124,7 @@ export function ConversationSearch({ api, active, snapshot, selectedId, request,
       {result && <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-label="检索结果列表">{result.results.map(item => {
         const file = item.kind === 'material' || item.kind === 'artifact'
         const ResultIcon = file ? FileText : MessageCircle
-        const label = item.kind === 'conversation' ? '会话' : item.kind === 'message' ? '消息' : item.kind === 'material' ? '材料' : '成果' + (item.target.kind === 'artifact' && item.target.contentVersion ? ' · 第 ' + item.target.contentVersion + ' 版' : '')
+        const label = item.kind === 'conversation' ? '会话' : item.kind === 'message' ? '消息' : item.kind === 'material' ? '材料' : '成果'
         return <li key={item.kind + ':' + item.id}><Button variant="ghost" size="content" className="flex w-full items-start gap-3 p-3 text-left" data-search-result-id={item.id} data-search-kind={item.kind} disabled={Boolean(opening) || item.status !== 'available'} onClick={() => void open(item)}>
           <ResultIcon data-icon="inline-start" /><span className="flex min-w-0 flex-1 flex-col items-start gap-1"><span className="flex max-w-full items-center gap-2"><Badge variant="secondary">{label}</Badge><strong className="truncate"><Excerpt text={item.name ?? item.senderName ?? '原内容'} keyword={query} /></strong></span>
             {file && item.matchedIn && <span className="field-hint" data-search-match={item.matchedIn}>{item.matchedIn === 'body' ? '正文命中' : item.matchedIn === 'name_and_body' ? '名称与正文命中' : '名称命中'}{item.matchOffset !== undefined ? ` · 正文第 ${item.matchOffset + 1} 字符附近` : ''}</span>}

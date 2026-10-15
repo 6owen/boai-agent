@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 渠道列表不显示置顶标记或右键置顶入口，普通会话保持。
+ * [OUTPUT]: showHeading允许Popover省略列表标题，普通主列表默认保持。
  * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
  * [OUTPUT]: 2026-10-15渠道私聊/群聊复用会话label折叠；搜索临时展开，明确定位展开目标分组，取消横向筛选Tabs。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
@@ -37,12 +39,13 @@ interface Props {
   onConfigureCore(): void
   onEditTitle(conversation: Conversation): void
   onChange(change: ConversationListChange): void; onClear(id: string, hide: boolean): Promise<void>; busy: boolean
+  showHeading?: boolean
   selectionRequest?: string
   channelAgent?: DigitalAgent
   onBack?(): void
   onOpenChannels?(agent: DigitalAgent, conversationId?: string): void
 }
-export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest }: Props) {
+export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
   const [query, setQuery] = useState('')
   const [coreOpen, setCoreOpen] = useState(true)
   const [coreMenuOpen, setCoreMenuOpen] = useState(false)
@@ -96,14 +99,13 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
               onClick={() => { if (!dragging) onSelect(conversation.id) }}>
               {conversation.kind === 'group' && !isChannelConversation(conversation) ? <GroupAvatar members={members} /> : <Avatar name={agent?.name ?? conversation.title} seed={agent?.id} avatar={agent?.avatar} color={agent?.color} />}
               <span className="conversation-copy"><span className="conversation-title">{title(conversation)}
-                {isChannelConversation(conversation) && conversation.list?.pinned && <Pin size={12} aria-label="已置顶" />}
                 {conversation.activity && conversation.activity !== 'idle' && <span className={`list-activity ${conversation.activity}`}>{({ running: '处理中', waiting_approval: '待授权', queued: '排队', failed: '失败' } as const)[conversation.activity]}</span>}
                 {messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}
               </span><span className={cn('conversation-preview', { 'pr-24': notification })}>{channelAgent && (conversation.channelUnreadCount ?? 0) > 0 && <em>[新回复 {conversation.channelUnreadCount}] </em>}{conversation.purpose === 'automation' && '定时任务 · '}{drafts.get(conversation.id)?.text ? <><em>[草稿]</em> {drafts.get(conversation.id)?.text}</> : previews[conversation.id] || conversation.lastMessagePreview || (conversation.kind === 'group' ? `${conversation.agentIds.length} 位数字员工` : agent?.role || '专属对话')}</span></span>
             </ContextMenuTrigger>}
-            <ContextMenuContent className="w-40"><ContextMenuGroup>
+            <ContextMenuContent className="w-40">{!isChannelConversation(conversation) && <><ContextMenuGroup>
               {coreConversation ? <ContextMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</ContextMenuItem> : <ContextMenuItem disabled={busy} onClick={pin}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</ContextMenuItem>}
-            </ContextMenuGroup><ContextMenuSeparator /><ContextMenuGroup>
+            </ContextMenuGroup><ContextMenuSeparator /></>}<ContextMenuGroup>
               <ContextMenuItem disabled={busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</ContextMenuItem>
               <ContextMenuItem variant="destructive" disabled={busy} onClick={() => confirm(conversation, true)}><Trash2 />删除会话</ContextMenuItem>
             </ContextMenuGroup></ContextMenuContent>
@@ -116,7 +118,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const channel = conversations.filter(isChannelConversation)
   const pinned = ordinary.filter(item => item.list?.pinned), regular = ordinary.filter(item => !item.list?.pinned)
   return <div className="conversation-list-panel">
-    <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>
+    {showHeading && <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>}
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
       {!channelAgent && <div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined}>

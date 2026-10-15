@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件清单仅当前文件与来源操作，不展示版号/采用状态/历史入口。
  * [INPUT]: 工作视图中文场景、隔离Electron和真实Mastra工具/材料/成果链。
  * [OUTPUT]: 宿主来源核对完成后的真实会话清理与迟到回复不导航、不恢复原消息/文件/Work。
  * [OUTPUT]: 同源任务、草稿/隐藏阅读、版本/采用分离、Shiki、迟到导航与未知回执重启的实际界面及原件证据。
@@ -133,25 +134,26 @@ When('用户在原聊天采用旧版并要求员工修订', async ({ runtime, wo
   await card(runtime.page, artifact).getByRole('button', { name: '要求修改', exact: true }).click()
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('补充明确验收条件，并发布修订后的报告。')
   await pane(runtime, '任务'); await pane(runtime, '文件'); await pane(runtime, '聊天')
-  await expect(runtime.page.locator('[aria-label="修改交付文件"]')).toContainText('第 1 版')
+  await expect(runtime.page.locator('[aria-label="修改交付文件"]')).toContainText(artifact.name)
   await runtime.reviewCheckpoint('原聊天同一输入框固定旧版修订')
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
   const detail = await settled(runtime, fixture.group.id, 2); workViews.revised = detail.artifacts.find(value => value.previousArtifactId === artifact.id) as ArtifactVersion
   expect(workViews.revised).toMatchObject({ previousArtifactId: artifact.id, contentVersion: 2, logicalArtifactId: artifact.logicalArtifactId })
   await runtime.reviewFile('交付原件 · 修订 v2', workViews.revised.path)
 })
-Then('文件清单区分最新与采用版本并保留固定旧版预览', async ({ runtime, workViews }) => {
+Then('文件清单展示当前文件且不提供版本管理', async ({ runtime, workViews }) => {
   const old = workViews.original!, latest = workViews.revised!, fixture = workViews.fixture!
   await expect(preview(runtime.page, old)).toContainText('ARTIFACT_V1'); await pane(runtime, '文件')
-  await expect(file(runtime.page, latest.id)).toContainText('最新内容 v2 · 本人采用 v1 · 最新版未采用')
+  await expect(file(runtime.page, latest.id)).toContainText(latest.name)
+  await expect(files(runtime.page).getByRole('button', { name: /^历史版本/ })).toHaveCount(0)
+  await expect(file(runtime.page, latest.id)).not.toContainText(/最新内容 v|本人采用 v|最新版未采用/)
   await expect(file(runtime.page, old.id)).toHaveCount(0)
-  await file(runtime.page, latest.id).getByRole('button', { name: /^历史版本/ }).click()
-  await file(runtime.page, old.id).getByRole('button', { name: '预览', exact: true }).click()
-  await expect(preview(runtime.page, old)).toContainText('ARTIFACT_V1')
-  await runtime.reviewCheckpoint('最新v2、本人采用v1和所读旧版各自保持')
+  await file(runtime.page, latest.id).getByRole('button', { name: '预览', exact: true }).click()
+  await expect(preview(runtime.page, latest)).toContainText('ARTIFACT_V2')
+  await runtime.reviewCheckpoint('文件清单只显示文件，不提供版本管理')
   const before = await artifactRecords(fixture.dataPath), calls = fixture.endpoint.requests.length
   await runtime.restart(); await select(runtime, fixture.group.title)
-  await expect(files(runtime.page)).toBeVisible(); await expect(file(runtime.page, latest.id)).toContainText('本人采用 v1')
+  await expect(files(runtime.page)).toBeVisible(); await expect(file(runtime.page, latest.id)).toContainText(latest.name)
   await file(runtime.page, latest.id).getByRole('button', { name: '预览', exact: true }).click()
   await expect(preview(runtime.page, latest)).toContainText('ARTIFACT_V2')
   const after = await artifactRecords(fixture.dataPath)

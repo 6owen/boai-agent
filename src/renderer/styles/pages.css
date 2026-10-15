@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道选择Popover按内容收缩，列表8px内边距/4px间隔并保留有界滚动。
  * [OUTPUT]: 文件修改只显示Selection Actions浮层，退役底部会话/历史区尺寸；操作条输入透明且保留全局主题。
  * [OUTPUT]: 渠道空态沿IllustratedEmpty居中与共享悬浮会话标题，ScrollArea保持16px渐隐重叠。
  * [OUTPUT]: 文件预览与独立编辑区共用右侧容器高度，修改记录有界滚动。
@@ -462,8 +463,10 @@
 .channel-workspace { display:flex; flex:1; min-width:0; min-height:0; height:100%; overflow:hidden }
 .channel-workspace[hidden] { display:none }
 .channel-chat-stage { min-width:0 }
-.channel-picker { width:min(320px,calc(100vw - 24px)); height:min(520px,var(--available-height)); max-height:calc(100dvh - 100px); min-height:0; padding:0; gap:0; overflow:hidden }
-.channel-picker .list-heading h2 { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.channel-picker { width:min(320px,calc(100vw - 24px)); max-height:min(520px,var(--available-height),calc(100dvh - 100px)); min-height:0; overflow:hidden }
+.channel-picker .conversation-list-panel { height:auto; min-height:0; padding:8px; gap:4px }
+.channel-picker .conversation-list-panel > [data-slot=input-group] { flex-shrink:0 }
+.channel-picker .conversation-list { margin:0; padding:0 }
 .channel-detail-header { display:flex; align-items:center; gap:8px; flex-shrink:0; min-height:48px; padding:8px 16px }
 .channel-empty-scroll { flex:1;min-width:0;min-height:0;margin-top:36px;overflow:hidden }
 .channel-detail-header h2 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; margin:0 }

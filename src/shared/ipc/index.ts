@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
+ * [OUTPUT]: 内置插件配置快照/版本化启停与局部变化事件；无外部包或代码入口。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道内部讨论创建与固定消息引用、明确外发和消息级送达回执接口。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -37,6 +39,7 @@ import type { ConversationListChange } from '../domain/conversation-list'
 import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
 import type { DesktopPatch, DesktopSettings } from './desktop'
+import type { PluginEnableInput, PluginSettingsSnapshot } from '../plugins/types'
 import type { LocalConfigScanResult } from '../domain/local-configs'
 import type { StoredTraceSpan } from '../domain/traces'
 import type { LocalSkillCatalog, LocalSkillDetail, ScanSkillSourceInput, SkillInstallation, SkillPreview, SkillCollections, SkillCollectionAction, SkillDetail, SkillFileContent, SkillScan, SkillOperation, InstallSkillsInput, SkillUpdateCheck, UpdateSkillInput, ResourceCleanup, PlanSkillLibraryExportInput, ExportSkillLibraryInput, SkillLibraryExportPlan, SkillUpdateBatch } from '../domain/skills'
@@ -47,6 +50,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'plugins:changed'; settings: PluginSettingsSnapshot }
   | { type: 'desktop:changed'; settings: DesktopSettings }
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
@@ -62,7 +66,9 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
-  ensureChannelDiscussion: { input: { conversationId: string }; output: import('../domain').Conversation }
+  getPluginSettings: { input: undefined; output: PluginSettingsSnapshot }
+  setPluginEnabled: { input: PluginEnableInput; output: PluginSettingsSnapshot }
+  publishChannelReply: { input: { conversationId: string; messageId: string; contentHash: string; requestId: string }; output: import('../domain').Message }
   publishChannelMessage: { input: import('../domain/channels').ChannelPublishInput; output: import('../domain').Message }
   listChannelMessageDeliveries: { input: { conversationId: string; messageIds: string[] }; output: import('../domain/channels').ChannelDelivery[] }
   listChannelBindings: { input: { agentId: string }; output: import('../domain/channels').ChannelBindingState[] }
@@ -251,6 +257,7 @@ export interface Methods {
 }
 export type Method = keyof Methods
 export interface DesktopApi {
+  initialPlugins?: PluginSettingsSnapshot
   initialAppearance?: AppearanceSnapshot
   selectSkillFile?(file: File, kind: 'folder' | 'zip'): Promise<string>
   selectMaterialFile?(file: File): Promise<{ id: string; name: string }>
