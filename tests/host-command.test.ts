@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 真实进程逐字节输出中文/emoji，分别验证 stdout/stderr 跨包 UTF-8 保真。
  * [INPUT]: 隔离目录、真实POSIX后台子进程和确定性的终止信号屏障。
  * [OUTPUT]: 命令返回前核对继承进程组实际退出；覆盖主shell先退出、用户取消及超时，不把发出SIGKILL当退出。
  * [POS]: 宿主命令生命周期模块验收；Windows进程树另需平台验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { executeCommand } from '../src/runtime/adapters/mastra/host-command'
@@ -23,6 +24,21 @@ async function pids(root: string) {
   await expect.poll(async () => readFile(join(root, 'child.pid'), 'utf8').catch(() => ''), { timeout: 3000 }).toMatch(/^\d+$/)
   return { parent: Number(await readFile(join(root, 'parent.pid'), 'utf8')), child: Number(await readFile(join(root, 'child.pid'), 'utf8')) }
 }
+
+it.skipIf(process.platform === 'win32')('decodes stdout and stderr across real UTF-8 byte boundaries independently', async () => {
+  const root = await directory()
+  await writeFile(join(root, 'split.cjs'), `
+    const values = [Buffer.from('中文😀完成'), Buffer.from('错误🚀详情')];
+    let index = 0;
+    const timer = setInterval(() => {
+      for (const [n, value] of values.entries()) if (index < value.length) (n ? process.stderr : process.stdout).write(value.subarray(index, index + 1));
+      if (++index >= Math.max(...values.map(value => value.length))) clearInterval(timer);
+    }, 15);
+  `)
+  const node = `'${process.execPath.replaceAll("'", "'\\''")}'`
+  expect(await executeCommand(`${node} split.cjs`, root, new AbortController().signal, 5000))
+    .toEqual({ exitCode: 0, stdout: '中文😀完成', stderr: '错误🚀详情', truncated: false })
+})
 
 it.skipIf(process.platform === 'win32')('retains the command until a pipe-free background child has actually exited after its shell closes', async () => {
   const root = await directory(), kill = process.kill.bind(process), controller = new AbortController()

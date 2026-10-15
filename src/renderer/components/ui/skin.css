@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 输入聚焦不再重新施加边缘阴影，所有组合输入内层始终无框；透明/圆角输入保持原形状，默认表面与错误态保持。
  * [INPUT]: colors.css 的主题、Soft 表面/分割线 token 与基础组件的 data-slot、Sonner 通知、soft-table 和语义变体。
  * [OUTPUT]: Tabs 共用选中滑动层承载原 Soft/线形/窗口/技能样式并沿用系统 squircle 方圆角（窗口原 round 保持），文字与关闭按钮保持上层；不改变布局、焦点或业务选择。
  * [OUTPUT]: Sonner 左侧16px状态图标/中间弹性正文/右侧20px无圈 X 关闭按钮，关闭与状态图标同色、悬停叠加12%状态色并跟随明暗主题，复用 Dialog ghost 形态；长内容换行不挤压两侧；通知/折叠后层共用语义状态背景与边框；12px正文/11px说明和紧凑留白，Soft 圆角/高光/阴影复用全局 token；覆盖其注入的默认样式。
@@ -58,11 +59,12 @@
   transition:background-color .2s,box-shadow .2s;
 }
 :is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):hover:not(:disabled):not([aria-disabled=true]):not([data-disabled]):not([readonly]):not(:has(:disabled,[readonly])) { --soft-hover-layer:var(--soft-hover) }
-:is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):is(:focus-visible,:focus-within,[data-popup-open]):not(:disabled):not([aria-disabled=true]):not([data-disabled]):not(:has(:disabled)):not([aria-invalid=true]):not(:has([aria-invalid=true])) { box-shadow:var(--shadow-input) }
 :is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):is([aria-invalid=true],:has([aria-invalid=true])) { box-shadow:inset 0 0 0 1px var(--destructive),var(--shadow-input) }
 :is([data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):active:not(:disabled):not([aria-disabled=true]) { transform:none }
 :is([data-slot=date-range-trigger][data-placeholder],[data-slot=date-range-trigger] .app-icon) { color:var(--muted-foreground) }
 :is([data-slot=command-input-wrapper],[data-slot=combobox-content])>[data-slot=input-group] { background-image:none }
+/* Composite controls never draw a second frame when their text input receives focus. */
+[data-slot=input-group] > [data-slot=input-group-control] { border:0; border-radius:0; background:transparent; box-shadow:none }
 [data-slot=input-otp-slot] { background-color:var(--card);box-shadow:none;corner-shape:squircle }
 :is(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--primary) }
 :is([data-slot=checkbox],[data-slot=radio-group-item],[data-slot=switch]) { box-shadow:inset 0 1px 2px var(--soft-edge-top);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent) }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作接续保留已完成 edit_file 原身份，原等待/修复/不重复副作用回归。
  * [OUTPUT]: 顺序发言不把执行触发来源保存为引用回复，流式、完成与重启保持真实接续关系。
  * [OUTPUT]: 群接续字数约束随原轮次冻结、下游上下文和重启保持。
  * [OUTPUT]: API依赖接续必须提交本次结果声明；漏报复用原有界只读汇报，失败保留草稿且零操作重放，历史等待不冒充当前结果。
@@ -485,7 +486,8 @@ describe('local product service', () => {
     } finally { release() }
   })
 
-  it.each(['unchanged', 'execution', 'report'])('delegates once and resumes only its owner after repairing a waiting disposition changed in %s', async changedIn => {
+  it.each(['unchanged', 'execution', 'report', 'edit'])('delegates once and resumes only its owner after repairing a waiting disposition changed in %s', async changedIn => {
+    const fileTool = changedIn === 'edit' ? 'edit_file' : 'write_file'
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
     let childId = '', sideEffects = 0, reports = 0
@@ -505,7 +507,7 @@ describe('local product service', () => {
       }
       if (!context.work!.waitRevision) {
         await context.beforeEffect!(); sideEffects++; await context.afterEffect!()
-        await context.onTool({ id: 'known-effect', name: 'write_file', status: 'completed', detail: '已写入 self:/work/input.md', createdAt: new Date().toISOString() })
+        await context.onTool({ id: 'known-effect', name: fileTool, status: 'completed', detail: '已写入 self:/work/input.md', createdAt: new Date().toISOString() })
         const input = { key: 'check', ownerAgentId: 'writer', scope: '检查数据', deliverable: '数据检查结果' }
         const child = await context.delegateWork!(input); childId = child.id
         expect((await context.delegateWork!(input)).id).toBe(childId)
@@ -515,7 +517,7 @@ describe('local product service', () => {
         await context.onDelta('等待检查结果'); return
       }
       expect(context.work!.nextStep).toBe('根据检查结果汇总')
-      expect(context.completedWorkTools?.flatMap(item => item.tools)).toEqual([expect.objectContaining({ name: 'write_file', detail: '已写入 self:/work/input.md' })])
+      expect(context.completedWorkTools?.flatMap(item => item.tools)).toEqual([expect.objectContaining({ name: fileTool, detail: '已写入 self:/work/input.md' })])
       expect(context.workItems!.find(work => work.id === childId)?.status).toBe('delivered')
       expect(context.messages.some(message => message.content === '检查结果为 42')).toBe(true)
       await context.onWorkOutcome!({ disposition: 'delivered', summary: '已汇总', evidence: [{ kind: 'answer', reference: '汇总：42' }] })
@@ -525,7 +527,7 @@ describe('local product service', () => {
     await idle(service, group, 3)
     const result = await detail(service, group)
     expect(result.workItems).toHaveLength(2); expect(result.workItems!.every(work => work.status === 'delivered')).toBe(true)
-    expect(reports).toBe(changedIn === 'unchanged' ? 0 : changedIn === 'execution' ? 1 : 2)
+    expect(reports).toBe(['unchanged', 'edit'].includes(changedIn) ? 0 : changedIn === 'execution' ? 1 : 2)
     expect(result.workBudgets).toHaveLength(1); expect(result.workBudgets![0]).toMatchObject({ runs: 3, modelCalls: 3 + reports, reportRefreshes: reports, workItems: 2 })
     expect(result.workWakes?.map(wake => wake.status)).toEqual(['consumed', 'consumed'])
     expect(result.messages.map(message => message.sequence)).toEqual([1, 2, 3, 4])

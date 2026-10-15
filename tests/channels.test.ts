@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI/本人平台两创建顺序隔离、旧归一/别名保留后新渠道房间、真实阅读提示/隐藏恢复/重启回归。
  * [OUTPUT]: 员工各自渠道群上下文/无本地镜像、旧单员工原位及多员工历史/未知回执、单绑定限制回归。
  * [OUTPUT]: 2026-10-14 跨入口主私聊/其他用户隔离、两个群回复链、迁移回执/重启、忙时拒绝与100次去重压力回归。
@@ -10,7 +11,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
@@ -82,6 +83,129 @@ async function legacySibling(f: Awaited<ReturnType<typeof fixture>>, binding: Ch
 }
 
 describe('employee channel business connection', () => {
+  it('keeps legacy private records stored while excluding them from mirror paging, search and unread counts', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0], existing = await detail(f.service, room.id)
+    await f.service.close()
+    const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+    const local: Message = { id: 'old-private-user', conversationId: room.id, senderType: 'user', senderId: 'user', senderName: '本人', content: '历史内部密语', status: 'completed', sequence: 3, createdAt: new Date().toISOString() }
+    const reply: Message = { ...local, id: 'old-private-reply', senderType: 'agent', senderId: 'writer', content: '历史内部答复', sequence: 4, runId: 'old-private-run' }
+    const reading = new (await import('../src/runtime/modules/conversations/reading-repository')).ConversationReadingRepository(store)
+    try { await store.transaction(async tx => {
+      await tx.put({ collection: 'messages', id: local.id, value: local }); await tx.put({ collection: 'messages', id: reply.id, value: reply })
+      await tx.put({ collection: 'runs', id: reply.runId!, value: { ...existing.runs.find(run => run.messageId), id: reply.runId, conversationId: room.id, messageId: reply.id, triggerMessageId: local.id, agentId: 'writer', status: 'completed', createdAt: local.createdAt } })
+      await reading.recordCompletion(tx, reply)
+    }) } finally { await store.close() }
+    const service = await f.create()
+    const view = await service.handle('getConversationView', { conversationId: room.id }) as import('../src/shared/domain/reading').ConversationView
+    expect(view.messages.map(message => message.id)).toEqual(existing.messages.map(message => message.id))
+    expect(view.reading.unreadCount).toBe(1)
+    expect((await channels(service))[0].channelUnreadCount).toBe(1)
+    expect((await channels(service))[0].lastMessagePreview).not.toContain('历史内部')
+    const hidden = await service.handle('getConversationView', { conversationId: room.id, aroundMessageId: reply.id }) as typeof view
+    expect(hidden.messages).toHaveLength(0)
+    expect((await detail(service, room.id)).messages).toHaveLength(4)
+    const completions = view.messagePage.items.flatMap(item => item.completion ? [item.completion] : [])
+    const observed = await service.handle('observeConversationReading', { conversationId: room.id, epoch: view.reading.epoch, expectedRevision: view.reading.revision, completions }) as typeof view.reading
+    expect(observed.unreadCount).toBe(0)
+    expect((await channels(service))[0].channelUnreadCount).toBe(0)
+  })
+
+  it('publishes only a selected fixed internal file, with hash and cross-channel checks', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const parent = (await channels(f.service))[0], source = (await detail(f.service, parent.id)).messages[0]
+    const internal = await f.service.handle('ensureChannelDiscussion', { conversationId: parent.id }) as Conversation
+    const host = f.service as unknown as { store: ProductStore; artifactRepository: import('../src/runtime/modules/workspaces/artifact-repository').ArtifactRepository }
+    const fileId = randomUUID(), directory = join(f.root, 'workspaces', internal.id, 'artifacts', fileId)
+    await mkdir(directory, { recursive: true }); const path = join(directory, 'internal.md'), text = '# 内部修改结果\n'
+    await writeFile(path, text)
+    const artifact = await host.store.transaction(tx => host.artifactRepository.register(tx, { id: fileId, conversationId: internal.id, ownerAgentId: 'writer', name: 'internal.md', path, size: Buffer.byteLength(text), contentHash: createHash('sha256').update(text).digest('hex') }, { conversationId: internal.id, revisionRequestId: null, sourceWorkId: null, sourceMessageId: null }))
+    expect(f.sent).toHaveLength(1)
+    const ref = { id: artifact.id, conversationId: internal.id, contentHash: artifact.contentHash }
+    const input = { conversationId: parent.id, sourceMessageId: source.id, content: '', artifacts: [ref], requestId: 'publish-file' }
+    await expect(f.service.handle('publishChannelMessage', { ...input, artifacts: [{ ...ref, contentHash: 'a'.repeat(64) }] })).rejects.toThrow()
+    const accepted = await f.service.handle('publishChannelMessage', input) as Message
+    await until(() => f.sent.length === 2)
+    expect(f.sent.at(-1)?.files).toEqual(['internal.md']); expect(accepted.channelPublication?.artifacts[0]).toMatchObject({ ...ref, name: 'internal.md' })
+    await f.incoming.get(binding.id)!(event({ eventId: 'other-channel', kind: 'group', chatId: 'group' })); await until(() => f.sent.length === 3)
+    const other = (await channels(f.service)).find(room => room.id !== parent.id)!, otherSource = (await detail(f.service, other.id)).messages[0]
+    await expect(f.service.handle('publishChannelMessage', { ...input, conversationId: other.id, sourceMessageId: otherSource.id, requestId: 'wrong-file-channel' })).rejects.toThrow('来源已失效')
+    await writeFile(path, '# 外部修改\n')
+    await expect(f.service.handle('publishChannelMessage', { ...input, requestId: 'stale-file' })).rejects.toThrow()
+    expect(f.sent).toHaveLength(3)
+  })
+
+  it('isolates quoted internal discussion, reference permissions, employee memory and native conversation identity', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const parent = (await channels(f.service))[0], source = (await detail(f.service, parent.id)).messages[0]
+    const internal = await f.service.handle('ensureChannelDiscussion', { conversationId: parent.id }) as Conversation
+    expect(await f.service.handle('ensureChannelDiscussion', { conversationId: parent.id })).toEqual(internal)
+    expect(internal).toMatchObject({ purpose: 'channel-internal', memoryScope: 'conversation', agentIds: ['writer'], channelDiscussion: { conversationId: parent.id, epoch: 1 } })
+    expect(mainConversations(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations).some(room => room.id === internal.id)).toBe(false)
+    const channelReference = { conversationId: parent.id, messageId: source.id, contentHash: createHash('sha256').update(JSON.stringify([source.id, source.conversationId, source.content, source.status])).digest('hex') }
+    await expect(f.service.handle('sendMessage', { conversationId: internal.id, content: '错误引用', mentionIds: [], requestId: 'bad-ref', channelReference: { ...channelReference, contentHash: 'f'.repeat(64) } })).rejects.toThrow('已变化')
+    await f.service.handle('sendMessage', { conversationId: internal.id, content: '内部密语，不公开', mentionIds: [], requestId: 'private-discussion', channelReference })
+    await until(async () => (await detail(f.service, internal.id)).messages.some(message => message.senderType === 'agent' && message.status === 'completed'))
+    expect(f.engine.contexts.at(-1)?.conversation.id).toBe(internal.id)
+    expect(f.engine.contexts.at(-1)?.messages.some(message => message.content.includes(source.content) && message.content.includes('内部密语'))).toBe(true)
+    expect(f.sent).toHaveLength(1)
+    await f.incoming.get(binding.id)!(event({ eventId: 'next-external', text: '外部继续' })); await until(() => f.sent.length === 2)
+    expect(f.engine.contexts.at(-1)?.conversation.id).toBe(parent.id)
+    expect(JSON.stringify(f.engine.contexts.at(-1)?.messages)).not.toContain('内部密语')
+    await expect(f.service.handle('createConversation', { id: internal.id, kind: 'direct', title: '改绑', agentIds: ['researcher'] })).rejects.toThrow('不能改绑')
+    await f.service.handle('clearConversationHistory', { id: parent.id, hide: false })
+    await expect(f.service.handle('getConversation', { id: internal.id })).rejects.toThrow('不存在')
+    await expect(f.service.handle('sendMessage', { conversationId: internal.id, content: '旧来源', mentionIds: [], requestId: 'stale-internal', channelReference })).rejects.toThrow('不存在')
+    const fresh = await f.service.handle('ensureChannelDiscussion', { conversationId: parent.id }) as Conversation
+    expect(fresh.id).not.toBe(internal.id); expect(fresh.channelDiscussion?.epoch).toBe(2)
+  })
+  it('publishes only an explicit fixed target without a model call, deduplicates and preserves unknown after restart', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0], source = (await detail(f.service, room.id)).messages[0]
+    await f.incoming.get(binding.id)!(event({ eventId: 'newer', externalThreadId: 'thread-newer' })); await until(() => f.sent.length === 2)
+    const input = { conversationId: room.id, sourceMessageId: source.id, content: '明确外发', artifacts: [], requestId: 'explicit-send' }
+    const calls = f.engine.contexts.length
+    const [first, duplicate] = await Promise.all([f.service.handle('publishChannelMessage', input), f.service.handle('publishChannelMessage', input)]) as Message[]
+    expect(first.id).toBe(duplicate.id); expect(first.channelPublication?.actor).toBe('user')
+    await until(() => f.sent.length === 3)
+    expect(f.sent.at(-1)).toMatchObject({ text: '明确外发', externalThreadId: 'lark:private:event-1' })
+    expect(f.engine.contexts).toHaveLength(calls)
+    await until(async () => (await f.service.handle('listChannelMessageDeliveries', { conversationId: room.id, messageIds: [first.id] }) as ChannelDelivery[])[0]?.status === 'sent')
+    await expect(f.service.handle('publishChannelMessage', { ...input, content: '换内容' })).rejects.toThrow('不同内容')
+    await expect(f.service.handle('publishChannelMessage', { ...input, sourceMessageId: first.id, requestId: 'invalid-target' })).rejects.toThrow('原始来信')
+    f.failSend.add(binding.id)
+    const unknownInput = { ...input, content: '平台结果未知', requestId: 'unknown-send' }
+    const unknown = await f.service.handle('publishChannelMessage', unknownInput) as Message
+    await until(async () => (await f.service.handle('listChannelMessageDeliveries', { conversationId: room.id, messageIds: [unknown.id] }) as ChannelDelivery[])[0]?.status === 'unknown')
+    await f.service.close(); const restarted = await f.create()
+    expect(await restarted.handle('publishChannelMessage', unknownInput)).toMatchObject({ id: unknown.id })
+    expect(f.sent).toHaveLength(4); expect(f.engine.contexts).toHaveLength(calls)
+    await restarted.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    await expect(restarted.handle('publishChannelMessage', { ...input, requestId: 'revoked' })).rejects.toThrow('授权已失效')
+    expect(f.sent).toHaveLength(4)
+  })
+  it('reads a quoted channel attachment in its own internal discussion without acquiring another channel permission', async () => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event({ attachments: [{ name: 'notes.txt', read: async () => Buffer.from('原渠道附件固定内容') }] })); await until(() => f.sent.length === 1)
+    const parent = (await channels(f.service))[0], material = (await detail(f.service, parent.id)).materials![0]
+    const internal = await f.service.handle('ensureChannelDiscussion', { conversationId: parent.id }) as Conversation
+    const materialReference = { id: material.id, conversationId: parent.id, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion }
+    const receipt = await f.service.handle('sendMessage', { conversationId: internal.id, content: '只在内部修改这份文件', mentionIds: ['writer'], requestId: 'edit-channel-file', materialReference }) as Message
+    expect(receipt.materialReference).toEqual(materialReference)
+    await until(async () => (await detail(f.service, internal.id)).messages.some(message => message.senderType === 'agent' && message.status === 'completed'))
+    expect(JSON.stringify(f.engine.contexts.at(-1)?.messages)).toContain('原渠道附件固定内容')
+    expect(f.sent).toHaveLength(1)
+    await f.incoming.get(binding.id)!(event({ eventId: 'group-file', kind: 'group', chatId: 'group' })); await until(() => f.sent.length === 2)
+    const other = (await channels(f.service)).find(room => room.id !== parent.id)!
+    const otherDiscussion = await f.service.handle('ensureChannelDiscussion', { conversationId: other.id }) as Conversation
+    await expect(f.service.handle('sendMessage', { conversationId: otherDiscussion.id, content: '越权读取', mentionIds: ['writer'], requestId: 'wrong-channel', materialReference })).rejects.toThrow()
+    expect(f.sent).toHaveLength(2)
+  })
+
   it('projects channel new replies without scanning history or pretending they were seen, and clears the badge only on verified observation', async () => {
     const f = await fixture(), binding = await f.connect(await f.save())
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
@@ -349,7 +473,7 @@ describe('employee channel business connection', () => {
       expect((await detail(f.service, local.id)).runs.some(run => run.status === 'running')).toBe(true)
       expect(((await f.service.handle('snapshot', undefined)) as Snapshot).conversations.filter(room => !room.mergedInto)).toHaveLength(2)
       expect(await f.service.handle('getChannelBindingReceipt', { agentId: 'writer', requestId: 'busy-owner-link' })).toMatchObject({ id: binding.id })
-    } finally { release() }
+    } finally { release(); await until(async () => (await detail(f.service, local.id)).runs.every(run => !['running', 'queued', 'waiting_approval'].includes(run.status))) }
   })
   it('distinguishes platform delivery, authorization rejection and accepted messages without exposing message text', async () => {
     const f = await fixture(), binding = await f.connect(await f.save())
@@ -470,8 +594,10 @@ describe('employee channel business connection', () => {
       expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.senderId)).toEqual(room.agentIds)
     }
     const writerRoom = rooms.find(room => room.agentIds[0] === 'writer')!
-    await f.service.handle('sendMessage', { conversationId: writerRoom.id, content: 'BOAI群内本地讨论', mentionIds: [], requestId: 'local-channel' })
-    await until(async () => (await detail(f.service, writerRoom.id)).messages.some(message => message.senderType === 'agent' && message.sequence > 2 && message.status === 'completed'))
+    await expect(f.service.handle('sendMessage', { conversationId: writerRoom.id, content: '禁止直接写入渠道', mentionIds: [], requestId: 'blocked-local-channel' })).rejects.toThrow('内部讨论')
+    const internal = await f.service.handle('ensureChannelDiscussion', { conversationId: writerRoom.id }) as Conversation
+    await f.service.handle('sendMessage', { conversationId: internal.id, content: 'BOAI群内本地讨论', mentionIds: [], requestId: 'local-channel' })
+    await until(async () => (await detail(f.service, internal.id)).messages.some(message => message.senderType === 'agent' && message.sequence > 1 && message.status === 'completed'))
     expect(f.sent).toHaveLength(2)
     await f.incoming.get(researcher.id)!(event({ ...input, eventId: 'researcher-next' })); await until(() => f.sent.length === 3)
     expect(f.engine.contexts.at(-1)?.messages.some(message => message.content === 'BOAI群内本地讨论')).toBe(false)

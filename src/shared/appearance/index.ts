@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Base46 色板、显示模式与外观偏好。
+ * [OUTPUT]: 图片存在时沿 Craft Scenic 使用深色，保留原模式/颜色供移除恢复；旧 imageOpacity 仅兼容存储。
  * [OUTPUT]: 外观偏好合同与语义 token；状态背景复用12%颜色混合为不透明表面，供提示卡片/堆叠/关闭按钮共用；Soft 主操作跟随强调色并选择可读前景。
  * [POS]: shared/appearance，主进程与 Renderer 共用的外观真源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -16,7 +17,7 @@ export const interfaceFonts: Record<InterfaceFont, string> = {
 export interface AppearancePreferences { schemaVersion: 1; mode: ColorMode | 'system'; themeIds: { light: string; dark: string }; background: { assetId: string | null; imageOpacity: number }; fontFamily: InterfaceFont; zoomFactor: number; customColors: Record<ColorMode, ThemeOverrides> }
 export interface AppearanceSnapshot { preferences: AppearancePreferences; revision: number; sequence: number; resolvedMode: ColorMode; resolvedThemeId: string; diagnostic?: string; readOnly?: boolean }
 export interface AppearancePatch { mode?: AppearancePreferences['mode']; themeIds?: Partial<AppearancePreferences['themeIds']>; background?: { imageOpacity: number }; fontFamily?: InterfaceFont; zoomFactor?: number; customColors?: Partial<Record<ColorMode, Partial<ThemeOverrides>>> }
-export const appearanceDefaults: AppearancePreferences = { schemaVersion: 1, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 0.2 }, fontFamily: 'geist', zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
+export const appearanceDefaults: AppearancePreferences = { schemaVersion: 1, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 1 }, fontFamily: 'geist', zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
 export interface Theme { id: string; name: string; mode: ColorMode; background: string; surface: string; foreground: string; muted: string; border: string; accent: string }
 export const themes: Theme[] = [
   { id: 'boai-light', name: 'BoAI 明亮', mode: 'light', background: '#f6f6f6', surface: '#ffffff', foreground: '#0d0d0d', muted: '#5d5d5d', border: '#e5e5e5', accent: '#2563eb' },
@@ -92,4 +93,16 @@ export function themeTokens(theme: Theme): Record<string,string> {
     link: Math.min(contrast(accent, surface), contrast(accent, bg)) >= 4.5 ? accent : fg,
     shadow: dark ? '#00000033' : '#0000000a',
   }
+}
+
+/** Craft ThemeContext Scenic behavior: image mode forces dark without rewriting the saved mode. */
+export function resolveAppearanceMode(preferences: AppearancePreferences, systemMode: ColorMode): ColorMode {
+  return preferences.background.assetId ? 'dark' : preferences.mode === 'system' ? systemMode : preferences.mode
+}
+export function resolveAppearanceTheme(preferences: AppearancePreferences, mode: ColorMode): Theme {
+  const overrides = preferences.customColors[mode]
+  // Scenic owns the glass and foreground; retain custom solid colors for removal.
+  return customizeTheme(resolveTheme(mode, preferences.themeIds[mode]), preferences.background.assetId
+    ? { accent: overrides.accent, background: null, foreground: null }
+    : overrides)
 }

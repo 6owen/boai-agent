@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隔离后台表单服务按实际POST核对输入/原生选择/自定义选择；不伪造网页驱动。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 隔离 Electron、离线真实 Mastra HTTP 工具协议、可观测本地网页与原生产浏览器窗口/事务。
  * [OUTPUT]: 内置浏览器窗口取证不接受业务归属参数，工具任务仍用原工作事实验收。
@@ -34,10 +35,12 @@ function webpage(cookie: string) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>浏览器迁移公开资料</title></head><body><h1>浏览器迁移公开资料</h1><p>${BROWSER_PAGE_MARKER}：固定事实为蓝色星球有三项观察。</p><p>COOKIE_SCOPE:${cookie || 'none'}</p><label>登录密码<input type="password" aria-label="登录密码" value="${BROWSER_PASSWORD}"></label><label>说明<input aria-label="说明" id="note"></label><button aria-label="提交一次" onclick="fetch('/mutate',{method:'POST'}).then(()=>document.getElementById('status').textContent='SUBMITTED_ONCE')">提交一次</button><a href="/download.txt" download="浏览结果.txt">下载文本</a><p id="status">NOT_SUBMITTED</p><div style="height:900px">用于真实滚动和截图的内容</div><script>if(location.search.includes("wait=1"))setTimeout(()=>document.getElementById("status").textContent="WAIT_READY",1800)</script></body></html>`
 }
 export async function browserFixtureSite(runtime: Desktop) {
-  const hits: BrowserSiteHit[] = []; let mutations = 0
+  const hits: BrowserSiteHit[] = []; const formSubmissions: Record<string, string>[] = []; let mutations = 0
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://fixture'), cookie = request.headers.cookie?.match(/(?:^|;\s*)browser_user=([^;]*)/)?.[1] ?? ''
     hits.push({ path: url.pathname, cookie, method: request.method ?? 'GET' })
+    if (url.pathname === '/input-save') { let body = ''; for await (const chunk of request) body += String(chunk); formSubmissions.push(Object.fromEntries(new URLSearchParams(body))); response.writeHead(200); response.end('FORM_SAVED'); return }
+    if (url.pathname === '/inputs') { response.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' }); response.end(`<!doctype html><meta charset="utf-8"><title>后台输入表单</title><style>body{padding:30px;font:20px sans-serif}input,button,select{font:20px sans-serif;margin:10px} [role=option]{padding:20px}</style><h1>后台输入表单</h1><form><label>备注<input name="note" aria-label="备注"></label><label>原生选项<select name="native" aria-label="原生选项"><option value="alpha">alpha</option><option value="beta">beta</option></select></label><input type="hidden" name="custom" value="none"><button type="button" role="combobox" aria-label="自定义选项" aria-expanded="false" aria-controls="choices" onclick="document.getElementById('choices').hidden=false;this.setAttribute('aria-expanded','true')">选择</button><div role="listbox" id="choices" hidden><div role="option" onclick="document.querySelector('[name=custom]').value='gamma';document.querySelector('[role=combobox]').textContent='gamma';document.querySelector('[role=combobox]').setAttribute('aria-expanded','false');document.getElementById('choices').hidden=true">gamma</div></div><button>保存表单</button></form><p role="status">NOT_SAVED</p><script>document.querySelector('form').onsubmit=async e=>{e.preventDefault();const r=await fetch('/input-save',{method:'POST',body:new URLSearchParams(new FormData(e.target))});document.querySelector('[role=status]').textContent=await r.text();};</script>`); return }
     if (url.pathname === '/mutate') { for await (const _ of request) {} mutations++; response.writeHead(200, { 'Content-Type': 'text/plain' }); response.end('submitted'); return }
     if (url.pathname === '/download.txt') { response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="browser-result.txt"' }); response.end('BRM_DOWNLOAD_TEXT 真正下载的公开内容'); return }
     if (url.pathname === '/favicon.ico') { response.writeHead(404); response.end(); return }
@@ -45,7 +48,7 @@ export async function browserFixtureSite(runtime: Desktop) {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...(account ? { 'Set-Cookie': `browser_user=${account}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400` } : {}) }); response.end(webpage(account ?? cookie))
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); runtime.trackServer(server)
-  return { server, hits, origin: `http://127.0.0.1:${(server.address() as { port: number }).port}`, mutations: () => mutations }
+  return { server, hits, origin: `http://127.0.0.1:${(server.address() as { port: number }).port}`, mutations: () => mutations, formSubmissions }
 }
 export async function prepareBrowserDesktop(runtime: Desktop, options: { legacy?: 'false' | 'missing'; kind?: 'direct' | 'group'; groupPeer?: boolean } = {}) {
   const site = await browserFixtureSite(runtime), plans = new Map<string, BrowserFixturePlan>(), errors: string[] = [], observedTools: { requestIndex: number; names: string[]; taskKey: string }[] = []

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [INPUT]: 原生合同测试的后端选择与隔离生命周期。
  * [OUTPUT]: 生产AppService、独立程序副本/SQLite及真实stdio夹具，可保留系统路径别名。
  * [POS]: Codex/Claude共同测试设置，默认API父模型立即失败。
@@ -10,10 +11,10 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { AppService } from '../../src/runtime/service'
 import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../../src/shared/domain'
-export async function nativeFixture(runtime: 'codex' | 'claude', disposals: (()=>Promise<void>)[], apiEngine?: import('../../src/runtime/contracts').AgentEngine, canonicalRoot = true){
+export async function nativeFixture(runtime: 'codex' | 'claude', disposals: (()=>Promise<void>)[], apiEngine?: import('../../src/runtime/contracts').AgentEngine, canonicalRoot = true, browserHost?:import('../../src/shared/ipc/browser').BrowserHostBridge){
  const directory=await mkdtemp(join(tmpdir(),'boai-native-conversation-'))
  const root=canonicalRoot ? await realpath(directory) : directory
- const options={dataPath:root,engine:apiEngine??{run:async()=>{throw Error('native employee must not invoke API engine')},test:async()=>''},secrets:{get:async()=>undefined,set:async()=>{},delete:async()=>{}},emit:()=>{}}
+ const options={browserHost,dataPath:root,engine:apiEngine??{run:async()=>{throw Error('native employee must not invoke API engine')},test:async()=>''},secrets:{get:async()=>undefined,set:async()=>{},delete:async()=>{}},emit:()=>{}}
  let service=new AppService(options);await service.init()
  disposals.push(async()=>{await service.close();await rm(root,{recursive:true,force:true})})
  const executable=join(root,runtime+'.mjs')

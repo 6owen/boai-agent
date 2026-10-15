@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 2026-10-14现行分离合同：只读批量完成/可见状态投影用于渠道新回复提示，不创建历史完成或伪造阅读。
  * [INPUT]: ProductStore 的真实发布事务、已提交消息、同事务来源验证 hook 及本人可见的固定完成快照。
  * [OUTPUT]: 会话内单调完成身份、幂等发布、连续阅读边界/有界缺口、独立锚点 CAS、旧历史未知与清理 epoch；备份与重启只保留已提交事实。
@@ -6,7 +7,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createHash } from 'node:crypto'
-import type { Message } from '../../../shared/domain'
+import type { Conversation, Message } from '../../../shared/domain'
 import { READING_LIMITS, type ConversationAnchorInput, type ConversationCompletion, type ConversationCompletionIdentity, type ConversationObserveInput, type ConversationReadingState } from '../../../shared/domain/reading'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 
@@ -21,13 +22,20 @@ export function completionHash(message: Message): string { return createHash('sh
 export class ConversationReadingRepository {
   constructor(private store: ProductStore, private hooks: ConversationReadingHooks = {}) {}
   /** Read-only projection: never creates clocks or marks unseen messages as read. */
-  async unreadCounts(): Promise<Map<string, number>> {
+  async unreadCounts(channelIds: string[] = []): Promise<Map<string, number>> {
     const [clocks, states] = await Promise.all([this.store.load<Clock>('conversationCompletionClocks'), this.store.load<SavedState>('conversationReadingStates')])
     const byId = new Map(states.map(state => [state.id, state]))
-    return new Map(clocks.map(clock => {
+    const counts = new Map(clocks.map(clock => {
       const saved = byId.get(clock.id), state = saved?.epoch === clock.epoch ? saved : undefined
       return [clock.id, Math.max(0, clock.ordinal - (state?.boundary ?? 0) - (state?.sparseSeen.length ?? 0))]
     }))
+    if (channelIds.length) await this.store.transaction(async tx => {
+      for (const clock of clocks.filter(clock => channelIds.includes(clock.id))) {
+        const state = byId.get(clock.id)
+        counts.set(clock.id, await tx.unreadCompletionCount({ conversationId: clock.id, epoch: clock.epoch, boundary: state?.epoch === clock.epoch ? state.boundary : 0, sparseSeen: state?.epoch === clock.epoch ? state.sparseSeen : [] }))
+      }
+    })
+    return counts
   }
   private async source(tx: RecordTransaction, message: Message): Promise<void> {
     if (this.hooks.validateMessage) await this.hooks.validateMessage(tx, message)
@@ -53,7 +61,7 @@ export class ConversationReadingRepository {
   }
   private async dto(tx: RecordTransaction, state: SavedState, clock: Clock): Promise<ConversationReadingState> {
     const firstUnread = await tx.firstUnreadCompletion({ conversationId: clock.id, epoch: clock.epoch, boundary: state.boundary, sparseSeen: state.sparseSeen })
-    return { ...structuredClone(state), completionCount: clock.ordinal, unreadCount: clock.ordinal - state.boundary - state.sparseSeen.length, legacyCompletedUnknown: clock.legacyCompletedUnknown, ...(firstUnread ? { firstUnreadMessageId: firstUnread.messageId } : {}) }
+    return { ...structuredClone(state), completionCount: clock.ordinal, unreadCount: await tx.unreadCompletionCount({ conversationId: clock.id, epoch: clock.epoch, boundary: state.boundary, sparseSeen: state.sparseSeen }), legacyCompletedUnknown: clock.legacyCompletedUnknown, ...(firstUnread ? { firstUnreadMessageId: firstUnread.messageId } : {}) }
   }
   /** Call after putting the final agent Message in its real publication transaction. */
   async recordCompletion(tx: RecordTransaction, message: Message): Promise<ConversationCompletion | null> {
@@ -92,6 +100,14 @@ export class ConversationReadingRepository {
       }
       let boundary = state.boundary
       while (seen.delete(boundary + 1)) boundary++
+      const room = await tx.get<Conversation>('conversations', input.conversationId)
+      if (room?.channel && !room.mainPrivate) {
+        // Hidden legacy local records are outside this projection; skip their cursor slots,
+        // without fabricating an observation for those messages.
+        const nextVisible = await tx.firstUnreadCompletion({ conversationId: clock.id, epoch: clock.epoch, boundary, sparseSeen: [...seen] })
+        boundary = Math.max(boundary, nextVisible ? nextVisible.ordinal - 1 : clock.ordinal)
+        for (const ordinal of seen) if (ordinal <= boundary) seen.delete(ordinal)
+      }
       if (seen.size > READING_LIMITS.sparseSeen) throw new Error('阅读缺口记录已达上限，请先返回未读内容再继续')
       const sparseSeen = [...seen].sort((a, b) => a - b), changed = boundary !== state.boundary || JSON.stringify(sparseSeen) !== JSON.stringify(state.sparseSeen)
       const next = changed ? { ...state, boundary, sparseSeen, revision: state.revision + 1 } : state

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新员工计划通过明确归属选择；已有聊天/监控沿原目标设置。
  * [INPUT]: 定时任务生产页面与 Base UI 选择/浮层控件。
  * [OUTPUT]: 复用的语义选择、总览导航、操作菜单与时间预览入口。
  * [POS]: 桌面自动化回归支撑，不改变产品状态或绕过 UI 业务操作。
@@ -24,6 +25,7 @@ export async function previewSchedule(page: Page) {
   await page.keyboard.press('Escape')
 }
 export async function scheduleTarget(page: Page, target: 'employee' | 'conversation', label: string) {
+  if (target === 'employee' && await page.getByRole('combobox', { name: '自动化归属', exact: true }).count()) { await selectScheduleOption(page, '自动化归属', `员工 · ${label}`); return }
   await page.getByRole('button', { name: '运行于', exact: true }).click()
   await selectScheduleOption(page, '聊天方式', target === 'employee' ? '新任务聊天' : '指定聊天')
   await selectScheduleOption(page, target === 'employee' ? '执行员工' : '目标会话', label)

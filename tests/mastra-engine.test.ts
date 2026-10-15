@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: Hermes 文件工具回归：长文续读/精准修改/过期拒绝、来源撤权和真实SDK发布。
+ * [OUTPUT]: API实际SDK的report_work回执返回原答复证据，最终正文门禁不变。
+ * [OUTPUT]: 引用网页任务可消费原Work剩余额度超过12步；逐调用预算先拒绝仍不发送，非引用任务保持原上限。
+ * [OUTPUT]: 实际SDK普通chat管理计划并消费真实工具回执，工具前导文本不冒充最终保存结果，无文件Work。
  * [OUTPUT]: 实际SDK覆盖父任务依赖创建前拒绝/真实同事ID接续，以及正文选择位置兼容、冲突选择与未知字段拒绝。
  * [OUTPUT]: 新增实际157字摘要的SDK读写回执红绿，以及Unicode/截断/有界段落计数；协作BDD内置实际输入因果断言。
  * [OUTPUT]: 第14组本次正文证据选择的真实SDK红绿：正文绑定、组织/等待/无结果/丢弃/未交付边界及显式选择优先/未选择拒绝旧摘句。
@@ -218,6 +222,27 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(server.requests[0]!.tools?.some(tool=>tool.function.name==='browser_tool')).toBe(true)
     expect(execute).toHaveBeenCalledExactlyOnceWith('snapshot','call-0');expect(drain).toHaveBeenCalledOnce()
     expect(toolResultText(server.requests[1]!)).toContain('真实本轮页面')
+  })
+
+  it.each(['referenced','no-reference','host-budget-exhausted'])('browser step allowance follows the original host budget: %s',async mode=>{
+    const server=await endpoint([...Array.from({length:13},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
+    const execute=vi.fn(async()=>({result:{output:'当前实际页面',appendReleaseHint:false}})),drain=vi.fn(async()=>{})
+    let reservations=0
+    const run=await context(server.url,{
+      modelCallId:'initial-call',
+      workBudget:{maxModelCalls:24,modelCalls:1} as EngineContext['workBudget'],
+      onAdditionalModelCall:async()=>{reservations++;if(mode==='host-budget-exhausted'&&reservations===12)throw new Error('ORIGINAL_HOST_BUDGET_EXHAUSTED');return 'reserved-'+reservations},
+      browserSession:{execute,drain,...(mode!=='no-reference'?{reference:{instanceId:'original-window',url:'https://example.test/',pageVersion:'original'}}:{})} as unknown as BrowserSession,
+    })
+    run.ctx.work={id:'claimed-browser-task',sourceMessageId:'message-1',conversationId:run.ctx.conversation.id,ownerAgentId:run.ctx.agent.id,status:'running'} as WorkItem
+    const pending=new MastraEngine().run(run.ctx)
+    if(mode==='referenced'){
+      await pending;expect(server.requests).toHaveLength(14);expect(execute).toHaveBeenCalledTimes(13);expect(run.deltas.join('')).toBe('页面操作已核对。')
+    }else{
+      await expect(pending).rejects.toThrow(mode==='no-reference'?'步骤上限':'ORIGINAL_HOST_BUDGET_EXHAUSTED')
+      expect(server.requests).toHaveLength(12);expect(run.deltas).toEqual([])
+    }
+    expect(run.ctx.workBudget?.maxModelCalls).toBe(24);expect(drain).toHaveBeenCalledOnce()
   })
 
   it.each(['inactive','acp','automation','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
@@ -528,6 +553,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(outcomes).toEqual([{ disposition: 'delivered', summary: '提供计划', evidence: [{ kind: 'answer', reference: '先收集样本，再计算均值。' }] }])
     expect(run.deltas.join('')).toBe('先收集样本，再计算均值。')
     expect(run.deltas.join('')).not.toContain('disposition')
+    expect(toolResultText(server.requests[1])).toContain('finalReplyMustInclude')
+    expect(toolResultText(server.requests[1])).toContain('先收集样本，再计算均值。')
     expect(run.additionalCalls).toHaveLength(1)
   })
 
@@ -1304,7 +1331,7 @@ describe('native task file source authorization', () => {
     await expect(runtime.tools.read_file.execute!({ path: 'shared:/confidential-name.md' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.list_files.execute!({ path: 'shared:/confidential-directory' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.read_file.execute!({ path: 'self:/runs/run-previous/report.md' }, invocation)).rejects.toThrow('not authorized')
-    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result', truncated: false, textMetrics: { nonWhitespaceCharacters: 12, paragraphCharacters: [12], omittedParagraphs: 0 } })
+    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result', offset: 0, nextOffset: null, totalCharacters: 13, contentHash: createHash('sha256').update('Public result').digest('hex'), truncated: false, textMetrics: { nonWhitespaceCharacters: 12, paragraphCharacters: [12], omittedParagraphs: 0 } })
   })
 
   it('honors provenance acquired by a read before later writes and limits material-backed outputs to the current run', async () => {
@@ -1597,7 +1624,8 @@ describe('real SDK file publication ordering and authority', () => {
     const writing = new Promise<void>(resolve => { entered = resolve }), exited = new Promise<void>(resolve => { release = resolve })
     let effects = 0
     const mock = await endpoint((_body, response, index) => {
-      if (index) { send(response, '本轮真实文件已发布。', index); return }
+      if (index === 0) { send(response, { name: 'read_file', args: { path: 'self:/runs/run-1/ordered.md' } }, index); return }
+      if (index > 1) { send(response, '本轮真实文件已发布。', index); return }
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
       const chunk = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: 'same-round-files', object: 'chat.completion.chunk', created: 1700000000, model: 'test-model', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
       chunk({ role: 'assistant', tool_calls: [
@@ -1616,7 +1644,7 @@ describe('real SDK file publication ordering and authority', () => {
       expect(effects).toBe(1)
       expect(fixture.artifacts).toEqual([])
     } finally { release(); await running }
-    expect(mock.requests).toHaveLength(2)
+    expect(mock.requests).toHaveLength(3)
     expect(effects).toBe(2); expect(fixture.artifacts).toHaveLength(1)
     const bytes = await readFile(fixture.artifacts[0]!.path)
     expect(bytes.toString()).toBe('新内容：真实写入完成后才允许发布。')
@@ -1686,4 +1714,102 @@ it('projects only selected user images and retains an authorized historical imag
   expect(serialized).not.toContain('data:image/png;base64,MISSING')
   expect(projected[0].content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'image', image: images[0].dataUrl })]))
   expect(stored.map(item => item.content)).toEqual(['上一张图', '请继续看图', '同事的说明', '外部'])
+})
+
+it('uses the actual SDK automation tool in chat and publishes only the final receipt-based reply without file Work', async () => {
+  const saved = { id: 'saved-plan', revision: 1, name: '日报' }
+  const service = await endpoint([{ name: 'manage_automation', args: { action: 'list', limit: 20 }, preface: '先查一下计划。' }, '找到已保存的日报。'])
+  const manageAutomation = vi.fn(async () => ({ definitions: [saved] }))
+  const f = await context(service.url, { responseKind: 'chat', work: undefined, manageAutomation, automationOwner: { kind: 'employee', employeeId: 'agent-a' } })
+  await new MastraEngine().run(f.ctx)
+  expect(manageAutomation).toHaveBeenCalledWith({ action: 'list', limit: 20 })
+  expect(service.requests).toHaveLength(2)
+  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_automation'])
+  expect(JSON.stringify(service.requests[1].messages)).toContain('saved-plan')
+  expect(f.deltas.join('')).toBe('找到已保存的日报。')
+  expect(f.additionalCalls).toHaveLength(1)
+  expect(f.tools.some(tool => tool.name === 'manage_automation' && tool.status === 'completed')).toBe(true)
+})
+
+
+describe('Hermes-inspired API file editing', () => {
+  it('pages a long Unicode file losslessly and permits a whole overwrite only after every page', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const target = path.join(ctx.workspace!.workPath, 'long.md'), logical = 'self:/work/long.md'
+    const content = '😀'.repeat(48_000) + '\r\n结尾必须保留'
+    await writeFile(target, content)
+    const first = await runtime.tools.read_file.execute!({ path: logical }, invocation)
+    expect(first).toMatchObject({ content: '😀'.repeat(48_000), offset: 0, nextOffset: 48_000, truncated: true })
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'incomplete overwrite' }, invocation)).rejects.toThrow('Only part')
+    expect(await readFile(target, 'utf8')).toBe(content)
+    const second = await runtime.tools.read_file.execute!({ path: logical, offset: 48_000 }, invocation)
+    expect(second).toMatchObject({ content: '\r\n结尾必须保留', nextOffset: null })
+    await runtime.tools.write_file.execute!({ path: logical, content: content + '\n完整修订' }, invocation)
+    expect(await readFile(target, 'utf8')).toBe(content + '\n完整修订')
+  })
+  it('edits a uniquely selected part without losing an unread tail or granting whole-file overwrite', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const target = path.join(ctx.workspace!.workPath, 'plan.md'), logical = 'self:/work/plan.md'
+    const content = '\ufeff日期：十一月一日\r\n' + '未读正文。'.repeat(12_000)
+    await writeFile(target, content)
+    await runtime.tools.read_file.execute!({ path: logical, limit: 10 }, invocation)
+    const receipt = await runtime.tools.edit_file!.execute!({ path: logical, oldText: '十一月一日', newText: '十一月八日' }, invocation)
+    expect(receipt).toMatchObject({ replacements: 1, published: false })
+    expect(await readFile(target, 'utf8')).toBe(content.replace('十一月一日', '十一月八日'))
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'tail lost' }, invocation)).rejects.toThrow('Only part')
+  })
+  it('refuses unread, ambiguous and externally changed files without modifying bytes', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const target = path.join(ctx.workspace!.workPath, 'plan.md'), logical = 'self:/work/plan.md'
+    await writeFile(target, '日期：旧\n日期：旧')
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'blind overwrite' }, invocation)).rejects.toThrow('not been read')
+    await runtime.tools.read_file.execute!({ path: logical }, invocation)
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)).rejects.toThrow('2 locations')
+    expect(await readFile(target, 'utf8')).toBe('日期：旧\n日期：旧')
+    await writeFile(target, '人工新增：保留\n日期：旧')
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)).rejects.toThrow('changed since')
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'stale overwrite' }, invocation)).rejects.toThrow('changed since')
+    expect(await readFile(target, 'utf8')).toBe('人工新增：保留\n日期：旧')
+    await runtime.tools.read_file.execute!({ path: logical }, invocation)
+    await runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)
+    expect(await readFile(target, 'utf8')).toBe('人工新增：保留\n日期：新')
+  })
+  it('checks the same source permissions and the hash again after the effect gate', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const target = path.join(ctx.workspace!.workPath, 'plan.md'), logical = 'self:/work/plan.md'
+    await writeFile(target, 'old')
+    await runtime.tools.read_file.execute!({ path: logical }, invocation)
+    ctx.canAccessTaskPath = async () => false
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: 'old', newText: 'new' }, invocation)).rejects.toThrow('not authorized')
+    ctx.canAccessTaskPath = async () => true
+    ctx.beforeEffect = async () => { await writeFile(target, 'external edit during effect gate') }
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: 'old', newText: 'new' }, invocation)).rejects.toThrow('changed before')
+    expect(await readFile(target, 'utf8')).toBe('external edit during effect gate')
+  })
+  it('refuses invalid UTF-8 reads without poisoning the file or its baseline', async () => {
+    const { ctx, runtime, invocation } = await nativeTask()
+    const target = path.join(ctx.workspace!.workPath, 'invalid.txt'), bytes = Buffer.from([0xff, 0xfe, 0, 65])
+    await writeFile(target, bytes)
+    await expect(runtime.tools.read_file.execute!({ path: 'self:/work/invalid.txt' }, invocation)).rejects.toThrow('not UTF-8')
+    await expect(runtime.tools.write_file.execute!({ path: 'self:/work/invalid.txt', content: 'corrupted decode' }, invocation)).rejects.toThrow('not UTF-8')
+    expect(await readFile(target)).toEqual(bytes)
+  })
+  it('runs read/edit/publish through the real Mastra SDK and preserves the untouched document', async () => {
+    const logical = 'self:/work/plan.md'
+    const server = await endpoint([
+      { name: 'read_file', args: { path: logical } },
+      { name: 'edit_file', args: { path: logical, oldText: '截止日期：十一月一日', newText: '截止日期：十一月八日' } },
+      { name: 'publish_artifact', args: { path: logical, name: '修订计划.md' } },
+      '已修改日期并交付修订计划。',
+    ])
+    const { ctx, artifacts, tools } = await context(server.url)
+    await mkdir(ctx.workspace!.workPath, { recursive: true })
+    const original = '# 项目计划\r\n负责人：小林\r\n截止日期：十一月一日\r\n验收标准：完成代码评审\r\n'
+    await writeFile(path.join(ctx.workspace!.workPath, 'plan.md'), original)
+    await new MastraEngine().run(ctx)
+    expect(tools.filter(tool => tool.status === 'completed').map(tool => tool.name)).toEqual(['read_file', 'edit_file', 'publish_artifact'])
+    expect(artifacts).toHaveLength(1)
+    expect(await readFile(artifacts[0].path, 'utf8')).toBe(original.replace('十一月一日', '十一月八日'))
+    expect(toolResultText(server.requests[2])).toContain('replacements')
+  })
 })

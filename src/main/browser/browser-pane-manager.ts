@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: BOAI就绪门禁等待Craft初始页面实际载入，初始化失败明确返回；移除会覆盖随后导航的迟到about:blank回退。
+ * [OUTPUT]: Craft v0.15.1后台新帧捕获与不可见临时显示整段迁入；恢复原可见状态/节流，无法确认新帧则返回失败。
+ * [OUTPUT]: Craft v0.15.1按键优先走CDP，已知Ctrl/Cmd等原生快捷键回退保留，应用统一窗口/登录与退出保持。
  * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；内置浏览器导航与下载策略。
  * [OUTPUT]: 固定地址栏布局/正常窗口缩放与网页输入；持久登录分区、沙箱与实际退出；人工下载沿原生保存，工具下载固定受管目录，工具退出仅取消受管下载；同ID重开拒绝旧窗口迟到回调。
  * [POS]: src/main/browser/browser-pane-manager.ts。
@@ -15,7 +18,7 @@
 
 import { join, parse as parsePath, basename, relative, isAbsolute } from 'node:path'
 import { existsSync, mkdirSync } from 'node:fs'
-import { BrowserView, BrowserWindow, ipcMain, nativeTheme, session, type Session as ElectronSession, type DownloadItem, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import { screen, BrowserView, BrowserWindow, ipcMain, nativeTheme, session, type Session as ElectronSession, type DownloadItem, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { mainLog } from './logger'
 import { BrowserCDP, type AccessibilitySnapshot, type ElementGeometry } from './browser-cdp'
 import type { BrowserInstanceInfo, BrowserInstanceSnapshot, BrowserManagerOptions } from './types'
@@ -31,6 +34,10 @@ const MAX_NETWORK_LOG_ENTRIES = 500
 const MAX_DOWNLOAD_LOG_ENTRIES = 200
 const DEFAULT_WAIT_TIMEOUT_MS = 10_000
 const DEFAULT_WAIT_POLL_MS = 100
+/** How long a capture waits for the page to paint (two animation frames) before calling it stale. */
+const SCREENSHOT_FRAME_TIMEOUT_MS = 400
+const SCREENSHOT_RESCUE_FRAME_TIMEOUT_MS = 1_000
+
 const SCREENSHOT_HIDDEN_CAPTURE_ATTEMPTS = 3
 const SCREENSHOT_RETRY_DELAY_MS = 120
 const SCREENSHOT_RESCUE_PAINT_DELAY_MS = 180
@@ -111,6 +118,8 @@ const TOOLBAR_CHANNELS = {
 const UI_SESSION_PARTITION = 'boai:browser-ui'
 
 interface BrowserInstance {
+  rendersWhileHidden?: boolean
+  documentRevision?: number
   id: string
   window: BrowserWindow
   toolbarView: BrowserView
@@ -152,6 +161,8 @@ interface BrowserInstance {
   partition: string
   downloadDirectory: string | null
   toolbarError: string | null
+  initialPageReady: boolean
+  initialPageError: string | null
   activeDownloads: Map<string, { item: DownloadItem; done: Promise<void>; kind: 'native' | 'managed' }>
   loadDone: Promise<void> | null
   resolveLoadDone: (() => void) | null
@@ -449,6 +460,7 @@ export class BrowserPaneManager {
       downloads: [],
       lastLaunchToken: null,
       partition, downloadDirectory: options.downloadDirectory ?? null, toolbarError: null,
+      initialPageReady: false, initialPageError: null,
       activeDownloads: new Map(), loadDone: null, resolveLoadDone: null,
     }
 
@@ -478,9 +490,12 @@ export class BrowserPaneManager {
       instance.toolbarError = error instanceof Error ? error.message : String(error)
       this.emitStateChange(instance)
     })
-    void this.loadEmptyStatePage(instance).catch((error) => {
+    void this.loadEmptyStatePage(instance).then(() => {
+      instance.initialPageReady = true
+    }).catch((error) => {
       mainLog.warn(`[browser-pane] empty-state load failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
-      void pageView.webContents.loadURL('about:blank')
+      instance.initialPageError = error instanceof Error ? error.message : String(error)
+      this.emitStateChange(instance)
     })
 
     return instanceId
@@ -524,10 +539,11 @@ export class BrowserPaneManager {
     while (Date.now() - started < 8000) {
       const instance = this.requireAliveInstance(id)
       if (instance.toolbarError) throw new Error(`浏览器工具栏加载失败：${instance.toolbarError}`)
-      if (instance.toolbarReady) return
+      if (instance.initialPageError) throw new Error(`浏览器初始页面加载失败：${instance.initialPageError}`)
+      if (instance.toolbarReady && instance.initialPageReady) return
       await this.sleep(25)
     }
-    throw new Error('浏览器工具栏尚未准备完成')
+    throw new Error('浏览器工具栏或初始页面尚未准备完成')
   }
 
   async waitForLoads(id: string): Promise<void> {
@@ -620,6 +636,7 @@ export class BrowserPaneManager {
   }
 
   async navigate(id: string, url: string): Promise<{ url: string; title: string }> {
+    await this.ready(id)
     const instance = this.requireAliveInstance(id)
 
     let normalizedUrl = url.trim()
@@ -815,7 +832,7 @@ export class BrowserPaneManager {
     id: string,
     ref: string,
     options?: { waitFor?: 'none' | 'navigation' | 'network-idle'; timeoutMs?: number }
-  ): Promise<void> {
+  ): Promise<import('../../runtime/adapters/mastra/browser-tool-types').BrowserClickResult> {
     const instance = this.requireAliveInstance(id)
 
     try {
@@ -857,6 +874,7 @@ export class BrowserPaneManager {
       } else if (waitFor === 'network-idle') {
         await this.waitFor(id, { kind: 'network-idle', timeoutMs: options?.timeoutMs })
       }
+      return {via:geometry.via,note:geometry.note}
     } catch (error) {
       instance.lastAction = {
         tool: 'browser_click',
@@ -1145,12 +1163,41 @@ export class BrowserPaneManager {
       jpegQuality?: number
     },
   ): Promise<{ imageBuffer: Buffer; imageFormat: 'png' | 'jpeg'; warnings: string[] }> {
+    // A hidden page stops painting. Captured while its surface lingers, it gave its last frame,
+    // which agents took for the current page (found 2026-10-11); later the surface is gone and
+    // capturePage fails. Unthrottled it keeps painting while it can; hidden captures are used only
+    // once it has painted, otherwise the window is shown invisibly for the capture.
+    const unthrottledForCapture = !instance.rendersWhileHidden
+    if (unthrottledForCapture) this.setRendersWhileHidden(instance, true)
+    try {
+      return await this.capturePageWhenPainted(instance, options)
+    } finally {
+      if (unthrottledForCapture) this.setRendersWhileHidden(instance, false)
+    }
+  }
+
+  private async capturePageWhenPainted(
+    instance: BrowserInstance,
+    options: {
+      mode: 'raw' | 'agent' | 'region'
+      errorPrefix: 'screenshot' | 'region screenshot'
+      rect?: { x: number; y: number; width: number; height: number }
+      dpr?: number
+      format?: 'png' | 'jpeg'
+      jpegQuality?: number
+    },
+  ): Promise<{ imageBuffer: Buffer; imageFormat: 'png' | 'jpeg'; warnings: string[] }> {
     let rescueUsed = false
     let sawDisplaySurfaceUnavailable = false
     const warnings: string[] = []
     const imageOpts = { dpr: options.dpr, format: options.format, jpegQuality: options.jpegQuality }
 
-    for (let attempt = 1; attempt <= SCREENSHOT_HIDDEN_CAPTURE_ATTEMPTS; attempt += 1) {
+    const painting = await this.pageIsPainting(instance, SCREENSHOT_FRAME_TIMEOUT_MS)
+    if (!painting) {
+      mainLog.warn(`[browser-pane] ${options.errorPrefix} page not painting instance=${instance.id} visible=${instance.isVisible} url=${instance.currentUrl}`)
+    }
+
+    for (let attempt = 1; painting && attempt <= SCREENSHOT_HIDDEN_CAPTURE_ATTEMPTS; attempt += 1) {
       let result: { buffer: Buffer; format: 'png' | 'jpeg' } | null = null
       try {
         result = await this.capturePageImage(instance, {
@@ -1189,18 +1236,21 @@ export class BrowserPaneManager {
     const wasVisible = instance.isVisible
 
     if (!window.isDestroyed()) {
+      let undoReveal: (() => void) | null = null
       try {
         if (!wasVisible) {
           if (window.isMinimized()) {
             window.restore()
           }
-          window.showInactive()
+          // A hidden page has no surface to copy, so it must be on screen for a moment.
+          undoReveal = this.revealInvisiblyForCapture(window)
           instance.isVisible = true
           this.emitStateChange(instance)
           rescueUsed = true
-          await this.sleep(SCREENSHOT_RESCUE_PAINT_DELAY_MS)
           await this.waitForScreenshotReadiness(instance.id)
         }
+        // Covered by other windows the page may still not paint: say so rather than pass an old frame off as current.
+        const paintedForRescue = await this.pageIsPainting(instance, SCREENSHOT_RESCUE_FRAME_TIMEOUT_MS)
 
         let rescueResult: { buffer: Buffer; format: 'png' | 'jpeg' } | null = null
         try {
@@ -1222,13 +1272,15 @@ export class BrowserPaneManager {
 
         if (rescueResult) {
           if (rescueUsed) {
-            warnings.push('Capture required temporary inactive reveal for rendering; browser visibility was restored immediately.')
+            warnings.push('The hidden window was shown invisibly for a moment to render this capture.')
           }
+          if (!paintedForRescue) throw new Error('当前页面未绘制新帧，未把旧截图返回给员工；请显示网页后重新核对')
           return { imageBuffer: rescueResult.buffer, imageFormat: rescueResult.format, warnings }
         }
       } finally {
         if (!wasVisible && !window.isDestroyed()) {
-          window.hide()
+          if (undoReveal) undoReveal()
+          else window.hide()
           instance.isVisible = false
           this.emitStateChange(instance)
         }
@@ -1247,6 +1299,74 @@ export class BrowserPaneManager {
     }
 
     throw new Error(`Failed to capture ${options.errorPrefix}: empty image buffer`)
+  }
+
+  /**
+   * Show a hidden window for a capture without the user seeing it, click-through either way.
+   * macOS and Windows: transparent and floating above other apps' windows (a plain showInactive
+   * left it behind the frontmost app, and covered windows are not painted). Linux has no window
+   * opacity, so the window is parked beyond every display instead (no taskbar entry); Wayland
+   * ignores positions, so there it still shows briefly. Returns the undo, which hides it again.
+   */
+  private revealInvisiblyForCapture(window: BrowserWindow): () => void {
+    window.setIgnoreMouseEvents(true)
+    if (process.platform === 'linux') {
+      const bounds = window.getBounds()
+      const beyondDisplays = Math.max(...screen.getAllDisplays().map(({ bounds: display }) => display.x + display.width)) + 100
+      window.setSkipTaskbar(true)
+      window.setPosition(beyondDisplays, bounds.y)
+      window.showInactive()
+      return () => {
+        window.hide()
+        window.setBounds(bounds)
+        window.setSkipTaskbar(false)
+        window.setIgnoreMouseEvents(false)
+      }
+    }
+    const opacity = window.getOpacity()
+    window.setOpacity(0)
+    window.setAlwaysOnTop(true, 'floating')
+    window.showInactive()
+    return () => {
+      window.hide()
+      window.setAlwaysOnTop(false)
+      window.setIgnoreMouseEvents(false)
+      window.setOpacity(opacity)
+    }
+  }
+
+  /**
+   * Whether the page renders frames right now: two animation frames within the timeout. A page
+   * that isn't painting would be captured from its last composited frame.
+   */
+  private async pageIsPainting(instance: BrowserInstance, timeoutMs: number): Promise<boolean> {
+    const webContents = instance.pageView.webContents
+    if (webContents.isDestroyed()) return false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const painted = await Promise.race([
+        webContents.executeJavaScript('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))'),
+        new Promise<false>((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs) }),
+      ])
+      return painted === true
+    } catch {
+      return false
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+
+  /**
+   * Turn background throttling off (or back on) for the page. Off, a window that was just hidden or
+   * is covered keeps drawing frames, and timers and animations run at full speed: wanted while an
+   * agent drives the page, not for idle windows.
+   */
+  private setRendersWhileHidden(instance: BrowserInstance, renders: boolean): void {
+    if (instance.rendersWhileHidden === renders) return
+    const webContents = instance.pageView.webContents
+    if (webContents.isDestroyed()) return
+    webContents.setBackgroundThrottling(!renders)
+    instance.rendersWhileHidden = renders
   }
 
   private isDisplaySurfaceUnavailableError(error: unknown): boolean {
@@ -1423,6 +1543,8 @@ export class BrowserPaneManager {
     if (!key) throw new Error('browser_key requires key')
 
     const modifiers = (args.modifiers ?? []) as Array<'shift' | 'control' | 'alt' | 'meta'>
+    // Craft v0.15.1: CDP also reaches a hidden browser window.
+    if (await instance.cdp.pressKey(key, modifiers)) return
 
     instance.pageView.webContents.sendInputEvent({
       type: 'keyDown',
@@ -2437,6 +2559,7 @@ export class BrowserPaneManager {
     })
 
     pageWc.on('did-navigate', (_event, urlFromEvent) => {
+      instance.documentRevision=(instance.documentRevision ?? 0)+1
       const url = typeof pageWc.getURL === 'function' ? pageWc.getURL() : (urlFromEvent || instance.currentUrl)
       instance.cdp.invalidateRefs()
       const previousUrl = instance.currentUrl
@@ -2466,6 +2589,8 @@ export class BrowserPaneManager {
     })
 
     pageWc.on('did-navigate-in-page', (_event, urlFromEvent) => {
+      instance.documentRevision=(instance.documentRevision ?? 0)+1
+      instance.cdp.invalidateRefs()
       const url = typeof pageWc.getURL === 'function' ? pageWc.getURL() : (urlFromEvent || instance.currentUrl)
       const normalized = this.normalizePageState(url, instance.title)
       instance.currentUrl = normalized.url

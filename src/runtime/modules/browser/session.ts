@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 同实例同URL的动态页面仅经新snapshot/screenshot/find重新观察；旧版本首次写入拒绝后可恢复，新URL仍需本人重新引用。
+ * [OUTPUT]: 批准展示当前页面和输入长度，后台绑定原参数hash，命令参数隐藏填写正文；非密码业务值可能出现在页面/结果；旧截图摘要不冒充可用图片。
+ * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [INPUT]: 手动 Work 的宿主租约、原用户 URL、当前来源门禁与 Main 窗口桥。
  * [OUTPUT]: 下载仅在完成回执/真实hash核验后复制到当前run并返回真实可读路径；受管根父层系统别名可用、根下链接拒绝，未完成/未知原件留独立私有暂存区且不进入业务备份。
  * [OUTPUT]: 严格单命令/冻结审批/真实开始握手和稳定回执；普通浏览器回执不触发隐形接管暂停，显式交接仅兼容；截图只保留内存媒体，取消与 disposal 等待整动作实际退出。
@@ -9,6 +12,7 @@ import { createHash } from 'node:crypto'
 import { lstat, readFile, realpath, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { BrowserActionEnvelope,BrowserActionReply,BrowserHostBridge,BrowserLease } from '../../../shared/ipc/browser'
+import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
 import { parseBrowserSingleCommand } from '../../adapters/mastra/browser-tool-runtime'
 import { browserCommandHash,BrowserRepository } from './repository'
 import { restrictedPath } from '../workspaces/file-access'
@@ -18,6 +22,7 @@ export function browserRequestOrigins(content:string) {
   return [...origins]
 }
 export class BrowserSession {
+  get reference() { return this.options.reference }
   private acquired=false
   private acquiring?:Promise<void>
   private disposed=false
@@ -26,16 +31,25 @@ export class BrowserSession {
   private paused?:{promise:Promise<void>;resolve:()=>void;reject:(error:Error)=>void}
   private pauseExit?:Promise<void>
   private resumedSnapshot?:{source:import('../../../shared/ipc/browser').BrowserPageEvidence;output:string}
-  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest:string; validate():Promise<void>; approve(command:string):Promise<boolean>; downloadDestination?:{root:string;runPath:string} }) {
+  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest:string; reference?:import('../../../shared/ipc/browser').BrowserPageReference; validate():Promise<void>; approve(command:string):Promise<boolean>; downloadDestination?:{root:string;runPath:string} }) {
     options.signal.addEventListener('abort',() => { void this.drain().catch(() => {}) },{once:true})
   }
-  private async ensure() {
+  private async ensure(observePage = false) {
     await this.waitActive()
     this.options.signal.throwIfAborted(); if (this.disposed) throw new Error('浏览器租约已结束')
     await this.options.validate()
     if (!this.acquired) {
-      this.acquiring ??= this.repository.registerTask(this.lease).then(()=>this.host.request('acquire',this.lease)).then(()=>{this.acquired=true})
-      await this.acquiring
+      this.acquiring ??= (async()=>{
+        if (this.options.reference) {
+          const target=this.options.reference
+          const current=await this.host.request('reference',{instanceId:target.instanceId})
+          if (current.instanceId!==target.instanceId || current.url!==target.url) throw new Error('原引用网页已导航或替换，请在聊天中重新引用目标网页')
+          if (current.pageVersion!==target.pageVersion && !observePage) throw new Error('当前网页内容已变化，本次操作未开始。请先调用 snapshot 或 screenshot 重新观察当前页面，再发起新的操作。')
+          this.options.reference=current
+        }
+        await this.repository.registerTask(this.lease);await this.host.request('acquire',this.lease);this.acquired=true
+      })()
+      try { await this.acquiring } catch(error) { this.acquiring=undefined; throw error }
     }
     this.options.signal.throwIfAborted()
   }
@@ -52,26 +66,29 @@ export class BrowserSession {
   private async perform(command:string,toolCallId:string) {
     const parsed=parseBrowserSingleCommand(command)
     if (!toolCallId || toolCallId.length > 300) throw new Error('浏览器缺少真实模型工具调用身份')
-    await this.ensure()
+    await this.ensure(['snapshot','screenshot','screenshot-region','find'].includes(parsed.action))
     const lease=structuredClone(this.lease)
     const hash=browserCommandHash(parsed.parts)
-    const actionId=`browser-${createHash('sha256').update(JSON.stringify([lease.workId,toolCallId])).digest('hex')}`
+    const actionId=`browser-${createHash('sha256').update(JSON.stringify([lease.runId,toolCallId])).digest('hex')}`
     const old=await this.repository.get(actionId)
     if (old) {
-      if (old.argumentHash!==hash || !old.lease || old.lease.workId!==lease.workId) throw new Error('原浏览器调用参数不一致或已清理')
+      if (old.argumentHash!==hash || !old.lease || old.lease.workId!==lease.workId || old.lease.runId!==lease.runId) throw new Error('原浏览器调用参数不一致或已清理')
       const known=await this.host.request('lookup',{lease:lease,actionId})
       if (known && known.status!=='unknown') { await this.repository.finish(lease,known); return this.downloaded(this.completed(known),lease,parsed.action==='downloads') }
       if (old.reply && old.status!=='unknown') return this.downloaded(this.completed(old.reply),lease,parsed.action==='downloads')
       throw new Error('原浏览器动作结果待核对，未重新执行')
     }
     const source=await this.host.request('inspect',lease)
+    const target=this.options.reference
+    if (target && (source?.instanceId!==target.instanceId || source.url!==target.url)) throw new Error('原引用网页已导航或替换，请在聊天中重新引用目标网页')
     const approvedOrigins=browserRequestOrigins(this.options.originalRequest)
+    if (target) approvedOrigins.push(new URL(target.url).origin)
     let approval:BrowserActionEnvelope['approval']
     const origin=parsed.targetUrl ? new URL(parsed.targetUrl).origin : source?.url && /^https?:/.test(source.url) ? new URL(source.url).origin : undefined
     const interaction=parsed.mutating && parsed.action !== 'navigate'
     if (interaction || (origin && !approvedOrigins.includes(origin))) {
       if (!source && interaction) throw new Error('浏览器尚无当前页面，不能批准目标或输入')
-      const approved=await this.options.approve(`浏览器操作\n页面：${source?.url ?? parsed.targetUrl}\n页面版本：${source?.pageVersion ?? 'empty'}\n命令：${parsed.command}`)
+      const approved=await this.options.approve(`浏览器操作\n页面：${source?.url ?? parsed.targetUrl}\n页面版本：${source?.pageVersion ?? 'empty'}\n命令：${redactBrowserCommand(parsed.command)}`)
       this.options.signal.throwIfAborted()
       if (!approved) throw new Error('用户拒绝本次浏览器操作；不得重试或绕过')
       approval={url:source?.url ?? parsed.targetUrl!,pageVersion:source?.pageVersion ?? 'empty',commandHash:hash}
@@ -92,6 +109,7 @@ export class BrowserSession {
     catch { reply=(await this.host.request('lookup',{lease:lease,actionId}).catch(() => null)) ?? {actionId,generation:lease.generation,status:'unknown',error:'浏览器回执失联，仅保留核对，不重放'} }
     if (reply.actionId !== actionId || reply.generation !== lease.generation) throw new Error('浏览器回执身份不一致')
     await this.repository.finish(lease,reply)
+    if (reply.source?.instanceId && target) this.options.reference={instanceId:reply.source.instanceId,pageVersion:reply.source.pageVersion,url:reply.source.url,title:reply.source.title,obtainedAt:reply.source.obtainedAt}
     return this.downloaded(this.completed(reply),lease,parsed.action==='downloads')
   }
   private async downloaded(reply:BrowserActionReply,lease:BrowserLease,downloadList:boolean) {
@@ -134,6 +152,10 @@ export class BrowserSession {
   }
   private completed(reply:BrowserActionReply) {
     if (reply.status!=='completed') throw new Error(reply.error ?? `浏览器动作 ${reply.status}，原回执保留`)
+    if (reply.result?.image && typeof reply.result.image.data !== 'string') {
+      const { image: _, ...result } = reply.result
+      return { ...reply, result: { ...result, output: `${result.output}\n原截图回执仅保留hash摘要，图片字节已不可用；如需看图，请明确重新读取当前页面截图。` } }
+    }
     return reply
   }
   private async waitActive() {

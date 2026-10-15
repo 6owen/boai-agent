@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工详情加入同一归属自动化配置与执行历史，隐藏停读并沿原草稿守卫。
  * [OUTPUT]: 已保存员工详情增加渠道绑定/授权/连接与独立发送回执，复用原未保存守卫，隐藏停读。
  * [OUTPUT]: 2026-10-10 员工原详情新增执行详情标签，保留身份/配置草稿和未保存守卫，隐藏不查询或启动执行。
  * [INPUT]: 员工领域类型、显式配置导航请求、DesktopApi 与公共组件、统一 UI 基础组件。
@@ -12,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { MemoryPane } from './memory-pane'
 import { EmployeeExecutionPane } from './execution-pane'
 import { EmployeeChannelPane } from './channel-pane'
@@ -25,8 +27,8 @@ import type { DesktopApi } from '@shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
 import { Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 
-type EmployeeTab = 'profile' | 'files' | 'workspace' | 'memory' | 'execution' | 'channels'
-export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts', actionsTarget }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string; actionsTarget?: HTMLElement | null }) {
+type EmployeeTab = 'profile' | 'files' | 'workspace' | 'memory' | 'execution' | 'channels' | 'automations'
+export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts', onConversation, actionsTarget }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string; onConversation?(id: string, messageId?: string): void; actionsTarget?: HTMLElement | null }) {
   const [tab, setTab] = useState<EmployeeTab>('profile')
   const [identityTarget, setIdentityTarget] = useState<HTMLDivElement | null>(null)
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null)
@@ -71,6 +73,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
       <TabsTrigger value="memory">记忆</TabsTrigger>
       <TabsTrigger value="execution">执行详情</TabsTrigger>
       <TabsTrigger value="channels">渠道</TabsTrigger>
+      {onConversation && <TabsTrigger value="automations">自动化</TabsTrigger>}
     </TabsList></div>
     {error && <Banner>{error}</Banner>}
     <TabsContent value="profile" keepMounted><AgentEditor key={configurationEpoch} api={api} snapshot={snapshot} agent={agent} identityTarget={identityTarget} footerTarget={footerTarget} actionsTarget={actionsTarget} configurationVisible={tab === 'profile'} identityDisabled={tab !== 'profile' && guard.dirty && !configurationDirty} onDirtyChange={configurationChanged} onRevealConfiguration={revealConfiguration} active={active} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
@@ -79,6 +82,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     <TabsContent value="memory"><fieldset className="contents" disabled={configurationDirty}><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></fieldset></TabsContent>
     <TabsContent value="execution"><EmployeeExecutionPane key={`${agent.id}:${contextId ?? 'all'}`} api={api} agent={agent} snapshot={snapshot} conversationId={contextId} active={active && tab === 'execution'} /></TabsContent>
     <TabsContent value="channels"><fieldset className="contents" disabled={configurationDirty}><EmployeeChannelPane key={agent.id} api={api} agent={agent} active={active && tab === 'channels'} /></fieldset></TabsContent>
+    {onConversation && <TabsContent value="automations"><fieldset className="contents" disabled={configurationDirty}><OwnerAutomations key={agent.id} api={api} snapshot={snapshot} owner={{ kind: 'employee', employeeId: agent.id }} active={active && tab === 'automations'} onConversation={onConversation} /></fieldset></TabsContent>}
     {actionsTarget === undefined && <div ref={setFooterTarget} className="employee-identity-actions" />}
   </Tabs>
 }

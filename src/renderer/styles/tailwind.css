@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 导入作用域化Beautiful UI SelectionActions原版token，避免覆盖全局主题。
  * [INPUT]: Tailwind v4、shadcn 动画/状态工具类、Iconify 与现有语义变量。
  * [OUTPUT]: Soft 圆角/字号/阴影映射与隔离旧控件的 Preflight 兼容基线，不附加 outline 颜色。
  * [POS]: global.css 唯一 Tailwind 入口；components.json 指向此文件。
@@ -7,6 +8,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import '../components/ui/selection-actions.css';
 @custom-variant dark (&:where(.dark, .dark *));
 @config '../../../tailwind.config.ts';
 

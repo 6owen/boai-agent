@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 渠道分页在SQL限额前排除历史本地输入及其回复，原记录保留，明确外发可见。
  * [INPUT]: records 中真实会话/当前成员、消息、已发送材料接收范围、登记成果及本周期完成身份；类型化筛选与游标。
  * [OUTPUT]: 员工材料筛选在分页前按当前聊天成员及conversation接收范围检查；缺省保留旧显式名单，未知范围不扩权。
  * [OUTPUT]: LIMIT 前名称/正文多词 AND、确定性字段相关性与分数/时间/身份游标；只关联相同来源版本的正文索引，隐藏/清理门禁与点击保留；内部明确历史窗口和完成 ordinal/epoch 查询独立。
@@ -30,7 +32,7 @@ const searchSelect = (score = '0') => `WITH originals AS (${conversationSearchSo
 
 /** Fixed branches and operators; all keyword, filter and cursor values remain bound data. */
 export function conversationSearchSql(query: ConversationSearchQuery & { limit: number }) {
-  const ranking = searchRankingSql(query.keyword), predicates = [searchableConversationSql, "(i.kind<>'message' OR json_extract(i.source,'$.status')='completed')"], args: (string | number)[] = [...ranking.args]
+  const ranking = searchRankingSql(query.keyword), predicates = [searchableConversationSql, channelSearchMessageSql, "(i.kind<>'message' OR json_extract(i.source,'$.status')='completed')"], args: (string | number)[] = [...ranking.args]
   for (const term of ranking.terms) { predicates.push("(instr(lower(COALESCE(i.text,'')),?)>0 OR instr(lower(COALESCE(i.body,'')),?)>0)"); args.push(term, term) }
   if (query.scope === 'current' || query.conversationId) { predicates.push('i.conversationId=?'); args.push(query.conversationId ?? '') }
   if (query.agentId) {
@@ -51,12 +53,22 @@ export function conversationSearchSql(query: ConversationSearchQuery & { limit: 
 
 /** Public search clicks require visible scope; only internal authorized history reads may include a hidden chat. */
 export function conversationSearchTargetSql(target: ConversationSearchSqlTarget) {
-  return { sql: `${searchSelect()} WHERE ${target.includeHidden ? availableConversation : searchableConversationSql} AND i.kind=? AND i.id=? AND i.conversationId=? LIMIT 1`, args: [target.kind, target.id, target.conversationId] }
+  return { sql: `${searchSelect()} WHERE ${target.includeHidden ? availableConversation : searchableConversationSql} AND ${channelSearchMessageSql} AND i.kind=? AND i.id=? AND i.conversationId=? LIMIT 1`, args: [target.kind, target.id, target.conversationId] }
 }
 
 /** Before/default traverse newest first; after traverses oldest first to avoid skipping nearby rows. */
+/** External rooms expose inbound messages and replies to external requests, not private local history. */
+export const channelMirrorMessageSql = `(json_type(c.value,'$.channel') IS NULL OR COALESCE(json_extract(c.value,'$.mainPrivate'),0)=1 OR json_type(m.value,'$.channel')='object' OR json_type(m.value,'$.channelPublication')='object' OR (json_extract(m.value,'$.senderType')='agent' AND (json_type(m.value,'$.runId') IS NULL OR EXISTS(
+ SELECT 1 FROM records r LEFT JOIN records w ON w.collection='workItems' AND w.id=json_extract(r.value,'$.workId') LEFT JOIN records b ON b.collection='workBudgets' AND b.id=json_extract(w.value,'$.budgetId')
+ JOIN records source ON source.collection='messages' AND source.id=COALESCE(
+ (SELECT t.id FROM records t WHERE t.collection='messages' AND t.id=json_extract(r.value,'$.triggerMessageId') AND json_extract(t.value,'$.senderType')='user' AND json_extract(t.value,'$.conversationId')=c.id),
+ (SELECT t.id FROM records t WHERE t.collection='messages' AND t.id=json_extract(w.value,'$.sourceMessageId') AND json_extract(t.value,'$.senderType')='user' AND json_extract(t.value,'$.conversationId')=c.id),json_extract(b.value,'$.sourceMessageId'))
+ WHERE r.collection='runs' AND r.id=json_extract(m.value,'$.runId') AND json_extract(source.value,'$.conversationId')=c.id AND json_type(source.value,'$.channel')='object'))))`
+const channelSearchMessageSql = `(i.kind<>'message' OR ${channelMirrorMessageSql.replaceAll('m.value', 'i.source')})`
+
+
 export function conversationMessagesSql(query: Pick<ConversationMessagePageQuery, 'conversationId' | 'before' | 'after'> & { limit: number }) {
-  const predicates = ["m.collection='messages'", "json_extract(m.value,'$.id')=m.id", "json_extract(m.value,'$.conversationId')=?", "NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)"], args: (string | number)[] = [query.conversationId]
+  const predicates = [channelMirrorMessageSql, "m.collection='messages'", "json_extract(m.value,'$.id')=m.id", "json_extract(m.value,'$.conversationId')=?", "NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)"], args: (string | number)[] = [query.conversationId]
   if (query.before) { predicates.push("(json_extract(m.value,'$.sequence'),m.id)<(?,?)"); args.push(query.before.sequence, query.before.id) }
   if (query.after) { predicates.push("(json_extract(m.value,'$.sequence'),m.id)>(?,?)"); args.push(query.after.sequence, query.after.id) }
   args.push(query.limit)
@@ -68,5 +80,11 @@ export function conversationMessagesSql(query: Pick<ConversationMessagePageQuery
 export function firstUnreadCompletionSql(query: FirstUnreadCompletionSqlQuery) {
   if (!Number.isSafeInteger(query.epoch) || query.epoch < 1 || !Number.isSafeInteger(query.boundary) || query.boundary < 0 || !Array.isArray(query.sparseSeen) || query.sparseSeen.length > READING_LIMITS.sparseSeen || query.sparseSeen.some(ordinal => !Number.isSafeInteger(ordinal) || ordinal < 1)) throw new Error('未读边界和缺口须为当前周期的有界完成序号')
   const unseen = query.sparseSeen.length ? ` AND json_extract(completion.value,'$.ordinal') NOT IN (${query.sparseSeen.map(() => '?').join(',')})` : ''
-  return { sql: `SELECT completion.value AS completion FROM records completion JOIN records c ON c.collection='conversations' AND c.id=json_extract(completion.value,'$.conversationId') JOIN records clock ON clock.collection='conversationCompletionClocks' AND clock.id=c.id AND json_extract(clock.value,'$.epoch')=json_extract(completion.value,'$.epoch') JOIN records m ON m.collection='messages' AND m.id=completion.id AND json_extract(m.value,'$.id')=m.id AND json_extract(completion.value,'$.messageId')=m.id AND json_extract(m.value,'$.conversationId')=c.id AND json_extract(m.value,'$.senderType')='agent' AND json_extract(m.value,'$.status')='completed' WHERE completion.collection='conversationCompletions' AND c.id=? AND json_extract(completion.value,'$.epoch')=? AND json_extract(completion.value,'$.ordinal')>?${unseen} AND NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id) ORDER BY json_extract(completion.value,'$.ordinal') ASC,completion.id ASC LIMIT 1`, args: [query.conversationId, query.epoch, query.boundary, ...query.sparseSeen] }
+  return { sql: `SELECT completion.value AS completion FROM records completion JOIN records c ON c.collection='conversations' AND c.id=json_extract(completion.value,'$.conversationId') JOIN records clock ON clock.collection='conversationCompletionClocks' AND clock.id=c.id AND json_extract(clock.value,'$.epoch')=json_extract(completion.value,'$.epoch') JOIN records m ON m.collection='messages' AND m.id=completion.id AND json_extract(m.value,'$.id')=m.id AND json_extract(completion.value,'$.messageId')=m.id AND json_extract(m.value,'$.conversationId')=c.id AND json_extract(m.value,'$.senderType')='agent' AND json_extract(m.value,'$.status')='completed' WHERE completion.collection='conversationCompletions' AND c.id=? AND json_extract(completion.value,'$.epoch')=? AND json_extract(completion.value,'$.ordinal')>?${unseen} AND ${channelMirrorMessageSql} AND NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id) ORDER BY json_extract(completion.value,'$.ordinal') ASC,completion.id ASC LIMIT 1`, args: [query.conversationId, query.epoch, query.boundary, ...query.sparseSeen] }
+}
+
+/** Count the visible projection without altering any historical read receipt. */
+export function unreadCompletionCountSql(query: FirstUnreadCompletionSqlQuery) {
+  const statement = firstUnreadCompletionSql(query)
+  return { sql: `SELECT COUNT(*) AS count FROM (${statement.sql.split(' ORDER BY ')[0]})`, args: statement.args }
 }

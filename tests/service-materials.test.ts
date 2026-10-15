@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [INPUT]: 真实 AppService/SQLite/材料原件、可控 FakeEngine 与原生任务文件工具。
  * [OUTPUT]: 准备零消息/工作/模型、图片与任意二进制的真实原件/授权媒体及仅文件元信息、零持久 dataURL；发送事务回滚与未知回执核对、数量/版本/范围、原文/派生回复/Work 元数据/成果授权与动态来源继承、撤权取消、跨聊天记忆/根投影、hash 清理/外改冲突重启修复及仅已发材料备份迁移回归。
  * [OUTPUT]: 新缺省聊天附件随当前成员可读，@仅选择响应者；新成员实际模型上下文拿到历史文本/图片，移出后原件读取拒绝，私聊提交/读取与上下文不跨聊天；旧显式名单继续限定授权；备份恢复的非持久filePreview沿原件重新生成，不进入存储。
@@ -553,5 +554,47 @@ describe('service material delivery boundaries', () => {
     await restarted.service.handle('clearConversationHistory', { id: direct.id, hide: false })
     await expect(readFile(original)).rejects.toThrow(); expect((await detail(restarted.service, direct)).messages).toEqual([])
     await expect(restarted.service.handle('sendMessage', input)).rejects.toThrow('清理')
+  })
+})
+
+
+describe('preview fixed material edits', () => {
+  it('projects the exact original into the new request, directs one employee and keeps attachment ownership/idempotency', async () => {
+    const { service, engine, root, group } = await fixture()
+    const { material } = await prepare(service, root, group, '保留第一段。\n修改第二段 EDIT_SOURCE_CANARY。', null)
+    const original = await send(service, group, request(group, material, { mentionIds: ['researcher'] }))
+    const reference = { id: material.id, conversationId: group.id, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion }
+    const before = engine.contexts.length
+    const input = request(group, undefined, { content: '把第二段修改为已完成，交付新文件。', mentionIds: ['writer'], materialReference: reference })
+    const message = await send(service, group, input)
+    expect(message.materialReference).toEqual(reference)
+    expect(message.materialIds).toBeUndefined()
+    const repository = (service as unknown as { materials: MaterialRepository }).materials
+    const native = await storeOf(service).transaction(tx => repository.nativeMessage(tx, message, 'writer', 'codex'))
+    expect(native.message.content).toContain('EDIT_SOURCE_CANARY')
+    const metadata = native.message.content.split('\n').flatMap(line => { try { return [JSON.parse(line)] } catch { return [] } }).find(value => value.nativePath)
+    expect(await readFile(metadata.nativePath, 'utf8')).toBe('保留第一段。\n修改第二段 EDIT_SOURCE_CANARY。')
+    expect(native.refs).toEqual([reference])
+    const contexts = engine.contexts.slice(before)
+    expect(contexts.length).toBeGreaterThan(0)
+    expect(contexts.every(context => context.agent.id === 'writer')).toBe(true)
+    expect(contexts[0].messages.find(value => value.id === message.id)?.content).toContain('EDIT_SOURCE_CANARY')
+    expect(contexts[0].materialRefs).toContainEqual(reference)
+    expect((await storeOf(service).get<ConversationMaterial>('materials', material.id))?.messageId).toBe(original.id)
+    const receipt = await service.handle('sendMessage', input) as Message
+    expect(receipt.id).toBe(message.id)
+    expect(engine.contexts).toHaveLength(before + contexts.length)
+  })
+
+  it('rejects changed hash, other chat, uncommitted attachment and revoked readers before creating messages', async () => {
+    const { service, root, direct, group } = await fixture()
+    const { material } = await prepare(service, root, group)
+    const reference = { id: material.id, conversationId: group.id, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion }
+    const edit = (patch: Record<string, unknown> = {}) => request(group, undefined, { content: '修改并交付文件', mentionIds: ['researcher'], materialReference: reference, ...patch })
+    await expect(service.handle('sendMessage', edit())).rejects.toThrow()
+    await send(service, group, request(group, material, { mentionIds: ['researcher'] }))
+    const before = (await detail(service, group)).messages.length
+    for (const patch of [{ materialReference: { ...reference, contentHash: '0'.repeat(64) } }, { conversationId: direct.id }, { mentionIds: ['writer'] }, { mentionIds: ['researcher', 'writer'] }]) await expect(service.handle('sendMessage', edit(patch))).rejects.toThrow()
+    expect((await detail(service, group)).messages).toHaveLength(before)
   })
 })

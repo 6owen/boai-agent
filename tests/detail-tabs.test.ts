@@ -1,5 +1,7 @@
 /*
+ * [OUTPUT]: 渠道只持一个详情视图，连续打开/返回不增标签；显式来源、关闭后迟到、跨员工/跨页与递归拒绝。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
+ * [OUTPUT]: 员工渠道标签去重并更新明确会话/消息目标，其他员工与主页面标签独立保留。
  * [INPUT]: 详情标签/成果未决请求的纯状态转换与真实员工/连接配置。
  * [OUTPUT]: 固定修订回执必须匹配本人原请求与指定员工； 真实核心默认连接/显式连接保留与跨页迟到回执隔离；成果家族/明确版本/hash与主页面隔离、冻结请求的未知只读核对/重启统一 unknown（旧 null 不授权重发）/原身份重试；自动化新建草稿/按计划编辑去重、重命名与独立关闭；Trace 重开重新定位且按轮次/员工隔离；标签去重、会话范围、排序后身份/选择保留、关闭邻项和收起保留的不变量。
  * [POS]: 多标签状态的模块回归。
@@ -13,6 +15,45 @@ import type { Connection, DigitalAgent } from '../src/shared/domain'
 describe('detail workspace tabs', () => {
   const employee: DetailTarget = { type: 'agent', id: 'researcher', conversationId: 'group-a' }
   const activity: DetailTarget = { type: 'activity', id: 'group-a' }
+  it('replaces channel details in one slot and returns to the same employee and room', () => {
+    const channel: DetailTarget = { type: 'channels', id: 'researcher', conversationId: 'private-a', requestId: 'open' }
+    const root = reduce(emptyDetailTabs, { type: 'open', target: channel })
+    const info = reduce(root, { type: 'open', target: { type: 'group', id: 'private-a' }, withinKey: root.activeKey! })
+    const configuration = reduce(info, { type: 'open', target: employee, withinKey: root.activeKey! })
+    expect(configuration.tabs).toEqual([{ key: root.activeKey, target: channel, detail: employee }])
+    expect(configuration.activeKey).toBe(root.activeKey)
+    expect(reduce(configuration, { type: 'back', key: root.activeKey! })).toEqual(root)
+    expect(reduce(configuration, { type: 'open', target: { ...channel, conversationId: 'group-b' } }).tabs[0]).toEqual({ key: root.activeKey, target: { ...channel, conversationId: 'group-b' } })
+  })
+  it('rejects nested channels and late detail opens after their owner closed', () => {
+    const channel: DetailTarget = { type: 'channels', id: 'researcher', requestId: 'open' }
+    const root = reduce(emptyDetailTabs, { type: 'open', target: channel })
+    expect(reduce(root, { type: 'open', target: { ...channel, id: 'writer' }, withinKey: root.activeKey! })).toBe(root)
+    const closed = reduce(root, { type: 'close', key: root.activeKey! })
+    expect(reduce(closed, { type: 'open', target: employee, withinKey: root.activeKey! })).toBe(closed)
+  })
+  it('keeps main-chat details separate and prevents a foreign page from taking a channel owner', () => {
+    const opened = detailWorkspacesReducer({}, { scope: 'conversations', action: { type: 'open', target: { type: 'channels', id: 'researcher', requestId: 'open' } } })
+    const owner = opened.conversations.activeKey!
+    const main = detailWorkspacesReducer(opened, { scope: 'conversations', action: { type: 'open', target: employee } })
+    expect(main.conversations.tabs).toHaveLength(2)
+    expect(main.conversations.tabs[0].detail).toBeUndefined()
+    expect(detailWorkspacesReducer(main, { scope: 'contacts', action: { type: 'open', target: employee, withinKey: owner } })).toBe(main)
+  })
+  it('keeps employee channel tabs independent while updating an explicit room and message target', () => {
+    const first: DetailTarget = { type: 'channels', id: 'researcher', conversationId: 'private-a', requestId: 'open-a' }
+    const second: DetailTarget = { type: 'channels', id: 'writer', conversationId: 'private-b', requestId: 'open-b' }
+    const both = reduce(reduce(emptyDetailTabs, { type: 'open', target: first }), { type: 'open', target: second })
+    const focused: DetailTarget = { ...first, conversationId: 'group-a', requestId: 'focus', focusMessage: { id: 'message-a', requestId: 'focus' } }
+    const next = reduce(both, { type: 'open', target: focused })
+    expect(next.tabs.map(tab => tab.key)).toEqual(both.tabs.map(tab => tab.key))
+    expect(next.tabs[0].target).toEqual(focused)
+    expect(next.tabs[1]).toBe(both.tabs[1])
+    expect(next.activeKey).toBe(next.tabs[0].key)
+    const hidden = reduce(next, { type: 'visibility', shown: false })
+    expect(hidden.tabs).toBe(next.tabs)
+    expect(reduce(hidden, { type: 'visibility', shown: true }).tabs[0].target).toEqual(focused)
+  })
   it('reuses an existing tab without reordering or replacing its session', () => {
     const first = reduce(emptyDetailTabs, { type: 'open', target: activity })
     const both = reduce(first, { type: 'open', target: employee })

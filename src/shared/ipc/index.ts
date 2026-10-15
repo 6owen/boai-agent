@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 渠道内部讨论创建与固定消息引用、明确外发和消息级送达回执接口。
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
+ * [OUTPUT]: 归属员工/群计划有界分页读取，右侧和全局管理共用真实计划ID。
  * [OUTPUT]: 桌面后台偏好与真实登录项状态的 typed 白名单；不暴露路径/命令。
  * [OUTPUT]: 员工渠道绑定、连接/停止/解除、保存回执核对和独立平台发送结果；不公开平台入站或已保存凭据接口。
  * [OUTPUT]: openPath增加可选reveal动作，沿原宿主路径校验定位文件，不改变默认外部打开。
@@ -57,6 +62,9 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  ensureChannelDiscussion: { input: { conversationId: string }; output: import('../domain').Conversation }
+  publishChannelMessage: { input: import('../domain/channels').ChannelPublishInput; output: import('../domain').Message }
+  listChannelMessageDeliveries: { input: { conversationId: string; messageIds: string[] }; output: import('../domain/channels').ChannelDelivery[] }
   listChannelBindings: { input: { agentId: string }; output: import('../domain/channels').ChannelBindingState[] }
   saveChannelBinding: { input: import('../domain/channels').ChannelBindingInput; output: import('../domain/channels').ChannelBindingState }
   getChannelBindingReceipt: { input: { agentId: string; requestId: string }; output: import('../domain/channels').ChannelBindingState | null }
@@ -159,7 +167,9 @@ export interface Methods {
   retryResourceCleanup: { input: { id: string }; output: void }
   listExternalFiles: { input: {runId:string}; output: {directory:string;files:{name:string;relativePath:string}[]} }
   publishExternalArtifact: { input: {runId:string;relativePath:string}; output: void }
+  getAutomation: { input: { id: string }; output: import('../domain/automations').AutomationDefinition | null }
   listAutomations: { input: undefined; output: AutomationsView }
+  listOwnerAutomations: { input: import('../domain/automations').AutomationListQuery; output: import('../domain/automations').AutomationListPage }
   getPendingAutomationNavigation: { input: undefined; output: { automationId: string; occurrenceId: string; conversationId?: string; messageId?: string } | null }
   getAutomationOccurrence: { input: { id: string }; output: AutomationHistoryPage['occurrences'][number] }
   listAutomationHistory: { input: AutomationHistoryQuery; output: AutomationHistoryPage }
@@ -217,7 +227,8 @@ export interface Methods {
   discardMaterial: { input: { id: string; expectedRevision: number }; output: void }
   setMaterialAuthorization: { input: { id: string; expectedRevision: number; authorizedAgentIds: string[] }; output: ConversationMaterial }
   getMessageReceipt: { input: { requestId: string }; output: Message | null }
-  sendMessage: { input: { conversationId: string; content: string; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
+  sendMessage: { input: { channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   cancelRun: { input: { conversationId: string; workId?: string; runId?: string }; output: void }
   approve: { input: { id: string; approved: boolean }; output: void }

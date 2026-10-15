@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通讯录员工/群配置共用归属自动化和原结果聊天定位。
  * [OUTPUT]: 2026-10-10 通讯录资料透传员工执行详情的固定原聊天导航，不复制员工/聊天，原配置保存与返回守卫保持。
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
  * [OUTPUT]: 旧偏好选中的渠道房间仅显示渠道信息，不再进入BOAI群编辑器。
@@ -42,13 +43,14 @@ interface ContactsPageProps {
   generation: number
   busy: boolean
   active?: boolean
+  onConversation(id: string, messageId?: string): void
   onViewTasks?(agentId: string): void
   onOpenWork?(target: WorkViewTarget, current?: () => boolean): void
   onAutomation?(origin: AutomationOrigin, current?: () => boolean, conversationId?: string): void
   onOpenExecutionSource?: ExecutionSourceNavigation
 }
 
-export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, onCreateTeam, refresh, sidebarShown, divider, generation, busy, active = true, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource }: ContactsPageProps) {
+export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, onCreateTeam, refresh, sidebarShown, divider, generation, busy, active = true, onConversation, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource }: ContactsPageProps) {
   const selectionKey = `${generation}-${selected?.kind}-${selected?.id}`
   const [detail, setDetail] = useState({ key: selectionKey, editing: false })
   if (detail.key !== selectionKey) setDetail({ key: selectionKey, editing: false })
@@ -63,12 +65,12 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
       if (selected && (selected.kind === 'agent' ? agentIds : groupIds).includes(selected.id)) guard.saved(() => setDetail({ key: selectionKey, editing: false }))
     }} />{divider}</>}
     <section className="contacts-detail" aria-label="通讯录详情">
-      <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} active={active} onViewTasks={onViewTasks} onOpenWork={onOpenWork} onAutomation={onAutomation} onOpenExecutionSource={onOpenExecutionSource} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
+      <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} active={active} onConversation={onConversation} onViewTasks={onViewTasks} onOpenWork={onOpenWork} onAutomation={onAutomation} onOpenExecutionSource={onOpenExecutionSource} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
     </section>
   </div>
 }
 
-function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, busy, active = true, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource, editing, onEditingChange: setEditing }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onSelect' | 'onMessage' | 'busy' | 'active' | 'onViewTasks' | 'onOpenWork' | 'onAutomation' | 'onOpenExecutionSource'> & { editing: boolean; onEditingChange(editing: boolean): void }) {
+function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, busy, active = true, onConversation, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource, editing, onEditingChange: setEditing }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onSelect' | 'onMessage' | 'busy' | 'active' | 'onConversation' | 'onViewTasks' | 'onOpenWork' | 'onAutomation' | 'onOpenExecutionSource'> & { editing: boolean; onEditingChange(editing: boolean): void }) {
   const guard = useContext(GuardContext)
   const agent = selected?.kind === 'agent' ? snapshot.agents.find(item => item.id === selected.id) : undefined
   const group = selected?.kind === 'group' ? snapshot.conversations.find(item => item.id === selected.id && item.kind === 'group') : undefined
@@ -78,8 +80,8 @@ function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, 
   const resources = (ids: string[]) => ids.map(id => snapshot.resources.find(resource => resource.id === id)?.name ?? '资料已移除').join('、') || '未绑定'
   const members = group?.agentIds.map(id => snapshot.agents.find(item => item.id === id)).filter((item): item is DigitalAgent => Boolean(item)) ?? []
   if (editing) return <ContactEditorLayout active={active} onBack={() => guard.navigate(() => setEditing(false))}>{actionsTarget => agent
-    ? <EmployeeDetail api={api} snapshot={snapshot} agent={agent} actionsTarget={actionsTarget} refresh={refresh} active={active} onClose={() => setEditing(false)} />
-    : <GroupEditor api={api} snapshot={snapshot} conversation={group!} actionsTarget={actionsTarget} onOpenAgent={id => onSelect({ kind: 'agent', id })} onSaved={refresh} onDeleted={refresh} onClose={() => setEditing(false)} />
+    ? <EmployeeDetail onConversation={onConversation} api={api} snapshot={snapshot} agent={agent} actionsTarget={actionsTarget} refresh={refresh} active={active} onClose={() => setEditing(false)} />
+    : <GroupEditor active={active} onConversation={onConversation} api={api} snapshot={snapshot} conversation={group!} actionsTarget={actionsTarget} onOpenAgent={id => onSelect({ kind: 'agent', id })} onSaved={refresh} onDeleted={refresh} onClose={() => setEditing(false)} />
   }</ContactEditorLayout>
   return <div className="contact-document">
       <header className="contact-profile-heading">

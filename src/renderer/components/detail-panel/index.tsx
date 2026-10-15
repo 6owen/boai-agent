@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 系统右侧容器统一持久宽度/窗口约束、拖拽/键盘复位；内容类型和主页面不参与尺寸选择，隐藏仍保留容器。
  * [OUTPUT]: 窄标题栏内详情标签按实际可用宽度收缩，标题省略且独立关闭按钮保持可达；多个标签仍局部滚动。
  * [OUTPUT]: 明确消息/审批来源导航恢复旧详情header时只展示标签，不抢原聊天焦点；后续显式切标签仍聚焦。
  * [INPUT]: 多个详情名称、图标、选中/未保存状态、排序与关闭回调与统一窗口 Tabs。
@@ -64,6 +65,50 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, focusOnMou
   </div>
 }
 
-export function DetailPanel({ title, hidden, children }: { title: string; hidden?: boolean; children: ReactNode }) {
-  return <aside className="detail-panel" aria-label={title} hidden={hidden}>{children}</aside>
+const DEFAULT_WIDTH = 360, MIN_WIDTH = 300, MAX_WIDTH = 960
+
+/** Layout owns one width for every detail tab and page. Content cannot request a different size. */
+export function useDetailPanelLayout() {
+  const [preferredWidth, setPreferredWidth] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('boai.v2.detailWidth'))
+      if (Number.isFinite(saved) && saved > 0) return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, saved))
+    } catch { /* Preferences are optional. */ }
+    return DEFAULT_WIDTH
+  })
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth)
+  useEffect(() => {
+    const resize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('boai.v2.detailWidth', String(preferredWidth)) } catch { /* Preferences are optional. */ }
+  }, [preferredWidth])
+  // Reserve the navigation rail and main content; window shrinkage never overwrites the user's width.
+  const max = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, viewportWidth - 56 - 280))
+  const resize = (width: number) => setPreferredWidth(Math.max(MIN_WIDTH, Math.min(max, width)))
+  return { width: Math.min(preferredWidth, max), min: MIN_WIDTH, max, resize, reset: () => resize(DEFAULT_WIDTH) }
+}
+
+export function DetailPanel({ title, hidden, layout, children }: { title: string; hidden?: boolean; layout: ReturnType<typeof useDetailPanelLayout>; children: ReactNode }) {
+  const drag = useRef<{ pointerId: number; x: number; width: number } | null>(null)
+  return <>
+    <div className="resize-handle detail-resizer" role="separator" tabIndex={0} hidden={hidden} aria-label="调整详情宽度" aria-orientation="vertical"
+      aria-valuemin={layout.min} aria-valuemax={layout.max} aria-valuenow={layout.width}
+      onPointerDown={event => {
+        event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId)
+        drag.current = { pointerId: event.pointerId, x: event.clientX, width: layout.width }
+      }}
+      onPointerMove={event => { if (drag.current?.pointerId === event.pointerId) layout.resize(drag.current.width + drag.current.x - event.clientX) }}
+      onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); drag.current = null }}
+      onPointerCancel={() => { drag.current = null }} onLostPointerCapture={() => { drag.current = null }}
+      onDoubleClick={layout.reset} onKeyDown={event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return
+        event.preventDefault()
+        if (event.key === 'Home') layout.reset()
+        else layout.resize(layout.width + (event.key === 'ArrowLeft' ? 1 : -1) * (event.shiftKey ? 40 : 10))
+      }} />
+    <aside className="detail-panel" aria-label={title} hidden={hidden}>{children}</aside>
+  </>
 }

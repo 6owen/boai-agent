@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际MCP客户端收到原生image部件及同tool-use回执，图片不退化为JSON文本。
  * [OUTPUT]: 只读计数/固定状态区分公告、接收、执行、回执及退出未知；重复请求不重放、失败/取消后仍可核对且无私有载荷。
  * [INPUT]: 真实MCP客户端/回环连接、明确工具调用身份与取消屏障。
  * [OUTPUT]: 工具来源/参数/重复回执、连接断开不重放、拒绝越权和关闭等待实际工具；非真实模型或员工UI。
@@ -11,16 +12,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import type { NativeTool } from '../src/runtime/adapters/native-task'
 import { createClaudeToolBridge } from '../src/runtime/adapters/claude/tools'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const operation of cleanup.splice(0).reverse()) await operation() })
-async function setup(execute: (args: unknown, id: string) => Promise<unknown> = async (args, id) => ({ args, id })) {
+async function setup(execute: (args: unknown, id: string) => Promise<unknown> = async (args, id) => ({ args, id }), toModelContent?: NativeTool['toModelContent']) {
   const root = await mkdtemp(join(tmpdir(), 'boai-claude-mcp-test-'))
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   const controller = new AbortController(), failures: Error[] = []
   const bridge = await createClaudeToolBridge({configDirectory:root,signal:controller.signal,
-    tools:[{name:'echo',description:'Return the received payload',inputSchema:{type:'object',properties:{text:{type:'string'}}},execute}],
+    tools:[{name:'echo',description:'Return the received payload',inputSchema:{type:'object',properties:{text:{type:'string'}}},execute,toModelContent}],
     onFailure: error => {failures.push(error);controller.abort(error)}})
   let closed = false
   const close = async () => { if (closed) return; closed=true; controller.abort(new Error('测试明确退出')); await bridge.close() }
@@ -148,4 +150,15 @@ it('keeps externally changed temporary configuration instead of deleting unknown
   await writeFile(fixture.bridge.configPath,'externally changed')
   await expect(fixture.close()).rejects.toThrow('外改')
   expect(await readFile(fixture.bridge.configPath,'utf8')).toBe('externally changed')
+})
+
+it('returns actual MCP image content and reuses the original media result on retransmission', async () => {
+ const data='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='
+ let calls=0
+ const fixture=await setup(async()=>{calls++;return {image:data}},result=>[{type:'text',text:'实际截图'},{type:'image',mimeType:'image/png',data:(result as {image:string}).image}])
+ fixture.bridge.announce('tool_image','mcp__boai__echo',{text:'value'})
+ const first=await fixture.call('tool_image')
+ expect(first).toMatchObject({content:[{type:'text',text:'实际截图'},{type:'image',mimeType:'image/png',data}]})
+ expect(await fixture.call('tool_image')).toEqual(first)
+ expect(calls).toBe(1);fixture.bridge.assertComplete()
 })

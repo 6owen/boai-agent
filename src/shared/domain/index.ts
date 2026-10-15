@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 渠道内部讨论为独立且限定记忆的会话；固定原消息引用与明确外发元信息不混入平台来信身份。
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI主私聊与渠道房间独立，channelUnreadCount仅为快照投影，原历史归档兼容保持。
  * [OUTPUT]: 2026-10-14 员工主私聊标记、旧房间归档关系及消息原房间来源合同。
  * [OUTPUT]: 2026-10-13DiscussionTurn总输出和API输出配额独立保存；原生用量保持真实记录。
@@ -111,7 +115,8 @@ export interface Conversation {
   memoryScope?: 'employee' | 'conversation'
   creationSource?: TeamCreationSource | BoboCollaborationSource
   teamSetup?: TeamSetup
-  purpose?: 'personal' | 'automation' | 'core' | 'channel'
+  purpose?: 'personal' | 'automation' | 'core' | 'channel' | 'channel-internal'
+  channelDiscussion?: { conversationId: string; epoch: number }
   automationId?: string
   occurrenceId?: string
   list?: { hidden?: boolean; pinned?: boolean; order?: number }
@@ -143,6 +148,9 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  channelReference?: import('./channels').ChannelMessageReference
+  channelPublication?: import('./channels').ChannelPublication
+  browserReference?: import('../ipc/browser').BrowserPageReference
   /** Stable room provenance after explicit history convergence. */
   originalConversationId?: string
   channel?: ChannelMessageSource
@@ -150,6 +158,7 @@ export interface Message {
   /** Real core generation source; this is not a fabricated group run. */
   collaborationSource?: { operationId: string; sourceRunId: string; modelCallId?: string; toolCallId: string }
   inboxReply?: InboxReplyRelation
+  materialReference?: MaterialReadRef
   artifactRevisionRequestId?: string
   materialIds?: string[]
   materialSources?: MaterialReadRef[]
@@ -229,7 +238,8 @@ export interface Approval {
   command: string
   cwd: string
 }
-export interface Artifact extends ArtifactExtension { materialSources?: MaterialReadRef[]; name: string; path: string; size: number; id?: string; ownerAgentId?: string; runId?: string; sourcePath?: string; publishedAt?: string }
+export interface Artifact extends ArtifactExtension {
+  conversationId?: string; materialSources?: MaterialReadRef[]; name: string; path: string; size: number; id?: string; ownerAgentId?: string; runId?: string; sourcePath?: string; publishedAt?: string }
 export interface Snapshot {
   userProfile?: LocalUserProfile
   agents: DigitalAgent[]

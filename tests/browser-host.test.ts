@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 同消息/run只读升级Work保留原页面refs，不允许另一run继承。
+ * [OUTPUT]: 固定实例/原页面引用、同URL重开失效与只读租约不换页面；密码提示不恢复隐形接管状态。
  * [INPUT]: BrowserService 与私有租约/动作、实际文件、可控制退出的驱动 fixture。
  * [OUTPUT]: 内置浏览器固定窗口/登录、任务独占真实退出与无公开业务归属、离开人工网站只核对目标授权而读取仍拒绝、单scope/审批/unknown不重放；普通release只聚焦且原租约/source继续可核对，旧显式交接仅兼容；真实退出/正文密码AX边界。
  * [POS]: BRM1/BRM3 宿主模块验收；不替代真实 Electron profile/UI 证据。
@@ -82,6 +84,20 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   const state=service.list()[0],send=fake.instances.get(state.instanceId).toolbarView.webContents.send
   send.mockClear();old.state.control='closed';(service as any).emit(old)
   expect(service.list()[0]).toEqual(state);expect(send).not.toHaveBeenCalled()
+ })
+ it('same-source native read promotion preserves document refs, while another run invalidates them',async()=>{
+  const {service,lease,fake}=await fixture()
+  const reading={...lease,workId:undefined,sourceMessageId:'original-user'}
+  await service.acquire(reading)
+  const cdp=fake.instances.get(service.list()[0].instanceId).cdp
+  cdp.invalidateRefs.mockClear()
+  await service.drain(reading)
+  const writing={...reading,workId:'real-work',generation:'write-generation'}
+  await service.acquire(writing)
+  expect(cdp.invalidateRefs).not.toHaveBeenCalled()
+  await service.drain(writing)
+  await service.acquire({...writing,runId:'another-run',generation:'another-generation'})
+  expect(cdp.invalidateRefs).toHaveBeenCalledTimes(1)
  })
  it('人工网页不授予员工读取权，但不阻止员工离开并导航到明确获准目标',async()=>{
   const {service,lease,fake}=await fixture()
@@ -360,7 +376,7 @@ describe('BrowserCDP 实际正文与秘密隔离',()=>{
   const secret='BRM_PRIVATE_PASSWORD_MUST_NOT_LEAK'
   const {cdp,send}=axFixture([{role:{value:'textbox'},name:{value:secret},value:{value:secret},description:{value:secret},backendDOMNodeId:7,properties:[{name:'protected',value:{value:true}}]}],true)
   const page=await cdp.getAccessibilitySnapshot();expect(JSON.stringify(page)).not.toContain(secret);expect(page.nodes[0]!.value).toBe('[redacted]')
-  await expect(cdp.fillElement(page.nodes[0]!.ref,'secret')).rejects.toThrow('人工接管');expect(send.mock.calls.some(call=>call[0]==='DOM.focus')).toBe(false)
+  await expect(cdp.fillElement(page.nodes[0]!.ref,'secret')).rejects.toThrow('手动输入');expect(send.mock.calls.some(call=>call[0]==='DOM.focus')).toBe(false)
  })
  it('长正文和节点数量均有界，网页不能制造无界模型输入',async()=>{
   const {cdp}=axFixture(Array.from({length:700},(_,index)=>({role:{value:'StaticText'},name:{value:'x'.repeat(3000)},description:{value:'y'.repeat(3000)},backendDOMNodeId:index+1})))
@@ -385,4 +401,44 @@ describe('BrowserPaneManager 实际页面退出',()=>{
   expect(windowDestroyed).toBe(true);expect(completed).toBe(false);expect(removed).not.toHaveBeenCalled();expect(manager.getInstance(instance.id)).toBe(instance)
   finished.resolve();await close;expect(completed).toBe(true);expect(manager.getInstance(instance.id)).toBeUndefined();expect(removed).toHaveBeenCalledOnce()
  })
+})
+
+describe('固定网页引用',()=>{
+ it('引用不创建租约，导航拒绝旧版本，重开同URL仍是另一个实例',async()=>{
+  const {service,fake}=await fixture()
+  const opened=await service.manualOpen({})
+  await fake.manager.navigate(opened.instanceId,'https://example.test/form')
+  const reference=await service.reference({})
+  expect(reference).toMatchObject({instanceId:opened.instanceId,url:'https://example.test/form'})
+  expect(service.currentLease()).toBeNull()
+  await expect(service.reference(reference)).resolves.toMatchObject({instanceId:reference.instanceId,pageVersion:reference.pageVersion,url:reference.url})
+  fake.pages.get(opened.instanceId).html='<main>new document</main>'
+  await expect(service.reference(reference)).rejects.toThrow('重新引用')
+  await service.userControl({scopeKey:APPLICATION_BROWSER_SCOPE,action:'close'})
+  const reopened=await service.manualOpen({})
+  expect(reopened.instanceId).not.toBe(opened.instanceId)
+  await fake.manager.navigate(reopened.instanceId,'https://example.test/form')
+  await expect(service.reference(reference)).rejects.toThrow('关闭或替换')
+ })
+ it('先引用再获得只读租约仍保持原页面版本和登录实例',async()=>{
+  const {service,fake,lease}=await fixture()
+  const opened=await service.manualOpen({});await fake.manager.navigate(opened.instanceId,'https://example.test/')
+  const reference=await service.reference({})
+  const readLease={...lease,workId:undefined,sourceMessageId:'real-user-message'}
+  await service.acquire(readLease)
+  expect(await service.inspect(readLease)).toMatchObject({instanceId:reference.instanceId,pageVersion:reference.pageVersion})
+  expect(service.list()[0].instanceId).toBe(opened.instanceId)
+  await service.drain(readLease)
+ })
+})
+
+it('returns a fresh-snapshot instruction after its own input changes the page and retires old refs', async () => {
+ const {service,lease,fake}=await fixture();await service.acquire(lease)
+ await service.executeSingle(await envelope(service,lease,'navigate https://example.com/'))
+ const page=fake.pages.get(service.list()[0].instanceId),cdp=fake.instances.get(service.list()[0].instanceId).cdp
+ fake.mocks.fillElement.mockImplementation(async()=>{page.forms=[{value:'changed'}];return {valueLength:7}})
+ cdp.invalidateRefs.mockClear()
+ const reply=await service.executeSingle(await envelope(service,lease,'fill @e1 "changed"'))
+ expect(reply.status).toBe('completed');expect(reply.result?.output).toContain('previous element refs are invalid')
+ expect(reply.result?.output).toContain('"snapshot"');expect(cdp.invalidateRefs).toHaveBeenCalledOnce()
 })

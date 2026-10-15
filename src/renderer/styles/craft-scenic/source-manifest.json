@@ -1,0 +1,32 @@
+{
+  "upstream": "https://github.com/craft-ai-agents/craft-agents-oss",
+  "commit": "2e3ba53ff80b229a07e9d1884dc58f6733f22e1f",
+  "version": "v0.15.1",
+  "license": "Apache-2.0",
+  "sources": [
+    {
+      "path": "apps/electron/src/renderer/index.css",
+      "sha256": "df43df87d37340ede35442ad3787ea8ebc982da5827fda977ae8da0395ee7231"
+    },
+    {
+      "path": "apps/electron/src/renderer/context/ThemeContext.tsx",
+      "sha256": "633b6f95d5011574bf94bee9a33dd2f4fe97b0bd519a06ab0518207196194344"
+    },
+    {
+      "path": "apps/electron/resources/docs/themes.md",
+      "sha256": "7f5c786cfa18b89be50a378d7e0259a301dc3b5c5170f6a1d96eae7b4d8a98ad"
+    }
+  ],
+  "copied": [
+    "index.css Scenic image/overlay, shell blur and masked gradient border blocks",
+    "ThemeContext.tsx Scenic dark-mode and data-scenic/background-image behavior"
+  ],
+  "adaptations": [
+    "BOAI content-frame/chat-composer selectors and existing semantic surface aliases",
+    "Keep BOAI local managed image importer/protocol and persistence; no remote theme URLs",
+    "Only outer content-frame and composer blur; preserve BOAI stacking and pointer behavior",
+    "Opaque popovers; Scenic uses selected dark palette and accent, retaining solid color overrides for removal",
+    "Legacy imageOpacity retained in storage but not multiplied into Scenic image; full opacity matches upstream",
+    "Standard backdrop-filter follows WebKit declaration so production CSS preserves Chromium blur"
+  ]
+}

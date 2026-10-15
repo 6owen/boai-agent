@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
  * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
@@ -26,7 +27,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
       else if (system.includes('Private participation decision')) {
         const data = JSON.parse(input.messages.at(-1)!.content).data
         const root = data.currentTurnMessages?.find((message: { id: string }) => message.id === data.currentTurn.rootMessageId)
-        const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content)
+        const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content?.split('\n')[0])
         content = JSON.stringify(directChat && data.currentEmployeeId === 'researcher' && !data.currentTurn.ownCompletedMessageIds.length ? { action: 'reply', responseKind: 'chat' } : data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
       } else if (system.includes('Private memory maintenance')) content = JSON.stringify({ candidates: [] })
       else if (JSON.stringify(input.messages).includes('单聊统一交互验收') || JSON.stringify(input.messages).includes('单聊滚动补充消息')) content = '研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。'

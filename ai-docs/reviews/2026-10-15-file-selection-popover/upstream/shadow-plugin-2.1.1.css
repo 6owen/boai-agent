@@ -1,0 +1,218 @@
+/**
+ * TailwindCSS smooth shadow effect plugin — unprefixed entrypoint.
+ *
+ * Instead of adding `smooth-shadow-*` classes, this maps the smooth stacks
+ * onto Tailwind's own shadow scale, so the native `shadow-{size}` utilities
+ * render them. Because the values are literal layer lists (not var()
+ * references), Tailwind's build-time shadow machinery fully applies: the
+ * opacity modifier (`shadow-md/40`), `shadow-{color}`, and variants all work
+ * exactly like stock Tailwind.
+ *
+ * Note this is why the older `--shadow-md: var(--smooth-shadow-md)` recipe
+ * falls short: Tailwind cannot see inside the var to reach the individual
+ * layers, so `shadow-md/40` and `shadow-{color}` silently do nothing.
+ *
+ * `smooth-shadow-ring-*` has no native equivalent, so the ring utilities keep
+ * their names and are included here.
+ *
+ * @author Florian Kiem <https://github.com/flornkm>
+ * @license MIT
+ */
+
+@theme {
+  --shadow-xs: 0 0 4px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 18px 47px 0 rgba(0, 0, 0, 0.03), 0 7.5px 19px 0 rgba(0, 0, 0, 0.02),
+    0 4px 10.5px 0 rgba(0, 0, 0, 0.02), 0 2.3px 5.8px 0 rgba(0, 0, 0, 0.01),
+    0 1.2px 3.1px 0 rgba(0, 0, 0, 0.01), 0 0.5px 1.3px 0 rgba(0, 0, 0, 0.01);
+  --shadow-md: 0 17.54px 23.39px 0 rgba(0, 0, 0, 0.04), 0 9.4px 12.5px 0 rgba(0, 0, 0, 0.03),
+    0 5.25px 7px 0 rgba(0, 0, 0, 0.02), 0 2.79px 3.72px -2px rgba(0, 0, 0, 0.01),
+    0 1.16px 1.5px 0 rgba(0, 0, 0, 0.01);
+  --shadow-lg: 0 25px 50px 0 rgba(0, 0, 0, 0.05), 0 12px 24px 0 rgba(0, 0, 0, 0.04),
+    0 6px 12px 0 rgba(0, 0, 0, 0.03), 0 3px 6px 0 rgba(0, 0, 0, 0.02),
+    0 1.5px 3px 0 rgba(0, 0, 0, 0.02);
+  --shadow-xl: 0 40px 80px 0 rgba(0, 0, 0, 0.06), 0 20px 40px 0 rgba(0, 0, 0, 0.05),
+    0 10px 20px 0 rgba(0, 0, 0, 0.04), 0 5px 10px 0 rgba(0, 0, 0, 0.03),
+    0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  --shadow-2xl: 0 60px 120px 0 rgba(0, 0, 0, 0.07), 0 30px 60px 0 rgba(0, 0, 0, 0.06),
+    0 15px 30px 0 rgba(0, 0, 0, 0.05), 0 7.5px 15px 0 rgba(0, 0, 0, 0.04),
+    0 3px 6px 0 rgba(0, 0, 0, 0.03);
+}
+/**
+ * TailwindCSS smooth shadow effect plugin — shadow + ring.
+ *
+ * Elevated-surface shadows: the stacked smooth shadow with a 1px hairline ring
+ * baked in as the final layer, so the edge morphs into the shadow instead of
+ * sitting next to it as a separate `border` (which reads washed/greyed).
+ *
+ * Use `smooth-shadow-ring-{size}` for floating/elevated surfaces — dialogs,
+ * popovers, cards, menus. Don't also add a `border`/`ring` to the same element;
+ * the ring is already in here and a second edge doubles up.
+ *
+ * The shadow and the ring stay independently adjustable:
+ * - shadow color via Tailwind's `shadow-{color}` (e.g. `shadow-blue-500`)
+ * - ring color via `smooth-ring-{color}` (e.g. `smooth-ring-black/10`)
+ *
+ * @author Florian Kiem <https://github.com/flornkm>
+ * @license MIT
+ */
+
+/*
+ * Default hairline the ring layer reads. A black hairline disappears on dark
+ * backgrounds, so dark mode flips it to a white one — via a `.dark` class,
+ * `data-theme="dark"`, or the page's `color-scheme` (see below).
+ * Sites can still override `--smooth-ring-color` at any scope.
+ *
+ * The OS-preference flip deliberately does NOT key off `prefers-color-scheme`:
+ * that media query reports the visitor's OS setting, not whether the page has
+ * a dark theme, so a light-only site would hand its dark-OS visitors a white
+ * hairline on a still-light page — an invisible ring. `light-dark()` resolves
+ * from the page's declared `color-scheme` instead, the standard way a page
+ * opts into dark rendering: light-only pages (which never declare it) keep the
+ * black ring for every visitor, and pages with a media-query dark theme opt in
+ * with `:root { color-scheme: light dark; }`.
+ *
+ * On the alphas: the ring is an OUTER layer, so it paints on the page behind
+ * the surface, and its rendered colour is therefore set by the page background
+ * rather than by the surface it outlines. In light mode that is forgiving — a
+ * black hairline darkens away from any near-white surface. In dark mode a white
+ * hairline lightens *toward* a raised surface, so too low an alpha lands the
+ * ring on the surface's own colour and the edge vanishes (white 6% over a
+ * neutral-900 page renders rgb(37,37,37) — a neutral-800 card is rgb(38,38,38)).
+ *
+ * 18% keeps the hairline quiet while still clearing that trap: the worst
+ * realistic pairing (a neutral-800 surface on a pure-black page) holds an
+ * ~8/255 edge, and the common ones sit well above it. Below this it drops off
+ * fast — 16% leaves only ~3/255 in that same case, which reads as no edge at
+ * all. Very light surfaces (neutral-700 and up) on a dark page can still sit
+ * near the ring — set `smooth-ring-*` explicitly there.
+ */
+:root {
+  --smooth-ring-color: rgba(0, 0, 0, 0.05);
+
+  /*
+   * Hairline thickness, following the project's Tailwind ring width so a scale
+   * built on `--default-ring-width: 0.5px` doesn't get a 1px ring here.
+   *
+   * `theme()` inlines the value at build time, which is required: Tailwind
+   * resolves `--default-*` at build time and never emits it as a runtime
+   * custom property, so a plain `var(--default-ring-width, 1px)` would always
+   * silently take the 1px fallback. The fallback argument is also load-bearing
+   * — `theme(--default-ring-width)` without one hard-errors the build for the
+   * (vast majority of) projects that never set it.
+   *
+   * Still a runtime var, so it stays overridable at any scope — globally, per
+   * component, or inline with Tailwind's `[--smooth-ring-width:2px]`.
+   */
+  --smooth-ring-width: theme(--default-ring-width, 1px);
+}
+
+/*
+ * Guarded because unregistered custom properties skip parse-time validation:
+ * on a browser without light-dark(), the raw function would substitute into
+ * box-shadow and invalidate the whole declaration — shadow and all.
+ */
+@supports (color: light-dark(black, white)) {
+  :root {
+    --smooth-ring-color: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.18));
+  }
+}
+
+.light,
+[data-theme='light'] {
+  --smooth-ring-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark,
+[data-theme='dark'] {
+  --smooth-ring-color: rgba(255, 255, 255, 0.18);
+}
+
+@utility smooth-shadow-ring {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 17.54px 23.39px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 9.4px 12.5px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 5.25px 7px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 2.79px 3.72px -2px color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 1.16px 1.5px 0 color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-xs {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 0 4px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-sm {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 18px 47px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 7.5px 19px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 4px 10.5px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 2.3px 5.8px 0 color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 1.2px 3.1px 0 color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 0.5px 1.3px 0 color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-md {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 17.54px 23.39px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 9.4px 12.5px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 5.25px 7px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 2.79px 3.72px -2px color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 1.16px 1.5px 0 color-mix(in srgb, var(--smooth-shadow-color) 1%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-lg {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 25px 50px 0 color-mix(in srgb, var(--smooth-shadow-color) 5%, transparent),
+    0 12px 24px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 6px 12px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 3px 6px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 1.5px 3px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-xl {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 40px 80px 0 color-mix(in srgb, var(--smooth-shadow-color) 6%, transparent),
+    0 20px 40px 0 color-mix(in srgb, var(--smooth-shadow-color) 5%, transparent),
+    0 10px 20px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 5px 10px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 2px 4px 0 color-mix(in srgb, var(--smooth-shadow-color) 2%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+@utility smooth-shadow-ring-2xl {
+  --smooth-shadow-color: var(--tw-shadow-color, black);
+  box-shadow: 0 60px 120px 0 color-mix(in srgb, var(--smooth-shadow-color) 7%, transparent),
+    0 30px 60px 0 color-mix(in srgb, var(--smooth-shadow-color) 6%, transparent),
+    0 15px 30px 0 color-mix(in srgb, var(--smooth-shadow-color) 5%, transparent),
+    0 7.5px 15px 0 color-mix(in srgb, var(--smooth-shadow-color) 4%, transparent),
+    0 3px 6px 0 color-mix(in srgb, var(--smooth-shadow-color) 3%, transparent),
+    0 0 0 var(--smooth-ring-width, 1px) var(--smooth-ring-color);
+}
+
+/*
+ * Override the ring color/opacity on a smooth-shadow-ring-* surface — e.g.
+ * `smooth-shadow-ring-md smooth-ring-black/10` for a touch more definition. It
+ * only sets the `--smooth-ring-color` var the ring reads, so it never touches
+ * the shadow and composes with `shadow-{color}` on the same element.
+ */
+@utility smooth-ring-* {
+  /*
+   * Two declarations on purpose. Tailwind v4 only matches single-word color
+   * names (black/white) when the `--value(--color-*)` glob and `--modifier()`
+   * share one declaration — every hyphenated name (red-500, …) silently emits
+   * NO css. So the bare color resolves on its own line (works for every name);
+   * the `/<opacity>` modifier layers in on a second line that overrides it
+   * when present.
+   */
+  --smooth-ring-color: --value(--color- *);
+  --smooth-ring-color: color-mix(
+    in srgb,
+    --value(--color- *) calc(--modifier(number) * 1%),
+    transparent
+  );
+}

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 渠道文件内部修订的Work认领/续行按固定父渠道与代际核对原件和材料，不混用原工作身份。
+ * [OUTPUT]: 自动化固定分工限定唯一负责人根、稳定子工作及同次真实依赖，交付事务拒绝跳过必需分工。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 渠道修订按已提交外部请求者/可信来源认领独立新根；本机本人、旧预算与自动化边界保持。
  * [OUTPUT]: 2026-10-11 原生Work惰性认领；同事务核验获准依赖成果引用，保持同事归属、原预算及实际持有者。
@@ -17,6 +19,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { isNativeBackend, sameBackendBinding } from '../../../shared/domain/backends'
+import { assertChannelSourceAccess } from '../channels/channel-workspace'
 import { createHash } from 'node:crypto'
 import type { AgentRun, DiscussionTurn, AutomationBudgetRenewalInput, BudgetModelCall, ModelUsage, WorkBudget, WorkExecution, WorkIntent, WorkItem, WorkOutcome, WorkDelegation, WorkWait, WorkWake, WorkOrganization, Message, AutomationOrigin, MaterialReadRef, Conversation, DigitalAgent, ConversationMaterial, CollaborationStartIntent } from '../../../shared/domain'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../../../shared/domain/bobo-collaboration'
@@ -25,6 +28,7 @@ import type { ArtifactRevisionRequest, ArtifactVersion } from '../../../shared/d
 import { isConversationMaterialVisible, isMaterialReadRevisionValid } from '../../../shared/domain/materials'
 import { renewAutomationWork } from './work-renewal'
 import { assertAutomationExecution, activateAutomationExecution, resumeAutomationExecution } from '../automations/automation-repository'
+import { AUTOMATION_ROOT_KEY, automationDelegation, assertAutomationDelivery } from '../automations/automation-work'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 
 import { queueWorkWake, refreshWaiters, validateDependencies } from './work-dependencies'
@@ -156,10 +160,13 @@ export class WorkRepository {
       if (!agent?.active || !conversation.agentIds.includes(id) || agent.executionBackend?.kind === 'acp-local') throw new WorkUnavailableError('修订目标或执行员工不是当前有效的内置成员')
     }
     const artifact = await tx.get<ArtifactVersion>('artifacts', request.artifactId)
-    if (!artifact || artifact.conversationId !== conversationId || artifact.contentHash !== request.contentHash || artifact.logicalArtifactId !== request.logicalArtifactId || artifact.contentStatus !== 'ready') throw new WorkUnavailableError('修订原版的内容身份已失效')
+    if (!artifact || artifact.contentHash !== request.contentHash || artifact.logicalArtifactId !== request.logicalArtifactId || artifact.contentStatus !== 'ready') throw new WorkUnavailableError('修订原版的内容身份已失效')
+    await assertChannelSourceAccess(tx, conversationId, artifact.conversationId)
     for (const ref of artifact.materialSources ?? []) {
+      await assertChannelSourceAccess(tx, conversationId, ref.conversationId)
+      const materialConversation = await tx.get<Conversation>('conversations', ref.conversationId)
       const material = await tx.get<ConversationMaterial>('materials', ref.id)
-      if (ref.conversationId !== conversationId || !material || material.conversationId !== conversationId || material.status !== 'ready' || !material.messageId || !isMaterialReadRevisionValid(material, ref.revision) || material.contentHash !== ref.contentHash || material.parseVersion !== ref.parseVersion || !isConversationMaterialVisible(material, conversation, agentId)) throw new WorkUnavailableError('修订原版的材料来源或执行授权已失效')
+      if (!materialConversation || !material || material.conversationId !== ref.conversationId || material.status !== 'ready' || !material.messageId || !isMaterialReadRevisionValid(material, ref.revision) || material.contentHash !== ref.contentHash || material.parseVersion !== ref.parseVersion || !isConversationMaterialVisible(material, materialConversation, agentId)) throw new WorkUnavailableError('修订原版的材料来源或执行授权已失效')
     }
     return request
   }
@@ -201,7 +208,9 @@ export class WorkRepository {
       const sourceOrigin = revision ? undefined : (await tx.get<Message>('messages', input.sourceMessageId))?.origin
       const sourceOccurrence = sourceOrigin ? await assertAutomationExecution(tx, sourceOrigin, input.conversationId) : undefined
       const sourceMessageId = revision?.messageId ?? sourceOccurrence?.messageId ?? input.sourceMessageId
-      const key = input.organization ? 'bobo-organization' : revision ? 'artifact-revision' : input.intent.key
+      const planned = sourceOccurrence?.plan?.collaboration
+      if (planned && !input.intent.workId && input.agentId !== planned.coordinatorId) throw new WorkUnavailableError('群自动化只由汇总负责人认领根任务，其他员工须沿真实分工唤醒')
+      const key = input.organization ? 'bobo-organization' : revision ? 'artifact-revision' : planned && !input.intent.workId ? AUTOMATION_ROOT_KEY : input.intent.key
       const id = input.intent.workId ?? revision?.rootWorkId ?? `work-${identity(input.conversationId, sourceMessageId, key)}`
       let work = referenced ?? await tx.get<WorkItem>('workItems', id)
       if (work?.organization && (!input.organization || JSON.stringify(work.organization) !== JSON.stringify(input.organization))) throw new WorkUnavailableError('组织工作必须保留原宿主合同')
@@ -323,6 +332,7 @@ export class WorkRepository {
       if (!execution.organizationRecoveryFrom || execution.pendingEffects || !operation || operation.status !== 'committed' || operation.authority.runId !== runId || operation.authority.workVersion !== work.version || operation.announcementSource.runId !== execution.organizationRecoveryFrom) throw new WorkUnavailableError('原组织恢复尚未真实交付或仍有待核对操作')
       const outcome: WorkOutcome = { disposition: 'delivered', summary: '已完成原组织发布', evidence: [{ kind: 'collaboration', reference: operation.id }] }
       await assertCollaborationEvidence(tx, work, outcome)
+      if (outcome.disposition === 'delivered') await assertAutomationDelivery(tx, work)
       work.outcome = outcome; work.status = 'delivered'; work.requiresReview = false; work.resultVersion++; work.version++; work.updatedAt = timestamp(); delete work.activeRunId
       execution.status = 'released'
       await tx.put(row('workItems', work)); await tx.put(row('workExecutions', execution))
@@ -486,6 +496,7 @@ export class WorkRepository {
       const evidenceError = workEvidenceError(outcome, { ...receipt, artifactIds: [...receipt.artifactIds, ...references] }, !!execution.pendingWait)
       if (evidenceError) throw new Error(evidenceError)
       await assertCollaborationEvidence(tx, work, outcome)
+      if (outcome.disposition === 'delivered') await assertAutomationDelivery(tx, work)
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
       const newResult = outcome.disposition === 'delivered' || receipt.artifactIds.some(id => !work.artifactIds.includes(id))
       const wait = execution.pendingWait
@@ -564,9 +575,10 @@ export class WorkRepository {
     })
   }
   delegate(runId: string, input: WorkDelegation) {
-    const proposal = workDelegationSchema.parse(input)
+    const parsed = workDelegationSchema.parse(input)
     return this.store.transaction(async tx => {
       const { work: parent, execution } = await this.holder(tx, runId)
+      const proposal = await automationDelegation(tx, parent, parsed)
       if (parent.organization) throw new WorkUnavailableError('核心组织阶段不能在后台给员工分工，请在已发布群内协作')
       const budget = (await tx.get<WorkBudget>('workBudgets', parent.budgetId))!
       if (parent.collaborationRequestId || budget.sourceMessageId) {

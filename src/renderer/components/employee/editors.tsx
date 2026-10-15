@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已保存BOAI群详情共用归属自动化页签，原群配置/清理和未保存守卫保持。
  * [OUTPUT]: 员工身份跨详情标签常驻编辑并共用保存草稿/页脚；隐藏且无修改的配置不占用其他表单守卫，保存错误回到配置核对；普通员工默认允许申请命令，核心与旧ACP限制保持。
  * [OUTPUT]: 通讯录配置将唯一保存按钮挂到顶部操作行，保存后留在当前编辑页并更新基线/版本，省略原底部保存/取消；明确保存并退出仍沿原守卫。
  * [OUTPUT]: 员工与系统助手共用模型API/本机Agent两级选择；具体连接按真实协议绑定，切换不静默清除技能或知识，命令申请采用普通员工默认与核心/旧ACP限制。
@@ -18,6 +19,8 @@
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { OwnerAutomations } from '@/pages/schedules/owner-automations'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -145,7 +148,18 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   </EditorFrame></>
 }
 
-export function GroupEditor({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }) {
+type GroupEditorProps = { active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }
+export function GroupEditor(props: GroupEditorProps) {
+  const [tab, setTab] = useState('profile'), guard = useContext(GuardContext)
+  const group = props.conversation
+  if (!group || group.channel || group.purpose && group.purpose !== 'personal' || !props.onConversation) return <GroupConfiguration {...props} />
+  return <Tabs value={tab} onValueChange={value => guard.navigate(() => setTab(value), { resetOnDiscard: false })}>
+    <TabsList aria-label="群聊详情分类"><TabsTrigger value="profile">配置</TabsTrigger><TabsTrigger value="automations">自动化</TabsTrigger></TabsList>
+    <TabsContent value="profile"><GroupConfiguration {...props} /></TabsContent>
+    <TabsContent value="automations"><OwnerAutomations api={props.api} snapshot={props.snapshot} owner={{ kind: 'group', conversationId: group.id }} active={props.active !== false && tab === 'automations'} onConversation={props.onConversation} /></TabsContent>
+  </Tabs>
+}
+function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }) {
   const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')

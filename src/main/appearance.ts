@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 外观偏好、图片文件与系统明暗状态。
+ * [OUTPUT]: 图片模式解析为深色，原明暗偏好与托管图片持久化保持。
  * [OUTPUT]: 经校验、可迁移的主题、字体、缩放及分模式颜色持久化。
  * [POS]: Electron 宿主外观存储，包含版本冲突与备份边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -8,7 +9,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { appearanceDefaults, applyAppearancePatch, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
+import { appearanceDefaults, applyAppearancePatch, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
 const color = z.string().regex(/^#[0-9a-f]{6}$/i).nullable().optional()
 const colors = z.object({ accent: color, background: color, foreground: color }).strict()
 const patchSchema = z.object({
@@ -52,7 +53,7 @@ export class AppearanceStore {
    if(this.preferences.background.assetId) try { await this.asset(this.preferences.background.assetId) } catch { this.preferences.background.assetId=null;this.diagnostic='背景文件不可用，已使用纯色背景。' }
   } catch(error) { if((error as NodeJS.ErrnoException).code!=='ENOENT')this.diagnostic='外观配置无法读取，已使用默认外观；原文件保留。' }
  }
- snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=this.preferences.mode==='system'?(this.systemDark()?'dark':'light'):this.preferences.mode;return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode]).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
+ snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=resolveAppearanceMode(this.preferences,this.systemDark()?'dark':'light');return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode]).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
  systemChanged() { this.sequence++; this.changed(this.snapshot()) }
  private serialize<T>(fn:()=>Promise<T>) { const next=this.tail.then(fn);this.tail=next.catch(()=>{});return next }
  private async commit(preferences:AppearancePreferences, expectedRevision:number) {

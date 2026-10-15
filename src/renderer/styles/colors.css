@@ -1,6 +1,6 @@
 /*
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
- * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；input/composer 仅保留 control 的内侧细边缘/高光，Button/Card 保留外侧阴影；shadcn 语义别名与背景图层。
+ * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；input/composer 仅保留 control 的内侧细边缘/高光，Button/Card 保留外侧阴影；shadcn 语义别名；图片图层迁至 craft-scenic。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -110,7 +110,4 @@
   --shadow-popover:0 0 0 1px var(--soft-outer-highlight),0 1px 2px #00000066,0 10px 24px -8px #00000080,0 28px 48px -20px #00000066;
 }
 ::selection { background:var(--selection);color:var(--foreground) }
-#appearance-background{position:fixed;inset:0;pointer-events:none;background-size:cover;background-position:center;z-index:0}
 #root{position:relative;z-index:1}
-html[data-background="true"]{--surface-app:color-mix(in srgb,var(--background) 96%,transparent);--surface-content:color-mix(in srgb,var(--card) 94%,transparent);--surface-list:color-mix(in srgb,var(--card) 96%,transparent);--surface-detail:color-mix(in srgb,var(--card) 98%,transparent)}
-html[data-background="true"] .app-shell{background:transparent}

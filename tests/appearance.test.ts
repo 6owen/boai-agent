@@ -1,5 +1,6 @@
 /*
  * [INPUT]: AppearanceStore、共享外观合同和临时文件系统。
+ * [OUTPUT]: Scenic 图片强制深色、重启/删除原图和移除恢复偏好的回归。
  * [OUTPUT]: 外观兼容、自定义色、缩放/备份以及正文与 Soft 操作按钮文字对比度回归。
  * [POS]: tests/appearance.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -46,4 +47,29 @@ it('adds safe defaults to old settings and rejects unsupported scale/font/color 
 })
 it('merges rapid color edits without losing other fields or the other mode', () => {
   expect(mergeAppearancePatch({customColors:{light:{accent:'#007acc'},dark:{background:'#212121'}}},{customColors:{light:{foreground:'#000000'}}})).toEqual({customColors:{light:{accent:'#007acc',foreground:'#000000'},dark:{background:'#212121'}}})
+})
+
+it('keeps Scenic dark across restart without overwriting the solid theme or relying on the original image', async () => {
+  const { root, store } = await setup()
+  const before = await store.update({ mode: 'light', themeIds: { light: 'vscode-plus-light', dark: 'nord' }, customColors: { light: { background: '#fafafa' } } }, 0)
+  const file = join(root, 'landscape.png')
+  await writeFile(file, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
+  const imported = await store.import(file)
+  expect(imported).toMatchObject({ resolvedMode: 'dark', resolvedThemeId: 'nord', preferences: { mode: 'light' } })
+  await rm(file)
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ resolvedMode: 'dark', preferences: { background: { assetId: imported.preferences.background.assetId } } })
+  const removed = await reopened.remove()
+  expect(removed).toMatchObject({ resolvedMode: 'light', resolvedThemeId: 'vscode-plus-light', preferences: { customColors: before.preferences.customColors } })
+})
+it('falls back to the saved solid mode when the managed background is missing', async () => {
+  const { root, store } = await setup()
+  const preferences = store.snapshot().preferences
+  preferences.mode = 'light'
+  preferences.background = { assetId: '11111111-1111-1111-1111-111111111111.png', imageOpacity: 0.2 }
+  await writeFile(join(root, 'settings.json'), JSON.stringify({ revision: 8, preferences }))
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ resolvedMode: 'light', preferences: { background: { assetId: null } }, diagnostic: '背景文件不可用，已使用纯色背景。' })
 })

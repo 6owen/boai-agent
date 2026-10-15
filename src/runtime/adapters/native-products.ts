@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 产品工具MCP对象根schema显式完整；report_work返回待发布状态及必须出现的答复证据，不提前宣称交付。
+ * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
+ * [OUTPUT]: 当前本人对话可调用共用计划管理工具，不为保存计划创建Work；来源与幂等均由宿主服务核验。
  * [OUTPUT]: 2026-10-11 原生工具保留；增量send/read消息不建Work，文件/协作/核心管理才惰性认领，依赖成果不冒充本人文件。
  * [INPUT]: 原生员工会话、已有Work/成果/组织服务。
  * [OUTPUT]: 惰性认领真实产品工作；工作区系统路径别名归一仍经原文件边界核验，原生文件/命令/Skill能力保持。
@@ -17,8 +20,13 @@ import { isCoreAgent } from '../../shared/domain/core-agent'
 import { teamModelPlanSchema } from '../../shared/domain/team-creation'
 import { nativeActivity } from './native-events'
 import { contained } from '../modules/workspaces/file-access'
+import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
+import { parseBrowserSingleCommand } from './mastra/browser-tool-runtime'
+import { summarizeMedia } from '../modules/browser/media'
+import { automationCommandSchema, automationCommandToolSchema, automationToolDescription } from '../modules/automations/automation-commands'
 
 export function createNativeProducts(context: EngineContext) {
+  let browserQueue:Promise<unknown>=Promise.resolve()
   let runtime: Promise<Awaited<ReturnType<typeof createTaskRuntime>>> | undefined
   const organization = isCoreAgent(context.agent) && context.conversation.purpose === 'core' && !context.legacyTeamName
   const reportShape = Object.fromEntries(Object.entries(modelWorkOutcomeSchema({ organization }).shape).filter(([key]) => key !== 'userQuestion'))
@@ -28,21 +36,31 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'publish_artifact', description: 'Deliver an existing file from your employee conversation workspace as a BOAI chat attachment. path may be absolute or relative to cwd. When the current user asks to revise a previously delivered file, pass its actual replacesArtifactId to publish the next immutable version. Do not use replacement for unrelated new files. No separate report is required.', schema: z.object({ path: z.string(), name: z.string().max(150).optional(), replacesArtifactId: z.string().optional(), revisionRequestId: z.string().optional() }) },
     { name: 'delegate_work', description: 'Assign a bounded task to another current BOAI employee using actual member IDs and a stable key. Repeated keys do not repeat work. Native subagents are distinct from employees.', schema: workDelegationSchema },
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
-    { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. Cite actual results only. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
+    { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
+  if (context.nativeBrowserSession) definitions.push({name:'browser_tool',description:browserToolDescription + ' Read-only page access creates no Work. A real write operation creates Work lazily; after verifying actual business results call report_work with that evidence before your final reply.',schema:browserToolSchema})
+  if (context.manageAutomation) definitions.push({ name: 'manage_automation', description: automationToolDescription + ` Current owner: ${JSON.stringify(context.automationOwner)}. Current members: ${JSON.stringify(context.members?.map(({ id, name, role }) => ({ id, name, role })))}. Default timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`, schema: automationCommandToolSchema })
   if (isCoreAgent(context.agent) && context.legacyTeamName) definitions.push({ name: 'create_team', description: 'Create the explicitly requested named team and its independent employees, inheriting this employee execution configuration. Use the committed result for the final reply; do not repeat after an unknown receipt.', schema: teamModelPlanSchema })
   const organizationFields = { mode: z.enum(['employee_creation', 'organize_only', 'organize_and_execute']), goal: z.string().min(1) }
   if (organization) definitions.push(
     { name: 'find_employees', description: 'Find saved BOAI employees for an explicitly requested organization. Supply the authorized mode and complete goal; this prepares administrative Work only.', schema: employeeCandidateQuerySchema.extend(organizationFields) },
     { name: 'organize_collaboration', description: 'Create employees or organize a group for the explicitly authorized goal. Reuse existing IDs; only create missing roles. A committed receipt proves organization, not group business completion.', schema: boboCollaborationPlanSchema.extend(organizationFields) },
   )
-  const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: z.toJSONSchema(schema, { io: 'input' }),
+  // Every product tool accepts an object. Discriminated unions emit only `oneOf`;
+  // MCP requires an explicit root type or rejects the entire tools/list response.
+  const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
+    ...(name==='browser_tool' ? {toModelContent:(value:unknown)=>{
+      const result=value as {output?:string;source?:unknown;image?:{data:string;mimeType:string}}
+      return [{type:'text' as const,text:`${result.output ?? ''}\nSource: ${JSON.stringify(result.source)}`},...(result.image ? [{type:'image' as const,data:result.image.data,mimeType:result.image.mimeType}]:[])]
+    }}:{}),
     execute: async (input, callId) => {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: input, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
-        await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : input) })
+        const observedInput=name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
+        if(name==='browser_tool') result=summarizeMedia(result)
+        await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
+        await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
       }
       await emit(false)
       try {
@@ -57,6 +75,20 @@ export function createNativeProducts(context: EngineContext) {
           const result = { messages: page.map(({ id, sequence, senderId, senderName, content, replyToMessageId }) => ({ id, sequence, senderId, senderName, content, replyToMessageId })), ...(eligible.length > page.length ? { beforeSequence: page[0].sequence } : {}) }
           await emit(true, result); return result
         }
+        if (name === 'browser_tool') {
+          const operation=browserQueue.catch(()=>{}).then(async()=>{
+            const command=parseBrowserSingleCommand(String(parsed.command))
+            const session=await context.nativeBrowserSession!(command.mutating)
+            const reply=await session.execute(command.command,callId)
+            return {...reply.result,...(reply.source ? {source:reply.source}:{})}
+          })
+          browserQueue=operation
+          const result=await operation;await emit(true,result);return result
+        }
+        if (name === 'manage_automation') {
+          const result = await context.manageAutomation!(automationCommandSchema.parse(parsed))
+          await emit(true, result); return result
+        }
         if (!runtime) runtime = (async () => {
           await context.ensureNativeWork?.(parsed.mode ? { key: 'bobo-organization', scope: String(parsed.goal), deliverable: '按用户要求发布组织', organization: { mode: parsed.mode as 'employee_creation', goal: String(parsed.goal) } } : undefined, typeof parsed.replacesArtifactId === 'string' ? parsed.replacesArtifactId : undefined)
           if (!context.work) throw new Error('产品工作未接入')
@@ -66,7 +98,7 @@ export function createNativeProducts(context: EngineContext) {
         if (name === 'report_work') {
           if (context.pendingWorkWait && parsed.disposition !== 'waiting') throw new Error('已登记依赖等待，请结束本轮等待实际结果')
           await context.onWorkOutcome!(parsed as unknown as import('../../shared/domain').WorkOutcome)
-          const result = { recorded: true, publicationPending: true }; await emit(true, result); return result
+          const result = { recorded: true, publicationPending: true, finalReplyMustInclude: ((parsed.evidence ?? []) as { kind: string; reference: string }[]).filter(e => e.kind === 'answer').map(e => e.reference) }; await emit(true, result); return result
         }
         const tool = product.tools[name as keyof typeof product.tools]
         if (!tool) throw new Error('当前工作没有此产品工具')

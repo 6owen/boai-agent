@@ -136,5 +136,146 @@
     "single shared parser and disabled arbitrary evaluate/clipboard/upload/model logs",
     "download real source/hash and logical model paths",
     "current Iconify/Base UI/theme tokens and standalone packaged entries"
+  ],
+  "incrementalMigrations": [
+    {
+      "date": "2026-10-14",
+      "repository": "https://github.com/craft-ai-agents/craft-agents-oss",
+      "commit": "2e3ba53ff80b229a07e9d1884dc58f6733f22e1f",
+      "status": "selected functions migrated; actual validation and remaining certification in spec/11/05",
+      "sourceFiles": [
+        {
+          "path": "apps/electron/src/main/browser-cdp.ts",
+          "sha256": "a5bf4f2bdd279bcc259bc5a1927b28e779a73a5521180a0ef1506467c5af8214"
+        },
+        {
+          "path": "apps/electron/src/main/browser-pane-manager.ts",
+          "sha256": "102803d1094dc435c3e71906099d3f7300ad1b7f305d3cfbe5cb702e7e68bb41"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "9a75ace1224f0f880ddfdd8442d14d5a0d865152c61a2fd363d8e2c351f94d2c"
+        },
+        {
+          "path": "NOTICE",
+          "sha256": "caa334b760b4c7835957c91ac24c3d52e7abc7ac770050445027766b4ce4ce7f"
+        },
+        {
+          "path": "packages/shared/src/agent/browser-tools.ts",
+          "sha256": "d4737fa23f19e0689d83c62b0d40cb41bbda6ccbe99879a51881701977af93ea"
+        },
+        {
+          "path": "packages/shared/src/agent/browser-tool-runtime.ts",
+          "sha256": "d56775546728720f6f937721e697263e0ae2dc41110e20fbd817770d250465b8"
+        },
+        {
+          "path": "packages/shared/src/agent/browser-tool-redaction.ts",
+          "sha256": "95e13c90c2dcc2fae8e75ca2754ef39a62962b5ddec1570f0769db1a87fc4a70"
+        }
+      ],
+      "targets": [
+        {
+          "path": "src/main/browser/browser-cdp.ts",
+          "beforeSha256": "755d19c1ce018e29bb50c188da49245254fc9b1c99dcb7ed694964c0ca4e2fd6",
+          "afterSha256": "ab82036b7348750efccea1b54dc78e498378c2f56aee54cdd9d6308aa528876d",
+          "copied": "CdpKeyDefinition/NAMED_KEYS/resolveCdpKey; clickAtCDP/clickAtNative/dragCDP/dragNative/canUseCdpInput/clickAtCoordinates/drag/typeText/pressKey; ClickOutcome/CallArgument, PAGE_HELPERS and interaction functions, requireBackendNodeId through selectOption",
+          "adaptation": "Preserve BOAI in-flight/drain/ref/password protection; partial CDP dispatch throws without script replay; unobservable selection is not silently confirmed."
+        },
+        {
+          "path": "src/main/browser/browser-pane-manager.ts",
+          "beforeSha256": "0a362c53a863f37a3d64da7c066523b76ae8708f40cac37ec7a0772d7eadebdb",
+          "afterSha256": "1f583b69c3bc20ae2957947bdc5f671fbf2fcc87e0f077298927489a5562b048",
+          "copied": "sendKey CDP-first branch; capturePageWithRecovery/capturePageWhenPainted/revealInvisiblyForCapture/pageIsPainting/setRendersWhileHidden and frame timing constants",
+          "adaptation": "BOAI has no Craft agentControl, so temporary capture unthrottling always restores prior state; missing fresh frame fails rather than returning a potentially stale image. ClickOutcome is propagated; document/SPA navigation revisions invalidate old refs."
+        },
+        {
+          "path": "src/runtime/adapters/mastra/browser-tool-redaction.ts",
+          "beforeSha256": null,
+          "copied": "entire browser-tool-redaction module",
+          "adaptation": "Local canonical name and marker constants; reuse exported original tokenizer; BOAI wrapper redacts all fill/type values before persistence, including rejected input, and preserves valid quoted placeholders.",
+          "afterSha256": "7e5fc9c43c7482613d0d22aa804bd320fb37bca86f7e10d058f9425275828c26"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "repository": "https://github.com/craft-ai-agents/craft-agents-oss",
+      "commit": "2e3ba53ff80b229a07e9d1884dc58f6733f22e1f",
+      "status": "candidate1 canvas command guidance; actual acceptance in spec/11/05",
+      "sourceFiles": [
+        {
+          "path": "packages/shared/src/agent/browser-tools.ts",
+          "sha256": "d4737fa23f19e0689d83c62b0d40cb41bbda6ccbe99879a51881701977af93ea"
+        },
+        {
+          "path": "apps/electron/resources/docs/browser-tools.md",
+          "sha256": "42e74557dd3a44d75049ee27183ae93300454859259e8ede863391a905c9a92b"
+        }
+      ],
+      "targets": [
+        {
+          "path": "src/runtime/adapters/mastra/browser-tool.ts",
+          "beforeSha256": "22b18267519c7dd9ee297b453030f748304e11e4dcb5dc89f58f35e2bf30f82f",
+          "afterSha256": "d1232cc0b30bf31f29dc24df7c60cc8c94e8af9544c772ba7f9b1e411adbf9f9",
+          "copied": "click-at/drag examples and canvas interaction guidance",
+          "adaptation": "Expose existing migrated driver commands in shared tool description/help; retain BOAI single-command, origin, no script/clipboard/upload boundaries; no separate canvas driver."
+        },
+        {
+          "path": "src/runtime/adapters/mastra/browser-tool-runtime.ts",
+          "beforeSha256": "c515894df539c8ae5e7beeb8729f72ac0c875372840ecc708d51742ed078c87a",
+          "afterSha256": "f6e88b4273f0c31f11a8f3f0b0bb9e10800304c54f4768a421b9e77ec6801975",
+          "copied": "click-at/drag examples and canvas interaction guidance",
+          "adaptation": "Expose existing migrated driver commands in shared tool description/help; retain BOAI single-command, origin, no script/clipboard/upload boundaries; no separate canvas driver."
+        }
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "repository": "https://github.com/craft-ai-agents/craft-agents-oss",
+      "commit": "2e3ba53ff80b229a07e9d1884dc58f6733f22e1f",
+      "status": "candidate2 BOAI initialization gate; upstream same fallback observed, not claimed upstream fix",
+      "targets": [
+        {
+          "path": "src/main/browser/browser-pane-manager.ts",
+          "beforeSha256": "1f583b69c3bc20ae2957947bdc5f671fbf2fcc87e0f077298927489a5562b048",
+          "afterSha256": "eaae0f94091f40181dd14ad60b1a15f17392840a9c93faf0322664304d91fa77",
+          "copied": "No additional driver code; existing Craft loadEmptyStatePage retained",
+          "adaptation": "BOAI ready/navigation waits for initial local page; initial failure is explicit rather than late about:blank fallback interrupting target navigation."
+        }
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "status": "candidate3 BOAI reference adapter; not an upstream driver change",
+      "targets": [
+        {
+          "path": "src/runtime/modules/browser/session.ts",
+          "beforeSha256": "f57b4308a878088cdeaf537531e092f8a550c291d2ee8ae292d42081f25717ef",
+          "afterSha256": "9f28163913849f031d8b18d22e4773023bc18ec147c2779ff56d67cc5a6f84ed",
+          "copied": "No additional driver code",
+          "adaptation": "Re-observe only the original instance and URL after dynamic page changes; reject stale initial mutations before dispatch and release rejected acquisition; current-page approval and unknown-no-replay unchanged."
+        },
+        {
+          "path": "src/runtime/adapters/mastra/engine.ts",
+          "beforeSha256": "d6ea3897891fd77f41f62bc8808f7c7fa2723fe06952395bfd52d172737f7190",
+          "afterSha256": "a1abdddabd882ccb5a01d34d159015a132672c515c281f97fa9e3217be828714",
+          "copied": "No browser driver changes; Mastra 1.71.0 maxSteps/prepareStep official installed API",
+          "adaptation": "Referenced API browser tasks may use the existing Work maxModelCalls instead of earlier 12-step SDK stop. Original host reservation, time/output/call budgets and other-task 12-step limit remain."
+        }
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "status": "candidate4 BOAI publication receipt alignment; no browser driver change",
+      "targets": [
+        {
+          "path": "src/runtime/adapters/mastra/task-runtime.ts",
+          "beforeSha256": "367926156b8bee5f4c87cf558b9861e10eee6a90f027e4212f65ecef88c3f0b0",
+          "afterSha256": "cdf08dbf10a42917c1e1aa77cdc39f4bd132ff93e78a1a6fb64b095399c73dc3",
+          "copied": "Existing native-products report_work finalReplyMustInclude receipt; not Craft code",
+          "adaptation": "Return the existing exact answer-evidence excerpts to the API model before its final reply; original publication validation and budgets unchanged."
+        }
+      ]
+    }
   ]
 }

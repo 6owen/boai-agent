@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 内部讨论草稿冻结渠道原消息引用，普通草稿/未知发送沿原隔离。
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
+ * [OUTPUT]: 当前网页引用附于原消息草稿；固定实例/页面版本随发送回执持久，标题URL只展示宿主核验来源，原附件工具栏保持。
  * [INPUT]: 成员投递、轮次与工作结果领域类型。
  * [OUTPUT]: 会话/工作结果文案、正文内成员标签/材料草稿和明确原问题/成果修订关联、普通/ACP稳定发送请求和未知回执状态的草稿合同及展示辅助函数。
  * [POS]: src/renderer/pages/conversations/presentation.ts。
@@ -17,14 +21,17 @@ export const turnLabels: Record<TurnStatus, string> = { queued: '下一轮排队
 export const liveTurn = (status: TurnStatus) => ['queued', 'evaluating', 'responding', 'executing'].includes(status)
 export interface DraftMention { id: string; label: string; start: number; end: number }
 export interface ChatDraft {
+  channelReference?: import('@shared/domain/channels').ChannelMessageReference
+  browserReference?: import('@shared/ipc/browser').BrowserPageReference
   text: string; mentionIds: string[]; mentions?: DraftMention[]; replyId?: string
   questionReply?: ChatQuestionTarget
   artifactRevision?: ChatArtifactRevisionTarget
+  materialEdit?: { reference: import('@shared/domain/materials').MaterialReadRef; name: string; targetAgentId: string; annotation?: import('@shared/domain/file-edit').FileEditAnnotation }
   materials?: MaterialDraftItem[]
   submission?: {
     kind?: 'external'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string
-    input: { content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
+    input: { channelReference?: import('@shared/domain/channels').ChannelMessageReference; materialReference?: import('@shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
   }
 }
 

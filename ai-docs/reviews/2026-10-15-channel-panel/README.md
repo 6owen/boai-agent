@@ -1,0 +1,18 @@
+<!--
+[INPUT]: 渠道右侧面板实际pnpm dev Electron BDD、预置平台历史与本地模型协议。
+[OUTPUT]: 分批保存原失败、修复复测、实际整幅截图和回放，最终状态见第16组02 §7.17。
+[POS]: 2026-10-15-channel-panel审阅证据入口。
+[PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+-->
+# 渠道右侧面板
+
+本次将渠道列表和聊天移入员工专属右侧标签；原主列表和聊天保留。渠道私聊/群聊以label独立折叠。
+
+- `first/`、`first-playwright/`：首批3场未通过。消息正文定位误匹配列表预览；窄栏CSS隐藏接入员工头像；另一场准备期点击主聊天等待导航超时，保留原失败，不推断平台或模型故障。
+- `second/`、`second-playwright/`：2场通过；导航流程末尾的群聊草稿断言错误使用input值断言，而群聊输入为contenteditable，后续改为正文断言；原截图和trace保留。
+- `final/`、`final-playwright/`：最终稳定源码的5场渠道功能与资源检查为4通过/1启动超时；导航场景未进入功能断言，另有窗口/trace清理缺口，终态以`final/playwright-results.json`为准。
+- `navigation-recheck/`、`navigation-recheck-playwright/`：同一源码单独复验导航流程通过（21.3秒），原失败不覆盖。
+- [整组审阅页](report/index.html)：官方JSON的4通过/1启动失败。
+- [导航复验审阅页](navigation-report/index.html)：同源码独立复验通过。
+
+所有平台历史为隔离预置，模型回复由本地协议夹具提供。本次未连接真实飞书等平台、未创建发行包；人工视觉效果评价待用户审阅。

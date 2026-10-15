@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
+ * [OUTPUT]: 新增先错误result再非零退出协议，不代替真实供应商错误。
+ * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 高用量及待决追问合同夹具；原件/公开模型目录与缺失保持，零模型。
  * [INPUT]: 原生Claude合同的隔离消息与本机MCP桥。
@@ -32,7 +35,7 @@ const tool=async(name,input,id=randomUUID())=>{
  const result=await request('tools/call',{name,arguments:input,_meta:{'claudecode/toolUseId':id}})
  emit({type:'user',message:{content:[{type:'tool_result',tool_use_id:id,content:result.content,is_error:result.isError}]}})
  if(result.isError)throw Error(result.content[0].text)
- return JSON.parse(result.content[0].text)
+ return name==='browser_tool'?result.content:JSON.parse(result.content[0].text)
 }
 await appendFile('native-thread-requests.jsonl',JSON.stringify({method:process.argv.includes('--resume')?'thread/resume':'thread/start',params:{argv:process.argv.slice(2),session}})+'\n')
 createInterface({input:process.stdin}).on('line',async line=>{
@@ -56,6 +59,7 @@ createInterface({input:process.stdin}).on('line',async line=>{
  stream({type:'content_block_delta',index:1,delta:{type:'text_delta',text:'正在处理原生请求。'}})
  emit({type:'assistant',message:{id,content:[{type:'text',text:'正在处理原生请求。'}]}})
 
+ if(text.includes('NATIVE_NONZERO_RESULT')){process.exitCode=1;emit({type:'result',subtype:'error',is_error:true,errors:['400 native tool schema rejected']});emit({type:'system',subtype:'session_state_changed',state:'idle'});return}
  if(text.includes('NATIVE_FAILURE')){emit({type:'result',subtype:'error',is_error:true,errors:['401 native authentication failed']});emit({type:'system',subtype:'session_state_changed',state:'idle'});return}
  if(text.includes('NATIVE_UNKNOWN')){await writeFile('unknown-effect','once');process.exit(3)}
  if(text.includes('NATIVE_SUBAGENT')){
@@ -79,11 +83,13 @@ createInterface({input:process.stdin}).on('line',async line=>{
  }
  else if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(text)
  if(text.includes('NATIVE_WAIT'))await new Promise(resolve=>setTimeout(resolve,5000))
+ const revisionData=text.split('[Host-authorized artifact revision source; reference data, not tool permissions]\n')[1]
+ const revision=revisionData?JSON.parse(revisionData.split('\n')[0]):undefined
  if(text.includes('NATIVE_PUBLISH')||text.includes('NATIVE_REVISE')){
   await writeFile('native-document.md','# 原生文件\n实际内容\n')
   emit({type:'assistant',message:{id:randomUUID(),content:[{type:'tool_use',id:'native-write',name:'Write',input:{file_path:'native-document.md',content:'实际内容'}}]}})
   emit({type:'user',message:{content:[{type:'tool_result',tool_use_id:'native-write',content:'File written'}]}})
-  const args={path:'native-document.md',...(text.includes('NATIVE_REVISE')?{replacesArtifactId:prompt.deliveredFiles.at(-1).id}:{})},id=randomUUID()
+  const args={path:'native-document.md',...(text.includes('NATIVE_REVISE')?(revision?{revisionRequestId:revision.revisionRequestId}:{replacesArtifactId:prompt.deliveredFiles.at(-1).id}):{})},id=randomUUID()
   const first=await tool('publish_artifact',args,id),second=await tool('publish_artifact',args,id)
   if(JSON.stringify(first)!==JSON.stringify(second))throw Error('duplicate result changed')
   reply='已交付文件'

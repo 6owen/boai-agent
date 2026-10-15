@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
+ * [OUTPUT]: 当前本人对话可获计划管理薄桥；owner与来源由宿主绑定，不要求先认领Work或另配草稿模型。
  * [OUTPUT]: 2026-10-12原生选定/初始化/API模型与公开目录有独立回执，传输提交不冒充接收；普通通信不新增模型阶段。
  * [OUTPUT]: 2026-10-11 原生会话/执行证据/交互/普通公开消息为独立可选合同，不要求原生引擎实现私有五阶段。
  * [OUTPUT]: 2026-10-10 执行进度独立观察回调仅接公开摘要与实际阶段，不授业务权或改变发布。
@@ -33,6 +35,8 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  automationOwner?: import('../shared/domain/automations').AutomationOwner
+  manageAutomation?(input: import('./modules/automations/automation-commands').AutomationCommand): Promise<unknown>
   /** Bounded public capabilities only; ordinary discussion remains without Work or tools. */
   employeeCandidates?: import('../shared/domain/bobo-collaboration').EmployeeCandidatePage
   legacyTeamName?: string
@@ -40,6 +44,7 @@ export interface EngineContext {
   organizeCollaboration?(plan: import('../shared/domain/bobo-collaboration').BoboCollaborationPlan, toolCallId: string): Promise<import('../shared/domain/bobo-collaboration').BoboCollaborationReceipt>
   /** Host grants this only after a manual task owns its original Work. */
   browserSession?: import('./modules/browser/session').BrowserSession
+  nativeBrowserSession?(mutating:boolean):Promise<import('./modules/browser/session').BrowserSession>
   /** Current host availability for choosing a task; this does not grant a lease or tools. */
   browserAvailable?: boolean
   /** A host-committed revision request; file versions never reuse Work resultVersion. */

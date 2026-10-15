@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
  * [OUTPUT]: 私有浏览器 bridge 和 Main 实际开始反向握手；drain 不以超时释放资源；仅主进程可访问的通知领取/回执通道；本地运行进程装配、消息处理及仅宿主可指定位置的备份/技能库导出。
  * [POS]: src/runtime/worker.ts。
@@ -64,7 +65,7 @@ port.on('message', async ({ data }) => {
   const request = data.request as RpcRequest
   try {
     const result = request.method as string === '__startBrowserAction'
-      ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId:string})
+      ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId?:string})
       : request.method as string === '__takeAutomationNotice'
       ? await service.takeAutomationNotice()
       : request.method as string === '__settleAutomationNotice'

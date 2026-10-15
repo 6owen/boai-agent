@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: BOAI浏览器两种原生工具名均省略输入值和截图字节，保留媒体hash。
  * [INPUT]: Rovai公开工具结果/可核验文件操作语义与实际原生事件接线。
  * [OUTPUT]: 文件标题来源、失败不冒充写入、原结果无损及Codex真实diff回归。
  * [POS]: 原生协议至直接迁入呈现的合同测试，非模型质量评分。
@@ -39,4 +40,13 @@ describe('原生执行文件与结果呈现',()=>{
   expect(event.canonical?.diffProjection?.entries?.[0]).toMatchObject({path:'/work/file.md',diff:'-before\n+after',additions:1,deletions:1})
   expect(executionActivityTitle(event.canonical,event.payload)).toBe('编辑 file.md')
  })
+})
+
+it('omits browser input from native events and stores only screenshot identity',()=>{
+ const data=Buffer.from('actual screenshot').toString('base64')
+ for(const name of ['browser_tool','mcp__boai__browser_tool']) {
+  const event=nativeActivity('browser',{type:'tool_use',name,input:{command:'fill @e1 password-secret'},result:[{type:'image',data,mimeType:'image/png'}]},true)
+  const encoded=JSON.stringify(event)
+  expect(encoded).not.toContain('password-secret');expect(encoded).not.toContain(data);expect(encoded).toContain('sha256')
+ }
 })

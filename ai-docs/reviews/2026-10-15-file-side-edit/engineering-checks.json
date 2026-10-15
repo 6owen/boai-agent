@@ -1,0 +1,16 @@
+{
+  "moduleTests": {
+    "files": 4,
+    "passed": 47
+  },
+  "typecheck": "passed",
+  "changedRendererEslint": "passed",
+  "sourceBuild": "passed",
+  "bddGeneration": "passed",
+  "gitDiffCheck": "passed",
+  "note": "工程结果来自本轮实际命令；源构建保留chunk大小警告，未打发行包。",
+  "realToFinalChanges": [
+    "src/renderer/components/detail-panel/file-edit-session.tsx",
+    "src/renderer/components/detail-panel/.folder.md"
+  ]
+}

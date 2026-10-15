@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 同一群消息由多个员工响应时事务拒绝跨员工重复创建；恢复回执绑定原ID与revision。
+ * [OUTPUT]: 旧归属只按持久员工/BOAI群关系补齐，保留原执行策略与时钟；新触发冻结owner/参与者/分工。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 事务受理等待当前运行配置核对，失败先登记跳过，不创建聊天、预算或投递。
  * [INPUT]: 自动化定义/触发、宿主许可判断与 ProductStore 事务。
@@ -11,10 +13,11 @@ import { isNativeBackend } from '../../../shared/domain/backends'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { DigitalAgent, Conversation, AgentRun, DiscussionTurn, DecisionRecord, Message, WorkItem, WorkBudget } from '../../../shared/domain'
-import type { AutomationDefinition, AutomationDispatch, AutomationInput, AutomationOccurrence, AutomationOrigin, AutomationMonitorCheckpoint, AutomationMonitorRead } from '../../../shared/domain/automations'
+import type { AutomationCreationSource, AutomationDefinition, AutomationDispatch, AutomationInput, AutomationOccurrence, AutomationOrigin, AutomationMonitorCheckpoint, AutomationMonitorRead } from '../../../shared/domain/automations'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { checkWorkBudget, newWorkBudget, WorkUnavailableError } from '../collaboration/work-budget'
 import { compareMonitorObservation, monitorPolicyFingerprint, monitorPolicySchema } from './automation-monitor'
+import { inferAutomationOwner } from './automation-plan'
 import { automationQuestionStates, belongsToOccurrence, unansweredAutomationTurns } from './automation-results'
 import { notificationPolicy, queueAutomationNotice, recoverAutomationNotices } from './automation-notifications'
 import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, pendingOccurrence, scheduleIdentity, scheduleDays } from './schedule-policy'
@@ -22,7 +25,8 @@ import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, 
 const row = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const timestamp = () => new Date().toISOString()
 interface TriggerAlias { id: string; occurrenceId: string }
-interface AutomationSchema { id: 'automations'; version: 1; migratedAt: string; snapshot?: string }
+interface MutationReceipt { id: string; fingerprint: string; definition: AutomationDefinition }
+interface AutomationSchema { id: 'automations'; version: 1; ownerVersion?: 1; migratedAt: string; snapshot?: string }
 export interface AutomationTrigger {
   automationId: string
   source: 'manual' | 'schedule'
@@ -37,6 +41,10 @@ export interface AutomationTrigger {
 export async function assertAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string) {
   const o = await tx.get<AutomationOccurrence>('automationOccurrences', origin.occurrenceId)
   if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt || !['running', 'waiting_work', 'waiting_user', 'waiting_approval'].includes(o.status)) throw new WorkUnavailableError('本次自动化已停止或未获得执行许可')
+  if (o.plan?.owner.kind === 'group') {
+    const group = await tx.get<Conversation>('conversations', o.plan.owner.conversationId)
+    if (!group || group.kind !== 'group' || group.channel || group.mergedInto || group.purpose && group.purpose !== 'personal' || o.plan.employeeIds.some(id => !group.agentIds.includes(id)) || await tx.get('conversationCleanup', group.id)) throw new WorkUnavailableError('自动化归属群或参与成员已失效')
+  }
   return o
 }
 /** Waiting freed a product slot; reacquire it in the same transaction before scheduling or invoking. */
@@ -99,6 +107,21 @@ export class AutomationRepository {
     })
   }
 
+  async migrateOwners() {
+    await this.store.transaction(async tx => {
+      const format = await tx.get<AutomationSchema>('automationSchema', 'automations')
+      if (!format || format.ownerVersion === 1) return
+      const conversations = new Map((await tx.list<Conversation>('conversations')).map(item => [item.id, item]))
+      const employees = new Set((await tx.list<DigitalAgent>('agents')).map(item => item.id))
+      for (const definition of await tx.list<AutomationDefinition>('automations')) {
+        if (definition.owner || definition.deletedAt) continue
+        const owner = inferAutomationOwner(definition, conversations, employees)
+        if (owner) await tx.put(row('automations', { ...definition, owner }))
+      }
+      await tx.put(row('automationSchema', { ...format, ownerVersion: 1 }))
+    })
+  }
+
   private async alias(tx: RecordTransaction, id: string, occurrenceId: string) {
     if (!await tx.get<TriggerAlias>('automationTriggerAliases', id)) await tx.put(row('automationTriggerAliases', { id, occurrenceId }))
   }
@@ -147,8 +170,22 @@ export class AutomationRepository {
       return definition
     })
   }
-  save(input: AutomationInput, authorizedFingerprint: string) {
+  mutation(requestId: string, expected: { id: string; expectedRevision: number }) {
     return this.store.transaction(async tx => {
+      const receipt = await tx.get<MutationReceipt>('automationMutations', requestId)
+      if (!receipt) return
+      const original = JSON.parse(receipt.fingerprint) as Partial<AutomationInput>
+      if (original.id !== expected.id || original.expectedRevision !== expected.expectedRevision || original.enabled !== true) throw new Error('此恢复身份已用于不同请求，请核对原回执')
+      return receipt.definition
+    })
+  }
+  save(input: AutomationInput, authorizedFingerprint: string, creationSource?: AutomationCreationSource) {
+    return this.store.transaction(async tx => {
+      const fingerprint = JSON.stringify(input)
+      if (input.requestId && input.id) {
+        const receipt = await tx.get<MutationReceipt>('automationMutations', input.requestId)
+        if (receipt) { if (receipt.fingerprint !== fingerprint) throw new Error('此修改身份已用于不同内容，请核对原回执'); return receipt.definition }
+      }
       if (input.requestId && !input.id) {
         const receipt = await tx.get<{ automationId: string }>('automationCreations', input.requestId)
         if (receipt) {
@@ -162,32 +199,47 @@ export class AutomationRepository {
       if (prior && prior.revision !== input.expectedRevision) throw new Error('任务配置已变更，请刷新')
       const cron = automationCron(input), scheduleChanged = !!prior && (prior.cron !== cron || prior.timezone !== input.timezone)
       const policy = input.conversationPolicy ?? 'existing-conversation'
+      const owner = input.owner ?? inferAutomationOwner(input, new Map((await tx.list<Conversation>('conversations')).map(item => [item.id, item])), new Set((await tx.list<DigitalAgent>('agents')).map(item => item.id)))
+      if (!prior && owner?.kind === 'group' && creationSource) {
+        const existing = (await tx.list<AutomationDefinition>('automations')).find(d => d.owner?.kind === 'group' && d.owner.conversationId === owner.conversationId && d.creationSource?.messageId === creationSource.messageId && d.creationSource.agentId !== creationSource.agentId)
+        if (existing) throw new Error(`本条群消息已由另一员工创建计划 ${existing.id}，请读取原计划，不重复创建`)
+      }
       const monitor = input.taskKind === 'monitor' ? monitorPolicySchema.parse(input.monitor) : undefined
       const monitorChanged = !!prior && ((prior.taskKind ?? 'report') !== (input.taskKind ?? 'report') || JSON.stringify(prior.monitor) !== JSON.stringify(monitor))
-      const executionChanged = !!prior && (monitorChanged || prior.prompt !== input.prompt || prior.conversationId !== input.conversationId || prior.conversationPolicy !== policy || JSON.stringify(prior.employeeIds ?? []) !== JSON.stringify(input.employeeIds ?? []) || prior.authorizedFingerprint !== authorizedFingerprint)
+      const executionChanged = !!prior && (monitorChanged || prior.prompt !== input.prompt || prior.conversationId !== input.conversationId || prior.conversationPolicy !== policy || JSON.stringify(prior.owner) !== JSON.stringify(owner) || JSON.stringify(prior.collaboration) !== JSON.stringify(input.collaboration) || JSON.stringify(prior.employeeIds ?? []) !== JSON.stringify(input.employeeIds ?? []) || prior.authorizedFingerprint !== authorizedFingerprint)
       const { expectedRevision: _, requestId, ...fields } = input, now = timestamp()
       const notifications = notificationPolicy(input, prior)
       const d: AutomationDefinition = { ...prior, ...fields, schemaVersion: 1, id: prior?.id ?? randomUUID(), revision: (prior?.revision ?? 0) + 1,
+        creationSource: prior?.creationSource ?? creationSource,
         executionRevision: (prior?.executionRevision ?? 1) + Number(executionChanged), scheduleGeneration: (prior?.scheduleGeneration ?? 1) + Number(scheduleChanged),
         scheduleEffectiveAt: !prior || scheduleChanged || (!prior.enabled && input.enabled) ? now : prior.scheduleEffectiveAt,
-        taskKind: input.taskKind ?? 'report', monitor, conversationPolicy: policy, conversationId: input.conversationId, employeeIds: input.employeeIds, daysOfWeek: scheduleDays(input), notificationPolicy: notifications, notify: notifications !== 'muted', cron, authorizedFingerprint,
+        owner, collaboration: input.collaboration, taskKind: input.taskKind ?? 'report', monitor, conversationPolicy: policy, conversationId: input.conversationId, employeeIds: input.employeeIds, daysOfWeek: scheduleDays(input), notificationPolicy: notifications, notify: notifications !== 'muted', cron, authorizedFingerprint,
         sync: 'pending', createdAt: prior?.createdAt ?? now, updatedAt: now }
       if (executionChanged || scheduleChanged || prior?.enabled !== d.enabled) delete d.legacyRevision
       delete d.syncError
       if (monitorChanged || prior && prior.authorizedFingerprint !== authorizedFingerprint) await tx.remove('automationMonitorCheckpoints', d.id)
       await tx.put(row('automations', d))
       if (!prior && requestId) await tx.put(row('automationCreations', { id: requestId, automationId: d.id, createdAt: now }))
+      if (prior && requestId) await tx.put(row('automationMutations', { id: requestId, fingerprint, definition: d } satisfies MutationReceipt))
       return d
     })
   }
 
-  pause(id: string, deleted = false) {
+  pause(id: string, deleted = false, request?: { requestId: string; expectedRevision: number }) {
     return this.store.transaction(async tx => {
+      const fingerprint = JSON.stringify({ id, deleted, expectedRevision: request?.expectedRevision })
+      if (request) {
+        const receipt = await tx.get<MutationReceipt>('automationMutations', request.requestId)
+        if (receipt) { if (receipt.fingerprint !== fingerprint) throw new Error('此操作身份已用于不同请求'); return receipt.definition }
+      }
       const d = await tx.get<AutomationDefinition>('automations', id)
       if (!d || d.deletedAt) throw new Error('任务不存在')
+      if (request && d.revision !== request.expectedRevision) throw new Error('任务配置已变更，请刷新后操作')
       d.enabled = false; d.revision++; d.updatedAt = timestamp(); d.sync = 'pending'; delete d.legacyRevision; delete d.syncError
       if (deleted) { d.deletedAt = timestamp(); await tx.remove('automationMonitorCheckpoints', d.id) }
-      await tx.put(row('automations', d)); return d
+      await tx.put(row('automations', d))
+      if (request) await tx.put(row('automationMutations', { id: request.requestId, fingerprint, definition: d } satisfies MutationReceipt))
+      return d
     })
   }
 
@@ -219,6 +271,7 @@ export class AutomationRepository {
       }
       const now = timestamp()
       const o: AutomationOccurrence = { schemaVersion: 1, id, stateVersion: 1, automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: generation, ...(slot ? { logicalSlot: slot } : {}), name: d.name, source: trigger.source, taskKind: d.taskKind ?? 'report', scheduledFor: new Date(trigger.scheduledAt).toISOString(), admittedAt: now, startedAt: now, status: 'admitted', deliveryStatus: 'pending', conversationId: d.conversationPolicy === 'new-conversation' ? randomUUID() : d.conversationId!, runIds: [], resultMessageIds: [], usageIncomplete: true, ...(scheduled ? { nativeRunId: trigger.key } : { manualRequestId: trigger.key }) }
+      if (d.owner) o.plan = structuredClone({ owner: d.owner, employeeIds: d.employeeIds ?? (await tx.get<Conversation>('conversations', d.conversationId!))?.agentIds ?? [], collaboration: d.collaboration })
       const stale = scheduled && (trigger.scheduleGeneration !== undefined ? trigger.scheduleGeneration !== d.scheduleGeneration || trigger.executionRevision !== d.executionRevision : trigger.revision !== d.revision && trigger.revision !== d.legacyRevision)
       let reason = d.deletedAt ? '任务已删除' : stale ? '旧版本触发已失效' : scheduled && !d.enabled ? '任务已暂停' : undefined
       if (!reason && scheduled) {

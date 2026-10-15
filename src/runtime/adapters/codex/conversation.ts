@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12原生交互身份关联实际回应写入，材料路径沿原会话接收；不改变工具目录和所选权限。
  * [INPUT]: Rovai codex.rs @ f9acc239 (MIT)、原生会话、用户权限选择与追加的产品工具。
@@ -6,6 +7,7 @@
  * [POS]: Codex员工生产会话驱动；协议移植来源许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { codexToolResult } from '../native-tool-result'
 import { randomUUID } from 'node:crypto'
 import type { EngineContext } from '../../contracts'
 import type { NativeConversationInput } from '../native-conversation'
@@ -50,7 +52,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
         const signature = JSON.stringify([name, params.arguments]), previous = calls.get(id)
         if (previous) { if (signature !== previous.signature) throw new Error('同一工具身份的输入发生变化'); return previous.result }
         const result = Promise.resolve().then(async () => {
-          try { return { contentItems: [{ type: 'inputText', text: JSON.stringify(await tool.execute(params.arguments, id)) ?? 'null' }], success: true } }
+          try { return codexToolResult(tool, await tool.execute(params.arguments, id)) }
           catch (error) { signal.throwIfAborted(); return { contentItems: [{ type: 'inputText', text: error instanceof Error ? error.message : String(error) }], success: false } }
         })
         calls.set(id, { signature, result }); return result

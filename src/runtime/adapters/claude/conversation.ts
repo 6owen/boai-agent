@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CLI先返回真实错误result再非零退出时保留原错误，不被通用进程异常覆盖。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12保留公开初始化目录和原生/API模型身份，容量匹配原生条目且带来源；账号/私有字段排除，回应写入独立记账。
  * [OUTPUT]: 工具结果同时核对原生双错误标记，保留原始结果与真实文件活动；不从create猜测新增。
@@ -200,6 +201,11 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     if (!hasResult) throw new Error('Claude 退出前未返回本轮结果')
     if (resultError) throw new Error(resultError)
     await context.onDelta(finalText); return { text: finalText }
+  } catch (error) {
+    // The CLI can return its actual error result and then exit nonzero. Preserve
+    // that public result instead of replacing it with the generic process error.
+    if (resultError) throw new Error(resultError, { cause: error })
+    throw error
   } finally {
     clearInterval(watchdog)
     controller.abort(new Error('Claude 原生会话已退出'))

@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 持久观测同时脱敏网页fill/type命令，包括JSON嵌套和拒绝请求；模型内存参数不变。
  * [INPUT]: 真实工具/模型/Trace 的媒体值。
  * [OUTPUT]: 只对媒体负载生成 MIME/字节数/hash 观测摘要；原生附件data URI按原始字节核算，普通工具正文和既有凭据脱敏合同保留。
  * [POS]: 浏览器截图持久化边界，不修改交给模型的内存媒体。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
 import { createHash } from 'node:crypto'
 export function mediaSummary(value: string | Uint8Array, mimeType = 'application/octet-stream') {
   const data = typeof value === 'string' ? /^data:([^;,]+);base64,([\s\S]+)$/.exec(value) : null
@@ -20,7 +22,8 @@ export function summarizeMedia(value: unknown): unknown {
   }
   if (Array.isArray(value)) return value.map(summarizeMedia)
   if (!value || typeof value !== 'object') return value
-  const record = value as Record<string,unknown>
+  let record = value as Record<string,unknown>
+  if (typeof record.command === 'string') record = { ...record, command: redactBrowserCommand(record.command) }
   const mime = typeof record.mimeType === 'string' ? record.mimeType : typeof record.mediaType === 'string' ? record.mediaType : undefined
   if ((record.type === 'image-data' || record.type === 'file-data' || mime?.startsWith('image/')) && typeof record.data === 'string') return { ...Object.fromEntries(Object.entries(record).filter(([key]) => key !== 'data').map(([key,item]) => [key,summarizeMedia(item)])), ...mediaSummary(record.data,mime) }
   if (record.type === 'image' && (typeof record.image === 'string' || record.image instanceof Uint8Array)) return { type: 'image', ...mediaSummary(record.image,mime) }

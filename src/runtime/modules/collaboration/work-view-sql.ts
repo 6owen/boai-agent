@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内部渠道讨论的工作/文件来源仅允许自身原渠道同员工同代际，计数与分页前统一失效。
  * [OUTPUT]: 父子计数按原文本ID比较匹配表达式索引，授权/来源/计数语义保持。
  * [INPUT]: records中的当前可见会话、Work、已发材料/已发布成果；规范化筛选和版本游标。
  * [OUTPUT]: SQL分页前授权/范围/AND筛选、五组计数、根子展开同口径原消息来源及当前审批原卡身份；不读取聊天正文。
@@ -42,9 +43,14 @@ export function workViewCursor(query: WorkViewQuery | ConversationFileQuery, rev
 }
 const field = (expression: string, path: string) => `json_extract(${expression},'$.${path}')`
 export const visibleWorkConversationSql = "COALESCE(json_extract(c.value,'$.list.hidden'),0)=0 AND NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)"
+/** Match the internal discussion's fixed parent scope without exposing another conversation's records. */
+function materialSourceScope(expression: string) {
+  const execution = field(expression, 'conversationId'), source = field('material.value', 'conversationId')
+  return `(${source}=${execution} OR EXISTS(SELECT 1 FROM records room JOIN records channel ON channel.collection='conversations' AND channel.id=${source} LEFT JOIN records clock ON clock.collection='conversationCompletionClocks' AND clock.id=channel.id WHERE room.collection='conversations' AND room.id=${execution} AND ${field('room.value', 'purpose')}='channel-internal' AND ${field('room.value', 'channelDiscussion.conversationId')}=channel.id AND ${field('room.value', 'channelDiscussion.epoch')}=COALESCE(${field('clock.value', 'epoch')},1) AND ${field('channel.value', 'channel')} IS NOT NULL AND ${field('channel.value', 'mergedInto')} IS NULL AND json_array_length(${field('room.value', 'agentIds')})=1 AND json_array_length(${field('channel.value', 'agentIds')})=1 AND ${field('room.value', 'agentIds[0]')}=${field('channel.value', 'agentIds[0]')} AND NOT EXISTS(SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id IN (room.id,channel.id))))`
+}
 /** A recorded material grant/version revocation makes derived objects ineligible before LIMIT. */
 function validRefs(expression: string, refs = field(expression, 'materialSources')) {
-  return `NOT EXISTS(SELECT 1 FROM json_each(COALESCE(${refs},'[]')) ref WHERE NOT EXISTS(SELECT 1 FROM records material WHERE material.collection='materials' AND material.id=${field('ref.value', 'id')} AND ${field('material.value', 'conversationId')}=${field(expression, 'conversationId')} AND ${field('ref.value', 'conversationId')}=${field(expression, 'conversationId')} AND ${field('material.value', 'status')}='ready' AND COALESCE(${field('material.value', 'messageId')},'')<>'' AND ${field('ref.value', 'revision')} BETWEEN COALESCE(${field('material.value', 'readableRevisionFrom')},${field('material.value', 'revision')}) AND ${field('material.value', 'revision')} AND ${field('material.value', 'contentHash')}=${field('ref.value', 'contentHash')} AND ${field('material.value', 'parseVersion')}=${field('ref.value', 'parseVersion')}))`
+  return `NOT EXISTS(SELECT 1 FROM json_each(COALESCE(${refs},'[]')) ref WHERE NOT EXISTS(SELECT 1 FROM records material WHERE material.collection='materials' AND material.id=${field('ref.value', 'id')} AND ${field('material.value', 'conversationId')}=${field('ref.value', 'conversationId')} AND ${materialSourceScope(expression)} AND ${field('material.value', 'status')}='ready' AND COALESCE(${field('material.value', 'messageId')},'')<>'' AND ${field('ref.value', 'revision')} BETWEEN COALESCE(${field('material.value', 'readableRevisionFrom')},${field('material.value', 'revision')}) AND ${field('material.value', 'revision')} AND ${field('material.value', 'contentHash')}=${field('ref.value', 'contentHash')} AND ${field('material.value', 'parseVersion')}=${field('ref.value', 'parseVersion')}))`
 }
 function validMessageSources(expression: string, messageId: string) {
   const refs = `COALESCE(${field(expression, 'materialSources')},(SELECT json_extract(snapshot.value,'$.materialRefs') FROM records snapshot WHERE snapshot.collection='snapshots' AND snapshot.id=${field(expression, 'runId')}),'[]')`

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 固定群分工需全部真实交付才算整体完成；只回复文本或漏分工不能提升为成功。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 文件证据同时保留精确artifactId和实际已提交交付messageId，支持原消息导航；不推断旧记录来源。
  * [OUTPUT]: API计量随原预算只读投影；本机/混合范围由受理或实际运行来源判定，本机不展示用量预算。
@@ -94,6 +95,9 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   else if (works.some(work => work.status === 'cancelled') || turns.some(turn => turn.status === 'cancelled' && unresolved(turn))) status = 'cancelled'
   else if (works.some(work => work.status === 'failed') || turns.some(turn => ['failed', 'budget_exhausted'].includes(turn.status) && unresolved(turn))) status = 'failed'
   else status = 'completed'
+  const collaboration = o.plan?.collaboration
+  const completePlan = !collaboration || collaboration.assignments.every(assignment => works.some(work => work.ownerAgentId === assignment.employeeId && delivered.has(work.id) && (assignment.employeeId === collaboration.coordinatorId ? !work.parentWorkId : !!work.parentWorkId)))
+  if (status === 'completed' && !completePlan) status = 'failed'
   const pending = ['running', 'waiting_work', 'waiting_user', 'waiting_approval', 'cancelling'].includes(status)
   const deliveryStatus = status === 'completed' && works.length > 0 && delivered.size === works.length ? 'delivered'
     : evidence.length ? 'partial' : pending ? 'pending' : works.length ? 'blocked' : 'unknown'
@@ -110,5 +114,5 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
     modelCalls: budget?.modelCalls ?? turns.reduce((sum, turn) => sum + turn.modelCalls, 0), usage: budget?.usage ?? usage, usageIncomplete: budget?.usageIncomplete ?? true,
     ...(budget ? { budget: { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),
     finishedAt: pending ? undefined : finishedAt,
-    reason: o.cancellationRequestedAt ? o.reason : status === 'completed' ? undefined : turns.find(turn => turn.reason && !resumedTurns.has(turn.id))?.reason ?? works.find(work => ['blocked', 'failed', 'interrupted'].includes(work.status))?.outcome?.summary }
+    reason: o.cancellationRequestedAt ? o.reason : status === 'completed' ? undefined : turns.find(turn => turn.reason && !resumedTurns.has(turn.id))?.reason ?? works.find(work => ['blocked', 'failed', 'interrupted'].includes(work.status))?.outcome?.summary ?? (!pending && !completePlan ? '本次群分工尚未全部交付' : undefined) }
 }

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: Claude非零退出保留原result错误；真实stdio媒体仍与持久摘要分开。
+ * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
+ * [OUTPUT]: Codex动态工具和Claude产品MCP实际stdio保存/重复核对与重启查询计划，不创建文件Work或调用API。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-13高原生用量的最终发布/重启及同run材料回答回归；原接线合同保持，协议夹具不认证真实模型。
  * [INPUT]: 第13组原生员工规范和隔离stdio协议进程。
@@ -20,6 +23,64 @@ afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
 
+it('reads images through the native browser tool without Work, then lazily claims a real write and preserves read receipts',async()=>{
+ const page={instanceId:'browser-instance',scopeKey:'application-browser',pageVersion:'1',url:'https://example.test/',title:'Current page',obtainedAt:new Date().toISOString()}
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yRuoAAAAASUVORK5CYII=','base64')
+ const acquired:import('../src/shared/ipc/browser').BrowserLease[]=[],actions:import('../src/shared/ipc/browser').BrowserActionEnvelope[]=[]
+ let f:Awaited<ReturnType<typeof nativeFixture>>,value='before'
+ const host={request:async(method:string,input:any)=>{
+  if(method==='disconnect')return
+  if(method==='reference')return page
+  if(method==='acquire'){acquired.push(structuredClone(input));return}
+  if(method==='inspect')return {...page,generation:input.generation}
+  if(method==='drain')return {drained:true}
+  if(method==='executeSingle'){
+   actions.push(structuredClone(input))
+   await f.service.startBrowserAction({actionId:input.actionId,generation:input.lease.generation,runId:input.lease.runId,workId:input.lease.workId})
+   if(input.command.includes('fill')){value='after';page.pageVersion='2'}
+   return {actionId:input.actionId,generation:input.lease.generation,status:'completed',source:{...page,generation:input.lease.generation},result:{output:value,appendReleaseHint:false,...(input.command.includes('screenshot')?{image:{data:png.toString('base64'),mimeType:'image/png',sizeBytes:png.length}}:{})}}
+  }
+  throw Error('unexpected browser method '+method)
+ }} as import('../src/shared/ipc/browser').BrowserHostBridge
+ f=await nativeFixture(runtime,disposals,undefined,true,host)
+ const first=await f.wait(await f.send('NATIVE_BROWSER_READ https://example.test/'))
+ expect(first.runs[0].status,first.runs[0].error).toBe('completed');expect(first.workItems).toHaveLength(0)
+ expect(acquired).toHaveLength(1);expect(acquired[0].workId).toBeUndefined();expect(acquired[0].sourceMessageId).toBeTruthy()
+ const secondMessage=await f.send('NATIVE_BROWSER_WRITE https://example.test/')
+ let approval:import('../src/shared/domain').Approval|undefined
+ await expect.poll(async()=>{approval=((await f.service.handle('snapshot',undefined)) as import('../src/shared/domain').Snapshot).approvals.find(a=>a.kind==='browser');return !!approval},{timeout:15000}).toBe(true)
+ await f.service.handle('approve',{id:approval!.id,approved:true})
+ const second=await f.wait(secondMessage)
+ expect(second.runs.at(-1)?.status,second.runs.at(-1)?.error).toBe('completed')
+ expect(second.workItems).toHaveLength(1);expect(second.workItems![0].status).toBe('delivered')
+ const read=actions.find(action=>action.command.includes('snapshot'))!,write=actions.find(action=>action.command.includes('fill'))!
+ expect(read.lease.workId).toBeUndefined();expect(write.lease.workId).toBe(second.workItems![0].id)
+ expect(acquired.filter(lease=>lease.runId===write.lease.runId)).toHaveLength(2)
+ const media=(await readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','native-browser-media.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(media).toHaveLength(2);expect(media.every(item=>item.type===(runtime==='codex'?'inputImage':'image') && item.hash===createHash('sha256').update(png).digest('hex') && item.bytes===png.length)).toBe(true)
+ const store=new ProductStore(join(f.root,'boai.sqlite'));await store.init()
+ try{
+  const receipts=await store.load<{lease:{workId?:string};status:string;reply?:unknown}>('browserActions')
+  expect(receipts.some(receipt=>!receipt.lease.workId && receipt.status==='completed')).toBe(true)
+  expect(JSON.stringify(await store.load('executionEvidence'))).not.toContain(png.toString('base64'))
+ }finally{await store.close()}
+ await f.restart()
+ expect((await f.detail()).workItems![0].status).toBe('delivered')
+})
+it('manages an automation through the native product bridge without Work and reads the same plan after restart', async () => {
+ const f=await setup(),first=await f.wait(await f.send('NATIVE_AUTOMATION_SAVE'))
+ expect(first.runs[0].status,first.runs[0].error).toBe('completed')
+ expect(first.workItems).toHaveLength(0)
+ const view=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../src/shared/domain').AutomationListPage
+ expect(view.definitions).toHaveLength(1)
+ expect(view.definitions[0]).toMatchObject({name:'原生日报',enabled:false,revision:1,employeeIds:[f.agent.id],conversationPolicy:'new-conversation'})
+ await f.restart();await f.restart()
+ const second=await f.wait(await f.send('NATIVE_AUTOMATION_LIST'))
+ expect(second.runs.at(-1)?.status,second.runs.at(-1)?.error).toBe('completed')
+ const after=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../src/shared/domain').AutomationListPage
+ expect(after.definitions.map(d=>d.id)).toEqual(view.definitions.map(d=>d.id))
+ expect((await f.service.handle('listAutomations',undefined) as import('../src/shared/domain').AutomationsView).occurrences).toHaveLength(0)
+})
 it('keeps an ordinary native turn above 16000 running through final reply and restart, without BOAI usage accounting',async()=>{
  const f=await setup(),first=await f.wait(await f.send('NATIVE_HIGH_USAGE'))
  expect(first.runs[0].status,first.runs[0].error).toBe('completed')
@@ -368,4 +429,10 @@ it('passes authorized attachments and revokes old input before reusing native co
  expect(after.runs.at(-1)?.backend?.sessionId).not.toBe(first.runs[0].backend?.sessionId);expect(JSON.stringify(await read())).not.toContain('MATERIAL_ONLY_CANARY')
 })
 
+})
+
+it('preserves the actual Claude error result when the same process exits nonzero',async()=>{
+ const f=await nativeFixture('claude',disposals)
+ const detail=await f.wait(await f.send('NATIVE_NONZERO_RESULT'))
+ expect(detail.runs.at(-1)).toMatchObject({status:'failed',error:'400 native tool schema rejected'})
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生产品工具可显式返回文字/真实图片部件；默认原JSON文本与执行方式保持。
  * [INPUT]: 本机员工已认领Work、冻结资源与宿主文件/审批/成果工具。
  * [OUTPUT]: Codex与Claude共用的宿主任务工具和真实调用回执；原权限、来源hash、技能激活和实际退出保持。
  * [POS]: 成熟本机运行时的薄工具适配，不建立另一套业务或模型循环。
@@ -11,7 +12,8 @@ import type { EngineContext } from '../contracts'
 import { createTaskRuntime } from './mastra/task-runtime'
 import { prepareEnvironment, readVersionedText } from '../modules/workspaces/environment-plan'
 import { summarizeMedia } from '../modules/browser/media'
-export interface NativeTool { name: string; description: string; inputSchema: Record<string, unknown>; execute(input: unknown, callId: string): Promise<unknown> }
+export type NativeToolContent = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+export interface NativeTool { name: string; description: string; inputSchema: Record<string, unknown>; execute(input: unknown, callId: string): Promise<unknown>; toModelContent?(result: unknown): NativeToolContent[] }
 
 export async function createNativeTask(context: EngineContext, runtimeName: 'Codex' | 'Claude') {
   if (!context.work || context.responseKind !== 'task') throw new Error('本机任务须认领真实工作')

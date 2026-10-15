@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 2026-10-14现行分离合同：Codex/Claude分别续用BOAI和渠道session；旧归一原件/本地修订/备份预览/hash清理保留，零API模型调用。
  * [OUTPUT]: 2026-10-14 迁移前交付、明确新消息修订、原生session重建、备份恢复预览及原件hash清理回归。
  * [OUTPUT]: 2026-10-14 Codex/Claude本人渠道与BOAI共用原生session、成果修订、重启零重放协议回归。
@@ -18,11 +19,41 @@ import { isChannelConversation } from '../src/shared/domain/conversation-list'
 import { AppService } from '../src/runtime/service'
 import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
 import type { ChannelBindingState } from '../src/shared/domain/channels'
-import type { Snapshot, ConversationDetail } from '../src/shared/domain'
+import type { Snapshot, ConversationDetail, Message } from '../src/shared/domain'
 
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close() })
 describe.each(['codex', 'claude'] as const)('%s employee contacted through channel', runtime => {
+  it('revises a channel artifact through the native protocol in an internal session and only sends its new version explicitly', async () => {
+    const native = await nativeFixture(runtime, disposals); await native.service.close()
+    const secrets = new Map<string, string>(), sent: { text: string; files: string[] }[] = []
+    let receive!: (event: ChannelInbound) => Promise<void>
+    const factory: ChannelTransportFactory = async (_binding, _credential, handler) => {
+      receive = handler; let connected = false
+      return { start: async () => { connected = true; return {} }, stop: async () => { connected = false }, connected: () => connected, send: async (_target, text, files) => { sent.push({ text, files: files.map(file => file.name) }); return ['native-file-reply'] } }
+    }
+    const service = new AppService({ dataPath: native.root, engine: { run: async () => { throw new Error('no API execution') }, test: async () => '' }, secrets: { get: async (id: string) => secrets.get(id), set: async (id: string, value: string) => { secrets.set(id, value) }, delete: async (id: string) => { secrets.delete(id) } }, channelTransport: factory, emit: () => {} })
+    disposals.push(() => service.close()); await service.init()
+    const binding = await service.handle('saveChannelBinding', { agentId: native.agent.id, platform: 'feishu', appId: 'private-file-app', name: '独立文件修改', credential: 'fixture', allowedUserIds: ['owner'], allowedChatIds: [], requestId: 'private-file-bind' }) as ChannelBindingState
+    await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    await receive({ eventId: 'first-file', text: 'NATIVE_PUBLISH', tenantId: 'tenant', chatId: 'direct', externalThreadId: 'lark:direct:first-file', kind: 'direct', userId: 'owner', userName: '外部本人', isBot: false, mentioned: false, mentionedUserIds: [], attachments: [] })
+    await expect.poll(() => sent.length, { timeout: 15000 }).toBe(1)
+    const parent = ((await service.handle('snapshot', undefined)) as Snapshot).conversations.find(isChannelConversation)!
+    const before = await service.handle('getConversation', { id: parent.id }) as ConversationDetail, original = before.artifacts[0]
+    const internal = await service.handle('ensureChannelDiscussion', { conversationId: parent.id }) as typeof parent
+    const request = await service.handle('reviseArtifact', { conversationId: internal.id, artifactId: original.id, contentHash: original.contentHash, targetAgentId: native.agent.id, content: 'NATIVE_REVISE 修改刚才文件', requestId: 'native-private-file-revision' }) as Message
+    await expect.poll(async () => { const detail = await service.handle('getConversation', { id: internal.id }) as ConversationDetail; return detail.runs.length > 0 && detail.runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)) }, { timeout: 15000 }).toBe(true)
+    const after = await service.handle('getConversation', { id: internal.id }) as ConversationDetail, version = after.artifacts[0]
+    expect(after.artifacts, JSON.stringify({ messages: after.messages.map(message => message.content), runs: after.runs.map(run => ({ status: run.status, error: run.error, tools: run.toolEvents })) })).toHaveLength(1)
+    expect(version).toMatchObject({ logicalArtifactId: original.logicalArtifactId, previousArtifactId: original.id, contentVersion: 2, revisionRequestId: request.artifactRevisionRequestId, conversationId: internal.id })
+    expect(after.runs.find(run => run.phase === 'execution')?.backend?.sessionId).not.toBe(before.runs.find(run => run.phase === 'execution')?.backend?.sessionId)
+    expect(sent).toHaveLength(1)
+    await service.handle('publishChannelMessage', { conversationId: parent.id, sourceMessageId: before.messages.find(message => message.channel)!.id, content: '明确发送内部新版', artifacts: [{ id: version.id, conversationId: internal.id, contentHash: version.contentHash }], requestId: 'native-publish-private-file' })
+    await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)
+    expect(sent[1].files).toEqual([version.name])
+    expect((await service.handle('getConversation', { id: parent.id }) as ConversationDetail).artifacts.map(artifact => artifact.id)).toEqual([original.id])
+  })
+
   it('retains files from already merged history while new channel input and BOAI revisions use independent native rooms', async () => {
     const native = await nativeFixture(runtime, disposals)
     await native.service.close()
@@ -111,6 +142,11 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
       await expect.poll(async () => (await service.handle('getConversation', { id: local.id }) as ConversationDetail).runs.at(-1)?.status, { timeout: 15000 }).toBe('completed')
       const localSession = (await service.handle('getConversation', { id: local.id }) as ConversationDetail).runs.at(-1)?.backend?.sessionId
       expect(localSession).not.toBe((await detail()).runs[0].backend?.sessionId)
+      const internal = await service.handle('ensureChannelDiscussion', { conversationId: room.id }) as typeof room
+      await service.handle('sendMessage', { conversationId: internal.id, content: '内部讨论不公开', mentionIds: [], requestId: 'native-internal-message' })
+      await expect.poll(async () => (await service.handle('getConversation', { id: internal.id }) as ConversationDetail).runs.at(-1)?.status, { timeout: 15000 }).toBe('completed')
+      const internalSession = (await service.handle('getConversation', { id: internal.id }) as ConversationDetail).runs.at(-1)?.backend?.sessionId
+      expect(internalSession).toBeTruthy(); expect(internalSession).not.toBe(localSession); expect(internalSession).not.toBe((await detail()).runs[0].backend?.sessionId)
       expect(sent).toHaveLength(1)
     }
     await receive(input('second', '继续讨论')); await expect.poll(() => sent.length, { timeout: 15000 }).toBe(2)

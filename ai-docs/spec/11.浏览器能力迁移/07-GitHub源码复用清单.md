@@ -1,13 +1,15 @@
 <!--
+[OUTPUT]: API交付回执沿用既有本机答复证据提醒，明确为BOAI适配；不归为Craft驱动变更。
+[OUTPUT]: 2026-10-15追加固定Craft坐标点击/拖拽示例和画布指引，真实缺项及候选验收唯一归05。
 [INPUT]: 2026-10-14用户要求浏览器优先直接复用GitHub代码；Craft v0.15.1源文件/测试/许可、Ego Lite helper和OpenCLI架构资料、BOAI现有迁入版本。
-[OUTPUT]: 固定上游版本、真实读取的文件hash、迁入目标/必要适配/测试映射及暂不采用范围；未复制到产品源码，未运行上游或BOAI测试。
+[OUTPUT]: 固定上游版本、真实读取的文件hash、迁入目标/必要适配/测试映射及暂不采用范围；选定函数已直接迁入并验证；分批实际结果及后续认证唯一归05。
 [POS]: 第11组06的源码复用依据；实际实施与成绩唯一归05，不能把上游修复当成本地通过。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
 
 # GitHub源码复用清单
 
-核对日期：2026-10-14。用途：为[员工浏览器操作计划](./06-数字员工浏览器操作设计与实施计划.md)提供可执行的直接迁入清单。状态：**第一方源码只读核对、内容hash已记录；产品迁入和运行验收未开始。**
+核对日期：2026-10-14。用途：为[员工浏览器操作计划](./06-数字员工浏览器操作设计与实施计划.md)提供可执行的直接迁入清单。状态：**固定来源/hash已记录；选定函数直接迁入，本次源码技术验证完成，分批实际结果和后续认证见05。**
 
 ## 1. 固定来源与选型
 
@@ -89,4 +91,21 @@ Ego Lite固定[LICENSE](https://github.com/citrolabs/ego-lite/blob/dca7003349c5f
 
 已核对：固定版本和主要文件存在、原始字节hash、当前BOAI对应目标、上游依赖差异、测试框架与产品语义差异。修正了“类型仍在上游browser-tool-types.ts”“装Ego helper就能控制Electron”“内部debugger等于OpenCLI endpoint”等容易误导实现的假设。
 
-待开工完成：完整调用依赖逐项审阅、具体迁入范围与本地差异补丁、许可随包路径、三后端真实媒体格式、实际输入/截图/资源测试。迁入、类型检查、模块、Electron、真实模型和安装包分别登记于[05](./05-实施步骤与验收清单.md)，本篇没有新增通过成绩。
+开工准备已按本轮实际迁入范围推进：函数/依赖与差异见下方登记及source-manifest，真实媒体/输入/截图/资源测试见05。尚未迁入的上游功能不作可用承诺。迁入、类型检查、模块、Electron、真实模型和安装包分别登记于[05](./05-实施步骤与验收清单.md)，本篇没有新增通过成绩。
+
+
+## 8. 本轮直接迁入登记
+
+2026-10-14：CDP输入、点击命中/回退、受控输入和下拉选择、隐藏页面新帧捕获已按固定源码整段迁入。`src/main/browser/source-manifest.json`保存源文件hash、目标before/after hash与适配差异。BOAI保留生命周期/登录/来源/密码保护；中途输入失败不回放、无新帧不返回旧截图、无法回读的选择不静默确认。ClickResult合同与回退提示同步到原工具runtime。此表不记录测试通过数量，真实成绩及未完成范围唯一归05。
+
+
+2026-10-14实际追加：`browser-tool-redaction.ts`整模块直接迁入至Mastra适配目录；工具命名常量就地适配，原runtime公开已有tokenize/split解析器供其复用。BOAI另加持久化前fill/type命令参数全值遮蔽、幂等占位符与严格单命令可再次解析的引用，不开放批执行。接入BrowserRepository、批准显示、API Trace与原生事件摘要，实际原参数仍用于当次执行和hash绑定。上游/目标hash及每段复制范围唯一记录于source-manifest的incrementalMigrations；测试失败/修复另归05。
+
+2026-10-15候选1：从同一固定commit的`browser-tools.ts`和`apps/electron/resources/docs/browser-tools.md`选取click-at/drag的操作语法、截图取坐标和画布拖动说明，供BOAI工具目录及help共用。之前底层已迁入但说明漏项，真实员工两站均据此报告无法绘制；现在补上使用入口，没有新增自研画布驱动。源/目标hash继续登记source-manifest，实际复测归05。
+
+2026-10-15候选2：上游同版本仍采用异步空白页失败后加载about:blank，BOAI原ready只等待工具栏。真实开窗准备竞争失败后，BOAI薄接入新增初始页面就绪/错误状态，ready和首次navigate等待其完成；保留Craft原页面加载器及所有操作驱动，不宣称这是上游已有修复。初始错误明确返回，避免旧回退覆盖目标导航；该适配有独立红绿检查与来源记录。
+
+2026-10-15候选3：BOAI BrowserSession同实例同URL的动态页面允许显式重新观察，旧版本首次写入仍拒绝；API网页任务的Mastra maxSteps使用原Work上限，prepareStep仍逐调用核额。二者均为BOAI接入适配，不声称来自Craft驱动。Mastra 1.71.0已安装的reference-agents-generate.md和agent.types.d.ts确认共用maxSteps/prepareStep合同。
+
+
+2026-10-15候选4：API的report_work回执对齐现有native-products中的finalReplyMustInclude，提醒模型保留已声明的答复证据原文。该字段不改变原发布事务、答复精确核验或调用预算；不属于浏览器驱动迁入。原生与目标hash及适配仍在source-manifest，真实失败和复测归05。

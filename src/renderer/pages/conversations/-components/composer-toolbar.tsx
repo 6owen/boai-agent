@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前网页引用附于原消息草稿；固定实例/页面版本随发送回执持久，标题URL只展示宿主核验来源，原附件工具栏保持。
  * [OUTPUT]: 聊天模型选择复用设置/员工模型目录与手动编辑，连接选项仅含实际连接。
  * [OUTPUT]: 聊天与核心首发共用模型API/本机Agent两级配置，显示实际连接名称；草稿一次保存并等待真实回执；未知结果冻结原草稿/版本，只读核对并显式载入当前配置后再编辑。
  * [OUTPUT]: 本机来源显示已保存连接名称，模型/API与本机程序配置共用字段；思考强度仅按真实API模型能力开放。
@@ -39,6 +40,7 @@ interface Props {
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
   commandsVisible: boolean; onCommands(): void
   onOpenWorkspace(): void; onMentions(): void; onSettings(agent?: DigitalAgent): void; onConfigureAgent(agent: DigitalAgent): void
+  onReferenceBrowser?(): void; browserReferenceBusy?: boolean
   onAddMaterial?(): void; materialsDisabled?: boolean
   onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): Promise<ComposerAgentSaveResult>; onSend(): void
 }
@@ -120,6 +122,7 @@ export function ComposerToolbar(props: Props) {
         <DropdownMenuContent side="top" align="start" className="w-56">
           <DropdownMenuGroup>
             {!external && props.onAddMaterial && <DropdownMenuItem disabled={busy || props.materialsDisabled} onClick={props.onAddMaterial}><FileText />添加文件</DropdownMenuItem>}
+            {props.onReferenceBrowser && <DropdownMenuItem disabled={busy || props.browserReferenceBusy || props.materialsDisabled} onClick={props.onReferenceBrowser}><FileText />引用当前网页</DropdownMenuItem>}
             <DropdownMenuItem onClick={props.onOpenWorkspace}><FolderOpen />打开会话工作目录</DropdownMenuItem>
             {group && <DropdownMenuItem disabled={props.replyMode} onClick={props.onMentions}><AtSign />{props.mentionsVisible ? '收起成员点名' : '提及成员'}</DropdownMenuItem>}
           </DropdownMenuGroup>

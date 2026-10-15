@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工/BOAI群归属、固定成员分工与每次执行快照；旧计划缺省保持原聊天策略。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 自动化预算增加可选callUnit，旧API记录不变；本机外部请求与内部模型次数分开。
  * [INPUT]: 自动化配置、原生触发与产品执行记录。
@@ -9,6 +10,27 @@
 import type { BudgetRenewal } from './work'
 export type AutomationNotificationPolicy = 'all_results' | 'important_only' | 'muted'
 export interface AutomationBudgetRenewalInput { expectedVersion: number; allowance: 'standard-v1' }
+
+export type AutomationOwner = { kind: 'employee'; employeeId: string } | { kind: 'group'; conversationId: string }
+export interface AutomationAssignment {
+  employeeId: string
+  instruction: string
+  deliverable: string
+  /** Employee IDs from this plan, resolved to actual Work IDs during this occurrence. */
+  dependsOn: string[]
+}
+export interface AutomationCollaboration {
+  coordinatorId: string
+  assignments: AutomationAssignment[]
+}
+export interface AutomationExecutionPlan {
+  owner: AutomationOwner
+  employeeIds: string[]
+  collaboration?: AutomationCollaboration
+}
+export interface AutomationCreationSource { conversationId: string; messageId: string; agentId: string }
+export interface AutomationListQuery { owner?: AutomationOwner; before?: { updatedAt: string; id: string }; limit?: number }
+export interface AutomationListPage { definitions: (AutomationDefinition & { nextTimes: string[]; latestOccurrence?: Pick<AutomationOccurrence, 'id' | 'status' | 'deliveryStatus' | 'startedAt' | 'finishedAt'> })[]; nextCursor?: { updatedAt: string; id: string } }
 
 export interface AutomationMonitorPolicy {
   comparator: 'json-fields-v1'
@@ -50,6 +72,8 @@ export interface AutomationMonitorCheckpoint {
 }
 
 export interface AutomationInput {
+  owner?: AutomationOwner
+  collaboration?: AutomationCollaboration
   /** Stable creation intent. Retries return the same persisted plan, including after restart. */
   requestId?: string
   id?: string
@@ -72,6 +96,7 @@ export interface AutomationInput {
 }
 
 export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> {
+  creationSource?: AutomationCreationSource
   schemaVersion: 1
   id: string
   revision: number
@@ -97,6 +122,8 @@ export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expe
 export type OccurrenceStatus = 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
+  /** Immutable execution configuration; editing the definition cannot rewrite a running assignment. */
+  plan?: AutomationExecutionPlan
   /** Native runs are never constrained by the shared API budget. */
   budgetScope?: 'native' | 'mixed'
   schemaVersion: 1

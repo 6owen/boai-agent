@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 对外渠道拒绝普通本地输入；内部讨论独立会话/限定记忆，固定引用核对；明确机器人外发单次记录并沿原来源回执。
+ * [OUTPUT]: 已完成 edit_file 纳入同 Work 真实副作用接续提示，避免后续执行重复修改。
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
+ * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
+ * [OUTPUT]: 员工/BOAI群自动化核对owner与实际参与者，隔离上下文只唤醒汇总负责人；执行使用触发时分工快照。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI主私聊与所有渠道私聊分离；本人ID仅展示，不迁移旧历史；渠道真实未读回复投影与同事务员工入口恢复。
  * [OUTPUT]: 员工渠道会话按员工/外部群隔离，旧单员工原位续用，多员工旧历史只读；拒绝BOAI群编辑/解散渠道。
  * [OUTPUT]: 2026-10-14 本人主私聊跨入口、群按稳定身份共用、空闲历史归一及旧只读定位；外部身份权限保持。
@@ -84,16 +90,21 @@ import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
 import { AutomationService, automationSchema } from './modules/automations/automation-service'
+import { automationDispatchPrompt } from './modules/automations/automation-plan'
+import { automationCommands, automationListSchema } from './modules/automations/automation-commands'
 import { aggregateAutomation, belongsToOccurrence } from './modules/automations/automation-results'
 import type { AutomationInput, AutomationDefinition, AutomationOrigin, AutomationOccurrence, AutomationBudgetRenewalInput } from '../shared/domain/automations'
 import { resolveClaudeRuntime, resolveCodexRuntime, resolveEmployeeRuntime } from './modules/backends/runtime-config'
 import { LaunchProfiles, profileSchema } from './modules/backends/profiles'
 import { runAcp } from './adapters/acp/client'
+import { summarizeMedia } from './modules/browser/media'
 import { nativeActivity } from './adapters/native-events'
 import { CodexEmployeeEngine } from './adapters/codex/engine'
 import { ClaudeEmployeeEngine } from './adapters/claude/engine'
 import { testClaudeProgram } from './adapters/claude/turn'
 import { backendProtocol, isNativeBackend } from '../shared/domain/backends'
+import { assertChannelSourceAccess, channelReferenceMessage } from './modules/channels/channel-workspace'
+import type { ChannelPublishInput, ChannelDelivery } from '../shared/domain/channels'
 import { mergeRooms } from './modules/conversations/room-migration'
 import { listCodexModels, testCodexConnection } from './adapters/codex/turn'
 import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '../shared/domain/employee-executions'
@@ -185,7 +196,10 @@ const artifactRevisionSourceSchema = z.object({ artifactId: id, contentHash: art
 const artifactRevisionSchema = artifactRevisionSourceSchema.extend({ conversationId: id, content: text(ARTIFACT_LIMITS.revisionCharacters), requestId: id }).strict()
 const artifactAdoptionSchema = z.object({ artifactId: id, contentHash: artifactHash, expectedAdoptionRevision: z.number().int().nonnegative(), requestId: id }).strict()
 const artifactAcceptanceSchema = z.object({ artifactId: id, logicalArtifactId: id, contentVersion: z.number().int().positive(), contentHash: artifactHash, expectedAcceptanceRevision: z.number().int().nonnegative(), requestId: id }).strict()
-const sendSchema = z.object({ conversationId: id, content: z.string().trim().max(100000), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length, '请输入消息或添加就绪材料')
+const materialReferenceSchema = z.object({ id, conversationId: id, revision: z.number().int().positive(), contentHash: artifactHash, parseVersion: z.enum(['text-v1', 'binary-v1']) }).strict()
+const channelReferenceSchema = z.object({ conversationId: id, messageId: id, contentHash: artifactHash }).strict()
+const channelPublishSchema = z.object({ conversationId: id, sourceMessageId: id, content: z.string().trim().max(12000), artifacts: z.array(z.object({ id, conversationId: id, contentHash: artifactHash }).strict()).max(8), requestId: id }).strict().refine(value => !!value.content || value.artifacts.length > 0, '请输入内容或选择文件')
+const sendSchema = z.object({ channelReference: channelReferenceSchema.optional(), materialReference: materialReferenceSchema.optional(), conversationId: id, content: z.string().trim().max(100000), browserReference:z.object({instanceId:id,pageVersion:z.string().min(1).max(200)}).strict().optional(), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length, '请输入消息或添加就绪材料')
 type MessageReceipt = { id: string; fingerprint: string; conversationId: string; messageId?: string; cleared?: true }
 const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
@@ -405,7 +419,7 @@ export class AppService {
         }
         if (await this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
         if (this.conversationBusy(occurrence.conversationId)) fail('会话忙碌')
-        return this.sendMessage({ conversationId: occurrence.conversationId, content: definition.prompt, mentionIds: [], requestId: 'automation-' + occurrence.id }, origin, commit)
+        return this.sendMessage({ conversationId: occurrence.conversationId, content: automationDispatchPrompt(definition), mentionIds: definition.collaboration ? [definition.collaboration.coordinatorId] : [], requestId: 'automation-' + occurrence.id }, origin, commit)
       }),
       inspect: occurrence => this.inspectAutomation(occurrence), cancel: (occurrence, options) => this.cancelAutomation(occurrence, options?.endWaiting),
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
@@ -517,6 +531,7 @@ export class AppService {
   private getConversation(id: string): Conversation {
     if (this.clearingConversations.has(id)) fail('此会话清理尚未完成，请重试清空聊天记录')
     const room = this.conversations.get(id) ?? fail('会话不存在')
+    if (room.channelDiscussion && (!this.conversations.has(room.channelDiscussion.conversationId) || this.clearingConversations.has(room.channelDiscussion.conversationId))) fail('内部讨论的原渠道来源已失效。')
     if (room.mergedInto) fail('此聊天已归入员工主私聊或群聊，请从主会话继续操作。')
     return room
   }
@@ -624,6 +639,7 @@ export class AppService {
     }
     if (method === 'bindLocalSkill') return this.skills.bindLocal(bindLocalSkillSchema.parse(input))
     if (method === 'getSkillBindingReceipt') return this.skills.getBindingReceipt(z.object({ requestId: id }).strict().parse(input).requestId)
+    if (method === 'referenceBrowserPage') { z.object({}).strict().parse(input);return (this.options.browserHost ?? fail('浏览器宿主未连接')).request('reference',{}) }
     if (method === 'getBrowserWindows') { z.object({}).strict().parse(input); return this.options.browserHost?.request('list',{}) ?? [] }
     if (method === 'openBrowser') return this.openBrowser(z.object({}).strict().parse(input))
     if (method === 'browserControl') return this.browserControl(z.object({action:z.enum(['take','resume','show','hide','close','clear'])}).strict().parse(input))
@@ -685,6 +701,8 @@ export class AppService {
     if (method === 'getSkillOperation') return this.skillLibrary.operationStatus(this.skillUpdates.operationStatus(await this.skills.getOperation(lookupSchema.parse(input).id)))
     if (method === 'cancelSkillOperation') { const value = lookupSchema.parse(input); await this.skills.cancel(value.id); await this.skillUpdates.cancel(value.id); return this.skillLibrary.cancel(value.id) }
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
+    if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
+    if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))
     if(method==='listAutomationHistory')return this.automations.history(input)
     if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
     if(method==='saveAutomation')return this.automations.save(automationSchema.parse(input))
@@ -897,6 +915,9 @@ export class AppService {
           const runIds = new Set([...this.runs.values()].filter(run => run.conversationId === query.conversationId && (turnId ? run.turnId === turnId : run.triggerMessageId === (this.runs.get(anchor.runId ?? '')?.triggerMessageId ?? anchor.id))).map(run => run.id))
           return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
         }
+        case 'ensureChannelDiscussion': return this.ensureChannelDiscussion(z.object({ conversationId: id }).strict().parse(input).conversationId)
+        case 'publishChannelMessage': return this.publishChannelMessage(channelPublishSchema.parse(input))
+        case 'listChannelMessageDeliveries': { const value = z.object({ conversationId: id, messageIds: z.array(id).max(80) }).strict().parse(input); this.getConversation(value.conversationId); return (await this.store.load<ChannelDelivery>('channelDeliveries', { conversationId: value.conversationId })).filter(item => value.messageIds.includes(item.messageId)) }
         case 'sendMessage': return this.sendMessage(sendSchema.parse(input))
         case 'recheckMaterial': { const value = z.object({ id, expectedRevision: z.number().int().positive() }).strict().parse(input); try { return await this.materials.recheck(value.id, value.expectedRevision) } finally { this.changed() } }
         case 'getMessageReceipt': return this.messageReceipt(z.object({ requestId: id }).strict().parse(input).requestId)
@@ -971,13 +992,13 @@ export class AppService {
 
   private async snapshot(): Promise<Snapshot> {
     const connections = await Promise.all([...this.connections.values()].map(async connection => ({ ...connection, hasApiKey: !!await this.options.secrets.get(connection.id) })))
-    const channelUnread = [...this.conversations.values()].some(isChannelConversation) ? await this.reading.unreadCounts() : new Map<string, number>()
-    const conversations = [...this.conversations.values()].map(conversation => {
+    const channelUnread = [...this.conversations.values()].some(isChannelConversation) ? await this.reading.unreadCounts([...this.conversations.values()].filter(isChannelConversation).map(room => room.id)) : new Map<string, number>()
+    const conversations = (await Promise.all([...this.conversations.values()].map(async conversation => {
       const runs = [...this.runs.values()].filter(run => run.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), turns = [...this.scheduler.turns.values()].filter(turn => turn.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      const messages = this.conversationMessages(conversation.id)
+      const messages = isChannelConversation(conversation) ? (await this.store.conversationMessageRows({ conversationId: conversation.id, limit: 2 })).map(row => JSON.parse(row.source) as Message).sort((a, b) => a.sequence - b.sequence) : this.conversationMessages(conversation.id)
       const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
       return { ...conversation, ...(isChannelConversation(conversation) ? { channelUnreadCount: channelUnread.get(conversation.id) ?? 0 } : {}), activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
-    }).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
+    }))).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
     return clone({ userProfile: await this.userProfile.get(), agents: [...this.employees.values()], conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
   }
   private async detail(id: string, pageMessages?: Message[]): Promise<ConversationDetail> {
@@ -1319,6 +1340,9 @@ export class AppService {
   private async clearConversationHistory(id: string, hide: boolean, remove = false) {
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
     this.assertConversationIdle(id)
+    const discussions = [...this.conversations.values()].filter(room => room.channelDiscussion?.conversationId === id)
+    for (const room of discussions) this.assertConversationIdle(room.id)
+    for (const room of discussions) await this.clearConversationHistory(room.id, false, true)
     if (!(await this.store.load<{ id: string }>('conversationCleanup')).some(value => value.id === id)) await this.conversationArtifacts(conversation)
     this.clearingConversations.add(id)
     this.changed(id)
@@ -1487,6 +1511,7 @@ export class AppService {
 
   private async saveConversation(input: z.infer<typeof conversationSchema>) {
     const previous = input.id ? this.getConversation(input.id) : undefined
+    if (previous?.purpose === 'channel-internal') fail('内部讨论的员工和记忆范围由原渠道确定，不能改绑。')
     if (previous && isChannelConversation(previous)) fail('渠道会话不能修改群成员或来源；请从员工渠道配置管理绑定。')
     if (input.kind !== 'group' && input.teamSetup !== undefined) fail('团队背景仅用于群聊')
     if (input.kind === 'direct' && input.agentIds.length !== 1) fail('单聊只能选择一名员工')
@@ -1513,7 +1538,7 @@ export class AppService {
     if (previous?.purpose === 'core' && (input.agentIds.length !== 1 || input.agentIds[0] !== CORE_AGENT_ID)) fail('核心会话不能改绑其他员工')
     if (!previous && input.kind === 'direct' && input.agentIds[0] === CORE_AGENT_ID) fail('请在核心助手中发送非空首条消息，再建立会话')
     if (!previous && input.kind === 'direct') {
-      const existing = [...this.conversations.values()].find(conversation => !conversation.mergedInto && conversation.kind === 'direct' && (conversation.mainPrivate || !conversation.channel) && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.agentIds[0] === input.agentIds[0])
+      const existing = [...this.conversations.values()].find(conversation => !conversation.mergedInto && conversation.kind === 'direct' && (conversation.mainPrivate || !conversation.channel) && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal' && conversation.agentIds[0] === input.agentIds[0])
       if (existing) return clone(existing)
     }
     const conversationId = previous?.id ?? randomUUID()
@@ -1521,7 +1546,7 @@ export class AppService {
     if (memoryContextRef) await this.validateMemoryContext(memoryContextRef, input.agentIds)
     const conversation: Conversation = { ...previous, ...definition, ...(memoryContextRef !== undefined ? { memoryContextRef: memoryContextRef ?? undefined } : {}), ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
-    if (conversation.kind === 'direct' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core') conversation.mainPrivate = true
+    if (conversation.kind === 'direct' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal') conversation.mainPrivate = true
     await this.store.write([record('conversations', conversation)]); this.conversations.set(conversation.id, conversation)
     if (previous) {
       const removed = previous.agentIds.filter(id => !conversation.agentIds.includes(id))
@@ -1584,6 +1609,52 @@ export class AppService {
     this.conversations.set(conversation.id, conversation); this.changed(conversation.id)
     return conversation
   }
+  private async ensureChannelDiscussion(conversationId: string): Promise<Conversation> {
+    const source = this.getConversation(conversationId)
+    if (!isChannelConversation(source) || source.agentIds.length !== 1) fail('请选择当前员工的独立渠道会话。')
+    const epoch = (await this.reading.readState(source.id)).epoch
+    const existing = [...this.conversations.values()].find(room => room.purpose === 'channel-internal' && room.channelDiscussion?.conversationId === source.id && room.channelDiscussion.epoch === epoch)
+    if (existing) { await this.store.transaction(tx => assertChannelSourceAccess(tx, existing.id, source.id)); return clone(existing) }
+    const id = 'channel-internal-' + randomUUID()
+    const room: Conversation = { id, kind: 'direct', purpose: 'channel-internal', channelDiscussion: { conversationId, epoch }, memoryScope: 'conversation', title: source.title + ' · 内部讨论', agentIds: [...source.agentIds], mode: 'natural', sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', id), configVersion: 1, createdAt: now(), updatedAt: now() }
+    await mkdir(room.workspacePath, { recursive: true })
+    await this.store.write([record('conversations', room)])
+    this.conversations.set(id, room)
+    for (const member of room.agentIds) await this.memory.restrictConversation(member, id)
+    this.changed(id); return clone(room)
+  }
+  private async publishChannelMessage(input: ChannelPublishInput): Promise<Message> {
+    const fingerprint = createHash('sha256').update(JSON.stringify({ kind: 'channel-publication', ...input })).digest('hex')
+    const receipt = await this.store.get<MessageReceipt>('messageReceipts', input.requestId)
+    if (receipt) {
+      if (receipt.cleared || receipt.fingerprint !== fingerprint) fail('原渠道发送请求已清理或用于不同内容。')
+      return (await this.messageReceipt(input.requestId))!
+    }
+    const room = this.getConversation(input.conversationId), source = this.messages.get(input.sourceMessageId)
+    if (!isChannelConversation(room) || room.agentIds.length !== 1 || !source?.channel || source.conversationId !== room.id || source.senderType !== 'user') fail('请选择这条渠道会话的原始来信作为发送目标。')
+    const agent = this.getAgent(room.agentIds[0])
+    const binding = this.channels.publicationBinding(source!.channel!, agent.id)
+    if (new Set(input.artifacts.map(ref => ref.id)).size !== input.artifacts.length) fail('不能重复选择同一文件。')
+    const artifacts = []
+    for (const ref of input.artifacts) {
+      if (ref.conversationId !== room.id) await this.store.transaction(tx => assertChannelSourceAccess(tx, ref.conversationId, room.id))
+      const preview = await this.artifactRepository.preview(ref.id, ref.contentHash, agent.id)
+      if (preview.artifact.conversationId !== ref.conversationId || preview.artifact.ownerAgentId !== agent.id) fail('文件不属于当前渠道或其内部讨论的员工。')
+      artifacts.push({ ...ref, name: preview.artifact.name })
+    }
+    const message = this.nextMessage(room.id, { senderType: 'agent', senderId: agent.id, senderName: agent.name, content: input.content, status: 'completed' })
+    message.channelPublication = { sourceMessageId: source!.id, bindingRevision: binding.revision, actor: 'user', artifacts }
+    message.replyToMessageId = source!.id
+    await this.store.transaction(async tx => {
+      if (await tx.get('conversationCleanup', room.id)) fail('渠道会话正在清理。')
+      await tx.put(record('messages', message))
+      await tx.put(record('messageReceipts', { id: input.requestId, fingerprint, conversationId: room.id, messageId: message.id } as MessageReceipt))
+      await this.reading.recordCompletion(tx, message)
+    })
+    this.messages.set(message.id, message); this.emit({ type: 'message', message }); this.changed(room.id)
+    return clone(message)
+  }
+
   private async channelGroupName(conversationId: string, source: ChannelConversationSource, name: string) {
     const room = this.conversations.get(conversationId)
     if (!room || room.mergedInto || room.kind !== 'group' || room.channel?.platform !== source.platform || room.channel.tenantId !== source.tenantId || room.channel.chatId !== source.chatId || room.channel.agentId !== source.agentId || this.clearingConversations.has(room.id) || await this.store.get('conversationCleanup', room.id)) return
@@ -1615,10 +1686,12 @@ export class AppService {
     } finally { await rm(directory, { recursive: true, force: true }) }
   }
   private async channelFiles(message: Message) {
-    if (!message.runId) return []
+    if (!message.runId && !message.channelPublication) return []
     const conversation = this.getConversation(message.conversationId)
     const files = []
-    for (const artifact of (await this.conversationArtifacts(conversation)).filter(artifact => artifact.runId === message.runId && artifact.ownerAgentId === message.senderId)) {
+    const selected = message.channelPublication ? message.channelPublication.artifacts : (await this.conversationArtifacts(conversation)).filter(artifact => artifact.runId === message.runId && artifact.ownerAgentId === message.senderId)
+    for (const artifact of selected) {
+      if ('conversationId' in artifact && artifact.conversationId && artifact.conversationId !== conversation.id) await this.store.transaction(tx => assertChannelSourceAccess(tx, artifact.conversationId!, conversation.id))
       if (!artifact.id || !artifact.contentHash) fail('渠道成果缺少固定来源。')
       const preview = await this.artifactRepository.preview(artifact.id!, artifact.contentHash, message.senderId)
       if (!preview.artifact.path) fail('成果没有可核对原件路径。')
@@ -1689,8 +1762,17 @@ export class AppService {
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
     const conversation = clone(this.getConversation(input.conversationId))
     if (conversation.mergedInto) fail('此聊天已归入员工主私聊，请从主私聊发送新消息。')
+    if (isChannelConversation(conversation) && !channelSource) fail(conversation.agentIds.length !== 1 ? '旧渠道会话仅保留历史。' : '请使用渠道的内部讨论；普通本地消息不会写入对外会话。')
+    if (conversation.channelDiscussion) await this.store.transaction(tx => assertChannelSourceAccess(tx, conversation.id, conversation.channelDiscussion!.conversationId))
+    if (input.channelReference) {
+      if (channelSource || origin || conversation.purpose !== 'channel-internal') fail('只有内部讨论可以引用渠道消息。')
+      await this.store.transaction(tx => channelReferenceMessage(tx, conversation.id, input.channelReference!))
+    }
     if (isChannelConversation(conversation) && conversation.agentIds.length !== 1) fail('旧多员工渠道会话仅保留历史，请从员工主私聊或新的渠道会话继续。')
     if (conversation.agentIds.includes(CORE_AGENT_ID) && !this.getAgent(CORE_AGENT_ID).connectionId) await this.ensureCoreConnection()
+    const browserReference=input.browserReference ? await (this.options.browserHost ?? fail('浏览器宿主未连接')).request('reference',input.browserReference) : undefined
+    if(browserReference && (origin || channelSource || conversation.purpose==='core')) fail('网页引用须来自当前员工的本人消息')
+    if (input.materialReference && (origin || commit || channelSource || humanReply || input.artifactRevision || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.browserReference || input.mentionIds.length !== 1 || !input.content.trim())) fail('文件修改须固定原附件并选择一名员工，作为独立的本人新请求发送')
     let revision: ArtifactRevisionInput | undefined
     if (input.artifactRevision) {
       if (origin || commit || humanReply || input.materialSelections?.length || input.stopPrevious || input.replyToMessageId) fail('成果修订须作为独立的本人新请求受理')
@@ -1707,17 +1789,21 @@ export class AppService {
     const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content: input.content, status: 'completed' })
     if (channelSource) { message.channel = channelSource; message.senderId = 'channel-user:' + createHash('sha256').update(JSON.stringify([channelSource.platform, channelSource.tenantId, channelSource.userId])).digest('hex'); message.senderName = channelUserName || channelSource.userId }
     if(origin){message.origin=origin;if(!humanReply){message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}}
+    if (input.channelReference) message.channelReference = input.channelReference
+    if(browserReference) message.browserReference=browserReference
     message.mentionIds = input.mentionIds; message.replyToMessageId = input.replyToMessageId
     if (input.materialSelections?.length) message.materialIds = input.materialSelections.map(selection => selection.id)
+    if (input.materialReference) { message.materialReference = input.materialReference; message.materialSources = [input.materialReference] }
     if (revision) message.artifactRevisionRequestId = revision.requestId
     if (relation) message.inboxReply = relation
-    const nativeInput = !origin && !commit && !revision && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
+    const nativeInput = !origin && !commit && !revision && !input.materialReference && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
     let nativeResponse: { deliver(): Promise<void>; rollback(): Promise<void> } | undefined
-    const prepared = nativeInput ? undefined : questionReply ? this.scheduler.prepareQuestionReply(conversation, message, questionReply.turn.id, questionReply.agentId, questionReply.work) : this.scheduler.prepare(revision ? { ...conversation, agentIds: [revision.targetAgentId] } : conversation, message)
+    const directedAutomation = origin && !humanReply && input.mentionIds.length ? { ...conversation, agentIds: input.mentionIds } : conversation
+    const prepared = nativeInput ? undefined : questionReply ? this.scheduler.prepareQuestionReply(conversation, message, questionReply.turn.id, questionReply.agentId, questionReply.work) : this.scheduler.prepare(revision ? { ...conversation, agentIds: [revision.targetAgentId] } : input.materialReference ? { ...conversation, agentIds: input.mentionIds } : directedAutomation, message)
     const request: RequestRecord = { id: input.requestId, fingerprint, messageId: message.id }
     conversation.lastMessageAt = message.createdAt
     if (channelSource && conversation.list?.hidden) conversation.list = { ...conversation.list, hidden: false }
-    const main = channelSource && [...this.conversations.values()].find(room => room.kind === 'direct' && !room.mergedInto && (room.mainPrivate || !room.channel) && room.purpose !== 'automation' && room.agentIds[0] === conversation.agentIds[0])
+    const main = channelSource && [...this.conversations.values()].find(room => room.kind === 'direct' && !room.mergedInto && (room.mainPrivate || !room.channel) && room.purpose !== 'automation' && room.purpose !== 'channel-internal' && room.agentIds[0] === conversation.agentIds[0])
     const reopenedMain = main && main.list?.hidden && !this.clearingConversations.has(main.id) && !await this.store.get('conversationCleanup', main.id) ? { ...main, list: { ...main.list, hidden: false } } : undefined
     const accepted: MessageReceipt = { id: input.requestId, fingerprint: receiptFingerprint, conversationId: conversation.id, messageId: message.id }
     const records = [record('messages', message), record('requests', request), record('messageReceipts', accepted), record('conversations', conversation), ...(reopenedMain ? [record('conversations', reopenedMain)] : []), ...(prepared?.records ?? [])]
@@ -1731,6 +1817,9 @@ export class AppService {
         }
         const current = await tx.get<Conversation>('conversations', conversation.id)
         if (!current || (current.configVersion ?? 0) !== (conversation.configVersion ?? 0) || await tx.get('conversationCleanup', conversation.id)) fail('聊天配置已更新或正在清理，请刷新后发送')
+        if (input.channelReference) await channelReferenceMessage(tx, conversation.id, input.channelReference)
+        if (conversation.channelDiscussion) await assertChannelSourceAccess(tx, conversation.id, conversation.channelDiscussion.conversationId)
+        if (input.materialReference) await this.materials.validateRefsInTransaction(tx, [input.materialReference], input.mentionIds[0], conversation.id)
         if (input.materialSelections?.length) await this.materials.attach(tx, conversation.id, message.id, input.materialSelections)
         if (nativeInput) nativeResponse = await this.executions.answerMessage(tx, nativeInput.id, message)
         if (questionReply) {
@@ -1846,6 +1935,12 @@ export class AppService {
   private async automationFingerprint(target: string | AutomationInput) {
     const c = typeof target === 'string' ? this.getConversation(target) : target.conversationPolicy !== 'new-conversation' ? this.getConversation(target.conversationId!) : undefined
     const agentIds = c?.agentIds ?? (typeof target !== 'string' ? target.employeeIds! : [])
+    const plan = typeof target === 'string' ? c?.purpose === 'automation' && c.occurrenceId ? (await this.store.get<AutomationOccurrence>('automationOccurrences', c.occurrenceId))?.plan : undefined : target
+    const owner = plan?.owner
+    const ownerGroup = owner?.kind === 'group' ? this.getConversation(owner.conversationId) : undefined
+    if (ownerGroup && (ownerGroup.kind !== 'group' || ownerGroup.channel || ownerGroup.purpose === 'automation' || ownerGroup.purpose === 'core' || ownerGroup.purpose === 'channel' || ownerGroup.mergedInto || agentIds.some(id => !ownerGroup.agentIds.includes(id)))) fail('计划归属须为当前BOAI员工群，所有参与员工必须仍在群内')
+    if (owner?.kind === 'employee' && (agentIds.length !== 1 || agentIds[0] !== owner.employeeId)) fail('计划归属员工与执行成员不一致')
+    if (typeof target !== 'string' && ownerGroup && target.conversationPolicy !== 'new-conversation' && c?.id !== ownerGroup.id) fail('旧群计划只能在归属群执行，隔离执行须明确选择新策略')
     const agents = agentIds.map(id => this.getAgent(id))
     for (const a of agents) {
       if (!a.active || a.executionBackend?.kind === 'acp-local') fail('自动化只支持启用的模型 API 或已验证本机员工')
@@ -1856,7 +1951,7 @@ export class AppService {
       }
     }
     // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
-    const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [] } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
+    const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [], ...(ownerGroup ? { ownerGroup: { id: ownerGroup.id, version: ownerGroup.configVersion } } : {}) } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
     const runtimeAgents = await Promise.all(agents.map(async a => isNativeBackend(a.executionBackend)
       ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'claude-local'
         ? resolveClaudeRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId))
@@ -1865,7 +1960,7 @@ export class AppService {
     return createHash('sha256').update(JSON.stringify({ conversation: scope, agents: runtimeAgents })).digest('hex')
   }
   private async prepareAutomationConversation(d: AutomationDefinition, o: AutomationOccurrence): Promise<StoredRecord[]> {
-    const input = conversationSchema.parse({ kind: 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
+    const input = conversationSchema.parse({ kind: d.collaboration ? 'group' : 'direct', title: `${d.name} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: d.timezone, dateStyle: 'short', timeStyle: 'short' }).format(new Date(o.scheduledFor))}`.slice(0, 100), agentIds: d.employeeIds, sharedKnowledgeIds: [] })
     for (const id of input.agentIds) this.getAgent(id)
     const conversation: Conversation = { ...input, memoryContextRef: undefined, teamSetup: undefined, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
@@ -1975,10 +2070,17 @@ export class AppService {
     for (const id of agent.skillIds) this.skillUpdates.assertAvailable(id)
     return authorizedResources(agent, conversation, this.resources.values())
   }
-  private contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Message[] {
+  private async contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Promise<Message[]> {
+    const channelWork = isChannelConversation(conversation) ? await this.works.view(conversation.id) : undefined
     const triggerSequence = this.messages.get(triggerMessageId)?.sequence ?? fail('触发消息不存在')
     const messages = this.conversationMessages(conversation.id).filter(message => {
       if (message.status !== 'completed' || message.sequence > throughSequence) return false
+      if (isChannelConversation(conversation) && !message.channel && !message.channelPublication) {
+        const run = message.runId ? this.runs.get(message.runId) : undefined
+        const work = channelWork?.workItems.find(work => work.id === run?.workId), budget = channelWork?.workBudgets.find(budget => budget.id === work?.budgetId)
+        const trigger = [run?.triggerMessageId, work?.sourceMessageId, budget?.sourceMessageId].map(id => id ? this.messages.get(id) : undefined).find(message => message?.senderType === 'user' && message.conversationId === conversation.id)
+        if (message.senderType !== 'agent' || message.runId && !trigger?.channel) return false
+      }
       if (!message.runId) return message.sequence <= triggerSequence
       const originatingTrigger = this.runs.get(message.runId)?.triggerMessageId
       if (!originatingTrigger || (this.messages.get(originatingTrigger)?.sequence ?? Infinity) > triggerSequence) return false
@@ -1992,19 +2094,27 @@ export class AppService {
     return clone([...new Map(messages.map(message => [message.id, message])).values()])
   }
   private async materialMessages(conversation: Conversation, triggerMessageId: string, agentId: string, throughSequence = Infinity) {
-    const materials = new Map((await this.materials.list(conversation.id)).map(material => [material.id, material]))
-    const base = this.contextMessages(conversation, triggerMessageId, throughSequence).map(message => ({ ...message, content: message.content || (message.materialIds?.length ? '用户发送了聊天材料。' : '') }))
+    const materialSource = conversation.channelDiscussion ? this.getConversation(conversation.channelDiscussion.conversationId) : conversation
+    const materials = new Map([...await this.materials.list(conversation.id), ...(materialSource.id !== conversation.id ? await this.materials.list(materialSource.id) : [])].map(material => [material.id, material]))
+    const base = (await this.contextMessages(conversation, triggerMessageId, throughSequence)).map(message => ({ ...message, content: message.content || (message.materialIds?.length ? '用户发送了聊天材料。' : '') }))
     const messages: Message[] = [], images: NonNullable<EngineContext['materialImages']> = []
     const native = isNativeBackend(this.getAgent(agentId).executionBackend)
     for (const message of native ? base : contextWindow(base, conversation.id, triggerMessageId)) {
+      if (message.channelReference) {
+        try {
+          const source = await this.store.transaction(tx => channelReferenceMessage(tx, conversation.id, message.channelReference!))
+          message.content += '\n[内部讨论引用的渠道消息，仅供本次讨论；不授权发送到渠道]\n' + source.senderName + '：' + source.content.slice(0, 12000)
+        } catch (error) { if (message.id === triggerMessageId) throw error; continue }
+      }
+      if (message.channelPublication?.artifacts.length) message.content += '\n已明确发送到原渠道的固定文件：' + message.channelPublication.artifacts.map(file => file.name).join('、')
       const sources = message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []
       if (sources.length) {
-        try { await this.materials.validateRefs(sources, agentId, conversation.id) } catch { continue }
+        try { await this.materials.validateRefs(sources, agentId, conversation.id) } catch (error) { if (message.id === triggerMessageId) throw error; continue }
       }
       if (native) {
         const readable = (message.materialIds ?? []).filter(materialId => {
           const material = materials.get(materialId)
-          if (!material || !isConversationMaterialVisible(material, conversation, agentId)) return false
+          if (!material || !isConversationMaterialVisible(material, material.conversationId === conversation.id ? conversation : materialSource, agentId)) return false
           if (material.messageId !== message.id) fail('材料与原消息关联不一致，请核对来源')
           if (material.status !== 'ready' && message.id === triggerMessageId) fail(`材料「${material.name}」不可用，请在聊天中核对`)
           return material.status === 'ready'
@@ -2017,10 +2127,10 @@ export class AppService {
       }
       const refs = [...sources]
       const readableIds: string[] = []
-      for (const materialId of message.materialIds ?? []) {
+      for (const materialId of new Set([...(message.materialIds ?? []), ...(message.materialReference ? [message.materialReference.id] : [])])) {
         const material = materials.get(materialId)
-        if (!material || !isConversationMaterialVisible(material, conversation, agentId)) continue
-        if (material.messageId !== message.id) fail('材料与原消息关联不一致，请核对来源')
+        if (!material || !isConversationMaterialVisible(material, material.conversationId === conversation.id ? conversation : materialSource, agentId)) continue
+        if (material.messageId !== message.id && materialId !== message.materialReference?.id) fail('材料与原消息关联不一致，请核对来源')
         if (material.status !== 'ready') {
           if (message.id === triggerMessageId) fail(`材料「${material.name}」不可用，请在聊天中核对`)
           continue
@@ -2044,6 +2154,7 @@ export class AppService {
   private async assertMaterialRefs(context: Pick<EngineContext, 'agent' | 'conversation' | 'materialRefs' | 'artifactRevision' | 'runtimeProfile'>) {
     if (context.materialRefs?.length) await this.materials.validateRefs(context.materialRefs, context.agent.id, context.conversation.id)
     if (context.runtimeProfile && context.materialRefs?.length) await this.materials.validateNativeCopies(context.materialRefs, context.agent.id, context.agent.executionBackend?.kind === 'claude-local' ? 'claude' : 'codex')
+    if (context.conversation.channelDiscussion) await this.store.transaction(tx => assertChannelSourceAccess(tx, context.conversation.id, context.conversation.channelDiscussion!.conversationId))
     if (context.artifactRevision) await this.artifactRepository.validateRevision(context.artifactRevision.id, context.agent.id, context.conversation.id)
   }
   private async artifactRevisionContext(run: AgentRun, turn: DiscussionTurn, agent: DigitalAgent) {
@@ -2356,10 +2467,10 @@ export class AppService {
     context.onExecutionEvent = async event => {
       signal.throwIfAborted()
       if (terminal.has(run.status) || this.clearingConversations.has(run.conversationId)) return
-      await this.executions.append(run, JSON.parse(this.redact(JSON.stringify(event), apiKey)))
+      await this.executions.append(run, JSON.parse(this.redact(JSON.stringify(summarizeMedia(event)), apiKey)))
     }
     if (runtimeProfile) {
-      context.nativeSourceIds = this.contextMessages(conversation, turn.triggerMessageId, throughSequence).filter(message => !forgotten.has(message.id)).map(message => message.id)
+      context.nativeSourceIds = (await this.contextMessages(conversation, turn.triggerMessageId, throughSequence)).filter(message => !forgotten.has(message.id)).map(message => message.id)
       context.nativeArtifacts = [...this.artifacts.values()].filter(artifact => artifact.conversationId === conversation.id && artifact.ownerAgentId === agent.id && artifact.contentStatus === 'ready').map(artifact => ({ id: artifact.id, name: artifact.name, version: artifact.contentVersion ?? 1, sourcePath: artifact.sourcePath ?? '' }))
       context.requestNativeAction = async (action, localSignal) => {
         try {
@@ -2562,6 +2673,37 @@ export class AppService {
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
       })
       const context = await this.engineContext(run, turn, effective, run.responseKind === 'chat' ? undefined : decision.observedThroughSequence); key = context.apiKey
+      const source = this.messages.get(turn.triggerMessageId)
+      if (source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal') {
+        const owner = conversation.kind === 'group' ? { kind: 'group' as const, conversationId: conversation.id } : { kind: 'employee' as const, employeeId: run.agentId }
+        context.automationOwner = owner
+        context.manageAutomation = automationCommands(this.automations, this.store, { owner, source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, validate: async () => {
+          effective.throwIfAborted()
+          const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)
+          if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin) fail('当前用户消息或员工/群授权已失效，不能管理计划')
+          await this.assertMaterialRefs(context)
+        } })
+      }
+      const attachBrowser = async () => {
+        if (this.options.browserHost && isBrowserCapableAgent(context.agent) && !run.origin && !context.work?.organization && decision.action === 'reply') {
+          const previous=this.browserSessions.get(run.id)?.session
+          const reference=previous?.reference ?? this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId)?.browserReference
+          await previous?.drain()
+          run.browserDownloadIsolation='isolated'; await this.store.write([record('runs',run)])
+          const epoch=(await this.reading.readState(conversation.id)).epoch
+          const lease:BrowserLease={scopeKey:APPLICATION_BROWSER_SCOPE,scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work?.id,sourceMessageId:context.work?.sourceMessageId ?? turn.triggerMessageId,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:join(this.dataPath,'browser-downloads',run.id)}
+          const validate=async () => {
+            effective.throwIfAborted()
+            if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id)) fail('浏览器工作已停止或正在清理')
+            const agent=this.getAgent(run.agentId),chat=this.getConversation(conversation.id)
+            if (!isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !chat.agentIds.includes(agent.id)) fail('浏览器员工授权或会话成员已变化')
+            await this.assertMaterialRefs(context)
+            if (!await this.memory.recallValid(context.memory!)) fail('浏览器任务的记忆来源已失效')
+          }
+          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,...(context.work ? {downloadDestination:{root:this.dataPath,runPath:this.runDirectories.get(run.id)!}}:{}),reference,originalRequest:this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId)?.content ?? '',validate,approve:command=>this.requestApproval(run,controller,command,this.runDirectories.get(run.id)!,true,'browser')})
+          this.browserSessions.set(run.id,{session,validate}); context.browserSession=session
+        }
+      }
       const prepareWork = async (requested?: import('../shared/domain').ParticipationDecision['work']) => {
         if (context.work) return
         try {
@@ -2625,7 +2767,7 @@ export class AppService {
           const snapshot = this.snapshots.get(previous.id)
           const authorized = new Set(context.resources.map(resource => resource.id))
           return previous.id !== run.id && previous.workId === run.workId && previous.agentId === run.agentId && snapshot && !snapshot.invalidated && snapshot.resources.every(resource => authorized.has(resource.id))
-        }).map(previous => ({ runId: previous.id, tools: previous.toolEvents.filter(tool => tool.status === 'completed' && ['write_file', 'publish_artifact', 'execute_command', 'create_team'].includes(tool.name)) }))
+        }).map(previous => ({ runId: previous.id, tools: previous.toolEvents.filter(tool => tool.status === 'completed' && ['write_file', 'edit_file', 'publish_artifact', 'execute_command', 'create_team'].includes(tool.name)) }))
         const validateDependencies = async (dependencies: { workId: string }[]) => {
           const visible = new Set((await this.materialMessages(this.getConversation(conversation.id), turn.triggerMessageId, run.agentId)).messages.map(message => message.id))
           const items = await this.authorizedWorkItems(context.conversation, run.agentId, visible)
@@ -2634,21 +2776,7 @@ export class AppService {
             if (!work || !visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该依赖')
           }
         }
-        if (this.options.browserHost && isBrowserCapableAgent(context.agent) && !run.origin && !context.work.organization && decision.action === 'reply') {
-          run.browserDownloadIsolation='isolated'; await this.store.write([record('runs',run)])
-          const epoch=(await this.reading.readState(conversation.id)).epoch
-          const lease:BrowserLease={scopeKey:APPLICATION_BROWSER_SCOPE,scopeEpoch:epoch,agentId:run.agentId,conversationId:conversation.id,workId:context.work.id,runId:run.id,generation:randomUUID(),configVersion:context.agent.configVersion,agentName:context.agent.name,conversationTitle:conversation.title,downloadDirectory:join(this.dataPath,'browser-downloads',run.id)}
-          const validate=async () => {
-            effective.throwIfAborted()
-            if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id)) fail('浏览器工作已停止或正在清理')
-            const agent=this.getAgent(run.agentId),chat=this.getConversation(conversation.id)
-            if (!isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !chat.agentIds.includes(agent.id)) fail('浏览器员工授权或会话成员已变化')
-            await this.assertMaterialRefs(context)
-            if (!await this.memory.recallValid(context.memory!)) fail('浏览器任务的记忆来源已失效')
-          }
-          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,downloadDestination:{root:this.dataPath,runPath:this.runDirectories.get(run.id)!},originalRequest:this.messages.get(context.work.sourceMessageId)?.content ?? '',validate,approve:command=>this.requestApproval(run,controller,command,this.runDirectories.get(run.id)!,true,'browser')})
-          this.browserSessions.set(run.id,{session,validate}); context.browserSession=session
-        }
+        await attachBrowser()
         context.beforeEffect = () => this.serialize(async () => { effective.throwIfAborted(); await this.assertMaterialRefs(context); if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，停止旧版本工具执行'); await this.works.markEffect(run.id) })
         context.afterEffect = async () => { effective.throwIfAborted(); await this.works.confirmEffect(run.id) }
         if (context.work.organization && isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin) {
@@ -2724,7 +2852,15 @@ export class AppService {
           }
           await prepareWork(intent)
           if (this.modelCallId && context.workBudget?.sourceMessageId && !run.origin && !run.collaborationRequestId) await service.works.reserveInteractiveCall(run, this.modelCallId, 'execution')
-          for (const key of ['work', 'workBudget', 'artifactRevision', 'environment', 'beforeEffect', 'afterEffect', 'delegateWork', 'waitForWork', 'onWorkOutcome', 'findEmployees', 'organizeCollaboration', 'createTeam', 'dependencyArtifacts', 'completedWorkTools'] as const) Object.assign(this, { [key]: context[key] })
+          for (const key of ['work', 'workBudget', 'artifactRevision', 'environment', 'beforeEffect', 'afterEffect', 'delegateWork', 'waitForWork', 'onWorkOutcome', 'findEmployees', 'organizeCollaboration', 'createTeam', 'dependencyArtifacts', 'completedWorkTools', 'browserSession'] as const) Object.assign(this, { [key]: context[key] })
+        }
+      }
+      if (native && this.options.browserHost && source?.senderType==='user' && source.senderId==='user' && !source.channel && !source.origin && !conversation.channel && conversation.purpose!=='core' && conversation.purpose!=='automation') {
+        if (!context.browserSession) await attachBrowser()
+        context.nativeBrowserSession=async mutating=>{
+          effective.throwIfAborted()
+          if(mutating && !context.work) await context.ensureNativeWork!.call(context)
+          return context.browserSession ?? fail('当前工作没有浏览器权限')
         }
       }
       const initialMessage = { id: run.messageId, senderType: 'agent' as const, senderId: run.agentId, senderName: run.agentName, content: '', status: 'streaming' as const, runId: run.id, ...(run.origin ? { origin: clone(run.origin) } : {}) }
@@ -3163,7 +3299,7 @@ export class AppService {
     await this.store.write([], approvals.map(approval => ({ collection: 'approvals', id: approval.id })))
   }
   /** Internal Main handshake; never wait for Main while holding the host serializer. */
-  async startBrowserAction(input:{actionId:string;generation:string;runId:string;workId:string}) {
+  async startBrowserAction(input:{actionId:string;generation:string;runId:string;workId?:string}) {
     const session=this.browserSessions.get(input.runId) ?? fail('原浏览器运行已结束')
     if (session.session.lease.generation!==input.generation || session.session.lease.workId!==input.workId) fail('浏览器租约身份不一致')
     await session.validate()

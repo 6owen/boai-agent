@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
+ * [OUTPUT]: 2026-10-15渠道私聊/群聊复用会话label折叠；搜索临时展开，明确定位展开目标分组，取消横向筛选Tabs。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
  * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
@@ -19,9 +21,8 @@ import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Pin, Search, Setting
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { Conversation, DigitalAgent, Snapshot } from '@shared/domain'
 import { CORE_AGENT_DEFAULT_NAME, isCoreAgent, isCoreConversation } from '@shared/domain/core-agent'
-import { channelConversations, mainConversations, sortedConversations, conversationSection, isChannelConversation, type ConversationListChange } from '@shared/domain/conversation-list'
+import { mainConversations, sortedConversations, conversationSection, isChannelConversation, type ConversationListChange } from '@shared/domain/conversation-list'
 import { CHANNEL_NAMES } from '@shared/domain/channels'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, timeText } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
@@ -36,32 +37,34 @@ interface Props {
   onConfigureCore(): void
   onEditTitle(conversation: Conversation): void
   onChange(change: ConversationListChange): void; onClear(id: string, hide: boolean): Promise<void>; busy: boolean
+  selectionRequest?: string
   channelAgent?: DigitalAgent
   onBack?(): void
   onOpenChannels?(agent: DigitalAgent, conversationId?: string): void
 }
-export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels }: Props) {
+export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest }: Props) {
   const [query, setQuery] = useState('')
   const [coreOpen, setCoreOpen] = useState(true)
   const [coreMenuOpen, setCoreMenuOpen] = useState(false)
   const [coreHistoryMenuId, setCoreHistoryMenuId] = useState<string | null>(null)
   const [pinnedOpen, setPinnedOpen] = useState(true)
   const [regularOpen, setRegularOpen] = useState(true)
-  const [channelKind, setChannelKind] = useState('all')
-  const lastSelection = useRef(selectedId)
+  const [channelOpen, setChannelOpen] = useState({ direct: true, group: true })
+  const selection = selectionRequest ?? selectedId
+  const lastSelection = useRef(selection)
   useEffect(() => {
-    if (lastSelection.current === selectedId) return
-    lastSelection.current = selectedId
+    if (lastSelection.current === selection) return
+    lastSelection.current = selection
     const room = snapshot.conversations.find(room => room.id === selectedId)
     if (!channelAgent || !room || !isChannelConversation(room)) return
-    setChannelKind(kind => kind === 'all' || kind === room.kind ? kind : room.kind)
+    setChannelOpen(value => ({ ...value, [room.kind]: true }))
     setQuery(value => room.title.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase()) ? value : '')
-  }, [selectedId, channelAgent, snapshot.conversations])
+  }, [selectedId, selection, channelAgent, snapshot.conversations])
   const [confirmation, setConfirmation] = useState<{ conversation: Conversation; hide: boolean } | null>(null)
   const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
   const channelsByAgent = new Map<string, Conversation[]>()
   for (const room of sortedConversations(snapshot.conversations, messageTimes)) if (isChannelConversation(room)) for (const id of room.agentIds) { const rooms = channelsByAgent.get(id) ?? []; rooms.push(room); channelsByAgent.set(id, rooms) }
-  const visibleConversations = channelAgent ? (channelsByAgent.get(channelAgent.id) ?? []).filter(item => channelKind === 'all' || item.kind === channelKind) : mainConversations(snapshot.conversations, messageTimes)
+  const visibleConversations = channelAgent ? (channelsByAgent.get(channelAgent.id) ?? []) : mainConversations(snapshot.conversations, messageTimes)
   const search = query.trim().toLocaleLowerCase()
   const title = (item: Conversation) => item.title
   const conversations = visibleConversations.filter(item => title(item).toLocaleLowerCase().includes(search))
@@ -113,12 +116,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const channel = conversations.filter(isChannelConversation)
   const pinned = ordinary.filter(item => item.list?.pinned), regular = ordinary.filter(item => !item.list?.pinned)
   return <div className="conversation-list-panel">
-    <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>
-    {channelAgent && <Tabs value={channelKind} onValueChange={kind => {
-      setChannelKind(kind)
-      const rooms = channelConversations(snapshot.conversations, channelAgent.id, messageTimes).filter(room => kind === 'all' || room.kind === kind)
-      if (rooms.length && !rooms.some(room => room.id === selectedId)) onSelect(rooms[0].id)
-    }}><TabsList aria-label="渠道会话类型" className="w-full"><TabsTrigger value="all">全部</TabsTrigger><TabsTrigger value="direct">私聊</TabsTrigger><TabsTrigger value="group">群聊</TabsTrigger></TabsList></Tabs>}
+    <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
       {!channelAgent && <div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined}>
@@ -131,7 +129,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     <div className="conversation-list" role="navigation" aria-label="会话列表">
       <DragList ids={conversations.map(item => item.id)} disabled={busy || Boolean(search)} canMove={(id, targetId) => {
         const source = conversations.find(item => item.id === id), target = conversations.find(item => item.id === targetId)
-        return Boolean(source && target && conversationSection(source) === conversationSection(target) && Boolean(source.list?.pinned) === Boolean(target.list?.pinned))
+        return Boolean(source && target && conversationSection(source) === conversationSection(target) && (!channelAgent || source.kind === target.kind) && Boolean(source.list?.pinned) === Boolean(target.list?.pinned))
       }} onMove={move => onChange({ ...move, action: 'move' })}>
       {core.length > 0 &&
         <CollapsibleContent><div role="group" className="conversation-core-history" aria-label={`${coreName} 的会话`}>{core.map(renderConversation)}</div></CollapsibleContent>
@@ -144,7 +142,14 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
         {regular.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}>会话<ChevronRight /></CollapsibleTrigger>}
         <CollapsibleContent><div role="group" aria-label="普通会话">{regular.map(renderConversation)}</div></CollapsibleContent>
       </Collapsible>
-      {channel.length > 0 && <div role="group" aria-label="渠道会话">{channel.map(renderConversation)}</div>}
+      {channelAgent && <div role="group" aria-label="渠道会话">{(['direct', 'group'] as const).map(kind => {
+        const rooms = channel.filter(room => room.kind === kind)
+        const label = kind === 'direct' ? '私聊' : '群聊'
+        return <Collapsible key={kind} open={Boolean(search) || channelOpen[kind]} onOpenChange={open => { if (!search) setChannelOpen(value => ({ ...value, [kind]: open })) }}>
+          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}>{label}<ChevronRight /></CollapsibleTrigger>
+          <CollapsibleContent><div role="group" aria-label={`渠道${label}`}>{rooms.map(renderConversation)}</div></CollapsibleContent>
+        </Collapsible>
+      })}</div>}
       </DragList>
       {!visibleConversations.length && <Empty className="conversation-list-empty px-3 py-8">
         <EmptyHeader><EmptyMedia><img src={conversationCompanions} className="select-none" draggable={false} width={144} height={110} alt="等你开聊的小伙伴" /></EmptyMedia>

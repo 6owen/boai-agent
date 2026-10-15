@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 隐藏输入/按键/两类选择实际POST，7次截图切页关闭与5次空闲资源检查。
+ * [OUTPUT]: 群聊UI固定网页引用与真实隐藏页面新帧PNG像素核验；引用零模型副作用。
  * [INPUT]: BRM4 中文意图、原生产窗口/工具/授权/SQLite、真实本地网页和离线模型协议。
  * [OUTPUT]: 内置浏览器固定开窗/真实toolbarReady/原生可见与零新工作；普通导航保留原Work/预算并核对新snapshot，X关闭实际退出，无控制权菜单/页面锁；真实非零网页布局、正文媒体/来源/持久登录/审批/清理重启不变量。
  * [OUTPUT]: 统一窗口与登录跨页面、业务清理和任务调用保留，任务审计仅从SQLite读取。
@@ -16,9 +18,10 @@ import type { Conversation, Message, WorkItem, WorkBudget } from '../../../src/s
 import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
+import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 import { BROWSER_BODY_MARKER, BROWSER_PAGE_MARKER, BROWSER_PASSWORD, browserDetail, browserRecords, browserToolbarAction, browserToolbarSurface, browserWindows, nativeBrowserViews, prepareBrowserDesktop, spoofBrowserSender, webpageIsolation } from '../support/browser-migration'
 
-interface State { fixture?: Awaited<ReturnType<typeof prepareBrowserDesktop>>; artifact?: ArtifactVersion; calls?: number; generation?: string; actions?: number; navigationWork?: WorkItem; navigationBudget?: WorkBudget; manualAgentId?: string; originalMessages?: Message[]; attach?: (name:string,body:Buffer,contentType:string)=>Promise<void>; imagePath?:string }
+interface State { resources?: ResourceSample[]; timings?: number[]; fixture?: Awaited<ReturnType<typeof prepareBrowserDesktop>>; artifact?: ArtifactVersion; calls?: number; generation?: string; actions?: number; navigationWork?: WorkItem; navigationBudget?: WorkBudget; manualAgentId?: string; originalMessages?: Message[]; attach?: (name:string,body:Buffer,contentType:string)=>Promise<void>; imagePath?:string }
 export const test = base.extend<{ browserMigrationState: State }>({ browserMigrationState: async ({ runtime: _runtime }, use, info) => {
   const state: State = { attach: async(name,body,contentType)=>{if(contentType==='image/png'){await mkdir(resolve('.local/browser-debug'),{recursive:true});await writeFile(resolve('.local/browser-debug',`${name}.png`),body)}await info.attach(name,{body,contentType})},imagePath:info.outputPath('native-browser-window.png') }
   try { await use(state) } finally {
@@ -270,4 +273,115 @@ Then('工具按原任务授权核读当前页面且未重放人工操作', async
   expect(windows).toHaveLength(1); expect(windows[0]).toMatchObject({ instanceId: state.generation!, url: `${f.site.origin}/landing` })
   expect(records.works).toHaveLength(1); expect(records.works[0].status).toBe('delivered'); expect(records.actions).toHaveLength(1); expect(records.actions[0]).toMatchObject({ command: '"snapshot"', status: 'completed' })
   expect(JSON.stringify(records.actions[0].reply)).toContain(BROWSER_PAGE_MARKER); expect(detail.messages.at(-1)!.content).toContain('真实网页已核读。COOKIE_SCOPE:none'); expect(f.site.hits.filter(hit => hit.path === '/landing')).toHaveLength(1); expect(f.errors).toEqual([]); expect(runtime.errors).toEqual([])
+})
+
+When('用户在群对话附上当前网页并发送核读请求',async({runtime,browserMigrationState:state})=>{
+ const f=state.fixture!;await openBuiltInBrowser(runtime)
+ const opened=(await browserWindows(runtime))[0];state.generation=opened.instanceId
+ await browserToolbarAction(runtime,opened.instanceId,'navigate',`${f.site.origin}/landing`)
+ await expect.poll(async()=>(await browserWindows(runtime))[0].url).toBe(`${f.site.origin}/landing`)
+ await selectGroup(runtime,f.first.title)
+ const calls=f.endpoint.requests.length
+ await runtime.page.getByRole('button',{name:'添加或更多操作',exact:true}).click()
+ await runtime.page.getByRole('menuitem',{name:'引用当前网页',exact:true}).click()
+ await expect(runtime.page.getByLabel('已引用网页',{exact:true})).toContainText(`${f.site.origin}/landing`)
+ expect(f.endpoint.requests.length).toBe(calls);expect((await browserRecords(f.dataPath)).actions).toHaveLength(0)
+ await runtime.reviewNativeCheckpoint('群聊附上当前网页')
+ f.plans.set('referenced-page',{kind:'task',commands:['snapshot']})
+ await runtime.page.getByRole('textbox',{name:'消息内容',exact:true}).fill('BROWSER_CASE:referenced-page 读取我引用的网页')
+ await runtime.page.getByRole('button',{name:'发送消息',exact:true}).click()
+ await settled(runtime,f.first,1)
+})
+Then('原消息和浏览器动作引用同一实例且引用本身没有执行任务',async({runtime,browserMigrationState:state})=>{
+ const f=state.fixture!,detail=await browserDetail(runtime,f.first.id),records=await browserRecords(f.dataPath)
+ expect(detail.messages.find(message=>message.senderType==='user')?.browserReference).toMatchObject({instanceId:state.generation,url:`${f.site.origin}/landing`})
+ expect((await browserWindows(runtime))[0].instanceId).toBe(state.generation)
+ expect(records.actions).toHaveLength(1);expect(records.actions[0].status).toBe('completed')
+ expect(f.errors).toEqual([])
+ await expect(runtime.page.getByLabel('消息引用网页',{exact:true})).toContainText('浏览器迁移公开资料')
+ await runtime.reviewNativeCheckpoint('同一网页引用和员工核读回复')
+ await runtime.reviewData('固定网页引用回执',{messages:detail.messages,actions:records.actions})
+})
+When('隐藏的实际网页更新为绿色并由员工截图',async({runtime,browserMigrationState:state})=>{
+ const f=state.fixture!;await openBuiltInBrowser(runtime)
+ const opened=(await browserWindows(runtime))[0];state.generation=opened.instanceId
+ await browserToolbarAction(runtime,opened.instanceId,'navigate',`${f.site.origin}/landing`)
+ await expect.poll(async()=>(await browserWindows(runtime))[0].url).toBe(`${f.site.origin}/landing`)
+ await runtime.page.evaluate(()=>window.boai.request('browserControl',{action:'hide'}))
+ await runtime.app.evaluate(async({BrowserWindow},origin)=>{
+  const view=BrowserWindow.getAllWindows().flatMap(window=>window.getBrowserViews()).find(view=>view.webContents.getURL().startsWith(origin))!
+  await view.webContents.executeJavaScript("document.body.style.background='#00ff00'; document.getElementById('status').textContent='HIDDEN_GREEN_FRAME'; true")
+ },f.site.origin)
+ await f.send(f.first,'fresh-hidden-frame',{kind:'task',commands:['snapshot','screenshot --png']})
+ const detail=await settled(runtime,f.first,1);expect(detail.runs.every(run=>run.status==='completed'),JSON.stringify(detail.runs.map(run=>run.error))).toBe(true)
+})
+Then('模型收到的PNG包含隐藏后的绿色新帧',async({runtime,browserMigrationState:state})=>{
+ const f=state.fixture!
+ const media=f.endpoint.requests.flatMap(request=>(request.messages as {content:unknown}[]).flatMap(message=>Array.isArray(message.content)?message.content:[])).find(part=>part.type==='image_url')
+ expect(media).toBeDefined()
+ const data=media.image_url.url.split(',')[1]
+ const measured=await runtime.app.evaluate(({nativeImage},data)=>{
+  const image=nativeImage.createFromBuffer(Buffer.from(data,'base64')),bytes=image.toBitmap();let green=0
+  // NativeImage may color-manage PNG into display space; green dominance still excludes the old white frame.
+  for(let i=0;i<bytes.length;i+=4)if(bytes[i+1]>200 && bytes[i+1]>2*bytes[i] && bytes[i+1]>2*bytes[i+2])green++
+  const colors=new Map<string,number>();for(let i=0;i<bytes.length;i+=4){const color=`${bytes[i]},${bytes[i+1]},${bytes[i+2]},${bytes[i+3]}`;colors.set(color,(colors.get(color)??0)+1)}
+  return {size:image.getSize(),greenRatio:green/(bytes.length/4),colors:[...colors.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12)}
+ },data)
+ await state.attach!('隐藏页面新帧PNG',Buffer.from(data,'base64'),'image/png')
+ await runtime.reviewData('隐藏页面新帧像素核验',measured)
+ expect(measured.greenRatio,JSON.stringify(measured)).toBeGreaterThan(0.7)
+ expect((await browserWindows(runtime))[0].isVisible).toBe(false)
+ expect((await browserWindows(runtime))[0].instanceId).toBe(state.generation)
+
+ expect(f.errors).toEqual([])
+})
+
+When('员工在隐藏窗口填写按键并选择两类选项',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!,opened=await runtime.page.evaluate(()=>window.boai.request('openBrowser',{}))
+  await browserToolbarAction(runtime,opened.instanceId,'navigate',f.site.origin+'/inputs')
+  await expect.poll(async()=>(await browserWindows(runtime))[0]?.title).toBe('后台输入表单')
+  await runtime.page.evaluate(()=>window.boai.request('browserControl',{action:'hide'}))
+  const ref=(history:string,role:string,name:string)=>{const nodes=[...history.matchAll(new RegExp('(@e\\d+) \\['+role+'\\] "'+name+'"','g'))];if(!nodes.length)throw Error('缺少真实节点 '+name);return nodes.at(-1)![1]}
+  const plans: import('../support/browser-migration').BrowserFixturePlan[]=[
+    {kind:'task',commands:['snapshot',h=>'fill '+ref(h,'textbox','备注')+' "BOAI"','key End','type " OK"','key Tab','snapshot',h=>'select '+ref(h,'combobox','原生选项')+' beta','snapshot']},
+    {kind:'task',commands:['snapshot',h=>'select '+ref(h,'combobox','自定义选项')+' gamma','snapshot',h=>'click '+ref(h,'button','保存表单'),'wait text FORM_SAVED 3000','snapshot']},
+  ]
+  for(const [index,plan] of plans.entries()){
+    await f.send(f.first,'hidden-inputs-'+index,plan,(index===0?'请填写备注并选择原生选项，不保存：':'请选择自定义选项并保存当前表单：')+f.site.origin+'/inputs')
+    await expect.poll(async()=>{
+      for(const approval of (await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals){expect(approval.kind).toBe('browser');expect(approval.command).toContain(f.site.origin);await runtime.page.evaluate(id=>window.boai.request('approve',{id,approved:true}),approval.id)}
+      const d=await browserDetail(runtime,f.first.id);return d.runs.length>index&&d.runs.every(r=>['completed','failed','cancelled'].includes(r.status))&&d.turns!.every(t=>['completed','failed','cancelled'].includes(t.status))
+    },{timeout:30000,intervals:[80]}).toBe(true)
+  }
+  await runtime.reviewData('隐藏表单实际保存',{submissions:f.site.formSubmissions,records:await browserRecords(f.dataPath),windows:await nativeBrowserViews(runtime)})
+})
+Then('网站仅收到一次正确表单且窗口保持隐藏',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!
+  expect(f.site.formSubmissions).toEqual([{note:'BOAI OK',native:'beta',custom:'gamma'}])
+  expect((await nativeBrowserViews(runtime))[0].visible).toBe(false)
+  const records=await browserRecords(f.dataPath)
+  expect(records.actions.every(a=>a.status==='completed')).toBe(true);expect(records.works).toHaveLength(2);expect(records.works.every(w=>w.status==='delivered')).toBe(true)
+  expect(f.errors).toEqual([])
+})
+When('浏览器反复截图切页关闭后保持空闲',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!,cdp=await runtime.app.context().newCDPSession(runtime.page)
+  state.resources=[];state.timings=[]
+  try{
+    for(let i=0;i<7;i++){
+      await f.send(f.first,'resource-'+i,{kind:'task',commands:[`navigate ${f.site.origin}/landing?sample=${i}`,'snapshot','screenshot --png']})
+      const detail=await settled(runtime,f.first,i+1);expect(detail.runs.every(r=>r.status==='completed')).toBe(true)
+      const started=Date.now(),browserWindow=(await browserWindows(runtime))[0]
+      await browserToolbarAction(runtime,browserWindow.instanceId,'navigate',f.site.origin+'/second')
+      await runtime.page.evaluate(()=>window.boai.request('referenceBrowserPage',{}))
+      await browserToolbarAction(runtime,browserWindow.instanceId,'close')
+      await expect.poll(async()=>(await nativeBrowserViews(runtime)).length).toBe(0)
+      state.timings.push(Date.now()-started)
+      state.resources.push(await resourceSample(runtime,cdp))
+    }
+    for(let i=0;i<5;i++){await new Promise(r=>setTimeout(r,1000));state.resources.push(await resourceSample(runtime,cdp))}
+  }finally{await cdp.detach();await runtime.reviewData('浏览器短期压力和空闲',{samples:state.resources,interactionMs:state.timings,gateMs:3000,cycles:7,idleSamples:5,longTermLeak:'not assessed'})}
+})
+Then('浏览器短期资源和实际动作退出符合门槛',async({runtime,browserMigrationState:state})=>{
+  verifyResources(state.resources!);expect(Math.max(...state.timings!)).toBeLessThan(3000)
+  expect(await nativeBrowserViews(runtime)).toEqual([]);expect((await browserRecords(state.fixture!.dataPath)).actions.every(a=>a.status==='completed')).toBe(true)
 })

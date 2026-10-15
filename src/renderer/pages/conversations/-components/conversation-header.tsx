@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 渠道镜像移除常驻三Tabs，文件和执行以Header入口进入同容器详情。
+ * [OUTPUT]: 导出ConversationHeaderLayout供渠道空态共用标题/操作栏，渐隐滚动与宽度规则沿共享聊天布局。
+ * [OUTPUT]: 右侧渠道聊天通过headerActions注入列表Popover按钮；共用聊天标题/任务/文件入口。
  * [OUTPUT]: 2026-10-14现行分离合同：员工主私聊右上角渠道入口，渠道详情保持只读来源与接入员工。
  * [INPUT]: 最新会话/成员/资料快照、群组/员工配置与任务入口、列表更新与清理回调、统一 DropdownMenu 与成员资料浮层。
  * [OUTPUT]: 外部渠道仅显示接入员工与渠道信息入口，不呈现BOAI群成员管理。
@@ -6,7 +10,7 @@
  * [POS]: 会话标题交互；清空确认复用 ConversationHistoryDialog，持久操作交给宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { Conversation, DigitalAgent, Resource } from '@shared/domain'
 import { isChannelConversation, type ConversationListChange } from '@shared/domain/conversation-list'
 import { isCoreConversation } from '@shared/domain/core-agent'
@@ -25,21 +29,31 @@ interface Props {
   onConfigureAgent(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onClear(id: string, hide: boolean): Promise<void>
+  onFiles?(): void
   onChannels?(): void
+  headerActions?: ReactNode
   view?: 'chat' | 'tasks' | 'files'
   onViewChange?(view: 'chat' | 'tasks' | 'files'): void
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear, view = 'chat', onViewChange, onChannels }: Props) {
+export function ConversationHeaderLayout({ title, description, tabs, children }: { title: string; description?: string; tabs?: ReactNode; children?: ReactNode }) {
+  return <header className="chat-header">
+    <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{title}</h2>{description && <span className="field-hint">{description}</span>}</div></div>
+    {tabs}
+    <div className="chat-header-actions">{children}</div>
+  </header>
+}
+
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onActivity, onTrace, onSearch, onChange, onClear, view = 'chat', onViewChange, onChannels, headerActions, onFiles }: Props) {
   const [clearing, setClearing] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const channel = isChannelConversation(conversation)
   const openDetails = (open: () => void) => { trigger.current?.focus(); open() }
   return <>
-    <header className="chat-header">
-      <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{conversation.title}</h2>{channel && <span className="field-hint">渠道会话</span>}</div></div>
-      {onViewChange && <Tabs value={view} onValueChange={value => onViewChange(value as 'chat' | 'tasks' | 'files')} className="pointer-events-auto shrink-0"><TabsList aria-label="会话视图"><TabsTrigger value="chat">聊天</TabsTrigger><TabsTrigger value="tasks">任务</TabsTrigger><TabsTrigger value="files">文件</TabsTrigger></TabsList></Tabs>}
-      <div className="chat-header-actions">
+    <ConversationHeaderLayout title={conversation.title} description={channel ? '渠道会话' : undefined}
+      tabs={!channel && conversation.purpose !== 'channel-internal' && onViewChange && <Tabs value={view} onValueChange={value => onViewChange(value as 'chat' | 'tasks' | 'files')} className="pointer-events-auto shrink-0"><TabsList aria-label="会话视图"><TabsTrigger value="chat">聊天</TabsTrigger><TabsTrigger value="tasks">任务</TabsTrigger><TabsTrigger value="files">文件</TabsTrigger></TabsList></Tabs>}>
+        {headerActions}
+        {onFiles && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看渠道文件" onClick={onFiles} />}><FolderOpen /></TooltipTrigger><TooltipContent>文件</TooltipContent></Tooltip>}
         {onChannels && <Button variant="ghost" size="sm" onClick={onChannels} aria-label="打开员工渠道会话">渠道</Button>}
         {(conversation.kind === 'group' || channel) && <>
           <div className="chat-members" aria-label={channel ? '接入员工' : '群聊成员'}>
@@ -63,8 +77,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </header>
+    </ConversationHeaderLayout>
     <ConversationHistoryDialog target={clearing ? { conversation, hide: false } : null} busy={busy} onClose={() => setClearing(false)} onClear={onClear} />
   </>
 }

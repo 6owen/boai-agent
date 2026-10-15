@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
  * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文。
  * [POS]: Mastra 消息装配；不通过压缩正文丢弃用户输入。
@@ -38,7 +39,7 @@ export function partitionTurn(messages: Message[], triggerMessageId?: string, tu
   return { root, id, current: messages.filter(isCurrent), history: messages.filter(message => !isCurrent(message)) }
 }
 export function messageData(message: Message, rootId?: string) {
-  return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
+  return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, ...(message.browserReference ? {browserReference:message.browserReference}:{}), mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
 }
 /** Omit only empty/default metadata; retain content, attribution, ordering and timestamps. */
 export function decisionMessageData(message: Message, rootId?: string) {
@@ -51,6 +52,7 @@ export function projectMessages(messages: Message[], agentId: string, conversati
   const window = contextWindow(messages, conversationId, triggerMessageId)
   const turn = partitionTurn(window, triggerMessageId, turnId)
   const content = (text: string, source: Message[]) => {
+    for(const message of source) if(message.browserReference) text+=`\n[User referenced BOAI browser page; use browser_tool for this exact instance] ${JSON.stringify(message.browserReference)}`
     const attached = images.filter(image => source.some(message => message.senderType === 'user' && message.id === image.messageId))
     return attached.length ? [{ type: 'text' as const, text }, ...attached.map(image => ({ type: 'image' as const, image: image.dataUrl, mimeType: image.mimeType }))] : text
   }

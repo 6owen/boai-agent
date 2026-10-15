@@ -1,15 +1,15 @@
 /*
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
- * [OUTPUT]: 下拉字段统一使用 shadcn Select；外观按实际内容宽度换行，图片动作在窄栏仍可达；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/高级设置和 Slider 背景透明度，保留即时预览、保存与错误重试。
+ * [OUTPUT]: 图片换肤直接启用 Craft Scenic，预览/更换/移除并恢复原模式；退役旧透明度叠加。
+ * [OUTPUT]: 下拉字段统一使用 shadcn Select；外观按实际内容宽度换行，图片动作在窄栏仍可达；共用设置文档布局、无保存状态提示的外观页面；Card 分组的视觉/背景图片设置，保留即时预览、保存与错误重试。
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/ui/select-field'
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
-import { Slider } from '@/components/ui/slider'
-import { themes, resolveTheme, customizeTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from '@/components/ui/field'
+import { themes, resolveAppearanceTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
 import { Banner } from '@/components/common'
 import lightPreview from '@/assets/mode-light.webp'
@@ -33,7 +33,8 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
 export function AppearanceSettings() {
   const { preview, status, error } = useAppearance()
   const p = preview.preferences, mode = preview.resolvedMode
-  const theme = customizeTheme(resolveTheme(mode, p.themeIds[mode]), p.customColors[mode])
+  const scenic = Boolean(p.background.assetId)
+  const theme = resolveAppearanceTheme(p, mode)
   const setColor = (key: keyof ThemeOverrides, value: string | null) => previewAppearance({ customColors: { [mode]: { [key]: value } } })
   return <section className="appearance-settings settings-document">
     <header className="settings-document-heading">
@@ -43,16 +44,16 @@ export function AppearanceSettings() {
     <fieldset disabled={preview.readOnly}>
       <legend className="settings-section-title">视觉风格</legend>
       <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-mode-row mb-0">
-        <span>模式</span>
+        <span>{scenic ? '模式（背景图使用深色）' : '模式'}</span>
         <div className="appearance-modes">
-          {modes.map(item => <Button variant="ghost" size="content" key={item.value} type="button" aria-label={item.label} title={item.label} aria-pressed={p.mode === item.value} className="theme-card" onClick={() => previewAppearance({ mode: item.value })}>
+          {modes.map(item => <Button variant="ghost" size="content" key={item.value} type="button" aria-label={item.label} title={item.label} disabled={scenic} aria-pressed={scenic ? item.value === 'dark' : p.mode === item.value} className="theme-card" onClick={() => previewAppearance({ mode: item.value })}>
             <img src={item.image} alt="" />
             <span className="sr-only">{item.label}</span>
           </Button>)}
         </div>
       </CardContent></Card>
       <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-        {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
+        {(['light', 'dark'] as const).filter(value => scenic ? value === 'dark' : p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
           <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={p.themeIds[value]} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
         </div>)}
@@ -63,8 +64,8 @@ export function AppearanceSettings() {
             <ColorControl label="强调色" value={theme.accent} onChange={value => setColor('accent', value)} />
           </div>
         </div>
-        <div className="appearance-row"><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></div>
-        <div className="appearance-row"><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></div>
+        {!scenic && <><div className="appearance-row"><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></div>
+        <div className="appearance-row"><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></div></>}
         <div className="appearance-row"><label htmlFor="appearance-font">字体</label>
           <SelectField id="appearance-font" value={p.fontFamily} onValueChange={selectedValue => previewAppearance({ fontFamily: selectedValue as InterfaceFont })} options={[{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }]} />
         </div>
@@ -73,19 +74,16 @@ export function AppearanceSettings() {
         </div>
       </CardContent></Card>
       <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">
-        <h3 id="appearance-advanced-heading" className="settings-section-title">高级设置</h3>
+        <h3 id="appearance-advanced-heading" className="settings-section-title">背景图片</h3>
         <Card className="gap-0 p-0"><CardContent><FieldGroup className="soft-divide-y gap-0">
           <Field orientation="responsive" className="py-4">
-            <FieldContent><FieldTitle>背景图片</FieldTitle><FieldDescription>PNG、JPEG、WebP，最大 10 MiB。</FieldDescription></FieldContent>
+            <FieldContent><FieldTitle>图片换肤</FieldTitle><FieldDescription>{scenic ? '已启用深色玻璃效果。移除图片后恢复原来的明暗模式和配色。' : '选择图片，使用全窗背景和深色玻璃面板。'}</FieldDescription><FieldDescription>PNG、JPEG、WebP，最大 10 MiB。</FieldDescription></FieldContent>
             <div className="flex shrink-0 flex-wrap gap-2">
               <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('importAppearanceBackground')}>{p.background.assetId ? '更换图片' : '选择图片'}</Button>
               {p.background.assetId && <Button variant="secondary" size="sm" disabled={status === 'saving'} onClick={() => void appearanceAction('removeAppearanceBackground')}>移除图片</Button>}
             </div>
           </Field>
-          <Field className="py-4" data-disabled={preview.readOnly || undefined}>
-            <div className="flex items-center justify-between gap-4"><FieldLabel id="appearance-opacity-label">图片不透明度</FieldLabel><span className="text-sm text-muted-foreground">{Math.round(p.background.imageOpacity * 100)}%</span></div>
-            <Slider aria-labelledby="appearance-opacity-label" min={0} max={100} step={1} value={[Math.round(p.background.imageOpacity * 100)]} disabled={preview.readOnly} onValueChange={value => previewAppearance({ background: { imageOpacity: (Array.isArray(value) ? value[0] : value) / 100 } })} onValueCommitted={() => void flushAppearance()} />
-          </Field>
+          {p.background.assetId && <div className="pb-4"><img className="appearance-background-preview" src={`boai-asset://appearance/${p.background.assetId}`} alt="当前背景图片" /></div>}
         </FieldGroup></CardContent></Card>
         <p className="field-hint mt-3">当前编辑{mode === 'light' ? '浅色' : '深色'}颜色；明暗模式分别保存。Nord 与 Catppuccin 配色来自 Base46（MIT），Geist 字体采用 OFL 许可。</p>
       </section>

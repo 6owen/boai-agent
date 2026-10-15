@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 加载 Craft Scenic 原版背景/遮罩/玻璃/边框及 BOAI 选择器适配。
  * [OUTPUT]: 加载共享 Tabs 的 transitions-dev 原版滑动片段后由 skin.css 适配 BOAI；加载个人资料分享点阵生成原版样式和 Typeset。
  * [OUTPUT]: 加载设置分类内容的 panel reveal 原版片段及局部距离适配。
  * [INPUT]: Tailwind、视觉 token、桌面布局、Markdown/Shiki 排版、群聊与页面样式。
@@ -9,6 +10,7 @@
 @layer theme, base, legacy, components, utilities;
 @import './tailwind.css';
 @import './colors.css';
+@import './craft-scenic/scenic.css';
 @import './legacy.css' layer(legacy);
 @import './typeset.css' layer(legacy);
 @import './pages.css' layer(components);

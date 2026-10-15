@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: stdout/stderr 分别增量解码 UTF-8，管道拆包不会损坏中文/emoji；原字节上限和实际退出保持。
  * [INPUT]: 宿主逐次批准的命令、受管工作目录和取消信号。
  * [OUTPUT]: 有界命令结果与可复用POSIX进程组退出核对；取消/超时期间保留执行占用，Windows等待taskkill回执。
  * [POS]: API与本机员工共用的宿主命令执行器；不是外部程序安全沙箱。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { spawn } from 'node:child_process'
+import { StringDecoder } from 'node:string_decoder'
 const MAX_TOOL_OUTPUT = 48_000
 const EXIT_CHECK_INTERVAL_MS = 10
 const check = (signal: AbortSignal) => signal.throwIfAborted()
@@ -45,6 +47,7 @@ export async function executeCommand(command: string, cwd: string, signal: Abort
       ? spawn(process.env.COMSPEC || 'cmd.exe', ['/d', '/s', '/c', command], { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
       : spawn('/bin/sh', ['-c', command], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = '', size = 0, truncated = false, failure: Error | undefined
+    const decoders = { stdout: new StringDecoder('utf8'), stderr: new StringDecoder('utf8') }
     const killers = new Set<Promise<void>>()
     const kill = () => {
       if (!child.pid) return
@@ -67,7 +70,7 @@ export async function executeCommand(command: string, cwd: string, signal: Abort
     if (signal.aborted) onAbort()
     const append = (data: Buffer, target: 'stdout' | 'stderr') => {
       const remaining = Math.max(0, MAX_TOOL_OUTPUT - size)
-      const value = data.subarray(0, remaining).toString('utf8')
+      const value = decoders[target].write(data.subarray(0, remaining))
       if (target === 'stdout') stdout += value; else stderr += value
       size += Math.min(data.length, remaining)
       if (data.length > remaining) { truncated = true; stop(new Error('Command output exceeded 48 KB; process stopped')) }
@@ -77,6 +80,7 @@ export async function executeCommand(command: string, cwd: string, signal: Abort
     const clean = () => { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
     child.once('error', error => { failure ??= error; kill() })
     child.once('close', async exitCode => {
+      stdout += decoders.stdout.end(); stderr += decoders.stderr.end()
       // Reap detached descendants, including a background process that inherited no output pipes.
       kill()
       try {

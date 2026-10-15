@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: 内置浏览器操作、宿主工具调用审计和真实工作执行权限。
  * [OUTPUT]: 项目内置浏览器固定身份/窗口与登录分区；公开操作无员工或会话入参；私有任务租约只约束工具调用及实际退出，不决定浏览器身份。
  * [POS]: 进程桥接 DTO；不存 Cookie、凭据或模型自报身份。
@@ -14,10 +15,14 @@ export interface BrowserTaskAuthorization {
 export type BrowserManualOpenInput = Record<string, never>
 export type BrowserManualOpenRequest = Record<string, never>
 export interface BrowserLease extends BrowserTaskAuthorization {
-  workId: string; runId: string; generation: string
+  workId?: string; sourceMessageId?: string; runId: string; generation: string
   downloadDirectory: string
 }
+export interface BrowserPageReference {
+  instanceId: string; pageVersion: string; url: string; title: string; obtainedAt: string
+}
 export interface BrowserPageEvidence {
+  instanceId?: string
   scopeKey: string; generation: string; pageVersion: string
   url: string; title: string; obtainedAt: string
 }
@@ -46,6 +51,7 @@ export interface BrowserWindowState {
 export type BrowserControlAction = 'take' | 'resume' | 'show' | 'hide' | 'close' | 'clear'
 export interface BrowserControlInput { action: BrowserControlAction }
 export interface BrowserHostMethods {
+  reference: { input: { instanceId?: string; pageVersion?: string }; output: BrowserPageReference }
   manualOpen: { input: BrowserManualOpenRequest; output: BrowserWindowState }
   acquire: { input: BrowserLease; output: void }
   resumeSnapshot: { input: BrowserLease; output: {source:BrowserPageEvidence;output:string} }

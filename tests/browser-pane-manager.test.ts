@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首次导航等待Craft空白页初始化；准备失败不导航，防止迟到回退覆盖用户目标页。
  * [INPUT]: 内置浏览器下载策略、真实临时目录与可控 Electron 下载事件。
  * [OUTPUT]: 人工原生保存不复用旧工作目录；受管下载固定策略，取消等待真实退出且不取消人工下载；同ID重开后旧回调不能改状态或移除新窗口。
  * [POS]: tests/browser-pane-manager.test.ts。
@@ -76,6 +77,30 @@ describe('内置浏览器下载', () => {
 })
 
 describe('内置浏览器窗口重开', () => {
+  it('首次导航等待初始页面真正完成，避免加载竞争', async () => {
+    const { manager } = fixture(() => null)
+    const loadURL = vi.fn(async () => undefined)
+    const instance = { id: 'built-in', toolbarReady: true, toolbarError: null, initialPageReady: false, initialPageError: null,
+      window: { isDestroyed: () => false }, pageView: { webContents: { loadURL, stop: vi.fn(), getURL: () => 'https://example.com/', getTitle: () => 'Target' } } }
+    const internals = manager as unknown as { instances: Map<string, unknown>; pushToolbarState(instance: unknown): void }
+    internals.instances.set(instance.id, instance); vi.spyOn(internals, 'pushToolbarState').mockImplementation(() => {})
+    const pending = manager.navigate(instance.id, 'https://example.com/')
+    await new Promise(resolve => setTimeout(resolve, 35))
+    const premature = loadURL.mock.calls.length
+    instance.initialPageReady = true
+    await expect(pending).resolves.toEqual({ url: 'https://example.com/', title: 'Target' })
+    expect(premature).toBe(0); expect(loadURL).toHaveBeenCalledExactlyOnceWith('https://example.com/')
+  })
+  it('初始页面加载失败明确拒绝导航，不伪装成就绪', async () => {
+    const { manager } = fixture(() => null)
+    const loadURL = vi.fn(async () => undefined)
+    const instance = { id: 'built-in', toolbarReady: true, toolbarError: null, initialPageReady: false, initialPageError: 'load failed',
+      window: { isDestroyed: () => false }, pageView: { webContents: { loadURL, stop: vi.fn(), getURL: () => 'about:blank', getTitle: () => '' } } }
+    const internals = manager as unknown as { instances: Map<string, unknown>; pushToolbarState(instance: unknown): void }
+    internals.instances.set(instance.id, instance); vi.spyOn(internals, 'pushToolbarState').mockImplementation(() => {})
+    await expect(manager.navigate(instance.id, 'https://example.com/')).rejects.toThrow('初始页面加载失败')
+    expect(loadURL).not.toHaveBeenCalled()
+  })
   it('同ID旧窗口的状态和销毁回调不能覆盖或移除新窗口', () => {
     const { manager } = fixture(() => null)
     const changed = vi.fn(), removed = vi.fn()

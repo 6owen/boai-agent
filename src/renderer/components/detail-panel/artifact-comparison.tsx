@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 用户明确选中的同家族两份成果ID/hash、活跃详情及原IPC。
- * [OUTPUT]: 逐份核源后向Lody DiffViewer传固定原文；隐藏/清理/版本切换及来源变化失效旧比较。
+ * [OUTPUT]: 逐份核源后向Lody DiffViewer传固定原文；普通事件后台复核保留diff，隐藏/清理/真实失效隔离迟到读取。
  * [POS]: 成果详情只读比较连接；零采用/修订/Work/模型调用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -14,10 +14,11 @@ export function ArtifactComparison({ api, first, second, active, sourceRevision 
   const [oldVersion, newVersion] = [first, second].sort((a, b) => a.contentVersion - b.contentVersion)
   const key = `${oldVersion.id}:${oldVersion.contentHash}:${newVersion.id}:${newVersion.contentHash}:${sourceRevision}`
   useEffect(() => {
-    let disposed = false
+    let disposed = false, sequence = 0, timer: ReturnType<typeof setTimeout> | undefined
     setView(undefined); setError('')
     if (!active) return
     const load = async () => {
+      const token = ++sequence
       try {
         if (oldVersion.id === newVersion.id || oldVersion.conversationId !== newVersion.conversationId || oldVersion.logicalArtifactId !== newVersion.logicalArtifactId) throw new Error('只能比较同一成果家族的两个明确版本。')
         const results = await Promise.all([oldVersion, newVersion].map(version => api.request('getArtifactPreview', { id: version.id, expectedHash: version.contentHash })))
@@ -27,16 +28,23 @@ export function ArtifactComparison({ api, first, second, active, sourceRevision 
           if (!result.filePreview || result.filePreview.kind === 'unsupported') throw new Error('版本对比仅支持已核对的文本文件。')
           return result.filePreview.text
         })
-        if (!disposed) setView({ key, oldText: texts[0], newText: texts[1] })
-      } catch (failure) { if (!disposed) setError(errorText(failure)) }
+        if (!disposed && token === sequence) {
+          setView(previous => previous?.key === key && previous.oldText === texts[0] && previous.newText === texts[1] ? previous : { key, oldText: texts[0], newText: texts[1] }); setError('')
+        }
+      } catch (failure) { if (!disposed && token === sequence) { setView(undefined); setError(errorText(failure)) } }
     }
     void load()
     const unsubscribe = api.subscribe(event => {
-      if ((event.type === 'changed' && (!event.conversationId || event.conversationId === oldVersion.conversationId)) || ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === oldVersion.conversationId)) {
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === oldVersion.conversationId) {
+        sequence++; clearTimeout(timer)
         disposed = true; setView(undefined); setError('比较来源已变化，请重新核对成果。')
       }
+      if (!disposed && event.type === 'changed' && (!event.conversationId || event.conversationId === oldVersion.conversationId)) {
+        sequence++
+        if (!timer) timer = setTimeout(() => { timer = undefined; void load() }, 120)
+      }
     })
-    return () => { disposed = true; unsubscribe() }
+    return () => { disposed = true; clearTimeout(timer); unsubscribe() }
   }, [api, active, key, oldVersion.id, oldVersion.contentHash, oldVersion.conversationId, oldVersion.logicalArtifactId, oldVersion.contentVersion, newVersion.id, newVersion.contentHash, newVersion.conversationId, newVersion.logicalArtifactId, newVersion.contentVersion])
   if (!active) return null
   return <section className="min-h-0 flex-1 overflow-auto" aria-label={`成果版本对比 第${oldVersion.contentVersion}版到第${newVersion.contentVersion}版`}>

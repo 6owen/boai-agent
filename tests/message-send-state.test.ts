@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [INPUT]: 普通/ACP原请求、材料版本引用与跨重启快照。
  * [OUTPUT]: 原请求独立于后续草稿，重启unknown且同指纹可清除；仅保存引用，不泄露媒体/路径；保留旧ACP并拒绝损坏新版。
  * [POS]: 消息发送持久边界回归；不把恢复解释为发送授权。
@@ -56,4 +57,14 @@ describe('pending message identity', () => {
   ])('fails loudly rather than dropping an unreadable pending request: %j', entry => {
     expect(() => restorePendingMessageDrafts({ chat: { requestId: 'r', ...entry } })).toThrow('未决消息记录')
   })
+})
+
+
+it('preserves a fixed original reference across unknown-send restart without persisting arbitrary paths', () => {
+  const ref = { id: 'm', conversationId: 'chat', revision: 2, contentHash: 'a'.repeat(64), parseVersion: 'text-v1' as const }
+  const restored = restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'edit', input: { content: '修改第二段', mentionIds: ['writer'], materialReference: { ...ref, path: '/private/secret' } } } }).get('chat')!
+  expect(restored.submission?.status).toBe('unknown')
+  expect(restored.submission?.input.materialReference).toEqual(ref)
+  expect(pendingMessageRequests(new Map([['chat', restored]]))).toMatchObject({ chat: { input: { materialReference: ref } } })
+  expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'edit', input: { content: '修改第二段', mentionIds: ['writer'], materialReference: { ...ref, contentHash: 'changed' } } } })).toThrow()
 })

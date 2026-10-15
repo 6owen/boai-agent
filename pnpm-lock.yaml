@@ -125,6 +125,9 @@ importers:
       fflate:
         specifier: 0.8.3
         version: 0.8.3
+      iconoir-react:
+        specifier: 7.12.1
+        version: 7.12.1(react@19.3.0)
       input-otp:
         specifier: 1.5.0
         version: 1.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -3252,6 +3255,11 @@ packages:
   human-signals@8.0.1:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
+
+  iconoir-react@7.12.1:
+    resolution: {integrity: sha512-e+Lwgqr10ruCwrCrFjG5RD0axwENFxPzLP1cESiQPEMH9UC/W6dk6u0MYwLoG0MBVsmBYAhVBb5GqO1aSljeGQ==}
+    peerDependencies:
+      react: 18 || 19
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -8550,6 +8558,10 @@ snapshots:
   human-signals@2.1.0: {}
 
   human-signals@8.0.1: {}
+
+  iconoir-react@7.12.1(react@19.3.0):
+    dependencies:
+      react: 19.3.0
 
   iconv-lite@0.4.24:
     dependencies:

@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 普通执行事件后台核源并保留正文/字节身份；本次明确修改交付完成后自动查看新版一次，历史版与diff保留。
+ * [OUTPUT]: 选文及标题入口直接定位同一修改Popover，移除底部编辑区中转。
+ * [OUTPUT]: 成果预览内独立修改会话与选文快捷操作，版本/要求/员工不再写主聊天草稿；真实执行记录归原来源。
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: 文件正文统一交给全局FilePreview分发，页面只负责核源、版本/对比与操作菜单。
  * [OUTPUT]: 预览收敛为标题/图标切换/操作菜单与正文；版本/来源操作及文件记录收进菜单，文件夹定位沿宿主路径校验。
  * [OUTPUT]: 固定成果增加Lody PDF/Office及同家族只读diff；隐藏/失效卸载，清理后的changed不重新进入加载态。
@@ -8,6 +13,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { FileEditSession, type FileEditHandle } from './file-edit-session'
+import { artifactEditSource, latestFileEditArtifact } from './file-edit-state'
+import { useFileEditAutoPreview, useFileEdits } from './use-file-edits'
 import type { Artifact, ConversationDetail, Snapshot } from '@shared/domain'
 import type { ConversationMaterial } from '@shared/domain/materials'
 import { ARTIFACT_LIMITS, type ArtifactPreview, type ArtifactVersion } from '@shared/domain/artifacts'
@@ -24,11 +32,13 @@ import { MaterialMarkdown } from '@/pages/conversations/-components/material-cit
 import { materialErrorText } from '@/pages/conversations/-components/material-draft'
 import { readDetailMessages } from '@/pages/conversations/detail-reading'
 
-export function ArtifactTab({ api, conversationId, id, logicalArtifactId, contentHash, expectedContentVersion, sourceRevision = 0, requestId, active, snapshot, onVersion, onPreviewMaterial, onMessage, onActivity, onOpenPath }: {
+export function ArtifactTab({ api, conversationId, id, logicalArtifactId, contentHash, expectedContentVersion, sourceRevision = 0, requestId, active, snapshot, onVersion, onPreviewMaterial, onMessage, onActivity, onOpenPath, onPublish }: {
   api: DesktopApi; conversationId: string; id: string; logicalArtifactId: string; contentHash: string; expectedContentVersion?: number; sourceRevision?: number; requestId: string; active: boolean; snapshot: Snapshot
+  onPublish?(artifact: ArtifactVersion): void
   onVersion(artifact: ArtifactVersion): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void
   onMessage(id: string): void; onActivity(): void; onOpenPath(path: string): void
 }) {
+  const editor = useRef<FileEditHandle>(null)
   const [view, setView] = useState<{ preview: ArtifactPreview; detail: ConversationDetail; sourceRevision: number }>(), [loading, setLoading] = useState(false), [readError, setReadError] = useState('')
   const [externalArtifact, setExternalArtifact] = useState<Artifact>()
   const [refresh, setRefresh] = useState(0), [recordsOpen, setRecordsOpen] = useState(false), [actionError, setActionError] = useState('')
@@ -38,9 +48,10 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
     if (fixed.current.id !== id || fixed.current.requestId !== requestId) { fixed.current = { id, requestId, hash: contentHash } }
     let disposed = false, sequence = 0, timer: ReturnType<typeof setTimeout> | undefined
     setView(undefined); setExternalArtifact(undefined); setReadError(''); setActionError(''); setLoading(active && !cleared.current)
-    const load = async () => {
+    const load = async (background = false) => {
       if (!active || cleared.current) return
-      const token = ++sequence; setView(undefined); setExternalArtifact(undefined); setLoading(true); setReadError('')
+      const token = ++sequence
+      if (!background) { setView(undefined); setExternalArtifact(undefined); setLoading(true); setReadError('') }
       try {
         const [previewResult, detailResult] = await Promise.allSettled([api.request('getArtifactPreview', { id, expectedHash: fixed.current.hash || undefined }), api.request('getConversationMetadata', { id: conversationId })])
         if (disposed || token !== sequence || cleared.current) return
@@ -57,7 +68,12 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         if (disposed || token !== sequence || cleared.current) return
         detail.messages = source.flatMap(item => item.status === 'available' && item.message ? [item.message] : [])
         fixed.current.hash = preview.artifact.contentHash
-        setView({ preview, detail, sourceRevision }); setLoading(false)
+        setView(previous => {
+          // Same verified bytes must retain their object identity: Lody effects parse
+          // on bytes changes, even when React keeps the viewer mounted.
+          const same = previous?.sourceRevision === sourceRevision && previous.preview.artifact.id === preview.artifact.id && previous.preview.artifact.contentHash === preview.artifact.contentHash
+          return { preview: same ? { ...preview, filePreview: previous.preview.filePreview, binaryPreview: previous.preview.binaryPreview } : preview, detail, sourceRevision }
+        }); setReadError(''); setLoading(false)
       } catch (failure) { if (!disposed && token === sequence) { setView(undefined); setLoading(false); setReadError(materialErrorText(errorText(failure))) } }
     }
     if (active && !cleared.current) void load()
@@ -67,8 +83,8 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         cleared.current = true; sequence++; clearTimeout(timer); timer = undefined; setView(undefined); setExternalArtifact(undefined); setLoading(false); setReadError('来源聊天已清理或移除，本版成果不可用。'); return
       }
       if (event.type !== 'changed' || event.conversationId && event.conversationId !== conversationId) return
-      sequence++; setView(undefined); setExternalArtifact(undefined); setLoading(active && !cleared.current)
-      if (active && !cleared.current && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 120)
+      sequence++
+      if (active && !cleared.current && !timer) timer = setTimeout(() => { timer = undefined; void load(true) }, 120)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
   }, [api, conversationId, id, logicalArtifactId, contentHash, expectedContentVersion, sourceRevision, requestId, active, refresh])
@@ -76,11 +92,19 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
   const current = view?.sourceRevision === sourceRevision && view.preview.artifact.id === id && view.preview.artifact.contentHash === fixed.current.hash ? view : undefined
   const preview = current?.preview, artifact = preview?.artifact, detail = current?.detail
   const file = preview?.filePreview ?? (preview ? { kind: 'markdown' as const, text: preview.text } : undefined)
+  const editSource = artifact ? artifactEditSource(artifact) : undefined
+  const edits = useFileEdits(api, JSON.stringify([conversationId, 'artifact', logicalArtifactId]), conversationId, active && !!editSource)
+  const editedArtifact = latestFileEditArtifact(edits.results, editSource)
   const originalAuthor = artifact?.ownerAgentId, author = snapshot.agents.find(agent => agent.id === originalAuthor)
   const sourceMessage = detail?.messages.find(message => message.id === artifact?.sourceMessageId)
   const newer = preview?.versions.filter(version => artifact && version.contentVersion > artifact.contentVersion).sort((first, second) => first.contentVersion - second.contentVersion) ?? []
+  const latest = editedArtifact ?? newer.at(-1)
+  const openResult = (result: Artifact) => { if (result.id && result.logicalArtifactId && result.contentHash && result.contentVersion) onVersion(result as ArtifactVersion) }
+  useFileEditAutoPreview(edits, editSource, active, openResult)
   const comparedVersion = comparison?.currentId === artifact?.id ? preview?.versions.find(version => version.id === comparison?.versionId && version.logicalArtifactId === logicalArtifactId && version.id !== id) : undefined
   const header = (toggle?: ReactNode) => artifact && preview && <FilePreviewHeader name={artifact.name} description={`第 ${artifact.contentVersion} 版`}>
+    <span className="text-xs text-muted-foreground">第 {artifact.contentVersion} 版</span>
+    {latest && <Button variant="secondary" size="xs" onClick={() => openResult(latest)} aria-label={`查看新版：${latest.name}`} title={`第 ${latest.contentVersion} 版`}>查看新版</Button>}
     {comparedVersion ? <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="返回正文" onClick={() => setComparison(undefined)} />}><ArrowLeft /></TooltipTrigger><TooltipContent>返回正文</TooltipContent></Tooltip> : toggle}
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="文件操作" />}><MoreHorizontal /></DropdownMenuTrigger>
@@ -88,6 +112,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => { setActionError(''); void api.request('openPath', { path: artifact.path, action: 'reveal' }).catch(error => setActionError(errorText(error))) }}><FolderOpen />在文件夹中显示</DropdownMenuItem>
           <DropdownMenuItem onClick={() => onOpenPath(artifact.path)}><FileText />外部打开</DropdownMenuItem>
+          {onPublish && <DropdownMenuItem onClick={() => onPublish(artifact)}>发送到渠道…</DropdownMenuItem>}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -114,7 +139,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
     {readError && !cleared.current && active && <Button variant="secondary" size="sm" onClick={() => setRefresh(value => value + 1)}>重新核对成果</Button>}
     {artifact && preview && detail && <>
       <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3" aria-label={`成果第 ${artifact.contentVersion} 版正文`}>
-        {comparedVersion ? <>{header()}<ArtifactComparison api={api} first={comparedVersion} second={artifact} active={active} sourceRevision={sourceRevision} /></> : <FilePreview key={`${artifact.id}:${artifact.contentHash}`} name={artifact.name} file={file} binary={preview.binaryPreview} active={active} header={header} markdown={file?.kind === 'markdown' ? <MaterialMarkdown source={{ content: file.text, materialSources: artifact.materialSources }} detail={detail} onPreview={onPreviewMaterial} /> : undefined} />}
+        {comparedVersion ? <>{header()}<ArtifactComparison api={api} first={comparedVersion} second={artifact} active={active} sourceRevision={sourceRevision} /></> : <FilePreview key={`${artifact.id}:${artifact.contentHash}`} name={artifact.name} file={file} binary={preview.binaryPreview} active={active} onEdit={(annotation, anchor) => editor.current?.begin(artifactEditSource(artifact), annotation, anchor)} header={header} markdown={file?.kind === 'markdown' ? <MaterialMarkdown source={{ content: file.text, materialSources: artifact.materialSources }} detail={detail} onPreview={onPreviewMaterial} /> : undefined} />}
       </section>
       <Dialog open={recordsOpen} onOpenChange={setRecordsOpen}>
         <DialogContent>
@@ -132,5 +157,6 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         </DialogContent>
       </Dialog>
     </>}
+    <FileEditSession ref={editor} api={api} snapshot={snapshot} edits={edits} conversationId={conversationId} source={editSource} active={active} onResult={openResult} />
   </div>
 }

@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-10 原问题仅紧凑回复按钮，已回答和成功补充不额外挂卡；未知/失败请求仍沿原身份核对。
+ * [OUTPUT]: 主聊天与右侧渠道聊天共用未决请求账本，按实际可见会话集合核对来源；隐藏或切换仍使旧请求未知而不重放。
  * [INPUT]: 原问题/获准补充状态、本人原消息关系回执、跨关闭/重启未决请求与当前聊天活跃身份。
  * [OUTPUT]: 现有 composer 的定向问题补充、提交前来源核对、原 key/载荷冻结和未知只读核对；原问题不在历史页或已回答仍可核对，自动化沿原 occurrence 与预算入口。
  * [POS]: conversations 原问题消息卡与传输状态；不增加独立输入框或业务解决状态。
@@ -14,6 +15,7 @@ import { INBOX_QUESTION_PENDING_KEY, inboxQuestionReceiptMatches, questionReques
 
 interface QuestionReplyOptions {
   conversationId?: string
+  conversationIds?: string[]
   active: boolean
   onSubmitted?(message: Message, target: ChatQuestionTarget): void
 }
@@ -22,7 +24,9 @@ export function useChatQuestionReplies(api: DesktopApi | undefined, options: Que
   const [restored] = useState(() => { try { return { values: restoreInboxQuestionRequests(JSON.parse(localStorage.getItem(INBOX_QUESTION_PENDING_KEY) ?? '{}')), error: '' } } catch { return { values: {} as InboxQuestionRequests, error: '补充请求记录无法读取，请恢复本地存储后核对原请求。' } } })
   const [values, setValues] = useState(restored.values), [storageError, setStorageError] = useState(restored.error), [error, setError] = useState(''), [busyIds, setBusyIds] = useState<string[]>([])
   const current = useRef(restored.values), latest = useRef(options), mounted = useRef(true), generation = useRef(0), inFlight = useRef(new Map<string, string>())
-  if (latest.current.conversationId !== options.conversationId || latest.current.active !== options.active) generation.current++
+  const includes = (value: QuestionReplyOptions, id: string) => value.active && (value.conversationIds ?? [value.conversationId]).includes(id)
+  const visibleKey = (value: QuestionReplyOptions) => (value.conversationIds ?? [value.conversationId]).join('|')
+  if (visibleKey(latest.current) !== visibleKey(options) || latest.current.active !== options.active) generation.current++
   latest.current = options
   const save = useCallback((id: string, next?: InboxQuestionRequest, expectedRequestId?: string) => {
     const updated = updateInboxQuestionRequests(current.current, id, next, expectedRequestId)
@@ -33,19 +37,19 @@ export function useChatQuestionReplies(api: DesktopApi | undefined, options: Que
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; for (const request of Object.values(current.current)) if (request.status === 'pending') save(request.itemId, { ...request, status: 'unknown' }, request.input.requestId) } }, [save])
   useEffect(() => {
     setError('')
-    for (const request of Object.values(current.current)) if (request.status === 'pending' && (!options.active || request.conversationId !== options.conversationId)) save(request.itemId, { ...request, status: 'unknown' }, request.input.requestId)
-  }, [options.active, options.conversationId, save])
+    for (const request of Object.values(current.current)) if (request.status === 'pending' && !includes(options, request.conversationId)) save(request.itemId, { ...request, status: 'unknown' }, request.input.requestId)
+  }, [options.active, options.conversationId, options.conversationIds?.join('|'), save])
   useEffect(() => api?.subscribe(event => {
     if (event.type !== 'conversation:cleared' && event.type !== 'conversation:deleted') return
-    if (event.conversationId === latest.current.conversationId) generation.current++
+    if (includes(latest.current, event.conversationId)) generation.current++
     for (const request of Object.values(current.current)) if (request.conversationId === event.conversationId) save(request.itemId, undefined, request.input.requestId)
   }), [api, save])
 
   const perform = useCallback(async (target: ChatQuestionTarget, content: string, mode: 'submit' | 'check' | 'retry', expectedRequestId?: string): Promise<Message | undefined> => {
-    if (!api || !latest.current.active || latest.current.conversationId !== target.conversationId || inFlight.current.has(target.itemId)) return
+    if (!api || !includes(latest.current, target.conversationId) || inFlight.current.has(target.itemId)) return
     if (storageError) throw new Error(storageError)
     const token = generation.current
-    const valid = () => mounted.current && token === generation.current && latest.current.active && latest.current.conversationId === target.conversationId
+    const valid = () => mounted.current && token === generation.current && includes(latest.current, target.conversationId)
     const ensure = (success: boolean) => { if (!success) throw new Error('原补充请求身份未能保存或已变化，请保留原请求核对。') }
     const previous = current.current[target.itemId]
     if (expectedRequestId && previous?.input.requestId !== expectedRequestId) return
@@ -111,9 +115,9 @@ export function useChatQuestionReplies(api: DesktopApi | undefined, options: Que
   const retry = useCallback((request: InboxQuestionRequest) => perform(questionRequestTarget(request), request.input.content, 'retry', request.input.requestId), [perform])
   const discard = useCallback((request: InboxQuestionRequest) => {
     const saved = current.current[request.itemId]
-    return latest.current.active && latest.current.conversationId === request.conversationId && saved?.status === 'not_accepted' && !inFlight.current.has(request.itemId) && save(request.itemId, undefined, request.input.requestId)
+    return includes(latest.current, request.conversationId) && saved?.status === 'not_accepted' && !inFlight.current.has(request.itemId) && save(request.itemId, undefined, request.input.requestId)
   }, [save])
-  return { values, error: storageError || error, storageError, busy: busyIds.some(id => inFlight.current.get(id) === options.conversationId), submit, check, retry, discard }
+  return { values, error: storageError || error, storageError, busy: busyIds.some(id => includes(options, inFlight.current.get(id) ?? '')), submit, check, retry, discard }
 }
 export type ChatQuestionReplies = ReturnType<typeof useChatQuestionReplies>
 

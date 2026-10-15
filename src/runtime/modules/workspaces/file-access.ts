@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工文本工具可要求严格 UTF-8 解码，技能预览保留原二进制识别；可选 hash/不存在基线在同路径写入锁内、截断前核对。
  * [OUTPUT]: 复制共享原件前等待宿主持久准备记录，准备失败不创建原件；完成登记后才返回发布结果。
  * [INPUT]: 当前员工会话工作区、宿主材料来源授权门禁与真实文件请求。
  * [OUTPUT]: 首次共享目录并发创建仅接受EEXIST后核验的真实目录，链接/文件/其他IO故障仍拒绝；发布真实字节 hash、明确宿主修订请求，失败只删除本次未外改原件；拒绝路径/链接越界、按当前来源授权核对内建文件访问，并仅在私有源和共享目标均获准时发布真实产物。
@@ -11,6 +12,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { Artifact, SessionWorkspace } from '../../../shared/domain'
 import type { EngineContext } from '../../contracts'
+import { decodeWorkspaceText, fileContentHash } from './file-editing'
 export const MAX_FILE_BYTES = 1024 * 1024
 const check = (signal: AbortSignal) => signal.throwIfAborted()
 
@@ -49,7 +51,7 @@ export async function restrictedPath(roots: string[], target: string): Promise<s
   if (!contained(await realpath(root), canonical)) throw new Error('Resource path escaped its root')
   return canonical
 }
-export async function boundedRead(file: string): Promise<string> {
+export async function boundedRead(file: string, options: { strictUtf8?: boolean } = {}): Promise<string> {
   const handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
   try {
     const stat = await handle.stat()
@@ -57,7 +59,8 @@ export async function boundedRead(file: string): Promise<string> {
     const bytes = Buffer.alloc(Math.min(stat.size + 1, MAX_FILE_BYTES + 1))
     const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0)
     if (bytesRead > MAX_FILE_BYTES) throw new Error('Text file must be at most 1 MiB')
-    return bytes.subarray(0, bytesRead).toString('utf8')
+    const content = bytes.subarray(0, bytesRead)
+    return options.strictUtf8 ? decodeWorkspaceText(content) : content.toString('utf8')
   } finally { await handle.close() }
 }
 
@@ -91,17 +94,44 @@ export async function workspaceTarget(root: string, relative: string, createPare
   return target
 }
 
-export async function writeWorkspaceFile(root: string, relative: string, content: string) {
+const workspaceWrites = new Map<string, Promise<unknown>>()
+export async function writeWorkspaceFile(root: string, relative: string, content: string, expectedHash?: string | null, signal?: AbortSignal) {
+  signal?.throwIfAborted()
   const target = await workspaceTarget(root, relative, true)
-  // Do not use O_TRUNC before checking the opened file: reject hard links and final symlinks.
-  const handle = await open(target, constants.O_WRONLY | constants.O_CREAT | (constants.O_NOFOLLOW ?? 0), 0o600)
-  try {
-    const stat = await handle.stat()
-    if (!stat.isFile() || stat.nlink > 1) throw new Error('Only ordinary workspace files may be written')
-    await workspaceTarget(root, relative)
-    await handle.truncate(0)
-    await handle.writeFile(content, 'utf8')
-  } finally { await handle.close() }
+  const key = path.join(await realpath(path.dirname(target)), path.basename(target))
+  const pending = (workspaceWrites.get(key) ?? Promise.resolve()).catch(() => undefined).then(() => write())
+  workspaceWrites.set(key, pending)
+  try { await pending } finally { if (workspaceWrites.get(key) === pending) workspaceWrites.delete(key) }
+
+  async function write() {
+    signal?.throwIfAborted()
+    await workspaceTarget(root, relative, true)
+    // Do not use O_TRUNC before checking the opened file: reject hard links and final symlinks.
+    const flags = expectedHash === undefined ? constants.O_WRONLY | constants.O_CREAT
+      : expectedHash === null ? constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL : constants.O_RDWR
+    const handle = await open(target, flags | (constants.O_NOFOLLOW ?? 0), 0o600)
+    try {
+      const stat = await handle.stat()
+      if (!stat.isFile() || stat.nlink > 1) throw new Error('Only ordinary workspace files may be written')
+      await workspaceTarget(root, relative)
+      if (typeof expectedHash === 'string') {
+        if (stat.size > MAX_FILE_BYTES) throw new Error('File changed before writing. Re-read it; the file was not modified.')
+        const current = Buffer.alloc(MAX_FILE_BYTES + 1)
+        const { bytesRead } = await handle.read(current, 0, current.length, 0)
+        const entry = await lstat(target)
+        if (entry.ino !== stat.ino || entry.dev !== stat.dev || entry.nlink > 1 || entry.size !== bytesRead || entry.mtimeMs !== stat.mtimeMs || entry.ctimeMs !== stat.ctimeMs || bytesRead > MAX_FILE_BYTES || fileContentHash(current.subarray(0, bytesRead)) !== expectedHash) throw new Error('File changed before writing. Re-read it; the file was not modified.')
+      }
+      const bytes = Buffer.from(content, 'utf8')
+      // Explicit positions preserve the same write behavior with or without the guarded read.
+      signal?.throwIfAborted()
+      await handle.truncate(0)
+      for (let offset = 0; offset < bytes.length;) {
+        const result = await handle.write(bytes, offset, bytes.length - offset, offset)
+        if (!result.bytesWritten) throw new Error('Workspace write made no progress')
+        offset += result.bytesWritten
+      }
+    } finally { await handle.close() }
+  }
 }
 
 export function workspaceRelative(value: string) {

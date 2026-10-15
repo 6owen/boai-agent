@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 员工/群归属计划在SQL分页前筛选，固定更新时间/ID游标，不读取其他owner计划正文。
  * [OUTPUT]: 2026-10-14 事务内精确选择房间引用记录，供显式空闲历史归一，普通消息查询门槛保持。
  * [OUTPUT]: 父工作计数的文本亲和索引匹配关联SQL，避免每个列表项扫描全会话历史。
  * [OUTPUT]: 2026-10-11 持久执行证据、内容按需读取及Rovai执行窗口/变化游标，完整数据与UI缓存窗口分开。
@@ -20,12 +22,12 @@ import { randomUUID } from 'node:crypto'
 import { advanceCandidateClock, candidateCursor, employeeCandidatesSql, readCandidateCursor } from '../../modules/bobo-collaboration/candidate-sql'
 import type { BoboCollaborationReceipt, EmployeeCandidate, EmployeeCandidatePage, EmployeeCandidateQuery } from '../../../shared/domain/bobo-collaboration'
 import type { BrowserArtifactSource } from '../../../shared/domain/artifacts'
-import type { AutomationHistoryPage, AutomationHistoryQuery } from '../../../shared/domain/automations'
+import type { AutomationDefinition, AutomationHistoryPage, AutomationHistoryQuery, AutomationListQuery, AutomationListPage } from '../../../shared/domain/automations'
 import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '../../../shared/domain/automations'
 import { inboxSql, type InboxSqlRow } from '../../modules/inbox/inbox-sql'
 import type { InboxQuery } from '../../../shared/domain/inbox'
 import type { ConversationCompletion, ConversationMessagePageQuery, ConversationSearchCoverage, ConversationSearchQuery } from '../../../shared/domain/reading'
-import { conversationMessagesSql, conversationSearchSql, conversationSearchTargetSql, firstUnreadCompletionSql, type ConversationMessageSqlRow, type ConversationSearchSqlRow, type ConversationSearchSqlTarget, type FirstUnreadCompletionSqlQuery } from '../../modules/conversations/reading-sql'
+import { conversationMessagesSql, conversationSearchSql, conversationSearchTargetSql, firstUnreadCompletionSql, unreadCompletionCountSql, type ConversationMessageSqlRow, type ConversationSearchSqlRow, type ConversationSearchSqlTarget, type FirstUnreadCompletionSqlQuery } from '../../modules/conversations/reading-sql'
 import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLLECTION, searchBodyCandidatesSql, searchBodyCoverageSql, searchBodyFailuresSql, type SearchBodyCandidate } from '../../modules/conversations/search-index-sql'
 import { advanceWorkViewClock, conversationFilesSql, conversationFileQuerySchema, readWorkViewCursor, workViewQuerySchema, workViewsSql, workViewCursor, workViewTargetSql } from '../../modules/collaboration/work-view-sql'
 import { WORK_VIEW_LIMITS, type WorkViewQuery, type WorkViewPage, type WorkViewItem, type ConversationFileQuery, type ConversationFilePage, type ConversationFileItem } from '../../../shared/domain/work-views'
@@ -72,6 +74,7 @@ export interface RecordTransaction {
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string): Promise<T[]>
+  unreadCompletionCount(query: FirstUnreadCompletionSqlQuery): Promise<number>
   firstUnreadCompletion(query: FirstUnreadCompletionSqlQuery): Promise<ConversationCompletion | undefined>
   put(record: StoredRecord): Promise<void>
   remove(collection: string, id: string): Promise<void>
@@ -123,6 +126,22 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
       return result.rows[0] ? JSON.parse(String(result.rows[0].value)) as T : undefined
+    })
+  }
+  queryAutomationDefinitions(query: AutomationListQuery) {
+    return this.enqueue(async () => {
+      const args: (string | number)[] = [], filters = ["d.collection='automations'", "json_extract(d.value,'$.deletedAt') IS NULL"]
+      if (query.owner) {
+        filters.push("json_extract(d.value,'$.owner.kind')=?"); args.push(query.owner.kind)
+        filters.push(`json_extract(d.value,'$.owner.${query.owner.kind === 'employee' ? 'employeeId' : 'conversationId'}')=?`)
+        args.push(query.owner.kind === 'employee' ? query.owner.employeeId : query.owner.conversationId)
+      }
+      if (query.before) { filters.push("(json_extract(d.value,'$.updatedAt')<? OR (json_extract(d.value,'$.updatedAt')=? AND d.id<?))"); args.push(query.before.updatedAt, query.before.updatedAt, query.before.id) }
+      const limit = Math.max(1, Math.min(query.limit ?? 30, 100))
+      const result = await this.client.execute({ sql: `SELECT d.value,(SELECT json_object('id',o.id,'status',json_extract(o.value,'$.status'),'deliveryStatus',json_extract(o.value,'$.deliveryStatus'),'startedAt',json_extract(o.value,'$.startedAt'),'finishedAt',json_extract(o.value,'$.finishedAt')) FROM records o WHERE o.collection='automationOccurrences' AND json_extract(o.value,'$.automationId')=d.id ORDER BY COALESCE(json_extract(o.value,'$.finishedAt'),json_extract(o.value,'$.startedAt')) DESC,o.id DESC LIMIT 1) AS latest FROM records d WHERE ${filters.join(' AND ')} ORDER BY json_extract(d.value,'$.updatedAt') DESC,d.id DESC LIMIT ?`, args: [...args, limit + 1] })
+      const definitions = result.rows.slice(0, limit).map(row => ({ ...JSON.parse(String(row.value)) as AutomationDefinition, ...(row.latest ? { latestOccurrence: JSON.parse(String(row.latest)) as AutomationListPage['definitions'][number]['latestOccurrence'] } : {}) }))
+      const last = definitions.at(-1)
+      return { definitions, ...(result.rows.length > limit && last ? { nextCursor: { updatedAt: last.updatedAt, id: last.id } } : {}) }
     })
   }
   queryExecutionHistory(query: import('../../../shared/domain/execution').ExecutionHistoryQuery) {
@@ -363,6 +382,7 @@ export class ProductStore {
             const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? ORDER BY rowid', args: [collection] })
             return result.rows.map(row => JSON.parse(String(row.value)) as R)
           },
+          unreadCompletionCount: async query => Number((await transaction.execute(unreadCompletionCountSql(query))).rows[0].count),
           firstUnreadCompletion: async query => {
             const result = await transaction.execute(firstUnreadCompletionSql(query))
             return result.rows.length ? JSON.parse(String(result.rows[0].completion)) as ConversationCompletion : undefined

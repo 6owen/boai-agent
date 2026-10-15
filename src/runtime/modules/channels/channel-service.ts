@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 明确外发沿固定原来信和绑定版本，普通本地讨论没有回发目标；未发送/未知各保存独立回执。
  * [OUTPUT]: 2026-10-14现行分离合同：本人ID不再合并历史，逐来源/绑定回发与旧回执去重保持；停止、凭据及未知保存核对不变。
  * [OUTPUT]: 入站按绑定员工分别受理，兼容旧共享/清理回执去重；新增每员工一个绑定，既有多绑定保留。
  * [OUTPUT]: 2026-10-14 明确本人账号同事务关联、主私聊解析和逐触发来源回发，取消最近平台目标回退。
@@ -254,6 +256,11 @@ export class EmployeeChannels {
       this.refreshGroupName(binding, conversation.id, source)
     }) } catch (error) { observed('failed', '消息受理失败，请核对员工模型配置、材料和执行记录。'); throw error }
   }
+  publicationBinding(source: ChannelMessageSource, agentId: string) {
+    const binding = this.bindings.get(source.bindingId)
+    if (!binding || !binding.enabled || binding.agentId !== agentId || binding.platform !== source.platform || !binding.allowedUserIds.includes(source.userId) || source.kind === 'group' && !binding.allowedChatIds.includes(source.chatId) || !source.replyThreadId) throw new Error('原渠道绑定或收件人授权已失效，未发送。')
+    return binding
+  }
   published(message: Message) {
     if (message.senderType !== 'agent' || message.status !== 'completed' || this.closing) return
     const task = this.output.then(async () => {
@@ -262,26 +269,32 @@ export class EmployeeChannels {
         const run = message.runId ? await this.store.get<AgentRun>('runs', message.runId) : undefined
         const work = run?.workId ? await this.store.get<WorkItem>('workItems', run.workId) : undefined
         const budget = work?.budgetId ? await this.store.get<WorkBudget>('workBudgets', work.budgetId) : undefined
-        const sourceIds = [run?.triggerMessageId, work?.sourceMessageId, budget?.sourceMessageId].filter((id): id is string => !!id)
+        const sourceIds = [message.channelPublication?.sourceMessageId, run?.triggerMessageId, work?.sourceMessageId, budget?.sourceMessageId].filter((id): id is string => !!id)
         let origin: ChannelMessageSource | undefined
         for (const id of sourceIds) { const source = await this.store.get<Message>('messages', id); if (source?.senderType === 'user' && source.conversationId === message.conversationId) { origin = source.channel; break } }
         // A local trigger has no external destination. Never fall back to a recent user.
         if (!origin?.replyThreadId || origin.kind !== savedTarget.kind || origin.platform !== this.bindings.get(savedTarget.bindingId)?.platform || origin.bindingId !== savedTarget.bindingId) continue
         const target = { ...savedTarget, externalThreadId: origin.replyThreadId, userId: origin.userId, chatId: origin.chatId }
         const binding = this.bindings.get(target.bindingId), transport = this.live.get(target.bindingId)
-        if (!binding?.enabled || !binding.allowedUserIds.includes(target.userId) || target.kind === 'group' && !binding.allowedChatIds.includes(target.chatId)) continue
+        if (!binding) continue
         const deliveryId = key([target.bindingId, message.id])
         if (await this.store.get('channelDeliveries', deliveryId)) continue
         const published = await this.store.get<Message>('messages', message.id)
         const conversation = await this.store.get<Conversation>('conversations', message.conversationId)
         if (!published || published.status !== 'completed' || published.content !== message.content || !conversation?.agentIds.includes(message.senderId) || await this.store.get('conversationCleanup', message.conversationId)) continue
         let delivery: ChannelDelivery = { id: deliveryId, bindingId: binding.id, conversationId: message.conversationId, messageId: message.id, status: 'sending', createdAt: time(), updatedAt: time() }
+        if (!binding.enabled || !binding.allowedUserIds.includes(target.userId) || target.kind === 'group' && !binding.allowedChatIds.includes(target.chatId) || message.channelPublication && message.channelPublication.bindingRevision !== binding.revision) {
+          await this.store.write([record('channelDeliveries', { ...delivery, status: 'failed', detail: '原渠道绑定或授权已变化，未发送。' })]); this.hooks.changed(); continue
+        }
         // Prepare files before the first external side effect.
         let files: ChannelOutputFile[]
-        try { files = await this.hooks.files(published) } catch { delivery = { ...delivery, status: 'failed', detail: '成果来源未通过核对，未发送。' }; await this.store.write([record('channelDeliveries', delivery)]); continue }
+        try { files = await this.hooks.files(published) } catch { delivery = { ...delivery, status: 'failed', detail: '成果来源未通过核对，未发送。' }; await this.store.write([record('channelDeliveries', delivery)]); this.hooks.changed(); continue }
         await this.store.write([record('channelDeliveries', delivery)])
         try {
-          if (this.bindings.get(binding.id)?.revision !== binding.revision || !this.bindings.get(binding.id)?.enabled) { delivery = { ...delivery, status: 'failed', detail: '渠道绑定或授权已变化，未发送。' } }
+          const stillPublished = await this.store.get<Message>('messages', message.id)
+          const stillSource = (await Promise.all(sourceIds.map(id => this.store.get<Message>('messages', id)))).find(source => source?.senderType === 'user' && source.conversationId === message.conversationId)
+          if (!stillPublished || stillPublished.content !== published.content || JSON.stringify(stillSource?.channel) !== JSON.stringify(origin) || await this.store.get('conversationCleanup', message.conversationId)) { delivery = { ...delivery, status: 'failed', detail: '原渠道消息已清理或变化，未发送。' } }
+          else if (this.bindings.get(binding.id)?.revision !== binding.revision || !this.bindings.get(binding.id)?.enabled) { delivery = { ...delivery, status: 'failed', detail: '渠道绑定或授权已变化，未发送。' } }
           else if (!transport?.connected()) { delivery = { ...delivery, status: 'failed', detail: '平台连接不可用，未发送。' } }
           else { const externalMessageIds = await transport.send(target, published.content, files); delivery = { ...delivery, status: 'sent', externalMessageIds } }
         } catch { delivery = { ...delivery, status: 'unknown', detail: '平台发送未确认；未重跑员工或自动重发。' } }

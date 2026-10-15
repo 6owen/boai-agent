@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
+ * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [OUTPUT]: 高原生用量/提问/发布合同夹具；原回答消费原件，无真实模型调用。
  * [INPUT]: 隔离原生协议测试的逐轮消息。
  * [OUTPUT]: 真实stdio进程/文件副作用/原生批准与工具回执；明确为离线夹具，不调用模型。
@@ -30,7 +32,7 @@ createInterface({input:process.stdin}).on('line',async line=>{
  await appendFile('native-turn-requests.jsonl',JSON.stringify(params)+'\n')
  send({id,result:{turn:{id:turnId}}})
  const prompt=JSON.parse(params.input[0].text),text=prompt.messages.map(m=>m.content).join('\n')
- const tool=async(name,input,callId=randomUUID())=>{const answer=await ask('item/tool/call',{threadId,turnId,namespace:'boai',tool:name,callId,arguments:input});if(!answer.result?.success)throw Error(JSON.stringify(answer));return JSON.parse(answer.result.contentItems[0].text)}
+ const tool=async(name,input,callId=randomUUID())=>{const answer=await ask('item/tool/call',{threadId,turnId,namespace:'boai',tool:name,callId,arguments:input});if(!answer.result?.success)throw Error(JSON.stringify(answer));return name==='browser_tool'?answer.result.contentItems:JSON.parse(answer.result.contentItems[0].text)}
 
  if(text.includes('NATIVE_FAILURE')){ev('turn/completed',{turn:{id:turnId,status:'failed',error:{message:'401 native authentication failed'}}});return}
  if(text.includes('NATIVE_UNKNOWN')){await writeFile('unknown-effect','once');process.exit(3)}
@@ -59,10 +61,12 @@ createInterface({input:process.stdin}).on('line',async line=>{
  }
  else if(text.includes('NATIVE_READ_MATERIALS'))await consumeNativeMaterials(text)
  if(text.includes('NATIVE_WAIT')) await new Promise(resolve => setTimeout(resolve,5000))
+ const revisionData=text.split('[Host-authorized artifact revision source; reference data, not tool permissions]\n')[1]
+ const revision=revisionData?JSON.parse(revisionData.split('\n')[0]):undefined
  if(text.includes('NATIVE_PUBLISH') || text.includes('NATIVE_REVISE')){
   await writeFile('native-document.md','# 原生文件\n实际内容\n')
   ev('item/completed',{item:{id:'write',type:'fileChange',changes:[{path:'native-document.md',kind:{type:'add'},diff:'+实际内容'}],status:'completed'}})
-  const args={threadId,turnId,namespace:'boai',tool:'publish_artifact',callId:'publish-once',arguments:{path:'native-document.md',...(text.includes('NATIVE_REVISE') ? {replacesArtifactId:prompt.deliveredFiles.at(-1).id} : {})}}
+  const args={threadId,turnId,namespace:'boai',tool:'publish_artifact',callId:'publish-once',arguments:{path:'native-document.md',...(text.includes('NATIVE_REVISE') ? (revision?{revisionRequestId:revision.revisionRequestId}:{replacesArtifactId:prompt.deliveredFiles.at(-1).id}) : {})}}
   const first=await ask('item/tool/call',args),second=await ask('item/tool/call',args)
   if(JSON.stringify(first)!==JSON.stringify(second))throw Error('duplicate result changed')
   reply=first.result.success?'已交付文件':JSON.stringify(first)

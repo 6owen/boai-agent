@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 详情回归沿现行员工职责字段和有效隔离模型配置，实际缩窗/缩放保证可滚动；选中标签悬停保持独立选中层，多草稿/滚动/定向保存关闭意图保持。
  * [OUTPUT]: 窗口滑动层覆盖关闭按钮所在整项，切换/键盘排序/关闭/缩放后与真实选中项对齐。
  * [INPUT]: 多标签中文场景、Electron fixture 和真实本地数据。
  * [OUTPUT]: T2 来源聊天筛选跨会话保持；按 Base UI 选中标签读取当前员工记忆；会话菜单入口、浏览器式标签浅深色悬停、去重、草稿/滚动保留、独立表单保存、拖拽/键盘排序、会话范围和窄窗验证。
@@ -23,13 +24,20 @@ async function openMember(page: Page, name: string) {
 
 Given('已打开群聊的任务与产物和员工配置标签', async ({ runtime }) => {
   await runtime.start()
+  await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1340, 640))
   const page = runtime.page
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(async () => {
+    // Saving a draft requires a valid configuration; this fixture never calls a model.
+    const connection = await window.boai.request('saveConnection', { name: '详情配置验收', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1/v1', defaultModel: 'fixture' })
+    for (const agent of (await window.boai.request('snapshot', undefined)).agents.filter(agent => ['researcher', 'writer', 'reviewer'].includes(agent.id))) {
+      const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
+      await window.boai.request('saveAgent', { ...input, connectionId: connection.id, modelId: 'fixture', expectedConfigVersion: configVersion })
+    }
     await window.boai.request('createConversation', { title: '设计群', kind: 'group', agentIds: ['researcher', 'writer', 'reviewer'] })
     await window.boai.request('createConversation', { title: '另一组工作', kind: 'group', agentIds: ['researcher', 'writer'] })
     const state = await window.boai.request('getAppearance', undefined)
-    await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: state.revision })
+    await window.boai.request('updateAppearance', { patch: { mode: 'light', zoomFactor: 1.25 }, expectedRevision: state.revision })
   })
   await page.locator('.conversation-item').filter({ hasText: '设计群' }).click()
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
@@ -49,9 +57,10 @@ Given('已打开群聊的任务与产物和员工配置标签', async ({ runtime
 
 When('重复打开并切换标签以及收起右侧面板', async ({ runtime }) => {
   const page = runtime.page, tabs = page.getByRole('tablist', { name: '详情标签' })
-  await page.getByRole('textbox', { name: '职责简介', exact: true }).fill('研究员未保存草稿')
+  await page.getByRole('textbox', { name: '员工职责', exact: true }).fill('研究员未保存草稿')
   await page.locator('.detail-content:visible .editor-scroll').evaluate(element => { element.scrollTop = 180 })
-  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop), 'initial scroll').toBe(180)
+  const scroll = await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop)
+  expect(scroll, 'zoomed compact window must exercise real scrolling').toBeGreaterThan(0)
   const source = tabs.getByRole('tab', { name: '研究员', exact: true }), target = tabs.getByRole('tab', { name: '任务与产物', exact: true })
   const from = (await source.boundingBox())!, to = (await target.boundingBox())!
   await page.mouse.move(from.x + 30, from.y + 14)
@@ -62,12 +71,12 @@ When('重复打开并切换标签以及收起右侧面板', async ({ runtime }) 
   await page.mouse.up()
   await expect(tabs.getByRole('tab').first()).toHaveAttribute('aria-label', '研究员')
   await expect(source).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue('研究员未保存草稿')
-  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop), 'after drag').toBe(180)
+  await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
+  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop), 'after drag').toBe(scroll)
   await source.press('Alt+ArrowRight')
   await expect(tabs.getByRole('tab').first()).toHaveAttribute('aria-label', '任务与产物')
 
-  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop), 'after keyboard reorder').toBe(180)
+  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop), 'after keyboard reorder').toBe(scroll)
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
@@ -75,8 +84,8 @@ When('重复打开并切换标签以及收起右侧面板', async ({ runtime }) 
   await expect(page.locator('.detail-content:visible')).toContainText('会话全部产物')
   await openMember(page, '研究员')
   await expect(tabs.getByRole('tab')).toHaveCount(2)
-  await expect(page.getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue('研究员未保存草稿')
-  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop)).toBe(180)
+  await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
+  expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop)).toBe(scroll)
   await page.getByRole('button', { name: '显示或隐藏详情', exact: true }).click()
   await expect(page.locator('.detail-panel')).toBeHidden()
   await page.getByRole('button', { name: '显示或隐藏详情', exact: true }).click()
@@ -85,25 +94,25 @@ When('重复打开并切换标签以及收起右侧面板', async ({ runtime }) 
 
 Then('员工草稿和滚动位置保留且关闭仅影响对应标签', async ({ runtime }) => {
   const page = runtime.page, tabs = page.getByRole('tablist', { name: '详情标签' })
-  await expect(page.getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue('研究员未保存草稿')
+  await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
   await tabs.getByRole('button', { name: '关闭 任务与产物', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue('研究员未保存草稿')
+  await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
 })
 
 Then('多份员工草稿只保存指定标签的内容', async ({ runtime }) => {
   const page = runtime.page, tabs = page.getByRole('tablist', { name: '详情标签' })
   await openMember(page, '写手')
-  await page.getByRole('textbox', { name: '职责简介', exact: true }).fill('只保存写手的新职责')
+  await page.getByRole('textbox', { name: '员工职责', exact: true }).fill('只保存写手的新职责')
   await page.getByRole('button', { name: '保存修改', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveCount(1)
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
   expect(snapshot.agents.find(agent => agent.id === 'writer')?.role).toBe('只保存写手的新职责')
   expect(snapshot.agents.find(agent => agent.id === 'researcher')?.role).not.toBe('研究员未保存草稿')
-  await expect(page.getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue('研究员未保存草稿')
+  await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
   // Closing a dirty background tab activates and submits only that tab's form.
@@ -126,7 +135,7 @@ Then('跨会话和窄窗口中的详情标签仍保持独立', async ({ runtime 
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
   await openMember(page, '写手')
-  await page.getByRole('textbox', { name: '职责简介', exact: true }).fill('稍后放弃的草稿')
+  await page.getByRole('textbox', { name: '员工职责', exact: true }).fill('稍后放弃的草稿')
   await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))
   await page.evaluate(async () => {
     const state = await window.boai.request('getAppearance', undefined)
@@ -140,7 +149,9 @@ Then('跨会话和窄窗口中的详情标签仍保持独立', async ({ runtime 
   await page.mouse.move(100, 100)
   const background = await activeWindow.evaluate(element => getComputedStyle(element).backgroundColor)
   await activeWindow.hover()
-  await expect(activeWindow).not.toHaveCSS('background-color', background)
+  // The selected tab keeps its shared indicator; hover only paints inactive tabs.
+  await expect(activeWindow).toHaveCSS('background-color', background)
+  await expect(tabs.locator('[data-slot=tabs-indicator]')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await page.screenshot({ path: 'test-results/detail-tabs-dark.png', animations: 'disabled' })
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.getByRole('button', { name: '放弃并退出', exact: true }).click()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 新增真实PDF核源字节、错误hash/外改拒绝与不能作为文本采用的验证。
  * [OUTPUT]: 新增发布准备身份/事务回滚与提交消耗、缺失/未改/外改原件清理边界的真实SQLite验证。
  * [INPUT]: 真实 ProductStore 事务、受管成果原件与明确本人修订/采用请求。
@@ -73,6 +74,32 @@ async function fixture(options: Options = {}) {
 }
 
 describe('binary preview preserves artifact identity', () => {
+  it('revises a channel file in an independent internal workspace while retaining its fixed family', async () => {
+    const { store, repository, register, root } = await fixture()
+    const source = { ...chat('chat'), kind: 'direct' as const, agentIds: ['alice'], purpose: 'channel' as const, channel: { platform: 'feishu' as const, tenantId: 'tenant', chatId: 'chat', kind: 'direct' as const } }
+    const internal = { ...chat('private'), kind: 'direct' as const, agentIds: ['alice'], purpose: 'channel-internal' as const, channelDiscussion: { conversationId: 'chat', epoch: 1 }, memoryScope: 'conversation' as const }
+    await store.write([{ collection: 'conversations', id: source.id, value: source }, { collection: 'conversations', id: internal.id, value: internal }])
+    const original = await register()
+    const input: ArtifactRevisionInput = { conversationId: internal.id, artifactId: original.id, contentHash: original.contentHash, targetAgentId: 'alice', content: '内部修改', requestId: 'private-revision' }
+    await repository.prepareRevision(input)
+    const trigger = { ...message('private-request', input.content), conversationId: internal.id }
+    const request = await store.transaction(async tx => { await tx.put({ collection: 'messages', id: trigger.id, value: trigger }); return repository.commitRevision(tx, input, trigger) })
+    const rootWork = { ...work('private-work', trigger.id), conversationId: internal.id, revisionRequestId: request.id }
+    await store.write([{ collection: 'workItems', id: rootWork.id, value: rootWork }, { collection: 'artifactRevisionRequests', id: request.id, value: { ...request, rootWorkId: rootWork.id } }])
+    const path = join(root, 'workspaces', internal.id, 'artifacts', 'private-version', '报告.md'), text = '# 内部新版\n'
+    await mkdir(join(path, '..'), { recursive: true }); await writeFile(path, text)
+    const revised = await store.transaction(tx => repository.register(tx, { id: 'private-version', conversationId: internal.id, contentHash: hash(text), name: '报告.md', path, size: Buffer.byteLength(text), ownerAgentId: 'alice' }, binding({ conversationId: internal.id, revisionRequestId: request.id, sourceWorkId: rootWork.id })))
+    expect(revised).toMatchObject({ conversationId: internal.id, previousArtifactId: original.id, logicalArtifactId: original.id, contentVersion: 2 })
+    expect((await repository.preview(original.id, original.contentHash)).versions.map(version => version.id)).toEqual([original.id, revised.id])
+    const publicRequest = { ...input, conversationId: source.id, content: '外部继续修改原版', requestId: 'public-revision' }
+    const publicMessage = message('public-request', publicRequest.content)
+    await store.transaction(async tx => { await tx.put({ collection: 'messages', id: publicMessage.id, value: publicMessage }); await repository.commitRevision(tx, publicRequest, publicMessage) })
+    expect((await repository.validateRevision(publicRequest.requestId, 'alice', source.id)).versions.map(version => version.id)).toEqual([original.id])
+    await expect(repository.prepareRevision({ ...input, conversationId: 'other', requestId: 'cross-room' })).rejects.toThrow()
+    await store.write([{ collection: 'conversationCompletionClocks', id: source.id, value: { id: source.id, epoch: 2, ordinal: 0 } }])
+    await expect(repository.prepareRevision({ ...input, requestId: 'after-clear' })).rejects.toThrow('来源已失效')
+  })
+
   it('returns checked bytes without turning preview into adoption or model text', async () => {
     const { store, repository, register } = await fixture(), bytes = Buffer.from('%PDF-1.4\nchecked binary')
     const artifact = await register('pdf-preview', bytes, 'report.pdf')

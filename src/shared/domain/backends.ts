@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [OUTPUT]: 本机Codex/Claude独立类型与协议映射；本机分类不代替精确kind/profile归属核对。
  * [INPUT]: 员工后端选择与受信任本地程序启动配置。
  * [OUTPUT]: 启动项以可选 protocol 区分旧 ACP 与原生 Codex app-server，旧记录缺省仍为 ACP。
@@ -24,7 +25,7 @@ export function backendProtocol(kind: Exclude<ExecutionBackend['kind'], 'mastra-
 }
 /** Browser availability is a backend capability; deprecated allowBrowser is not an authorization switch. */
 export function isBrowserCapableAgent(agent: Pick<DigitalAgent, 'active' | 'executionBackend'> | undefined): boolean {
-  return !!agent?.active && (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
+  return !!agent?.active && (agent.executionBackend?.kind ?? 'mastra-model') !== 'acp-local'
 }
 export interface LaunchProfile { id: string; name: string; executable: string; args: string[]; protocol?: 'acp' | 'codex-app-server' | 'claude-cli'; runtime?: 'node'; codexHome?: string; localConfigId?: string; useExistingLogin: boolean; hostAccessAcknowledged: true; revision: number; executableHash: string; verified?: { name: string; version: string; protocolVersion: number; checkedAt: string } }
 export interface LaunchProfileStatus { profile: LaunchProfile; status: 'available' | 'changed' | 'unavailable'; detail: string; checkedAt: string }

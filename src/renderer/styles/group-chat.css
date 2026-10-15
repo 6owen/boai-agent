@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 消息ScrollArea外层管理标题重叠，viewport保留渐隐/阅读padding；无Tabs的共享空态标题不占第二行。
+ * [OUTPUT]: 聊天标题根据自身可用宽度折行，主聊天与右侧聊天共用；右侧标签切换不再控制主聊天高度。
  * [OUTPUT]: 2026-10-10 单聊隐藏重复姓名、绝对悬停时间/外侧接收图标与左侧员工执行卡；群聊原姓名布局保持。
  * [OUTPUT]: 主视图切换的消息/composer容器保持DOM与布局，hidden彻底隐藏，任务文件主内容避开悬浮标题。
  * [INPUT]: 全局语义 token、单聊/群聊共享消息/审批/引用结构与群聊工作详情。
@@ -7,7 +10,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 .chat-heading { min-width:0 }
-.chat-panel { container-type:inline-size }
+.chat-panel { container:chat / inline-size }
 .chat-panel .chat-header { height:52px;padding:0 24px }
 .chat-header-main { flex:1;min-width:0 }
 .chat-panel .chat-heading { pointer-events:auto }
@@ -19,7 +22,8 @@
 .chat-members-more.soft-button { margin-left:2px;padding:0;color:var(--muted-foreground) }
 .chat-members-more.soft-button:is(:hover,:focus-visible) { color:var(--link);text-decoration:none }
 /* Keep the shared 16px overlap so messages fade beneath the floating heading. */
-.chat-panel .messages { margin-top:36px;padding:40px 28px 16px }
+.messages-scroll-area { flex:1;min-width:0;min-height:0;margin-top:36px;overflow:hidden }
+.chat-panel .messages { margin-top:0;padding:40px 28px 16px }
 .chat-panel .message-row { max-width:var(--content-width);gap:12px;margin-bottom:24px;justify-content:flex-start }
 .chat-panel .message-row .message-avatar { display:block;flex:none;padding-top:2px }
 .chat-panel .message-row .avatar { width:32px;height:32px;border-radius:50%;box-shadow:none }
@@ -184,3 +188,13 @@
 .conversation-secondary-body { display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;padding-top:64px }
 .conversation-chat-body[hidden], .conversation-secondary-body[hidden], .conversation-secondary-body > [hidden] { display:none }
 .conversation-secondary-body > :not([hidden]) { display:flex;flex-direction:column;flex:1;min-height:0;min-width:0 }
+
+@container chat (max-width:600px) {
+  .chat-panel .chat-header:has(> [data-slot=tabs]) { display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:40px 32px;gap:4px 8px;height:88px;padding:4px 16px 8px }
+  .chat-header-main { grid-column:1;grid-row:1 }
+  .chat-header-actions { grid-column:2;grid-row:1 }
+  .chat-header > [data-slot=tabs] { grid-column:1 / -1;grid-row:2;justify-self:start }
+  .chat-members { display:flex;margin-right:0 }
+  .chat-panel:has(.chat-header > [data-slot=tabs]) .messages-scroll-area { margin-top:72px }
+  .conversation-secondary-body { padding-top:100px }
+}

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 同实例同URL动态页面可显式重新观察；旧版本首次写入先拒绝且零派发，重新观察后保留当前审批与回执门禁。
+ * [OUTPUT]: 本机原消息/run只读回执无Work、实际写入门禁与固定网页引用；停止和人工导航不扩权。
  * [INPUT]: 原浏览器 single parser、真实 SQLite Work/动作回执、宿主桥替身及真实 Mastra/本地模型 HTTP 协议。
  * [OUTPUT]: 下载完成/hash核验后进入工作区，重复回执复用真实路径；受管根父层系统别名可用/根下链接拒绝，未知/外改不复制；全局窗口身份与run工具调用审计分离。
  * [OUTPUT]: SQLite 浏览器动作默认接受有效内置员工的旧 false/缺字段；停用/ACP、配置版本和清理代际撤权保持。
@@ -196,12 +198,12 @@ describe('per-run browser session actual exit and no replay',()=>{
     const stored=JSON.stringify(await repository.get(first.actionId));expect(stored).not.toContain('eA==');expect(stored).toContain('sha256')
     await session.drain()
   })
-  it('freezes current page and exact entered text, and refuses a denied interaction before acceptance',async()=>{
+  it('freezes current page and argument hash without persisting text, and refuses a denied interaction before acceptance',async()=>{
     const {repository,lease,store}=await fixture();const approve=vi.fn(async(_command:string)=>false);const execute=vi.fn()
     const bridge=host(async(method)=>method==='inspect'?{...page,scopeKey:lease.scopeKey}:method==='executeSingle'?execute():method==='drain'?{drained:true}:undefined)
     const session=new BrowserSession(lease,bridge,repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve})
     await expect(session.execute('fill @e2 "指定文字"','fill-call')).rejects.toThrow('拒绝')
-    expect(approve).toHaveBeenCalledWith(expect.stringContaining('page1'));expect(approve.mock.calls[0]?.[0]).toContain('指定文字')
+    expect(approve).toHaveBeenCalledWith(expect.stringContaining('page1'));expect(approve.mock.calls[0]?.[0]).not.toContain('指定文字');expect(approve.mock.calls[0]?.[0]).toContain('[input: 4 characters]');expect(approve.mock.calls[0]?.[0]).not.toContain('参数指纹')
     expect(execute).not.toHaveBeenCalled();expect(await store.load('browserActions')).toHaveLength(0)
     await session.drain()
   })
@@ -369,4 +371,81 @@ it.each(['unknown','changed'] as const)('does not promote %s staged download byt
  await expect(session.execute('downloads list','unverified-download')).rejects.toThrow()
  expect(await readdir(destination)).toEqual([]);expect(await readFile(original)).toEqual(bytes)
  await session.drain()
+})
+
+describe('原生只读消息来源',()=>{
+ it.each(['codex-local','claude-local'] as const)('%s 首次读取沿消息/run并且写入必须先认领Work',async kind=>{
+  const f=await fixture(),runId='native-read',sourceId='native-message'
+  await f.store.write([
+   {collection:'agents',id:f.agent.id,value:{...f.agent,executionBackend:{kind,profileId:'profile'}}},
+   {collection:'messages',id:sourceId,value:{id:sourceId,senderType:'user',senderId:'user',conversationId:'chat',content:'看看当前网页',status:'completed'}},
+   {collection:'runs',id:runId,value:{id:runId,triggerMessageId:sourceId,agentId:f.agent.id,conversationId:'chat',status:'running'}},
+  ])
+  const lease={...f.lease,workId:undefined,runId,sourceMessageId:sourceId}
+  await f.repository.registerTask(lease)
+  const action={...f.envelope('snapshot'),lease,actionId:'read'}
+  await f.repository.prepare(action,false)
+  await f.repository.start({actionId:'read',runId,generation:lease.generation})
+  await f.repository.finish(lease,{actionId:'read',generation:lease.generation,status:'completed',source:page})
+  expect((await f.store.load<{runId:string}>('workExecutions')).some(row=>row.runId===runId)).toBe(false)
+  await expect(f.repository.prepare({...action,actionId:'write'},true)).rejects.toThrow('认领真实工作')
+  await f.store.write([{collection:'runs',id:runId,value:{id:runId,triggerMessageId:sourceId,agentId:f.agent.id,conversationId:'chat',status:'cancelled'}}])
+  await expect(f.repository.prepare({...action,actionId:'later'},false)).rejects.toThrow('已结束')
+ })
+ it('固定网页引用的首次读取不重复批准，人工导航后拒绝指向其他页面',async()=>{
+  const f=await fixture(),source={...page,instanceId:'original-window'},approve=vi.fn(async()=>true)
+  const reference={instanceId:source.instanceId,pageVersion:source.pageVersion,url:source.url,title:source.title,obtainedAt:source.obtainedAt}
+  const calls:string[]=[]
+  const bridge=host(async(method,input)=>{
+    calls.push(method)
+    if(method==='reference')return reference
+    if(method==='inspect')return source
+    if(method==='executeSingle'){
+      const action=input as BrowserActionEnvelope
+      await f.repository.start({actionId:action.actionId,runId:action.lease.runId,workId:action.lease.workId,generation:action.lease.generation})
+      return {actionId:action.actionId,generation:action.lease.generation,status:'completed',source,result:{output:'实际正文',appendReleaseHint:false}}
+    }
+    if(method==='drain')return {drained:true}
+  })
+  const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'看看这个网页',reference,validate:async()=>{},approve})
+  await session.execute('snapshot','first')
+  expect(calls[0]).toBe('reference');expect(approve).not.toHaveBeenCalled()
+  source.url='https://other.test/'
+  await expect(session.execute('click @e1','second')).rejects.toThrow('重新引用')
+  expect(calls.filter(c=>c==='executeSingle')).toHaveLength(1)
+  await session.drain()
+ })
+ it('页面动态更新后先拒绝旧版本写入，再允许同页面新快照恢复',async()=>{
+  const f=await fixture(),source={...page,instanceId:'original-window',pageVersion:'page2'}
+  const reference={instanceId:source.instanceId,pageVersion:'page1',url:source.url,title:source.title,obtainedAt:source.obtainedAt}
+  const executed:string[]=[],approve=vi.fn(async()=>true)
+  const bridge=host(async(method,input)=>{
+    if(method==='reference'){
+      if((input as {pageVersion?:string}).pageVersion==='page1')throw new Error('引用后网页已变化，请重新引用当前网页')
+      return source
+    }
+    if(method==='inspect')return source
+    if(method==='executeSingle'){
+      const action=input as BrowserActionEnvelope;executed.push(action.command)
+      await f.repository.start({actionId:action.actionId,runId:action.lease.runId,workId:action.lease.workId,generation:action.lease.generation})
+      return {actionId:action.actionId,generation:action.lease.generation,status:'completed',source,result:{output:'当前页面',appendReleaseHint:false}}
+    }
+    if(method==='drain')return {drained:true}
+  })
+  const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'操作当前页面',reference,validate:async()=>{},approve})
+  await expect(session.execute('drag 10 20 30 40','stale-write')).rejects.toThrow()
+  expect(executed).toEqual([]);expect(approve).not.toHaveBeenCalled()
+  await expect(session.execute('snapshot','observe-changed-page')).resolves.toMatchObject({source:{pageVersion:'page2'}})
+  await expect(session.execute('drag 10 20 30 40','new-write')).resolves.toMatchObject({status:'completed'})
+  expect(executed).toEqual(['"snapshot"','"drag" "10" "20" "30" "40"'])
+  expect(approve).toHaveBeenCalledWith(expect.stringContaining('page2'))
+  await session.drain()
+ })
+ it('初始引用已导航到其他URL时，新快照仍不能扩大授权',async()=>{
+  const f=await fixture(),reference={instanceId:'original-window',pageVersion:'page1',url:page.url,title:page.title,obtainedAt:page.obtainedAt},acquire=vi.fn()
+  const bridge=host(async(method)=>{if(method==='reference')return {...reference,url:'https://other.test/',pageVersion:'page2'};if(method==='acquire')acquire();if(method==='drain')return {drained:true}})
+  const session=new BrowserSession(f.lease,bridge,f.repository,{signal:new AbortController().signal,originalRequest:'操作当前页面',reference,validate:async()=>{},approve:async()=>true})
+  await expect(session.execute('snapshot','read-other-page')).rejects.toThrow('重新引用')
+  expect(acquire).not.toHaveBeenCalled();await session.drain()
+ })
 })

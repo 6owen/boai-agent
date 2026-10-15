@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 固定渠道文件可在直属内部讨论修订，源hash/权限/清理代际逐次核验；新版本归内部工作，版本链保持且不自动外发。
  * [OUTPUT]: 2026-10-14 归一成果按已核对旧房间关系读取/备份恢复/hash清理，不搬动或错删原件。
  * [OUTPUT]: 2026-10-14 本人渠道消息可修订主私聊当前员工成果；核对真实渠道/本人关联而非强制渠道房间。
  * [OUTPUT]: 外部渠道原生修订核对同平台/聊天原成果与当前机器人/发送者授权，单独记录请求者；本机采用/原修订资格保持。
@@ -12,6 +14,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { resolveClaudeRuntime } from '../backends/runtime-config'
+import { assertChannelSourceAccess } from '../channels/channel-workspace'
 import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, open, realpath, unlink } from 'node:fs/promises'
@@ -226,7 +229,8 @@ export class ArtifactRepository {
       if (revisionRequest.channelSource) await this.authorizeChannelRevision(tx, revisionRequest, (await tx.get<Message>('messages', revisionRequest.messageId))!)
       if (revisionRequest.conversationId !== conversation.id || revisionRequest.targetAgentId !== publication.ownerAgentId || !work || work.parentWorkId || work.origin || work.id !== revisionRequest.rootWorkId || work.revisionRequestId !== revisionRequest.id || work.sourceMessageId !== revisionRequest.messageId) throw new Error('只有明确修订请求的新根工作负责人可以发布新版')
       previous = await this.version(tx, revisionRequest.artifactId)
-      if (previous.conversationId !== conversation.id || previous.logicalArtifactId !== revisionRequest.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
+      await assertChannelSourceAccess(tx, conversation.id, previous.conversationId)
+      if (previous.logicalArtifactId !== revisionRequest.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
       await this.target(tx, conversation.id, publication.ownerAgentId)
       await this.checked(tx, previous, revisionRequest.contentHash, revisionRequest.targetAgentId)
     }
@@ -242,7 +246,7 @@ export class ArtifactRepository {
       return clone(existing)
     }
     const logicalArtifactId = previous?.logicalArtifactId ?? artifactId
-    const family = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === conversation.id && value.logicalArtifactId === logicalArtifactId)
+    const family = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.logicalArtifactId === logicalArtifactId)
     const artifact: ArtifactVersion = { id: artifactId, conversationId: conversation.id, name: publication.name, path: actual.path, size: actual.size, ownerAgentId: publication.ownerAgentId, runId: publication.runId, sourcePath: publication.sourcePath, publishedAt: publication.publishedAt ?? new Date().toISOString(), browserSources: publication.browserSources ? clone(publication.browserSources.slice(0,20)) : undefined, materialSources: publication.materialSources ? clone(publication.materialSources) : undefined, logicalArtifactId, contentVersion: Math.max(0, ...family.map(value => value.contentVersion)) + 1, contentHash: actual.contentHash, contentStatus: 'ready', managedRelativePath: actual.managedRelativePath, registrationSource: 'publication', ...(binding.sourceWorkId ? { sourceWorkId: binding.sourceWorkId } : {}), ...(binding.sourceMessageId ? { sourceMessageId: binding.sourceMessageId } : {}), ...(previous ? { previousArtifactId: previous.id, revisionRequestId: revisionRequest!.id } : {}) }
     await this.sourceRefs(tx, artifact, conversation.id, publication.ownerAgentId)
     const filePreview = previewFile(artifact.name, actual.bytes)
@@ -335,7 +339,7 @@ export class ArtifactRepository {
       if (receipt && (receipt.cleared || receipt.fingerprint !== normalized.fingerprint)) throw new Error(receipt.cleared ? '原修订请求已清理，旧请求不能重新执行' : '修订 requestId 已用于不同内容')
       await this.target(tx, input.conversationId, input.targetAgentId)
       const artifact = await this.version(tx, input.artifactId)
-      if (artifact.conversationId !== input.conversationId) throw new Error('修订成果不属于当前聊天')
+      await assertChannelSourceAccess(tx, input.conversationId, artifact.conversationId)
       await this.checked(tx, artifact, input.contentHash, input.targetAgentId)
       return { input: normalized.input, artifact: clone(artifact), ...(receipt ? { request: clone(await this.revision(tx, input.requestId)) } : {}) }
     })
@@ -369,7 +373,7 @@ export class ArtifactRepository {
     }
     await this.target(tx, input.conversationId, input.targetAgentId)
     const artifact = await this.version(tx, input.artifactId)
-    if (artifact.conversationId !== input.conversationId) throw new Error('修订成果不属于当前聊天')
+    await assertChannelSourceAccess(tx, input.conversationId, artifact.conversationId)
     await this.checked(tx, artifact, input.contentHash, input.targetAgentId)
     const committed = await tx.get<Message>('messages', identifier(message.id))
     const senderMatches = channelSource ? !!committed && committed.senderId === message.senderId && digest(JSON.stringify(committed.channel)) === digest(JSON.stringify(channelSource)) : committed?.senderId === 'user' && message.senderId === 'user'
@@ -386,8 +390,13 @@ export class ArtifactRepository {
       if (request.channelSource) await this.authorizeChannelRevision(tx, { ...request, targetAgentId: agentId }, (await tx.get<Message>('messages', request.messageId))!)
       await this.target(tx, conversationId, agentId)
       const artifact = await this.version(tx, request.artifactId)
-      if (artifact.conversationId !== conversationId || artifact.logicalArtifactId !== request.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
-      return { request: clone(request), ...await this.previewState(tx, await this.checked(tx, artifact, request.contentHash, agentId)) }
+      await assertChannelSourceAccess(tx, conversationId, artifact.conversationId)
+      if (artifact.logicalArtifactId !== request.logicalArtifactId) throw new Error('修订原成果身份与明确请求不一致')
+      const preview = await this.previewState(tx, await this.checked(tx, artifact, request.contentHash, agentId))
+      const room = await this.conversation(tx, conversationId)
+      // UI may inspect the whole family; an external execution cannot read private revisions.
+      preview.versions = preview.versions.filter(version => version.conversationId === conversationId || version.conversationId === room.channelDiscussion?.conversationId)
+      return { request: clone(request), ...preview }
     })
   }
 
@@ -489,7 +498,7 @@ export class ArtifactRepository {
     return { logicalArtifactId, revision: current?.adoptionRevision ?? 0, current: clone(current), events: (await tx.list<ArtifactAdoptionEvent>('artifactAdoptionEvents')).filter(value => value.logicalArtifactId === logicalArtifactId).map(clone) }
   }
   private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'>): Promise<ArtifactPreview> {
-    const versions = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.conversationId === preview.artifact.conversationId && value.logicalArtifactId === preview.artifact.logicalArtifactId).sort((a, b) => a.contentVersion - b.contentVersion).map(clone)
+    const versions = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.logicalArtifactId === preview.artifact.logicalArtifactId).sort((a, b) => a.contentVersion - b.contentVersion).map(clone)
     return { ...preview, versions, adoption: await this.adoptionInTransaction(tx, preview.artifact.logicalArtifactId), acceptance: await this.acceptanceInTransaction(tx, preview.artifact.id, true) }
   }
   async validateCurrentArtifact(tx: RecordTransaction, artifactId: string, contentHash: string, agentId?: string, readText = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {

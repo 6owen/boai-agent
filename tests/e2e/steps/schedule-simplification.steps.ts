@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新表单明确员工归属，独立草稿模型UI退役；旧草稿后端记录保留，不作为现行创建入口。
  * [INPUT]: 简化任务中文场景、生产 Electron 与隔离草稿模型端点。
  * [OUTPUT]: 七项/上下文选择、总览分类状态、主题窄窗截图、Agent 迟到/缺失/失败及提交前零计划、重启核对同一计划、较早历史/删除后定位断言。
  * [POS]: 定时任务体验简化 BDD 业务步骤。
@@ -19,8 +20,7 @@ async function choose(page: Page, label: string, option: string) {
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 async function chooseEmployee(page: Page) {
-  await editor(page).getByRole('button', { name: '运行于', exact: true }).click()
-  await choose(page, '执行员工', '研究员'); await page.keyboard.press('Escape')
+  await choose(page, '自动化归属', '员工 · 研究员')
 }
 async function assist(page: Page) {
   await page.getByRole('button', { name: '更多创建方式', exact: true }).click()
@@ -30,7 +30,7 @@ async function assist(page: Page) {
 Given('简化任务场景具备旧计划和草稿模型', async ({ runtime, schedule }) => {
   schedule.fixture = await scheduleAssistant(runtime)
   await runtime.page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await expect(runtime.page.getByText('安排重复任务，查看执行结果', { exact: true })).toBeVisible()
+  await expect(runtime.page.getByText('汇总各员工和群聊的自动化计划与执行结果', { exact: true })).toBeVisible()
 })
 When('我在七项表单选择员工并创建工作日任务', async ({ runtime, schedule }) => {
   const page = runtime.page
@@ -198,4 +198,16 @@ Then('旧计划删除后仍能定位该次结果', async ({ runtime, schedule })
   await expect(page.locator('[data-occurrence-id]:visible')).toContainText('过往记录 0')
   expect(await page.locator('[data-occurrence-id]:visible').getAttribute('data-occurrence-id')).toBe(`${schedule.fixture!.pausedId}-0000`)
   expect(runtime.errors).toEqual([])
+})
+
+Then('创建入口使用员工归属且不再选择独立草稿模型', async ({ runtime, schedule }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: '更多创建方式', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: '让 Agent 帮我创建', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '创建', exact: true }).click()
+  await chooseEmployee(page)
+  await expect(editor(page).getByRole('combobox', { name: '自动化归属', exact: true })).toContainText('研究员')
+  expect(schedule.fixture!.calls()).toBe(0)
+  expect((await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions).toHaveLength(1)
 })

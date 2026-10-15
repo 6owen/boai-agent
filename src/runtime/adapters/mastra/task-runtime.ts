@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Hermes 文件编辑语义接线：Unicode 分页续读；API 员工精确 edit_file、完整阅读与过期写入保护，原生自主工具保持。
+ * [OUTPUT]: report_work与原生入口一致回传必须原样出现在最终答复中的证据；仅提醒，不自动发布或绕过原门禁。
  * [OUTPUT]: API委派在创建前拒绝子工作依赖正在委派的父工作；依赖链须先取真实前置回执，防止猜父ID造成多份审稿；本机工具合同保持。
  * [OUTPUT]: 仅API上下文读写文件回执提供实际文本/段落Unicode非空白计数，截断读取明确标记；模型以区间中部为目标、整体修订并按实测核对原限字再发布，权限/原件/预算保持。
  * [OUTPUT]: 文件任务保留获准原文件名/逻辑路径，仅未指定时默认本run目录；材料写入门禁/工具原参数/发布与实际退出保持，不静默迁移拒绝的目标。
@@ -28,6 +30,7 @@ import { BoundSkillSource } from './bound-skill-source'
 import { abortable, executeCommand } from './host-command'
 import { createBrowserTool } from './browser-tool'
 import { createBoboOrganizationTools } from './bobo-tools'
+import { FileReadBaselines, fileContentHash, readFilePage, replaceFileText, MAX_FILE_PAGE_CHARACTERS } from '../../modules/workspaces/file-editing'
 const MAX_TOOL_OUTPUT = 48_000
 const MAX_PARAGRAPH_COUNTS = 100
 function fileTextMetrics(content: string) {
@@ -44,6 +47,11 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
   const scope = plan.workspace
   const signal = ctx.signal
   const apiContext = !!ctx.connection && !ctx.runtimeProfile && (ctx.agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
+  const fileBaselines = new FileReadBaselines()
+  const currentText = async (root: string, relative: string) => {
+    try { return await boundedRead(await workspaceTarget(root, relative), { strictUtf8: true }) }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error }
+  }
   const filesystem = new LocalFilesystem({ basePath: scope.root, contained: true })
   const skillRoots = plan.skills.map(version => path.resolve(version.resource.path))
   const knowledge = plan.knowledge.map(version => version.resource)
@@ -96,34 +104,64 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
         }),
       } : {}),
       read_file: createTool({
-        id: 'read_file', description: 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible.' + (apiContext ? ' Returns measured non-whitespace Unicode character counts for the returned text and each blank-line-separated paragraph in order (including punctuation, digits and Markdown syntax). truncated:true means the unread tail was NOT measured.' : ''),
-        inputSchema: z.object({ path: z.string() }),
-        execute: ({ path: file }) => fileOperation(async () => {
+        id: 'read_file', description: 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible. offset is zero-based Unicode characters; limit is at most 48000. Follow nextOffset until null to read the remainder. If contentHash changes between pages, restart at offset 0.' + (apiContext ? ' Returns measured non-whitespace Unicode character counts for this page only. Before whole-file write_file, read every page of the unchanged file; for a local change prefer edit_file.' : ''),
+        inputSchema: z.object({ path: z.string(), offset: z.number().int().min(0).optional(), limit: z.number().int().min(1).max(MAX_FILE_PAGE_CHARACTERS).optional() }),
+        execute: ({ path: file, offset, limit }) => fileOperation(async () => {
           check(signal)
           const location = logicalPath(scope, file)
           const target = path.resolve(location.root, location.relative)
           await assertTaskPathAccess(ctx, target, 'read')
           const verified = await ctx.readTaskFile?.(target)
-          const original = verified?.content ?? await boundedRead(await workspaceTarget(location.root, location.relative))
-          const content = original.slice(0, MAX_TOOL_OUTPUT)
+          const original = verified?.content ?? await boundedRead(await workspaceTarget(location.root, location.relative), { strictUtf8: true })
+          const page = readFilePage(original, offset, limit)
           check(signal)
-          return { path: file, content, ...(apiContext ? { truncated: original.length > MAX_TOOL_OUTPUT, textMetrics: fileTextMetrics(content) } : {}) }
+          if (apiContext) fileBaselines.read(target, page)
+          return { path: file, ...page, ...(apiContext ? { textMetrics: fileTextMetrics(page.content) } : {}) }
         }),
       }),
       write_file: createTool({
-        id: 'write_file', description: `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. ${apiContext ? 'Returns measured textMetrics for these exact written bytes, including counts per blank-line-separated paragraph. Check explicit user character limits against these counts and revise the private draft before publish_artifact if needed; never estimate or invent a count.' : 'Use publish_artifact to share a finished result.'} No shared or system-file writes.`,
+        id: 'write_file', description: `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. ${apiContext ? 'An existing file must have been fully read in this execution (all read_file pages) or written by this execution, and must be unchanged. Prefer edit_file for a local change. Returns measured textMetrics for these exact written bytes; check explicit user character limits before publish_artifact, never estimate a count.' : 'Use publish_artifact to share a finished result.'} No shared or system-file writes.`,
         inputSchema: z.object({ path: z.string(), content: z.string().max(MAX_FILE_BYTES) }),
         execute: ({ path: file, content }) => fileOperation(async () => {
           check(signal)
           const location = logicalPath(scope, file, true)
           if (Buffer.byteLength(content) > MAX_FILE_BYTES) throw new Error('File exceeds 1 MiB')
-          await assertTaskPathAccess(ctx, path.resolve(location.root, location.relative), 'write')
+          const target = path.resolve(location.root, location.relative)
+          await assertTaskPathAccess(ctx, target, 'write')
+          let expectedHash: string | null | undefined
+          if (apiContext) {
+            const current = await currentText(location.root, location.relative)
+            if (current !== null) fileBaselines.assertCurrent(target, current, true)
+            expectedHash = current === null ? null : fileContentHash(current)
+          }
           await ctx.beforeEffect?.(); check(signal)
-          await writeWorkspaceFile(location.root, location.relative, content)
+          await writeWorkspaceFile(location.root, location.relative, content, expectedHash, signal)
+          if (apiContext) fileBaselines.wrote(target, content)
           await ctx.afterEffect?.()
           return { path: file, bytes: Buffer.byteLength(content), published: false, ...(apiContext ? { textMetrics: fileTextMetrics(content) } : {}) }
         }),
       }),
+      ...(apiContext ? { edit_file: createTool({
+        id: 'edit_file', description: 'Precisely replace oldText with newText in a private UTF-8 file already read in this execution. Partial read is enough; unseen surrounding content is preserved. Copy exact whitespace/newlines. oldText must match exactly once, unless replaceAll:true explicitly requests every match. Changed files are refused: re-read before retrying. Uses the same self:/ path permissions as write_file; publish_artifact is still required to deliver the result.',
+        inputSchema: z.object({ path: z.string(), oldText: z.string().min(1).max(MAX_FILE_BYTES), newText: z.string().max(MAX_FILE_BYTES), replaceAll: z.boolean().optional() }).strict(),
+        execute: ({ path: file, oldText, newText, replaceAll }) => fileOperation(async () => {
+          check(signal)
+          const location = logicalPath(scope, file, true), target = path.resolve(location.root, location.relative)
+          await assertTaskPathAccess(ctx, target, 'read')
+          await assertTaskPathAccess(ctx, target, 'write')
+          const current = await currentText(location.root, location.relative)
+          if (current === null) throw new Error('File does not exist; use write_file to create a new file')
+          fileBaselines.assertCurrent(target, current, false)
+          const complete = fileBaselines.hasFullRead(target)
+          const result = replaceFileText(current, oldText, newText, replaceAll)
+          if (Buffer.byteLength(result.content) > MAX_FILE_BYTES) throw new Error('File exceeds 1 MiB')
+          await ctx.beforeEffect?.(); check(signal)
+          await writeWorkspaceFile(location.root, location.relative, result.content, fileContentHash(current), signal)
+          fileBaselines.wrote(target, result.content, complete)
+          await ctx.afterEffect?.()
+          return { path: file, bytes: Buffer.byteLength(result.content), replacements: result.replacements, contentHash: fileContentHash(result.content), published: false, textMetrics: fileTextMetrics(result.content) }
+        }),
+      }) } : {}),
       list_files: createTool({
         id: 'list_files', description: 'List self:/, self:/work/…, self:/runs/…, or shared:/…. Self root only exposes work and runs.',
         inputSchema: z.object({ path: z.string().default('self:/') }),
@@ -181,7 +219,8 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           execute: async outcome => {
             check(signal); const valid = outcomeSchema().parse(outcome)
             if ('userQuestion' in valid && valid.userQuestion && valid.disposition !== 'waiting') throw new Error('用户问题仅适用于 waiting，不能作为任务说明或已交付结果')
-            await ctx.onWorkOutcome!(valid); return { recorded: true, publicationPending: true }
+            await ctx.onWorkOutcome!(valid)
+            return { recorded: true, publicationPending: true, finalReplyMustInclude: ('evidence' in valid ? valid.evidence ?? [] : []).filter(e => e.kind === 'answer').map(e => e.reference) }
           },
         }),
       } : {}),

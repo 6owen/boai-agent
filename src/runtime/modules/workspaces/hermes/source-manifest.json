@@ -1,0 +1,47 @@
+{
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "commit": "0f447876cab9df48b225172cf167b3254b06f1a5",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2025 Nous Research",
+  "strategy": "Selected behavior ported from Python to the existing TypeScript tools; no Hermes runtime dependency.",
+  "sources": [
+    {
+      "path": "tools/file_tools_write_guards.py",
+      "sha256": "315a33d6735c4d1f0b328bf57c5a8021b9592fa4aa00677ea69fbc6a69b71598",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/0f447876cab9df48b225172cf167b3254b06f1a5/tools/file_tools_write_guards.py"
+    },
+    {
+      "path": "tools/file_state.py",
+      "sha256": "b8c71f277bab2a93b6fed0b237fecace4345b417fdb3e050247ce66b13abd86a",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/0f447876cab9df48b225172cf167b3254b06f1a5/tools/file_state.py"
+    },
+    {
+      "path": "tools/file_tools_read_tracking.py",
+      "sha256": "fb839642d9e8de715ef7beb85a9d971e07fc16ae4a5b07fd05cc3da9238644fb",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/0f447876cab9df48b225172cf167b3254b06f1a5/tools/file_tools_read_tracking.py"
+    },
+    {
+      "path": "tools/file_operations.py",
+      "sha256": "d06baa1f47591f730e5c8d40a2f71d898c1e3eff4cb0ce14c050102a4b3131f1",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/0f447876cab9df48b225172cf167b3254b06f1a5/tools/file_operations.py"
+    },
+    {
+      "path": "tools/fuzzy_match.py",
+      "sha256": "ea10db677c24e7f056471488c0e5194599a526b59e6d62ab76e195be6bbc4765",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/0f447876cab9df48b225172cf167b3254b06f1a5/tools/fuzzy_match.py"
+    }
+  ],
+  "destinations": [
+    "../file-editing.ts",
+    "../file-access.ts",
+    "../../../adapters/mastra/task-runtime.ts"
+  ],
+  "adaptations": [
+    "Full-read baseline across contiguous pages of the same content hash before whole-file overwrites.",
+    "Current-version checks for precise edits and writes; process-local path serialization.",
+    "Exact non-overlapping text replacement only; fuzzy fallbacks intentionally excluded.",
+    "BOAI uses zero-based Unicode character pagination, 48000 characters per page, 1 MiB existing text limit.",
+    "BOAI retains source permissions, private logical paths, explicit publication and original native CLI behavior.",
+    "Strict UTF-8 decoding preserves BOM and CRLF and refuses binary/invalid text."
+  ]
+}

@@ -1,15 +1,20 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
+ * [OUTPUT]: Craft Scenic 原生选图/完整画面/跨页交互/重启与移除恢复验收；仅替换一次文件选择。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
+import { writeFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { nextMaterialDialog } from '../support/materials'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 
 type Scenario = {
+  scenicAsset?: string
   prepareAppearance?: Awaited<ReturnType<typeof prepareAppearance>>
   resizeAndZoom?: Awaited<ReturnType<typeof resizeAndZoom>>
   customizeAppearance?: Awaited<ReturnType<typeof customizeAppearance>>
@@ -172,4 +177,96 @@ Then('字体和自定义配色立即生效', async ({ scenario }) => {
 
 Then('重启恢复外观且原生菜单缩放与重置保持同步', async ({ scenario }) => {
   await verifyAppearanceRestart(scenario.customizeAppearance!)
+})
+
+When('选择本地背景图片启用玻璃换肤', async ({ runtime, scenario }) => {
+  await scenario.prepareAppearance!.open()
+  const page = runtime.page
+  await page.getByRole('button', { name: '浅色', exact: true }).click()
+  await page.getByLabel('背景色', { exact: true }).fill('#f8fafc')
+  // Deterministic scenery fixture: exercise real PNG import/decoder, no external image dependency.
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 1600; canvas.height = 1000
+    const ctx = canvas.getContext('2d')!
+    const sky = ctx.createLinearGradient(0, 0, 1400, 1000)
+    sky.addColorStop(0, '#9ac6df'); sky.addColorStop(0.45, '#e6c3a9'); sky.addColorStop(1, '#407e94')
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1600, 1000)
+    ctx.fillStyle = '#fff1bd'; ctx.beginPath(); ctx.arc(1180, 230, 110, 0, Math.PI * 2); ctx.fill()
+    for (const [y, color] of [[500, '#507f8c'], [690, '#315d6a'], [870, '#183e4c']] as const) {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, y)
+      ctx.bezierCurveTo(400, y - 380, 700, y + 200, 1600, y - 150)
+      ctx.lineTo(1600, 1000); ctx.lineTo(0, 1000); ctx.fill()
+    }
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  const file = join(runtime.root, 'scenery.png')
+  await writeFile(file, Buffer.from(png, 'base64'))
+  await runtime.reviewNativeCheckpoint('图片换肤前的浅色设置')
+  await nextMaterialDialog(runtime, { path: file })
+  await page.getByRole('button', { name: '选择图片', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-scenic', 'true')
+  await expect(page.getByAltText('当前背景图片')).toBeVisible()
+  expect(await page.getByAltText('当前背景图片').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth === 1600)).toBe(true)
+  const snapshot = await page.evaluate(() => window.boai.request('getAppearance', undefined))
+  scenario.scenicAsset = snapshot.preferences.background.assetId!
+  expect(snapshot).toMatchObject({ resolvedMode: 'dark', preferences: { mode: 'light' } })
+  await rm(file)
+})
+Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, scenario }) => {
+  const page = runtime.page
+  const css = await page.evaluate(() => {
+    const root = document.documentElement
+    const image = getComputedStyle(root, '::before'), overlay = getComputedStyle(root, '::after')
+    return { image: image.backgroundImage, size: image.backgroundSize, opacity: image.opacity,
+      pointerEvents: image.pointerEvents, position: image.position, overlay: overlay.backgroundImage,
+      blur: getComputedStyle(document.querySelector('.content-frame')!).backdropFilter }
+  })
+  expect(css).toMatchObject({ size: 'cover', opacity: '1', pointerEvents: 'none', position: 'fixed', blur: 'blur(8px)' })
+  expect(css.image).toContain(scenario.scenicAsset)
+  expect(css.overlay).toContain('0.4')
+  await expect(page.getByRole('button', { name: '浅色', exact: true })).toBeDisabled()
+  await page.getByRole('combobox', { name: '深色配色', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'Nord', exact: true })).toBeVisible()
+  await expect(page.locator('[data-slot=select-content]')).toHaveCSS('opacity', '1')
+  await expect(page.locator('[data-slot=select-content]')).toHaveCSS('background-color', 'rgb(33, 33, 33)')
+  await runtime.reviewNativeCheckpoint('图片玻璃设置与可读菜单')
+  await page.keyboard.press('Escape')
+  // Cancel and invalid input preserve the active image.
+  await runtime.app.evaluate(({ dialog }) => {
+    const original = dialog.showOpenDialog
+    dialog.showOpenDialog = (async () => { dialog.showOpenDialog = original; return { canceled: true, filePaths: [] } }) as typeof dialog.showOpenDialog
+  })
+  await page.getByRole('button', { name: '更换图片', exact: true }).click()
+  await expect(page.getByRole('button', { name: '更换图片', exact: true })).toBeEnabled()
+  const invalid = join(runtime.root, 'broken.png'); await writeFile(invalid, 'broken image')
+  await nextMaterialDialog(runtime, { path: invalid })
+  await page.getByRole('button', { name: '更换图片', exact: true }).click()
+  await expect(page.getByText('请选择 PNG、JPEG 或 WebP 图片。', { exact: false })).toBeVisible()
+  expect((await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.background.assetId).toBe(scenario.scenicAsset)
+  await page.locator('.navigation-rail').getByRole('button', { name: '会话', exact: true }).click()
+  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+  await expect(page.locator('.chat-composer')).toBeVisible()
+  await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('背景换肤验收：输入框仍可编辑。')
+  await expect(page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('背景换肤验收：输入框仍可编辑。')
+  await runtime.reviewNativeCheckpoint('图片玻璃聊天与全局导航')
+})
+Then('重启仍显示托管背景且移除恢复原主题', async ({ runtime, scenario }) => {
+  await runtime.close()
+  await scenario.prepareAppearance!.launch()
+  await scenario.prepareAppearance!.open()
+  const page = runtime.page
+  await expect(page.locator('html')).toHaveAttribute('data-scenic', 'true')
+  await expect(page.getByAltText('当前背景图片')).toBeVisible()
+  expect((await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.background.assetId).toBe(scenario.scenicAsset)
+  expect(await page.getByAltText('当前背景图片').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth === 1600)).toBe(true)
+  await runtime.reviewNativeCheckpoint('重启后原图删除仍保留换肤')
+  await page.getByRole('button', { name: '移除图片', exact: true }).click()
+  await expect(page.locator('html')).not.toHaveAttribute('data-scenic')
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await expect(page.getByLabel('背景色', { exact: true })).toHaveValue('#f8fafc')
+  await expect(page.locator('.content-frame')).toHaveCSS('backdrop-filter', 'none')
+  await expect(page.getByAltText('当前背景图片')).toHaveCount(0)
+  await runtime.reviewNativeCheckpoint('移除图片恢复原浅色及自定义颜色')
+  expect(runtime.errors).toEqual([])
 })

@@ -1,0 +1,85 @@
+/*
+ * [INPUT]: Craft Agents Scenic CSS, pinned in source-manifest.json; BOAI shell selectors.
+ * [OUTPUT]: Full-window image, 40% overlay, 8px glass and gradient frame border.
+ * [POS]: Apache-2.0 adapted source. Copyright 2026 Craft Docs Ltd.
+ * [PROTOCOL]: Changes require Header, .folder.md and source-manifest updates.
+ * Chromium build requires the standard backdrop-filter declaration last.
+ * Modified for BOAI: shell selectors, semantic surface aliases; no upstream z-panel stacking.
+ */
+/* Scenic mode: Background image layer */
+html[data-scenic]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: var(--background-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Scenic mode dark: Dark overlay gradient to fade the background image
+   Stronger on left (sidebar area) for readability, lighter on right to show more image */
+html.dark[data-scenic]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-scenic] .content-frame {
+  /* Shell cards (list + content) are paper on solid themes and glass in scenic mode */
+  background: var(--scenic-panel);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Scenic mode: Gradient border effect for glass panels
+   Uses a pseudo-element with a white linear gradient (40% at top, 5% at bottom).
+   The mask-composite technique creates a border-only effect from a filled gradient. */
+html[data-scenic] .content-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.1)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: soft-light;
+}
+
+/* BOAI adapter: only the outer shell blurs the image; nested panes share that glass. */
+html[data-scenic] {
+  --scenic-panel: oklch(0.2 0.005 270 / 0.55);
+}
+html[data-scenic] .app-shell { background: transparent; }
+html[data-scenic] .soft-card {
+  /* Craft's 72% floor keeps content cards legible over the image. */
+  background-color: color-mix(in srgb, var(--popover) 72%, transparent);
+}
+html[data-scenic] .chat-composer {
+  background: rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+/* Portalled menus/dialogs keep BOAI's opaque --popover surface. */
+.appearance-background-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 5;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+}

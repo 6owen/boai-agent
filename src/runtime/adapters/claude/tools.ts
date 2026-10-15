@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式宿主图片沿MCP原生image部件返回，普通JSON文本与原2MiB消息边界保持。
  * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
  * [OUTPUT]: 原生会话产品工具无固定48次限制；普通工具错误回给Agent处理，传输/身份故障保留。
  * [INPUT]: 本阶段冻结的宿主工具、Claude已公开的工具调用身份与阶段取消信号。
@@ -14,6 +15,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from '@modelcontextprotocol/sdk/types.js'
+import { nativeToolContent } from '../native-tool-result'
 import type { NativeTool } from '../native-task'
 
 const MAX_CALLS = 48
@@ -96,10 +98,10 @@ export async function createClaudeToolBridge(input: {
           } finally { call.exited = true }
         })
         const result = await call.result
-        const text = JSON.stringify(result) ?? 'null'
-        if (Buffer.byteLength(text) > MAX_BODY) throw new Error('Claude宿主工具结果超过2MiB')
+        const content = nativeToolContent(tool, result)
+        if (Buffer.byteLength(JSON.stringify(content)) > MAX_BODY) throw new Error('Claude宿主工具结果超过2MiB')
         call.responsePrepared = true
-        return { content: [{ type: 'text' as const, text }] }
+        return { content }
       } catch (error) {
         failedRequests++
         if (!input.native) fail(error)

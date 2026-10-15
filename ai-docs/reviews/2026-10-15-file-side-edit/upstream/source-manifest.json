@@ -1,0 +1,7 @@
+{
+  "url": "https://www.beautifului.dev/r/selection-actions.json",
+  "retrievedAt": "2026-10-15",
+  "sha256": "d20877569884ef34f3327b5515962576d8590cff3f8b871ad6803a81db1e4789",
+  "use": "Adapt selection actions interaction; use BOAI Base UI and Iconify; remove demo timers/content and theme dependencies.",
+  "cli": "shadcn view/docs failed with other side closed; original registry fetched over HTTPS with curl."
+}

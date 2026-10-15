@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-15",
+  "scope": "Craft Scenic source implementation and macOS Electron built-source verification",
+  "checks": [
+    {
+      "command": "pnpm exec vitest run tests/appearance.test.ts",
+      "result": "9 passed"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm lint:ui",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm build",
+      "result": "passed; existing chunk >500 kB warning"
+    },
+    {
+      "command": "pnpm test:bddgen",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm exec playwright test --grep appearance scenarios",
+      "result": "original appearance passed attempt-1; Scenic passed attempt-3; failed attempts retained"
+    }
+  ],
+  "files": {
+    "src/main/appearance.ts": "8d8bb36d2ace56e185ad638397062e1944810b3b90b20289274734042d840788",
+    "src/shared/appearance/index.ts": "5b7e29e204030e2048ac7a91afbc202afb128c52b9538f85e7adfe8ebfb7fe38",
+    "src/renderer/stores/appearance.ts": "f3f128112e4f7656548d9f72681e922cf669158d0604f6d623a6549ea9036224",
+    "src/renderer/pages/settings/appearance.tsx": "3b5c5e16646b387767d1923f3395ba2e5f4204cfde1f27a62816feba30b748b7",
+    "src/renderer/styles/colors.css": "9ad08cb7b460d920f71f464ea98095c27d72a98161894f74cb4a2543fb2b7fd8",
+    "src/renderer/styles/global.css": "9cb29f54b3765625ac4e3665371ecdebce0cd99502480ed5f4409317ab47fbb7",
+    "src/renderer/styles/craft-scenic/scenic.css": "51305ccbff8b903c9eddc9e37d2cb1399b08732e30b195eec4094ee433cef777",
+    "scripts/build.mjs": "6b77625ce785feefc1699fdb5918a97bf0267e7eda46186ff4848cbd8326248b",
+    "tests/appearance.test.ts": "35bab823bd606e871f6698f5f99571892877326d439b4db7549925cf21092bf7",
+    "tests/e2e/features/appearance.feature": "59ecdc3f92f5328f6bd9b906b0882dcd2bc62d816002c10031244e30f454d7c6",
+    "tests/e2e/steps/appearance.steps.ts": "80cde6c3d7269c6fb4b8a81c6dd11fec0879992402b007c9a5d3629f45d0d6e6"
+  },
+  "limits": [
+    "No new installable application package",
+    "No full repository regression or long-term GPU/memory benchmark in this increment",
+    "User visual review remains pending"
+  ]
+}

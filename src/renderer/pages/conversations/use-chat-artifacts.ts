@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [INPUT]: 原聊天成果的固定版本/hash、持久未决请求与桌面只读回执。
  * [OUTPUT]: 聊天内采用/稍后验收/同一composer修订，共用原幂等事务；未知仅核对，确认未受理才原载荷重试，清理隔离迟到结果。
  * [POS]: 成果消息操作的宿主接线，不保存预览正文，不打开右侧流程。
@@ -14,7 +15,7 @@ import { materialErrorText } from './-components/material-draft'
 export type ArtifactActionKind = 'revision' | 'adoption' | 'acceptance'
 type ActionInput = { revision: ArtifactRevisionInput; adoption: ArtifactAdoptionInput; acceptance: ArtifactAcceptanceInput }
 export type ChatArtifactTarget = Pick<ArtifactPending, 'scope' | 'conversationId' | 'logicalArtifactId'>
-export interface ChatArtifactRevisionTarget { artifactId: string; logicalArtifactId: string; contentHash: string; contentVersion?: number; name: string; targetAgentId: string }
+export interface ChatArtifactRevisionTarget { annotation?: import('@shared/domain/file-edit').FileEditAnnotation; artifactId: string; logicalArtifactId: string; contentHash: string; contentVersion?: number; name: string; targetAgentId: string }
 
 export function useChatArtifacts(api: DesktopApi | undefined, values: ArtifactPendingMap, onPending: (key: string, value?: ArtifactPending) => boolean, onSubmitted: (target: ChatArtifactTarget, kind: ArtifactActionKind, input: ActionInput[ArtifactActionKind]) => void, onChecked: (conversationId: string, artifactId: string) => void) {
   const current = useRef(values); current.current = values

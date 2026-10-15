@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道内部工作/文件按固定父渠道材料来源读取，其他渠道与清理代际变化在分页前排除。
  * [INPUT]: 真实SQLite工作、材料、成果及当前会话权限；有界查询与点击解析。
  * [OUTPUT]: 原工作视图授权/计数/游标回归；万项保留总3秒/100页1秒，记录实测并核对旧比较与缺索引兼容。
  * [POS]: WV0模块意图验收；读取不得写业务状态或制造任务。
@@ -33,6 +34,24 @@ async function fixture() {
 const query = (store: ProductStore, input: unknown = {}) => store.queryWorkViews(workViewQuerySchema.parse(input))
 const files = (store: ProductStore, input: unknown) => store.queryConversationFiles(conversationFileQuerySchema.parse(input))
 describe('工作视图唯一事实与有界读取', () => {
+  it('内部工作和新版文件保留父渠道材料来源，错绑和过期代际在分页前排除', async () => {
+    const store = await fixture()
+    const parent = { ...conversation('channel'), agentIds: ['alice'], channel: { bindingId: 'binding', platform: 'feishu' } }
+    const internal = { ...conversation('internal'), agentIds: ['alice'], purpose: 'channel-internal', channelDiscussion: { conversationId: 'channel', epoch: 1 } }
+    const ref = { id: 'channel-material', conversationId: 'channel', revision: 1, contentHash: 'a'.repeat(64), parseVersion: 'text-v1' as const }
+    const material = { id: ref.id, conversationId: 'channel', revision: 1, contentHash: ref.contentHash, parseVersion: ref.parseVersion, messageId: 'channel-message', status: 'ready' }
+    const output = { id: 'internal-file', conversationId: 'internal', name: '内部新版.md', logicalArtifactId: 'original-file', registrationSource: 'publication', contentStatus: 'ready', contentHash: 'b'.repeat(64), contentVersion: 2, ownerAgentId: 'alice', publishedAt: time, materialSources: [ref] }
+    await store.write([row('conversations', parent), row('conversations', internal), row('materials', material), row('messages', message('internal-message', 'internal')), row('workItems', work('internal-work', { conversationId: 'internal', sourceMessageId: 'internal-message', materialSources: [ref] })), row('artifacts', output)])
+    expect((await query(store, { conversationId: 'internal' })).items.map(item => item.work.id)).toEqual(['internal-work'])
+    expect((await files(store, { conversationId: 'internal' })).items.map(item => item.id)).toEqual(['internal-file'])
+    await store.write([row('conversations', { ...internal, channelDiscussion: { conversationId: 'unrelated', epoch: 1 } })])
+    expect((await query(store, { conversationId: 'internal' })).total).toBe(0)
+    expect((await files(store, { conversationId: 'internal' })).total).toBe(0)
+    await store.write([row('conversations', internal), row('conversationCompletionClocks', { id: 'channel', epoch: 2 })])
+    expect((await query(store, { conversationId: 'internal' })).total).toBe(0)
+    expect((await files(store, { conversationId: 'internal' })).total).toBe(0)
+  })
+
   it('一万项历史每组超过两页，默认30/最大100并在3秒内读取全量计数和有界页', async () => {
     const store = await fixture(), statuses: WorkItem['status'][] = ['ready', 'running', 'waiting', 'delivered', 'failed']
     await store.write(Array.from({ length: 10_000 }, (_, index) => row('workItems', work(`scale-${String(index).padStart(5, '0')}`, { status: statuses[index % statuses.length] }))))

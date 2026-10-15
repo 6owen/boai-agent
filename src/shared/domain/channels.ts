@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 内部讨论固定原消息引用；用户明确外发固定原来源/文件hash与绑定版本，回执独立于执行完成。
  * [OUTPUT]: 2026-10-14现行分离合同：本人ID仅用于平台消息归属显示，不再决定主私聊路由或历史合并。
  * [OUTPUT]: 2026-10-14 明确本人账号关联与渠道消息本人展示归属，外部消息不获得桌面管理权限。
  * [OUTPUT]: 外部群来源按接入员工隔离，旧无agentId记录保留兼容；普通回复链不改变房间身份。
@@ -81,4 +83,21 @@ export interface ChannelDelivery {
   externalMessageIds?: string[]
   createdAt: string
   updatedAt: string
+}
+
+
+export interface ChannelMessageReference { conversationId: string; messageId: string; contentHash: string }
+export interface ChannelArtifactReference { id: string; conversationId: string; contentHash: string; name: string }
+export interface ChannelPublication {
+  sourceMessageId: string
+  bindingRevision: number
+  actor: 'user'
+  artifacts: ChannelArtifactReference[]
+}
+export interface ChannelPublishInput {
+  conversationId: string
+  sourceMessageId: string
+  content: string
+  artifacts: Pick<ChannelArtifactReference, 'id' | 'conversationId' | 'contentHash'>[]
+  requestId: string
 }

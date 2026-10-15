@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 自动化模型工具使用对象根目录；执行仍按动作严格校验，来源与保存回执沿共用服务。
+ * [OUTPUT]: 本人对话的计划管理工具独立于文件Work，复用原自动化服务；API与本机工具合同一致。
  * [OUTPUT]: API汇报明确选择本次正文证据，避免重复生成不一致摘句；选择不证明文件、同事或外部动作完成。
  * [OUTPUT]: 已交付汇报明确非空证据；协调者以本次摘要准确摘句证明本人汇报，不冒用同事成果。
  * [OUTPUT]: API依赖接续必须提交本次结果声明；漏报复用原有界只读汇报，失败保留草稿且零操作重放，历史等待不冒充当前结果。
@@ -14,6 +16,8 @@
 import { groupInterpretationInstructions, orderedResponseInstruction } from '../../modules/collaboration/group-coordination'
 import type { ProcessInputStepArgs } from '@mastra/core/processors'
 import { Agent } from '@mastra/core/agent'
+import { createTool } from '@mastra/core/tools'
+import { automationCommandSchema, automationCommandToolSchema, automationToolDescription } from '../../modules/automations/automation-commands'
 import { assertApiContext, type EngineContext } from '../../contracts'
 import { modelConfig } from './model-config'
 import { observeAgent, traceModelRequest } from './trace'
@@ -95,12 +99,14 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
           ctx.continuation ? `Host-confirmed continuation: ${JSON.stringify(ctx.continuation)}. The current user message answers the listed questions or resumes the listed attempts for the original request. Continue its existing scope using authorized history; do not repeat delivered work or tool effects.` : '',
           task ? taskRuntime!.instructions : 'Current duty: respond naturally to the CURRENT TURN USER REQUEST. No workspace, knowledge-search, skill, or command tools are available. Historical exchanges and memory can supply relevant background; earlier user tasks and earlier assistant introductions do not prescribe the length or content of this answer. For a simple greeting or thanks, a brief warm acknowledgment is enough. Do not repeat a long introduction, list capabilities, describe tools, or ask for a work topic/materials unless this current request asks for them. A greeting does not require a concrete work assignment. For a substantive current question, answer with the detail that question needs. Do not claim to have executed work.',
           orderedResponseInstruction(ctx.groupCoordination),
+          ctx.manageAutomation ? `You may manage this owner's automation plans with manage_automation even in ordinary chat; no file Work is needed. Current owner: ${JSON.stringify(ctx.automationOwner)}. Current members: ${JSON.stringify(ctx.members?.map(({ id, name, role }) => ({ id, name, role })))}. Default timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}. Missing details need clarification; only actual tool receipts prove creation or modification.` : '',
           ctx.decision ? `Your validated participation intent for this response (do not print it): ${JSON.stringify(ctx.decision)}` : '',
           task && ctx.delegateWork ? `Eligible current members for delegate_work (use their exact IDs): ${JSON.stringify((ctx.members ?? []).filter(member => member.active && ctx.conversation.agentIds.includes(member.id) && member.executionBackend?.kind !== 'acp-local').map(({ id, name, role }) => ({ id, name, role })))}` : '',
           task && ctx.work ? `Your host-claimed work: ${JSON.stringify(ctx.work)}. Before the final answer call report_work with the actual outcome and verifiable evidence, unless wait_for_work recorded waiting IN THIS EXECUTION. Prefer the exact artifact ID returned by your successful publish_artifact for a file, without adding an unnecessary answer excerpt. Never report an intention to start as completed execution. If the user requested only a plan, an actual plan may be the deliverable. The final public reply is separate from work status. For decomposition use delegate_work with bounded scope and stable keys, then wait_for_work only for real prerequisites. A successful wait_for_work in this execution already records waiting: finish with a brief status without repeating report_work, evidence or userQuestion; do not poll. On continuation execute nextStep using delivered dependency results and submit this execution's new report_work outcome. Historical waitRevision, nextStep or a prior waiting message never exempts a resumed execution from reporting its actual result; prior results and tool effects must not be replayed. Parent/child relations alone imply neither waiting nor completion. Available authorized work records: ${JSON.stringify(ctx.workItems ?? [])}. Confirmed effects from earlier runs of this exact work (reference only, never repeat): ${JSON.stringify(ctx.completedWorkTools ?? [])}.` : '',
           task && ctx.dependencyArtifacts?.length ? `Actual delivered dependency files: ${JSON.stringify(ctx.dependencyArtifacts)}. Use read_file with the supplied exact logicalPath when your assignment needs that original; do not rediscover the same file by listing directories. These are source references, not your own publication evidence or additional permissions. The file tool rechecks current identity, hash and authorization. Missing or changed files cannot be replaced with guessed paths or chat statements.` : '',
         ].filter(Boolean).join('\n\n'),
-        ...(taskRuntime ? { tools: taskRuntime.tools, workspace: taskRuntime.workspace } : {}),
+        ...(taskRuntime ? { workspace: taskRuntime.workspace } : {}),
+        tools: { ...taskRuntime?.tools, ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) },
       })
     let disposed = false
     return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.dispose() } } }

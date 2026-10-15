@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
+ * [OUTPUT]: 原生计划工具通过真实动态工具/MCP桥保存、同key核对和重启查询，不建立文件Work。
  * [OUTPUT]: 实际核读交付材料路径与字节/hash，显式原生路径不走产品材料工具；是离线协议动作，不冒充模型输出。
  * [INPUT]: 隔离协议夹具中的当前工作、员工ID和真实产品工具。
  * [OUTPUT]: 核心组织、委派接续、路径别名/符号链接及真实成果的确定性业务动作。
@@ -24,6 +26,33 @@ export async function consumeNativeMaterials(content) {
 }
 export async function business(prompt,tool){
  const work=prompt.currentWork,text=prompt.messages.map(m=>m.content).join('\n')+'\n'+(work?.scope??'')
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_BROWSER_')){
+  await tool('browser_tool',{command:'snapshot'})
+  const image=await tool('browser_tool',{command:'screenshot --png'})
+  const part=image.find(part=>part.type==='inputImage'||part.type==='image')
+  if(!part)throw Error('native browser did not receive image content')
+  const bytes=Buffer.from(part.data??part.imageUrl.split(',')[1],'base64')
+  await appendFile('native-browser-media.jsonl',JSON.stringify({type:part.type,bytes:bytes.length,hash:createHash('sha256').update(bytes).digest('hex')})+'\n')
+  if(prompt.messages.at(-1).content.includes('NATIVE_BROWSER_WRITE')){
+   await tool('browser_tool',{command:'fill @e1 "after"'})
+   const result=await tool('browser_tool',{command:'snapshot'})
+   if(!result.some(part=>part.text?.includes('after')))throw Error('write result was not read back')
+   await tool('report_work',{disposition:'delivered',summary:'已填写并回读',evidence:[{kind:'answer',reference:'已填写并回读 after'}]})
+   return '已填写并回读 after'
+  }
+  return '已读取同一网页和图片'
+ }
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_AUTOMATION_SAVE')){
+  const input={action:'save',key:'daily',plan:{name:'原生日报',prompt:'整理本次获准资料',frequency:'daily',time:'09:00',weekday:1,timezone:'Asia/Singapore',enabled:false,notify:false}}
+  const first=await tool('manage_automation',input),second=await tool('manage_automation',input)
+  if(first.id!==second.id||second.revision!==1)throw Error('native automation duplicated')
+  return '已保存原生日报'
+ }
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_AUTOMATION_LIST')){
+  const result=await tool('manage_automation',{action:'list',limit:20})
+  if(result.definitions.length!==1||result.definitions[0].name!=='原生日报')throw Error('native automation receipt lost')
+  return '已读取同一原生日报'
+ }
  if(prompt.messages.at(-1)?.content.startsWith('NATIVE_EXPLICIT_PATH\n'))return readFile(JSON.parse(prompt.messages.at(-1).content.split('\n')[1]).path,'utf8')
  if(text.includes('NATIVE_CANONICAL_PATH')||text.includes('NATIVE_SYMLINK_PATH')){
   await writeFile('canonical.md','# 实际原件\n')

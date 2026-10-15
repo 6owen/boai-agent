@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工/群归属与固定分工共用原保存入口，草稿回执按归属隔离；编辑保留计划归属、依赖和旧运行位置。
  * [OUTPUT]: 执行对象统一称模型API或本机Agent员工，现有能力/来源与命令门禁保持。
  * [OUTPUT]: Claude自动化沿原七项表单选择已核对程序及明确API来源，命令关闭与宿主最终指纹复核保持。
  * [OUTPUT]: 七项表单支持已验证本机Codex员工，无需API连接；命令权限仍关闭，最终准入由宿主核验。
@@ -8,7 +9,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import type { AutomationDefinition, AutomationInput, LaunchProfile, Snapshot } from '@shared/domain'
+import type { AutomationDefinition, AutomationInput, AutomationOwner, LaunchProfile, Snapshot } from '@shared/domain'
 import { backendProtocol, isNativeBackend } from '@shared/domain/backends'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, EditorFrame, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common'
@@ -19,13 +20,13 @@ import { SelectField } from '@/components/ui/select-field'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { MonitorEditor, newMonitorPolicy, validMonitorPolicy } from './monitor-editor'
-import { AutomationAssistant } from './automation-assistant'
+import { AutomationOwnerFields, automationOwnerKey, automationOwnerLabel } from './automation-owner'
 
 export type AutomationEditorMode = 'manual' | 'assistant' | 'monitor'
 type Form = Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> & Required<Pick<AutomationInput, 'taskKind' | 'conversationPolicy' | 'notificationPolicy'>>
-type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; mode?: AutomationEditorMode; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
-const pendingKey = 'boai:automation:pending-creation'
-function pendingCreation(): { requestId: string; form: Form } | undefined {
+type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; owner?: AutomationOwner; mode?: AutomationEditorMode; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
+const pendingPrefix = 'boai:automation:pending-creation'
+function pendingCreation(pendingKey: string): { requestId: string; form: Form } | undefined {
   try { const value = JSON.parse(localStorage.getItem(pendingKey) ?? 'null'); return value?.requestId && value.form ? value : undefined } catch { return undefined }
 }
 export function AutomationEditorTab(props: Props) {
@@ -33,9 +34,8 @@ export function AutomationEditorTab(props: Props) {
   useEffect(() => {
     if (!props.id) return
     let live = true
-    void props.api.request('listAutomations', undefined).then(view => {
+    void props.api.request('getAutomation', { id: props.id! }).then(definition => {
       if (!live) return
-      const definition = view.definitions.find(d => d.id === props.id)
       setLoaded(definition ? { definition } : { error: '此计划已删除或不可用，当前标签不会切换到其他计划。' })
     }).catch(error => { if (live) setLoaded({ error: errorText(error) }) })
     return () => { live = false }
@@ -47,18 +47,20 @@ export function AutomationEditorTab(props: Props) {
 function Setting({ label, value, children }: { label: string; value: string; children?: ReactNode }) {
   return <div className="automation-setting" data-schedule-field={label}><span>{label}</span>{children ? <Popover><PopoverTrigger render={<Button variant="ghost" size="sm" aria-label={label} />}>{value}</PopoverTrigger><PopoverContent className="automation-setting-popover" align="end"><strong>{label}</strong>{children}</PopoverContent></Popover> : <span>{value}</span>}</div>
 }
-function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose, onSaved }: Props & { definition?: AutomationDefinition }) {
-  const [pending] = useState(() => definition ? undefined : pendingCreation())
+function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', onClose, onSaved }: Props & { definition?: AutomationDefinition }) {
+  const pendingKey = pendingPrefix + (owner ? ':' + automationOwnerKey(owner) : '')
+  const [pending] = useState(() => definition ? undefined : pendingCreation(pendingKey))
   const [draftId] = useState(() => pending?.requestId ?? crypto.randomUUID())
   const draftVersion = useRef(0), alive = useRef(true), submitting = useRef(false)
   const formId = useId(), version = useRef(definition?.revision), title = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<Form>(() => pending?.form ?? ({ name: definition?.name ?? '', prompt: definition?.prompt ?? '',
+    owner: definition?.owner ?? owner, collaboration: definition?.collaboration,
     taskKind: definition?.taskKind ?? (mode === 'monitor' ? 'monitor' : 'report'), monitor: definition?.monitor ?? (mode === 'monitor' ? newMonitorPolicy() : undefined),
-    conversationPolicy: definition?.conversationPolicy ?? (mode === 'monitor' ? 'existing-conversation' : 'new-conversation'), conversationId: definition?.conversationId, employeeIds: definition?.employeeIds,
+    conversationPolicy: definition?.conversationPolicy ?? (mode === 'monitor' ? 'existing-conversation' : 'new-conversation'), conversationId: definition?.conversationId, employeeIds: definition?.employeeIds ?? (owner?.kind === 'employee' ? [owner.employeeId] : undefined),
     frequency: definition?.frequency ?? 'daily', time: definition?.time ?? '09:00', weekday: definition?.weekday ?? 1,
     daysOfWeek: definition?.frequency === 'weekly' ? definition.daysOfWeek ?? [definition.weekday] : [0, 1, 2, 3, 4, 5, 6],
     timezone: definition?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'important_only') }))
-  const [assistant, setAssistant] = useState(mode === 'assistant' && !definition), [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
+  const [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
   const [unknown, setUnknown] = useState(!!pending), [targetQuery, setTargetQuery] = useState('')
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
   const [profileError, setProfileError] = useState('')
@@ -89,21 +91,21 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
   }, [api, form.frequency, form.time, form.weekday, daysKey, form.timezone])
   const eligible = (id: string) => {
     const a = snapshot.agents.find(a => a.id === id), c = snapshot.connections.find(c => c.id === a?.connectionId)
-    if (!a?.active || a.allowCommands || a.executionBackend?.kind === 'acp-local') return false
+    if (!a?.active || a.executionBackend?.kind === 'acp-local') return false
     if (isNativeBackend(a.executionBackend)) {
       const { profileId, kind } = a.executionBackend
-      return profiles.some(profile => profile.id === profileId && profile.protocol === backendProtocol(kind) && profile.verified)
-        && (kind !== 'claude-local' || !!(c?.hasApiKey && (a.modelId || c.defaultModel)))
+      return profiles.some(profile => profile.id === profileId && profile.protocol === backendProtocol(kind) && profile.verified
+        && (kind !== 'claude-local' || profile.useExistingLogin || !!(c?.hasApiKey && (a.modelId || c.defaultModel))))
     }
-    return !!(c && (a.modelId || c.defaultModel))
+    return !a.allowCommands && !!(c && (a.modelId || c.defaultModel))
   }
   const conversation = snapshot.conversations.find(c => c.id === form.conversationId)
   const memberIds = form.conversationPolicy === 'new-conversation' ? form.employeeIds ?? [] : conversation?.agentIds ?? []
-  const validTarget = memberIds.length > 0 && memberIds.every(eligible)
+  const validTarget = memberIds.length > 0 && memberIds.every(eligible) && (!form.collaboration || form.collaboration.assignments.length >= 2 && form.collaboration.assignments.every(a => a.instruction.trim() && a.deliverable.trim()))
   const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && preview.nextTimes.length > 0 && preview.timezone === form.timezone && !preview.pending
   const finish = (value: AutomationDefinition) => { if (!definition) localStorage.removeItem(pendingKey); setUnknown(false); version.current = value.revision; clean(); onSaved(value, !definition); guard.saved() }
   const queryReceipt = async () => { const receipt = await api.request('getAutomationCreation', { requestId: draftId }); if (receipt) finish(receipt); else { setUnknown(false); localStorage.removeItem(pendingKey) } }
-  const targetLabel = form.conversationPolicy === 'new-conversation' ? `新任务聊天 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
+  const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务聊天' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `新任务聊天 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
   const formatTime = (time: string) => new Intl.DateTimeFormat('zh-CN', { timeZone: preview.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(time))
   return <EditorFrame title={definition ? '编辑定时任务' : '新建定时任务'} footer={<>
     <Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>{definition ? '关闭' : '取消'}</Button>
@@ -117,21 +119,20 @@ function AutomationEditor({ api, snapshot, definition, mode = 'manual', onClose,
       {error && <Banner>{error}</Banner>}
       {unknown && <Banner>提交结果尚未确认，草稿已保留。<Button variant="secondary" disabled={busy} onClick={() => void run(queryReceipt)}>核对创建结果</Button></Banner>}
       <fieldset disabled={busy || unknown} className="automation-fields">
-        {assistant && <AutomationAssistant api={api} snapshot={snapshot} draftId={draftId} timezone={form.timezone} getVersion={() => draftVersion.current} onClose={() => { draftVersion.current++; setAssistant(false) }} onCandidate={result => {
-          if (!alive.current || result.draftId !== draftId || result.version !== draftVersion.current || submitting.current) return false
-          change({ ...result.candidate, conversationId: result.candidate.conversationId, employeeIds: result.candidate.employeeIds } as Partial<Form>); return true
-        }} />}
         <div data-schedule-field="标题"><Field label="标题" full><Input ref={title} required maxLength={100} value={form.name} onChange={e => change({ name: e.target.value })} placeholder="定时任务标题" /></Field></div>
         <div data-schedule-field="任务描述"><Field label="任务描述" full><Textarea required maxLength={40000} rows={5} value={form.prompt} onChange={e => change({ prompt: e.target.value })} placeholder="描述 Agent 应该做什么" /></Field></div>
         <h4>详情</h4><div className="automation-settings">
           <Setting label="运行位置" value="此设备" />
           <Setting label="运行于" value={targetLabel}>
-            <SelectField aria-label="聊天方式" disabled={form.taskKind === 'monitor'} value={form.conversationPolicy} onValueChange={value => change({ conversationPolicy: value as Form['conversationPolicy'], conversationId: undefined, employeeIds: undefined })} options={[{ value: 'new-conversation', label: '新任务聊天' }, { value: 'existing-conversation', label: '指定聊天' }]} />
+            {form.conversationPolicy === 'new-conversation' && form.taskKind !== 'monitor' ? <p className="field-hint">每次执行使用独立任务聊天，历史记录保留在本计划内。</p> : <>
+            <SelectField aria-label="聊天方式" disabled={!!definition || form.taskKind === 'monitor'} value={form.conversationPolicy} onValueChange={value => change({ conversationPolicy: value as Form['conversationPolicy'], conversationId: undefined, employeeIds: undefined })} options={[{ value: 'new-conversation', label: '新任务聊天' }, { value: 'existing-conversation', label: '指定聊天' }]} />
             {form.conversationPolicy === 'new-conversation' ? <Field label="执行员工"><SelectField value={form.employeeIds?.[0] ?? ''} onValueChange={value => change({ employeeIds: value ? [value] : undefined })} options={[{ value: '', label: '选择员工' }, ...snapshot.agents.map(a => ({ value: a.id, label: `${a.name}${eligible(a.id) ? '' : ' · 配置或权限不可用'}`, disabled: !eligible(a.id) }))]} /></Field> : <><Input aria-label="搜索已有聊天" placeholder="搜索已有聊天" value={targetQuery} onChange={e => setTargetQuery(e.target.value)} /><Field label="目标会话"><SelectField value={form.conversationId ?? ''} onValueChange={value => change({ conversationId: value || undefined, ...(form.monitor ? { monitor: { ...form.monitor, source: { ...form.monitor.source, conversationId: value } } } : {}) })} options={[{ value: '', label: '选择会话' }, ...snapshot.conversations.filter(c => c.id === form.conversationId || c.title.includes(targetQuery)).map(c => ({ value: c.id, label: `${c.title} · ${c.kind === 'group' ? '群聊' : '单聊'}`, disabled: !c.agentIds.length || !c.agentIds.every(eligible) }))]} /></Field></>}
-            <p className="field-hint">选择已启用、连接可用且关闭命令权限的模型 API 或本机 Agent 员工。需要模型 API 的本机 Agent 还须配置具体连接。没有可用对象时，请在通讯录和设置中配置；草稿会保留。</p>
+            </>}
+            <p className="field-hint">模型 API 员工沿原执行权限，本机 Agent 沿已验证的原生配置执行。没有可用对象时，可在通讯录和设置中配置。</p>
             {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
           </Setting>
         </div>
+        {form.conversationPolicy === 'new-conversation' && form.taskKind !== 'monitor' && <AutomationOwnerFields snapshot={snapshot} owner={form.owner} collaboration={form.collaboration} locked={!!owner || !!definition?.owner} eligible={eligible} onChange={(nextOwner, collaboration) => change({ owner: nextOwner, collaboration, employeeIds: nextOwner?.kind === 'employee' ? [nextOwner.employeeId] : collaboration?.assignments.map(a => a.employeeId) })} />}
         {!validTarget && <p className="field-hint" role="status">请在「运行于」明确选择可用员工或聊天。</p>}
         {form.taskKind === 'monitor' && <section aria-label="监控规则"><p className="field-hint">检查已发布 JSON：{form.monitor?.source.name || '尚未指定文件'} · {form.monitor?.rules.length ?? 0} 项比较规则</p><Button variant="secondary" onClick={() => setMonitorOpen(!monitorOpen)}>{monitorOpen ? '收起监控规则' : '编辑监控规则'}</Button>{!validMonitorPolicy(form.monitor) && <p className="field-hint">请补齐监控来源和有效规则；在「编辑监控规则」中检查字段、阈值和有效期。</p>}{monitorOpen && form.monitor && <MonitorEditor policy={form.monitor} onChange={monitor => change({ monitor })} />}</section>}
         <h4>频率</h4><div className="automation-settings">

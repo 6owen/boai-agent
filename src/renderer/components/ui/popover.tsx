@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可选keepMounted透传官方Portal，保留渠道列表搜索/分组状态；默认生命周期保持。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: popover 基础组件，支持独立 anchor 以复用菜单按钮定位；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: components/ui 的 popover 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -18,6 +19,7 @@ function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
 
 function PopoverContent({
   className,
+  keepMounted,
   anchor,
   align = "center",
   alignOffset = 0,
@@ -25,12 +27,13 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: PopoverPrimitive.Popup.Props &
+  { keepMounted?: boolean } &
   Pick<
     PopoverPrimitive.Positioner.Props,
     "anchor" | "align" | "alignOffset" | "side" | "sideOffset"
   >) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal keepMounted={keepMounted}>
       <PopoverPrimitive.Positioner
         anchor={anchor}
         align={align}

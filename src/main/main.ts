@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: IPC允许内部渠道讨论、明确外发及消息级发送回执，宿主仍校验来源。
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
+ * [OUTPUT]: 归属自动化分页及固定计划读取加入既有IPC白名单；不增加调度入口。
  * [OUTPUT]: 托盘后台常驻/登录启动、统一窗口重开；真正退出等待 runtime 的实际 exit。
  * [OUTPUT]: 员工渠道配置和回执操作加入受控白名单，网络入站只能由runtime适配器接收。
  * [OUTPUT]: 文件打开可选reveal动作，完成同一realpath/受管根校验后在文件夹定位；默认外开和扩展名规则保持。
@@ -97,7 +101,7 @@ const browsers = new BrowserService({
     } else await requestRuntime('browserControl', { action })
   },
 })
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'prepareDetectedLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'deleteLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
+const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'prepareDetectedLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'getAutomation', 'listOwnerAutomations', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'deleteLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
 for (const method of ['listExecutionHistory', 'listExecutionWindow', 'listExecutionEvidence', 'getExecutionContent', 'listNativeActions', 'respondNativeAction', 'stopNativeExecution'] as const) methods.add(method)
 for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
 for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
@@ -110,7 +114,7 @@ for (const method of ['getContactList', 'updateContactList'] as const) methods.a
 methods.add('testLocalConnection')
 methods.add('getDesktopSettings')
 methods.add('updateDesktopSettings')
-for (const method of ['listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
+for (const method of ['ensureChannelDiscussion', 'publishChannelMessage', 'listChannelMessageDeliveries', 'listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
 for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resumeAutomation'] as const) methods.add(method)
 methods.add('setMessageReaction')
 methods.add('updateUserProfile')
@@ -121,6 +125,7 @@ methods.add('getCoreConversationStart')
 methods.add('deleteAgent')
 methods.add('deleteConversation')
 methods.add('getBrowserWindows')
+methods.add('referenceBrowserPage')
 methods.add('openBrowser')
 methods.add('browserControl')
 for (const method of ['chooseMaterialSource', 'prepareMaterial', 'getMaterialPreparation', 'getMaterialPreview', 'recheckMaterial', 'discardMaterial', 'setMaterialAuthorization', 'getMessageReceipt', 'getExternalTaskReceipt'] as const) methods.add(method)
@@ -225,6 +230,7 @@ async function handleBrowserHostRequest(child: UtilityProcess, method: keyof Bro
     case 'manualOpen': return browsers.manualOpen(input as BrowserHostMethods['manualOpen']['input'])
     case 'currentLease': return browsers.currentLease()
     case 'acquire': return browsers.acquire(input as BrowserLease)
+    case 'reference': return browsers.reference(input as {instanceId?:string;pageVersion?:string})
     case 'inspect': return browsers.inspect(input as BrowserLease)
     case 'resumeSnapshot': return browsers.resumeSnapshot(input as BrowserLease)
     case 'executeSingle': {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: JSON文件名使用跨供应商JSON Schema可解析的Unicode NUL表达式，大小写扩展名与运行时拒绝规则一致。
  * [INPUT]: 宿主冻结的来源/比较规则、结构化观测、上次成功检查点与明确检查时间。
  * [OUTPUT]: 数据完整性/新鲜度、确定性比较、重要性与冷却决定；只有成功观测返回新检查点。
  * [POS]: 自动化监控的纯规则；不读取网络、不调用模型、不提交通知或写数据库。
@@ -12,7 +13,7 @@ const MAX_DEPTH = 32, MAX_NODES = 10000, MAX_VALUE_BYTES = 64 * 1024
 const pointer = z.string().max(1000).refine(value => value === '' || value.startsWith('/') && !/~(?![01])/.test(value), '字段路径必须是 JSON Pointer')
 export const monitorPolicySchema = z.object({
   comparator: z.literal('json-fields-v1'),
-  source: z.object({ kind: z.literal('conversation-artifact'), conversationId: z.string().min(1).max(200), name: z.string().trim().min(1).max(200).regex(/^[^\\/:\0]+\.json$/i, '请选择已发布的 JSON 文件名') }).strict(),
+  source: z.object({ kind: z.literal('conversation-artifact'), conversationId: z.string().min(1).max(200), name: z.string().trim().min(1).max(200).regex(/^[^\\/:\u0000]+\.[jJ][sS][oO][nN]$/, '请选择已发布的 JSON 文件名') }).strict(),
   maxAgeSeconds: z.number().int().min(1).max(7 * 86400), cooldownSeconds: z.number().int().min(0).max(7 * 86400),
   rules: z.array(z.discriminatedUnion('mode', [z.object({ pointer, mode: z.literal('changed') }).strict(), z.object({ pointer, mode: z.literal('numeric_delta'), threshold: z.number().positive().finite() }).strict()])).min(1).max(32),
 }).strict().refine(value => new Set(value.rules.map(rule => rule.pointer)).size === value.rules.length, '同一字段不能重复定义比较规则')

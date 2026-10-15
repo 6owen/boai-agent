@@ -1,0 +1,15 @@
+{
+  "src/runtime/modules/workspaces/file-editing.ts": "30650019ed21961652db33e88fce3c19ae9843262ccb4ea7ce45bf634bf9d229",
+  "src/runtime/modules/workspaces/file-access.ts": "506d2fee591979571d78280bafb7596b0835310b20feb1a8d5708ef1673877a5",
+  "src/runtime/adapters/mastra/task-runtime.ts": "0acf826036d3a267ad63ee1032a39a6e76e2b34b91bc086e0974fbf8fd97e180",
+  "src/runtime/adapters/mastra/host-command.ts": "8fc055b16ccc1e44e8bc279e204d72344bc89da3130da18ec3f66400b7cc81d3",
+  "src/runtime/service.ts": "8d770e2537526a8badc390d173d724462949bef6e7b1406ea727428877373fdb",
+  "scripts/build.mjs": "aa74158b45ff62765602098b3eeb6c203ef2b13f47fb8e7ab2fc619b62709048",
+  "scripts/generate-feature-review.mjs": "9a7a1097620c92df2284b1b2db38099ceaebc55e0583114fbd4cf5759fdae602",
+  "tests/mastra-engine.test.ts": "d5ad0001c980e8c9db3b939cef183adbe75583722728e643a5135316c699ad49",
+  "tests/workspace-file-editing.test.ts": "212c61cc493bee20c9ac0dcedd7ce49698cf9c5684f1d6afa2ec8a973854898f",
+  "tests/host-command.test.ts": "e87ba1983c6b29dcb420b1c1935e51eb23fc3c2dd2f6b29075c9ec905a8396f6",
+  "tests/service.test.ts": "53f270fe6630cbd932bcd5b3f56fba4c036466dc6b7fde68512196d471624770",
+  "tests/e2e/features/hermes-file-tools-real.feature": "0cf1c215900721d27bafdca40a2a813dc7f99fc35bb026a2dae2d4d89249c0c9",
+  "tests/e2e/steps/hermes-file-tools-real.steps.ts": "6e6d52fa153f8b23a1fd691b2c7fe6afae4d221b053a1b0ac8757820af044884"
+}

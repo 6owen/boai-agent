@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-10-15",
+  "source": "https://www.beautifului.dev/r/selection-actions.json",
+  "registryDependencies": [
+    "foundation",
+    "button",
+    "shimmer",
+    "stream-text"
+  ],
+  "npmDependency": "iconoir-react@7.12.1",
+  "cli": "shadcn add local registry --dry-run failed while fetching foundation.json: other side closed; fetched original JSON via HTTPS instead",
+  "files": {
+    "Button.upstream.tsx": "1d939f68820366648a7b3292b88001da41253154bc49494be60cb8188100f0b0",
+    "stream-text.json": "99b82b8960aacc752c20f359b4258c2b1a07f5e211448cf7d55e067c2195621b",
+    "SelectionActions.upstream.tsx": "5447a5488c3d390bc877acde5e0c3c04096ec89b2ee5b12d11e2523032c007c6",
+    "shadow-plugin-LICENSE": "ee07c059bf7e1d1b453f3fa0091c260853d301a3466a0f7a5e8a724aea4f79c6",
+    "button.json": "cdc7affc58ab3353dc159d33bd87e826c581856ea39fa6bbab7cb11f67ac3352",
+    "shimmer.json": "3f7e02ba2ad044b8a717d162a69f48efbdb7bb22f3eaeb576eb349cd72619a8e",
+    "selection-actions.json": "d20877569884ef34f3327b5515962576d8590cff3f8b871ad6803a81db1e4789",
+    "foundation.json": "c3b97e7d7cac0c53b78823611b8fd793f136bfde72b8e4635147fb83f6fc162c",
+    "Shimmer.upstream.tsx": "f93280df5726018b9efec117ea9fe90e6e128d0b530250553bf4a4aee9363c28",
+    "shadow-plugin-2.1.1.css": "e92959fb4408158713f246db7f9e26d545769996f5b1671d1d9ca3c55367b197",
+    "foundation.upstream.css": "32c68b62b5bfa18fc33cb291f6966d02dc2585a87e75e925c86225b2cf058e1d"
+  }
+}

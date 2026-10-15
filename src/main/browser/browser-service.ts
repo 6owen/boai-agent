@@ -1,10 +1,13 @@
 /*
+ * [OUTPUT]: 页面实际变化后回传refs失效及snapshot下一步，避免沿用填表前节点。
+ * [OUTPUT]: 同源本机只读升级Work保留当前refs；其他租约及文档变化仍使refs失效，沿原实际退出。
+ * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: 私有 Runtime 租约/动作信封、冻结来源与原版 Electron BrowserPaneManager。
  * [OUTPUT]: 项目内置浏览器单窗口/固定登录分区与独立任务持有者；人工导航不扩张模型权限，跨任务互斥等实际退出；旧分区保留，旧调用尾部不能更新重开窗口。
  * [POS]: Main 浏览器唯一宿主；网页/Renderer 不取得 BrowserPaneFns 或任意 CDP 接口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile, rename, lstat, realpath } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { session } from 'electron'
@@ -12,7 +15,7 @@ import { BrowserPaneManager } from './browser-pane-manager'
 import type { BrowserPaneFns } from '../../runtime/adapters/mastra/browser-tool-types'
 import { BROWSER_PAGE_METRICS_EXPRESSION, executeBrowserSingleCommand, parseBrowserSingleCommand } from '../../runtime/adapters/mastra/browser-tool-runtime'
 import { APPLICATION_BROWSER_SCOPE } from '../../shared/ipc/browser'
-import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserWindowState } from '../../shared/ipc/browser'
+import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserPageReference, BrowserWindowState } from '../../shared/ipc/browser'
 
 const PAGE_STATE_EXPRESSION = `(() => ({url:location.href,title:document.title,html:(document.documentElement?.outerHTML||'').slice(0,2000000),forms:Array.from(document.querySelectorAll('input,textarea,select')).slice(0,1000).map(e=>({type:e.type,name:e.name,value:e.type==='password'?'[redacted]':String(e.value).slice(0,2000),checked:e.checked,disabled:e.disabled}))}))()`
 interface Profile { scopeKey: string; partition: string; status: 'ready' | 'clearing' | 'cleared'; retiredLeases?: string[] }
@@ -33,7 +36,7 @@ export interface BrowserServiceOptions {
 }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const origin = (url: string) => { try { const value = new URL(url); return ['http:', 'https:'].includes(value.protocol) && !value.username && !value.password ? value.origin : undefined } catch { return undefined } }
-const sameLease = (left: BrowserLease, right: BrowserLease) => left.scopeKey === right.scopeKey && left.scopeEpoch === right.scopeEpoch && left.agentId === right.agentId && left.conversationId === right.conversationId && left.workId === right.workId && left.runId === right.runId && left.generation === right.generation && left.configVersion === right.configVersion && left.downloadDirectory === right.downloadDirectory
+const sameLease = (left: BrowserLease, right: BrowserLease) => left.scopeKey === right.scopeKey && left.scopeEpoch === right.scopeEpoch && left.agentId === right.agentId && left.conversationId === right.conversationId && left.workId === right.workId && left.sourceMessageId === right.sourceMessageId && left.runId === right.runId && left.generation === right.generation && left.configVersion === right.configVersion && left.downloadDirectory === right.downloadDirectory
 
 export class BrowserService {
   readonly manager: BrowserPaneManager
@@ -157,7 +160,7 @@ export class BrowserService {
       const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
       this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' })
       await this.saveRegistry()
-      const instanceId = `browser-${hash(APPLICATION_BROWSER_SCOPE).slice(0, 20)}`
+      const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
       const scope: Scope = {
         partition, active: false, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
         state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: '0', url: 'about:blank', title: '新网页', isLoading: false, isVisible: false, toolbarReady: false, control: 'user-controlled' },
@@ -179,7 +182,7 @@ export class BrowserService {
   }
   private async acquireScope(lease: BrowserLease): Promise<void> {
     await this.registryReady
-    if (!lease.scopeKey || !lease.agentId || !lease.conversationId || !lease.runId || !lease.workId || !lease.generation || !Number.isSafeInteger(lease.scopeEpoch) || !Number.isSafeInteger(lease.configVersion) || !isAbsolute(lease.downloadDirectory)) throw new Error('无效的浏览器工具调用身份')
+    if (!lease.scopeKey || !lease.agentId || !lease.conversationId || !lease.runId || (!lease.workId && !lease.sourceMessageId) || !lease.generation || !Number.isSafeInteger(lease.scopeEpoch) || !Number.isSafeInteger(lease.configVersion) || !isAbsolute(lease.downloadDirectory)) throw new Error('无效的浏览器工具调用身份')
     if (this.retiredRuns.has(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器执行代际已退出')
     const profile = this.profiles.get(APPLICATION_BROWSER_SCOPE)
     if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
@@ -193,32 +196,52 @@ export class BrowserService {
     if ((await lstat(lease.downloadDirectory)).isSymbolicLink() || relative(dataRoot, downloadRoot).startsWith('..') || isAbsolute(relative(dataRoot, downloadRoot))) throw new Error('浏览器下载必须位于本次受管工作目录')
     const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
     this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' }); await this.saveRegistry()
-    const instanceId = `browser-${hash(APPLICATION_BROWSER_SCOPE).slice(0, 20)}`
+    const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
     const scope: Scope = {
-      lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
+      lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageHash: existing?.pageHash, pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
       state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: existing?.state.pageVersion ?? '0', url: existing?.state.url ?? 'about:blank', title: existing?.state.title ?? '新网页', isLoading: existing?.state.isLoading ?? false, isVisible: existing?.state.isVisible ?? false, toolbarReady: false, control: 'agent-controlled' },
     }
     this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
     this.manager.createInstance(instanceId, { show: false, partition, downloadDirectory: downloadRoot })
     const instance = this.manager.getInstance(instanceId)
-    if (instance) { instance.downloadDirectory = downloadRoot; instance.cdp.invalidateRefs(); instance.window.setTitle('内置浏览器') }
+    // Native read -> Work promotion is the same caller on the same document. Its first
+    // write uses the refs just returned to that caller; unrelated leases still discard them.
+    const prior = existing?.lease
+    const promotion = prior && !prior.workId && !!lease.workId && !!prior.sourceMessageId && prior.sourceMessageId === lease.sourceMessageId &&
+      prior.runId === lease.runId && prior.agentId === lease.agentId && prior.conversationId === lease.conversationId && prior.configVersion === lease.configVersion && prior.scopeEpoch === lease.scopeEpoch && existing.state.instanceId === instanceId
+    if (instance) { instance.downloadDirectory = downloadRoot; if (!promotion) instance.cdp.invalidateRefs(); instance.window.setTitle('内置浏览器') }
     try { await this.manager.ready(instanceId) } catch (error) { scope.active = false; scope.state.control = 'idle'; scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
     scope.state.toolbarReady = true
     this.emit(scope)
+  }
+  async reference(input: { instanceId?: string; pageVersion?: string }): Promise<BrowserPageReference> {
+    return this.transition(APPLICATION_BROWSER_SCOPE, async () => {
+      const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+      if (!scope || ['closing', 'closed'].includes(scope.state.control)) throw new Error('请先打开要引用的内置浏览器网页')
+      await scope.queue
+      if (input.instanceId && input.instanceId !== scope.state.instanceId) throw new Error('原网页窗口已关闭或替换，请重新引用')
+      const source = await this.pageEvidence(scope, 'reference')
+      if (!source || !origin(source.url)) throw new Error('当前没有可引用的网页')
+      if (input.pageVersion && input.pageVersion !== source.pageVersion) throw new Error('引用后网页已变化，请重新引用当前网页')
+      return { instanceId: scope.state.instanceId, pageVersion: source.pageVersion, url: source.url, title: source.title, obtainedAt: source.obtainedAt }
+    })
   }
   async inspect(lease: BrowserLease): Promise<BrowserPageEvidence | null> {
     return this.readPageEvidence(lease)
   }
   private async readPageEvidence(lease: BrowserLease, active = true): Promise<BrowserPageEvidence | null> {
-    const scope = this.require(lease, active), instance = this.manager.getInstance(scope.state.instanceId)
+    return this.pageEvidence(this.require(lease, active), lease.generation)
+  }
+  private async pageEvidence(scope: Scope, generation: string): Promise<BrowserPageEvidence | null> {
+    const instance = this.manager.getInstance(scope.state.instanceId)
     if (!instance || instance.window.isDestroyed()) return null
     const page = await instance.pageView.webContents.executeJavaScript(PAGE_STATE_EXPRESSION)
     if (!page || typeof page.url !== 'string' || typeof page.title !== 'string') throw new Error('网页状态无法可靠核对')
-    const digest = hash(JSON.stringify(page))
+    const digest = hash(JSON.stringify({documentRevision:instance.documentRevision ?? 0,page}))
     if (scope.pageHash !== digest) { scope.pageHash = digest; scope.pageCounter += 1; scope.state.pageVersion = `${scope.pageCounter}:${digest}`; instance.cdp.invalidateRefs() }
     scope.state.url = page.url.includes('browser-empty-state.html') ? 'about:blank' : page.url
     scope.state.title = page.title.slice(0, 300)
-    return { scopeKey: lease.scopeKey, generation: lease.generation, pageVersion: scope.state.pageVersion, url: scope.state.url, title: scope.state.title, obtainedAt: new Date().toISOString() }
+    return { instanceId: scope.state.instanceId, scopeKey: APPLICATION_BROWSER_SCOPE, generation, pageVersion: scope.state.pageVersion, url: scope.state.url, title: scope.state.title, obtainedAt: new Date().toISOString() }
   }
   async resumeSnapshot(lease: BrowserLease): Promise<{ source: BrowserPageEvidence; output: string }> {
     const scope = this.require(lease), instance = this.manager.getInstance(scope.state.instanceId)
@@ -266,7 +289,8 @@ export class BrowserService {
         // which actually finished. The identity must still match the original lease.
         const source = scope.state.control === 'closed' ? current : await this.readPageEvidence(envelope.lease, false)
         const downloads = await this.completedDownloads(scope)
-        const reply: BrowserActionReply = { actionId: envelope.actionId, generation: envelope.lease.generation, status: 'completed', result: { ...result, output: result.output.slice(0, 64000) }, ...(source ? { source } : {}), ...(downloads.length ? { downloads } : {}) }
+        const refresh = source && current && source.pageVersion !== current.pageVersion ? '\nPage changed; previous element refs are invalid. Call browser_tool with command "snapshot" before any further @eN action.' : ''
+        const reply: BrowserActionReply = { actionId: envelope.actionId, generation: envelope.lease.generation, status: 'completed', result: { ...result, output: result.output.slice(0, 63000) + refresh }, ...(source ? { source } : {}), ...(downloads.length ? { downloads } : {}) }
         return reply
       } catch (error) {
         return { actionId: envelope.actionId, generation: envelope.lease.generation, status: started ? 'unknown' : 'cancelled_before_start', error: error instanceof Error ? error.message : String(error) }

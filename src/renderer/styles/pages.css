@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 文件修改只显示Selection Actions浮层，退役底部会话/历史区尺寸；操作条输入透明且保留全局主题。
+ * [OUTPUT]: 渠道空态沿IllustratedEmpty居中与共享悬浮会话标题，ScrollArea保持16px渐隐重叠。
+ * [OUTPUT]: 文件预览与独立编辑区共用右侧容器高度，修改记录有界滚动。
+ * [OUTPUT]: 侧边渠道聊天占满共享容器；列表在header Popover中有界滚动，详情单槽替换并保持返回栏，不再分栏/上下排布。
+ * [OUTPUT]: 渠道内容按共用右侧容器宽度自适应，窄面板内上下排布；不再按渠道标签改动主聊天布局。
+ * [OUTPUT]: 渠道右侧标签内复用左右列表/聊天布局与原表面；窄面板列表独立滚动，不覆盖主页面。
  * [OUTPUT]: 通讯录配置复用Motion与会话同款ScrollFade：中性返回/保存行随滚动上移并向两侧展开，正文从Header下方自然渐隐，无实色遮挡或底部保存/取消。
  * [OUTPUT]: 员工顶部身份跨标签保持同一编辑控件与尺寸，身份修改页脚共用原布局；隐藏配置面板不展示，其他标签保留局部滚动，模型字段共用设置页同行目录操作与输入皮肤。
  * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构及 Motion 面板容器。
@@ -451,3 +457,18 @@
 .automation-history-filters { display:grid;gap:12px }
 .automation-history-filters .button-row { flex-wrap:wrap }
 .schedule-page [hidden] { display:none }
+
+/* Channel chat and its single detail view share the same right-side container. */
+.channel-workspace { display:flex; flex:1; min-width:0; min-height:0; height:100%; overflow:hidden }
+.channel-workspace[hidden] { display:none }
+.channel-chat-stage { min-width:0 }
+.channel-picker { width:min(320px,calc(100vw - 24px)); height:min(520px,var(--available-height)); max-height:calc(100dvh - 100px); min-height:0; padding:0; gap:0; overflow:hidden }
+.channel-picker .list-heading h2 { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.channel-detail-header { display:flex; align-items:center; gap:8px; flex-shrink:0; min-height:48px; padding:8px 16px }
+.channel-empty-scroll { flex:1;min-width:0;min-height:0;margin-top:36px;overflow:hidden }
+.channel-detail-header h2 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; margin:0 }
+.channel-detail-view { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow:hidden }
+.channel-detail-body { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow:auto }
+.channel-detail-body > .employee-detail { flex:1; min-height:0 }
+.detail-content:has(> .detail-session > .channel-workspace):not([hidden]) { display:flex; overflow:hidden }
+.detail-session:has(> .channel-workspace) { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow:hidden }

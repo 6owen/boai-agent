@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
  * [OUTPUT]: 2026-10-10 精确thread/turn接公开summary与commentary，原始reasoning/text不保存；有界限频进度不替代终态。
  * [OUTPUT]: 2026-10-10 已验证配置可有界读取canonical model/list且零turn提交；实际模型/线程/提交回执可投影至员工执行记录。
@@ -10,6 +11,7 @@
  * [POS]: 原生Codex阶段执行；持久映射与业务权威归宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { codexToolResult } from '../native-tool-result'
 import type { LaunchProfile } from '../../../shared/domain/backends'
 import { EXECUTION_PROGRESS_LIMITS, type ModelUsage, type ExecutionProgressEvent } from '../../../shared/domain'
 import { CodexClient, object, string } from './client'
@@ -192,7 +194,7 @@ export async function runCodexPhase(input: CodexPhaseInput) {
             signal.throwIfAborted()
             const result = await tool.execute(params.arguments, callId)
             signal.throwIfAborted()
-            return { contentItems: [{ type: 'inputText', text: JSON.stringify(result) ?? 'null' }], success: true }
+            return codexToolResult(tool, result)
           })
           calls.set(callId, { signature, promise })
           return await promise

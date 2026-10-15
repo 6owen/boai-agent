@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 引用当前网页的API任务使用原Work调用上限作为SDK循环上限；每步仍经原宿主额度预留，预算值不增加，其他任务保持12步。
+ * [OUTPUT]: 网页工具原生事件不保留输入值，截图持久化仅存媒体摘要；模型内存结果保持完整媒体。
+ * [OUTPUT]: 当前本人聊天的计划管理允许有界工具/结果接续，沿原API逐调用预算；不创建独立草稿模型。
  * [OUTPUT]: API私有汇报仅兼容已观察到的outcome内显式正文选择，冲突选择/未知字段/权限仍拒绝。
  * [OUTPUT]: API私有汇报可明确选本次正文作为答复证据，由宿主绑定真实文字；组织/等待拒绝，明确选择优先于冗余摘句，文件证据及原Work门禁保持。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；明确限字的聊天私有核验及原预算内一次压缩，不发布超限草稿；实际验收归第14组05。
@@ -99,10 +102,15 @@ export class MastraEngine implements AgentEngine {
       const usage = new UsageRecorder()
       // An explicit length constraint must pass before any draft becomes public or a predecessor.
       const outputContext = maxCharacters ? { ...ctx, onDelta: async () => {} } : ctx
+      // UI tasks often need more than twelve individual input/observation steps.
+      // The original Work budget remains authoritative in prepareStep; this only
+      // removes the earlier SDK stop while that same budget still has capacity.
+      const taskSteps = ctx.browserSession?.reference && ctx.workBudget && ctx.onAdditionalModelCall
+        ? ctx.workBudget.maxModelCalls : MAX_STEPS
       for (let attempt = 0; attempt < (maxCharacters ? 2 : 1); attempt++) {
         const callIds: (string | undefined)[] = []
         const output = await agent.stream(messages, {
-          abortSignal: signal, maxSteps: task ? MAX_STEPS : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
+          abortSignal: signal, maxSteps: task ? taskSteps : ctx.manageAutomation ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat'),
           prepareStep: async () => {
             check(signal)
@@ -133,10 +141,12 @@ export class MastraEngine implements AgentEngine {
     const activations = new Map<string, { id: string; name: string }>()
     const events = new Map<string, ToolEvent>()
     const report = async (id: string, name: string, status: ToolEvent['status'], detail: unknown) => {
+      if(name==='browser_tool' && status==='running') detail={omitted:'网页输入不进入持久事件'}
       const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(summarizeMedia(detail)) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
       events.set(id, event)
       await ctx.onTool(event)
     }
+    const buffered = task || !!ctx.manageAutomation
     let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     try {
       for await (const chunk of output.fullStream) {
@@ -151,10 +161,10 @@ export class MastraEngine implements AgentEngine {
           stepText = ''; stepHasTools = false; textBlocks = new Set()
         } else if (chunk.type === 'text-delta') {
           textBlocks.add(chunk.payload.id)
-          if (task) stepText += chunk.payload.text
+          if (buffered) stepText += chunk.payload.text
           else { finalText += chunk.payload.text; await ctx.onDelta(chunk.payload.text) }
         } else if (chunk.type === 'tool-call') {
-          if (!task) throw new Error('普通聊天不允许调用业务工具')
+          if (!task && !(ctx.manageAutomation && chunk.payload.toolName === 'manage_automation')) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name
@@ -168,7 +178,7 @@ export class MastraEngine implements AgentEngine {
           await report(chunk.payload.toolCallId, chunk.payload.toolName, chunk.payload.isError ? 'failed' : 'completed', chunk.payload.result)
         }
         else if (chunk.type === 'tool-error') await report(chunk.payload.toolCallId, chunk.payload.toolName, 'failed', errorText(chunk.payload.error))
-        else if (chunk.type === 'step-finish' && task) {
+        else if (chunk.type === 'step-finish' && buffered) {
           const hasTools = stepHasTools || !!chunk.payload.output.toolCalls?.length || chunk.payload.stepResult.reason === 'tool-calls'
           if (hasTools) {
             if (stepText.trim()) await report(`activity:${stepId}`, 'task_step', 'completed', { step: stepNumber, contentBlocks: [...textBlocks], text: stepText })
@@ -184,7 +194,7 @@ export class MastraEngine implements AgentEngine {
       if (finish === 'tool-calls' || finish === 'tool_calls') throw new Error('已达到单次任务的工具步骤上限，请继续发送消息')
       if (!finalText.trim()) throw new Error('模型没有生成可发布的最终回复')
       // Task output is published only after the SDK confirms the final, tool-free step completed.
-      if (task) await ctx.onDelta(finalText)
+      if (buffered) await ctx.onDelta(finalText)
       return finalText
     } finally {
       try { for (const event of events.values()) if (event.status === 'running') await report(event.id, event.name, 'failed', ctx.signal.aborted ? '任务已取消或超时' : '工具执行中断') }

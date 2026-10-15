@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
+ * [OUTPUT]: 内部讨论不加入主列表或渠道列表，员工和原外部房间身份保持。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI主列表每员工一个入口，渠道私聊/群归员工页面；排序、隐藏与核心历史边界保持。
  * [OUTPUT]: 2026-10-14 主列表排除归档房间与自动化专用聊天；实际主私聊归一由运行时完成。
  * [OUTPUT]: 渠道会话与核心/普通会话分别排序；本人主私聊仍为普通会话。
@@ -29,7 +31,7 @@ export type ConversationListChange =
 
 export function sortedConversations(conversations: Conversation[], messageTimes: Record<string, string> = {}) {
   const time = (item: Conversation) => [item.lastMessageAt ?? '', messageTimes[item.id] ?? ''].sort().at(-1)!
-  return conversations.filter(item => !item.list?.hidden && !item.mergedInto && item.purpose !== 'automation').sort((a, b) =>
+  return conversations.filter(item => !item.list?.hidden && !item.mergedInto && item.purpose !== 'automation' && item.purpose !== 'channel-internal').sort((a, b) =>
     Number(Boolean(b.list?.pinned)) - Number(Boolean(a.list?.pinned)) ||
     (a.list?.order ?? -1) - (b.list?.order ?? -1) ||
     time(b).localeCompare(time(a)) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
