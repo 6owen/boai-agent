@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 通讯录空状态的过渡容器继承详情区完整高度，恢复插画双向居中；有内容时仍自然高度滚动。
+ * [OUTPUT]: 通讯录执行筛选置于标题最右侧，紧凑同高；窄面板仅检索工具换行，标题与筛选保持同行。
+ * [OUTPUT]: 通讯录能力状态文字前显示5px同色圆点，与资源库状态点密度一致。
+ * [OUTPUT]: 通讯录创建/编辑复用connection-dialog，编辑Card自然高度/底部操作，字段横向分组与数据源同密度。
  * [OUTPUT]: 定时任务详情留白对齐通讯录48px/36px；执行记录顶部清空、行删除仅悬停/聚焦/弹层显示。
  * [OUTPUT]: 通讯录资料/编辑滚动固定预留；分区标题加Card、配置后紧凑状态和技能/数据源列表，执行记录直接展示；设置同款过渡保持。
  * [OUTPUT]: 连接弹窗可选固定标题/卡片外层ScrollArea，滚动条抵达最右边缘；内容承担横向/底部留白，自然高度随视口收缩。
@@ -229,6 +233,16 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .automation-records { display:flex;flex-direction:column;gap:12px;min-width:0 }
 .automation-records-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px }
 .automation-records-heading h3 { margin:0;font-size:16px;font-weight:600 }
+.employee-execution-records { container-type:inline-size }
+.employee-execution-heading { display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px }
+.employee-execution-heading:has(.employee-execution-filter) { grid-template-columns:auto minmax(0,1fr) minmax(96px,140px) }
+.employee-execution-tools { display:flex;align-items:center;justify-content:flex-end;justify-self:end;gap:4px;min-width:0;max-width:100% }
+.employee-execution-filter[data-slot=select-trigger] { height:32px;width:100% }
+@container(max-width:340px) {
+  .employee-execution-heading:has(.employee-execution-filter) { grid-template-columns:minmax(0,1fr) minmax(96px,140px) }
+  .employee-execution-heading:has(.employee-execution-filter) .employee-execution-tools { grid-column:1 / -1;grid-row:2 }
+  .employee-execution-filter { grid-column:2;grid-row:1 }
+}
 .automation-record-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .automation-record-list { display:flex;flex-direction:column;min-width:0 }
 .automation-record-row[data-slot=button] { width:100%;font-weight:400 }
@@ -382,6 +396,7 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contacts-list-empty { padding:4px 8px 12px;font-size:12px;color:var(--muted-foreground);margin:0 }
 .contacts-detail { flex:1;min-width:0;min-height:0;overflow:auto;scrollbar-gutter:stable;container-type:inline-size }
 .contact-content-transition { min-width:0;min-height:100% }
+.contact-content-transition:has(> .illustrated-empty) { height:100% }
 .contact-section { margin:20px 0 }
 .contact-section-title { margin:0;font-size:16px;font-weight:600 }
 .contact-section-heading { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px }
@@ -390,7 +405,8 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-card-copy { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65 }
 .contact-card-empty { margin:0;color:var(--muted-foreground) }
 .contact-value-status { display:flex;align-items:center;flex-wrap:wrap;gap:8px;white-space:normal }
-.contact-inline-status { flex-shrink:0;font-size:11px;color:var(--muted-foreground);font-weight:400 }
+.contact-inline-status { display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:11px;color:var(--muted-foreground);font-weight:400 }
+.contact-inline-status::before { content:'';width:5px;height:5px;flex-shrink:0;border-radius:50%;background:currentColor }
 .contact-inline-status[data-positive=true] { color:var(--success) }
 .contact-resource-row { display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:10px 0;text-align:left }
 .contact-resource-row>.app-icon { flex-shrink:0;color:var(--muted-foreground) }
@@ -399,7 +415,6 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-resource-description { display:block;margin-top:3px;color:var(--muted-foreground);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .contact-card-content .contact-resource-row:first-child { padding-top:0 }
 .contact-card-content .contact-resource-row:last-child { padding-bottom:0 }
-.contacts-detail:has(.contact-editor-viewport)>.contact-content-transition { display:flex;flex:1;min-height:0 }
 .contact-document { width:100%;max-width:800px;margin:0 auto;padding:48px 36px }
 .contact-profile-heading { display:flex;align-items:center;gap:18px;margin-bottom:28px }
 .contact-profile-heading>.avatar,.contact-profile-heading>.group-avatar { width:64px;height:64px;font-size:26px;border-radius:var(--radius-control) }
@@ -417,18 +432,29 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-members { display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:12px }
 .contact-member { display:flex;align-items:center;flex-direction:column;gap:8px;padding:8px 4px;min-width:0 }
 .contact-member>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px }
-.contacts-detail:has(.contact-editor-viewport) { display:flex;flex-direction:column;overflow:hidden }
-.contact-editor-viewport { position:relative;display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden }
-.contact-edit-header { position:absolute;inset:0 0 auto;z-index:2;height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none }
-.contact-edit-header>.soft-button,.contact-edit-header-actions { position:relative;pointer-events:auto }
-.contact-edit-header-actions { display:flex;align-items:center;gap:8px }
-.contact-edit-scroll { flex:1;margin-top:52px;scrollbar-gutter:stable }
-.contact-editor-viewport .contact-editor-document { padding-top:12px }
-.contact-edit-header-space { height:52px;margin-bottom:12px }
-.contact-editor .editor-intro,.contact-editor .editor-body,.contact-editor .employee-identity,.contact-editor .employee-tabs-bar,.contact-editor .detail-section { padding-left:0;padding-right:0 }
-.contact-editor .editor-frame { min-height:0 }
-.contact-editor .editor-footer { position:static; padding-left:0;padding-right:0;background:var(--surface-content) }
-.contact-editor .resource-option { min-width:0 }
+.contact-dialog-avatar { display:flex;justify-content:center;margin:0 auto 12px }
+.contact-dialog-avatar .avatar { width:64px;height:64px }
+.contact-configuration-card { overflow:hidden;min-width:0;container-type:inline-size }
+.contact-configuration-card>[data-slot=tabs] { gap:0 }
+.contact-configuration-card>[data-slot=tabs]>[data-slot=tabs-list] { margin:14px 18px 0 }
+.contact-configuration-card .editor-frame { min-height:0 }
+.contact-configuration-card .editor-body { padding:4px 18px }
+.contact-configuration-card .employee-identity { padding:16px 18px }
+.contact-configuration-card .employee-tabs-bar { padding:0 18px 12px;overflow-x:auto }
+.contact-configuration-card .editor-footer { position:static;height:auto;min-height:52px;flex-basis:auto;flex-wrap:wrap;padding:10px 18px;gap:8px;background:transparent }
+.contact-configuration-card .editor-footer>[data-slot=button]:last-child { margin-left:auto }
+.contact-configuration-card .form-grid { gap:0 }
+.contact-configuration-card .form-grid>:is(.field,[data-slot=field]),.contact-configuration-card .form-grid>fieldset>[data-slot=field],.contact-model-fields>[data-slot=field] { padding:12px 0 }
+.contact-configuration-card .form-grid>:is(.field,[data-slot=field]),.contact-configuration-card .form-grid>fieldset>[data-slot=field] { border-bottom:1px solid var(--border) }
+.contact-configuration-card .form-grid>[data-slot=field],.contact-configuration-card .form-grid>fieldset>[data-slot=field],.contact-model-fields>[data-slot=field] { display:grid;grid-template-columns:124px minmax(0,1fr);align-items:start;gap:8px 16px }
+.contact-configuration-card .form-grid [data-slot=field]>:not([data-slot=field-label]),.contact-model-fields>[data-slot=field]>:not([data-slot=field-label]) { grid-column:2 }
+.contact-configuration-card .form-grid [data-slot=field]>[data-slot=field-label],.contact-model-fields>[data-slot=field]>[data-slot=field-label] { grid-column:1;grid-row:1;min-height:32px;align-items:center;font-size:12px }
+.contact-model-fields>[data-slot=field]:has(.model-picker-heading),.contact-configuration-card .form-grid [data-slot=field]:has(>.model-picker-heading) { display:flex }
+.connection-editor[data-contact-editor] .connection-setting-row { grid-template-columns:124px minmax(0,1fr);padding:10px 0 }
+.connection-editor[data-contact-editor] .connection-setting-row>[data-slot=field-label] { min-height:32px;font-size:12px }
+.connection-editor[data-contact-editor] .connection-setting-row [data-slot=field-label]>.app-icon { width:14px;height:14px }
+.connection-editor[data-contact-editor] :is([data-slot=input],[data-slot=input-group],[data-slot=select-trigger]),.contact-configuration-card :is([data-slot=input],[data-slot=select-trigger]) { min-height:32px;height:32px;font-size:13px }
+.contact-configuration-card .resource-option { min-width:0 }
 .employee-identity>.employee-identity-editor { flex-direction:row;align-items:center;gap:14px;width:100% }
 .employee-identity-editor .avatar { width:72px;height:72px }
 .employee-identity-fields { display:grid;gap:2px;flex:1;min-width:0 }
@@ -443,8 +469,14 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .employee-identity-actions:empty { display:none }
 @container (max-width:420px) {
   .contact-document,.schedule-document { padding:28px 20px }
+  .contact-configuration-card .form-grid>[data-slot=field],.contact-configuration-card .form-grid>fieldset>[data-slot=field] { grid-template-columns:minmax(0,1fr) }
+  .contact-configuration-card .form-grid [data-slot=field]>:not([data-slot=field-label]) { grid-column:1 }
   .contact-profile-heading { gap:12px }
   .contact-facts>div { grid-template-columns:64px minmax(0,1fr);gap:8px }
+}
+@media (max-width:540px) {
+  .connection-editor[data-contact-editor] .connection-setting-row,.contact-model-fields>[data-slot=field] { grid-template-columns:minmax(0,1fr) }
+  .contact-model-fields>[data-slot=field]>:not([data-slot=field-label]) { grid-column:1 }
 }
 
 /* Execution traces share the application surfaces and semantic colors. */

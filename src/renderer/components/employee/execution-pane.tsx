@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工/群固定身份、有界原执行查询和全局右侧面板导航。
- * [OUTPUT]: 直接展示执行记录、定时任务同款两行列表；点击固定Run打开右侧过程，隐藏停读、刷新保留列表、迟到隔离。
+ * [OUTPUT]: 会话筛选位于执行记录标题最右侧；定时任务同款两行列表点击固定Run打开共用右侧过程，隐藏停读、刷新保留列表、迟到隔离。
  * [POS]: 通讯录与员工配置共用执行记录，不创建聊天或重复执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -65,9 +65,12 @@ export function EmployeeExecutionPane({ api, agent, snapshot, active, conversati
     return () => { current = false }
   }, [api, agent?.id, agent?.configVersion, active, scope, pages, scopeKey, revision])
   const matches = rows.filter(row => `${row.title} ${row.configuration} ${runLabels[row.status]}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
-  return <section className="automation-records" aria-label="执行记录">
-    <div className="automation-records-heading"><h3>执行记录</h3><div className="button-row"><Button variant="ghost" size="icon-sm" aria-label="刷新执行记录" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw /></Button><CatalogSearch label="搜索已加载执行记录" value={search} onChange={setSearch} /></div></div>
-    {agent && !conversationId && <SelectField aria-label="执行记录会话" value={scope} onValueChange={value => { setScope(value); setPages(1); setRows([]); setLoaded(false); setSelected('') }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title }))]} />}
+  return <section className="automation-records employee-execution-records" aria-label="执行记录">
+    <div className="automation-records-heading employee-execution-heading">
+      <h3>执行记录</h3>
+      <div className="employee-execution-tools"><Button variant="ghost" size="icon-sm" aria-label="刷新执行记录" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw /></Button><CatalogSearch label="搜索已加载执行记录" value={search} onChange={setSearch} /></div>
+      {agent && !conversationId && <SelectField size="sm" className="employee-execution-filter" aria-label="执行记录会话" value={scope} onValueChange={value => { setScope(value); setPages(1); setRows([]); setLoaded(false); setSelected('') }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title }))]} />}
+    </div>
     {error && <><Banner>{error}</Banner><Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button></>}
     {!loaded && loading && <Loading>正在读取执行记录…</Loading>}
     <div className="automation-record-list">{matches.map(row => {

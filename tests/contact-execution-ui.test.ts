@@ -2,7 +2,7 @@
 /*
  * [OUTPUT]: 订阅夹具沿DesktopApi声明回调类型，保持严格类型检查。
  * [INPUT]: 生产通讯录直接执行列表、TraceTab及受控原IPC。
- * [OUTPUT]: 可见读取、隐藏停读、固定Run导航与迟到隔离；员工绑定源/核心已启用源按原权限展示。
+ * [OUTPUT]: 标题行筛选、可见读取、隐藏停读、固定Run导航与迟到隔离；员工绑定源/核心已启用源按原权限展示。
  * [POS]: 通讯录执行交互的组件回归，不运行E2E或模型。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -50,6 +50,9 @@ it.each(['employee', 'group'])('shows %s records directly and navigates the exac
   expect(row.classList.contains('automation-record-row')).toBe(true)
   expect(row.querySelector('.conversation-title')).not.toBeNull()
   expect(row.querySelector('.conversation-preview')).not.toBeNull()
+  const filter = host.querySelector('[aria-label="执行记录会话"]')
+  if (kind === 'employee') expect(filter?.closest('.automation-records-heading')?.querySelector('h3')?.textContent).toBe('执行记录')
+  else expect(filter).toBeNull()
   expect(document.querySelector('[role=dialog]')).toBeNull()
   await click('[data-employee-run-id]')
   expect(open).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 'room', agentId: 'ds', runId: 'run-older' }))

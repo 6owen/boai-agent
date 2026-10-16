@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工/员工组创建复用数据源同款Dialog、标题插图/横向字段Card和自然底部操作，右缘外层滚动。
+ * [OUTPUT]: 员工创建保留数据源同款Dialog；新建员工组恢复原搜索候选/已选成员双栏弹窗及右下角操作。
  * [OUTPUT]: API员工创建默认允许申请命令，可显式关闭；命令选择不被创建载荷覆盖。
  * [OUTPUT]: 创建共用设置页模型目录/手动输入，普通员工默认允许申请命令；旧ACP限制保持。
  * [OUTPUT]: 创建员工共用模型API/本机Agent两级选择，按用户明确选择保存具体连接与模型，不再隐式使用第一条API连接。
@@ -7,7 +7,7 @@
  * [OUTPUT]: 创建弹窗区分Codex本机登录与Claude明确API来源；Claude进入原普通群选人，核心组织能力仍单独限制。
  * [INPUT]: 员工/连接快照、DesktopApi、创建完成回调和全局未保存守卫。
  * [OUTPUT]: 身份、可选/上传头像与 Prompt 的员工弹窗、搜索选人的群聊弹窗；核心助手不作为群成员候选，创建后打开真实会话。
- * [POS]: employee 的创建入口；后续能力、群名称与共享资料编辑仍由右侧编辑器负责。
+ * [POS]: employee 的创建入口；后续能力、群名称与共享资料复用通讯录Dialog/右侧原编辑器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
@@ -18,7 +18,7 @@ import { Avatar, Banner, colors, GuardContext, useDirty, useMutation } from '@/c
 import { FileText, LoaderCircle, Pencil, Search, Users, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -29,7 +29,6 @@ import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields
 import { AgentCommandField } from './agent-command-field'
 import { avatarPresets, type AgentAvatar } from '@shared/domain/avatars'
 import { ConnectionDialogLayout, ConnectionForm, ConnectionSettingRow } from '@/pages/settings/connection-layout'
-import { ConnectionIllustration } from '@/pages/settings/connection-illustration'
 
 interface Props {
   api: DesktopApi; snapshot: Snapshot; onClose(): void; onCreated(conversation: Conversation): Promise<void>
@@ -97,12 +96,10 @@ export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) 
     })
   }
   return <Dialog open onOpenChange={open => { if (!open) close() }}>
-    <ConnectionDialogLayout choosing={false} scrollBody label="新建员工组" title="选择一起工作的同事" illustration={<ConnectionIllustration configuring />} closeLabel="关闭新建员工组" working={busy} onClose={close} finalFocus={returnFocus}>
-      <ConnectionForm data-contact-editor id="create-group-form" onSubmit={submit} disabled={locked} footer={<>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || !selected.length}>{busy && <LoaderCircle className="spinner" />}创建员工组</Button>
-      </>}>
+    <DialogContent showCloseButton={false} finalFocus={returnFocus} className="max-h-[calc(100dvh-32px)] overflow-y-auto p-6 sm:max-w-[720px]">
+      <form data-edit-form id="create-group-form" className="flex min-h-0 flex-col gap-5" onSubmit={submit}>
         {error && <Banner>{error}</Banner>}
-        <div className="grid min-h-0 grid-cols-1 gap-5 py-4 sm:grid-cols-2">
+        <div className="grid min-h-0 grid-cols-1 gap-5 sm:grid-cols-2">
           <FieldSet className="min-w-0 gap-3">
             <FieldLegend className="sr-only">选择群成员</FieldLegend>
             <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索群成员" placeholder="搜索名称或角色" value={query} onChange={e => setQuery(e.target.value)} /></InputGroup>
@@ -115,14 +112,18 @@ export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) 
             </div>
           </FieldSet>
           <section className="flex min-w-0 flex-col gap-3" aria-label="已选成员">
-            <div className="creation-selection-heading">已选择 {selected.length} 位员工</div>
+            <DialogHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle>发起群聊</DialogTitle><span className="creation-selection-heading">已选择 {selected.length} 位员工</span></div>
+              <DialogDescription className="sr-only">选择 1–12 位数字员工，群名称和资料可在创建后编辑。</DialogDescription>
+            </DialogHeader>
             <div className="h-[160px] overflow-y-auto sm:h-0 sm:flex-1">
               {selected.map(agent => <div className="creation-member" key={agent.id}><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><span className="conversation-copy"><strong className="conversation-title">{agent.name}</strong><small className="conversation-preview">{agent.role || '数字员工'}</small></span><Button variant="ghost" size="icon-sm" round disabled={locked} aria-label={`移除 ${agent.name}`} onClick={() => setIds(current => current.filter(id => id !== agent.id))}><X /></Button></div>)}
               {!selected.length && <div className="creation-selection-empty"><Users /><span>选择一起工作的同事</span></div>}
             </div>
+            <DialogFooter variant="plain"><Button variant="ghost" disabled={busy} onClick={close}>取消</Button><Button variant="ink" type="submit" disabled={busy || !selected.length}>{busy && <LoaderCircle className="spinner" />}完成</Button></DialogFooter>
           </section>
         </div>
-      </ConnectionForm>
-    </ConnectionDialogLayout>
+      </form>
+    </DialogContent>
   </Dialog>
 }
