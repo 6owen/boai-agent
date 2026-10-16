@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件私有材料目录使用有界provider命名空间，原来源/hash/清理权限保持。
  * [OUTPUT]: 2026-10-12受管原生输入副本排他写入/实际字节与hash核验，外改保持；原选取路径不外泄，受管副本路径可交付，不拦截原生工具。
  * [INPUT]: 宿主已有受管根、获准源文件、受管材料身份与取消信号。
  * [OUTPUT]: 受管根系统别名规范化但源路径和根内链接仍拒绝、有界原件字节/hash、显式严格文本解码、安全栅格图片字节识别、排他写入与保留外改的清理。
@@ -132,7 +133,7 @@ export async function readMaterialOriginal(dataPath: string, conversationId: str
 
 /** Native input copies are host-owned, hash-bound files, not a native tool sandbox. */
 function nativeCopyTarget(dataPath: string, relativePath: string) {
-  if (!/^agents\/[a-zA-Z0-9_-]+\/workspace\/sessions\/[a-zA-Z0-9_-]+\/\.(codex|claude)-private\/material-inputs\/[a-f0-9]{64}\.[a-zA-Z0-9]{1,12}$/.test(relativePath)) throw new Error('无效原生材料副本位置')
+  if (!/^agents\/[a-zA-Z0-9_-]+\/workspace\/sessions\/[a-zA-Z0-9_-]+\/\.(codex|claude|plugin-[a-z0-9.-]{1,221})-private\/material-inputs\/[a-f0-9]{64}\.[a-zA-Z0-9]{1,12}$/.test(relativePath)) throw new Error('无效原生材料副本位置')
   return join(dataPath, ...relativePath.split('/'))
 }
 export async function readNativeMaterialCopy(dataPath: string, relativePath: string, expectedHash: string): Promise<MaterialBytes> {

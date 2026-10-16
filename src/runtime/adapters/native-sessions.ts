@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 插件provider复用连续会话、产品取消、原生监督及来源核验；命名空间/恢复标记独立。
+ * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 2026-10-14 房间历史合并保守撤销原生线程续用资格，明确新消息才重建。
  * [OUTPUT]: 2026-10-12运行中回答来源和材料与消息同事务登记，未知输入投递不续用旧session；明确新消息才重建，不自动重发。
  * [OUTPUT]: 2026-10-11 持续原生会话按员工/聊天/来源隔离，固定实际输入和答复身份；清理/换绑/恢复撤销续用资格，重启不重放。
@@ -31,8 +33,8 @@ interface Session {
 }
 
 /** Accepted live input joins the session's source fence in the message transaction. */
-export async function recordNativeInput(tx: RecordTransaction, runtime: 'codex' | 'claude', runId: string, agentId: string, conversationId: string, message: Message, original: Message) {
-  const collection = `${runtime}Sessions`, id = digest([agentId, conversationId, 'chat']), current = await tx.get<Session>(collection, id)
+export async function recordNativeInput(tx: RecordTransaction, runtime: string, runId: string, agentId: string, conversationId: string, message: Message, original: Message) {
+  const collection = runtime.startsWith('plugin-') ? 'pluginSessions' : `${runtime}Sessions`, id = digest([agentId, conversationId, 'chat', ...(runtime.startsWith('plugin-') ? [runtime] : [])]), current = await tx.get<Session>(collection, id)
   if (!current || current.runId !== runId || current.state !== 'pending' || current.resumeInvalidated) throw new Error('原生输入所属会话已结束或失效')
   const merge = <T extends { id: string }>(old: T[] | undefined, fresh: T[]) => [...new Map([...(old ?? []), ...fresh].map(value => [value.id, value])).values()]
   const refs = message.materialSources ?? []
@@ -41,7 +43,7 @@ export async function recordNativeInput(tx: RecordTransaction, runtime: 'codex' 
 export class NativeSessions {
   private readonly collection: string
   private readonly runtimeCollection: string
-  constructor(private readonly store: ProductStore, private readonly runtime: 'codex' | 'claude') { this.collection = `${runtime}Sessions`; this.runtimeCollection = `${runtime}Runtime` }
+  constructor(private readonly store: ProductStore, private readonly runtime: string) { this.collection = runtime.startsWith('plugin-') ? 'pluginSessions' : `${runtime}Sessions`; this.runtimeCollection = runtime.startsWith('plugin-') ? 'pluginRuntime' : `${runtime}Runtime` }
   /** This is database reconciliation only: never open a native process on startup. */
   async recover(dataPath: string) {
     const collection = this.collection
@@ -56,7 +58,7 @@ export class NativeSessions {
   }
   async begin(context: EngineContext, fingerprint: string) {
     const collection = this.collection
-    const id = digest([context.agent.id, context.conversation.id, 'chat'])
+    const id = digest([context.agent.id, context.conversation.id, 'chat', ...(this.runtime.startsWith('plugin-') ? [this.runtime] : [])])
     return this.store.transaction(async tx => {
       const previous = await tx.get<Session>(collection, id)
       const messages = context.nativeSourceIds ? context.messages.filter(message => message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence) : visibleMessages(context)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清空/房间迁移同时失效pluginSessions，旧历史不重解释或重放。
  * [OUTPUT]: 2026-10-14 保存旧成果/清理意图的原存储房间，业务归属迁移不改变原件位置。
  * [INPUT]: 空闲房间、原产品事务及明确的房间归一关系。
  * [OUTPUT]: 同事务保留业务ID/文件路径/回执、迁移房间引用及历史顺序；旧原生线程失效，新消息才重建。
@@ -41,7 +42,7 @@ export async function mergeRooms(tx: RecordTransaction, target: Conversation, ro
     if (record.collection === 'messages') { value = { ...value, sequence: sequences.get(record.id), ...(oldIds.has((record.value as Message).conversationId) ? { originalConversationId: (record.value as Message).originalConversationId ?? (record.value as Message).conversationId } : {}) }; updatedMessages.set(record.id, value as unknown as Message) }
     if (['artifacts', 'artifactCleanups', 'artifactPublicationIntents'].includes(record.collection) && oldIds.has((record.value as { conversationId: string }).conversationId)) value = { ...value, storageConversationId: value.storageConversationId ?? (record.value as { conversationId: string }).conversationId }
     if (record.collection === 'conversationCompletions') continue
-    if (record.collection === 'codexSessions' || record.collection === 'claudeSessions') value = { ...value, resumeInvalidated: 'room-merged' }
+    if (record.collection === 'codexSessions' || record.collection === 'claudeSessions' || record.collection === 'pluginSessions') value = { ...value, resumeInvalidated: 'room-merged' }
     const updated = { ...record, value }
     if (JSON.stringify(value) !== JSON.stringify(record.value)) { await tx.put(updated); changes.push(updated) }
   }

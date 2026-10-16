@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时插件目录查询/CAS启停/卸载和原生选择安装的类型化合同。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 内置插件配置快照/版本化启停与局部变化事件；无外部包或代码入口。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -66,6 +67,10 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listRuntimePlugins: { input: undefined; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
+  installRuntimePlugin: { input: { expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog | null }
+  setRuntimePluginEnabled: { input: { id: string; enabled: boolean; expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
+  uninstallRuntimePlugin: { input: { id: string; expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
   getPluginSettings: { input: undefined; output: PluginSettingsSnapshot }
   setPluginEnabled: { input: PluginEnableInput; output: PluginSettingsSnapshot }
   publishChannelReply: { input: { conversationId: string; messageId: string; contentHash: string; requestId: string }; output: import('../domain').Message }

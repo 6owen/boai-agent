@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 从运行时贡献声明发现Pi/ACP程序并固定provider/hash；扫描不执行CLI，停用不能生成连接。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [INPUT]: 有界配置扫描、当前扫描范围与用户选中的配置标识。
  * [OUTPUT]: 实际程序候选与独立协议/来源预填；选择时复查程序身份，未接入程序不可生成草稿；原API/ACP导入保持。
@@ -20,6 +21,8 @@ export class LocalConfigDiscovery {
   private program?: CodexAcpProgram
   private detected = new Map<string, ReturnType<typeof discoverAgentPrograms>[number]>()
 
+  private plugins: import('../../shared/plugins/runtime-catalog').RuntimePluginSummary[] = []
+  setRuntimePlugins(plugins: import('../../shared/plugins/runtime-catalog').RuntimePluginSummary[]) { this.plugins = plugins }
   constructor(private searchPaths?: string[]) {}
 
   scan(options: Parameters<typeof scanLocalConfigs>[0] = {}) {
@@ -36,7 +39,7 @@ export class LocalConfigDiscovery {
       this.agents.add(login.configId)
       if (this.program) login.acp = { executable: this.program.executable, runtime: this.program.runtime }
     }
-    const programs = discoverAgentPrograms(this.searchPaths, result.logins.filter(item => item.authType === 'oauth'), !!options.directory)
+    const programs = discoverAgentPrograms(this.searchPaths, result.logins.filter(item => item.authType === 'oauth'), !!options.directory, this.plugins)
     this.detected = new Map(programs.map(item => [item.candidate.candidateId, item]))
     result.agents = programs.map(item => item.candidate)
     return result
@@ -46,17 +49,18 @@ export class LocalConfigDiscovery {
     const detected = this.detected.get(candidateId)
     if (!detected) throw new Error('请重新扫描并选择本机 Agent')
     const { candidate, hash } = detected
+    if (candidate.protocol && candidate.availability !== 'available') throw new Error('运行时插件未启用或尚未安装，请在设置的插件中核对')
     if (!candidate.protocol) throw new Error('已发现这个程序，但暂未接入它的运行协议')
     let program
     try { program = inspectProgram(candidate.executable, candidate.protocol === 'claude-cli' ? CLAUDE_PROGRAM_LIMIT : undefined) }
     catch { throw new Error('程序已移除或不可读取，请重新扫描') }
     if (program.hash !== hash || program.path !== candidate.executable) throw new Error('程序已变化，请重新扫描')
-    if (candidate.localConfigId && candidate.protocol !== 'claude-cli') {
+    if (candidate.localConfigId && candidate.protocol !== 'claude-cli' && candidate.protocol !== 'runtime-plugin') {
       const draft = this.launchProfile(candidate.localConfigId, candidate.protocol)
       if (draft.executable !== candidate.executable) throw new Error('程序路径已变化，请重新扫描')
       return { ...draft, protocol: candidate.protocol }
     }
-    return { name: candidate.name, executable: program.path, runtime: program.runtime, protocol: candidate.protocol, args: [], useExistingLogin: true, hostAccessAcknowledged: true }
+    return { name: candidate.name, executable: program.path, runtime: program.runtime, protocol: candidate.protocol, ...(candidate.runtimePlugin ? {runtimePlugin:candidate.runtimePlugin} : {}), args: [], useExistingLogin: true, hostAccessAcknowledged: true }
   }
 
   launchProfile(configId: string, protocol: 'acp' | 'codex-app-server' = 'acp'): LaunchProfileInput {

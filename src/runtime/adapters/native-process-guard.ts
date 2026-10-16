@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 插件provider复用连续会话、产品取消、原生监督及来源核验；命名空间/恢复标记独立。
+ * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [INPUT]: Built Rovai process guard, private per-session directories and persisted same-UID ownership.
  * [OUTPUT]: Guard launch paths and orphan cleanup; never starts or repeats an Agent turn.
  * [POS]: Native transport shared resource supervision, separate from business execution.
@@ -15,7 +17,7 @@ export async function assertNativeProcessGuard() {
   try { await access(path) } catch { throw new Error('本机进程监督程序缺失，请重新运行 pnpm build 或 pnpm dev') }
   return path
 }
-export async function recoverNativeProcesses(dataPath: string, runtime: 'codex'|'claude') {
+export async function recoverNativeProcesses(dataPath: string, runtime: string) {
   if (process.platform !== 'darwin') return
   const directories = async (path: string) => { try { return (await readdir(path,{withFileTypes:true})).filter(item=>item.isDirectory()).map(item=>join(path,item.name)) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error } }
   for (const employee of await directories(join(dataPath,'agents'))) for (const session of await directories(join(employee,'workspace','sessions'))) {

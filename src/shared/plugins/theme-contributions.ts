@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: v1预览/主题兼容v2运行时清单；独立API候选、配置schema和声明式发现。
  * [INPUT]: 原VS Code Plus和Base46固定配色与许可证。
  * [OUTPUT]: 两个内置主题插件的纯配色贡献，保留原主题id/颜色。
  * [POS]: 数据型扩展Adapter；不执行脚本/CSS或读取网络。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
-import palettes from '../appearance/base46.json'
+import palettes from '../appearance/base46.json' with { type: 'json' }
 import type { ColorMode } from '../appearance'
 import { APPLICATION_PLUGIN_API, type ApplicationPluginManifest } from './types'
 

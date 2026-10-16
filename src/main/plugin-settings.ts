@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件目录安装经原生选择与私有runtime通道；运行时列表/启停/卸载IPC及动态发现。
  * [INPUT]: 固定本机配置路径、已校验内置清单与明确启停/CAS请求。
  * [OUTPUT]: 串行原子持久化；坏文件/未来版本只读保留、未知id偏好保留，失败不发布状态。
  * [POS]: 内置插件配置真源；不加载插件代码、不属于业务备份。
@@ -43,7 +44,7 @@ export class PluginSettingsStore {
       if (this.diagnostic) throw new Error(this.diagnostic)
       const value = updateSchema.parse(input), plugin = this.catalog.find(plugin => plugin.id === value.id)
       if (!plugin) throw new Error('找不到此内置插件。')
-      if (value.enabled && plugin.apiVersion !== APPLICATION_PLUGIN_API) throw new Error('此插件与当前应用版本不兼容。')
+      if (value.enabled && ![APPLICATION_PLUGIN_API, 2].includes(plugin.apiVersion)) throw new Error('此插件与当前应用版本不兼容。')
       if (!Number.isSafeInteger(value.expectedRevision) || value.expectedRevision !== this.value.revision) throw new Error('插件设置已变化，请刷新后重试。')
       const disabled = new Set(this.value.disabledIds)
       if (value.enabled === !disabled.has(value.id)) return this.snapshot()

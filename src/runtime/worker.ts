@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 通用插件执行路由、独立宿主/租约与产品桥；插件session恢复、私有目录备份排除，旧引擎兼容。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
  * [OUTPUT]: 私有浏览器 bridge 和 Main 实际开始反向握手；drain 不以超时释放资源；仅主进程可访问的通知领取/回执通道；本地运行进程装配、消息处理及仅宿主可指定位置的备份/技能库导出。
  * [POS]: src/runtime/worker.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { AppService } from './service'
 import { MastraEngine } from './adapters/mastra/engine'
@@ -40,6 +42,7 @@ const browserHost:BrowserHostBridge = {
     port.postMessage({type:'browser-host',id,method,input})
   }),
 }
+process.env.BOAI_RUNTIME_PLUGIN_BUNDLE ??= fileURLToPath(new URL('./plugins/', import.meta.url)).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')
 const service = new AppService({ dataPath, secrets, browserHost, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
 let shuttingDown = false
 port.on('message', async ({ data }) => {
@@ -64,7 +67,9 @@ port.on('message', async ({ data }) => {
   if (data?.type !== 'request' || shuttingDown) return
   const request = data.request as RpcRequest
   try {
-    const result = request.method as string === '__startBrowserAction'
+    const result = request.method as string === '__installRuntimePlugin'
+      ? await service.installRuntimePlugin((request.input as {directory:string}).directory,(request.input as {expectedRevision:number}).expectedRevision)
+      : request.method as string === '__startBrowserAction'
       ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId?:string})
       : request.method as string === '__takeAutomationNotice'
       ? await service.takeAutomationNotice()

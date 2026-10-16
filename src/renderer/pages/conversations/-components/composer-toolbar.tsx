@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时插件权限显示原生配置，不以BOAI命令开关承诺控制原生工具。
  * [OUTPUT]: 当前网页引用附于原消息草稿；固定实例/页面版本随发送回执持久，标题URL只展示宿主核验来源，原附件工具栏保持。
  * [OUTPUT]: 聊天模型选择复用设置/员工模型目录与手动编辑，连接选项仅含实际连接。
  * [OUTPUT]: 聊天与核心首发共用模型API/本机Agent两级配置，显示实际连接名称；草稿一次保存并等待真实回执；未知结果冻结原草稿/版本，只读核对并显式载入当前配置后再编辑。
@@ -71,7 +72,7 @@ export function ComposerToolbar(props: Props) {
     return () => { current = false }
   }, [api, modelOpen])
   const modelLabel = primary ? agentModelLabel(primary, snapshot.connections, profiles) : '选择模型'
-  const permissionLabel = primary?.executionBackend?.kind === 'acp-local' || primary?.allowCommands ? '请求批准' : '禁止命令'
+  const permissionLabel = primary?.executionBackend?.kind === 'runtime-plugin' ? '原生配置' : primary?.executionBackend?.kind === 'acp-local' || primary?.allowCommands ? '请求批准' : '禁止命令'
   const allowTaskOnly = Boolean(editing && !isCoreAgent(editing) && !editing.skillIds.length && !editing.knowledgeIds.length && !editing.allowCommands && !snapshot.conversations.some(conversation => conversation.kind === 'group' && conversation.agentIds.includes(editing.id)))
   const connection = snapshot.connections.find(item => item.id === selection.connectionId)
   const supportsThinking = (!selection.executionBackend || selection.executionBackend.kind === 'mastra-model') && connection && supportsThinkingControl(connection, selection.modelId)
@@ -135,7 +136,7 @@ export function ComposerToolbar(props: Props) {
         <DropdownMenuContent side="top" align="start" className="chat-composer-menu w-[280px] max-w-[calc(100vw-32px)] p-2" aria-label="权限批准">
           {members.map(agent => <DropdownMenuGroup key={agent.id}>
             <DropdownMenuLabel>{agent.name}的命令权限{locked(agent) ? ' · 当前不可修改' : ' · 保存到员工设置'}</DropdownMenuLabel>
-            {agent.executionBackend?.kind === 'acp-local' ? <DropdownMenuItem disabled><ShieldCheck /><ChatComposerOption label="逐次批准外部请求" description="外部程序提出的权限请求，每次由你确认。" /></DropdownMenuItem> :
+            {agent.executionBackend?.kind === 'runtime-plugin' ? <DropdownMenuItem disabled><ShieldCheck /><ChatComposerOption label="遵循本机 Agent 配置" description="原生工具权限由本机 Agent 管理；需要交互时会在此聊天请求确认。" /></DropdownMenuItem> : agent.executionBackend?.kind === 'acp-local' ? <DropdownMenuItem disabled><ShieldCheck /><ChatComposerOption label="逐次批准外部请求" description="外部程序提出的权限请求，每次由你确认。" /></DropdownMenuItem> :
               <DropdownMenuRadioGroup value={agent.allowCommands ? 'ask' : 'deny'} onValueChange={value => {
                 if (!locked(agent) && ['ask', 'deny'].includes(value)) onChangeAgent(agent, { allowCommands: value === 'ask' })
               }}>

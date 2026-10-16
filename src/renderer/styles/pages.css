@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 本机Agent品牌图标无背景/内边距，彩色SVG保留原色、单色随主题适配，扫描项20px紧凑尺寸共用。
+ * [OUTPUT]: 本机Agent选择页固定高度并受视口约束，shadcn ScrollArea延伸至弹窗边缘，内容内部留白；扫描项采用紧凑内边距/图标/字号，标题/步骤和重扫固定。
  * [OUTPUT]: 渠道选择Popover按内容收缩，列表8px内边距/4px间隔并保留有界滚动。
  * [OUTPUT]: 文件修改只显示Selection Actions浮层，退役底部会话/历史区尺寸；操作条输入透明且保留全局主题。
  * [OUTPUT]: 渠道空态沿IllustratedEmpty居中与共享悬浮会话标题，ScrollArea保持16px渐隐重叠。
@@ -10,7 +12,7 @@
  * [OUTPUT]: 员工顶部身份跨标签保持同一编辑控件与尺寸，身份修改页脚共用原布局；隐藏配置面板不展示，其他标签保留局部滚动，模型字段共用设置页同行目录操作与输入皮肤。
  * [INPUT]: 统一语义 token、技能来源/包预览/当前操作结果、Lobe Icons 本地品牌 SVG 与通讯录、设置、自动化页面结构及 Motion 面板容器。
  * [OUTPUT]: 连接表单输入/选择的焦点边缘复用全局 skin.css，不追加独立字段阴影；保留页面尺寸和组合按钮布局。
- * [OUTPUT]: 通讯录主列表仅群聊/联系人，管理入口位于加号菜单；940×600 有界管理弹窗、双栏筛选/表格、列表内常规按钮新建标签与独立滚动；较高批量面板的 Motion 容器及 240px 紧凑只读名单/危险删除浮层，标签保存时保留按钮亮度与悬停背景、勾选亮度并维持真实禁用锁；原不可用按钮保留禁用外观，标签选择复用语义 token、支持窄窗；团队创建入口位于加号菜单；通讯录滚动区域延伸至侧栏边缘，列表内容保持内侧留白；外观表单按内容容器宽度折行，在保留手动侧栏宽度时适配窄窗与缩放； 任务总览与七项设置行、上下文浮层和通讯录式分类布局；会话侧栏的小尺寸伙伴空态；模型连接与本机 Agent 共用首级 520px/二级 620px 自然高度弹窗、留白与兼容接口横向表单，移除 Agent 专用尺寸/滚动/页脚样式；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用毛绒伙伴 WebP 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话毛绒伙伴 WebP 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话常驻名称输入与唯一核心头像名称分组，空历史保留标题、整行折叠及独立更多/新会话图标；核心分组与列表紧凑间距、历史12px子级缩进/32px行高、整行统一选中/悬停背景且标题按钮始终透明，默认标题占满可用行宽，更多/编辑随hover/focus/menu覆盖末尾并用同表面渐隐衔接，标题宽度不跳变，普通会话保留头像预览；分组操作沿 hover/focus-within/菜单保持显示，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、毛绒步骤插图/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
+ * [OUTPUT]: 通讯录主列表仅群聊/联系人，管理入口位于加号菜单；940×600 有界管理弹窗、双栏筛选/表格、列表内常规按钮新建标签与独立滚动；较高批量面板的 Motion 容器及 240px 紧凑只读名单/危险删除浮层，标签保存时保留按钮亮度与悬停背景、勾选亮度并维持真实禁用锁；原不可用按钮保留禁用外观，标签选择复用语义 token、支持窄窗；团队创建入口位于加号菜单；通讯录滚动区域延伸至侧栏边缘，列表内容保持内侧留白；外观表单按内容容器宽度折行，在保留手动侧栏宽度时适配窄窗与缩放； 任务总览与七项设置行、上下文浮层和通讯录式分类布局；会话侧栏的小尺寸伙伴空态；模型连接与本机Agent共用首级520px/二级620px宽度、留白与横向表单，本机选择页固定高度且列表内部滚动，其他步骤保持自然高度；设置/任务列表保持手动可调宽度，模型连接与本机 Agent 共用标题操作栏和紧凑列表；共用毛绒伙伴 WebP 空态与 shadcn Select 布局/窄窗适配；通讯录复用无底色会话分组，任务侧栏对齐会话字号/间距/语义色，会话毛绒伙伴 WebP 空状态；任务摘要两行截断与结果优先分区；自动化编辑分组/星期多选、结果阅读和消息定位布局；会话常驻名称输入与唯一核心头像名称分组，空历史保留标题、整行折叠及独立更多/新会话图标；核心分组与列表紧凑间距、历史12px子级缩进/32px行高、整行统一选中/悬停背景且标题按钮始终透明，默认标题占满可用行宽，更多/编辑随hover/focus/menu覆盖末尾并用同表面渐隐衔接，标题宽度不跳变，普通会话保留头像预览；分组操作沿 hover/focus-within/菜单保持显示，移除来源筛选留白；Skills 商店列表布局； 技能管理卡片/分组、导入预览与文件阅读布局；增加语义 token 的调用树、时间线、筛选与节点详情布局；本地配置导入弹窗的有界滚动列表、通讯录资料与编辑布局、对齐会话的设置侧栏、共用留白/宽度/标题的外观与模型连接布局、直接展示的高级 Card 与 Slider、连接列表标题与测试状态同行省略/两步弹窗布局；Card、兼容接口表单、服务选项与分割线皮肤统一由 ui/skin.css 提供。保留模式缩略图、毛绒步骤插图/箭头、适配深浅色的服务品牌图标、模型操作/同行反馈、任务分栏、共享 Tabs 与自然滚动页脚。
  * [POS]: 页面表现层；从 global.css 的 components 层加载。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -63,6 +65,8 @@
 .connection-row { display:flex;align-items:center;gap:14px;padding:18px 20px;min-width:0 }
 .connection-provider-icon,.connection-empty-icon { display:flex;align-items:center;justify-content:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:var(--muted);color:var(--foreground) }
 .connection-brand-icon { display:block;width:24px;height:24px;flex-shrink:0;background:currentColor;mask-size:contain;mask-repeat:no-repeat;mask-position:center }
+img.connection-brand-icon { background:none;object-fit:contain }
+.connection-provider-icon.local-agent-brand-icon { width:24px;height:24px;padding:0;border-radius:0;background:none }
 .connection-row-body { min-width:0;flex:1 }
 .connection-row-title { display:flex;align-items:center;gap:10px;min-width:0 }
 .connection-row-title strong { min-width:0;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
@@ -81,7 +85,11 @@
 .connection-empty-icon { width:52px;height:52px;margin-bottom:16px;border-radius:16px }
 .connections-empty h3 { margin:0 0 8px;font-size:15px;font-weight:550 }
 .connections-empty p { max-width:320px;margin:0;color:var(--muted-foreground);font-size:13px;line-height:22px }
-[data-slot=dialog-content].connection-dialog { --connection-dialog-padding:24px 32px;max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain }
+[data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:32px;--connection-dialog-padding:24px var(--connection-dialog-padding-inline);max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain }
+[data-slot=dialog-content].connection-dialog[data-fixed-height] { flex-direction:column;overflow:hidden }
+.connection-dialog[data-fixed-height] > * { flex-shrink:0 }
+.connection-dialog[data-fixed-height] > .local-agent-scan-results { flex:1;min-height:0;margin:-4px calc(-1 * var(--connection-dialog-padding-inline)) }
+.local-agent-scan-content { padding:4px var(--connection-dialog-padding-inline) }
 .connection-dialog-top { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-8px -16px 12px;color:var(--muted-foreground);font-size:12px }
 .connection-dialog-intro { text-align:center;margin:0 0 24px }
 .connection-illustration { display:block;width:80px;height:64px;margin:0 auto 10px }
@@ -98,6 +106,13 @@
 .connection-provider-option strong { font-size:14px;font-weight:550 }
 .connection-provider-option small { color:var(--muted-foreground);font-size:12px;line-height:18px }
 .connection-provider-option>.app-icon { color:var(--muted-foreground) }
+.local-agent-scan-content .connection-provider-options { gap:8px }
+.local-agent-scan-content .connection-provider-option { gap:10px;padding:10px 12px }
+.local-agent-scan-content .connection-provider-icon { width:20px;height:20px;padding:0;border-radius:0;background:none }
+.local-agent-scan-content .connection-brand-icon { width:20px;height:20px }
+.local-agent-scan-content .connection-provider-option>span:nth-child(2) { gap:2px }
+.local-agent-scan-content .connection-provider-option strong { font-size:13px;line-height:18px }
+.local-agent-scan-content .connection-provider-option small { font-size:11px;line-height:16px }
 .connection-wizard-note { justify-content:center;font-size:11px;margin-top:24px }
 .connection-editor { display:grid;grid-template-columns:minmax(0,1fr);gap:24px }
 .connection-fields { display:grid;grid-template-columns:minmax(0,1fr);gap:18px;padding:0;border:0;margin:0;min-width:0 }
@@ -157,7 +172,7 @@
   .connection-model-actions,.connection-editor-actions { flex-basis:100% }
 }
 @media(max-height:740px) {
-  [data-slot=dialog-content].connection-dialog { --connection-dialog-padding:20px 28px }
+  [data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:28px;--connection-dialog-padding:20px var(--connection-dialog-padding-inline) }
   .connection-dialog-intro { margin-bottom:16px }
   .connection-illustration { width:60px;height:48px;margin-bottom:8px }
   .connection-fields { gap:14px }

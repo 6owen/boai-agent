@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 模型连接/本机 Agent 的步骤、标题，以及连接/个人资料的字段、反馈和操作回调。
- * [OUTPUT]: 原添加模型连接的共用弹窗布局：首级 520px、二级 620px、自然高度与统一标题/步骤；兼容接口和个人资料共用横向分组表单、全局 soft-divide-y/Separator 和操作栏，卡片可沿用默认颜色。
+ * [OUTPUT]: 共用弹窗首级 520px、二级 620px，默认自然高度，可指定固定高度供内容内部滚动；统一标题/步骤及连接和资料的横向分组表单、分隔线和操作栏。
  * [POS]: settings 内连接向导及个人资料卡片表单的共用布局，不持有业务状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,15 +12,16 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 
-export function ConnectionDialogLayout({ choosing, label, title, illustration, description, closeLabel, working, onClose, steps, children, finalFocus, initialFocus }: {
+export function ConnectionDialogLayout({ choosing, label, title, illustration, description, closeLabel, working, onClose, steps, children, finalFocus, initialFocus, fixedHeight }: {
   choosing: boolean; label: string; title: string; illustration: ReactNode; description?: string
   closeLabel: string; working: boolean; onClose(): void
   steps?: { label: string; first: string; second: string }
   children: ReactNode
   finalFocus: ComponentProps<typeof DialogContent>['finalFocus']
   initialFocus?: ComponentProps<typeof DialogContent>['initialFocus']
+  fixedHeight?: number
 }) {
-  return <DialogContent className="connection-dialog" style={{ display: 'block', width: choosing ? 520 : 620, maxWidth: 'calc(100vw - 32px)', padding: 'var(--connection-dialog-padding)' }} showCloseButton={false} finalFocus={finalFocus} initialFocus={initialFocus}>
+  return <DialogContent className={`connection-dialog${fixedHeight ? ' gap-0' : ''}`} data-fixed-height={fixedHeight ? true : undefined} style={{ display: fixedHeight ? 'flex' : 'block', height: fixedHeight, width: choosing ? 520 : 620, maxWidth: 'calc(100vw - 32px)', padding: 'var(--connection-dialog-padding)' }} showCloseButton={false} finalFocus={finalFocus} initialFocus={initialFocus}>
     <div className="connection-dialog-top"><span>{label}</span><Button variant="ghost" size="icon-sm" aria-label={closeLabel} disabled={working} onClick={onClose}><X /></Button></div>
     <div className="connection-dialog-intro">
       {illustration}

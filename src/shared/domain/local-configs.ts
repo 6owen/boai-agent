@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通用插件员工/Run绑定、能力快照、协议映射及无歧义provider命名空间。
  * [INPUT]: 本地配置扫描与显式导入请求。
  * [OUTPUT]: 无密钥 API/登录元数据及实际发现的本机程序；注册表区分已接入协议和仅发现，手动命令仅精确名称自动识别。
  * [POS]: shared/domain/local-configs.ts；从 boai-app 的本地配置扫描实现适配，保留 Apache-2.0 许可。
@@ -26,6 +27,7 @@ export interface DetectedLocalAgent {
   name: string
   executable: string
   protocol?: LaunchProfile['protocol']
+  runtimePlugin?: import('../plugins/runtime-api').RuntimePluginRef
   availability: 'available' | 'unsupported'
   localConfigId?: string
   sourcePath?: string

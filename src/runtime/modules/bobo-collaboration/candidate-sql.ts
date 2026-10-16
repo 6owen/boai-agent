@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件员工进入原候选查询，后续仍核对当前profile及包资格。
  * [OUTPUT]: Claude候选在分页前核对明确API/模型、程序协议和已验证版本；接纳与发布仍用实际程序/来源指纹复核。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 有界员工查询、当前通讯录/配置时钟与受管资源记录。
@@ -33,6 +34,7 @@ export function employeeCandidatesSql(query: EmployeeCandidateQuery) {
       LEFT JOIN records p ON p.collection='launchProfiles' AND p.id=json_extract(a.value,'$.executionBackend.profileId')
     WHERE a.collection='agents' AND a.id<>'bobo' AND COALESCE(json_extract(a.value,'$.systemRole'),'')<>'core' AND json_extract(a.value,'$.active')=1 AND json_extract(a.value,'$.configVersion')>0 AND ((COALESCE(json_extract(a.value,'$.executionBackend.kind'),'mastra-model')='mastra-model' AND c.id IS NOT NULL
       AND length(trim(COALESCE(NULLIF(json_extract(a.value,'$.modelId'),''),json_extract(c.value,'$.defaultModel'),'')))>0)
+      OR (json_extract(a.value,'$.executionBackend.kind')='runtime-plugin' AND COALESCE(json_extract(a.value,'$.connectionId'),'')='' AND json_extract(p.value,'$.protocol')='runtime-plugin' AND json_type(p.value,'$.verified')='object' AND json_extract(a.value,'$.executionBackend.pluginId')=json_extract(p.value,'$.runtimePlugin.pluginId') AND json_extract(a.value,'$.executionBackend.providerId')=json_extract(p.value,'$.runtimePlugin.providerId'))
       OR (json_extract(a.value,'$.executionBackend.kind')='codex-local' AND COALESCE(json_extract(a.value,'$.connectionId'),'')='' AND json_extract(p.value,'$.protocol')='codex-app-server' AND json_type(p.value,'$.verified')='object')
       OR (json_extract(a.value,'$.executionBackend.kind')='claude-local' AND c.id IS NOT NULL AND json_extract(c.value,'$.hasApiKey')=1
         AND json_extract(p.value,'$.protocol')='claude-cli' AND json_extract(p.value,'$.verified.version')='${CLAUDE_VERIFIED_VERSION}'

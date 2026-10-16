@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 插件provider复用连续会话、产品取消、原生监督及来源核验；命名空间/恢复标记独立。
+ * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 真实原生上下文明确内置浏览器/自动化产品工具及当前可用身份，保持原生循环与选定权限。
  * [OUTPUT]: 输入投影v2包含真实材料路径，旧投影首次明确新消息时保守重建；历史保留，启动不重放。
  * [OUTPUT]: 2026-10-11 同一员工聊天一条消息一次持续原生turn；普通公开消息与final去重，真实输出身份支持重启续聊。
@@ -16,42 +18,47 @@ import { decisionMessageData } from './mastra/message-projection'
 import { createNativeProducts } from './native-products'
 
 export interface NativeConversationInput {
-  instructions: string; prompt: string; threadId?: string; images: string[]; tools: NativeTool[]
+  instructions: string; nativeInstructions?: string; prompt: string; threadId?: string; images: string[]; tools: NativeTool[]
+  cancelProducts?(): void
   onSession(id: string): Promise<void>
   onSubmitted(threadId: string, turnId: string): Promise<void>
 }
 export abstract class NativeConversationEngine {
   private readonly sessions: NativeSessions
-  constructor(store: ProductStore, private readonly runtime: 'codex' | 'claude') { this.sessions = new NativeSessions(store, runtime) }
+  constructor(store: ProductStore, private readonly runtime: string) { this.sessions = new NativeSessions(store, runtime) }
   async recover(dataPath: string) { await recoverNativeProcesses(dataPath,this.runtime); return this.sessions.recover(dataPath) }
   protected abstract conversation(context: EngineContext, input: NativeConversationInput): Promise<{ text: string }>
   async run(context: EngineContext) {
     const fingerprint = digest(['native-conversation-v2', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch])
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
-    const nativeContext = { ...context, publishNativeMessage: context.publishNativeMessage ? async (content: string, callId: string) => {
+    const productController = new AbortController()
+    const nativeContext = { ...context, signal: AbortSignal.any([context.signal, productController.signal]), publishNativeMessage: context.publishNativeMessage ? async (content: string, callId: string) => {
       const published = await context.publishNativeMessage!(content, callId); publicReplies.push(published); return published
     } : undefined }
     const products = createNativeProducts(nativeContext)
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
-      const instructions = [context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
-        'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. BOAI tools add product collaboration and artifact publishing; they do not replace or restrict native tools. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
-        'Use publish_artifact to deliver an existing file as a real chat attachment. A successful receipt proves publication. Native file creation alone does not register a BOAI artifact. Dependency files include nativePath for your native read tools; logicalPath is for legacy BOAI tools. Preserve colleague file ownership and cite a delivered dependency artifact ID when reporting its verified result. Use actual employee IDs for BOAI delegation; native subagents are execution resources, not BOAI employees. Ordinary conversation needs no Work or report_work. Work is created only when you explicitly call a product work tool. Never invent tool success or repeat a publication after an unknown receipt.',
-        ...(context.nativeBrowserSession ? [`The current BOAI embedded browser is available through ${this.runtime === 'claude' ? 'mcp__boai__browser_tool' : 'browser_tool'}. This tool operates the user-referenced page in the same application and login. External browser skills, shell tools and browser instances cannot address that page. Start with snapshot for actual element refs and screenshot for visual evidence. Read-only access needs no Work; writes claim Work automatically. After an actual write, verify the page result and report_work with that evidence.`] : []),
-        ...(context.manageAutomation ? [`For a BOAI employee/group automation request, use ${this.runtime === 'claude' ? 'mcp__boai__manage_automation' : 'manage_automation'} with the actual owner and members. Native cron/scheduling tools do not create BOAI plans or right-panel records. Only a persisted management receipt proves creation.`] : []),
+      const nativeInstructions = [context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
+        'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
         `Working directory: ${context.runtimeDirectory?.cwd ?? context.workspace?.workPath}. Bound resources (additional to native resources): ${JSON.stringify(context.resources.map(({ id, name, kind, path }) => ({ id, name, kind, path })))}`,
         `Current members: ${JSON.stringify(context.members?.map(({ id, name, role }) => ({ id, name, role })) ?? [])}`,
       ].join('\n\n')
-      const result = await this.conversation(nativeContext, { instructions, threadId, tools: products.tools,
+      const instructions = [nativeInstructions,
+        'Use publish_artifact to deliver an existing file as a real chat attachment. A successful receipt proves publication. Native file creation alone does not register a BOAI artifact. Dependency files include nativePath for your native read tools; logicalPath is for legacy BOAI tools. Preserve colleague file ownership and cite a delivered dependency artifact ID when reporting its verified result. Use actual employee IDs for BOAI delegation; native subagents are execution resources, not BOAI employees. Ordinary conversation needs no Work or report_work. Work is created only when you explicitly call a product work tool. Never invent tool success or repeat a publication after an unknown receipt.',
+        ...(context.nativeBrowserSession ? [`The current BOAI embedded browser is available through ${this.runtime === 'claude' ? 'mcp__boai__browser_tool' : 'browser_tool'}. This tool operates the user-referenced page in the same application and login. External browser skills, shell tools and browser instances cannot address that page. Start with snapshot for actual element refs and screenshot for visual evidence. Read-only access needs no Work; writes claim Work automatically. After an actual write, verify the page result and report_work with that evidence.`] : []),
+        ...(context.manageAutomation ? [`For a BOAI employee/group automation request, use ${this.runtime === 'claude' ? 'mcp__boai__manage_automation' : 'manage_automation'} with the actual owner and members. Native cron/scheduling tools do not create BOAI plans or right-panel records. Only a persisted management receipt proves creation.`] : []),
+      ].join('\n\n')
+      const result = await this.conversation(nativeContext, { instructions, nativeInstructions, threadId, tools: products.tools,
         prompt: JSON.stringify({ contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
         images: context.materialImages?.filter(image => newIds.has(image.messageId)).map(image => image.dataUrl) ?? [],
+        cancelProducts: () => productController.abort(new Error('原生插件已退出')),
         onSession: id => this.sessions.update(session, { threadId: id }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),
       })
       const reply = result.text.trim() ? [...publicReplies].reverse().find(message => message.content.trim() === result.text.trim())?.content ?? result.text : publicReplies.at(-1)?.content ?? ''
       if (!result.text.trim() && reply) await context.onDelta(reply)
       await this.sessions.update(session, { state: 'completed', outputHash: digest(reply), completedInvocationId: context.runId })
-    } finally { await products.dispose() }
+    } finally { productController.abort(); await products.dispose() }
   }
 }

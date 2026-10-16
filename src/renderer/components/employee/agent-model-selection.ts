@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工运行选择支持通用插件绑定、原生默认模型和连接能力事实。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 恢复全局/员工/聊天共用本机入口，默认Codex草稿且不隐式选程序；Claude来源与后端共用纯校验，拒绝Codex/API混绑。
  * [INPUT]: 员工当前运行配置、API连接与已保存本机启动项。
@@ -28,6 +29,7 @@ export function changeAgentRunMode(value: AgentModelSelection, mode: 'api' | 'lo
 }
 
 export function selectAgentProfile(value: AgentModelSelection, profile: LaunchProfile): AgentModelSelection {
+  if (profile.protocol === 'runtime-plugin' && profile.runtimePlugin) return { executionBackend: {kind:'runtime-plugin',profileId:profile.id,pluginId:profile.runtimePlugin.pluginId,providerId:profile.runtimePlugin.providerId}, connectionId:'',modelId:'' }
   const kind = profile.protocol === 'codex-app-server' ? 'codex-local' : profile.protocol === 'claude-cli' ? 'claude-local' : 'acp-local'
   return { executionBackend: { kind, profileId: profile.id }, connectionId: kind === 'claude-local' && !profile.useExistingLogin ? value.connectionId : '', modelId: kind === 'claude-local' ? value.modelId : '' }
 }
@@ -37,6 +39,7 @@ export function agentModelSelectionReady(value: AgentModelSelection, connections
   if (backend && backend.kind !== 'mastra-model') {
     const profile = profiles.find(item => item.id === backend.profileId)
     if (!profile?.verified || (profile.protocol ?? 'acp') !== backendProtocol(backend.kind) || backend.kind === 'acp-local' && !allowTaskOnly) return false
+    if (backend.kind === 'runtime-plugin' && (backend.pluginId !== profile.runtimePlugin?.pluginId || backend.providerId !== profile.runtimePlugin?.providerId)) return false
     if (backend.kind !== 'claude-local' || profile.useExistingLogin) return !value.connectionId && value.modelId.trim().length <= 200
     try { claudeProvider(connections.find(item => item.id === value.connectionId), value.modelId); return true } catch { return false }
   }

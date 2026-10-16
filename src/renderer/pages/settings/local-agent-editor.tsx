@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时插件安装/更新/启停/卸载与当前租约状态；本机扫描及动态配置/测试/保存接入。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 本机运行许可归入高级设置并默认勾选；折叠箭头仅使用共享展开旋转，收起向右、展开向下。
  * [OUTPUT]: 单个手动入口按精确命令名识别已接入协议；未知程序需明确兼容协议，原扫描/保存协议优先，不能自动冒充ACP。
@@ -10,6 +11,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import type { RuntimePluginSummary } from '@shared/plugins/runtime-catalog'
 import type { LaunchProfileInput } from '@shared/domain'
 import { localAgentProtocol } from '@shared/domain/local-configs'
 import type { DesktopApi } from '@shared/ipc'
@@ -29,10 +31,13 @@ export type LocalAgentDraft = Omit<LaunchProfileInput, 'hostAccessAcknowledged'>
 export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, leading, details, manual = false, pending = false }: {
   api: DesktopApi; initial: LocalAgentDraft; onBack: () => void; onSaved: () => Promise<void>; onWorking: (busy: boolean) => void; leading?: ReactNode; details?: ReactNode; manual?: boolean; pending?: boolean
 }) {
-  const [form, setForm] = useState({ name: initial.name, executable: initial.executable, args: initial.args, codexHome: initial.codexHome ?? '', useExistingLogin: initial.useExistingLogin, acknowledged: true, protocol: (initial.protocol ?? (initial.id ? 'acp' : 'auto')) as NonNullable<LaunchProfileInput['protocol']> | 'auto' })
+  const [form, setForm] = useState({ name: initial.name, executable: initial.executable, args: initial.args, codexHome: initial.codexHome ?? '', useExistingLogin: initial.useExistingLogin, acknowledged: true, protocol: initial.runtimePlugin ? `plugin:${initial.runtimePlugin.pluginId}` : (initial.protocol ?? (initial.id ? 'acp' : 'auto')) as string, config: initial.runtimePlugin?.config ?? {} })
   const [advanced, setAdvanced] = useState(false)
   const showCommand = manual || !initial.executable
-  const protocol = form.protocol === 'auto' ? localAgentProtocol(form.executable) : form.protocol
+  const [plugins, setPlugins] = useState<RuntimePluginSummary[]>([])
+  useEffect(() => { let active = true; void api.request('listRuntimePlugins', undefined).then(value => { if (active) setPlugins(value.plugins) }).catch(() => {}); return () => { active = false } }, [api])
+  const plugin = plugins.find(item => form.protocol === `plugin:${item.manifest.id}` || form.protocol === 'auto' && item.enabled && item.manifest.contributions[0].discovery.commands.includes(form.executable.trim().split(/[\\/]/).pop() ?? ''))
+  const protocol = (plugin || form.protocol.startsWith('plugin:') ? 'runtime-plugin' : form.protocol === 'auto' ? localAgentProtocol(form.executable) : form.protocol) as LaunchProfileInput['protocol']
   const codexConfig = protocol !== 'claude-cli' && (!!form.codexHome || protocol === 'codex-app-server' || localAgentProtocol(form.executable) === 'codex-app-server')
   const [operation, setOperation] = useState<'test' | 'save' | null>(null)
   const [feedback, setFeedback] = useState('')
@@ -46,8 +51,9 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
     if (!form.executable.trim()) { setAdvanced(true); throw new Error('请填写启动命令。') }
     if (!form.acknowledged) throw new Error('请先确认允许此 Agent 在本机运行。')
     if (!protocol) { setAdvanced(true); throw new Error('尚不能识别这个程序的接入方式；如果它支持 ACP，请在高级设置中选择 ACP 兼容程序。') }
+    if (protocol === 'runtime-plugin' && !plugin?.enabled) throw new Error('运行时插件未启用，请在设置的插件中核对')
     const useExistingLogin = form.useExistingLogin
-    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: protocol === 'claude-cli' ? undefined : initial.localConfigId, protocol, name: form.name.trim(), executable: form.executable.trim(), args: protocol === 'acp' ? form.args : [], runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin, codexHome: protocol !== 'claude-cli' && useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
+    return { id: initial.id, expectedRevision: initial.expectedRevision, localConfigId: protocol === 'claude-cli' ? undefined : initial.localConfigId, protocol, ...(protocol === 'runtime-plugin' ? {runtimePlugin:{pluginId:plugin!.manifest.id,providerId:plugin!.manifest.contributions[0].providerId,packageHash:plugin!.packageHash,config:form.config}} : {}), name: form.name.trim(), executable: form.executable.trim(), args: protocol === 'acp' ? form.args : [], runtime: form.executable.trim() === initial.executable ? initial.runtime : undefined, useExistingLogin, codexHome: protocol !== 'claude-cli' && protocol !== 'runtime-plugin' && useExistingLogin ? form.codexHome.trim() || undefined : undefined, hostAccessAcknowledged: true }
   }
   const submit = (operation: 'test' | 'save') => {
     if (working || !editor.current?.reportValidity()) return
@@ -93,11 +99,14 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
       <CollapsibleTrigger render={<Button type="button" variant="ghost" className="w-full justify-between px-0" />} disabled={working}>高级设置<ChevronRight /></CollapsibleTrigger>
       <CollapsibleContent><div className="soft-divide-y">
         {!showCommand && commandFields}
-        <ConnectionSettingRow label="接入协议" htmlFor={`${fieldId}-protocol`} icon={<Terminal />} hint="仅选择程序实际支持的协议；选择协议不会安装或增加程序能力。"><SelectField id={`${fieldId}-protocol`} value={form.protocol} onValueChange={value => set('protocol', value as typeof form.protocol)} options={[{ value: 'auto', label: '自动识别' }, { value: 'acp', label: 'ACP 兼容程序' }, { value: 'codex-app-server', label: 'Codex 原生程序' }, { value: 'claude-cli', label: 'Claude 原生程序' }]} /></ConnectionSettingRow>
+        <ConnectionSettingRow label="接入协议" htmlFor={`${fieldId}-protocol`} icon={<Terminal />} hint="仅选择程序实际支持的协议；选择协议不会安装或增加程序能力。"><SelectField id={`${fieldId}-protocol`} value={form.protocol} onValueChange={value => set('protocol', value as typeof form.protocol)} options={[...plugins.map(item => ({value:`plugin:${item.manifest.id}`,label:`${item.manifest.name} 插件`,disabled:!item.enabled})), { value: 'auto', label: '自动识别' }, { value: 'acp', label: 'ACP 兼容程序' }, { value: 'codex-app-server', label: 'Codex 原生程序' }, { value: 'claude-cli', label: 'Claude 原生程序' }]} /></ConnectionSettingRow>
         <ConnectionSettingRow label="登录与配置" htmlFor={`${fieldId}-login`} icon={<Key />}>
           <label className="flex min-h-9 items-center gap-2"><Checkbox id={`${fieldId}-login`} checked={form.useExistingLogin} onCheckedChange={checked => set('useExistingLogin', checked)} /><span>使用本机已有配置</span></label>
         </ConnectionSettingRow>
         {form.useExistingLogin && codexConfig && <ConnectionSettingRow label="Codex 配置目录" htmlFor={`${fieldId}-home`} icon={<FolderOpen />} hint="仅 Codex 需要；留空使用默认目录，扫描时会自动填写。"><Input id={`${fieldId}-home`} value={form.codexHome} onChange={event => set('codexHome', event.target.value)} placeholder="使用默认目录" /></ConnectionSettingRow>}
+        {plugin && Object.entries(plugin.manifest.contributions[0].configSchema.properties).map(([key, field]) => <ConnectionSettingRow key={key} label={field.title ?? key} icon={<Terminal />} hint={field.description}>
+          {field.type === 'boolean' ? <Checkbox checked={form.config[key] === true} onCheckedChange={value => set('config', {...form.config,[key]:value})} /> : <Input type={field.type === 'number' ? 'number' : 'text'} value={String(form.config[key] ?? '')} onChange={event => { const config = {...form.config}; if (!event.target.value) delete config[key]; else config[key] = field.type === 'number' ? Number(event.target.value) : event.target.value; set('config',config) }} />}
+        </ConnectionSettingRow>)}
         {details}
         <div className="flex items-center gap-2 py-3">
           <label className="flex items-center gap-2 text-sm"><Checkbox id={`${fieldId}-access`} required checked={form.acknowledged} onCheckedChange={checked => set('acknowledged', checked)} /><span>允许此 Agent 在本机运行</span></label>

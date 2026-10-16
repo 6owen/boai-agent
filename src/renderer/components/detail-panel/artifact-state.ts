@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通用运行时插件参与成果修订候选与真实执行停止，原来源核验保持。
  * [OUTPUT]: 文件修改允许纯本机Claude；显式Claude API沿共享协议/凭据/模型校验，缺失profile和混合Codex/API绑定不作为可选员工。
  * [OUTPUT]: 本机Codex可在原聊天被明确选为修订员工，宿主受理时核对连接与原版；旧ACP不开放。
  * [INPUT]: 成果修订/采用/显式待验收 DTO、实际员工/连接、详情页面与逻辑家族身份、持久未决请求和只读回执结果。
@@ -33,7 +34,7 @@ export function updateArtifactPending(previous: ArtifactPendingMap, key: string,
   const next = { ...previous }; if (value?.revision || value?.adoption || value?.acceptance) next[key] = value; else delete next[key]
   return next
 }
-export function artifactRevisionTarget(agent: DigitalAgent | undefined, connections: Connection[]): { connection: Connection; modelId: string } | { backend: 'codex-local' | 'claude-local' } | undefined {
+export function artifactRevisionTarget(agent: DigitalAgent | undefined, connections: Connection[]): { connection: Connection; modelId: string } | { backend: 'codex-local' | 'claude-local' | 'runtime-plugin' } | undefined {
   if (!agent?.active || agent.executionBackend?.kind === 'acp-local') return
   if (isNativeBackend(agent.executionBackend)) {
     if (!agent.executionBackend.profileId.trim()) return

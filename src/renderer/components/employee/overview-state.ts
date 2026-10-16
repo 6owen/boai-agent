@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工运行选择支持通用插件绑定、原生默认模型和连接能力事实。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude能力说明覆盖已接核心团队/组织群，程序验证与API认证分开，自动化沿明确程序/API来源与原预算开放。
@@ -24,6 +25,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
     id: 'connection', name: '本机 Claude', status: !profile ? '启动项不可用' : mismatchedCheck ? '当前程序待核对' : dependencyUnavailable ? '程序不可用' : changed ? '程序核对已失效' : profile.verified ? '已记录程序核对' : '程序待核对',
     detail: checked?.status !== 'available' ? checked?.detail ?? '当前依赖待核对。' : '已核对本机程序版本；这不证明API认证或实际交付。支持独立员工单聊、普通群分工与结果等待、宿主文件任务及PNG、JPEG、GIF、WebP图片输入；图片理解取决于所选模型。支持核心助手建团队与组织群；关闭命令权限后可用于定时任务。',
   }
+  if (agent.executionBackend?.kind === 'runtime-plugin') nativeConnection = { id:'connection', name:profile?.name ?? '运行时插件', status:!profile ? '连接缺失' : checked?.status !== 'available' ? '当前连接待核对' : profile.verified ? '已记录协议握手' : '尚未测试', detail:`${profile?.runtimePlugin?.pluginId ?? agent.executionBackend.pluginId}。模型、工具和登录由原生程序管理；BOAI沿实际协议能力提供会话与产品工具，握手不代表真实业务已验证。` }
   if (agent.executionBackend?.kind === 'acp-local') return [{
     id: 'connection', name: '外部任务连接',
     status: !profile ? '启动项不可用' : mismatchedCheck ? '当前启动项待核对' : dependencyUnavailable ? '执行依赖不可用' : changed ? '连接验证已失效' : profile.verified ? '已记录连接验证' : checked ? '当前配置未验证' : '已配置 · 未验证',
@@ -40,6 +42,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
   const facts: EmployeeCapabilityFact[] = [nativeConnection ?? { id: 'model', name: '模型连接', status: connection && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。配置存在不代表连接或输出效果已验证。` : '请在配置中选择连接与模型。' }, {
     id: 'commands', name: '命令授权', status: agent.allowCommands ? '可申请 · 逐次批准' : '未启用', detail: agent.allowCommands ? '配置允许申请命令执行；具体命令仍在原员工聊天请求批准，当前资料不执行检查。' : '当前员工不能申请执行主机命令。',
   }]
+  if (agent.executionBackend?.kind === 'runtime-plugin') facts[1] = { id:'commands', name:'原生命令权限', status:'遵循本机 Agent 配置', detail:'由原生程序及其扩展管理权限。BOAI只接回实际提出的审批/输入请求；BOAI命令开关不限制原生工具。' }
   if (agent.executionBackend?.kind === 'claude-local') facts.splice(1, 0, { id: 'model', name: 'Claude模型来源', status: connection?.hasApiKey && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。由本机Claude调用，不额外使用API父模型；由原生Agent自主执行。` : '请在员工配置中选择兼容API连接和模型。' })
   const currentEnvironment = home?.agentId === agent.id && home.configVersion === agent.configVersion ? home.environment : undefined
   for (const id of agent.skillIds) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时包生命周期/线协议、Pi与ACP连续会话/真实工具副作用及独立模块安装；真实Pi探针显式选择。
  * [INPUT]: 生产插件目录/配置存储/生命周期与真实临时文件、外观配置。
  * [OUTPUT]: 声明边界、持久/CAS/坏配置/写失败及主题停用恢复合同回归。
  * [POS]: 内置插件平台模块验证；实际设置操作归Electron BDD。
@@ -46,7 +47,7 @@ test('invalid declarations, reserved theme ids and CSS injection are rejected', 
   for (const patch of [{ id: '../module' }, { version: 'latest' }, { apiVersion: 0 }, { contributions: [] }, { entry: 'file:///private' }]) {
     expect(() => definePluginCatalog([{ ...applicationPlugins[0], ...patch }] as never)).toThrow()
   }
-  const future = { ...applicationPlugins[0], apiVersion: 2 }
+  const future = { ...applicationPlugins[0], apiVersion: 3 }
   expect(pluginAvailability(future, { disabledIds: [], revision: 0 })).toBe('incompatible')
 })
 
@@ -81,7 +82,7 @@ test.each(['{broken', JSON.stringify({ schemaVersion: 2, revision: 7, disabledId
 test('unknown disabled ids survive upgrades while unknown writes and incompatible activation are rejected', async () => {
   const { path } = await setup()
   await writeFile(path, JSON.stringify({ schemaVersion: 1, revision: 4, disabledIds: ['future.pack', 'future.pack'] }))
-  const store = new PluginSettingsStore(path, vi.fn(), [...applicationPlugins, { ...applicationPlugins[0], id: 'future.pack', apiVersion: 2 }]); await store.init()
+  const store = new PluginSettingsStore(path, vi.fn(), [...applicationPlugins, { ...applicationPlugins[0], id: 'future.pack', apiVersion: 3 }]); await store.init()
   await expect(store.update({ id: 'unknown', enabled: true, expectedRevision: 4 })).rejects.toThrow('找不到')
   await expect(store.update({ id: 'future.pack', enabled: true, expectedRevision: 4 })).rejects.toThrow('不兼容')
   await store.update({ id: textId, enabled: false, expectedRevision: 4 })

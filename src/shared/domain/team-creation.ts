@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通用插件员工/Run绑定、能力快照、协议映射及无歧义provider命名空间。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 团队需求、模型输出和用户编辑；无凭据或工具权限。
@@ -33,7 +34,7 @@ export type TeamPlannerOutput = z.infer<typeof teamPlannerOutputSchema>
 // Product facts are deterministic; the model does not grant or describe permissions.
 export function teamCapabilityNotes(scenarioKind: TeamPlan['scenarioKind'], backend: import('./backends').ExecutionBackend['kind'] = 'mastra-model'): string[] {
   return [
-    backend === 'codex-local' || backend === 'claude-local' ? `新员工使用核心助手所选本机 ${backend === 'claude-local' ? 'Claude 程序及明确 API 来源' : 'Codex 连接'}与模型，独立身份、工作区和会话；默认无命令权限、无 Skills、无知识绑定。` : '新员工使用所选同一 API 模型，默认无命令权限、无 Skills、无知识绑定，不自动安装工具或联网。',
+    backend === 'runtime-plugin' ? '新员工复用核心助手所选运行时插件与连接，各自保持独立身份、工作区和会话；原生工具按本机配置运行。' : backend === 'codex-local' || backend === 'claude-local' ? `新员工使用核心助手所选本机 ${backend === 'claude-local' ? 'Claude 程序及明确 API 来源' : 'Codex 连接'}与模型，独立身份、工作区和会话；默认无命令权限、无 Skills、无知识绑定。` : '新员工使用所选同一 API 模型，默认无命令权限、无 Skills、无知识绑定，不自动安装工具或联网。',
     '成员可读写个人工作区文件并产生文件产物。',
     '同一员工的新交流可在相关私聊与群聊中接续；仅此聊天限制、来源授权和有效期仍适用，旧会话记忆不自动开放。',
     '命令权限、Skills 和知识绑定需用户通过现有设置另行配置；本方案不授予读取其他员工私有聊天的权限。',

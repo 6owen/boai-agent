@@ -100,7 +100,8 @@
       "node_modules/libsql/**/*",
       "node_modules/@mastra/**/*",
       "node_modules/@parcel/watcher/**/*",
-      "dist/native/**/*"
+      "dist/native/**/*",
+      "dist/runtime/plugins/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",

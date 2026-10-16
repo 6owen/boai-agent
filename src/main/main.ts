@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件目录安装经原生选择与私有runtime通道；运行时列表/启停/卸载IPC及动态发现。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 内置插件固定配置/首帧快照/严格启停IPC；退出等待配置原子保存，外观沿可用插件解析。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -119,6 +120,7 @@ for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) 
 for (const method of ['acceptTeamCreation', 'getTeamCreation', 'resumeTeamCreation', 'generateTeamPlan', 'cancelTeamGeneration', 'openTeamDraft', 'saveTeamDraft', 'getTeamDraft', 'abandonTeamDraft', 'listTeamCreationRecovery'] as const) methods.add(method)
 for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
 methods.add('testLocalConnection')
+for (const method of ['listRuntimePlugins','installRuntimePlugin','setRuntimePluginEnabled','uninstallRuntimePlugin'] as const) methods.add(method)
 methods.add('getPluginSettings')
 methods.add('setPluginEnabled')
 methods.add('getDesktopSettings')
@@ -324,6 +326,7 @@ function registerIpc() {
     if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
+    if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
     if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
     if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
@@ -351,6 +354,7 @@ function registerIpc() {
     if (method === 'getPendingAutomationNavigation') { z.undefined().parse(input); const target = pendingAutomationNavigation; pendingAutomationNavigation = null; return target }
     if (method === 'scanLocalConnections') {
       const options = z.object({ chooseDirectory: z.boolean().optional() }).strict().parse(input)
+      const catalog = await requestRuntime('listRuntimePlugins') as Methods['listRuntimePlugins']['output']; localConfigs.setRuntimePlugins(catalog.plugins)
       if (!options.chooseDirectory) return localConfigs.scan()
       const selection = await dialog.showOpenDialog(window, { title: '选择本地 Agent 配置目录', properties: ['openDirectory', 'showHiddenFiles'] })
       if (selection.canceled || !selection.filePaths[0]) return null
@@ -361,9 +365,9 @@ function registerIpc() {
       return requestRuntime(method === 'testLocalConnection' ? 'testConnectionDraft' : 'saveConnection', localConfigs.connection(selected.configId, selected.model))
     }
     if (method === 'saveLaunchProfile' || method === 'testLaunchProfileDraft') {
-      const source = z.object({ id: z.string().optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), protocol: z.enum(['acp', 'codex-app-server', 'claude-cli']).optional() }).passthrough().parse(input)
+      const source = z.object({ id: z.string().optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), protocol: z.enum(['acp', 'codex-app-server', 'claude-cli','runtime-plugin']).optional() }).passthrough().parse(input)
       if (!source.id && source.localConfigId) {
-        if (source.protocol === 'claude-cli') throw new Error('Claude程序配置不接受Codex登录来源')
+        if (source.protocol === 'claude-cli' || source.protocol === 'runtime-plugin') throw new Error('Claude程序配置不接受Codex登录来源')
         localConfigs.launchProfile(source.localConfigId, source.protocol)
       }
     }

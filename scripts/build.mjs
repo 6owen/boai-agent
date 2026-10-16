@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时插件独立构建/SDK与清单产物随应用分发；新增桌面场景纳入F11审阅。
  * [OUTPUT]: 随 runtime 分发 Hermes 文件工具策略的 MIT 许可和固定来源清单。
  * [OUTPUT]: 随渲染资源分发 Craft Scenic 的 Apache 许可、NOTICE 与固定迁入清单。
  * [OUTPUT]: 第16组直接迁入的Rovai钉钉MIT许可与固定来源清单随runtime构建分发。
@@ -7,6 +8,7 @@
  * [POS]: 项目构建入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { buildRuntimePlugins } from './build-runtime-plugins.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import { copyFile } from 'node:fs/promises'
 import { build } from 'esbuild'
@@ -15,6 +17,7 @@ import { build as buildRenderer } from 'vite'
 export async function buildHost() {
   await buildProcessGuard()
   await Promise.all([
+    buildRuntimePlugins(),
     build({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
     build({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     build({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),

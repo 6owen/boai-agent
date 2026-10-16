@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通用插件员工/Run绑定、能力快照、协议映射及无歧义provider命名空间。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道内部讨论为独立且限定记忆的会话；固定原消息引用与明确外发元信息不混入平台来信身份。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -210,7 +211,7 @@ export interface AgentRun {
   disposition?: WorkDisposition
   timing?: { queueMs: number; executionMs: number; backoffMs: number; rateLimitRetries: number }
   failureKind?: 'unsupported' | 'auth_required' | 'input_required' | 'budget_exhausted' | 'transport'
-  backend?: import('./execution').NativeExecutionReceipt & { program?: {name:string;version:string;executableHash:string}; options?:import('./execution').NativeRuntimeOptions; kind: 'acp-local' | 'codex-local' | 'claude-local'; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
+  backend?: import('./execution').NativeExecutionReceipt & { program?: {name:string;version:string;executableHash:string}; options?:import('./execution').NativeRuntimeOptions; kind: 'acp-local' | 'codex-local' | 'claude-local' | 'runtime-plugin'; pluginId?: string; providerId?: string; profileId: string; profileRevision: number; externalInvocations: number; sessionPolicy: 'fresh' | 'scoped'; toolControl: 'external' | 'host-bridge' | 'none' }
   id: string
   phase?: 'coordination' | 'decision' | 'execution' | 'memory'
   turnId?: string

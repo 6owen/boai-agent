@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工运行选择支持通用插件绑定、原生默认模型和连接能力事实。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 2026-10-10 恢复共用本机执行能力入口，Codex支持显式目录/手动模型，Claude仅列宿主认可的API来源；员工绑定仍按实际协议。
  * [INPUT]: 共用运行配置选择合同、实际API连接/本机启动项及受控草稿。
@@ -44,6 +45,7 @@ export function AgentModelFields({ api, value, connections, profiles, onChange, 
     </Field>}
     {localAgentSetupEnabled && mode === 'local' && backend?.kind === 'codex-local' && <ModelPicker key={`${profile?.id}:${profile?.revision}`} api={api} draft={{ defaultModel: value.modelId, baseUrl: '' }} catalogSource={`codex:${profile?.id}:${profile?.revision}:${profile?.verified?.checkedAt}`} fetchModels={() => api.request('listLaunchProfileModels', { id: profileId })} disabled={disabled || !profile?.verified} full={full} defaultOption="使用 Codex 默认模型" placeholder="留空使用 Codex 当前默认模型" onChange={modelId => onChange({ ...value, modelId })} />}
     {native && backend?.kind === 'claude-local' && profile?.useExistingLogin && <Field label="模型" full={full}><Input value={value.modelId} disabled={disabled} placeholder="留空使用 Claude 默认模型，也可填写 sonnet、opus 或模型 ID" onChange={event => onChange({ ...value, modelId: event.target.value })} /></Field>}
+    {backend?.kind === 'runtime-plugin' && <Field label="模型" full={full}><Input value={value.modelId} disabled={disabled} placeholder="留空使用本机 Agent 默认模型" onChange={event => onChange({...value,modelId:event.target.value})} /></Field>}
     {native && <Field label="思考强度" full={full}><Input value={value.nativeOptions?.effort ?? ''} disabled={disabled} placeholder="遵循本机 Agent 默认值" onChange={event => option('effort', event.target.value)} /></Field>}
     {native && backend?.kind === 'codex-local' && <>
       <Field label="操作批准" full={full}><SelectField disabled={disabled} value={value.nativeOptions?.codexApprovalPolicy ?? ''} onValueChange={value => option('codexApprovalPolicy', value)} options={[{ value: '', label: '遵循 Codex 配置' }, { value: 'untrusted', label: '非可信操作请求批准' }, { value: 'on-request', label: 'Agent 按需请求批准' }, { value: 'never', label: '不申请额外权限' }]} /></Field>

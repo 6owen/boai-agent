@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: v1预览/主题兼容v2运行时清单；独立API候选、配置schema和声明式发现。
  * [INPUT]: 受审内置清单与两类类型化贡献。
- * [OUTPUT]: 冻结且校验唯一身份/有限格式/颜色的目录；主进程与renderer共享真源。
+ * [OUTPUT]: v1预览/主题兼容v2运行时声明；冻结且校验唯一身份/有限格式/颜色。
  * [POS]: 应用插件装配目录；不发现外部包，权限不由清单自报。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
 import { z } from 'zod'
+import { runtimeContributionSchema } from './runtime-catalog'
 import { APPLICATION_PLUGIN_API, type ApplicationPluginManifest } from './types'
 import { themePluginContributions } from './theme-contributions'
 
@@ -12,6 +14,7 @@ const id = z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9.-]*$/)
 const color = z.string().regex(/^#[0-9a-f]{6}$/i)
 const theme = z.object({ id, name: z.string().min(1).max(100), mode: z.enum(['light', 'dark']), background: color, surface: color, foreground: color, muted: color, border: color, accent: color }).strict()
 const contribution = z.discriminatedUnion('type', [
+  runtimeContributionSchema,
   z.object({ type: z.literal('preview'), kinds: z.array(z.enum(['text', 'markdown', 'code', 'image', 'pdf', 'docx', 'xlsx', 'pptx'])).min(1).max(8), extensions: z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,31}$/)).min(1).max(100).optional() }).strict(),
   z.object({ type: z.literal('theme'), themes: z.array(theme).min(1).max(100) }).strict(),
 ])
@@ -23,6 +26,7 @@ export function definePluginCatalog(input: readonly ApplicationPluginManifest[])
   for (const plugin of plugins) {
     if (ids.has(plugin.id)) throw new Error(`Duplicate plugin id: ${plugin.id}`)
     ids.add(plugin.id)
+    if (plugin.apiVersion !== 2 && plugin.contributions.some(item => item.type === 'agent-runtime')) throw new Error('Runtime contributions require application API 2')
     const types = new Set<string>()
     for (const item of plugin.contributions) {
       if (types.has(item.type)) throw new Error(`Duplicate contribution type: ${plugin.id}/${item.type}`)
@@ -32,7 +36,7 @@ export function definePluginCatalog(input: readonly ApplicationPluginManifest[])
         themeIds.add(value.id); Object.freeze(value)
       }
       if (item.type === 'theme') Object.freeze(item.themes)
-      else { Object.freeze(item.kinds); if (item.extensions) Object.freeze(item.extensions) }
+      else if (item.type === 'preview') { Object.freeze(item.kinds); if (item.extensions) Object.freeze(item.extensions) }
       Object.freeze(item)
     }
     Object.freeze(plugin.contributions); Object.freeze(plugin)

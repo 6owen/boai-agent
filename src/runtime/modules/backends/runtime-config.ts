@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 受信运行时包登记/内容hash/CAS/租约、通用连接验证与配置指纹。
+ * [OUTPUT]: 插件绑定复用协作/自动化指纹；实际启用与包核验在统一宿主执行前完成。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化沿相同明确来源核对。
@@ -19,6 +21,7 @@ import { claudeProvider } from '../../adapters/claude/provider'
 export async function resolveEmployeeRuntime(tx: RecordTransaction, input: Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'nativeOptions'>) {
   const executionBackend = input.executionBackend ?? { kind: 'mastra-model' as const }
   if (executionBackend.kind === 'mastra-model') return { executionBackend, nativeOptions: undefined, connectionId: input.connectionId, ...resolveTeamModel(await tx.get<Connection>('connections', input.connectionId), input.modelId) }
+  if (executionBackend.kind === 'runtime-plugin') return resolvePluginRuntime(input, await tx.get<LaunchProfile>('launchProfiles', executionBackend.profileId))
   if (executionBackend.kind === 'claude-local') return resolveClaudeRuntime(input, await tx.get<LaunchProfile>('launchProfiles', executionBackend.profileId), await tx.get<Connection>('connections', input.connectionId))
   if (executionBackend.kind !== 'codex-local') return teamError('MODEL_UNAVAILABLE', '当前运行方式尚未开放自主协作或自动化')
   return resolveCodexRuntime(input, await tx.get<LaunchProfile>('launchProfiles', executionBackend.profileId))
@@ -49,4 +52,13 @@ export async function resolveCodexRuntime(input: Pick<DigitalAgent, 'executionBa
   if (file.path !== profile.executable || file.hash !== profile.executableHash) return teamError('CONFIG_CHANGED', '本机程序已变化，请重新核对连接')
   if (profile.codexHome && !(await stat(profile.codexHome)).isDirectory()) return teamError('MODEL_UNAVAILABLE', '本机登录目录不可用')
   return { executionBackend, nativeOptions: input.nativeOptions, connectionId: '', modelId: input.modelId, fingerprint: teamHash({ executionBackend, ...(input.nativeOptions ? {nativeOptions: input.nativeOptions} : {}), profile, modelId: input.modelId }) }
+}
+
+export function resolvePluginRuntime(input: Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'nativeOptions'>, profile: LaunchProfile | undefined) {
+  const backend = input.executionBackend, ref = profile?.runtimePlugin
+  if (backend?.kind !== 'runtime-plugin' || !profile || profile.id !== backend.profileId || profile.protocol !== 'runtime-plugin' || !profile.verified || !ref || ref.pluginId !== backend.pluginId || ref.providerId !== backend.providerId) return teamError('MODEL_UNAVAILABLE', '请先测试运行时插件连接')
+  if (input.connectionId || profile.args.length || profile.codexHome) return teamError('CONFIG_CHANGED', '插件连接与原生登录来源不一致')
+  const file = inspectProgram(profile.executable)
+  if (file.path !== profile.executable || file.hash !== profile.executableHash) return teamError('CONFIG_CHANGED', '本机程序已变化，请重新测试并保存连接')
+  return { executionBackend: backend, nativeOptions: input.nativeOptions, connectionId: '', modelId: input.modelId, fingerprint: teamHash({ executionBackend: backend, profile, modelId: input.modelId }) }
 }

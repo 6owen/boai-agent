@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通用运行时插件参与成果修订候选与真实执行停止，原来源核验保持。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 会话执行历史、Rovai迁入的执行内容、BOAI现有详情容器。
@@ -172,7 +173,7 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
     }}>
       <div className="min-w-0 p-3">
         <ExecutionFeed api={api} run={run} active={active} cache={cache} view={view} />
-        {live && run.backend && ['codex-local', 'claude-local'].includes(run.backend.kind) && <Button variant="secondary" size="sm" className="mt-4" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))}>停止本次执行</Button>}
+        {live && run.backend && ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend.kind) && <Button variant="secondary" size="sm" className="mt-4" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))}>停止本次执行</Button>}
         {view === 'raw' && <ExecutionRunInfo run={run} />}
       </div>
     </ScrollArea>

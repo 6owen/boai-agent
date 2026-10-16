@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 通用runtime-plugin员工/核心绑定schema；原身份与工作退出门禁保持。
+ * [OUTPUT]: 通用运行时插件员工保持原身份、绑定和核心员工规则。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: Claude员工类型可沿原定义保存；首批仅普通员工，核心与群协作的准入独立保留。
@@ -19,7 +21,7 @@ import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/a
 import { thinkingLevels } from '../../../shared/domain/model-preferences'
 import { CORE_AGENT_ID, CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '../../../shared/domain/core-agent'
 
-export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.enum(['acp-local','codex-local','claude-local']),profileId:z.string().min(1).max(200)}).strict()])
+export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('runtime-plugin'),profileId:z.string().min(1).max(200),pluginId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/),providerId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/)}).strict(),z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.enum(['acp-local','codex-local','claude-local']),profileId:z.string().min(1).max(200)}).strict()])
 const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
 const text = (max: number) => z.string().trim().min(1).max(max)
@@ -122,7 +124,7 @@ export class EmployeeService {
     if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
-    if (isCoreAgent(previous) && (!input.active || input.allowCommands || !['mastra-model','codex-local','claude-local'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用宿主命令或旧 ACP 任务后端')
+    if (isCoreAgent(previous) && (!input.active || input.allowCommands || !['mastra-model','codex-local','claude-local','runtime-plugin'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用宿主命令或旧 ACP 任务后端')
     const allowBrowser = executionBackend.kind === 'mastra-model'
     if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定；请先取消这些绑定。')
     if(executionBackend.kind==='acp-local'&&input.allowCommands)fail('外部任务后端暂不支持 BoAI 的命令策略；请先关闭命令。')

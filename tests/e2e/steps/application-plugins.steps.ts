@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件桌面沿真实标签/会话名操作，协议夹具和真实模型结果分开。
  * [INPUT]: 插件平台中文场景、真实Electron与隔离固定配置文件。
  * [OUTPUT]: UI启停/同行筛选/窄窗/重启和主题真实token回退；未来配置零写入及开关动画结束后原生整幅截图。
  * [POS]: 内置插件平台BDD步骤，不调用真实模型。
@@ -33,7 +34,7 @@ async function toggle(page: Page, name: string, checked: boolean) {
 }
 Given('内置插件管理在独立桌面打开', async ({ runtime }) => {
   await start(runtime)
-  await expect(runtime.page.locator('[data-application-plugin]')).toHaveCount(6)
+  await expect(runtime.page.locator('[data-application-plugin]')).toHaveCount(8)
   await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [] })
   const filters = runtime.page.locator('[data-plugin-filters]')
   expect(await filters.evaluate(element => {
@@ -118,8 +119,9 @@ Given('本机插件配置是未来版本', async ({ runtime }) => {
 Then('插件页显示只读诊断且重启没有覆盖配置', async ({ runtime }) => {
   for (let restart = 0; restart < 2; restart++) {
     await expect(runtime.page.getByText(/插件配置无法读取或来自更新版本/)).toBeVisible()
-    const controls = runtime.page.getByRole('switch'); await expect(controls).toHaveCount(6)
+    const controls = runtime.page.locator('[data-application-plugin^="boai.preview."], [data-application-plugin^="boai.theme."]').getByRole('switch'); await expect(controls).toHaveCount(6)
     for (const control of await controls.all()) { await expect(control).toBeDisabled(); await expect(control).not.toBeChecked() }
+    await expect(runtime.page.locator('[data-application-plugin="boai.runtime.pi"]').getByRole('switch')).toBeEnabled()
     expect(await readFile(join(runtime.root, 'application-plugins.json'), 'utf8')).toBe(futureBytes)
     await runtime.reviewNativeCheckpoint(`未来配置只读保护-${restart}`)
     if (!restart) { await runtime.close(); await start(runtime) }

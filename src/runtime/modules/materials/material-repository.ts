@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 插件私有材料目录使用有界provider命名空间，原来源/hash/清理权限保持。
+ * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道内部讨论可显式读取直属原渠道的固定附件，保留原存储房间/授权/hash，禁止跨渠道或反向读取内部材料。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -318,7 +320,7 @@ export class MaterialRepository {
   }
 
   /** Compose native answers with message acceptance; never acquire a nested product writer. */
-  async nativeMessage(tx: RecordTransaction, source: Message, agentId: string, runtime: 'codex' | 'claude') {
+  async nativeMessage(tx: RecordTransaction, source: Message, agentId: string, runtime: string) {
     const message = clone(source), refs: MaterialReadRef[] = [...(source.materialSources ?? []), ...(source.materialReference ? [source.materialReference] : [])], images: { messageId: string; materialId: string; dataUrl: string; mimeType: string }[] = []
     const created: NativeCopy[] = []
     const rollback = async () => { for (const copy of created) await cleanupNativeMaterialCopy(this.dataPath, copy.relativePath, copy.contentHash) }
@@ -355,7 +357,7 @@ export class MaterialRepository {
   }
 
   /** Verify only BOAI input copies actually supplied to this employee. */
-  async validateNativeCopies(refs: MaterialReadRef[], agentId: string, runtime: 'codex' | 'claude') {
+  async validateNativeCopies(refs: MaterialReadRef[], agentId: string, runtime: string) {
     for (const copy of await this.store.load<NativeCopy>('materialNativeCopies')) {
       if (copy.agentId === agentId && copy.relativePath.includes(`/.${runtime}-private/`) && refs.some(ref => ref.id === copy.materialId && ref.conversationId === copy.conversationId && ref.contentHash === copy.contentHash)) await readNativeMaterialCopy(this.dataPath, copy.relativePath, copy.contentHash)
     }

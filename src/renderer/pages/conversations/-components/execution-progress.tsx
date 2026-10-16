@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行时插件复用原生执行进度/停止入口，不展示BOAI本机预算。
  * [OUTPUT]: 执行Soft消息卡随内容撑宽并受聊天区域约束；loading行固定对齐，真实过程向下追加。
  * [OUTPUT]: 执行中员工消息卡直接呈现共享执行流；不向聊天上下文或渠道写入过程消息。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
@@ -18,7 +19,7 @@ import { ExecutionFeed } from '@/components/detail-panel/execution-feed'
 import { ExecutionContentCache } from '@/components/detail-panel/execution-content-cache'
 
 export function MessageReceipt({ runs }: { runs: AgentRun[] }) {
-  const received = runs.some(run => ['codex-local', 'claude-local'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
+  const received = runs.some(run => ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
   const label = received ? '员工已接收这条消息' : runs.length && runs.every(run => !['queued', 'running', 'waiting_approval'].includes(run.status)) ? '已发送，接收回执未记录' : '已发送，等待员工处理'
   return <Tooltip><TooltipTrigger render={<span className={`message-receipt${received ? ' is-received' : ''}`} tabIndex={0} aria-label={label} />}>
     {received ? <Icon name="CircleCheck" /> : <Clock />}

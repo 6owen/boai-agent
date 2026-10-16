@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 通用插件执行路由、独立宿主/租约与产品桥；插件session恢复、私有目录备份排除，旧引擎兼容。
+ * [OUTPUT]: 通用运行时插件复用原员工/会话/渠道/Work；Mastra及旧原生适配保持，包管理与品牌协议下沉。
  * [OUTPUT]: 适配器已经提供文本流时不重复登记onDelta最终正文；发布/上下文/渠道投递语义保持。
  * [OUTPUT]: 明确关闭/清除浏览器登录资料先通知Main终止真实页面，与原Session drain共同核对退出，避免卡住动作阻止关闭；普通任务drain保持。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
@@ -62,6 +64,10 @@
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { RuntimePlugins } from './modules/backends/runtime-plugins'
+import { PluginEmployeeEngine, runPlugin } from './adapters/plugins/host'
+import { nativeRuntimeNamespace } from '../shared/domain/backends'
+import { resolvePluginRuntime } from './modules/backends/runtime-config'
 import { validateGroupInterpretation } from './modules/collaboration/group-coordination'
 import { automationDraftRequestSchema, validateAutomationDraft, type AutomationDraftTarget } from './modules/automations/automation-draft'
 import { teamSetupSchema } from '../shared/domain/team-creation'
@@ -238,6 +244,8 @@ export class AppService {
   private readonly resourceCleanups: ResourceCleanups
   private readonly skillCollections: SkillCollectionRepository
   private readonly automations: AutomationService
+  readonly runtimePlugins: RuntimePlugins
+  private readonly pluginEngines = new Map<string, PluginEmployeeEngine>()
   private readonly codexEngine: CodexEmployeeEngine
   private readonly claudeEngine: ClaudeEmployeeEngine
   private readonly profiles: LaunchProfiles
@@ -339,9 +347,10 @@ export class AppService {
     this.history = new ConversationHistory(this.store, this.dataPath, this.materials, this.artifactRepository, this.reading)
     this.works = new WorkRepository(this.store)
     this.browser = new BrowserRepository(this.store,this.works)
+    this.runtimePlugins = new RuntimePlugins(join(this.dataPath, 'runtime-plugins'))
     this.codexEngine = new CodexEmployeeEngine(this.store)
     this.claudeEngine = new ClaudeEmployeeEngine(this.store)
-    this.profiles=new LaunchProfiles(this.store)
+    this.profiles=new LaunchProfiles(this.store, this.runtimePlugins)
     this.homes = new WorkspaceService(this.dataPath)
     this.teamCreation = new TeamCreationService(this.teams, this.dataPath, this.homes, {
       critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
@@ -465,7 +474,10 @@ export class AppService {
     await this.materials.recover()
     await this.artifactRepository.recover()
     await this.contactDeletion.recover()
+    await this.runtimePlugins.init()
+    await new PluginEmployeeEngine(this.store, 'plugin-initial', this.runtimePlugins).recover(this.dataPath)
     await this.profiles.init()
+    for (const profile of this.profiles.list()) if (profile.runtimePlugin) await this.pluginEngine({ kind: 'runtime-plugin', profileId: profile.id, ...profile.runtimePlugin }).recover(this.dataPath)
     const collections = ['connections', 'conversations', 'resources', 'messages', 'runs', 'requests', 'snapshots', 'approvals', 'artifacts'] as const
     for (const name of collections) {
       const values = await this.store.load<{ id: string }>(name)
@@ -737,7 +749,9 @@ export class AppService {
       this.externalTests.add(controller)
       try {
         const profile=await this.serialize(async()=>{const prepared=await this.profiles.prepare(profileSchema.parse(input));this.profiles.forgetDraftVerification(prepared);if(prepared.id)this.externalProfileTests.set(controller,prepared.id);return prepared})
-        const result=profile.protocol==='codex-app-server'
+        const result=profile.protocol==='runtime-plugin'
+          ? await runPlugin(this.runtimePlugins,profile,{cwd:directory,privateHome:join(directory,'home')},controller.signal)
+          : profile.protocol==='codex-app-server'
           ? {verified:await testCodexConnection({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal})}
           : profile.protocol==='claude-cli' ? {verified:await testClaudeProgram({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal})}
           : await runAcp({profile,cwd:directory,privateHome:join(directory,'home'),signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
@@ -754,7 +768,9 @@ export class AppService {
         const profile=await this.serialize(async()=>{const value=this.profiles.get(lookupSchema.parse(input).id);this.externalProfileTests.set(controller,value.id);return value})
         tested=profile
         const probeDirectory=join(this.dataPath,'external-probes',profile.id)
-        const result=profile.protocol==='codex-app-server'
+        const result=profile.protocol==='runtime-plugin'
+          ? await runPlugin(this.runtimePlugins,profile,{cwd:probeDirectory,privateHome:join(probeDirectory,'home')},controller.signal)
+          : profile.protocol==='codex-app-server'
           ? {verified:await testCodexConnection({profile,cwd:probeDirectory,privateHome:join(probeDirectory,'home'),signal:controller.signal})}
           : profile.protocol==='claude-cli' ? {verified:await testClaudeProgram({profile,cwd:probeDirectory,privateHome:join(probeDirectory,'home'),signal:controller.signal})}
           : await runAcp({profile,cwd:probeDirectory,signal:controller.signal,approve:async()=>false,onTool:async()=>{}})
@@ -793,6 +809,9 @@ export class AppService {
       switch (method) {
         case 'listExternalFiles': {const value=z.object({runId:id}).strict().parse(input);return this.externalFiles(value.runId)}
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
+        case 'listRuntimePlugins': z.undefined().parse(input); return this.runtimePlugins.snapshot()
+        case 'setRuntimePluginEnabled': { const value=z.object({id,enabled:z.boolean(),expectedRevision:z.number().int().nonnegative()}).strict().parse(input);return this.runtimePlugins.setEnabled(value.id,value.enabled,value.expectedRevision) }
+        case 'uninstallRuntimePlugin': { const value=z.object({id,expectedRevision:z.number().int().nonnegative()}).strict().parse(input);return this.runtimePlugins.uninstall(value.id,value.expectedRevision) }
         case 'listLaunchProfiles': z.undefined().parse(input); return this.profiles.list()
         case 'getLaunchProfileStatus': return this.profiles.status(lookupSchema.parse(input).id)
         case 'deleteLaunchProfile': return this.deleteLaunchProfile(lookupSchema.parse(input).id)
@@ -811,6 +830,7 @@ export class AppService {
             if (backend.kind === 'codex-local' && !profile.verified) fail('请先测试本机 Codex 连接，再创建员工')
             if (value.id && [...this.conversations.values()].some(c => c.kind === 'group' && c.agentIds.includes(value.id!) && backend.kind === 'acp-local')) fail('此运行方式尚不支持该群，请先将员工移出群聊')
             if (backend.kind === 'codex-local' && value.connectionId) fail('本机 Codex 员工不使用模型 API 连接')
+            if (backend.kind === 'runtime-plugin') { resolvePluginRuntime({ ...value, executionBackend: backend }, profile); this.runtimePlugins.resolve(profile.runtimePlugin!) }
             if (backend.kind === 'claude-local') {
               resolveClaudeRuntime({ ...value, executionBackend: backend }, profile, this.connections.get(value.connectionId))
             }
@@ -1525,6 +1545,7 @@ export class AppService {
         const operation = source?.kind === 'bobo-collaboration' ? await this.boboCollaboration.get({ operationId: source.operationId }) : undefined
         if (!previous?.agentIds.includes(agent.id) || operation?.status !== 'committed' || operation.groupConversationId !== previous.id || operation.groupCleared) fail('请由 bobo 发起群协作；普通建群不能添加核心助手')
       }
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'runtime-plugin') { const profile = this.profiles.get(agent.executionBackend.profileId); resolvePluginRuntime(agent, profile); this.runtimePlugins.resolve(profile.runtimePlugin!) }
       if (input.kind === 'group' && agent.executionBackend?.kind === 'claude-local') {
         resolveClaudeRuntime(agent, this.profiles.get(agent.executionBackend.profileId), this.connections.get(agent.connectionId))
       }
@@ -1977,7 +1998,7 @@ export class AppService {
     // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
     const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [], ...(ownerGroup ? { ownerGroup: { id: ownerGroup.id, version: ownerGroup.configVersion } } : {}) } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
     const runtimeAgents = await Promise.all(agents.map(async a => isNativeBackend(a.executionBackend)
-      ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'claude-local'
+      ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'runtime-plugin' ? resolvePluginRuntime(a, this.profiles.get(a.executionBackend.profileId)) : a.executionBackend.kind === 'claude-local'
         ? resolveClaudeRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId))
         : await resolveCodexRuntime(a, this.profiles.get(a.executionBackend.profileId))).fingerprint }
       : { id: a.id, version: a.configVersion, connection: this.getConnection(a.connectionId) }))
@@ -2137,7 +2158,7 @@ export class AppService {
           return material.status === 'ready'
         })
         let projected: Awaited<ReturnType<MaterialRepository['nativeMessage']>> | undefined
-        try { await this.store.transaction(async tx => { projected = await this.materials.nativeMessage(tx, { ...message, materialIds: readable, materialSources: sources }, agentId, this.getAgent(agentId).executionBackend?.kind === 'claude-local' ? 'claude' : 'codex') }) }
+        try { await this.store.transaction(async tx => { projected = await this.materials.nativeMessage(tx, { ...message, materialIds: readable, materialSources: sources }, agentId, nativeRuntimeNamespace(this.getAgent(agentId).executionBackend)) }) }
         catch (error) { await projected?.rollback(); throw error }
         if (message.materialIds?.length && !readable.length && !this.messages.get(message.id)?.content.trim()) projected!.message.content = '用户发送了材料，但当前员工没有可读取的材料授权；不能声称已经处理。'
         messages.push(projected!.message); images.push(...projected!.images); continue
@@ -2170,7 +2191,7 @@ export class AppService {
   }
   private async assertMaterialRefs(context: Pick<EngineContext, 'agent' | 'conversation' | 'materialRefs' | 'artifactRevision' | 'runtimeProfile'>) {
     if (context.materialRefs?.length) await this.materials.validateRefs(context.materialRefs, context.agent.id, context.conversation.id)
-    if (context.runtimeProfile && context.materialRefs?.length) await this.materials.validateNativeCopies(context.materialRefs, context.agent.id, context.agent.executionBackend?.kind === 'claude-local' ? 'claude' : 'codex')
+    if (context.runtimeProfile && context.materialRefs?.length) await this.materials.validateNativeCopies(context.materialRefs, context.agent.id, nativeRuntimeNamespace(context.agent.executionBackend))
     if (context.conversation.channelDiscussion) await this.store.transaction(tx => assertChannelSourceAccess(tx, context.conversation.id, context.conversation.channelDiscussion!.conversationId))
     if (context.artifactRevision) await this.artifactRepository.validateRevision(context.artifactRevision.id, context.agent.id, context.conversation.id)
   }
@@ -2308,7 +2329,8 @@ export class AppService {
     if (!agent.active || !conversation.agentIds.includes(agent.id)) fail('员工已停用或移出会话')
     const backend = agent.executionBackend
     const runtimeProfile = isNativeBackend(backend) ? this.profiles.get(backend.profileId) : undefined
-    const connection = backend?.kind === 'codex-local' || backend?.kind === 'claude-local' && runtimeProfile?.useExistingLogin ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : ''))
+    const connection = backend?.kind === 'runtime-plugin' || backend?.kind === 'codex-local' || backend?.kind === 'claude-local' && runtimeProfile?.useExistingLogin ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : ''))
+    if (backend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, runtimeProfile); this.runtimePlugins.resolve(runtimeProfile!.runtimePlugin!) }
     if (backend?.kind === 'codex-local') await resolveCodexRuntime(agent, runtimeProfile)
     if (backend?.kind === 'claude-local') resolveClaudeRuntime(agent, runtimeProfile, connection)
     const apiKey = connection ? await this.apiKey(connection) : ''
@@ -2372,7 +2394,7 @@ export class AppService {
     signal.throwIfAborted()
     const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
-    if (runtimeProfile && isNativeBackend(backend)) run.backend = { kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
+    if (runtimeProfile && isNativeBackend(backend)) run.backend = { ...(backend.kind === 'runtime-plugin' ? {pluginId:backend.pluginId,providerId:backend.providerId} : {}), kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
       externalInvocations: 0, options: clone(agent.nativeOptions), ...(backend.kind === 'claude-local' ? { modelId: agent.modelId || connection?.defaultModel } : {}), sessionPolicy: 'scoped', toolControl: 'external' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
@@ -2505,7 +2527,7 @@ export class AppService {
             signal.throwIfAborted()
             const current = await tx.get<AgentRun>('runs', run.id), saved = await tx.get<RunSnapshot>('snapshots', run.id) ?? fail('原生请求所属执行快照已失效')
             if (!current || terminal.has(current.status) || saved.invalidated || saved.agent.configVersion !== agent.configVersion) fail('原生请求所属执行或来源已失效')
-            const runtime = backend?.kind === 'claude-local' ? 'claude' : 'codex'
+            const runtime = nativeRuntimeNamespace(backend)
             const projected = await this.materials.nativeMessage(tx, message, agent.id, runtime)
             try {
               signal.throwIfAborted()
@@ -2529,7 +2551,7 @@ export class AppService {
           })
         }
       }
-      context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private') }
+      context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, `.${nativeRuntimeNamespace(backend)}-private`) }
       context.onNativeActionSubmitted = id => this.executions.submitted(run.id, id)
       context.onNativeExecution = receipt => this.serialize(async () => {
         signal.throwIfAborted()
@@ -3208,8 +3230,16 @@ export class AppService {
     return run
   }
 
+  private pluginEngine(backend: import('../shared/domain/backends').ExecutionBackend) {
+    const namespace = nativeRuntimeNamespace(backend)
+    let engine = this.pluginEngines.get(namespace)
+    if (!engine) { engine = new PluginEmployeeEngine(this.store, namespace, this.runtimePlugins); this.pluginEngines.set(namespace, engine) }
+    return engine
+  }
+  async installRuntimePlugin(directory: string, expectedRevision: number) { return this.serialize(() => this.runtimePlugins.install(directory, expectedRevision)) }
   private engineFor(context: EngineContext): AgentEngine {
-    const engine = context.agent.executionBackend?.kind === 'claude-local' ? this.claudeEngine : this.codexEngine
+    const backend = context.agent.executionBackend
+    const engine = backend?.kind === 'runtime-plugin' ? this.pluginEngine(backend) : backend?.kind === 'claude-local' ? this.claudeEngine : this.codexEngine
     return context.runtimeProfile ? { run: c => engine.run(c), test: async () => { throw new Error('请通过本机连接测试') } } : this.options.engine
   }
 
@@ -3555,7 +3585,7 @@ export class AppService {
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
       await this.preserveLegacyRuntimeFacts()
       const legacyBrowserRuns = new Set((await this.store.load<AgentRun>('runs')).filter(run => run.browserDownloadIsolation === 'legacy' && [run.agentId,run.conversationId,run.id].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.dataPath,'agents',run.agentId,'workspace','sessions',run.conversationId,'runs',run.id)))
-      const nativeRuntimeHomes = new Set([...this.runs.values()].filter(run => isNativeBackend(run.backend) && [run.agentId, run.conversationId].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.homes.root(run.agentId), 'sessions', run.conversationId, run.backend?.kind === 'claude-local' ? '.claude-private' : '.codex-private')))
+      const nativeRuntimeHomes = new Set([...this.runs.values()].filter(run => isNativeBackend(run.backend) && [run.agentId, run.conversationId].every(value => /^[a-zA-Z0-9_-]{1,200}$/.test(value))).map(run => join(this.homes.root(run.agentId), 'sessions', run.conversationId, `.${nativeRuntimeNamespace(run.backend as import('../shared/domain/backends').ExecutionBackend)}-private`)))
       const databaseWork = join(destination, `.database-work-${randomUUID()}`), databaseFile = join(databaseWork, 'boai.sqlite')
       await mkdir(databaseWork)
       await this.store.backup(databaseFile)
@@ -3572,13 +3602,13 @@ export class AppService {
         await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: ['automationRuntime', 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
         // Native transcripts live outside the product snapshot and may advance
         // after export. Retain their references, but never resume them on restore.
-        for (const collection of ['codexRuntime', 'claudeRuntime']) await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [collection, 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
+        for (const collection of ['codexRuntime', 'claudeRuntime', 'pluginRuntime']) await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [collection, 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
         // Seal the acknowledged database into a file that no preparation connection has opened.
         await backupClient.execute({ sql: 'VACUUM INTO ?', args: [join(destination, 'boai.sqlite')] })
       } finally { backupClient.close() }
       await rm(databaseWork, { recursive: true, force: true })
       for (const folder of ['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces']) await cp(join(this.dataPath, folder), join(destination, folder), { recursive: true, dereference: false, filter: source => {
-        const native = relative(this.dataPath, source).split(/[\\/]/).join('/').match(/^agents\/[a-zA-Z0-9_-]+\/workspace\/sessions\/[a-zA-Z0-9_-]+\/\.(codex|claude)-private(?:\/|$)/)?.[0]?.replace(/\/$/, '')
+        const native = relative(this.dataPath, source).split(/[\\/]/).join('/').match(/^agents\/[a-zA-Z0-9_-]+\/workspace\/sessions\/[a-zA-Z0-9_-]+\/\.(codex|claude|plugin-[a-z0-9.-]{1,221})-private(?:\/|$)/)?.[0]?.replace(/\/$/, '')
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
