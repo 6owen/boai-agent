@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置共用滚动容器预留滚动条槽位，个人资料异步内容加载及分类切换不再挤压正文宽度。
  * [OUTPUT]: 外观重置复用共用标题操作栏，删除旧底部操作区样式。
  * [OUTPUT]: 本机Agent品牌图标无背景/内边距，彩色SVG保留原色、单色随主题适配，扫描项20px紧凑尺寸共用。
  * [OUTPUT]: 本机Agent选择页固定高度并受视口约束，shadcn ScrollArea延伸至弹窗边缘，内容内部留白；扫描项采用紧凑内边距/图标/字号，标题/步骤和重扫固定。
@@ -25,6 +26,7 @@
 .settings-nav-group+.settings-nav-group { margin-top:8px }
 .page-subnav button { color:var(--foreground);font-size:13px;min-height:36px;padding:8px;gap:8px;margin:0 0 3px }
 .settings-search-empty { margin:12px 8px;color:var(--muted-foreground) }
+.settings-content.page-scroll { scrollbar-gutter:stable }
 .settings-content.settings-document-content { max-width:none;padding:72px 80px 24px }
 .settings-document { width:100%;max-width:840px;margin:0 auto }
 .settings-document-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:44px }
