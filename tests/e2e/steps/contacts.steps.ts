@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话菜单配置往返通讯录并选中实际员工/群，原草稿、配置保存/放弃与会话复用断言保持。
  * [INPUT]: 通讯录配置/清理/标签管理的中文场景、会话常驻名称输入/检索 Dialog、Electron fixture、隔离 SQLite 旧分类、原生鼠标排序、真实产品 IPC 和工作区文件。
  * [OUTPUT]: 员工工作规则经明确配置/系统文件入口核读AGENTS.md后返回资料概览；保留原指令、零会话创建、配置保存/草稿守卫与会话复用断言。
  * [OUTPUT]: 通讯录管理仅经加号菜单打开且无独立按钮；标签增删真实提交停顿期间，筛选/管理搜索及 Portal 标签搜索/未选员工行及人数/取消选择的可用状态、颜色、有效透明度和位置保持；设置标签/删除/关闭按钮及当前标签勾选保持写锁，前三项按钮颜色/背景色与渐变/有效透明度/位置保持，浏览控件可用状态不变，展开权限后永久不可用的完全访问项维持 disabled/半透明；add/remove 前后截图与比较证据独立保存，测试门闩与观测在 finally 恢复；会话检索关闭后常驻名称输入保留且通讯录往返仍复用原私聊与草稿；平面联系人搜索/折叠及跨标签全员工排序；旧分类兼容标签与重启、默认收起筛选/搜索清空选择、浅深/窄窗紧凑双栏管理与底部动画面板、标题可读及搜索/关闭按钮实际布局；常规按钮行内新建标签/取消零写入、标签改名/保留员工删除、即时多标签勾选和 mixed 状态保持未选成员，标签提交零全局读取且保留管理 DOM/选择/滚动及原详情；只读紧凑所选浮层、人数仅数字主色、单位普通颜色且取消选择主色和批量栏无编辑配置、取消选择/改筛选关闭删除浮层并禁用退出缓存动作、危险按钮确认/取消零写入与冻结版本拒绝、真实单聊/工作区清理、空群解散及其他群历史和重启保留；原配置保护/会话复用/默认启用隐藏的桌面断言。
@@ -143,7 +144,13 @@ async function reuseDirectConversation(previous: Awaited<ReturnType<typeof editC
   await expect(search.getByText('没有找到相关内容', { exact: true })).toBeVisible()
   await page.keyboard.press('Escape'); await expect(search).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^研究员/ })).toBeVisible()
-  await contacts.click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: /^(取消置顶|置顶|搜索本会话)$/ })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: '执行过程', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '渠道', exact: true })).toBeVisible()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
+  await expect(contacts).toHaveAttribute('aria-current', 'page')
+  await expect(list.getByRole('button', { name: '研究员', exact: true })).toHaveAttribute('aria-current', 'true')
   await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(input).toHaveValue('通讯录往返后保留这份草稿')
@@ -158,8 +165,11 @@ async function reuseDirectConversation(previous: Awaited<ReturnType<typeof editC
 
 async function editGroupWithGuard(previous: Awaited<ReturnType<typeof reuseDirectConversation>>) {
   let { app, page, errors, snapshot, group, contacts, list, detail, groups, input } = previous
-  await contacts.click()
-  await groups.getByRole('button', { name: '内容协作群' }).click()
+  await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^内容协作群/ }).click()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
+  await expect(contacts).toHaveAttribute('aria-current', 'page')
+  await expect(groups.getByRole('button', { name: '内容协作群', exact: true })).toHaveAttribute('aria-current', 'true')
   await detail.getByRole('button', { name: '编辑配置' }).click()
   await detail.getByRole('textbox', { name: '群聊名称' }).fill('研究写作组')
   await detail.getByRole('button', { name: '保存设置', exact: true }).click()
@@ -170,8 +180,9 @@ async function editGroupWithGuard(previous: Awaited<ReturnType<typeof reuseDirec
   // Discard resets the editor; opening a group must reuse the group and not send content.
   await detail.getByRole('button', { name: '编辑配置' }).click()
   await detail.getByRole('textbox', { name: '群聊名称' }).fill('这项修改不保存')
-  await detail.getByRole('button', { name: '发消息', exact: true }).click()
+  await detail.getByRole('button', { name: '返回资料', exact: true }).click()
   await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(input).toBeVisible()
   await expect(page.locator('.conversation-item.selected')).toContainText('研究写作组')
   expect((await snapshot()).conversations).toHaveLength(2)

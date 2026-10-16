@@ -4,7 +4,7 @@
  * [OUTPUT]: 消息ScrollArea外层管理标题重叠，viewport保留渐隐/阅读padding；无Tabs的共享空态标题不占第二行。
  * [OUTPUT]: 聊天标题根据自身可用宽度折行，主聊天与右侧聊天共用；右侧标签切换不再控制主聊天高度。
  * [OUTPUT]: 2026-10-10 单聊隐藏重复姓名、绝对悬停时间/外侧接收图标与左侧员工执行卡；群聊原姓名布局保持。
- * [OUTPUT]: 主视图切换的消息/composer容器保持DOM与布局，hidden彻底隐藏，任务文件主内容避开悬浮标题。
+ * [OUTPUT]: 消息/composer保持同一布局，任务文件使用右侧面板，删除互斥主视图及二行Tabs标题样式。
  * [INPUT]: 全局语义 token、单聊/群聊共享消息/审批/引用结构与群聊工作详情。
  * [OUTPUT]: 单聊与群聊共用52px标题栏与14px悬浮标题/渐隐、消息卡片/工具条、头像资料、悬停时间、镜像布局与窄窗适配；标题栏不展示阅读状态、说明或上下跳转按钮，保留16px消息渐隐衔接；群标题保留重叠头像与紧邻人数文字，浮层焦点辅助节点不影响位置；消息/工具条共用 Soft Card 边缘、工具条仅随消息悬停显示，两侧按钮顺序一致，用户气泡靠右且正文左对齐；composer 由 prompt-bar.css 管理。
  * [POS]: 共享聊天阅读交互、群聊任务详情与门户中的员工资料/表情浮层；global.css 在基础皮肤之后加载。
@@ -186,18 +186,8 @@
 }
 
 .conversation-chat-body { display:flex;flex-direction:column;flex:1;min-height:0;min-width:0 }
-.conversation-secondary-body { display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;padding-top:64px }
-.conversation-chat-body[hidden], .conversation-secondary-body[hidden], .conversation-secondary-body > [hidden] { display:none }
-.conversation-secondary-body > :not([hidden]) { display:flex;flex-direction:column;flex:1;min-height:0;min-width:0 }
-
 @container chat (max-width:600px) {
-  .chat-panel .chat-header:has(> [data-slot=tabs]) { display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:40px 32px;gap:4px 8px;height:88px;padding:4px 16px 8px }
-  .chat-header-main { grid-column:1;grid-row:1 }
-  .chat-header-actions { grid-column:2;grid-row:1 }
-  .chat-header > [data-slot=tabs] { grid-column:1 / -1;grid-row:2;justify-self:start }
   .chat-members { display:flex;margin-right:0 }
-  .chat-panel:has(.chat-header > [data-slot=tabs]) .messages-scroll-area { margin-top:72px }
-  .conversation-secondary-body { padding-top:100px }
 }
 
 /* Channel publication uses the shared composer surface and the existing panel size. */

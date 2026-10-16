@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务侧栏共用 PanelResize 宽度过渡，原列表状态和页面隐藏停读保持。
  * [OUTPUT]: 全局自动化作为跨归属总览，按员工/群显示筛选；新建复用归属表单，对话创建归原员工入口。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 执行说明统一模型API/本机Agent分类，受支持协议与命令限制保持。
@@ -19,6 +20,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { AutomationHistory, AutomationOccurrenceView, occurrenceStatusLabels } from './automation-history'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
+import { PanelResize } from '@/components/common/panel-resize'
 import { automationOwnerKey, automationOwnerLabel } from './automation-owner'
 import { SelectField } from '@/components/ui/select-field'
 import type { AutomationEditorMode } from './automation-editor'
@@ -70,7 +72,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
     <DropdownMenuItem disabled={busy} onClick={() => void run(async () => { await api.request('deleteAutomation', { id: d.id }); if (location.kind === 'definition' && location.id === d.id) onLocation({ kind: 'overview' }); await refresh() })}>删除计划</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>
   return <div className="schedule-page" style={active ? undefined : { display: 'none' }}>
-    <aside className="schedule-list" aria-label="任务列表" style={sidebarShown ? undefined : { display: 'none' }}>
+    <PanelResize open={sidebarShown} side="left" divider={divider}><aside className="schedule-list" aria-label="任务列表">
       <div className="list-heading"><h2>定时任务</h2><Button variant="ghost" size="icon-sm" aria-label="定时执行说明" onClick={onInfo}><MoreHorizontal /></Button></div>
       <Button variant="ghost" size="content" className="schedule-create" aria-label="新建任务" onClick={() => onEdit()}><Plus /><span>新建任务</span></Button>
       <Collapsible open={upcomingOpen} onOpenChange={setUpcomingOpen}>
@@ -83,7 +85,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         <CollapsibleContent><div role="group" aria-label="最近执行记录">{records.map(o => <Button variant="ghost" size="content" key={o.id} className={`schedule-item${location.kind === 'occurrence' && location.id === o.id ? ' selected' : ''}`} onClick={() => openOccurrence(o.id)}><strong>{o.name}</strong><small>{new Date(o.startedAt).toLocaleString()} · {o.deliveryStatus === 'delivered' ? '已交付' : occurrenceStatusLabels[o.status]}</small></Button>)}{!records.length && <p className="schedule-no-results">暂无执行记录</p>}</div></CollapsibleContent>
       </Collapsible>
       <Button variant="ghost" size="content" className="schedule-history-link" onClick={() => navigate({ kind: 'history' })}>查看全部记录<ChevronRight /></Button>
-    </aside>{sidebarShown && divider}
+    </aside></PanelResize>
     <main ref={main} className="schedule-content page-scroll" onScroll={e => { if (active) positions.current.set(locationKey, e.currentTarget.scrollTop) }}>
       {(error || loadError || view.error) && <Banner>{error || loadError || view.error}</Banner>}
       <div className="schedule-document">

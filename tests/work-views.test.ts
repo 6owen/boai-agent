@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工跨会话文件分页、当前成员/材料授权与隐藏清理隔离、原会话身份及范围游标校验。
  * [OUTPUT]: 渠道内部工作/文件按固定父渠道材料来源读取，其他渠道与清理代际变化在分页前排除。
  * [INPUT]: 真实SQLite工作、材料、成果及当前会话权限；有界查询与点击解析。
  * [OUTPUT]: 原工作视图授权/计数/游标回归；万项保留总3秒/100页1秒，记录实测并核对旧比较与缺索引兼容。
@@ -180,6 +181,41 @@ describe('工作视图唯一事实与有界读取', () => {
 })
 describe('会话文件真实来源与版本', () => {
   const artifact = (id: string, logicalArtifactId = id, contentVersion = 1) => ({ id, conversationId: 'direct', name: 'report.md', size: 20, publishedAt: time, registrationSource: 'publication', logicalArtifactId, contentVersion, contentHash: 'a'.repeat(64), contentStatus: 'ready', sourceMessageId: 'source', ownerAgentId: 'alice' })
+  it('员工文件跨会话汇总本人文件及可接收附件，分页前排除他人/隐藏/清理/撤权来源', async () => {
+    const store = await fixture()
+    const material = (id: string, conversationId: string, authorizedAgentIds = ['alice']) => ({ id, conversationId, name: `${id}.txt`, size: 10, createdAt: time, messageId: `${conversationId}-source`, format: 'txt', status: 'ready', revision: 1, authorizedAgentIds })
+    await store.write([
+      row('conversations', { ...conversation('group'), kind: 'group' }), row('messages', message('group-source', 'group')),
+      row('conversations', { ...conversation('private'), agentIds: ['bob'] }), row('messages', message('private-source', 'private')),
+      row('conversations', conversation('hidden', true)), row('messages', message('hidden-source', 'hidden')),
+      row('conversations', conversation('cleared')), row('messages', message('cleared-source', 'cleared')), row('conversationCleanup', { id: 'cleared' }),
+      row('artifacts', artifact('own-direct')), row('artifacts', { ...artifact('own-group'), conversationId: 'group', sourceMessageId: 'group-source' }),
+      row('artifacts', { ...artifact('other-group'), conversationId: 'group', ownerAgentId: 'bob' }),
+      row('artifacts', { ...artifact('own-hidden'), conversationId: 'hidden' }), row('artifacts', { ...artifact('own-cleared'), conversationId: 'cleared' }),
+      row('materials', material('received-legacy', 'group')), row('materials', { ...material('received-current', 'group', []), deliveryScope: 'conversation' }),
+      row('materials', material('not-received', 'group', ['bob'])), row('materials', material('private-input', 'private')),
+      row('materials', material('hidden-input', 'hidden')), row('materials', material('cleared-input', 'cleared')),
+    ])
+    const first = await files(store, { ownerAgentId: 'alice', limit: 2 })
+    expect(first.total).toBe(4); expect(first.items).toHaveLength(2)
+    const second = await files(store, { ownerAgentId: 'alice', limit: 2, cursor: first.nextCursor })
+    expect(second.total).toBe(4); expect(second.nextCursor).toBeUndefined()
+    const items = [...first.items, ...second.items]
+    expect(items.map(item => item.id).sort()).toEqual(['own-direct', 'own-group', 'received-current', 'received-legacy'])
+    expect(items.find(item => item.id === 'own-group')).toMatchObject({ conversationId: 'group', sourceMessageId: 'group-source' })
+    expect((await files(store, { ownerAgentId: 'alice', kind: 'material', name: 'current' })).items.map(item => item.id)).toEqual(['received-current'])
+    // A group continues to show that group's files, including another member's output.
+    expect((await files(store, { conversationId: 'group' })).items.some(item => item.id === 'other-group')).toBe(true)
+    await expect(files(store, { conversationId: 'group', limit: 2, cursor: first.nextCursor })).rejects.toThrow('STALE_CURSOR')
+    await store.write([row('conversations', { ...conversation('group'), agentIds: ['bob'] })])
+    await expect(files(store, { ownerAgentId: 'alice', limit: 2, cursor: first.nextCursor })).rejects.toThrow('STALE_CURSOR')
+    expect((await files(store, { ownerAgentId: 'alice' })).items.map(item => item.id)).toEqual(['own-direct'])
+    expect((await files(store, { ownerAgentId: 'removed' })).total).toBe(0)
+  })
+  it('文件查询必须明确指定员工或会话，不能组合或省略范围', () => {
+    expect(conversationFileQuerySchema.safeParse({}).success).toBe(false)
+    expect(conversationFileQuerySchema.safeParse({ ownerAgentId: 'alice', conversationId: 'direct' }).success).toBe(false)
+  })
   it('同名输入/独立交付分开，最新与采用分开，明确家族才能查历史', async () => {
     const store = await fixture()
     await store.write([row('artifacts', artifact('v1', 'family')), row('artifacts', { ...artifact('v2', 'family', 2), previousArtifactId: 'v1' }), row('artifacts', artifact('independent')), row('artifacts', { ...artifact('copied'), registrationSource: undefined }), row('artifactAdoptionCurrent', { id: 'family', conversationId: 'direct', artifactId: 'v1', contentVersion: 1, contentHash: 'a'.repeat(64) }), row('materials', { id: 'input', conversationId: 'direct', name: 'report.md', size: 20, createdAt: time, messageId: 'source', format: 'markdown', status: 'ready', revision: 1 }), row('materials', { id: 'draft', conversationId: 'direct', name: 'draft.md', size: 20, createdAt: time, format: 'markdown', status: 'ready' })])

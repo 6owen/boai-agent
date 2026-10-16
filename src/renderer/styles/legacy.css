@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 右侧任务/文件列表填满详情可用高度，文件筛选常驻、列表内部滚动，不影响主聊天布局。
+ * [OUTPUT]: composer顶部留白收紧为2px，让消息底部scroll fade更贴近输入框。
  * [OUTPUT]: 侧栏及右侧面板分界线复用 Card 的垂直细线/高光，保留悬停提示、1px布局与扩展拖拽区域。
  * [OUTPUT]: 右侧面板作为全局常驻分栏容器；所有主页面共用尺寸与分割线，取消页面专属窄窗浮层。
  * [OUTPUT]: 文本文件滚动轨道延伸至面板右缘，19px/窄窗26px正文留白移入滚动内容；标题位置保持。
@@ -628,7 +630,7 @@ fieldset {
 }
 .composer-wrap {
   flex-shrink:0;
-  padding:8px 20px 12px;
+  padding:2px 20px 12px;
   max-width:824px;
   width:100%;
   align-self:center
@@ -715,6 +717,7 @@ fieldset {
 .file-preview-scroll { margin-inline-end:calc(-1 * var(--file-preview-inset,0px)) }
 .file-preview-scroll-content { padding-inline-end:var(--file-preview-inset,0px) }
 .detail-content:has(.execution-history-body):not([hidden]),.detail-session:has(.execution-history-body),.detail-content:has(.file-preview-detail):not([hidden]),.detail-session:has(.file-preview-detail) { display:flex;min-height:0;flex:1;flex-direction:column;overflow:hidden }
+.detail-content:has(> .detail-session > .conversation-panel-content):not([hidden]), .detail-session:has(> .conversation-panel-content), .conversation-panel-content { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden }
 .file-preview-detail>header,.file-preview-detail>details { flex-shrink:0 }
 .detail-section h2 {
   font-size:20px;

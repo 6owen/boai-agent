@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
  * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文仍可见，Run到达后由单一执行卡接管。
  * [OUTPUT]: 思考增量在受控轨迹内更新，收起后新增内容可读，工具接续不丢思考；空态无伪造思考。
  * [INPUT]: 生产 ChatView 与 ExecutionFeed、执行中事件窗口。
@@ -120,15 +121,12 @@ test('replaces the existing API streaming bubble with one execution card and res
   expect(host.textContent).toContain('最终答复')
 })
 
-test('pauses execution reads when the chat is hidden or another conversation view is selected', async () => {
+test('pauses execution reads only while the chat page is hidden and resumes when visible', async () => {
  const request = vi.spyOn(props.api, 'request')
  props = { ...props, pageActive: false }; await render()
  expect(fixture.active).toBe(false)
  expect(request).not.toHaveBeenCalled()
- props = { ...props, pageActive: true, view: 'files' }; await render()
- expect(fixture.active).toBe(false)
- expect(request).not.toHaveBeenCalled()
- props = { ...props, view: 'chat' }; await render()
+ props = { ...props, pageActive: true }; await render()
  expect(fixture.active).toBe(true)
  expect(request).toHaveBeenCalledWith('listNativeActions', expect.objectContaining({ runId: run.id }))
 })

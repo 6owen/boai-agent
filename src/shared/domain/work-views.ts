@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件查询支持互斥的员工/会话范围，每行保留真实 conversationId 用于预览与来源定位。
  * [INPUT]: 已提交Work、材料与成果身份；当前可见会话和来源版本。
  * [OUTPUT]: 会话/全局/员工共用有界只读清单、五组同口径计数及固定原消息/当前审批导航合同。
  * [POS]: shared/domain 工作视图合同；不创建任务、执行或用户认可。
@@ -78,7 +79,9 @@ export interface WorkViewTarget {
 }
 export type ConversationFileKind = 'material' | 'artifact'
 export interface ConversationFileQuery {
-  conversationId: string
+  /** Exactly one scope: a group/channel conversation, or files received/created by an employee across visible conversations. */
+  conversationId?: string
+  ownerAgentId?: string
   name?: string
   kind?: ConversationFileKind
   actorId?: string

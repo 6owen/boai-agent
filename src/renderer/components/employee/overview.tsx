@@ -1,15 +1,15 @@
 /*
+ * [OUTPUT]: 资料首页移除聊天派生的当前工作看板；执行记录统一从执行详情查看。
  * [OUTPUT]: 2026-10-10 资料首页可直接打开本人执行详情，API/本机共用记录、Work/成果及原聊天导航；关闭隐藏停止读取。
  * [OUTPUT]: Codex同次读取启动项状态与员工资源说明；隐藏后迟到结果不覆盖当前配置。
  * [OUTPUT]: 本机Codex复用当前启动项只读核对，能力声明不继承无关配置。
- * [INPUT]: 员工已提交配置、DesktopApi、受管能力说明/同次启动项只读身份核对及共用有界 Work 视图。
- * [OUTPUT]: 员工能力失效/原握手范围、本人当前工作及全部任务/真实触发导航；隐藏停读、迟到隔离，读取失败与空清单分别呈现，查看不自动验证。
+ * [INPUT]: 员工已提交配置、DesktopApi、受管能力说明/同次启动项只读身份核对及执行详情。
+ * [OUTPUT]: 员工能力失效/原握手范围、本人执行详情与原聊天导航；隐藏停读、迟到隔离，读取失败与空清单分别呈现，查看不自动验证。
  * [POS]: 通讯录资料首页的只读概览，配置/文件/工作区/记忆仍由 EmployeeDetail 管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState } from 'react'
-import type { AgentHome, AutomationOrigin, DigitalAgent, LaunchProfileStatus, Snapshot } from '@shared/domain'
-import type { WorkViewTarget } from '@shared/domain/work-views'
+import type { AgentHome, DigitalAgent, LaunchProfileStatus, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, Loading } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -17,11 +17,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SkillContent } from '@/pages/library/skill-content'
-import { WorkView } from '@/components/work-views/work-view'
 import { employeeCapabilityFacts } from './overview-state'
 import { EmployeeExecutionPane, type ExecutionSourceNavigation } from './execution-pane'
 
-export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onViewTasks, onOpenWork, onAutomation, onOpenExecutionSource }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onViewTasks?(agentId: string): void; onOpenWork?(target: WorkViewTarget, current?: () => boolean): void; onAutomation?(origin: AutomationOrigin, current?: () => boolean, conversationId?: string): void; onOpenExecutionSource?: ExecutionSourceNavigation }) {
+export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onOpenExecutionSource }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onOpenExecutionSource?: ExecutionSourceNavigation }) {
   const [home, setHome] = useState<AgentHome | null>(null)
   const [launchStatus, setLaunchStatus] = useState<LaunchProfileStatus>()
   const [skillId, setSkillId] = useState<string>()
@@ -76,12 +75,6 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, on
     </section>
     <div className="mb-6"><Button variant="outline" onClick={() => setExecutionOpen(true)}>查看执行详情</Button></div>
     <Dialog open={active && executionOpen} onOpenChange={setExecutionOpen}><DialogContent className="sm:max-w-[760px]"><DialogHeader><DialogTitle>{agent.name} · 执行详情</DialogTitle><DialogDescription>查看此员工的执行记录、工作与已发布成果。</DialogDescription></DialogHeader><div className="max-h-[65vh] overflow-y-auto">{executionOpen && <EmployeeExecutionPane key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active && executionOpen} onOpenSource={onOpenExecutionSource} />}</div></DialogContent></Dialog>
-    <Separator />
-    <section className="my-6 space-y-4" aria-label="员工当前负责工作">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-semibold">当前负责工作</h2>{onViewTasks && <Button variant="ghost" size="sm" onClick={() => onViewTasks(agent.id)}>查看全部任务</Button>}</div>
-      {agent.executionBackend && agent.executionBackend.kind !== 'mastra-model' && <p className="field-hint">外部任务的执行记录仍在原聊天查看；仅已登记的业务工作出现在此清单。</p>}
-      <WorkView api={api} snapshot={snapshot} active={active} ownerAgentId={agent.id} compact onNavigate={(target, current) => onOpenWork?.(target, current)} onAutomation={onAutomation} />
-    </section>
     {agent.instructions && <><Separator /><section className="my-6 space-y-2" aria-label="员工工作方式"><h2 className="text-sm font-semibold">工作方式</h2><p className="field-hint">已保存的配置声明</p><p className="contact-prompt whitespace-pre-wrap break-words">{agent.instructions}</p></section></>}
     <Dialog open={active && Boolean(selectedSkill)} onOpenChange={value => { if (!value) setSkillId(undefined) }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{selectedSkill?.name} · 来源与说明</DialogTitle><DialogDescription>当前员工已绑定的受管副本。说明可读取不表示执行依赖或交付效果已验证。</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto">{active && selectedSkill && <SkillContent key={selectedSkill.id} api={api} resourceId={selectedSkill.id} />}</div></DialogContent></Dialog>
   </>

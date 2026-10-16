@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件来源菜单统一打开原员工/消息的执行过程，退役来源工作面板入口。
  * [INPUT]: 已核验文件身份/hash、当前聊天与来源失效revision，原员工修改请求。
  * [OUTPUT]: 仅文件名、正文、模式切换与文件/来源操作；删除版号、历史/对比/文件记录UI，修改完成自动显示交付文件。
  * [POS]: 文件预览数据边界；后台核源保留正文，隐藏停读，来源失效隔离迟到读取。
@@ -21,11 +22,11 @@ import { MaterialMarkdown } from '@/pages/conversations/-components/material-cit
 import { materialErrorText } from '@/pages/conversations/-components/material-draft'
 import { readDetailMessages } from '@/pages/conversations/detail-reading'
 
-export function ArtifactTab({ api, conversationId, id, logicalArtifactId, contentHash, expectedContentVersion, sourceRevision = 0, requestId, active, snapshot, onVersion, onPreviewMaterial, onMessage, onActivity, onOpenPath, onPublish }: {
+export function ArtifactTab({ api, conversationId, id, logicalArtifactId, contentHash, expectedContentVersion, sourceRevision = 0, requestId, active, snapshot, onVersion, onPreviewMaterial, onMessage, onExecution, onOpenPath, onPublish }: {
   api: DesktopApi; conversationId: string; id: string; logicalArtifactId: string; contentHash: string; expectedContentVersion?: number; sourceRevision?: number; requestId: string; active: boolean; snapshot: Snapshot
   onPublish?(artifact: ArtifactVersion): void
   onVersion(artifact: ArtifactVersion): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void
-  onMessage(id: string): void; onActivity(): void; onOpenPath(path: string): void
+  onMessage(id: string): void; onExecution(artifact: ArtifactVersion): void; onOpenPath(path: string): void
 }) {
   const editor = useRef<FileEditHandle>(null)
   const [view, setView] = useState<{ preview: ArtifactPreview; detail: ConversationDetail; sourceRevision: number }>(), [loading, setLoading] = useState(false), [readError, setReadError] = useState('')
@@ -98,7 +99,7 @@ export function ArtifactTab({ api, conversationId, id, logicalArtifactId, conten
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {sourceMessage && <DropdownMenuItem onClick={() => onMessage(sourceMessage.id)}><MessageCircle />来源消息</DropdownMenuItem>}
-          {artifact.sourceWorkId && detail?.workItems?.some(work => work.id === artifact.sourceWorkId) && <DropdownMenuItem onClick={onActivity}><Workflow />来源工作</DropdownMenuItem>}
+          {artifact.sourceWorkId && detail?.workItems?.some(work => work.id === artifact.sourceWorkId) && <DropdownMenuItem onClick={() => onExecution(artifact)}><Workflow />执行过程</DropdownMenuItem>}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道与执行统一经会话操作菜单进入，保留原面板/来源/草稿业务断言。
  * [OUTPUT]: 渠道草稿断言兼容普通textarea与群聊contenteditable输入，不改变业务发送步骤。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 渠道文件通过正文选区发起修改，不依赖已退役的header按钮。
@@ -32,6 +33,10 @@ const { Given, When, Then } = createBdd(test)
 const channelPanel = (page: Page) => page.locator('.channel-workspace:visible')
 const mainChat = (page: Page) => page.locator('.content-main > .conversation-layout > .conversation-stage')
 const channelPicker = (page: Page) => page.getByRole('dialog', { name: '选择渠道会话', exact: true })
+const openChannels = async (page: Page) => {
+  await mainChat(page).getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '渠道', exact: true }).click()
+}
 const openPicker = async (page: Page) => {
   await channelPanel(page).getByRole('button', { name: '选择渠道会话', exact: true }).click()
   await expect(channelPicker(page)).toBeVisible()
@@ -63,7 +68,7 @@ Then('右侧容器在切换内容与跨页重开时保持统一宽度', async ({
   await setWindow(1280)
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await mainChat(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('容器切换保留主聊天草稿')
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   const panel = page.locator('.detail-panel'), separator = page.getByRole('separator', { name: '调整详情宽度', exact: true })
   const originalContainer = (await panel.elementHandle())!
   const width = () => panel.evaluate(element => element.getBoundingClientRect().width)
@@ -144,13 +149,13 @@ Then('右侧容器在切换内容与跨页重开时保持统一宽度', async ({
   await expect(mainChat(page).getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('容器切换保留主聊天草稿')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(panel).toBeHidden()
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await expect.poll(geometry).toEqual(wide)
   await sameContainer()
   await runtime.reviewData('共用容器实际几何', { wide, narrow, constrained, sameContainer: true })
   await page.reload()
   await page.getByRole('button', { name: '与研究员对话', exact: true }).click()
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await expect.poll(width).toBe(640)
   await runtime.reviewNativeCheckpoint('统一容器-跨页重开与重载宽度恢复')
 })
@@ -159,7 +164,7 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await mainChat(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('主员工草稿保持')
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await selectChannel(page, '飞书 · 研究员')
   const panel = channelPanel(page), tabs = page.getByRole('tablist', { name: '详情标签', exact: true })
   const container = (await page.locator('.detail-panel').elementHandle())!
@@ -191,7 +196,8 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
   await channelDraft(page, '侧边渠道独立草稿', true)
-  await panel.getByRole('button', { name: '打开执行面板', exact: true }).click()
+  await panel.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '执行过程', exact: true }).click()
   await unchanged()
   await expect(page.locator('.channel-detail-header')).toContainText('执行')
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
@@ -244,7 +250,7 @@ Then('新回复提示进入员工渠道且实际阅读后消失', async ({ runti
 
 Then('渠道私聊群筛选及搜索任务定位进入正确页面', async ({ runtime }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   const panel = channelPanel(page), picker = channelPicker(page)
   const privateGroup = picker.getByRole('group', { name: '渠道私聊', exact: true })
   const groupGroup = picker.getByRole('group', { name: '渠道群聊', exact: true })
@@ -312,7 +318,7 @@ Then('渠道详情反复打开和本地处理后的空闲资源保持有界', as
   test.setTimeout(420_000)
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await selectChannel(page, '研发A群 · 飞书')
   const cycle = async () => {
     await channelPanel(page).getByRole('button', { name: '会话操作', exact: true }).click()
@@ -362,7 +368,7 @@ Then('外部群单列渠道会话并显示只读来源信息', async ({ runtime 
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await expect(page.getByRole('group', { name: '渠道会话', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await openPicker(page)
   const channelList = channelPicker(page).getByRole('group', { name: '渠道会话', exact: true })
   await expect(channelList.getByRole('button', { name: '研发A群 · 飞书', exact: true })).toBeVisible()
@@ -395,7 +401,7 @@ Then('BOAI群仍有成员配置而外部群不在通讯录群聊中', async ({ r
 Then('渠道原会话可直接续聊且重启保留', async ({ runtime }) => {
   await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await runtime.page.getByRole('button', { name: '与研究员对话', exact: true }).click()
-  await runtime.page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(runtime.page)
   await selectChannel(runtime.page, '研发A群 · 飞书')
   await channelPanel(runtime.page).getByRole('textbox', { name: '消息内容' }).fill('单聊统一交互验收')
   await channelPanel(runtime.page).getByRole('button', { name: '发送消息', exact: true }).click()
@@ -477,7 +483,7 @@ Then('研究员主列表一个入口且渠道页保留独立私聊和两个群',
   await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await expect(runtime.page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: '与研究员对话', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(runtime.page.getByText('手机飞书私聊的历史消息', { exact: true })).toHaveCount(0)
-  await runtime.page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(runtime.page)
   await selectChannel(runtime.page, '飞书 · 研究员')
   await expect(channelPanel(runtime.page).locator('.channel-chat-stage').getByText('手机飞书私聊的历史消息', { exact: true })).toBeVisible()
   await runtime.page.getByRole('button', { name: '关闭详情', exact: true }).click()
@@ -571,7 +577,7 @@ Then('空渠道与空消息共用全局空态且标题和滚动布局一致', as
   await page.getByRole('button', { name: '发消息', exact: true }).click()
   await mainChat(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('主聊天草稿保持')
   const before = await page.evaluate(() => window.boai.request('snapshot', undefined))
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   const workspace = channelPanel(page)
   await expect(workspace.locator('.illustrated-empty')).toContainText('暂无渠道会话')
   await expect(workspace.locator('.empty-note')).toHaveCount(0)
@@ -595,7 +601,7 @@ Then('空渠道与空消息共用全局空态且标题和滚动布局一致', as
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(room => room.id)).toEqual(before.conversations.map(room => room.id))
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.getByRole('button', { name: '与研究员对话', exact: true }).click()
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await selectChannel(page, '研发A群 · 飞书')
   await expect(workspace.locator('.illustrated-empty')).toContainText('暂无渠道消息')
   await expect(workspace.locator('.messages')).toHaveAttribute('data-slot', 'scroll-area-viewport')
@@ -611,7 +617,7 @@ Then('渠道记录直接续聊并从回答工具条明确发送到渠道', async
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '会话', exact: true }).click()
   await mainChat(page).getByRole('textbox', { name: '消息内容', exact: true }).fill('主聊天草稿保持')
-  await page.getByRole('button', { name: '打开员工渠道会话', exact: true }).click()
+  await openChannels(page)
   await selectChannel(page, '飞书 · 研究员')
   const container = page.locator('.detail-panel'), width = await container.evaluate(element => element.getBoundingClientRect().width)
   const read = () => page.evaluate(() => window.boai.request('getConversation', { id: 'legacy-feishu-private' }))

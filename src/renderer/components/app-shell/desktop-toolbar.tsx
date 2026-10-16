@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 详情标签区域常驻并随面板共用宽度过渡；开关按钮独立固定在右侧，跨页显隐不经过零宽裁切。
  * [INPUT]: 页面标题、导航历史、分栏显示状态、独立浏览器入口、详情标签及统一 UI 基础组件。
  * [OUTPUT]: 44px 原生标题栏导航、详情标签之前依次排列的浏览器/检索按钮、与右侧拖拽线对齐的内容宽度多标签栏及无选中底色的面板开关。
  * [POS]: app-shell 顶部工具栏，标题供辅助技术读取。
@@ -24,6 +25,9 @@ export function DesktopToolbar(props: Props) {
     </div>
     <span className="sr-only">{props.title}</span>
     {props.browserAction && <div className="ml-auto flex shrink-0 items-center">{props.browserAction}</div>}
-    <div className={`toolbar-right${props.detailHeader ? ' toolbar-detail' : ''}`} style={props.browserAction ? { marginLeft: 0 } : undefined}>{props.detailHeader}{!props.detailDisabled && <Button variant="ghost" size="icon-sm" aria-label="显示或隐藏详情" aria-pressed={props.detailOpen} onClick={props.onToggleDetails}>{props.detailOpen ? <PanelLeft /> : <PanelRight />}</Button>}</div>
+    <div className="toolbar-right toolbar-detail" data-open={props.detailOpen} data-disabled={props.detailDisabled} style={props.browserAction ? { marginLeft: 0 } : undefined}>
+      <div className="toolbar-detail-tabs t-resize">{props.detailHeader}</div>
+      {!props.detailDisabled && <Button className="toolbar-detail-toggle" variant="ghost" size="icon-sm" aria-label="显示或隐藏详情" aria-pressed={props.detailOpen} onClick={props.onToggleDetails}>{props.detailOpen ? <PanelLeft /> : <PanelRight />}</Button>}
+    </div>
   </header>
 }

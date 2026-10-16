@@ -1,0 +1,76 @@
+/*
+ * [INPUT]: transitions-dev Card resize 原版 CSS、已全局加载的 Panel reveal 与 Shell 显隐/拖动状态。
+ * [OUTPUT]: 左侧挂载/页面恢复直接显示，仅显隐切换过渡；右侧保留首次展开与独立内容显现，固定宽度隔离布局/绘制，不叠加整区动态模糊。
+ * [POS]: 共用分栏动画，原片段保持，后续规则仅适配 BOAI 布局。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+:root {
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-resize {
+  transition:
+    width  var(--resize-dur) var(--resize-ease),
+    height var(--resize-dur) var(--resize-ease);
+  will-change: width, height;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-resize { transition: none !important; }
+}
+
+.panel-resize {
+  position:relative;
+  display:flex;
+  flex:0 0 auto;
+  min-width:0;
+  min-height:0;
+  width:calc(var(--panel-size) + 1px);
+}
+.panel-resize[data-side=left] { --panel-size:var(--list-width,312px) }
+.panel-resize[data-side=right] { --panel-size:var(--detail-size);max-width:100% }
+.panel-resize[data-open=false] { width:0;pointer-events:none }
+.panel-resize-content { display:flex;flex:1;min-width:0;min-height:0;overflow:clip }
+.panel-resize[data-open=false]>.panel-resize-content { visibility:hidden;transition:visibility 0s var(--resize-dur) }
+.panel-resize[data-side=left]>.panel-resize-content { margin-right:1px }
+.panel-resize[data-side=right]>.panel-resize-content { margin-left:1px }
+.panel-resize>.resize-handle { position:absolute;inset-block:0 }
+.panel-resize[data-side=left]>.resize-handle { right:0 }
+.panel-resize[data-side=right]>.resize-handle { left:0 }
+.panel-resize[data-open=false]>.resize-handle { visibility:hidden }
+.panel-resize-content>.detail-panel { max-width:none;contain:layout paint }
+/* Only right panels enter on mount; left lists appear immediately on page changes. */
+@starting-style {
+  .panel-resize[data-side=right][data-open=true] { width:0 }
+}
+/* Keep the last painted tab during collapse; its active/read state already stopped. */
+.panel-resize[data-side=right][data-open=false] .detail-content { transition:display var(--resize-dur) allow-discrete }
+.toolbar-detail { width:auto;flex-basis:auto;gap:0;overflow:clip }
+.toolbar-detail-tabs { display:flex;align-items:center;flex:0 1 auto;min-width:0;height:100%;width:calc(var(--detail-size) + var(--detail-divider-width) - 44px);overflow:clip }
+.toolbar-detail-tabs>.detail-header { height:100%;padding-right:6px }
+.toolbar-detail[data-open=false]>.toolbar-detail-tabs { width:0 }
+.toolbar-detail[data-disabled=true][data-open=false] { padding:0 }
+.toolbar-detail-toggle { flex-shrink:0;margin-left:auto }
+.app-shell[data-panel-resizing=true] .t-resize { transition:none }
+
+.detail-content.t-panel-slide {
+  --panel-open-dur:var(--resize-dur);
+  --panel-close-dur:var(--resize-dur);
+  --panel-translate-y:8px;
+  /* Large message lists should not be rasterized through an animated blur. */
+  filter:none;
+  transition-property:transform,opacity;
+  will-change:transform,opacity;
+}
+/* Tabs use display:none while inactive; supply the missing first painted state. */
+@starting-style {
+  .detail-content.t-panel-slide[data-open=true] {
+    transform:translateY(var(--panel-translate-y));
+    opacity:0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-resize-content, .panel-resize .detail-content { transition:none !important; }
+}
