@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型目录原生档位/显示名保留，重复条目不丢能力，旧字符串接口兼容。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: 2026-10-10 新增进度精确来源/原始思维隔离/有界文本与真实Work参数结果持久检查，无真实供应商调用。
  * [OUTPUT]: 2026-10-10 新增0.161.0/模型目录零推理/验证变化拒绝，以及原Work成果与员工执行IPC冻结来源/原生引用/零新增预算检查。
@@ -28,7 +29,7 @@ import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { inspectProgram } from '../src/runtime/modules/backends/program'
-import { listCodexModels, runCodexPhase, testCodexConnection, type CodexPhaseDiagnostic } from '../src/runtime/adapters/codex/turn'
+import { listCodexModelCatalog, listCodexModels, runCodexPhase, testCodexConnection, type CodexPhaseDiagnostic } from '../src/runtime/adapters/codex/turn'
 import { observeCodexPhase } from '../src/runtime/adapters/codex/trace'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import type { LaunchProfile } from '../src/shared/domain/backends'
@@ -81,6 +82,7 @@ it('loads canonical native models without submitting inference and still rejects
   const input = await fixture('version-161')
   expect(input.profile.verified?.version).toBe('0.161.0')
   expect(await listCodexModels(input)).toEqual(['gpt-6.1-sol'])
+  expect(await listCodexModelCatalog(input)).toEqual([{ value: 'gpt-6.1-sol', displayName: 'Protocol fixture', supportedEffortLevels: ['low', 'high'], supportsEffort: true }])
   await expect(readFile(join(input.cwd, 'turn-requests.txt'))).rejects.toThrow()
   await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: undefined } })).rejects.toThrow('请先测试')
   await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: { ...input.profile.verified!, version: '0.159.3' } } })).rejects.toThrow('版本已变化')

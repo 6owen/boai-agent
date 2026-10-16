@@ -1,0 +1,95 @@
+{
+  "method": "Electron.webContents.capturePage()",
+  "rect": null,
+  "pixelTransform": "none",
+  "native": {
+    "windowId": 1,
+    "webContentsId": 1,
+    "before": {
+      "contentSize": [
+        760,
+        640
+      ],
+      "bounds": {
+        "x": 222,
+        "y": 38,
+        "width": 760,
+        "height": 640
+      },
+      "contentBounds": {
+        "x": 222,
+        "y": 38,
+        "width": 760,
+        "height": 640
+      },
+      "zoomFactor": 1
+    },
+    "after": {
+      "contentSize": [
+        760,
+        640
+      ],
+      "bounds": {
+        "x": 222,
+        "y": 38,
+        "width": 760,
+        "height": 640
+      },
+      "contentBounds": {
+        "x": 222,
+        "y": 38,
+        "width": 760,
+        "height": 640
+      },
+      "zoomFactor": 1
+    },
+    "display": {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1512,
+        "height": 982
+      },
+      "workArea": {
+        "x": 0,
+        "y": 38,
+        "width": 1512,
+        "height": 860
+      },
+      "scaleFactor": 2
+    }
+  },
+  "renderer": {
+    "width": 760,
+    "height": 640,
+    "outerWidth": 760,
+    "outerHeight": 640,
+    "devicePixelRatio": 2,
+    "visualViewport": {
+      "width": 760,
+      "height": 640,
+      "scale": 1
+    }
+  },
+  "image": {
+    "scaleFactors": [
+      1
+    ],
+    "representations": [
+      {
+        "scaleFactor": 1,
+        "size": {
+          "width": 1520,
+          "height": 1280
+        }
+      }
+    ],
+    "pngScaleFactor": 1
+  },
+  "pngDimensions": {
+    "width": 1520,
+    "height": 1280
+  },
+  "pngBytes": 131676,
+  "pngSha256": "3d2d4fe4565c5ea43765dcedefb26a10e13f857c9dd8b7af8943ce99df5e109d"
+}

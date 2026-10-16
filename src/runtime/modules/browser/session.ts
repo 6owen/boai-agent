@@ -1,8 +1,9 @@
 /*
+ * [OUTPUT]: BOAI内置浏览器默认授权全部员工使用，不发起网页审批；页面版本/引用身份/真实调用及未知不重放保持。
  * [OUTPUT]: 同实例同URL的动态页面仅经新snapshot/screenshot/find重新观察；旧版本首次写入拒绝后可恢复，新URL仍需本人重新引用。
  * [OUTPUT]: 批准展示当前页面和输入长度，后台绑定原参数hash，命令参数隐藏填写正文；非密码业务值可能出现在页面/结果；旧截图摘要不冒充可用图片。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
- * [INPUT]: 手动 Work 的宿主租约、原用户 URL、当前来源门禁与 Main 窗口桥。
+ * [INPUT]: 普通/定时 Work 的宿主租约、原用户 URL、当前来源门禁与 Main 窗口桥。
  * [OUTPUT]: 下载仅在完成回执/真实hash核验后复制到当前run并返回真实可读路径；受管根父层系统别名可用、根下链接拒绝，未完成/未知原件留独立私有暂存区且不进入业务备份。
  * [OUTPUT]: 严格单命令/冻结审批/真实开始握手和稳定回执；普通浏览器回执不触发隐形接管暂停，显式交接仅兼容；截图只保留内存媒体，取消与 disposal 等待整动作实际退出。
  * [POS]: 内置浏览器的任务调用客户端；调用者、业务来源与代际授权均来自宿主，不决定浏览器窗口或登录身份。
@@ -12,7 +13,6 @@ import { createHash } from 'node:crypto'
 import { lstat, readFile, realpath, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { BrowserActionEnvelope,BrowserActionReply,BrowserHostBridge,BrowserLease } from '../../../shared/ipc/browser'
-import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
 import { parseBrowserSingleCommand } from '../../adapters/mastra/browser-tool-runtime'
 import { browserCommandHash,BrowserRepository } from './repository'
 import { restrictedPath } from '../workspaces/file-access'
@@ -31,7 +31,7 @@ export class BrowserSession {
   private paused?:{promise:Promise<void>;resolve:()=>void;reject:(error:Error)=>void}
   private pauseExit?:Promise<void>
   private resumedSnapshot?:{source:import('../../../shared/ipc/browser').BrowserPageEvidence;output:string}
-  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest:string; reference?:import('../../../shared/ipc/browser').BrowserPageReference; validate():Promise<void>; approve(command:string):Promise<boolean>; downloadDestination?:{root:string;runPath:string} }) {
+  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest?:string; reference?:import('../../../shared/ipc/browser').BrowserPageReference; validate():Promise<void>; approve?(command:string):Promise<boolean>; downloadDestination?:{root:string;runPath:string} }) {
     options.signal.addEventListener('abort',() => { void this.drain().catch(() => {}) },{once:true})
   }
   private async ensure(observePage = false) {
@@ -81,22 +81,9 @@ export class BrowserSession {
     const source=await this.host.request('inspect',lease)
     const target=this.options.reference
     if (target && (source?.instanceId!==target.instanceId || source.url!==target.url)) throw new Error('原引用网页已导航或替换，请在聊天中重新引用目标网页')
-    const approvedOrigins=browserRequestOrigins(this.options.originalRequest)
-    if (target) approvedOrigins.push(new URL(target.url).origin)
-    let approval:BrowserActionEnvelope['approval']
-    const origin=parsed.targetUrl ? new URL(parsed.targetUrl).origin : source?.url && /^https?:/.test(source.url) ? new URL(source.url).origin : undefined
-    const interaction=parsed.mutating && parsed.action !== 'navigate'
-    if (interaction || (origin && !approvedOrigins.includes(origin))) {
-      if (!source && interaction) throw new Error('浏览器尚无当前页面，不能批准目标或输入')
-      const approved=await this.options.approve(`浏览器操作\n页面：${source?.url ?? parsed.targetUrl}\n页面版本：${source?.pageVersion ?? 'empty'}\n命令：${redactBrowserCommand(parsed.command)}`)
-      this.options.signal.throwIfAborted()
-      if (!approved) throw new Error('用户拒绝本次浏览器操作；不得重试或绕过')
-      approval={url:source?.url ?? parsed.targetUrl!,pageVersion:source?.pageVersion ?? 'empty',commandHash:hash}
-      if (origin) approvedOrigins.push(origin)
-    }
     await this.waitActive();await this.options.validate(); this.options.signal.throwIfAborted()
     if(lease.generation!==this.lease.generation) throw new Error('浏览器已交还并刷新页面；原未开始命令未执行，请核对新快照')
-    const envelope:BrowserActionEnvelope={lease:lease,actionId,toolCallId,command:parsed.command,argumentHash:hash,approvedOrigins,...(source ? {expectedPageVersion:source.pageVersion}:{}),...(approval ? {approval}: {})}
+    const envelope:BrowserActionEnvelope={lease:lease,actionId,toolCallId,command:parsed.command,argumentHash:hash,...(source ? {expectedPageVersion:source.pageVersion}:{})}
     const prepared=await this.repository.prepare(envelope,parsed.mutating)
     if (!prepared.fresh) {
       const previous=await this.host.request('lookup',{lease:lease,actionId})

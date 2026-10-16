@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 有效员工默认拥有浏览器权限；旧approval/approvedOrigins仅保留历史输入兼容，不再触发人工审批。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: 内置浏览器操作、宿主工具调用审计和真实工作执行权限。
  * [OUTPUT]: 项目内置浏览器固定身份/窗口与登录分区；公开操作无员工或会话入参；私有任务租约只约束工具调用及实际退出，不决定浏览器身份。
@@ -28,7 +29,7 @@ export interface BrowserPageEvidence {
 }
 export interface BrowserActionEnvelope {
   lease: BrowserLease; actionId: string; toolCallId: string; command: string; argumentHash: string
-  expectedPageVersion?: string; approvedOrigins: string[]
+  expectedPageVersion?: string; approvedOrigins?: string[]
   approval?: { url: string; pageVersion: string; commandHash: string }
 }
 export interface BrowserCompletedDownload {

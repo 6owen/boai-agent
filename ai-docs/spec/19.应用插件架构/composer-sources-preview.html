@@ -1,0 +1,167 @@
+<!--
+[INPUT]: 用户参考图与08设计、BOAI现有中性主题；页面内示例数据。
+[OUTPUT]: 可交互的composer及技能/数据源设计预览，共用自定义主入口，分类区仅技能/数据源，适配窄屏；不访问真实连接、不保存员工配置。
+[POS]: 第19组设计预览片段。
+[PROTOCOL]: 修改时同步Header、08与所属.folder.md。
+-->
+<div id="boai-resource-design" aria-label="BOAI 会话与自定义设计预览">
+  <style>
+    #boai-resource-design{--b-bg:light-dark(#f4f5f6,#202124);--b-panel:light-dark(#fcfcfd,#26272b);--b-text:light-dark(#202126,#eeeff1);--b-muted:light-dark(#70737b,#afb0b7);--b-line:light-dark(#e5e6e8,#3a3b41);--b-hover:light-dark(#eeeff1,#35363c);--b-ink:light-dark(#27282c,#ededf0);--b-on-ink:light-dark(#fff,#202126);color-scheme:light dark;color:var(--b-text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    #boai-resource-design *{box-sizing:border-box}
+    #boai-resource-design button,#boai-resource-design input,#boai-resource-design textarea,#boai-resource-design select{font:inherit;color:inherit}
+    #boai-resource-design button{border:0;background:transparent;border-radius:8px;padding:7px 10px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+    #boai-resource-design button:hover{background:var(--b-hover)}
+    #boai-resource-design button:focus-visible{outline:2px solid #8b8e96;outline-offset:2px}
+    #boai-resource-design button:disabled{opacity:.45;cursor:default}
+    #boai-resource-design input,#boai-resource-design select{border:1px solid var(--b-line);background:var(--b-panel);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+    #boai-resource-design textarea{background:transparent;border:0;resize:none;width:100%;padding:14px;outline:none;min-height:88px}
+    #boai-resource-design h2,#boai-resource-design h3,#boai-resource-design p{margin:0}
+    #boai-resource-design h2{font-size:25px;font-weight:600;letter-spacing:-.6px}
+    #boai-resource-design h3{font-size:16px;font-weight:600}
+    #boai-resource-design small{font-size:12px;color:var(--b-muted)}
+    #boai-resource-design [hidden]{display:none!important}
+    #boai-resource-design .b-window{background:var(--b-bg);border:1px solid var(--b-line);border-radius:16px;overflow:hidden;min-height:644px;position:relative}
+    #boai-resource-design .b-titlebar{height:42px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--b-line);font-size:12px;color:var(--b-muted)}
+    #boai-resource-design .b-dots{display:flex;gap:6px;margin-right:18px}
+    #boai-resource-design .b-dots i{width:9px;height:9px;border-radius:50%;background:#d7d9de}
+    #boai-resource-design .b-body{display:grid;grid-template-columns:52px 222px minmax(0,1fr);min-height:600px}
+    #boai-resource-design .b-rail{display:flex;align-items:center;flex-direction:column;gap:12px;padding:16px 5px;border-right:1px solid var(--b-line)}
+    #boai-resource-design .b-rail button{width:36px;height:36px;color:var(--b-muted)}
+    #boai-resource-design .b-rail .b-active{background:var(--b-hover);color:var(--b-text)}
+    #boai-resource-design .b-sidebar{padding:19px 12px;background:var(--b-panel);border-right:1px solid var(--b-line);min-width:0}
+    #boai-resource-design .b-sidebar h3{padding:0 9px 18px;font-size:20px}
+    #boai-resource-design .b-nav{display:flex;flex-direction:column;gap:3px}
+    #boai-resource-design .b-nav button{justify-content:flex-start;width:100%;text-align:left}
+    #boai-resource-design .b-nav button.b-active{background:var(--b-hover);font-weight:500}
+    #boai-resource-design .b-label{display:flex;align-items:center;justify-content:space-between;color:var(--b-muted);padding:27px 9px 9px;font-size:12px}
+    #boai-resource-design .b-installed button{padding-block:9px;font-size:13px}
+    #boai-resource-design .b-installed span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #boai-resource-design .b-main{background:var(--b-panel);padding:32px;min-width:0;position:relative}
+    #boai-resource-design .b-top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    #boai-resource-design .b-description{color:var(--b-muted);margin-top:6px;margin-bottom:25px}
+    #boai-resource-design .b-primary{background:var(--b-ink);color:var(--b-on-ink);border-radius:20px;padding:8px 15px}
+    #boai-resource-design .b-primary:hover{background:light-dark(#3e4047,#cfd0d7)}
+    #boai-resource-design .b-search{margin-bottom:20px;max-width:310px;position:relative}
+    #boai-resource-design .b-search input{padding-left:33px;background:transparent}
+    #boai-resource-design .b-search svg{position:absolute;left:10px;top:11px;color:var(--b-muted)}
+    #boai-resource-design .b-tabs{display:flex;gap:5px;margin:14px 0 23px;flex-wrap:wrap}
+    #boai-resource-design .b-tabs button.b-active{background:var(--b-hover);border-radius:20px}
+    #boai-resource-design .b-catalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}
+    #boai-resource-design .b-resource{display:flex;gap:13px;align-items:center;padding:17px 0;min-width:0;text-align:left}
+    #boai-resource-design .b-resource button{text-align:left;justify-content:flex-start;padding:0;flex:1;min-width:0}
+    #boai-resource-design .b-resource button:hover{background:transparent}
+    #boai-resource-design .b-symbol{width:39px;height:39px;flex-shrink:0;border:1px solid var(--b-line);border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--b-bg)}
+    #boai-resource-design .b-copy{display:flex;flex-direction:column;min-width:0;gap:4px}
+    #boai-resource-design .b-copy strong{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #boai-resource-design .b-copy small{white-space:normal}
+    #boai-resource-design .b-section-title{margin:28px 0 8px}
+    #boai-resource-design .b-rule{border:0;border-top:1px solid var(--b-line);margin:19px 0}
+    #boai-resource-design .b-type{font-size:11px;color:var(--b-muted);border:1px solid var(--b-line);border-radius:5px;padding:2px 5px;white-space:nowrap}
+    #boai-resource-design .b-details{margin-top:22px}
+    #boai-resource-design .b-detail-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 0;border-bottom:1px solid var(--b-line)}
+    #boai-resource-design .b-detail-row span:first-child{color:var(--b-muted)}
+    #boai-resource-design .b-detail-row span:last-child{text-align:right;overflow-wrap:anywhere}
+    #boai-resource-design .b-chip{display:inline-flex;align-items:center;border-radius:6px;background:var(--b-hover);padding:3px 7px;font-size:12px;margin-right:5px}
+    #boai-resource-design .b-chat{padding:0;display:flex;flex-direction:column;min-height:600px}
+    #boai-resource-design .b-chathead{height:57px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--b-line)}
+    #boai-resource-design .b-messages{padding:31px 24px;flex:1;min-height:340px}
+    #boai-resource-design .b-user{text-align:right;margin-bottom:24px}
+    #boai-resource-design .b-user span{display:inline-block;background:var(--b-hover);padding:10px 15px;border-radius:16px}
+    #boai-resource-design .b-answer{line-height:1.9;max-width:460px}
+    #boai-resource-design .b-answer p{margin-bottom:12px}
+    #boai-resource-design .b-file{display:flex;align-items:center;gap:8px;border:1px solid var(--b-line);border-radius:8px;padding:9px 12px;margin:12px 0;width:max-content;max-width:100%}
+    #boai-resource-design .b-composer-wrap{margin:12px 20px 20px;position:relative}
+    #boai-resource-design .b-composer{border:1px solid var(--b-line);background:var(--b-bg);border-radius:18px;box-shadow:inset 0 1px 0 var(--b-panel)}
+    #boai-resource-design .b-tools{padding:0 9px 9px;display:flex;justify-content:space-between;gap:4px;align-items:center;flex-wrap:wrap}
+    #boai-resource-design .b-tools>div{display:flex;align-items:center;gap:2px}
+    #boai-resource-design .b-tools button{padding:6px 8px}
+    #boai-resource-design .b-model{font-size:12px;max-width:205px;overflow:hidden}
+    #boai-resource-design .b-tools .b-send{width:30px;height:30px;border-radius:50%;background:var(--b-ink);color:var(--b-on-ink);margin-left:5px}
+    #boai-resource-design .b-menu{position:absolute;background:var(--b-panel);border:1px solid var(--b-line);border-radius:13px;box-shadow:0 7px 22px #00000012;z-index:5;padding:6px;bottom:48px;max-width:calc(100% - 4px);width:278px;right:0}
+    #boai-resource-design .b-menu.b-left{left:0;right:auto;bottom:145px;width:310px}
+    #boai-resource-design .b-menuhead{padding:8px 10px;color:var(--b-muted);font-size:12px;border-bottom:1px solid var(--b-line);margin-bottom:5px}
+    #boai-resource-design .b-menu button{width:100%;justify-content:space-between;text-align:left;padding:9px 10px;min-width:0}
+    #boai-resource-design .b-menu button span:first-child{overflow:hidden;text-overflow:ellipsis}
+    #boai-resource-design .b-menu hr{margin:5px 0;border:0;border-top:1px solid var(--b-line)}
+    #boai-resource-design .b-menufoot{font-size:11px;color:var(--b-muted);padding:9px 10px 4px}
+    #boai-resource-design .b-menu .b-subtext{font-size:11px;color:var(--b-muted);display:block}
+    #boai-resource-design .b-popup-overlay{position:absolute;inset:42px 0 0;background:#00000015;z-index:10;display:flex;align-items:center;justify-content:center;padding:20px}
+    #boai-resource-design .b-dialog{width:410px;max-width:100%;padding:25px;background:var(--b-panel);border-radius:16px;box-shadow:0 12px 35px #00000018}
+    #boai-resource-design .b-dialog label{display:block;margin:15px 0 6px;font-size:12px;color:var(--b-muted)}
+    #boai-resource-design .b-dialogfooter{display:flex;justify-content:flex-end;gap:6px;margin-top:22px}
+    #boai-resource-design .b-preview-note{font-size:11px;color:var(--b-muted);margin-left:auto;margin-right:85px}
+    #boai-resource-design .b-status{font-size:12px;color:var(--b-muted);min-height:20px;margin-top:12px}
+    @media(max-width:780px){#boai-resource-design .b-body{grid-template-columns:44px 165px minmax(0,1fr)}#boai-resource-design .b-main{padding:24px 19px}#boai-resource-design .b-chat{padding:0}#boai-resource-design .b-catalog{grid-template-columns:1fr}#boai-resource-design .b-sidebar{padding-inline:9px}#boai-resource-design .b-preview-note{margin-right:60px}}
+    @media(max-width:540px){#boai-resource-design .b-body{grid-template-columns:40px minmax(0,1fr)}#boai-resource-design .b-sidebar{grid-column:2;border-bottom:1px solid var(--b-line);padding:12px}#boai-resource-design .b-sidebar h3{padding-bottom:8px}#boai-resource-design .b-sidebar>.b-nav{flex-direction:row;flex-wrap:wrap}#boai-resource-design .b-sidebar>.b-nav button{width:auto}#boai-resource-design .b-label{padding-top:12px}#boai-resource-design .b-rail{grid-row:span 2}#boai-resource-design .b-main{grid-column:2;min-height:480px;padding:20px 15px}#boai-resource-design .b-chat{padding:0}#boai-resource-design .b-model{max-width:135px}#boai-resource-design .b-preview-note{margin-right:0;font-size:11px}#boai-resource-design .b-composer-wrap{margin-inline:10px}#boai-resource-design .b-messages{min-height:270px;padding:24px 15px}}
+  </style>
+  <div class="b-window">
+    <div class="b-titlebar"><span class="b-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>BOAI</span><span class="b-preview-note">交互设计 · 示例数据</span></div>
+    <div class="b-body">
+      <nav class="b-rail" aria-label="主导航"><button data-page="chat" aria-label="会话"><i data-lucide="message-circle" aria-hidden="true"></i></button><button data-page="sources" class="b-active" aria-label="自定义"><i data-lucide="blocks" aria-hidden="true"></i></button></nav>
+      <aside class="b-sidebar"><h3 id="b-sidebar-title">自定义</h3><nav class="b-nav" aria-label="自定义分类"><button data-page="skills"><i data-lucide="zap" aria-hidden="true"></i>技能</button><button data-page="sources" class="b-active"><i data-lucide="database" aria-hidden="true"></i>数据源</button></nav><div class="b-label">已安装 <i data-lucide="search" aria-hidden="true"></i></div><nav class="b-nav b-installed" aria-label="已安装资源"><button data-detail="github"><i data-lucide="git-branch" aria-hidden="true"></i><span>GitHub</span></button><button data-detail="api"><i data-lucide="plug" aria-hidden="true"></i><span>团队 API</span></button><button data-detail="folder"><i data-lucide="folder" aria-hidden="true"></i><span>工作资料</span></button><button data-detail="research"><i data-lucide="zap" aria-hidden="true"></i><span>research</span></button><button data-detail="writing"><i data-lucide="zap" aria-hidden="true"></i><span>writing</span></button></nav></aside>
+      <main class="b-main" id="b-content"></main>
+    </div>
+    <div class="b-popup-overlay" id="b-overlay" hidden><section class="b-dialog" role="dialog" aria-modal="true" aria-labelledby="b-dialog-title"><div class="b-top"><h3 id="b-dialog-title">添加数据源</h3><button data-close aria-label="关闭">×</button></div><div id="b-dialog-body"></div><div class="b-dialogfooter"><button data-close>取消</button><button class="b-primary" id="b-dialog-save">保存</button></div></section></div>
+  </div>
+  <script>
+    (()=>{
+      const root=document.getElementById('boai-resource-design');
+      const content=root.querySelector('#b-content');
+      const overlay=root.querySelector('#b-overlay');
+      const state={page:'sources',model:'GLM-5.3',effort:'中等',menu:null,skillTab:'本地',query:'',sourceType:'api',bound:true,draft:''};
+      const resources={github:{name:'GitHub',icon:'git-branch',type:'MCP',description:'读取仓库、Issues 和 Pull Requests',address:'https://api.githubcopilot.com/mcp/',status:'已连接'},api:{name:'团队 API',icon:'plug',type:'API',description:'查询业务数据与团队项目',address:'https://api.example.com/v1',status:'待测试'},folder:{name:'工作资料',icon:'folder',type:'本地文件夹',description:'员工可以读取的项目资料',address:'~/Documents/工作资料',status:'可访问'},research:{name:'research',icon:'zap',type:'技能',description:'检索资料、核对来源并整理研究结论',address:'research / SKILL.md',status:'已安装'},writing:{name:'writing',icon:'zap',type:'技能',description:'撰写、修改和整理项目文档',address:'writing / SKILL.md',status:'已安装'}};
+      const icon=n=>`<i data-lucide="${n}" aria-hidden="true"></i>`;
+      const icons=()=>{root.querySelectorAll('button').forEach(button=>button.classList.add('cursor-interaction'));if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}})};
+      const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      function row(key){const r=resources[key];return `<div class="b-resource" data-search="${r.name.toLowerCase()} ${r.description}"><span class="b-symbol">${icon(r.icon)}</span><button data-detail="${key}"><span class="b-copy"><strong>${r.name}</strong><small>${r.description}</small></span></button><span class="b-type">${r.type}</span></div>`}
+      function render(){
+        state.menu=null;content.className='b-main';
+        root.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('b-active',b.closest('.b-rail')?b.dataset.page===(state.page==='chat'?'chat':'sources'):b.dataset.page===state.page));
+        root.querySelectorAll('.b-installed [data-detail]').forEach(b=>b.classList.toggle('b-active',b.dataset.detail===state.page));
+        if(state.page==='chat'){chat();icons();return}
+        if(resources[state.page]){detail(state.page);icons();return}
+        const skill=state.page==='skills';
+        content.innerHTML=`<div class="b-top"><h2>${skill?'技能':'数据源'}</h2><button class="b-primary" data-add>${icon('plus')}添加${icon('chevron-down')}</button></div><p class="b-description">${skill?'为数字员工添加完成工作的专门方法':'连接员工工作时需要的工具、服务和文件'}</p><div class="b-search">${icon('search')}<input aria-label="搜索${skill?'技能':'数据源'}" placeholder="搜索${skill?'技能':'数据源'}"></div>${skill?`<nav class="b-tabs" aria-label="技能分类">${['本地','收藏','商城'].map(x=>`<button data-tab="${x}" class="${state.skillTab===x?'b-active':''}">${x}</button>`).join('')}</nav>`:`<div class="b-tabs"><button data-addtype="api">${icon('plug')}API</button><button data-addtype="mcp">${icon('blocks')}MCP</button><button data-addtype="local">${icon('folder')}本地文件夹</button></div>`}<h3 class="b-section-title">${skill?state.skillTab==='商城'?'发现技能':state.skillTab==='收藏'?'收藏的技能':'本机技能':'已添加'}</h3><div class="b-catalog">${(skill?state.skillTab==='收藏'?['research']:['research','writing']:['github','api','folder']).map(row).join('')}</div><p id="b-no-results" hidden class="b-description">没有匹配的项目</p><p class="b-status" aria-live="polite"></p>`;
+        content.querySelector('input').addEventListener('input',e=>{const q=e.target.value.toLowerCase();let count=0;content.querySelectorAll('[data-search]').forEach(r=>{r.hidden=!r.dataset.search.includes(q);if(!r.hidden)count++});content.querySelector('#b-no-results').hidden=count>0});icons();
+      }
+      function detail(key){const r=resources[key],skill=r.type==='技能';content.innerHTML=`<div class="b-top"><div class="b-resource" style="padding:0"><span class="b-symbol">${icon(r.icon)}</span><h2>${r.name}</h2></div><button data-config>配置${icon('settings-2')}</button></div><p class="b-description">${r.description}</p><span class="b-chip">${r.type}</span><span class="b-chip">${r.status}</span><div class="b-details"><h3>${skill?'技能说明':'连接'}</h3><div class="b-detail-row"><span>${skill?'文件':'地址'}</span><span>${r.address}</span></div><div class="b-detail-row"><span>${skill?'来源':'认证'}</span><span>${skill?'本地':key==='folder'?'只读访问':key==='github'?'已授权账号':'API Key · 已配置'}</span></div></div><div class="b-section-title b-top"><h3>绑定员工</h3><button data-bind>${icon('plus')}管理</button></div><span class="b-chip" id="b-bound">${state.bound?'研究助手':'尚未绑定员工'}</span><h3 class="b-section-title">${skill?'如何使用':'使用说明'}</h3><p class="b-description">${skill?'在与员工的对话中输入 @，选择该技能，再描述要完成的工作。':key==='folder'?'可读取此目录下的项目文件。新增文件随下次读取可见。':'员工可以在工作中使用此数据源提供的工具。配置或授权变化后，可重新测试连接。'}</p>${skill?'':`<button data-test>${icon('refresh-cw')}测试连接</button>`}<p class="b-status" aria-live="polite"></p>`}
+      function chat(){content.className='b-main b-chat';content.innerHTML=`<header class="b-chathead"><strong>研究助手 ${icon('chevron-down')}</strong><small>会话</small></header><div class="b-messages"><div class="b-user"><span>帮我整理一下这个项目的资料</span></div><div class="b-answer"><p>已经整理好了项目的关键资料。</p><p>简报包含项目背景、当前进展和待确认事项。你可以继续补充要求，或选中已有文件让我修改。</p><div class="b-file">${icon('file-text')}项目简报.md</div></div></div><div class="b-composer-wrap"><div id="b-menu-slot"></div><div class="b-composer"><textarea aria-label="消息草稿" placeholder="说说你想完成什么，@ 提及 · / 命令">${escape(state.draft)}</textarea><div class="b-tools"><div><button data-menu="attach" aria-label="添加附件">${icon('plus')}</button><button data-menu="slash" aria-label="快捷命令">/</button><button data-menu="at" aria-label="提及技能和文件">@</button></div><div><button data-menu="model" class="b-model" aria-label="选择模型">${state.model}${icon('chevron-down')}</button><button class="b-send" data-send aria-label="发送消息">${icon('arrow-up')}</button></div></div></div><p class="b-status" aria-live="polite"></p></div>`;content.querySelector('textarea').addEventListener('input',e=>{state.draft=e.target.value;const m=/(^|\s)([@/])([^\s@/]*)$/.exec(state.draft);state.menu=m?(m[2]==='@'?'at':'slash'):null;showMenu(m?.[3]||'')})}
+      function showMenu(query=''){const slot=content.querySelector('#b-menu-slot');if(!slot)return;if(!state.menu){slot.innerHTML='';return}let html='';if(state.menu==='model')html=`<div class="b-menuhead">使用 Claude Code · 工作 API</div>${['GLM-4.7','GLM-5','GLM-5.3','GLM-5.3-Flash'].map(x=>`<button data-model="${x}"><span>${x}</span>${x===state.model?icon('check'):''}</button>`).join('')}<hr><button data-menu="effort"><span>推理强度<span class="b-subtext">${state.effort}</span></span>${icon('chevron-right')}</button><hr><button data-refresh><span>刷新模型</span>${icon('refresh-cw')}</button><button data-manage><span>管理模型</span>${icon('settings-2')}</button>`;
+        else if(state.menu==='effort')html=`<div class="b-menuhead"><button data-menu="model">${icon('chevron-left')}推理强度</button></div>${[['无思考','最快响应'],['低','轻量推理'],['中等','平衡速度和推理'],['高','复杂任务'],['超高','长周期任务'],['最大','最大努力推理']].map(([x,d])=>`<button data-effort="${x}"><span>${x}<span class="b-subtext">${d}</span></span>${x===state.effort?icon('check'):''}</button>`).join('')}<div class="b-menufoot">示意：实际选项随模型能力变化</div>`;
+        else if(state.menu==='at'){const items=[['research','技能','zap'],['writing','技能','zap'],['项目简报.md','文件','file-text'],['销售明细.xlsx','文件','file-spreadsheet']].filter(x=>x[0].toLowerCase().includes(query.toLowerCase()));html=`<div class="b-menuhead">提及技能和文件</div>${items.map(([n,t,i])=>`<button data-mention="${n}"><span>${icon(i)} ${n}</span><span class="b-type">${t}</span></button>`).join('')||'<div class="b-menufoot">没有匹配的技能或文件</div>'}<div class="b-menufoot">当前员工已绑定技能与可用文件</div>`}
+        else if(state.menu==='slash'){html=`<div class="b-menuhead">命令</div>${[['summarize','总结会话'],['todo','整理待办'],['files','查看文件'],['workspace','打开工作目录']].filter(x=>(x[0]+' '+x[1]).includes(query)).map(([id,n])=>`<button data-command="${id}"><span>${n}</span><small>/${id}</small></button>`).join('')}<div class="b-menufoot">使用 @ 提及技能和文件</div>`}
+        else html=`<div class="b-menuhead">添加</div><button data-attach>选择文件</button><button data-attach>引用当前网页</button>`;
+        slot.innerHTML=`<div class="b-menu ${['at','slash','attach'].includes(state.menu)?'b-left':''}" aria-label="输入菜单">${html}</div>`;icons();}
+      function dialog(type){state.sourceType=type;root.querySelector('#b-dialog-title').textContent='添加数据源';root.querySelector('#b-dialog-body').innerHTML=`<nav class="b-tabs">${[['api','API'],['mcp','MCP'],['local','本地文件夹']].map(([k,n])=>`<button data-addtype="${k}" class="${type===k?'b-active':''}">${n}</button>`).join('')}</nav><label>名称</label><input aria-label="数据源名称" placeholder="例如：项目资料">${type==='local'?'<label>文件夹</label><button data-folder>选择文件夹…</button><label>访问方式</label><select aria-label="访问方式"><option>只读</option><option>允许读写</option></select>':type==='mcp'?'<label>连接方式</label><select aria-label="MCP连接方式"><option>远程 URL</option><option>本机命令</option></select><label id="b-endpoint-label">服务器 URL</label><input aria-label="服务器地址" placeholder="https://…/mcp">':'<label>Base URL</label><input aria-label="Base URL" placeholder="https://api.example.com"><label>认证方式</label><select aria-label="认证方式"><option>API Key</option><option>Bearer Token</option><option>无认证</option></select><label>凭据</label><input aria-label="凭据" type="password" placeholder="输入 API Key">'}<p class="b-status">设计预览，不会建立真实连接。</p>`;overlay.hidden=false;const transport=root.querySelector('[aria-label="MCP连接方式"]');if(transport)transport.onchange=()=>{root.querySelector('#b-endpoint-label').textContent=transport.value==='本机命令'?'命令与参数':'服务器 URL';root.querySelector('[aria-label="服务器地址"]').placeholder=transport.value==='本机命令'?'npx -y your-mcp-server':'https://…/mcp'};root.querySelector('#b-dialog-save').textContent='保存';icons();}
+      root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
+        if(d.page){state.page=d.page;render()}
+        else if(d.detail){state.page=d.detail;render()}
+        else if(d.tab){state.skillTab=d.tab;render()}
+        else if(d.addtype){dialog(d.addtype)}
+        else if('add'in d){if(state.page==='skills'){content.querySelector('.b-status').textContent='技能页继续保留：本地导入、扫描、更新和导出。'}else dialog('api')}
+        else if('close'in d){overlay.hidden=true}
+        else if('menu'in d){state.menu=state.menu===d.menu?null:d.menu;showMenu()}
+        else if(d.model){state.model=d.model;chat();state.menu='model';showMenu();icons()}
+        else if(d.effort){state.effort=d.effort;state.menu='model';showMenu()}
+        else if(d.mention){state.draft=state.draft.replace(/(^|\s)@[^\s@/]*$/,'$1')+'@'+d.mention+' ';chat();icons();content.querySelector('textarea').focus()}
+        else if(d.command){state.draft=d.command==='summarize'?'请总结当前会话的关键结论和下一步建议。':d.command==='todo'?'请根据当前会话整理待办事项。':state.draft.replace(/(^|\s)\/[^\s@/]*$/,'$1');state.menu=null;chat();icons();if(['files','workspace'].includes(d.command))content.querySelector('.b-status').textContent=d.command==='files'?'将打开当前员工的文件面板。':'将打开当前会话工作目录。'}
+        else if('refresh'in d){content.querySelector('.b-status').textContent='示意：刷新当前连接的模型目录。';state.menu=null;showMenu()}
+        else if('manage'in d){content.querySelector('.b-status').textContent='将进入当前员工设置，管理模型连接与运行配置。';state.menu=null;showMenu()}
+        else if('send'in d){content.querySelector('.b-status').textContent='这是设计预览，消息没有发送。';state.menu=null;showMenu()}
+        else if('bind'in d){state.bound=!state.bound;content.querySelector('#b-bound').textContent=state.bound?'研究助手':'尚未绑定员工'}
+        else if('test'in d){content.querySelector('.b-status').textContent='设计预览没有调用真实数据源。'}
+        else if('config'in d){if(resources[state.page]?.type==='技能')content.querySelector('.b-status').textContent='沿用现有技能详情的查看、更新和导出。';else dialog(state.page==='folder'?'local':state.page==='github'?'mcp':'api')}
+        else if('folder'in d){b.textContent='~/Documents/工作资料（示例）'}
+        else if('attach'in d){content.querySelector('.b-status').textContent='将沿用当前会话的附件与网页引用入口。';state.menu=null;showMenu()}
+        else if(b.id==='b-dialog-save'){overlay.hidden=true;const status=content.querySelector('.b-status');if(status)status.textContent='已查看添加流程；未保存或连接真实数据源。'}
+      });
+      root.addEventListener('keydown',e=>{if(e.key==='Escape'){overlay.hidden=true;state.menu=null;showMenu()}});
+      function restore(saved){const data=saved?.modelContent;if(!data)return;if(['chat','sources','skills',...Object.keys(resources)].includes(data.page))state.page=data.page;if(['GLM-4.7','GLM-5','GLM-5.3','GLM-5.3-Flash'].includes(data.model))state.model=data.model;if(['无思考','低','中等','高','超高','最大'].includes(data.effort))state.effort=data.effort;if(['本地','收藏','商城'].includes(data.skillTab))state.skillTab=data.skillTab}
+      restore(window.openai?.widgetState);
+      window.addEventListener('openai:set_globals',event=>{if(event.detail?.globals?.widgetState){restore(event.detail.globals.widgetState);render()}});
+      root.addEventListener('click',event=>{if(event.target.closest('button'))window.openai?.setWidgetState?.({modelContent:{page:state.page,model:state.model,effort:state.effort,skillTab:state.skillTab},privateContent:null})?.catch(()=>{})});
+      render();
+      if(globalThis.Tweak){const view={sidebar:222};const tweak=new Tweak({container:root,onChange:()=>{const body=root.querySelector('.b-body');if(root.clientWidth>780)body.style.gridTemplateColumns=`52px ${view.sidebar}px minmax(0,1fr)`}});tweak.addSlider(view,'sidebar',{label:'左栏宽度',min:190,max:260,step:10,unit:'px'})}
+    })();
+  </script>
+</div>

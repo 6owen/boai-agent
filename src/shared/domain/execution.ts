@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行历史支持按定时任务单次occurrence身份限定，在分页前排除同会话其他运行。
  * [OUTPUT]: 2026-10-12原生回应接受/提交/未知与公开模型/目录/容量来源合同；提交不等于接收。
  * [INPUT]: 原生执行事件、实际运行身份与Rovai执行呈现合同。
  * [OUTPUT]: 可分页重读的执行证据和原生交互请求；正文按需读取，不截断持久内容。
@@ -19,7 +20,7 @@ export type ExecutionEvidence = LiveRuntimeEvent & {
   runId: string; conversationId: string; agentId: string; sequence: number; updatedAt: string
   parentId?: string; contentLength: number; deferred: boolean
 }
-export type ExecutionHistoryQuery = { conversationId: string; agentId?: string; before?: { createdAt: string; id: string } }
+export type ExecutionHistoryQuery = { conversationId: string; agentId?: string; occurrenceId?: string; before?: { createdAt: string; id: string } }
 export type ExecutionHistoryPage = {
   items: { run: AgentRun; trigger: string }[]
   next?: { createdAt: string; id: string }

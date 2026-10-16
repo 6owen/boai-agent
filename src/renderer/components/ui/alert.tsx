@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: alert 基础组件及其可组合的样式/变体。
  * [POS]: components/ui 的 alert 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -7,6 +8,7 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { ErrorToast } from '@/components/common/error-feedback'
 
 const alertVariants = cva(
   "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>:is(svg,.app-icon)]:grid-cols-[auto_1fr] has-[>:is(svg,.app-icon)]:gap-x-2 *:[:is(svg,.app-icon)]:row-span-2 *:[:is(svg,.app-icon)]:translate-y-0.5 *:[:is(svg,.app-icon)]:text-current *:[:is(svg,.app-icon):not([class*='size-'])]:size-4",
@@ -29,10 +31,11 @@ function Alert({
   variant,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+  if (variant === 'destructive') return <ErrorToast>{props.children}</ErrorToast>
   return (
     <div
       data-slot="alert"
-      role="alert"
+      role="status"
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />

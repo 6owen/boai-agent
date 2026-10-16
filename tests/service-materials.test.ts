@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
+ * [OUTPUT]: Composer固定文件引用在API/原生输入共用来源核验，失效或跨会话引用零受理。
  * [INPUT]: 真实 AppService/SQLite/材料原件、可控 FakeEngine 与原生任务文件工具。
  * [OUTPUT]: 准备零消息/工作/模型、图片与任意二进制的真实原件/授权媒体及仅文件元信息、零持久 dataURL；发送事务回滚与未知回执核对、数量/版本/范围、原文/派生回复/Work 元数据/成果授权与动态来源继承、撤权取消、跨聊天记忆/根投影、hash 清理/外改冲突重启修复及仅已发材料备份迁移回归。
  * [OUTPUT]: 新缺省聊天附件随当前成员可读，@仅选择响应者；新成员实际模型上下文拿到历史文本/图片，移出后原件读取拒绝，私聊提交/读取与上下文不跨聊天；旧显式名单继续限定授权；备份恢复的非持久filePreview沿原件重新生成，不进入存储。
@@ -597,4 +598,65 @@ describe('preview fixed material edits', () => {
     for (const patch of [{ materialReference: { ...reference, contentHash: '0'.repeat(64) } }, { conversationId: direct.id }, { mentionIds: ['writer'] }, { mentionIds: ['researcher', 'writer'] }]) await expect(service.handle('sendMessage', edit(patch))).rejects.toThrow()
     expect((await detail(service, group)).messages).toHaveLength(before)
   })
+})
+
+
+it('accepts an explicit existing-file mention, supplies its original and rejects stale or cross-chat references', async () => {
+  const { service, engine, root, direct, group } = await fixture()
+  const prepared = await prepare(service, root, direct, 'EXPLICIT_FILE_REFERENCE_CANARY', null)
+  await send(service, direct, request(direct, prepared.material))
+  const material = (await detail(service, direct)).materials!.find(item => item.id === prepared.material.id)!
+  const ref = { kind: 'material', id: material.id, name: material.name, agentId: 'researcher', conversationId: direct.id, revision: material.revision, contentHash: material.contentHash }
+  const input = request(direct, undefined, { content: '@材料 请核对', composerReferences: [ref] })
+  const accepted = await send(service, direct, input)
+  expect(accepted.composerReferences).toEqual([ref])
+  expect(body(engine.contexts.find(context => context.triggerMessageId === accepted.id)!)).toContain('EXPLICIT_FILE_REFERENCE_CANARY')
+  expect(await service.handle('sendMessage', input)).toMatchObject({ id: accepted.id })
+  const calls = engine.contexts.length, before = (await detail(service, direct)).messages.length
+  await expect(service.handle('sendMessage', request(direct, undefined, { composerReferences: [{ ...ref, contentHash: '0'.repeat(64) }] }))).rejects.toThrow()
+  await expect(service.handle('sendMessage', request(group, undefined, { composerReferences: [ref] }))).rejects.toThrow()
+  expect((await detail(service, direct)).messages).toHaveLength(before)
+  expect(engine.contexts).toHaveLength(calls)
+  const repository = (service as unknown as { materials: MaterialRepository }).materials
+  let projected: Awaited<ReturnType<MaterialRepository['nativeMessage']>> | undefined
+  await storeOf(service).transaction(async tx => { projected = await repository.nativeMessage(tx, accepted, 'researcher', 'codex') })
+  expect(projected!.message.content).toContain('EXPLICIT_FILE_REFERENCE_CANARY')
+  expect(projected!.refs).toContainEqual(expect.objectContaining({ id: material.id, revision: material.revision, contentHash: material.contentHash }))
+  await projected!.rollback()
+})
+
+it('rejects an unbound skill before recording a message or starting a model', async () => {
+  const { service, engine, direct } = await fixture()
+  const agent = (await snapshot(service)).agents.find(item => item.id === 'researcher')!
+  await expect(service.handle('sendMessage', request(direct, undefined, { composerReferences: [{ kind: 'skill', id: 'unbound', name: '伪造技能', agentId: agent.id, configVersion: agent.configVersion }] }))).rejects.toThrow('技能绑定已变化')
+  expect((await detail(service, direct)).messages).toEqual([])
+  expect(engine.contexts).toEqual([])
+})
+
+it('references an employee-delivered file through its fixed managed copy', async () => {
+  const { service, engine, direct } = await fixture()
+  engine.responseKind = 'task'
+  const invocation = { requestContext: new RequestContext(), observe: noopObserve }
+  engine.handler = async context => {
+    const runtime = await createTaskRuntime(context)
+    try {
+      await runtime.tools.write_file.execute!({ path: `self:/runs/${context.runId}/report.md`, content: 'FIXED_ARTIFACT_CANARY' }, invocation)
+      await runtime.tools.publish_artifact.execute!({ path: `self:/runs/${context.runId}/report.md` }, invocation)
+      const artifact = (await detail(service, direct)).artifacts.find(file => file.runId === context.runId)!
+      await context.onDelta('已交付文件。')
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '已交付文件', evidence: [{ kind: 'artifact', reference: artifact.id! }] })
+    } finally { await runtime.workspace.destroy() }
+  }
+  await send(service, direct, request(direct))
+  const artifact = (await detail(service, direct)).artifacts[0]
+  expect(artifact).toMatchObject({ sourceMessageId: expect.any(String) })
+  engine.responseKind = 'chat'; engine.handler = async context => { await context.onDelta('核对固定原件。') }
+  const reference = { kind: 'artifact', id: artifact.id!, name: artifact.name, agentId: 'researcher', conversationId: direct.id, contentHash: artifact.contentHash! }
+  const message = await send(service, direct, request(direct, undefined, { content: '@report.md 核对原件', composerReferences: [reference] }))
+  const context = engine.contexts.find(item => item.triggerMessageId === message.id)!
+  expect(context).toBeDefined()
+  const projected = context.messages.find(item => item.id === message.id)!.content
+  expect(projected).toContain(JSON.stringify(artifact.id))
+  expect(projected).toContain(`"logicalPath":"shared:/artifacts/${basename(artifact.path)}"`)
+  expect(projected).not.toContain('nativePath')
 })

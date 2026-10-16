@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 删除历史后移除内存/时限，旧手动请求明确拒绝、原周期触发只核对不重放。
+ * [OUTPUT]: 恢复计划保留月日期/开始日期与描述，避免启停改写新日程。
+ * [OUTPUT]: 六种创建频率共用保存协议；手动计划不注册周期时钟，旧时钟切手动时暂停。
  * [OUTPUT]: 恢复先核对原修改回执的计划ID和所见版本，旧身份不能用于其他恢复。
  * [OUTPUT]: 明确员工/群归属及分工校验；新归属默认隔离任务上下文，旧计划保留原策略。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -22,7 +25,7 @@ import { automationCollaborationSchema, automationOwnerSchema } from './automati
 import { activeOccurrence, pendingOccurrence, AUTOMATION_RUN_MS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
-export const automationInputSchema = scheduleSchema.extend({ owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
+export const automationInputSchema = scheduleSchema.extend({ owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
 export const automationSchema = automationInputSchema.transform(value => {
   const conversationPolicy = value.conversationPolicy ?? (value.owner && value.taskKind !== 'monitor' ? 'new-conversation' : 'existing-conversation')
   const employeeIds = value.employeeIds ?? (conversationPolicy === 'new-conversation' ? value.owner?.kind === 'employee' ? [value.owner.employeeId] : value.collaboration?.assignments.map(item => item.employeeId) : undefined)
@@ -73,6 +76,7 @@ export class AutomationService {
   private observeAgain = false
   constructor(private store: ProductStore, private dataPath: string, private hooks: Hooks) { this.repository = new AutomationRepository(store, dataPath) }
   hasActiveConversation(id: string) { return [...this.occurrences.values()].some(item => item.conversationId === id && activeOccurrence.has(item.status)) }
+  forgetHistory(id: string) { this.occurrences.delete(id); clearTimeout(this.timers.get(id)); this.timers.delete(id) }
   replaceHistory(occurrences: AutomationOccurrence[]) { for (const item of occurrences) this.occurrences.set(item.id, item) }
   private serialize<T>(fn: () => Promise<T>) { const next = this.tail.then(fn); this.tail = next.catch(() => {}); return next }
   private async refresh() {
@@ -145,7 +149,8 @@ export class AutomationService {
         const id = `schedule_boai-${d.id}`, existing = await this.native.mastra.schedules.get(id)
         const status = d.enabled && !d.deletedAt ? 'active' : 'paused'
         const inputData = { automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: d.scheduleGeneration }
-        if (!existing) await this.native.mastra.schedules.create({ id, workflowId: AUTOMATION_WORKFLOW, cron: d.cron, timezone: d.timezone, inputData, status })
+        if (d.frequency === 'manual') { if (existing && existing.status !== 'paused') await this.native.mastra.schedules.pause(existing.id) }
+        else if (!existing) await this.native.mastra.schedules.create({ id, workflowId: AUTOMATION_WORKFLOW, cron: d.cron, timezone: d.timezone, inputData, status })
         else if (existing.status !== status || existing.cron !== d.cron || existing.timezone !== d.timezone || JSON.stringify('inputData' in existing ? existing.inputData : null) !== JSON.stringify(inputData)) {
           // Supplying even an unchanged cron makes Mastra recompute nextFireAt and discard a retained due slot.
           await this.native.mastra.schedules.update(existing.id, { ...(existing.cron !== d.cron ? { cron: d.cron } : {}), ...(existing.timezone !== d.timezone ? { timezone: d.timezone } : {}), inputData, status })
@@ -196,7 +201,7 @@ export class AutomationService {
     if (request) { const prior = await this.hooks.critical(async () => { await authorize?.(); return this.repository.mutation(request.requestId, { id, expectedRevision: request.expectedRevision }) }); if (prior) return prior }
     const d = (await this.repository.view()).definitions.find(d => d.id === id && !d.deletedAt)
     if (!d) throw new Error('定时任务不存在')
-    return this.save({ id, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
+    return this.save({ id, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
   }
   pause(id: string, deleted = false, request?: { requestId: string; expectedRevision: number }, authorize?: () => Promise<void>) {
     return this.serialize(async () => {
@@ -257,6 +262,10 @@ export class AutomationService {
         if (d.conversationId && this.hooks.busy(d.conversationId)) return '并发或会话忙碌，本次已跳过'
       }, this.hooks.prepareConversation) })
       let o = result.occurrence
+      if (o.deletedAt) {
+        if (source === 'manual') throw new Error('本次执行记录已删除，请发起新的运行')
+        return structuredClone(o)
+      }
       this.occurrences.set(o.id, o)
       if (!result.created) return structuredClone(o)
       const intent = result.dispatch

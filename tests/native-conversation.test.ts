@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex/Claude定时浏览器经实际stdio/MCP协议执行读图/写入/回读，沿原occurrence Work。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: Claude非零退出保留原result错误；真实stdio媒体仍与持久摘要分开。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
@@ -17,12 +18,48 @@ import { tmpdir } from 'node:os'
 import { nativeFixture } from './fixtures/native-product'
 import { createHash } from 'node:crypto'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../src/shared/ipc/browser'
+import { parseBrowserSingleCommand } from '../src/runtime/adapters/mastra/browser-tool-runtime'
 import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../src/shared/domain/execution'
 const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it('uses the BOAI browser from scheduled native work with the original occurrence lease', async () => {
+ const actions: BrowserActionEnvelope[] = [], leases: BrowserLease[] = []
+ let f: Awaited<ReturnType<typeof nativeFixture>>, value = 'before'
+ const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yRuoAAAAASUVORK5CYII='
+ const host = { request: async (method: string, input: unknown) => {
+  if (method === 'disconnect') return
+  if (method === 'acquire') { leases.push(input as BrowserLease); return }
+  if (method === 'inspect') return null
+  if (method === 'drain') return { drained: true }
+  if (method === 'executeSingle') {
+   const action = input as BrowserActionEnvelope; actions.push(action)
+   await f.service.startBrowserAction({ actionId: action.actionId, generation: action.lease.generation, runId: action.lease.runId, workId: action.lease.workId })
+   if (action.command.includes('fill')) value = 'after'
+   return { actionId: action.actionId, generation: action.lease.generation, status: 'completed', result: { output: value, appendReleaseHint: false, ...(action.command.includes('screenshot') ? { image: { data: png, mimeType: 'image/png', sizeBytes: Buffer.from(png, 'base64').length } } : {}) } }
+  }
+  throw new Error(`Unexpected browser method: ${method}`)
+ } } as BrowserHostBridge
+ f = await nativeFixture(runtime, disposals, undefined, true, host)
+ const plan = await f.service.handle('saveAutomation', { name: '本机浏览器定时任务', prompt: 'NATIVE_BROWSER_WRITE https://example.test/', conversationPolicy: 'new-conversation', employeeIds: [f.agent.id], frequency: 'manual', time: '09:00', weekday: 1, timezone: 'Asia/Singapore', enabled: false, notify: false }) as AutomationDefinition
+ const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'native-scheduled-browser' }) as AutomationOccurrence
+ let detail: ConversationDetail | undefined
+ await expect.poll(async () => {
+  detail = await f.service.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail
+  return detail.runs.some(run => run.phase === 'execution' && ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status))
+ }, { timeout: 15000 }).toBe(true)
+ const run = detail!.runs.find(run => run.phase === 'execution')!
+ expect(run.status, run.error).toBe('completed')
+ expect(actions.map(action => parseBrowserSingleCommand(action.command).parts)).toEqual([['snapshot'], ['screenshot', '--png'], ['fill', '@e1', 'after'], ['snapshot']])
+ expect(leases).toHaveLength(1)
+ expect(detail!.workItems).toHaveLength(1)
+ expect(detail!.workItems![0]).toMatchObject({ status: 'delivered', origin: { occurrenceId: occurrence.id } })
+ expect(actions.every(action => action.lease.workId === detail!.workItems![0].id && action.lease.conversationId === occurrence.conversationId)).toBe(true)
+})
 
 it('exposes narration and reasoning while execution is still running, without publishing a final answer', async () => {
  const f = await setup(), message = await f.send('NATIVE_WAIT')

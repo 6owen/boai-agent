@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [OUTPUT]: 2026-10-10 共用API与已验证本机目录加载入口，来源/revision隔离；Codex默认模型选项及手动输入不自动改配置。
  * [INPUT]: DesktopApi、连接来源与受控模型值、列表能力及字段布局。
  * [OUTPUT]: 设置与员工配置共用模型目录获取/手动编辑；请求按连接来源隔离，选中模型不随目录自动改写，提示仅同行或占位显示。
@@ -12,6 +13,7 @@ import { Field, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { Cpu, List, Pencil, RefreshCw } from '@/components/icons'
+import { ErrorToast } from './error-feedback'
 import { errorText } from './index'
 import type { ConnectionInput } from '@shared/domain'
 import { unsupportedRequestMessage, type DesktopApi } from '@shared/ipc'
@@ -53,7 +55,7 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
     }
   }
   const actions = <div className="connection-model-actions">
-    {feedback && <p className="connection-model-message connection-inline-feedback" title={feedback} data-error={current?.status === 'error' || undefined} role={current?.status === 'error' ? 'alert' : 'status'}><span>{feedback}</span></p>}
+    {current?.status === 'error' ? <ErrorToast>{feedback}</ErrorToast> : feedback && <p className="connection-model-message connection-inline-feedback" title={feedback} role="status"><span>{feedback}</span></p>}
     <ButtonGroup aria-label="模型列表操作">
       <Button type="button" variant="outline" size="sm" aria-busy={loading} disabled={disabled || loading || !canLoad} onClick={() => { void loadModels() }}><RefreshCw className={loading ? 'spinner' : undefined} />获取模型列表</Button>
       <ButtonGroupSeparator />

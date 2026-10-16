@@ -1,4 +1,12 @@
 /*
+ * [OUTPUT]: ConversationDetail携带只读executionMirrors：公开任务指令关联原Run，执行/会话身份不复制。
+ * [OUTPUT]: automationPublication保留既有来源身份兼容，公开投递现由公共IM消息提交链路负责。
+ * [OUTPUT]: Message可携带automationPublication原任务/occurrence/消息身份，公开投递不复制运行上下文。
+ * [OUTPUT]: Conversation保存可选sourceCreation标记，兼容既有会话。
+ * [OUTPUT]: 命令审批可明确记住员工授权；独立权限快照不修改正在运行的员工配置版本。
+ * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
+ * [OUTPUT]: Conversation明确专用bobo定时创建标记，原核心身份/员工消息不改变。
+ * [OUTPUT]: 消息保留用户选择的技能/文件固定引用，标签不扩大授权。
  * [OUTPUT]: 通用插件员工/Run绑定、能力快照、协议映射及无歧义provider命名空间。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道内部讨论为独立且限定记忆的会话；固定原消息引用与明确外发元信息不混入平台来信身份。
@@ -83,6 +91,7 @@ export interface DigitalAgent {
   color: string
   connectionId: string
   modelId: string
+  sourceIds?: string[]
   skillIds: string[]
   knowledgeIds: string[]
   /** Compatibility input only; browser availability follows active Mastra backend capability, never this old switch. */
@@ -105,6 +114,9 @@ export interface Resource {
   ownerAgentId?: string
 }
 export interface Conversation {
+  /** Core chat opened explicitly from the scheduled-task creation page. */
+  automationCreation?: boolean
+  sourceCreation?: boolean
   /** BOAI owner's persistent private room; old merged history remains here. */
   mainPrivate?: boolean
   /** Snapshot-only count of channel employee replies without a confirmed visible reading. */
@@ -149,8 +161,11 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  /** Public copy delivered to the employee main chat; execution keeps its original isolated identity. */
+  automationPublication?: { automationId: string; occurrenceId: string; sourceConversationId: string; sourceMessageId: string }
   channelReference?: import('./channels').ChannelMessageReference
   channelPublication?: import('./channels').ChannelPublication
+  composerReferences?: import('./composer-references').ComposerReference[]
   browserReference?: import('../ipc/browser').BrowserPageReference
   /** Stable room provenance after explicit history convergence. */
   originalConversationId?: string
@@ -233,15 +248,18 @@ export interface AgentRun {
 export interface Approval {
   id: string
   kind?: 'command' | 'browser'
+  rememberAllowed?: boolean
   runId: string
   conversationId: string
   agentName: string
   command: string
   cwd: string
 }
+export interface EmployeeCommandPermission { id: string; agentId: string; revision: string; grantedAt: string }
 export interface Artifact extends ArtifactExtension {
   conversationId?: string; materialSources?: MaterialReadRef[]; name: string; path: string; size: number; id?: string; ownerAgentId?: string; runId?: string; sourcePath?: string; publishedAt?: string }
 export interface Snapshot {
+  commandPermissions?: EmployeeCommandPermission[]
   userProfile?: LocalUserProfile
   agents: DigitalAgent[]
   conversations: Conversation[]
@@ -251,6 +269,8 @@ export interface Snapshot {
   dataPath: string
 }
 export interface ConversationDetail {
+  /** Live UI references to original scheduled runs; never part of this room's execution/context. */
+  executionMirrors?: { run: AgentRun; triggerMessage: Message; messageId?: string }[]
   /** Ephemeral host source checks; never a saved delivery or human quality approval. */
   workEvidenceVerified?: Record<string, boolean>
   /** Optional bounded, source-checked trigger excerpts for execution round selection. */

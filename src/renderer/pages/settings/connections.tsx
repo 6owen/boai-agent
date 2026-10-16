@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 与员工字段共用前端入口开关，当前只挂载模型API连接；本机Agent分区和扫描/配置组件保留供恢复。
  * [INPUT]: 共用连接弹窗/横向表单布局、无独立弹窗的本机模型 API 导入内容、模型连接领域类型、DesktopApi、模型目录选择控件、毛绒步骤插图、Lobe Icons 本地品牌 SVG、未保存守卫、统一 UI/离线图标及 soft-card/共享分割线皮肤。
  * [OUTPUT]: 选择服务的默认值作为草稿基准，真实修改在返回/关闭时确认，放弃后清除，保存后更新基准；本机 API 导入与兼容接口在同一 Dialog 内切换第二步，共用 620px 尺寸、标题/步骤和横向卡片布局；不卸载弹窗重开，扫描/详情的返回居左；与 ACP 扫描分开；OpenAI、Anthropic 和兼容接口统一使用兼容接口的二级布局，官方自定义地址改为同组横向行；本机 Agent 管理组件保留但当前不挂载；移除连接测试说明文案；我的连接标题右侧添加入口与列表布局；下拉字段统一使用 shadcn Select；保留模型 API 本机配置导入和 OpenAI 接口协议的编辑、与外观共用文档布局、无页面副标题/数量提示、测试状态紧跟标题同行显示的连接列表；带服务品牌标志的无副标题两步配置弹窗、步骤箭头及等宽纯图标测试加载；编辑时回填真实密钥并支持显隐与清空、兼容接口固定服务分组、模型选择/手动编辑、测试左侧同行反馈与旧宿主重启提示，保存位于最右侧；放弃草稿仅关闭弹窗并保留当前设置页。
  * [POS]: src/renderer/pages/settings/connections.tsx；模型连接设置的界面与交互，按当前服务初始化草稿基准，返回/关闭前保护真实修改，放弃后清理草稿。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ErrorToast } from '@/components/common/error-feedback'
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
 import anthropicIcon from '@lobehub/icons-static-svg/icons/anthropic.svg'
@@ -73,7 +75,7 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
           <div className="connection-row-body">
             <div className="connection-row-title">
               <strong title={connection.name}>{connection.name}</strong><span className="connection-state" data-ready={connectionReady(connection)}>{connectionReady(connection) ? '已配置' : '待完善'}</span>
-              {result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role={result.status === 'error' ? 'alert' : 'status'}>{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
+              {result?.status === 'error' ? <ErrorToast>{result.message}</ErrorToast> : result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role="status">{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
             </div>
             <p className="connection-row-description">{providers[connection.provider].label}<span aria-hidden="true"> · </span>{connection.defaultModel}</p>
             {connection.baseUrl && <p className="connection-endpoint" title={connection.baseUrl}>{connection.baseUrl}</p>}
@@ -178,7 +180,7 @@ function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved
       }} footer={<>
         <Button type="button" variant="ghost" disabled={working} onClick={back}><ArrowLeft />更换服务</Button>
         <div className="connection-editor-actions">
-          {testFeedback && <p className="connection-feedback connection-draft-feedback connection-inline-feedback" title={testFeedback.message} data-status={testFeedback.status} role={testFeedback.status === 'error' ? 'alert' : 'status'}>{testing ? <LoaderCircle className="spinner" size={13} /> : testFeedback.status === 'success' ? <Check size={13} /> : null}<span>{testFeedback.message}</span></p>}
+          {testFeedback?.status === 'error' ? <ErrorToast>{testFeedback.message}</ErrorToast> : testFeedback && <p className="connection-feedback connection-draft-feedback connection-inline-feedback" title={testFeedback.message} data-status={testFeedback.status} role="status">{testing ? <LoaderCircle className="spinner" size={13} /> : testFeedback.status === 'success' ? <Check size={13} /> : null}<span>{testFeedback.message}</span></p>}
           <Button type="button" variant="outline" className="relative" aria-label="测试" aria-busy={testing} disabled={working} onClick={() => { void testDraft() }}><span className={testing ? 'invisible' : undefined}>测试</span>{testing && <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true"><LoaderCircle className="spinner" /></span>}</Button>
           <Button type="submit" disabled={working}>{busy && <LoaderCircle size={14} className="spinner" />}{busy ? '正在保存…' : '保存连接'}</Button>
         </div>

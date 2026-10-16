@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "testId": "97a43ace841f589730df-9e7da6f58e1568b810c0",
+  "title": "技能分组沿用会话拖拽并保存整理结果",
+  "titlePath": [
+    "local-skills.feature.spec.js",
+    "本机技能管理使用图标导航与会话式列表详情",
+    "技能分组沿用会话拖拽并保存整理结果"
+  ],
+  "location": {
+    "file": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/local-skills.feature.spec.js",
+    "line": 16,
+    "column": 3
+  },
+  "project": "",
+  "retry": 0,
+  "repeatEachIndex": 0,
+  "workerIndex": 0,
+  "startedAt": "2026-10-16T17:45:24.254Z",
+  "completedAt": "2026-10-16T17:45:31.730Z",
+  "status": "passed",
+  "expectedStatus": "passed",
+  "resultPhase": "desktop-fixture-teardown",
+  "humanReview": "pending",
+  "modelMode": "offline-protocol-or-fixture",
+  "launchCount": 2,
+  "evidence": [
+    {
+      "kind": "screenshot",
+      "label": "第 1 次启动结束画面",
+      "path": "001-第-1-次启动结束画面.png",
+      "sha256": "be92d6a705143956ffdcaa0e885c9830bf5972ff034f7e3f42c75b889827f748",
+      "bytes": 108440,
+      "capturedAt": "2026-10-16T17:45:29.492Z",
+      "launch": 1,
+      "source": "Playwright.page.screenshot()",
+      "viewport": null
+    },
+    {
+      "kind": "screenshot",
+      "label": "第 2 次启动结束画面",
+      "path": "002-第-2-次启动结束画面.png",
+      "sha256": "81d9583b88b88ff0de93170d73436106dda4f2af1431f9da00c1395dcb759a28",
+      "bytes": 108220,
+      "capturedAt": "2026-10-16T17:45:31.494Z",
+      "launch": 2,
+      "source": "Playwright.page.screenshot()",
+      "viewport": null
+    }
+  ],
+  "traces": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/test-results/local-skills.feature-本机技能管理使用图标导航与会话式列表详情-技能分组沿用会话拖拽并保存整理结果/desktop-1.zip",
+      "launch": 1,
+      "bytes": 4861683,
+      "sha256": "fd73775cb2bf8492dbce80576b850db3f02d19d74472650ef2270d3b2b2d3b38"
+    },
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/test-results/local-skills.feature-本机技能管理使用图标导航与会话式列表详情-技能分组沿用会话拖拽并保存整理结果/desktop-2.zip",
+      "launch": 2,
+      "bytes": 1565590,
+      "sha256": "c092ad4b07477865efd764b2a3c65579858c30e45d3de9e846b4f01f797f2e37"
+    }
+  ],
+  "gaps": [],
+  "cleanupErrors": [],
+  "testErrors": [],
+  "notes": [
+    "截图保留各采集方式的原始字节；Playwright与Electron原生capturePage分源标注，缩放画面完整性以原生尺寸/zoom/PNG元数据和实际审阅核对；trace 是事件回放，不是连续录屏。",
+    "原生capturePage无rect，仅采集当前webContents整幅可见页面，不包括系统窗口边框或其他webContents。",
+    "本文件在桌面 fixture 清理阶段记录状态；最终测试结果以本批 Playwright 报告为准。",
+    "只归档显式指定的原件/白名单 JSON；未自动导出完整聊天、数据库或浏览器登录资料。"
+  ]
+}

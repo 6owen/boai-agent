@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 已删除历史保留原触发去重，公开视图排除墓碑；待清理来源不能继续执行。
+ * [OUTPUT]: 开始日期和频率变化推进日程代际，过期原生触发不能绕过新规则。
  * [OUTPUT]: 同一群消息由多个员工响应时事务拒绝跨员工重复创建；恢复回执绑定原ID与revision。
  * [OUTPUT]: 旧归属只按持久员工/BOAI群关系补齐，保留原执行策略与时钟；新触发冻结owner/参与者/分工。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -40,6 +42,7 @@ export interface AutomationTrigger {
 /** Shared with work ownership transactions; a stopped occurrence cannot acquire or publish work. */
 export async function assertAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string) {
   const o = await tx.get<AutomationOccurrence>('automationOccurrences', origin.occurrenceId)
+  if (o?.deletedAt || await tx.get('automationHistoryCleanups', origin.occurrenceId)) throw new Error('本次执行记录已删除或正在清理')
   if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt || !['running', 'waiting_work', 'waiting_user', 'waiting_approval'].includes(o.status)) throw new WorkUnavailableError('本次自动化已停止或未获得执行许可')
   if (o.plan?.owner.kind === 'group') {
     const group = await tx.get<Conversation>('conversations', o.plan.owner.conversationId)
@@ -59,6 +62,7 @@ export async function activateAutomationExecution(tx: RecordTransaction, origin:
 /** Explicit safe retry shares the existing Work budget; stop/restart requires a separate reviewed request. */
 export async function resumeAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string) {
   const o = await tx.get<AutomationOccurrence>('automationOccurrences', origin.occurrenceId)
+  if (o?.deletedAt || await tx.get('automationHistoryCleanups', origin.occurrenceId)) throw new Error('本次执行记录已删除或正在清理')
   if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt || !['failed', 'running', 'waiting_work', 'waiting_user', 'waiting_approval'].includes(o.status)) throw new Error('本次自动化已停止或需要核对，请从计划明确发起新一轮')
   const budget = o.budgetId && await tx.get<WorkBudget>('workBudgets', o.budgetId)
   if (!budget || budget.accounting !== 'model-calls-v1') throw new Error('旧自动化没有可信的原始调用预算，请明确发起新一轮')
@@ -157,7 +161,7 @@ export class AutomationRepository {
     return this.store.transaction(async tx => { const o = await resumeAutomationExecution(tx, origin, conversationId); for (const value of records) await tx.put(value); return o })
   }
   view() {
-    return this.store.transaction(async tx => ({ definitions: await tx.list<AutomationDefinition>('automations'), occurrences: await tx.list<AutomationOccurrence>('automationOccurrences') }))
+    return this.store.transaction(async tx => ({ definitions: await tx.list<AutomationDefinition>('automations'), occurrences: (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => !o.deletedAt) }))
   }
 
   creation(requestId?: string): Promise<AutomationDefinition | null> {
@@ -197,7 +201,7 @@ export class AutomationRepository {
       const prior = input.id ? await tx.get<AutomationDefinition>('automations', input.id) : undefined
       if (input.id && (!prior || prior.deletedAt)) throw new Error('定时任务不存在')
       if (prior && prior.revision !== input.expectedRevision) throw new Error('任务配置已变更，请刷新')
-      const cron = automationCron(input), scheduleChanged = !!prior && (prior.cron !== cron || prior.timezone !== input.timezone)
+      const cron = automationCron(input), scheduleChanged = !!prior && (prior.cron !== cron || prior.timezone !== input.timezone || prior.startsOn !== input.startsOn || prior.frequency !== input.frequency)
       const policy = input.conversationPolicy ?? 'existing-conversation'
       const owner = input.owner ?? inferAutomationOwner(input, new Map((await tx.list<Conversation>('conversations')).map(item => [item.id, item])), new Set((await tx.list<DigitalAgent>('agents')).map(item => item.id)))
       if (!prior && owner?.kind === 'group' && creationSource) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 默认浏览器交互/新网站无需审批，仍核对页面版本、参数身份和真实回执。
  * [OUTPUT]: 明确关闭沿真实BrowserSession/SQLite取消原运行并先通知Main销毁卡住页面，再等待原动作退出；未知回执不重放。
  * [OUTPUT]: 同实例同URL动态页面可显式重新观察；旧版本首次写入先拒绝且零派发，重新观察后保留当前审批与回执门禁。
  * [OUTPUT]: 本机原消息/run只读回执无Work、实际写入门禁与固定网页引用；停止和人工导航不扩权。
@@ -230,13 +231,21 @@ describe('per-run browser session actual exit and no replay',()=>{
     const stored=JSON.stringify(await repository.get(first.actionId));expect(stored).not.toContain('eA==');expect(stored).toContain('sha256')
     await session.drain()
   })
-  it('freezes current page and argument hash without persisting text, and refuses a denied interaction before acceptance',async()=>{
-    const {repository,lease,store}=await fixture();const approve=vi.fn(async(_command:string)=>false);const execute=vi.fn()
-    const bridge=host(async(method)=>method==='inspect'?{...page,scopeKey:lease.scopeKey}:method==='executeSingle'?execute():method==='drain'?{drained:true}:undefined)
-    const session=new BrowserSession(lease,bridge,repository,{signal:new AbortController().signal,originalRequest:'https://example.test/',validate:async()=>{},approve})
-    await expect(session.execute('fill @e2 "指定文字"','fill-call')).rejects.toThrow('拒绝')
-    expect(approve).toHaveBeenCalledWith(expect.stringContaining('page1'));expect(approve.mock.calls[0]?.[0]).not.toContain('指定文字');expect(approve.mock.calls[0]?.[0]).toContain('[input: 4 characters]');expect(approve.mock.calls[0]?.[0]).not.toContain('参数指纹')
-    expect(execute).not.toHaveBeenCalled();expect(await store.load('browserActions')).toHaveLength(0)
+  it('uses employee browser access for unknown sites and interactions without approvals',async()=>{
+    const {repository,lease,store}=await fixture();const approve=vi.fn(async()=>false)
+    const execute=vi.fn(async(envelope:BrowserActionEnvelope)=>{
+      await repository.start({actionId:envelope.actionId,generation:lease.generation,runId:lease.runId,workId:lease.workId})
+      return {actionId:envelope.actionId,generation:lease.generation,status:'completed' as const,result:{output:'完成',appendReleaseHint:false}}
+    })
+    const bridge=host(async(method,input)=>method==='inspect'?{...page,scopeKey:lease.scopeKey}:method==='executeSingle'?execute(input as BrowserActionEnvelope):method==='drain'?{drained:true}:undefined)
+    const session=new BrowserSession(lease,bridge,repository,{signal:new AbortController().signal,originalRequest:'查询南京天气',validate:async()=>{},approve})
+    await session.execute('snapshot','snapshot-call')
+    await session.execute('navigate https://new-site.test/weather','navigate-call')
+    await session.execute('fill @e2 "指定文字"','fill-call')
+    expect(approve).not.toHaveBeenCalled();expect(execute).toHaveBeenCalledTimes(3)
+    expect(execute.mock.calls[2][0]).toMatchObject({expectedPageVersion:'page1',argumentHash:browserCommandHash(parseBrowserSingleCommand('fill @e2 "指定文字"').parts)})
+    expect(await store.load('browserActions')).toHaveLength(3)
+    expect(JSON.stringify(await store.load('browserActions'))).not.toContain('指定文字')
     await session.drain()
   })
   it('registers cleanup ownership before a window can be acquired, even if no action is accepted',async()=>{
@@ -470,7 +479,7 @@ describe('原生只读消息来源',()=>{
   await expect(session.execute('snapshot','observe-changed-page')).resolves.toMatchObject({source:{pageVersion:'page2'}})
   await expect(session.execute('drag 10 20 30 40','new-write')).resolves.toMatchObject({status:'completed'})
   expect(executed).toEqual(['"snapshot"','"drag" "10" "20" "30" "40"'])
-  expect(approve).toHaveBeenCalledWith(expect.stringContaining('page2'))
+  expect(approve).not.toHaveBeenCalled()
   await session.drain()
  })
  it('初始引用已导航到其他URL时，新快照仍不能扩大授权',async()=>{

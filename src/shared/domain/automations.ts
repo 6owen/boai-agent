@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 已删除执行仅保留deletedAt最小触发墓碑，历史查询/统计不展示，旧触发不重跑。
+ * [OUTPUT]: 单员工创建共用描述、手动/小时/日/周/月频率和开始日期；旧日周计划兼容。
  * [OUTPUT]: 员工/BOAI群归属、固定成员分工与每次执行快照；旧计划缺省保持原聊天策略。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 自动化预算增加可选callUnit，旧API记录不变；本机外部请求与内部模型次数分开。
@@ -79,11 +81,14 @@ export interface AutomationInput {
   id?: string
   expectedRevision?: number
   name: string
+  description?: string
   prompt: string
   conversationPolicy?: 'existing-conversation' | 'new-conversation'
   conversationId?: string
   employeeIds?: string[]
-  frequency: 'daily' | 'weekly'
+  frequency: 'manual' | 'hourly' | 'daily' | 'weekly' | 'monthly'
+  startsOn?: string
+  dayOfMonth?: number
   time: string
   weekday: number
   daysOfWeek?: number[]
@@ -122,6 +127,8 @@ export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expe
 export type OccurrenceStatus = 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
+  /** Minimal trigger receipt retained after history/files were removed. */
+  deletedAt?: string
   /** Immutable execution configuration; editing the definition cannot rewrite a running assignment. */
   plan?: AutomationExecutionPlan
   /** Native runs are never constrained by the shared API budget. */

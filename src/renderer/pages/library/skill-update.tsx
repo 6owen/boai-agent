@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
  * [INPUT]: 标题栏浮层/结果行内嵌展示模式、本机或受管技能身份、持久更新检查、实际包预览和操作 IPC。
  * [OUTPUT]: 图标式检查/升级/进行中状态、详情标题栏通过可点击的图标浮层展示状态/差异，检查与升级中仍可打开，批量结果行保留内嵌模式；重连正在进行的更新，保留本地修改/未知基线确认和迟到响应隔离。
  * [POS]: 技能详情与批量更新列表共用的单项更新交互；不创建弹窗，本机技能不展示员工绑定。
@@ -97,7 +98,7 @@ export function SkillUpdate({ api, resourceId, onUpdated, autoCheck = false, pop
   const content = busy || error || pollError || check || operation ? <div className="skill-update-content">
     {phase && <p className="field-hint" role="status">{phase === 'checking' ? '正在读取远程来源并比较技能文件…' : phase === 'updating' ? '正在提交升级…' : '正在读取更新状态…'}</p>}
     {(error || pollError) && <Banner>{error || pollError}</Banner>}
-    {check && !operation && <p className="field-hint" role="status">{states[check.status]} · {new Date(check.checkedAt).toLocaleString('zh-CN')}{check.error && <><br />{check.error}</>}</p>}
+    {check && !operation && <p className="field-hint" role="status">{states[check.status]} · {new Date(check.checkedAt).toLocaleString('zh-CN')}{check.error && <Banner>{check.error}</Banner>}</p>}
     {check?.status === 'available' && !operation && (check.planId && check.candidateId ? <>
       {check.source?.kind === 'git' && <p className="field-hint">{check.source.repository} · {check.source.ref} · {check.source.resolvedCommit?.slice(0, 12) ?? '未知版本'}</p>}
       {check.fileChanges && <div aria-label="更新文件变化"><p className="field-hint">新增 {check.fileChanges.added.length} · 修改 {check.fileChanges.modified.length} · 删除 {check.fileChanges.removed.length} · 未变 {check.fileChanges.unchanged}</p>{(['added', 'modified', 'removed'] as const).map(kind => check.fileChanges![kind].length > 0 && <details key={kind}><summary>{{ added: '新增文件', modified: '修改文件', removed: '删除文件' }[kind]}</summary>{check.fileChanges![kind].map(path => <p className="field-hint" key={path}>{path}</p>)}</details>)}</div>}
@@ -105,7 +106,7 @@ export function SkillUpdate({ api, resourceId, onUpdated, autoCheck = false, pop
       {needsConfirmation && <><Banner kind="notice">{check.baselineUnknown ? '旧安装记录没有原始内容，无法确认是否存在本地修改。' : '此副本有本地修改。'}升级会替换当前文件，请先导出需要保留的内容。</Banner><label className="skill-check"><Checkbox disabled={busy} checked={replaceLocal} onCheckedChange={value => setReplaceLocal(Boolean(value))} />我已保留需要的内容，确认替换当前文件</label><Button variant="ghost" size="sm" disabled={busy} onClick={() => { const planId = check.planId!; setCheck({ ...check, planId: undefined, candidateId: undefined }); void run(() => api.request('discardSkillScan', { id: planId })) }}>保留当前内容</Button></>}
       <details className="skill-update-preview" key={check.planId} onToggle={event => setPreviewing(event.currentTarget.open)}><summary>查看更新后的技能内容</summary>{previewing && <SkillPreview api={api} scanId={check.planId} candidateId={check.candidateId} />}</details>
     </> : <p className="field-hint">预览已过期，请点击检查图标重新检查。</p>)}
-    {operation && <p role="status" className="field-hint">{operation.status === 'running' ? '正在升级…' : updated ? '已升级' : '升级未完成'}{operation.items[0]?.error && <><br />{operation.items[0].error}</>}</p>}
+    {operation && <p role="status" className="field-hint">{operation.status === 'running' ? '正在升级…' : updated ? '已升级' : '升级未完成'}{operation.items[0]?.error && <Banner>{operation.items[0].error}</Banner>}</p>}
   </div> : null
   const actions = popover ? <Popover>
     <PopoverTrigger render={<Button variant={canUpgrade ? 'secondary' : 'ghost'} size="icon-sm" aria-label={updating ? '正在升级技能，查看详情' : busy ? '正在检查技能，查看详情' : '查看技能更新'} title={updating ? '正在升级技能' : busy ? '正在检查技能' : '查看技能更新'} aria-busy={busy || updating} />} onClick={() => { if (!check && !operation && !busy) void checkNow() }}>{icon}</PopoverTrigger>

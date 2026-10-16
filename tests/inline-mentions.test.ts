@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 资源标签保留固定身份及可见名称，原子删除/撤销不产生群成员路由。
  * [INPUT]: composer 草稿/发送投影及实际 ProseMirror 编辑模型。
  * [OUTPUT]: 标签身份隔离、真实节点的光标前后位置/原子删除/替换/撤销/重做，Unicode 和正文保护回归。
  * [POS]: Vitest 前端输入不变量；不启动 Electron。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { draftContent, draftMentions, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../src/renderer/pages/conversations/inline-mentions'
+import { draftContent, draftMentions, draftResourceReferences, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../src/renderer/pages/conversations/inline-mentions'
 import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
 import { getSchema } from '@tiptap/core'
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state'
@@ -143,4 +144,21 @@ describe('actual inline mention editor', () => {
     expect(documentDraft(doc, value)).toEqual(value)
     for (const offset of [0, 2, 5, 6, 9, 10, 12]) expect(draftOffset(doc, documentPosition(doc, offset))).toBe(offset)
   })
+})
+
+
+it('round-trips resource tags independently of group mentions and removes references on deletion', () => {
+  const resource = { kind: 'skill' as const, id: 'skill-a', name: 'research', agentId: 'researcher', configVersion: 3 }
+  const value: ChatDraft = { text: '@research 请分析', mentionIds: [], mentions: [{ id: 'skill:skill-a', label: 'research', start: 0, end: 9, resource }] }
+  const schema = getSchema(mentionExtensions('tag'))
+  let state = EditorState.create({ schema, doc: schema.nodeFromJSON(mentionDocument(value)), plugins: [history()] })
+  expect(documentDraft(state.doc, value)).toEqual(value)
+  expect(draftContent(value)).toBe('@research 请分析')
+  expect(draftResourceReferences(value)).toEqual([resource])
+  state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 2)))
+  deleteMention('backward')(state, transaction => { state = state.apply(transaction) })
+  expect(draftResourceReferences(documentDraft(state.doc, value))).toEqual([])
+  undo(state, transaction => { state = state.apply(transaction) })
+  expect(draftResourceReferences(documentDraft(state.doc, value))).toEqual([resource])
+  expect(documentDraft(state.doc, value).mentionIds).toEqual([])
 })

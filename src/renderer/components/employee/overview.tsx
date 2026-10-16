@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 工作方式/实际能力使用紧凑配置Card；定时计划两行列表，执行详情改为页内折叠并定位右侧原Run。
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
+ * [OUTPUT]: 员工资料直接展示只读定时任务列表，点击定位全局管理页。
  * [OUTPUT]: 资料首页移除聊天派生的当前工作看板；执行记录统一从执行详情查看。
  * [OUTPUT]: 2026-10-10 资料首页可直接打开本人执行详情，API/本机共用记录、Work/成果及原聊天导航；关闭隐藏停止读取。
  * [OUTPUT]: Codex同次读取启动项状态与员工资源说明；隐藏后迟到结果不覆盖当前配置。
@@ -14,23 +17,24 @@ import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, Loading } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { OwnerAutomations } from '@/pages/schedules/owner-automations'
+import { FileText, InfoIcon } from '@/components/icons'
+import { ContactProfileCard, ContactProfileRow } from './profile-card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SkillContent } from '@/pages/library/skill-content'
 import { employeeCapabilityFacts } from './overview-state'
-import { EmployeeExecutionPane, type ExecutionSourceNavigation } from './execution-pane'
+import { EmployeeExecutionDisclosure, type ExecutionSourceNavigation } from './execution-pane'
 
 export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onOpenExecutionSource }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onOpenExecutionSource?: ExecutionSourceNavigation }) {
   const [home, setHome] = useState<AgentHome | null>(null)
   const [launchStatus, setLaunchStatus] = useState<LaunchProfileStatus>()
   const [skillId, setSkillId] = useState<string>()
-  const [executionOpen, setExecutionOpen] = useState(false)
   const [loading, setLoading] = useState(true), [error, setError] = useState('')
   const token = useRef(0)
   const [revision, setRevision] = useState(0)
   const resourceKey = JSON.stringify(snapshot.resources.filter(resource => agent.skillIds.includes(resource.id)).map(resource => [resource.id, resource.name, resource.path, resource.ownerAgentId]))
   const selectedSkill = snapshot.resources.find(resource => resource.id === skillId && resource.kind === 'skill' && agent.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === agent.id))
-  useEffect(() => { if (!active) { setSkillId(undefined); setExecutionOpen(false) } }, [active])
+  useEffect(() => { if (!active) { setSkillId(undefined) } }, [active])
   useEffect(() => {
     const request = ++token.current
     setHome(null); setLaunchStatus(undefined); setError('')
@@ -61,21 +65,21 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, on
   }, [api, active])
   const capabilities = agent.executionBackend && agent.executionBackend.kind !== 'mastra-model' && (loading || error) ? [] : employeeCapabilityFacts(agent, snapshot, home, launchStatus?.profile, launchStatus)
   return <>
-    <section className="my-6 space-y-4" aria-label="员工实际能力">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-semibold">实际能力</h2><div className="flex flex-wrap gap-1"><Button variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>刷新能力状态</Button><Button variant="ghost" size="sm" onClick={onConfigure}>查看配置与系统文件</Button></div></div>
+    <ContactProfileCard label="员工资料"><ContactProfileRow icon={<FileText />} title="工作方式">{agent.instructions || <span className="text-muted-foreground">未设置</span>}</ContactProfileRow></ContactProfileCard>
+    <section className="contact-section space-y-3" aria-label="员工实际能力">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="contact-section-title">实际能力</h2><div className="flex flex-wrap gap-1"><Button variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>刷新能力状态</Button><Button variant="ghost" size="sm" onClick={onConfigure}>查看配置与系统文件</Button></div></div>
       <p className="field-hint">职责与工作方式来自已保存配置；以下状态只表达当前已有记录。</p>
       {loading && <Loading>正在核对能力说明…</Loading>}
-      {error && <Banner>{`能力说明读取失败：${error}`}<Button variant="ghost" size="sm" onClick={() => setRevision(value => value + 1)}>重新读取</Button></Banner>}
-      <div className="space-y-4">{capabilities.map(fact => <div key={fact.id} className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2"><strong className="text-sm font-medium">{fact.name}</strong><Badge variant="secondary">{fact.status}</Badge></div>
+      {error && <><Banner>{`能力说明读取失败：${error}`}</Banner><Button variant="ghost" size="sm" onClick={() => setRevision(value => value + 1)}>重新读取</Button></>}
+      <ContactProfileCard label="实际能力状态">{capabilities.map(fact => <ContactProfileRow key={fact.id} title={fact.name} icon={<InfoIcon />}>
+        <Badge variant="secondary">{fact.status}</Badge>
         <p className="field-hint">{fact.detail}</p>
         {fact.skillId && <Button variant="ghost" size="sm" onClick={() => setSkillId(fact.skillId)}>{`查看 ${fact.name} 的来源与说明`}</Button>}
-      </div>)}</div>
+      </ContactProfileRow>)}</ContactProfileCard>
       {!agent.skillIds.length && agent.executionBackend?.kind !== 'acp-local' && <p className="field-hint">尚未绑定技能，可在配置中从本机技能选择。</p>}
     </section>
-    <div className="mb-6"><Button variant="outline" onClick={() => setExecutionOpen(true)}>查看执行详情</Button></div>
-    <Dialog open={active && executionOpen} onOpenChange={setExecutionOpen}><DialogContent className="sm:max-w-[760px]"><DialogHeader><DialogTitle>{agent.name} · 执行详情</DialogTitle><DialogDescription>查看此员工的执行记录、工作与已发布成果。</DialogDescription></DialogHeader><div className="max-h-[65vh] overflow-y-auto">{executionOpen && <EmployeeExecutionPane key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active && executionOpen} onOpenSource={onOpenExecutionSource} />}</div></DialogContent></Dialog>
-    {agent.instructions && <><Separator /><section className="my-6 space-y-2" aria-label="员工工作方式"><h2 className="text-sm font-semibold">工作方式</h2><p className="field-hint">已保存的配置声明</p><p className="contact-prompt whitespace-pre-wrap break-words">{agent.instructions}</p></section></>}
+    <OwnerAutomations api={api} snapshot={snapshot} owner={{ kind: 'employee', employeeId: agent.id }} active={active} />
+    <EmployeeExecutionDisclosure key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active} onOpenSource={onOpenExecutionSource} />
     <Dialog open={active && Boolean(selectedSkill)} onOpenChange={value => { if (!value) setSkillId(undefined) }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{selectedSkill?.name} · 来源与说明</DialogTitle><DialogDescription>当前员工已绑定的受管副本。说明可读取不表示执行依赖或交付效果已验证。</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto">{active && selectedSkill && <SkillContent key={selectedSkill.id} api={api} resourceId={selectedSkill.id} />}</div></DialogContent></Dialog>
   </>
 }

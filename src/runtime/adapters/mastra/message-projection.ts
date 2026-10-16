@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型接收用户明确的技能/文件引用，原始可见正文不增加技术字段。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
  * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文。
@@ -39,7 +40,7 @@ export function partitionTurn(messages: Message[], triggerMessageId?: string, tu
   return { root, id, current: messages.filter(isCurrent), history: messages.filter(message => !isCurrent(message)) }
 }
 export function messageData(message: Message, rootId?: string) {
-  return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, ...(message.browserReference ? {browserReference:message.browserReference}:{}), mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
+  return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, ...(message.composerReferences?.length ? { resourceReferences: message.composerReferences } : {}), ...(message.browserReference ? {browserReference:message.browserReference}:{}), mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
 }
 /** Omit only empty/default metadata; retain content, attribution, ordering and timestamps. */
 export function decisionMessageData(message: Message, rootId?: string) {
@@ -53,6 +54,7 @@ export function projectMessages(messages: Message[], agentId: string, conversati
   const turn = partitionTurn(window, triggerMessageId, turnId)
   const content = (text: string, source: Message[]) => {
     for(const message of source) if(message.browserReference) text+=`\n[User referenced BOAI browser page; use browser_tool for this exact instance] ${JSON.stringify(message.browserReference)}`
+    for (const message of source) if (message.composerReferences?.length) text += '\n[User selected resources; use only existing authorized resources] ' + JSON.stringify(message.composerReferences)
     const attached = images.filter(image => source.some(message => message.senderType === 'user' && message.id === image.messageId))
     return attached.length ? [{ type: 'text' as const, text }, ...attached.map(image => ({ type: 'image' as const, image: image.dataUrl, mimeType: image.mimeType }))] : text
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 中文技能管理场景、真实 Electron 与专用本地目录。
  * [OUTPUT]: 资料库主页面退役后，旧受管技能正文/文件/收藏/移除/更新来源/导出通过真实兼容 IPC 核对，不将协议断言称作 UI 验收；完整应用备份恢复后真实技能工具读取/产物发布与授权保持；目录/ZIP 预览、技能库原生保存/往返、收藏/绑定分离、重启记录及清理重试的业务断言。
  * [POS]: skills 的桌面步骤；目录选择仅替代系统原生交互。
@@ -25,7 +26,7 @@ Given('技能管理使用独立桌面与两个本地候选', async ({ runtime, s
   await writeFile(join(skills.source, 'invalid/SKILL.md'), '---\nname: Invalid_Name\n---\ninvalid')
   await runtime.start({ mainEntry: await localSkillsEntry(runtime), dataDir: join(runtime.root, 'app') })
   await runtime.app.evaluate(({ dialog }, source) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [source!] }) }, skills.source)
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
 })
 
 When('通过兼容接口预览技能目录并只安装有效技能', async ({ runtime, skills }) => {
@@ -71,7 +72,7 @@ Then('重启后分组和绑定保留且取消收藏不撤权', async ({ runtime,
   const page = runtime.page
   const groups = await page.evaluate(() => window.boai.request('getSkillCollections', undefined))
   expect(groups.groupByResourceId[skills.resourceId!]).toBe(groups.groups.find(group => group.name === '报告工具')!.id)
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   await page.evaluate(async resourceId => {
     const collection = await window.boai.request('getSkillCollections', undefined)
     await window.boai.request('updateSkillCollections', { expectedRevision: collection.revision, action: { kind: 'favorite', resourceId: resourceId!, favorite: false } })
@@ -82,7 +83,7 @@ Then('重启后分组和绑定保留且取消收藏不撤权', async ({ runtime,
 
 When('移除技能的受管副本', async ({ runtime, skills }) => {
   const page = runtime.page
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   await page.evaluate(id => window.boai.request('removeResource', { id: id! }), skills.resourceId)
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).resources.length).toBe(0)
 })
@@ -143,7 +144,7 @@ When('完成技能任务并从完整应用备份恢复后再次读取', async ({
   expect((await runtime.page.evaluate(() => window.boai.request('getSkillCollections', undefined))).favoriteResourceIds).toEqual([resource.id])
   expect(model.requests).toHaveLength(calls)
   await run('after-backup')
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   expect((await runtime.page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId }), resource.id)).content).toContain('# 报告助手')
   expect(await readFile(join(skills.source!, 'report-helper/references/evidence.md'), 'utf8')).toBe(marker)
   expect(runtime.errors).toEqual([])
@@ -158,7 +159,7 @@ Given('技能管理使用独立桌面与离线技能压缩包', async ({ runtime
   }))
   await runtime.start({ mainEntry: await localSkillsEntry(runtime), dataDir: join(runtime.root, 'app') })
   await runtime.app.evaluate(({ dialog }, source) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [source!] }) }, skills.source)
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
 })
 
 When('通过兼容接口选择压缩包并阅读安装前正文和参考文件', async ({ runtime, skills }) => {
@@ -193,7 +194,7 @@ Then('持久安装回执可定位受管副本且包内代码未执行', async ({
   const page = runtime.page
   const operations = await page.evaluate(() => window.boai.request('listSkillOperations', undefined))
   expect(operations.find(value => value.id === skills.operationId)).toMatchObject({ status: 'completed', items: [expect.objectContaining({ name: 'zip-helper', status: 'installed', resourceId: skills.resourceId })] })
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   const detail = await page.evaluate(resourceId => window.boai.request('getSkillDetail', { resourceId: resourceId! }), skills.resourceId)
   expect(detail.content).toContain('# 压缩包中的真实说明')
   const check = await page.evaluate(id => window.boai.request('checkSkillUpdate', { id: id! }), skills.resourceId)
@@ -236,7 +237,7 @@ Then('待清理记录消失且外部文件未被删除', async ({ runtime, skill
 When('预览技能库并通过原生保存位置导出', async ({ runtime, skills }) => {
   skills.exported = join(runtime.root, 'portable-library.zip')
   await runtime.app.evaluate(({ dialog }, destination) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: destination! }) }, skills.exported)
-  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   const preview = await runtime.page.evaluate(resourceId => window.boai.request('planSkillLibraryExport', { resourceIds: [resourceId!], name: '我的技能库' }), skills.resourceId)
   expect(preview.files.map(file => file.path).join('\n')).toContain('report-helper')
   expect(preview.files.map(file => file.path).join('\n')).toContain('guide.md')
@@ -275,7 +276,7 @@ When('移除原副本并通过兼容接口导入刚导出的技能库', async ({
 Then('重新启动后收藏分组恢复且员工没有自动绑定', async ({ runtime, skills }) => {
   await runtime.restart()
   const page = runtime.page
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
   const groups = await page.evaluate(() => window.boai.request('getSkillCollections', undefined))
   expect(groups.groups.some(group => group.name === '报告工具')).toBe(true)
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))

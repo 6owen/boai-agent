@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单聊/群聊统一原子编辑器，资源标签保持来源和整体删除。
  * [INPUT]: 受控草稿、候选键盘回调与共享 Button 皮肤/class 合并、Tiptap 编辑模型。
  * [OUTPUT]: 原补充请求待核对时冻结编辑，锁定变化不触发正文更新；实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；外部提及恢复编辑器实际选区，恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
  * [OUTPUT]: 文件/图片粘贴先交附件入口，不被旧纯文本handlePaste吞掉；普通文本保持当前选区替换与IME边界。
@@ -9,6 +10,7 @@ import { useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import { buttonVariants } from '@/components/ui/button'
+import type { ComposerReference } from '@shared/domain/composer-references'
 import type { ChatDraft } from '../presentation'
 import type { TextRange } from '../inline-mentions'
 import { documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions, textNodes } from '../mention-editor'
@@ -16,7 +18,7 @@ import { documentDraft, documentPosition, draftOffset, mentionDocument, mentionE
 export interface MentionInputHandle {
   focus(): void
   selection(): TextRange
-  replace(range: TextRange, text: string, member?: { id: string; name: string }): void
+  replace(range: TextRange, text: string, member?: { id: string; name: string; resource?: ComposerReference }): void
 }
 interface Props {
   ref?: Ref<MentionInputHandle>; draft: ChatDraft; onChange(draft: ChatDraft): void; placeholder: string
@@ -39,7 +41,7 @@ export function MentionInput(props: Props) {
       const instance = editor.current
       if (!instance || latest.current.disabled) return
       const { doc } = instance.state
-      const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name } }] : textNodes(text)
+      const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name, resource: member.resource ?? null } }] : textNodes(text)
       const positions = { from: documentPosition(doc, range.start), to: documentPosition(doc, range.end) }
       if (content.length) instance.commands.insertContentAt(positions, content)
       else instance.commands.deleteRange(positions)

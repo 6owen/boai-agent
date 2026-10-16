@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer 模型按钮悬停和菜单展开使用主题 selection 背景，增强触发器反馈，禁用时不生效。
  * [OUTPUT]: 输入聚焦不再重新施加边缘阴影，所有组合输入内层始终无框；透明/圆角输入保持原形状，默认表面与错误态保持。
  * [INPUT]: colors.css 的主题、Soft 表面/分割线 token 与基础组件的 data-slot、Sonner 通知、soft-table 和语义变体。
  * [OUTPUT]: Tabs 共用选中滑动层承载原 Soft/线形/窗口/技能样式并沿用系统 squircle 方圆角（窗口原 round 保持），文字与关闭按钮保持上层；不改变布局、焦点或业务选择。
@@ -174,6 +175,7 @@
 .chat-composer-actions { display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0 }
 .chat-composer-actions[data-align=end] { margin-left:auto;justify-content:flex-end }
 .chat-composer-select>span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.chat-composer-select[data-kind=model]:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--selection) }
 .chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
 .chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:13px;line-height:1.4;overflow-wrap:anywhere }
 .chat-composer-option>small { font-size:11px;line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }

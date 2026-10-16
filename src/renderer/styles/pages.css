@@ -1,4 +1,13 @@
 /*
+ * [OUTPUT]: 通讯录资料/编辑滚动固定预留，员工/群共用紧凑卡片与记录列表、设置同款内容过渡。
+ * [OUTPUT]: 连接弹窗可选固定标题/卡片外层ScrollArea，滚动条抵达最右边缘；内容承担横向/底部留白，自然高度随视口收缩。
+ * [OUTPUT]: 定时任务新建/编辑使用800px自适应Dialog，操作行自然流、唯一外层滚动；对话创建复用聊天弹窗。
+ * [OUTPUT]: 定时任务主滚动区稳定预留槽位；过程面板/卡片为覆盖式滚动条固定留位，详情切换沿设置页Panel reveal。
+ * [OUTPUT]: 任务卡操作行固定40px；下方技能式执行列表与右侧执行卡片沿现有控件/主题，移除卡片外摘要样式。
+ * [OUTPUT]: 定时任务详情保持13px/40px紧凑行；底部普通透明操作行4px留白和28px按钮，移除CardFooter叠加表面。
+ * [OUTPUT]: 定时任务列表固定名称/日程两行，单行省略，员工保留于详情。
+ * [OUTPUT]: 定时任务左侧频率/星期120px、日期140px、时间92px；同行右侧员工间距16px，32px高度/自然滚动保持。
+ * [OUTPUT]: 定时任务复用会话分栏与创建按钮，主区自适应表单/聊天和真实计划卡片。
  * [OUTPUT]: 设置共用滚动容器预留滚动条槽位，个人资料异步内容加载及分类切换不再挤压正文宽度。
  * [OUTPUT]: 外观重置复用共用标题操作栏，删除旧底部操作区样式。
  * [OUTPUT]: 本机Agent品牌图标无背景/内边距，彩色SVG保留原色、单色随主题适配，扫描项20px紧凑尺寸共用。
@@ -87,11 +96,16 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .connection-empty-icon { width:52px;height:52px;margin-bottom:16px;border-radius:16px }
 .connections-empty h3 { margin:0 0 8px;font-size:15px;font-weight:550 }
 .connections-empty p { max-width:320px;margin:0;color:var(--muted-foreground);font-size:13px;line-height:22px }
-[data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:32px;--connection-dialog-padding:24px var(--connection-dialog-padding-inline);max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain }
+[data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:32px;--connection-dialog-padding-block:24px;--connection-dialog-padding:var(--connection-dialog-padding-block) var(--connection-dialog-padding-inline);max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain }
 [data-slot=dialog-content].connection-dialog[data-fixed-height] { flex-direction:column;overflow:hidden }
 .connection-dialog[data-fixed-height] > * { flex-shrink:0 }
 .connection-dialog[data-fixed-height] > .local-agent-scan-results { flex:1;min-height:0;margin:-4px calc(-1 * var(--connection-dialog-padding-inline)) }
 .local-agent-scan-content { padding:4px var(--connection-dialog-padding-inline) }
+[data-slot=dialog-content].connection-dialog[data-scroll-body] { flex-direction:column;overflow:hidden }
+.connection-dialog[data-scroll-body] > * { flex-shrink:0 }
+.connection-dialog[data-scroll-body] > .connection-dialog-body { display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;margin:-4px calc(-1 * var(--connection-dialog-padding-inline)) calc(-1 * var(--connection-dialog-padding-block)) }
+.connection-dialog-body > [data-slot=scroll-area-viewport] { flex:1;min-height:0;height:auto }
+.connection-dialog-body-content { padding:4px var(--connection-dialog-padding-inline) var(--connection-dialog-padding-block) }
 .connection-dialog-top { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-8px -16px 12px;color:var(--muted-foreground);font-size:12px }
 .connection-dialog-intro { text-align:center;margin:0 0 24px }
 .connection-illustration { display:block;width:80px;height:64px;margin:0 auto 10px }
@@ -174,7 +188,7 @@ img.connection-brand-icon { background:none;object-fit:contain }
   .connection-model-actions,.connection-editor-actions { flex-basis:100% }
 }
 @media(max-height:740px) {
-  [data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:28px;--connection-dialog-padding:20px var(--connection-dialog-padding-inline) }
+  [data-slot=dialog-content].connection-dialog { --connection-dialog-padding-inline:28px;--connection-dialog-padding-block:20px }
   .connection-dialog-intro { margin-bottom:16px }
   .connection-illustration { width:60px;height:48px;margin-bottom:8px }
   .connection-fields { gap:14px }
@@ -182,27 +196,53 @@ img.connection-brand-icon { background:none;object-fit:contain }
 }
 
 .schedule-page { display:flex;min-height:0;min-width:0;flex:1;overflow:hidden }
-.schedule-list { width:var(--list-width,312px);flex-shrink:0;overflow-y:auto;background:var(--list);padding:0 10px }
+.schedule-list { width:var(--list-width,312px);flex-shrink:0;overflow:hidden;background:var(--list);padding:0 10px }
 .schedule-search { margin:0 0 10px }
 .schedule-search [data-slot=button] { width:20px;height:20px }
-.schedule-create { display:flex;align-items:center;gap:8px;width:100%;min-height:32px;padding:8px;margin:10px 0 3px;border:0;background:transparent;font-size:12px;font-weight:500;text-align:left }
+.schedule-create { display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;height:32px;flex-shrink:0;margin:0 0 8px;font-size:12px;font-weight:500;text-align:left }
 .schedule-section-heading { display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:28px;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
 .schedule-list-actions { display:flex;align-items:center;gap:2px }
 .schedule-list-actions [data-slot=button] { width:24px;height:24px;color:var(--muted-foreground) }
 .schedule-items { display:grid;gap:3px }
-.schedule-item { display:grid;gap:2px;text-align:left;width:100%;min-height:52px;padding:8px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--foreground);cursor:pointer }
-.schedule-item strong { font-size:12px;font-weight:500;line-height:1.4;overflow-wrap:anywhere }
+.schedule-item { display:grid;grid-template-columns:minmax(0,1fr);gap:2px;text-align:left;width:100%;min-height:52px;padding:8px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--foreground);cursor:pointer }
+.schedule-item strong,.schedule-item small { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.schedule-item strong { font-size:12px;font-weight:500;line-height:1.4 }
 .schedule-item-summary { display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;white-space:normal;font-size:11px;line-height:1.5;color:var(--muted-foreground) }
-.schedule-item small { font-size:11px;line-height:1.5;color:var(--muted-foreground);white-space:normal;overflow-wrap:anywhere }
+.schedule-item small { font-size:11px;line-height:1.5;color:var(--muted-foreground) }
 .schedule-item.selected { background:var(--selection) }
-.schedule-no-results { padding:8px;font-size:12px;color:var(--muted-foreground) }
 .schedule-history-link { display:flex;align-items:center;gap:5px;width:100%;padding:8px;margin:3px 0;min-height:32px;border:0;background:transparent;color:var(--muted-foreground);font-size:12px;text-align:left }
 .schedule-history-link:hover,.schedule-history-link.selected { color:var(--foreground) }
 .schedule-content { flex:1;min-width:0;padding:0 }
+.schedule-content.page-scroll { scrollbar-gutter:stable }
 .schedule-content>.banner { margin:16px 24px }
 .schedule-content.is-welcome { display:flex;flex-direction:column }
 .schedule-document { max-width:840px;margin:0 auto;padding:36px 32px }
+.schedule-content-transition { --panel-translate-y:8px;min-width:0 }
+.schedule-content-transition.t-panel-slide[data-settled=true] { transform:none;filter:none;will-change:auto }
+@media (prefers-reduced-motion:reduce) {
+  .schedule-content-transition.t-panel-slide[data-open] { transform:none;filter:none;will-change:auto }
+}
 .schedule-document>h3 { margin:28px 0 16px;font-size:16px;font-weight:600 }
+.automation-details { margin-bottom:16px;container-type:inline-size;font-size:13px;line-height:20px }
+.automation-detail-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;height:40px;box-sizing:border-box;padding:0 12px }
+.automation-records { display:flex;flex-direction:column;gap:12px;min-width:0 }
+.automation-records-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px }
+.automation-records-heading h3 { margin:0;font-size:16px;font-weight:600 }
+.automation-record-list { display:flex;flex-direction:column;min-width:0 }
+.automation-record-row[data-slot=button] { width:100%;font-weight:400 }
+.automation-occurrence-panel { display:flex;flex:1;flex-direction:column;height:100%;min-height:0;min-width:0 }
+/* Base UI hides native scrollbars; reserve its 10px overlay track independently of overflow. */
+.automation-occurrence-panel :is(.execution-history-body,.execution-drawer-body) { scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box }
+.automation-detail-fields { margin:0;padding:4px 14px }
+.automation-detail-row { display:grid;grid-template-columns:112px minmax(0,1fr);gap:12px;align-items:start;padding:8px 0 }
+.automation-detail-row dt { display:flex;align-items:center;gap:8px;min-height:24px;font-weight:500 }
+.automation-detail-row dt>.app-icon { width:14px;height:14px;flex-shrink:0;color:var(--muted-foreground) }
+.automation-detail-row dd { min-width:0;min-height:24px;margin:0;padding:2px 0;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere }
+@container(max-width:360px) {
+  .automation-detail-row { grid-template-columns:minmax(0,1fr);gap:4px }
+  .automation-detail-row dt { min-height:20px }
+  .automation-detail-row dd { min-height:0;padding:0 0 0 22px }
+}
 .automation-prompt { white-space:pre-wrap;line-height:1.8 }
 .automation-actions { flex-wrap:wrap;margin:20px 0 }
 .automation-history { display:grid;gap:12px }
@@ -334,8 +374,16 @@ img.connection-brand-icon { background:none;object-fit:contain }
 }
 .contacts-count { margin-left:auto;color:var(--muted-foreground);font-size:11px;font-variant-numeric:tabular-nums }
 .contacts-list-empty { padding:4px 8px 12px;font-size:12px;color:var(--muted-foreground);margin:0 }
-.contacts-detail { flex:1;min-width:0;min-height:0;overflow:auto;container-type:inline-size }
-.contact-document { width:100%;max-width:640px;margin:0 auto;padding:48px 36px }
+.contacts-detail { flex:1;min-width:0;min-height:0;overflow:auto;scrollbar-gutter:stable;container-type:inline-size }
+.contact-content-transition { min-width:0;min-height:100% }
+.contact-section { margin:20px 0 }
+.contact-section-title { margin:0;font-size:16px;font-weight:600 }
+.contact-profile-card .field-hint { margin:4px 0 0;white-space:normal }
+.contact-execution-section { margin-top:24px }
+.contact-execution-heading[data-slot=button] { display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:16px;font-weight:600 }
+.contact-execution-section [data-slot=collapsible-content]>.automation-records { padding-top:12px }
+.contacts-detail:has(.contact-editor-viewport)>.contact-content-transition { display:flex;flex:1;min-height:0 }
+.contact-document { width:100%;max-width:800px;margin:0 auto;padding:48px 36px }
 .contact-profile-heading { display:flex;align-items:center;gap:18px;margin-bottom:28px }
 .contact-profile-heading>.avatar,.contact-profile-heading>.group-avatar { width:64px;height:64px;font-size:26px;border-radius:var(--radius-control) }
 .contact-profile-identity { min-width:0;flex:1 }
@@ -347,7 +395,7 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-facts dd { margin:0;overflow-wrap:anywhere }
 .contact-prompt { white-space:pre-wrap;max-height:240px;overflow-y:auto }
 .contact-actions { display:flex;justify-content:center;gap:12px;padding-top:28px;flex-wrap:wrap }
-.contact-group-info { padding-top:22px }
+.contact-group-info { min-width:0 }
 .contact-group-info h2 { font-size:13px;font-weight:500;margin:0 0 16px }
 .contact-members { display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:12px }
 .contact-member { display:flex;align-items:center;flex-direction:column;gap:8px;padding:8px 4px;min-width:0 }
@@ -357,7 +405,7 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-edit-header { position:absolute;inset:0 0 auto;z-index:2;height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none }
 .contact-edit-header>.soft-button,.contact-edit-header-actions { position:relative;pointer-events:auto }
 .contact-edit-header-actions { display:flex;align-items:center;gap:8px }
-.contact-edit-scroll { flex:1;margin-top:52px }
+.contact-edit-scroll { flex:1;margin-top:52px;scrollbar-gutter:stable }
 .contact-editor-viewport .contact-editor-document { padding-top:12px }
 .contact-edit-header-space { height:52px;margin-bottom:12px }
 .contact-editor .editor-intro,.contact-editor .editor-body,.contact-editor .employee-identity,.contact-editor .employee-tabs-bar,.contact-editor .detail-section { padding-left:0;padding-right:0 }
@@ -492,3 +540,31 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .channel-detail-body > .employee-detail { flex:1; min-height:0 }
 .detail-content:has(> .detail-session > .channel-workspace):not([hidden]) { display:flex; overflow:hidden }
 .detail-session:has(> .channel-workspace) { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow:hidden }
+
+/* Scheduled task dialogs share the original form and chat, with one scroll viewport. */
+.schedule-editor-dialog .editor-frame { min-height:0;flex:none;width:100% }
+.schedule-editor-dialog .editor-scroll { overflow:visible;padding:0;flex:none }
+.schedule-editor-dialog .editor-body { padding:0 }
+.schedule-editor-dialog .editor-footer { position:static;flex:none;height:auto;padding:20px 0 0;border:0;background:transparent;justify-content:flex-end }
+.schedule-assistant-dialog .chat-header { padding-right:48px }
+.schedule-options-row { display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px 16px }
+.schedule-employee-control { display:flex;align-items:center;gap:16px;flex:0 0 220px;max-width:100%;margin-left:auto }
+.schedule-employee-control>span { flex-shrink:0;font-size:13px;font-weight:500 }
+.schedule-employee-control .schedule-employee-select { flex:1;min-width:0 }
+.schedule-frequency-row { display:flex;gap:12px;align-items:center;flex:1 1 456px;min-width:0;min-height:var(--control-height) }
+.schedule-frequency-title { flex:0 0 auto;font-size:13px;font-weight:500 }
+.schedule-frequency-controls { display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;min-width:0 }
+.schedule-frequency-controls .schedule-frequency-select { flex:0 0 120px;max-width:100% }
+.schedule-frequency-controls .schedule-weekday { flex:0 0 120px;max-width:100% }
+.schedule-frequency-controls .schedule-time { flex:0 0 92px;max-width:100% }
+.schedule-frequency-controls .schedule-date { flex:0 0 140px;max-width:100% }
+.schedule-starts-on { font-size:13px;color:var(--muted-foreground) }
+.schedule-assistant-chat { flex:1;min-height:0;width:100% }
+.schedule-assistant-messages { flex:1;min-height:0;overflow:auto }
+.schedule-chat-message { width:100%;max-width:760px;margin:0 auto 20px;line-height:1.7;overflow-wrap:anywhere }
+.schedule-chat-message.is-user { width:fit-content;max-width:min(85%,650px);margin-left:auto;margin-right:0;background:var(--muted);border-radius:var(--radius);padding:12px 16px }
+.schedule-chat-plan { display:flex;gap:12px;align-items:center;max-width:760px;margin:12px auto;padding:16px;border:1px solid var(--border);border-radius:var(--radius) }
+.schedule-chat-plan>div { flex:1;min-width:0 }
+.schedule-chat-plan strong { font-size:13px;font-weight:500;overflow-wrap:anywhere }
+.schedule-chat-plan p { margin:4px 0 0;font-size:12px;color:var(--muted-foreground) }
+.schedule-assistant-chat .chat-empty { min-height:240px }

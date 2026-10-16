@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
  * [OUTPUT]: 2026-10-10 交付文件仅保留预览，不显示采用/要求修改/稍后处理栏；旧未决请求仍可核对与恢复。
  * [INPUT]: 原员工交付消息中的成果身份、当前聊天与持久采用/修订/待验收请求。
@@ -6,6 +7,7 @@
  * [POS]: 聊天交付交互，不将人工处理搬入右侧预览，不根据文件名推断新版本。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ErrorToast } from '@/components/common/error-feedback'
 import type { Artifact } from '@shared/domain'
 import type { ArtifactRevisionInput } from '@shared/domain/artifacts'
 import { artifactPendingKey, type ArtifactPending } from '@/components/detail-panel/artifact-state'
@@ -38,6 +40,6 @@ export function PendingArtifactActions({ pending, artifacts, actions, active, on
         {request.status === 'not_accepted' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => { if (actions.discard(pending, kind) && kind === 'revision') onRestoreRevision(pending.revision!.input, pending.logicalArtifactId) }}>{kind === 'revision' ? '放弃未受理请求并编辑文件' : `放弃未受理${label}`}</Button>}</div>
       </div>
     })}
-    {actions.errors[key] && <p role="alert" className="field-hint">{actions.errors[key]}</p>}
+    {actions.errors[key] && <ErrorToast>{actions.errors[key]}</ErrorToast>}
   </section>
 }

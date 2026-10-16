@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 工作标题显式标为目标，保留原deliverable字节与真实状态/交付入口；完成式目标不代表已经交付。
  * [OUTPUT]: 中断且无原原因的工作明确提示核对已有结果，不把缺少文案当未知工作状态或承诺自动续行。
  * [INPUT]: 宿主核对的Work行、实际员工快照、真实审批/运行身份及固定来源解析接口。
@@ -83,7 +84,7 @@ function ChildWorks({ parentId, conversationId, ancestors, ...props }: Omit<Work
   const { page, loading, error, loadMore, reload } = usePagedQuery<WorkViewItem, string, WorkViewPage>({ api: props.api, active: props.active, queryKey: key, conversationId, read: cursor => props.api.request('queryWorkViews', { ...query, cursor }), identity: item => item.work.id })
   return <div className="flex flex-col gap-3 border-l pl-3" aria-label="真实子工作">
     {page?.items.map(item => <WorkCard key={item.work.id} {...props} item={item} viewKey={key} selected={(selection.key === key ? selection.id : rememberedWorkSelection(key)) === item.work.id} onSelect={() => { rememberWorkSelection(key, item.work.id); setSelection({ key, id: item.work.id }) }} ancestors={ancestors} compact />)}
-    {loading && <Loading />}{error && <Banner>{error}<Button variant="ghost" size="sm" onClick={reload}>重新读取</Button></Banner>}
+    {loading && <Loading />}{error && <><Banner>{error}</Banner><Button variant="ghost" size="sm" onClick={reload}>重新读取</Button></>}
     {page?.nextCursor && <Button size="sm" variant="ghost" disabled={loading} onClick={() => void loadMore()}>加载更多子工作</Button>}
   </div>
 }

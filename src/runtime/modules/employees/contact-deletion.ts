@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除员工同时清理独立永久命令授权。
  * [INPUT]: 宿主已检查空闲的整批员工身份、可选偏好/标签版本、SQLite 和应用数据目录。
  * [OUTPUT]: D4 专属 UUID 副本在删除事务保存真实 hash 清理授权，沿资源清理器失败/重启续清；旧员工目录合同保持原边界。
  * [OUTPUT]: 选中或标签整批员工/记忆/专属资源/多标签关系/展示偏好与剩余群成员同事务删除并保存本地清理日志；固定员工目录安全清理，失败及重启不重新创建员工或执行模型工具。
@@ -65,7 +66,7 @@ export class ContactDeletionService {
       const preferences = await this.validate(tx, input), ids = new Set(input.agentIds)
       const removals: { collection: string; id: string }[] = []
       const remove = async (collection: string, id: string) => { await tx.remove(collection, id); removals.push({ collection, id }) }
-      for (const collection of ['memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
+      for (const collection of ['employeeCommandPermissions', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
         for (const item of await tx.list<OwnedRecord>(collection)) if (ids.has(item.ownerAgentId ?? item.agentId ?? '')) await remove(collection, item.id)
       }
       for (const collection of ['memoryEpochs', 'memoryReceipts']) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 资源标签与成员标签共用原子编辑；资源名称进入正文，固定身份单独发送。
  * [INPUT]: 会话草稿、已确认成员身份与原生输入的文本/选区。
  * [OUTPUT]: 正文内标签插入、原子选区、编辑范围迁移和发送正文；字面 @ 不推断成员，删除标签同步取消点名。
  * [POS]: composer 的纯文本/标签投影；不修改消息持久化或调度协议。
@@ -11,7 +12,7 @@ export interface TextRange { start: number; end: number }
 export function draftMentions(draft: ChatDraft): DraftMention[] {
   let end = 0
   return [...(draft.mentions ?? [])].sort((a, b) => a.start - b.start).filter(mention => {
-    if (mention.start < end || mention.end <= mention.start || draft.text.slice(mention.start, mention.end) !== `@${mention.label}` || !draft.mentionIds.includes(mention.id)) return false
+    if (mention.start < end || mention.end <= mention.start || draft.text.slice(mention.start, mention.end) !== `@${mention.label}` || (!mention.resource && !draft.mentionIds.includes(mention.id))) return false
     end = mention.end
     return true
   })
@@ -39,7 +40,7 @@ export function replaceDraftRange(draft: ChatDraft, range: TextRange, insertion:
   const delta = insertion.length - (end - start)
   const next = mentions.flatMap(mention => mention.end <= start ? [mention] : mention.start >= end ? [{ ...mention, start: mention.start + delta, end: mention.end + delta }] : [])
   next.sort((a, b) => a.start - b.start)
-  return { ...draft, text: draft.text.slice(0, start) + insertion + draft.text.slice(end), mentions: next, mentionIds: [...new Set(next.map(mention => mention.id))] }
+  return { ...draft, text: draft.text.slice(0, start) + insertion + draft.text.slice(end), mentions: next, mentionIds: [...new Set(next.filter(mention => !mention.resource).map(mention => mention.id))] }
 }
 
 export function insertDraftMention(draft: ChatDraft, selection: TextRange, member: { id: string; name: string }) {
@@ -50,7 +51,7 @@ export function insertDraftMention(draft: ChatDraft, selection: TextRange, membe
   const next = replaceDraftRange(draft, range, insertion)
   const start = range.start + prefix.length
   const mentions = [...(next.mentions ?? []), { id: member.id, label: member.name, start, end: start + member.name.length + 1 }].sort((a, b) => a.start - b.start)
-  return { draft: { ...next, mentions, mentionIds: [...new Set(mentions.map(mention => mention.id))] }, caret: range.start + insertion.length }
+  return { draft: { ...next, mentions, mentionIds: [...new Set(mentions.filter(mention => !mention.resource).map(mention => mention.id))] }, caret: range.start + insertion.length }
 }
 
 /** Browser edits preserve text/IME/undo; only confirmed tag ranges carry member identity. */
@@ -61,12 +62,16 @@ export function updateDraftText(draft: ChatDraft, text: string, selection?: Text
   while (end > Math.max(start, selection?.end ?? 0) && nextEnd > start && draft.text[end - 1] === text[nextEnd - 1]) { end--; nextEnd-- }
   const delta = text.length - draft.text.length
   const mentions = draftMentions(draft).flatMap(mention => mention.end <= start ? [mention] : mention.start >= end ? [{ ...mention, start: mention.start + delta, end: mention.end + delta }] : [])
-  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.map(mention => mention.id))] }
+  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.filter(mention => !mention.resource).map(mention => mention.id))] }
 }
 
 /** Existing IPC carries mentions separately; don't duplicate visual labels in the sent body. */
 export function draftContent(draft: ChatDraft): string {
   let text = draft.text
-  for (const mention of draftMentions(draft).reverse()) text = text.slice(0, mention.start) + text.slice(mention.end)
+  for (const mention of draftMentions(draft).filter(mention => !mention.resource).reverse()) text = text.slice(0, mention.start) + text.slice(mention.end)
   return text.trim()
+}
+
+export function draftResourceReferences(draft: ChatDraft) {
+  return [...new Map(draftMentions(draft).flatMap(mention => mention.resource ? [[mention.resource.kind + ':' + mention.resource.id, mention.resource] as const] : [])).values()]
 }

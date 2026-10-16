@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 预览失败/超限统一Sonner且无错误正文；实际插件故障/来源失效核验保持。
  * [INPUT]: 实际图片/PDF/Office插件与异步加载器；无效文件、worker不可用及文件超限。
  * [OUTPUT]: 真实异步失败记录有界类别，局部提示保留；隐藏/过期/超限不制造插件故障。
  * [POS]: 预览插件异步故障接线回归；不调用外部服务。
  * [PROTOCOL]: 变化同步Header及tests/.folder.md。
  */
 import { act, createElement } from 'react'
+import { toast } from 'sonner'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { FilePreview } from '../src/renderer/components/common/file-preview'
@@ -14,6 +16,7 @@ import { MAX_OFFICE_PREVIEW_BYTES } from '../src/renderer/components/common/lody
 
 let host: HTMLDivElement, root: Root
 beforeEach(() => {
+  toast.dismiss()
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('Worker', undefined)
   usePlugins.setState({ settings: { revision: 0, disabledIds: [] }, ready: true })
@@ -24,7 +27,7 @@ beforeEach(() => {
 })
 afterEach(async () => {
   await act(async () => root.unmount())
-  host.remove(); pluginUsage.clearFailure('boai.preview.office'); pluginUsage.clearFailure('boai.preview.image'); pluginUsage.clearFailure('boai.preview.pdf')
+  toast.dismiss(); host.remove(); pluginUsage.clearFailure('boai.preview.office'); pluginUsage.clearFailure('boai.preview.image'); pluginUsage.clearFailure('boai.preview.pdf')
   vi.unstubAllGlobals(); vi.restoreAllMocks()
 })
 const render = async (bytes: Uint8Array, active = true, key = 'file', kind: 'docx' | 'pptx' | 'xlsx' = 'docx') => {
@@ -33,9 +36,9 @@ const render = async (bytes: Uint8Array, active = true, key = 'file', kind: 'doc
 const waitForText = async (text: string) => {
   for (let attempt = 0; attempt < 150; attempt++) {
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
-    if (host.textContent?.includes(text)) return
+    if (toast.getToasts().some(item => 'title' in item && String(item.title).includes(text))) { expect(host.textContent).not.toContain(text); return }
   }
-  expect(host.textContent).toContain(text)
+  expect(toast.getToasts().some(item => 'title' in item && String(item.title).includes(text))).toBe(true)
 }
 
 test('the real DOCX asynchronous worker failure reaches plugin status without its error or file data', async () => {
@@ -49,7 +52,7 @@ test('the real DOCX asynchronous worker failure reaches plugin status without it
   expect(pluginUsage.snapshot()['boai.preview.office']).toEqual({ views: 0, failure: 'viewer-failed' })
 })
 
-test('the Office size policy keeps its local explanation without recording a plugin failure', async () => {
+test('the Office size policy reports its explanation through Sonner without recording a plugin failure', async () => {
   await render(new Uint8Array(MAX_OFFICE_PREVIEW_BYTES + 1))
   await waitForText('25 MB')
   expect(pluginUsage.snapshot()['boai.preview.office']).toEqual({ views: 1 })
@@ -85,13 +88,13 @@ test('a started DOCX worker is aborted on source replacement and its late failur
   expect(pluginUsage.snapshot()['boai.preview.office']).toBeUndefined()
 })
 
-test.each(['pptx', 'xlsx'] as const)('the real %s viewer reports asynchronous load failure through its own local error presentation', async kind => {
+test.each(['pptx', 'xlsx'] as const)('the real %s viewer reports asynchronous load failure through its own Sonner error feedback', async kind => {
   await render(new TextEncoder().encode('invalid Office file'), true, 'file', kind)
   await waitForText('文档预览不可用')
   expect(pluginUsage.snapshot()['boai.preview.office']).toEqual({ views: 1, failure: 'viewer-failed' })
 })
 
-test('the real PDF parser reports rejected bytes while keeping its local error card', async () => {
+test('the real PDF parser reports rejected bytes while reporting through Sonner', async () => {
   // jsdom supplies no geometry/canvas; a rejected document never reaches drawing.
   vi.stubGlobal('DOMMatrix', class {})
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} unobserve() {} })
@@ -113,7 +116,8 @@ test('an image load error is reported but missing, replaced and hidden images do
   expect(pluginUsage.snapshot()['boai.preview.image']).toEqual({ views: 1 })
   const currentImage = host.querySelector('img')!
   await act(async () => currentImage.dispatchEvent(new Event('error')))
-  expect(host.textContent).toContain('图片预览暂不可用')
+  expect(toast.getToasts().some(item => 'title' in item && String(item.title).includes('图片预览暂不可用'))).toBe(true)
+  expect(host.textContent).not.toContain('图片预览暂不可用')
   expect(pluginUsage.snapshot()['boai.preview.image']).toEqual({ views: 1, failure: 'viewer-failed' })
   pluginUsage.clearFailure('boai.preview.image')
   await renderImage('data:image/png;base64,pending')

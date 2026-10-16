@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "testId": "a6acd9696f69cebc83f8-bdd75d3fa46a50bb2cda",
+  "title": "本地文件夹绑定员工并与原技能页面共存",
+  "titlePath": [
+    "sources.feature.spec.js",
+    "技能与数据源共用自定义工作区",
+    "本地文件夹绑定员工并与原技能页面共存"
+  ],
+  "location": {
+    "file": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/sources.feature.spec.js",
+    "line": 6,
+    "column": 3
+  },
+  "project": "",
+  "retry": 0,
+  "repeatEachIndex": 0,
+  "workerIndex": 1,
+  "startedAt": "2026-10-16T17:42:19.297Z",
+  "completedAt": "2026-10-16T17:42:52.418Z",
+  "status": "failed",
+  "expectedStatus": "passed",
+  "resultPhase": "desktop-fixture-teardown",
+  "humanReview": "pending",
+  "modelMode": "offline-protocol-or-fixture",
+  "launchCount": 1,
+  "evidence": [
+    {
+      "kind": "screenshot",
+      "label": "文件夹详情与员工绑定",
+      "path": "001-文件夹详情与员工绑定.native.png",
+      "sha256": "9cbf4f293c96f69574ef6cb0afea9e603a9c9986c56d2685192a5d5c77c05d01",
+      "bytes": 155466,
+      "capturedAt": "2026-10-16T17:42:21.434Z",
+      "launch": 1,
+      "source": "Electron.webContents.capturePage()",
+      "viewport": {
+        "width": 1290,
+        "height": 860
+      },
+      "nativeCapture": {
+        "method": "Electron.webContents.capturePage()",
+        "rect": null,
+        "pixelTransform": "none",
+        "native": {
+          "windowId": 1,
+          "webContentsId": 1,
+          "before": {
+            "contentSize": [
+              1290,
+              860
+            ],
+            "bounds": {
+              "x": 222,
+              "y": 38,
+              "width": 1290,
+              "height": 860
+            },
+            "contentBounds": {
+              "x": 222,
+              "y": 38,
+              "width": 1290,
+              "height": 860
+            },
+            "zoomFactor": 1
+          },
+          "after": {
+            "contentSize": [
+              1290,
+              860
+            ],
+            "bounds": {
+              "x": 222,
+              "y": 38,
+              "width": 1290,
+              "height": 860
+            },
+            "contentBounds": {
+              "x": 222,
+              "y": 38,
+              "width": 1290,
+              "height": 860
+            },
+            "zoomFactor": 1
+          },
+          "display": {
+            "bounds": {
+              "x": 0,
+              "y": 0,
+              "width": 1512,
+              "height": 982
+            },
+            "workArea": {
+              "x": 0,
+              "y": 38,
+              "width": 1512,
+              "height": 860
+            },
+            "scaleFactor": 2
+          }
+        },
+        "renderer": {
+          "width": 1290,
+          "height": 860,
+          "outerWidth": 1290,
+          "outerHeight": 860,
+          "devicePixelRatio": 2,
+          "visualViewport": {
+            "width": 1290,
+            "height": 860,
+            "scale": 1
+          }
+        },
+        "image": {
+          "scaleFactors": [
+            1
+          ],
+          "representations": [
+            {
+              "scaleFactor": 1,
+              "size": {
+                "width": 2580,
+                "height": 1720
+              }
+            }
+          ],
+          "pngScaleFactor": 1
+        },
+        "pngDimensions": {
+          "width": 2580,
+          "height": 1720
+        }
+      }
+    },
+    {
+      "kind": "data",
+      "label": "文件夹详情与员工绑定 · 原生截取元数据",
+      "path": "002-文件夹详情与员工绑定.capture.json",
+      "sha256": "61b8d94f7253f440ca783f10f9192ab34bd84ac1b59743a18575b904334f05f6",
+      "bytes": 1685,
+      "capturedAt": "2026-10-16T17:42:21.435Z",
+      "launch": 1,
+      "source": "Electron.webContents.capturePage()"
+    },
+    {
+      "kind": "screenshot",
+      "label": "第 1 次启动结束画面",
+      "path": "003-第-1-次启动结束画面.png",
+      "sha256": "4a60f69a66b4b57199256b651826a8b32c49806dab67310a5ae78657b34fc922",
+      "bytes": 181373,
+      "capturedAt": "2026-10-16T17:42:51.944Z",
+      "launch": 1,
+      "source": "Playwright.page.screenshot()",
+      "viewport": null
+    }
+  ],
+  "traces": [
+    {
+      "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/test-results/sources.feature-技能与数据源共用自定义工作区-本地文件夹绑定员工并与原技能页面共存/desktop-1.zip",
+      "launch": 1,
+      "bytes": 3606021,
+      "sha256": "56d25022df8f85143fd0f4d40d2ab67c5f6fa6a3af21f5d9c601d60280833b1d"
+    }
+  ],
+  "gaps": [],
+  "cleanupErrors": [],
+  "testErrors": [
+    {
+      "message": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '返回技能列表', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <button tabindex=\"0\" type=\"button\" data-slot=\"button\" data-size=\"icon-sm\" aria-label=\"返回技能列表\" data-variant=\"ghost\" class=\"soft-button group/button shrink-0 select-none aria-invalid:outline-destructive [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 soft-button-ghost size-[28px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px] inline-flex items-center justify-center whitespace-nowrap\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+      "stack": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '返回技能列表', exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <button tabindex=\"0\" type=\"button\" data-slot=\"button\" data-size=\"icon-sm\" aria-label=\"返回技能列表\" data-variant=\"ghost\" class=\"soft-button group/button shrink-0 select-none aria-invalid:outline-destructive [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 soft-button-ghost size-[28px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px] inline-flex items-center justify-center whitespace-nowrap\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <main aria-label=\"技能详情\" class=\"conversation-stage skills-detail-pane\">…</main> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at Object.<anonymous> (/Users/wangwenbo/Desktop/demo/boai/boai-agent/tests/e2e/steps/sources.steps.ts:47:67)\n    at BddStepInvoker.runWithAfterStepHooks (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)\n    at BddStepInvoker.invoke (/Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)\n    at /Users/wangwenbo/Desktop/demo/boai/boai-agent/.features-gen/sources.feature.spec.js:9:5"
+    }
+  ],
+  "notes": [
+    "截图保留各采集方式的原始字节；Playwright与Electron原生capturePage分源标注，缩放画面完整性以原生尺寸/zoom/PNG元数据和实际审阅核对；trace 是事件回放，不是连续录屏。",
+    "原生capturePage无rect，仅采集当前webContents整幅可见页面，不包括系统窗口边框或其他webContents。",
+    "本文件在桌面 fixture 清理阶段记录状态；最终测试结果以本批 Playwright 报告为准。",
+    "只归档显式指定的原件/白名单 JSON；未自动导出完整聊天、数据库或浏览器登录资料。"
+  ]
+}

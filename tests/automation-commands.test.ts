@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo专用创建会话单员工保存、同请求幂等和普通核心/员工越权拒绝。
  * [OUTPUT]: 模型目录对象根和跨供应商regex保持运行时动作/路径拒绝，不放松校验。
  * [OUTPUT]: 官方MCP工具列表schema验证所有产品工具，防止一个非法根schema使整份目录不可用。
  * [INPUT]: 真实AppService/SQLite、隔离员工消息与共享API/native产品工具。
@@ -43,7 +44,7 @@ async function setup() {
     expect(detail.runs.filter(run => run.phase === 'execution' || !run.phase).every(run => run.status === 'completed')).toBe(true)
     return detail
   }
-  return { root, service, chat, send, get context() { return current! } }
+  return { root, service, chat, send, setHandler(fn: typeof handler) { handler = fn }, get context() { return current! } }
 }
 
 it('saves from the original employee chat, deduplicates mutations and refuses stale/cross-owner or ended-source calls', async () => {
@@ -118,4 +119,28 @@ it('publishes an object-root tool schema while execution still rejects fields fr
   const projected = automationCommandToolSchema.parse({ action: 'pause', id: 'a', key: 'pause', expectedRevision: 1, plan })
   expect(automationCommandSchema.safeParse(projected).success).toBe(false)
   expect(automationCommandSchema.parse({ action: 'list' })).toEqual({ action: 'list', limit: 20 })
+})
+
+it('lets only dedicated bobo creation chats save a chosen employee plan with the same durable receipt', async () => {
+  const f = await setup()
+  let saved: AutomationDefinition | undefined
+  f.setHandler(async ctx => {
+    expect(ctx.conversation.automationCreation).toBe(true)
+    expect(ctx.manageAutomation).toBeTypeOf('function')
+    await expect(ctx.manageAutomation!({ action: 'save', key: 'missing', plan })).rejects.toThrow('请选择')
+    await expect(ctx.manageAutomation!({ action: 'save', key: 'self', employeeId: 'bobo', plan })).rejects.toThrow('请选择')
+    saved = await ctx.manageAutomation!({ action: 'save', key: 'monthly', employeeId: 'researcher', plan: { ...plan, frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', description: '月度计划' } }) as AutomationDefinition
+    expect(await ctx.manageAutomation!({ action: 'save', key: 'monthly', employeeId: 'researcher', plan: { ...plan, frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', description: '月度计划' } })).toMatchObject({ id: saved.id, revision: 1 })
+  })
+  const input = { requestId: 'bobo-create-monthly', content: '请让研究员每月15日整理报告', automationCreation: true }
+  const conversation = await f.service.handle('startCoreConversation', input) as Conversation
+  await expect.poll(() => saved?.id, { timeout: 8000 }).toBeTruthy()
+  expect(saved).toMatchObject({ owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'], conversationPolicy: 'new-conversation', creationSource: { conversationId: conversation.id, agentId: 'bobo' }, frequency: 'monthly', dayOfMonth: 15 })
+  await expect.poll(async () => (await f.service.handle('getConversation', { id: conversation.id }) as ConversationDetail).turns?.every(t => t.status === 'completed'), { timeout: 8000 }).toBe(true)
+  expect(await f.service.handle('startCoreConversation', input)).toMatchObject({ id: conversation.id })
+  expect((await f.service.handle('listOwnerAutomations', { owner: { kind: 'employee', employeeId: 'researcher' } }) as AutomationListPage).definitions).toHaveLength(1)
+  f.setHandler(async ctx => { expect(ctx.manageAutomation).toBeUndefined() })
+  const ordinary = await f.service.handle('startCoreConversation', { requestId: 'ordinary-core', content: '聊一聊' }) as Conversation
+  await expect.poll(async () => (await f.service.handle('getConversation', { id: ordinary.id }) as ConversationDetail).turns?.every(t => t.status === 'completed'), { timeout: 8000 }).toBe(true)
+  await f.send(async ctx => { await expect(ctx.manageAutomation!({ action: 'save', key: 'other', employeeId: 'writer', plan })).rejects.toThrow('不能更改') })
 })

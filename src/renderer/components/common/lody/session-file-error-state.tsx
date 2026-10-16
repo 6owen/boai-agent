@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-error-state.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
  * [POS]: common/lody/session-file-error-state.tsx；Apache-2.0，保留上游注释。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { ErrorToast } from '../error-feedback';
 import type { CodeCollabContentUnavailableReason } from './shared-types';
 import { classProps } from './class-props';
 import { Copy, ExternalLink, FolderOpen, Loader2, Share2 } from './icons';
@@ -326,8 +328,7 @@ export function SessionFileNoticeCard({
       {/* No status glyph: the card is one short paragraph and a stack of
           actions, and a 40px icon column indented all of it for decoration. */}
       <section data-testid="session-file-error-state" {...classProps(styles.card)}>
-        <h2 {...classProps(styles.title)}>{presentation.title}</h2>
-        <p {...classProps(styles.description)}>{presentation.description}</p>
+        <ErrorToast>{presentation.title}：{presentation.description}</ErrorToast>
         {actions ? (
           <div {...classProps(styles.actions)}>
             {actions.onShare ? (
@@ -386,14 +387,7 @@ export function SessionFileNoticeCard({
             </Button>
           </div>
         ) : null}
-        {presentation.technicalDetails ? (
-          <details {...classProps(styles.technicalDetails)}>
-            <summary {...classProps(styles.summary)}>
-              {t('sessions.fileError.technicalDetails', 'Technical details')}
-            </summary>
-            <p {...classProps(styles.technicalText)}>{presentation.technicalDetails}</p>
-          </details>
-        ) : null}
+
       </section>
     </div>
   );

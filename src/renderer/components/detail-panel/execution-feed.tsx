@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 返回思考使用Beautiful UI ThinkingState；仅最新思考事件在运行时标为思考中，聊天加载由外层统一呈现。
  * [OUTPUT]: 聊天卡复用执行流并隐藏协议记录；模型返回的思考独立折叠，不混入最终答案。
  * [INPUT]: 直接迁入的Rovai执行呈现/分组/可变高度列表、BOAI分页IPC与现有UI。
@@ -170,7 +171,7 @@ export function ExecutionFeed({ api, run, active, cache, view = 'rendered', pres
     catch (error) { setError(errorText(error)) }
   }
   return <ExecutionContentContext value={cache}><div ref={window.root} className="flex min-w-0 flex-col gap-4" data-execution-view={view}>
-    {window.error && <Banner>{window.error}<Button variant="link" size="sm" onClick={() => void window.move('retry')}>重试</Button></Banner>}
+    {window.error && <><Banner>{window.error}</Banner><Button variant="link" size="sm" onClick={() => void window.move('retry')}>重试</Button></>}
     {error && <Banner>{error}</Banner>}
     {presentation === 'detail' && actions.map(action => action.kind === 'input' && !action.questions?.some(question => question.isSecret) ? <p key={action.id} className="m-0 text-sm text-muted-foreground">等待你的回复，可直接在聊天中回答。</p> : <NativeRequest key={action.id} action={action} api={api} run={run} view={view} />)}
     {view === 'raw' ? <ExecutionVirtualList key="raw" items={rawRecords} enabled={active} gap={8}>{item => <div key={item.key} data-execution-item-key={item.key}><ExecutionRawRecord event={item.evidence} read={read} /></div>}</ExecutionVirtualList>
@@ -178,6 +179,6 @@ export function ExecutionFeed({ api, run, active, cache, view = 'rendered', pres
       ? <EvidenceRow api={api} event={item.evidence} events={events} run={run} active={active} working={run.status === 'running' && processEvents.at(-1)?.id === item.evidence.id} read={read} />
       : <ExecutionItem item={item} evidence={events} run={run} />}</div>}</ExecutionVirtualList>}
     {presentation === 'detail' && !events.length && !error && <p className="m-0 text-sm text-muted-foreground">{['running', 'queued'].includes(run.status) ? '等待员工输出…' : '这次历史执行没有保存原生过程。'}</p>}
-    {run.error && <Banner><X className="size-4" />{run.error}</Banner>}
+    {run.error && <details className="text-xs text-muted-foreground"><summary>错误详情</summary><pre className="whitespace-pre-wrap break-words">{run.error}</pre></details>}
   </div></ExecutionContentContext>
 }

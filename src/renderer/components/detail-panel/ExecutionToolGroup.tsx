@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: Rovai ExecutionToolGroup.tsx @ f9acc239 (MIT)，ToolCallDetail/键盘导航原实现。
  * [OUTPUT]: 完整结果读取、缓存/重试、展开激活与焦点恢复；键盘导航共用HTMLElement支持代码块和diff容器。
  * [POS]: BOAI执行工具详情；许可见shared/rovai/LICENSE。
@@ -243,7 +244,7 @@ export function ToolCallDetail({
         <div className="tool-result-state" role="status">没有可展示的公开结果。</div>
       )}
       {result.status === 'failed' && (
-        <div className="tool-result-state is-error" role="alert">
+        <div className="tool-result-state is-error">
           <span className="tool-result-state-copy">
             <strong>{failedHeading}</strong>
             <span>{failedDetail}</span>

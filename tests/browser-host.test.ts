@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工默认读取和交互当前网页，无审批时仍核对参数hash/页面版本/真实开始握手。
  * [OUTPUT]: 明确关闭/清登录资料/退出可先终止阻塞页面，随后等待真实destroyed及旧动作结束；销毁失败不清资料，普通drain仍等待，未知不重放。
  * [OUTPUT]: 准备与ready期间关闭的并发回归覆盖认领及人工开窗；迟到成功/失败不得覆盖closed或阻止下一次明确重开。
  * [OUTPUT]: 同消息/run只读升级Work保留原页面refs，不允许另一run继承。
@@ -101,19 +102,19 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   await service.acquire({...writing,runId:'another-run',generation:'another-generation'})
   expect(cdp.invalidateRefs).toHaveBeenCalledTimes(1)
  })
- it('人工网页不授予员工读取权，但不阻止员工离开并导航到明确获准目标',async()=>{
+ it('员工默认可读取当前人工网页并导航到新网站',async()=>{
   const {service,lease,fake}=await fixture()
   const manual=await service.manualOpen({})
   await fake.manager.navigate(manual.instanceId,'https://manual.test/private')
   await service.acquire(lease)
   const blocked=await service.executeSingle(await envelope(service,lease,'snapshot'))
-  expect(blocked).toMatchObject({status:'cancelled_before_start',error:'当前页面不在获准来源范围'})
-  expect(fake.mocks.getAccessibilitySnapshot).not.toHaveBeenCalled()
+  expect(blocked).toMatchObject({status:'completed'})
+  expect(fake.mocks.getAccessibilitySnapshot).toHaveBeenCalledTimes(1)
   const navigated=await service.executeSingle(await envelope(service,lease,'navigate https://example.com/'))
   expect(navigated).toMatchObject({status:'completed',source:{url:'https://example.com/'}})
   expect((await service.executeSingle(await envelope(service,lease,'snapshot'))).status).toBe('completed')
   const forbidden=await service.executeSingle(await envelope(service,lease,'navigate https://unapproved.test/'))
-  expect(forbidden).toMatchObject({status:'cancelled_before_start',error:'尚未批准该网页来源'})
+  expect(forbidden).toMatchObject({status:'completed'})
  })
  it('打开内置浏览器只显示原窗口，不改写正在执行的工具调用',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease)
@@ -311,13 +312,13 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   expect(new Set([...fake.instances.values()].map(value=>value.partition)).size).toBe(1)
   expect(service.list()).toHaveLength(1)
  })
- it('批处理/伪造hash/无匹配批准在首个页面动作前拒绝',async()=>{
+ it('批处理和伪造hash仍拒绝，无审批的有效员工操作可执行',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease)
   const request=await envelope(service,lease,'navigate https://example.com')
   await expect(service.executeSingle({...request,command:'snapshot; navigate https://evil.test'})).rejects.toThrow('批处理')
   await expect(service.executeSingle({...request,argumentHash:'forged'})).rejects.toThrow('参数')
-  const click=await envelope(service,lease,'click @e1',false);expect((await service.executeSingle(click)).status).toBe('cancelled_before_start')
-  expect(fake.mocks.navigate).not.toHaveBeenCalled();expect(fake.mocks.clickElement).not.toHaveBeenCalled()
+  const click=await envelope(service,lease,'click @e1',false);expect((await service.executeSingle(click)).status).toBe('completed')
+  expect(fake.mocks.navigate).not.toHaveBeenCalled();expect(fake.mocks.clickElement).toHaveBeenCalledTimes(1)
  })
  it('已获准origin导航不重复审批，Main握手失败仍零执行',async()=>{
   const {service,lease,fake}=await fixture();await service.acquire(lease)

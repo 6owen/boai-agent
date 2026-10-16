@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 逐项测试进度/成功/失败复用连接标题同行反馈；菜单支持删除本机配置并刷新列表和员工能力，保留外部程序与登录文件。
  * [OUTPUT]: 消费Shell核对的具体本机配置导航，复用原编辑向导；失效绑定显示原列表，隐藏停止读取并关闭弹窗，迟到读取不更新界面。
  * [OUTPUT]: Claude仅展示实际程序核对，区别于模型认证和业务执行。
@@ -7,6 +8,7 @@
  * [POS]: settings 内嵌本机 Agent 分区，替代独立外部 Agent 页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ErrorToast } from '@/components/common/error-feedback'
 import { useEffect, useRef, useState } from 'react'
 import type { LaunchProfile } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
@@ -69,7 +71,7 @@ export function LocalAgents({ api, refresh, active, target }: { api: DesktopApi;
         <div className="connection-row-body">
           <div className="connection-row-title">
             <strong title={profile.name}>{profile.name}</strong><span className="connection-state" data-ready={!!profile.verified}>{profile.verified ? profile.protocol === 'claude-cli' ? '程序已核对' : '已验证' : '尚未测试'}</span>
-            {result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role={result.status === 'error' ? 'alert' : 'status'}>{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
+            {result?.status === 'error' ? <ErrorToast>{result.message}</ErrorToast> : result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role="status">{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
           </div>
           {profile.verified && <p className="connection-row-description">{profile.verified.name} {profile.verified.version}</p>}
           <p className="connection-endpoint" title={profile.executable}>{profile.executable}</p>

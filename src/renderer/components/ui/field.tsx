@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: field 基础组件及其可组合的样式/变体。
  * [POS]: components/ui 的 field 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ErrorToast } from '@/components/common/error-feedback'
 import { useMemo } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
@@ -216,16 +218,7 @@ function FieldError({
     return null
   }
 
-  return (
-    <div
-      role="alert"
-      data-slot="field-error"
-      className={cn("text-sm font-normal text-destructive", className)}
-      {...props}
-    >
-      {content}
-    </div>
-  )
+  return <ErrorToast>{content}</ErrorToast>
 }
 
 export {

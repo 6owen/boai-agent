@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
  * [INPUT]: 真实 AppService、SQLite、工作区与可控核心助手执行。
  * [OUTPUT]: 非空首发/具名团队请求同事务与空输入零对象、权威回执只读核对、可靠回滚空目录清理/未知提交保留、清空/删除最小回执不重放；并发/重启幂等和用户名称不可被模型覆盖；文件准备阻塞时停止及时持久受理、实际退出前容量不释放且不发布；原子团队发布与跨会话分层记忆的业务不变量。
  * [POS]: bobo 宿主集成验收，不替代 Mastra 协议和 Electron BDD。
@@ -273,4 +274,14 @@ test('文件准备暂停时仍及时受理用户停止；实际退出前不释�
     expect((await snapshot(service)).conversations.filter(value => value.kind === 'group')).toEqual([])
     expect(engine.creations).toBe(0)
   } finally { release() }
+})
+
+
+test('核心首发拒绝未绑定技能且不创建会话或回执', async () => {
+  const { service, engine } = await setup()
+  const before = await snapshot(service), core = before.agents.find(agent => agent.id === 'bobo')!
+  await expect(service.handle('startCoreConversation', { requestId: 'invalid-skill', content: '@不存在', composerReferences: [{ kind: 'skill', id: 'missing', agentId: core.id, name: '不存在', configVersion: core.configVersion }] })).rejects.toThrow('技能绑定已变化')
+  expect((await snapshot(service)).conversations).toEqual(before.conversations)
+  expect(await service.handle('getCoreConversationStart', { requestId: 'invalid-skill' })).toBeNull()
+  expect(engine.contexts).toEqual([])
 })

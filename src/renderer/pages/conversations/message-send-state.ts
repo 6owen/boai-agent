@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未决消息冻结资源引用并严格恢复，未知不重放。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道引用随原请求持久冻结/严格还原，不在重启后改指另一消息。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -8,6 +9,7 @@
  * [POS]: 会话发送请求的纯持久边界；沿用旧存储key以保留ACP未决身份，不调用模型或IPC。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { composerReferencesSchema } from '@shared/domain/composer-references'
 import { MATERIAL_LIMITS } from '@shared/domain/materials'
 import type { ChatDraft } from './presentation'
 
@@ -25,6 +27,7 @@ export function draftFingerprint(draft: ChatDraft) {
 function messageInput(value: unknown): Submission['input'] {
   if (!object(value) || typeof value.content !== 'string' || value.content.length > 100_000 || !Array.isArray(value.mentionIds) || value.mentionIds.length > 100 || !value.mentionIds.every(identity) || new Set(value.mentionIds).size !== value.mentionIds.length) throw invalid()
   const input: Submission['input'] = { content: value.content, mentionIds: [...value.mentionIds] }
+  if (value.composerReferences !== undefined) input.composerReferences = composerReferencesSchema.parse(value.composerReferences)
   if (value.channelReference !== undefined) {
     const ref = value.channelReference
     if (!object(ref) || !identity(ref.conversationId) || !identity(ref.messageId) || typeof ref.contentHash !== 'string' || !/^[a-f0-9]{64}$/.test(ref.contentHash)) throw invalid()
@@ -75,7 +78,7 @@ export function restorePendingMessageDrafts(value: unknown): Map<string, ChatDra
       if (!identity(id) || !object(item) || !identity(item.requestId) || item.schemaVersion !== 2 || !['message', 'external'].includes(String(item.kind))) throw invalid()
       kind = item.kind === 'external' ? 'external' : undefined
       input = messageInput(item.input)
-      if (kind === 'external' && (!input.content.trim() || input.mentionIds.length || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.materialReference || input.channelReference)) throw invalid()
+      if (kind === 'external' && (!input.content.trim() || input.mentionIds.length || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.materialReference || input.channelReference || input.composerReferences?.length)) throw invalid()
     }
     const draft: ChatDraft = { text: input.content, mentionIds: [...input.mentionIds], ...(input.channelReference ? { channelReference: input.channelReference } : {}), ...(input.replyToMessageId ? { replyId: input.replyToMessageId } : {}) }
     draft.submission = { ...(kind ? { kind } : {}), requestId: item.requestId as string, status: 'unknown', fingerprint: draftFingerprint(draft), input }

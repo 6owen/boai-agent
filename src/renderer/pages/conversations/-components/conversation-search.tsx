@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
  * [INPUT]: 普通搜索 Dialog 的活跃状态、可选类型/可见会话/员工与shadcn Calendar日期范围、稳定 SQL/索引代际游标、正文命中与覆盖回执和点击来源复核。
  * [OUTPUT]: 顶部统一关键词、单行 sm 同款 secondary 类型/会话/员工/时间筛选和混合结果，时间未选占位与其他筛选同色、选中后显示正文色；正文摘录/位置、多词原词高亮、索引覆盖与有界失败可见，明确继续回填不调用模型；范围与会话列表可见配置一致，日期按本地起止日筛选；查询刷新不注销有效导航，关闭/条件改变/来源清理隔离迟到响应，所选来源移除时拒绝控件自动回退全部范围。
@@ -13,7 +14,7 @@ import type { Snapshot } from '@shared/domain'
 import { READING_LIMITS, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@shared/domain/reading'
 import type { DesktopApi } from '@shared/ipc'
 import { errorText, Loading } from '@/components/common'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ErrorToast } from '@/components/common/error-feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -112,8 +113,8 @@ export function ConversationSearch({ api, active, snapshot, selectedId, request,
     </FieldGroup>
     <Separator />
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4" aria-label="搜索结果" aria-busy={loading}>
-      {invalid && <Alert variant="destructive"><AlertDescription>{invalid}</AlertDescription></Alert>}
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription><Button variant="ghost" size="sm" onClick={() => { generation.current++; navigationGeneration.current++; setOpening(''); setRefresh(value => value + 1) }}>重新搜索</Button></Alert>}
+      {invalid && <ErrorToast>{invalid}</ErrorToast>}
+      {error && <><ErrorToast>{error}</ErrorToast><Button variant="ghost" size="sm" onClick={() => { generation.current++; navigationGeneration.current++; setOpening(''); setRefresh(value => value + 1) }}>重新搜索</Button></>}
       {!query.trim() && <Empty className="flex-1"><EmptyHeader><EmptyMedia variant="icon"><Search /></EmptyMedia><EmptyTitle>查找会话内容</EmptyTitle><EmptyDescription>输入关键词查找会话、消息或文件，筛选条件可以留空。</EmptyDescription></EmptyHeader></Empty>}
       {loading && <Loading>正在搜索…</Loading>}
       {result?.coverage && <section aria-label="文件正文索引覆盖" className="flex flex-col gap-2 rounded-md border p-3"><p className="field-hint">文件正文：已索引 {result.coverage.indexed} / {result.coverage.total} 项 · 待处理 {result.coverage.pending} 项 · 失败 {result.coverage.failed} 项 · 跳过 {result.coverage.skipped} 项</p>

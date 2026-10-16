@@ -1,4 +1,12 @@
 /*
+ * [OUTPUT]: 单条定时执行记录按所见版本删除；成功广播历史删除事件，关闭各页同源过程面板。
+ * [OUTPUT]: 数据源编辑器专用getDataSourceCredential按ID/版本回填已保存值，普通列表/详情合同不携凭据。
+ * [OUTPUT]: 执行卡片通过resolveExecutionMessage核对实际聊天消息后定位；隐藏可显式打开，已删不复活。
+ * [OUTPUT]: 新增本地共享技能hash写入/移除接口和普通bobo目录操作结果查询。
+ * [OUTPUT]: 命令审批支持显式记住员工授权；独立版本化撤销接口不改活动运行配置。
+ * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
+ * [OUTPUT]: 日程预览新增startsOn/dayOfMonth，与手动和bobo计划保存一致。
+ * [OUTPUT]: Composer可读取本机模型目录及原生推理档位。
  * [OUTPUT]: 运行时插件目录查询/CAS启停/卸载和原生选择安装的类型化合同。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 内置插件配置快照/版本化启停与局部变化事件；无外部包或代码入口。
@@ -51,6 +59,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'automation:history-deleted'; occurrenceId: string }
   | { type: 'plugins:changed'; settings: PluginSettingsSnapshot }
   | { type: 'desktop:changed'; settings: DesktopSettings }
   | { type: 'appearance:flush' }
@@ -67,6 +76,15 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listCatalogResults: { input: { conversationId: string }; output: import('../domain/catalog-management').CatalogResult[] }
+  listDataSources: { input: undefined; output: import('../domain/sources').DataSource[] }
+  getDataSource: { input: { id: string }; output: import('../domain/sources').DataSource }
+  getDataSourceCredential: { input: import('../domain/sources').DataSourceIdentity; output: string }
+  saveDataSource: { input: import('../domain/sources').SaveDataSourceInput; output: import('../domain/sources').DataSource }
+  testDataSource: { input: import('../domain/sources').DataSourceIdentity; output: import('../domain/sources').DataSource }
+  removeDataSource: { input: import('../domain/sources').DataSourceIdentity; output: void }
+  setDataSourceBindings: { input: import('../domain/sources').DataSourceBindingsInput; output: import('../domain/sources').DataSource }
+  chooseDataSourceFolder: { input: undefined; output: string | null }
   listRuntimePlugins: { input: undefined; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
   installRuntimePlugin: { input: { expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog | null }
   setRuntimePluginEnabled: { input: { id: string; enabled: boolean; expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
@@ -84,6 +102,7 @@ export interface Methods {
   removeChannelBinding: { input: import('../domain/channels').ChannelBindingAction; output: void }
   listChannelDeliveries: { input: { agentId: string }; output: import('../domain/channels').ChannelDelivery[] }
   listExecutionHistory: { input: import('../domain/execution').ExecutionHistoryQuery; output: import('../domain/execution').ExecutionHistoryPage }
+  resolveExecutionMessage: { input: { conversationId: string; runId: string }; output: { conversationId: string; messageId: string } }
   listExecutionEvidence: { input: import('../domain/execution').ExecutionEvidenceQuery; output: import('../domain/execution').ExecutionEvidencePage }
   listExecutionWindow: { input: import('../domain/execution').ExecutionWindowQuery; output: import('../rovai/contracts').AgentRunExecutionBlockPage | import('../rovai/contracts').AgentRunExecutionBlockChanges }
   getExecutionContent: { input: { conversationId: string; runId: string; evidenceId: string; offset: number }; output: { content: string; length: number; revision: number; next?: number } }
@@ -93,6 +112,7 @@ export interface Methods {
 
   listEmployeeExecutions: { input: import('../domain/employee-executions').EmployeeExecutionQuery; output: import('../domain/employee-executions').EmployeeExecutionPage }
   getEmployeeExecution: { input: { agentId: string; runId: string }; output: import('../domain/employee-executions').EmployeeExecutionDetail }
+  getLaunchProfileModelCatalog: { input: { id: string }; output: NonNullable<import('../domain/execution').NativeAgentInfo['models']> }
   listLaunchProfileModels: { input: { id: string }; output: string[] }
   queryWorkViews: { input: import('../domain/work-views').WorkViewQuery; output: import('../domain/work-views').WorkViewPage }
   queryConversationFiles: { input: import('../domain/work-views').ConversationFileQuery; output: import('../domain/work-views').ConversationFilePage }
@@ -142,6 +162,8 @@ export interface Methods {
   listTeamCreationRecovery: { input: undefined; output: TeamRecovery }
   getContactList: { input: undefined; output: ContactListPreferences }
   updateContactList: { input: { expectedRevision: number; action: ContactListAction }; output: ContactListPreferences }
+  saveLocalSkill: { input: { id?: string; name?: string; content: string; expectedHash: string | null }; output: LocalSkillDetail & { contentHash: string; treeHash: string } }
+  removeLocalSkill: { input: { id: string; expectedHash: string }; output: { removed: boolean; id: string } }
   listLocalSkills: { input: { refresh?: boolean } | undefined; output: LocalSkillCatalog }
   getLocalSkillDetail: { input: { id: string }; output: LocalSkillDetail }
   scanLocalSkill: { input: { id: string; ownerAgentId?: string; requestId?: string }; output: SkillScan }
@@ -183,6 +205,7 @@ export interface Methods {
   listOwnerAutomations: { input: import('../domain/automations').AutomationListQuery; output: import('../domain/automations').AutomationListPage }
   getPendingAutomationNavigation: { input: undefined; output: { automationId: string; occurrenceId: string; conversationId?: string; messageId?: string } | null }
   getAutomationOccurrence: { input: { id: string }; output: AutomationHistoryPage['occurrences'][number] }
+  deleteAutomationOccurrence: { input: { id: string; expectedVersion: number }; output: void }
   listAutomationHistory: { input: AutomationHistoryQuery; output: AutomationHistoryPage }
   saveAutomation: { input: AutomationInput; output: AutomationDefinition }
   getAutomationCreation: { input: { requestId: string }; output: AutomationDefinition | null }
@@ -193,7 +216,7 @@ export interface Methods {
   runAutomation: { input: {id:string;requestId:string}; output: AutomationOccurrence }
   stopAutomation: { input: {id:string}; output: void }
   replyAutomation: { input: {occurrenceId:string;content:string;requestId:string;question?:{expectedVersion:number;questionMessageId:string};renewBudget?:AutomationBudgetRenewalInput}; output: Message }
-  previewAutomation: { input: Pick<AutomationInput, 'frequency' | 'time' | 'weekday' | 'daysOfWeek' | 'timezone'>; output: {nextTimes:string[]} }
+  previewAutomation: { input: Pick<AutomationInput, 'frequency' | 'time' | 'weekday' | 'daysOfWeek' | 'timezone' | 'startsOn' | 'dayOfMonth'>; output: {nextTimes:string[]} }
   listLaunchProfiles: { input: undefined; output: LaunchProfile[] }
   getLaunchProfileStatus: { input: { id: string }; output: LaunchProfileStatus }
   saveLaunchProfile: { input: LaunchProfileInput; output: LaunchProfile }
@@ -239,10 +262,11 @@ export interface Methods {
   setMaterialAuthorization: { input: { id: string; expectedRevision: number; authorizedAgentIds: string[] }; output: ConversationMaterial }
   getMessageReceipt: { input: { requestId: string }; output: Message | null }
   referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
-  sendMessage: { input: { channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  sendMessage: { input: { composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   cancelRun: { input: { conversationId: string; workId?: string; runId?: string }; output: void }
-  approve: { input: { id: string; approved: boolean }; output: void }
+  approve: { input: { id: string; approved: boolean; always?: boolean }; output: void }
+  revokeCommandPermission: { input: { agentId: string; revision: string }; output: void }
   importResource: { input: { kind: Resource['kind']; path: string; ownerAgentId?: string }; output: Resource }
   removeResource: { input: { id: string }; output: void }
   retryRun: { input: { id: string; requestId: string }; output: void }

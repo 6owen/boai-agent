@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原子标签保存成员或资源身份，复制纯文字不伪造引用。
  * [INPUT]: Tiptap/ProseMirror 原子节点与 DOM NodeView、共享草稿及主题按钮 class。
  * [OUTPUT]: 文字/换行/成员标签编辑模型；标签外层提供字体高度的 DOM 光标边界，内层复用按钮皮肤；辅助字符不进入草稿或复制序列化，保留原子删除和编辑历史。
  * [POS]: 群聊 composer 的编辑模型，不改变消息/点名 IPC。
@@ -29,7 +30,7 @@ export function mentionExtensions(tagClass: string) {
     Node.create({ name: 'hardBreak', inline: true, group: 'inline', selectable: false, parseHTML: () => [{ tag: 'br' }], renderHTML: () => ['br'] }),
     Node.create({
       name: 'mention', inline: true, group: 'inline', atom: true, selectable: true,
-      addAttributes: () => ({ id: { default: '' }, label: { default: '' } }),
+      addAttributes: () => ({ id: { default: '' }, label: { default: '' }, resource: { default: null, rendered: false } }),
       renderHTML: ({ node }) => ['span', { class: tagClass, 'data-mention-id': node.attrs.id, contenteditable: 'false' }, `@${node.attrs.label}`],
       renderText: ({ node }) => `@${node.attrs.label}`,
       addNodeView: () => ({ node }) => {
@@ -77,7 +78,7 @@ export function mentionDocument(draft: ChatDraft): JSONContent {
   const content: JSONContent[] = []
   let offset = 0
   for (const mention of draftMentions(draft)) {
-    content.push(...textNodes(draft.text.slice(offset, mention.start)), { type: 'mention', attrs: { id: mention.id, label: mention.label } })
+    content.push(...textNodes(draft.text.slice(offset, mention.start)), { type: 'mention', attrs: { id: mention.id, label: mention.label, resource: mention.resource ?? null } })
     offset = mention.end
   }
   content.push(...textNodes(draft.text.slice(offset)))
@@ -91,10 +92,10 @@ export function documentDraft(doc: DocumentNode, draft: ChatDraft): ChatDraft {
   const mentions: DraftMention[] = []
   doc.firstChild?.forEach(node => {
     const value = nodeText(node)
-    if (node.type.name === 'mention') mentions.push({ id: node.attrs.id, label: node.attrs.label, start: text.length, end: text.length + value.length })
+    if (node.type.name === 'mention') mentions.push({ id: node.attrs.id, label: node.attrs.label, ...(node.attrs.resource ? { resource: node.attrs.resource } : {}), start: text.length, end: text.length + value.length })
     text += value
   })
-  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.map(mention => mention.id))] }
+  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.filter(mention => !mention.resource).map(mention => mention.id))] }
 }
 
 /** Document atoms occupy one position; draft offsets retain the full visible label. */

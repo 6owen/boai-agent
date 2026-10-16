@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 有效员工租约默认允许HTTP(S)浏览和交互，无域名或逐次审批门禁；旧页面版本、真实开始握手、取消/退出及下载核验保持。
  * [OUTPUT]: 用户明确关闭/清登录资料/应用退出先封禁原租约并实际销毁页面，解除挂起动作后仍等待真实退出；资料仅退出后清除，普通drain语义不变。
  * [OUTPUT]: 窗口准备与ready期间关闭后，迟到成功/失败均不能恢复旧状态或重新认领；关闭后明确新开窗保持。
  * [OUTPUT]: 页面实际变化后回传refs失效及snapshot下一步，避免沿用填表前节点。
@@ -22,7 +23,7 @@ import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownloa
 const PAGE_STATE_EXPRESSION = `(() => ({url:location.href,title:document.title,html:(document.documentElement?.outerHTML||'').slice(0,2000000),forms:Array.from(document.querySelectorAll('input,textarea,select')).slice(0,1000).map(e=>({type:e.type,name:e.name,value:e.type==='password'?'[redacted]':String(e.value).slice(0,2000),checked:e.checked,disabled:e.disabled}))}))()`
 interface Profile { scopeKey: string; partition: string; status: 'ready' | 'clearing' | 'cleared'; retiredLeases?: string[] }
 interface Scope {
-  lease?: BrowserLease; state: BrowserWindowState; partition: string; active: boolean; origins: Set<string>
+  lease?: BrowserLease; state: BrowserWindowState; partition: string; active: boolean
   queue: Promise<void>; inFlight?: Promise<BrowserActionReply>; actionReplies: Map<string, { hash: string; reply?: BrowserActionReply; pending?: Promise<BrowserActionReply> }>
   draining?: Promise<{ drained: true }>
   closing?: Promise<void>
@@ -66,7 +67,7 @@ export class BrowserService {
         const scope = this.byInstance(id), target = origin(url)
         if (!scope || !target || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return null
         if (!scope.performingAgentAction) return { kind: 'native' }
-        return scope.active && scope.lease && scope.origins.has(target) ? { kind: 'managed', directory: scope.lease.downloadDirectory } : null
+        return scope.active && scope.lease ? { kind: 'managed', directory: scope.lease.downloadDirectory } : null
       },
       allowUserNavigation: id => { const scope = this.byInstance(id); return !!scope && !scope.state.clearing && !['closing', 'closed'].includes(scope.state.control) },
       userNavigation: (id, operation) => this.navigateByUser(id, operation),
@@ -101,10 +102,7 @@ export class BrowserService {
   private allowedNavigation(id: string, url: string): boolean {
     const scope = this.byInstance(id), target = origin(url)
     if (!scope || !target || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return false
-    // An acquired task lease never locks ordinary browsing. Only the actual
-    // employee action uses its frozen approved origins; human navigation does
-    // not add those URLs to the employee's authorization or tool receipts.
-    return !scope.performingAgentAction || scope.origins.has(target)
+    return true
   }
   private navigateByUser(id: string, operation: () => Promise<void>): Promise<void> {
     const scope = this.byInstance(id)
@@ -172,7 +170,7 @@ export class BrowserService {
       if (this.shuttingDown) throw new Error('浏览器正在退出，不再打开新窗口')
       const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
       const scope: Scope = {
-        partition, active: false, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
+        partition, active: false, queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
         state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: '0', url: 'about:blank', title: '新网页', isLoading: false, isVisible: false, toolbarReady: false, control: 'user-controlled' },
       }
       this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
@@ -217,7 +215,7 @@ export class BrowserService {
     if (this.retiredRuns.has(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器执行代际已退出')
     const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
     const scope: Scope = {
-      lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageHash: existing?.pageHash, pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
+      lease: structuredClone(lease), partition, active: true, queue: Promise.resolve(), actionReplies: new Map(), pageHash: existing?.pageHash, pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
       state: { scopeKey: APPLICATION_BROWSER_SCOPE, instanceId, revision: existing?.state.revision ?? 0, pageVersion: existing?.state.pageVersion ?? '0', url: existing?.state.url ?? 'about:blank', title: existing?.state.title ?? '新网页', isLoading: existing?.state.isLoading ?? false, isVisible: existing?.state.isVisible ?? false, toolbarReady: false, control: 'agent-controlled' },
     }
     this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
@@ -293,13 +291,7 @@ export class BrowserService {
       try {
         this.require(envelope.lease)
         const current = await this.inspect(envelope.lease)
-        if (envelope.expectedPageVersion && current?.pageVersion !== envelope.expectedPageVersion) throw new Error('网页已变化，请重新获取页面并审批')
-        const approved = envelope.approvedOrigins.map(value => origin(value))
-        if (approved.some(value => !value) || approved.length > 20) throw new Error('浏览任务的网页来源授权无效')
-        scope.origins = new Set(approved as string[])
-        if (parsed.targetUrl && !scope.origins.has(origin(parsed.targetUrl)!)) throw new Error('尚未批准该网页来源')
-        if (parsed.action !== 'navigate' && current?.url !== 'about:blank' && !scope.origins.has(origin(current?.url ?? '')!)) throw new Error('当前页面不在获准来源范围')
-        if (parsed.mutating && parsed.action !== 'navigate' && (!envelope.approval || envelope.approval.commandHash !== argumentHash || envelope.approval.pageVersion !== current?.pageVersion || envelope.approval.url !== current?.url)) throw new Error('网页操作缺少对应当前页面与内容的明确批准')
+        if (envelope.expectedPageVersion && current?.pageVersion !== envelope.expectedPageVersion) throw new Error('网页已变化，请重新获取页面后再操作')
         await beforeStart?.()
         this.require(envelope.lease)
         if (current && (await this.inspect(envelope.lease))?.pageVersion !== current.pageVersion) throw new Error('持有者确认期间网页发生变化，请重新核对')
@@ -387,7 +379,7 @@ export class BrowserService {
     const entries = await this.manager.getDownloads(scope.state.instanceId, { action: 'list', limit: 20 }), out: BrowserCompletedDownload[] = []
     const directory = await realpath(scope.lease.downloadDirectory)
     for (const entry of entries) {
-      if (entry.state !== 'completed' || !entry.savePath || !origin(entry.url) || !scope.origins.has(origin(entry.url)!)) continue
+      if (entry.state !== 'completed' || !entry.savePath || !origin(entry.url)) continue
       const candidate = relative(directory, resolve(entry.savePath)), selected = relative(resolve(scope.lease.downloadDirectory), resolve(entry.savePath))
       if ((candidate.startsWith('..') || isAbsolute(candidate)) && (selected.startsWith('..') || isAbsolute(selected))) continue
       if ((await lstat(entry.savePath)).isSymbolicLink()) throw new Error('下载原件不是受管普通文件')
@@ -493,7 +485,7 @@ export class BrowserService {
     }
     profile.status = 'cleared'; await this.saveRegistry()
     if (scope) {
-      scope.pageHash = undefined; scope.pageCounter = 0; scope.actionReplies.clear(); scope.origins.clear()
+      scope.pageHash = undefined; scope.pageCounter = 0; scope.actionReplies.clear()
       Object.assign(scope.state, { control: 'closed', clearing: false, url: 'about:blank', title: '新网页', pageVersion: '0', isLoading: false, isVisible: false, toolbarReady: false })
       delete scope.state.error
       this.emit(scope)

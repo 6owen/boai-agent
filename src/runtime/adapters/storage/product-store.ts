@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 定时执行历史与计划最近结果在分页/统计前排除已删除墓碑。
+ * [OUTPUT]: 公开消息write/transaction共用提交钩子，记录首次插入与更新；业务可见性在原事务提交前完成，内存/通知仅在成功提交后更新。
+ * [OUTPUT]: 执行历史按occurrence持久runIds和会话身份先过滤后分页，旧共用会话的其他运行不混入。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 员工/群归属计划在SQL分页前筛选，固定更新时间/ID游标，不读取其他owner计划正文。
  * [OUTPUT]: 2026-10-14 事务内精确选择房间引用记录，供显式空闲历史归一，普通消息查询门槛保持。
@@ -70,6 +73,7 @@ function invalidateSearchBodies(collection: string, id: string, value?: string) 
 }
 
 export interface StoredRecord { collection: string; id: string; value: unknown }
+export interface MessageCommit { message: import('../../../shared/domain').Message; inserted: boolean }
 export interface RecordTransaction {
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
@@ -84,6 +88,9 @@ export interface RecordTransaction {
 export class ProductStore {
   private client!: Client
   private tail: Promise<unknown> = Promise.resolve()
+  private messageCommit?: (tx: RecordTransaction, messages: MessageCommit[]) => Promise<() => void>
+  /** Product reception is part of the original write transaction, before acknowledgement. */
+  onMessageCommit(handler: (tx: RecordTransaction, messages: MessageCommit[]) => Promise<() => void>) { this.messageCommit = handler }
   constructor(readonly filename: string) {}
   /** Inspect an existing database without changing startup/index state or acquiring a writer. */
   static async openReadOnly(filename: string): Promise<Pick<ProductStore, 'load' | 'close'>> {
@@ -138,7 +145,7 @@ export class ProductStore {
       }
       if (query.before) { filters.push("(json_extract(d.value,'$.updatedAt')<? OR (json_extract(d.value,'$.updatedAt')=? AND d.id<?))"); args.push(query.before.updatedAt, query.before.updatedAt, query.before.id) }
       const limit = Math.max(1, Math.min(query.limit ?? 30, 100))
-      const result = await this.client.execute({ sql: `SELECT d.value,(SELECT json_object('id',o.id,'status',json_extract(o.value,'$.status'),'deliveryStatus',json_extract(o.value,'$.deliveryStatus'),'startedAt',json_extract(o.value,'$.startedAt'),'finishedAt',json_extract(o.value,'$.finishedAt')) FROM records o WHERE o.collection='automationOccurrences' AND json_extract(o.value,'$.automationId')=d.id ORDER BY COALESCE(json_extract(o.value,'$.finishedAt'),json_extract(o.value,'$.startedAt')) DESC,o.id DESC LIMIT 1) AS latest FROM records d WHERE ${filters.join(' AND ')} ORDER BY json_extract(d.value,'$.updatedAt') DESC,d.id DESC LIMIT ?`, args: [...args, limit + 1] })
+      const result = await this.client.execute({ sql: `SELECT d.value,(SELECT json_object('id',o.id,'status',json_extract(o.value,'$.status'),'deliveryStatus',json_extract(o.value,'$.deliveryStatus'),'startedAt',json_extract(o.value,'$.startedAt'),'finishedAt',json_extract(o.value,'$.finishedAt')) FROM records o WHERE o.collection='automationOccurrences' AND json_extract(o.value,'$.deletedAt') IS NULL AND json_extract(o.value,'$.automationId')=d.id ORDER BY COALESCE(json_extract(o.value,'$.finishedAt'),json_extract(o.value,'$.startedAt')) DESC,o.id DESC LIMIT 1) AS latest FROM records d WHERE ${filters.join(' AND ')} ORDER BY json_extract(d.value,'$.updatedAt') DESC,d.id DESC LIMIT ?`, args: [...args, limit + 1] })
       const definitions = result.rows.slice(0, limit).map(row => ({ ...JSON.parse(String(row.value)) as AutomationDefinition, ...(row.latest ? { latestOccurrence: JSON.parse(String(row.latest)) as AutomationListPage['definitions'][number]['latestOccurrence'] } : {}) }))
       const last = definitions.at(-1)
       return { definitions, ...(result.rows.length > limit && last ? { nextCursor: { updatedAt: last.updatedAt, id: last.id } } : {}) }
@@ -148,6 +155,7 @@ export class ProductStore {
     return this.enqueue(async () => {
       const args: (string | number)[] = [query.conversationId]
       const filters = ["r.collection='runs'", "json_extract(r.value,'$.conversationId')=?", "COALESCE(json_extract(r.value,'$.phase'),'execution')='execution'", "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
+      if (query.occurrenceId) { filters.push("EXISTS (SELECT 1 FROM records o,json_each(json_extract(o.value,'$.runIds')) run WHERE o.collection='automationOccurrences' AND o.id=? AND json_extract(o.value,'$.conversationId')=json_extract(r.value,'$.conversationId') AND run.value=r.id)"); args.push(query.occurrenceId) }
       if (query.agentId) { filters.push("json_extract(r.value,'$.agentId')=?"); args.push(query.agentId) }
       if (query.before) { filters.push("(json_extract(r.value,'$.createdAt')<? OR (json_extract(r.value,'$.createdAt')=? AND r.id<?))"); args.push(query.before.createdAt, query.before.createdAt, query.before.id) }
       const result = await this.client.execute({ sql: `SELECT json_remove(r.value,'$.toolEvents','$.draft','$.progress') AS value, substr(json_extract(m.value,'$.content'),1,1000) AS trigger FROM records r JOIN records m ON m.collection='messages' AND m.id=json_extract(r.value,'$.triggerMessageId') WHERE ${filters.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT 21`, args })
@@ -289,7 +297,7 @@ export class ProductStore {
   /** Stable keyset pagination: new inserts and removals cannot shift an older page's boundary. */
   automationHistory(query: AutomationHistoryQuery & { limit: number; id?: string }): Promise<AutomationHistoryPage> {
     return this.enqueue(async () => {
-      const where = ["collection = 'automationOccurrences'"], args: (string | number)[] = []
+      const where = ["collection = 'automationOccurrences'", "json_extract(value, '$.deletedAt') IS NULL"], args: (string | number)[] = []
       if (query.id) { where.push('id = ?'); args.push(query.id) }
       if (query.automationId) { where.push("json_extract(value, '$.automationId') = ?"); args.push(query.automationId) }
       if (query.search?.trim()) { where.push("instr(lower(json_extract(value, '$.name')), lower(?)) > 0"); args.push(query.search.trim()) }
@@ -357,6 +365,13 @@ export class ProductStore {
     })
   }
   write(records: StoredRecord[], removals: { collection: string; id: string }[] = []): Promise<void> {
+    if (this.messageCommit && records.some(record => record.collection === 'messages')) {
+      const snapshot = structuredClone(records), removed = structuredClone(removals)
+      return this.transaction(async tx => {
+        for (const record of snapshot) await tx.put(record)
+        for (const record of removed) await tx.remove(record.collection, record.id)
+      })
+    }
     // Serialize now so a later in-memory change cannot alter this transaction.
     const statements = records.flatMap(record => { const value = JSON.stringify(record.value); return [...advanceWorkViewClock(record.collection), ...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id, value), ...invalidateSearchBodies(record.collection, record.id, value), { sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] }] })
     statements.push(...removals.flatMap(record => [...advanceWorkViewClock(record.collection), ...advanceCandidateClock(record.collection), ...advanceRankingClock(record.collection, record.id), ...invalidateSearchBodies(record.collection, record.id), { sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [record.collection, record.id] }]))
@@ -367,7 +382,8 @@ export class ProductStore {
     return this.enqueue(async () => {
       const transaction = await this.beginWriteTransaction()
       try {
-        const result = await operation({
+        const messages = new Map<string, MessageCommit>()
+        const records: RecordTransaction = {
           conversationRecords: async ids => {
             if (!ids.length) return []
             const placeholders = ids.map(() => '?').join(',')
@@ -389,6 +405,10 @@ export class ProductStore {
           },
           put: async record => {
             const value = JSON.stringify(record.value)
+            if (this.messageCommit && record.collection === 'messages') {
+              const inserted = messages.get(record.id)?.inserted ?? !(await records.get('messages', record.id))
+              messages.set(record.id, { message: JSON.parse(value), inserted })
+            }
             for (const statement of advanceWorkViewClock(record.collection)) await transaction.execute(statement)
             for (const statement of advanceCandidateClock(record.collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(record.collection, record.id, value)) await transaction.execute(statement)
@@ -396,14 +416,18 @@ export class ProductStore {
             await transaction.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: [record.collection, record.id, value] })
           },
           remove: async (collection, id) => {
+            if (collection === 'messages') messages.delete(id)
             for (const statement of advanceWorkViewClock(collection)) await transaction.execute(statement)
             for (const statement of advanceCandidateClock(collection)) await transaction.execute(statement)
             for (const statement of advanceRankingClock(collection, id)) await transaction.execute(statement)
             for (const statement of invalidateSearchBodies(collection, id)) await transaction.execute(statement)
             await transaction.execute({ sql: 'DELETE FROM records WHERE collection=? AND id=?', args: [collection, id] })
           },
-        })
+        }
+        const result = await operation(records)
+        const committed = messages.size && this.messageCommit ? await this.messageCommit(records, [...messages.values()]) : undefined
         await transaction.commit()
+        committed?.()
         return result
       } catch (error) {
         if (!transaction.closed) await transaction.rollback()

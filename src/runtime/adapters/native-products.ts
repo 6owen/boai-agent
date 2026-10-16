@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 普通bobo目录管理与API共用object根schema/宿主回调，观测省略正文与凭据。
+ * [OUTPUT]: 原生产品桥沿同一create_data_source schema/宿主回调保存配置；观测省略敏感输入。
+ * [OUTPUT]: 本机员工复用数据源目录和调用桥，凭据留在宿主，退出等待会话清理。
  * [OUTPUT]: 产品工具MCP对象根schema显式完整；report_work返回待发布状态及必须出现的答复证据，不提前宣称交付。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [OUTPUT]: 当前本人对话可调用共用计划管理工具，不为保存计划创建Work；来源与幂等均由宿主服务核验。
@@ -8,7 +11,11 @@
  * [POS]: BOAI业务边界与原生工具目录之间的薄桥。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogObservation } from '../modules/resources/catalog-commands'
+import { sourceCreationSchema, sourceCreationDescription, sourceCreationObservation } from '../modules/sources/source-commands'
 import { z } from 'zod'
+import { sourceCallSchema } from '../../shared/domain/sources'
+import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription } from './mastra/source-tools'
 import path from 'node:path'
 import { realpath } from 'node:fs/promises'
 import type { EngineContext } from '../contracts'
@@ -38,7 +45,14 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
+  if (context.dataSources?.length && context.inspectDataSource && context.callDataSource) definitions.push(
+    { name: 'inspect_data_source', description: sourceInspectDescription(context), schema: sourceInspectSchema },
+    { name: 'call_data_source', description: sourceCallDescription, schema: sourceCallSchema },
+  )
   if (context.nativeBrowserSession) definitions.push({name:'browser_tool',description:browserToolDescription + ' Read-only page access creates no Work. A real write operation creates Work lazily; after verifying actual business results call report_work with that evidence before your final reply.',schema:browserToolSchema})
+  if (context.manageSkills) definitions.push({ name: 'manage_skills', description: manageSkillsDescription, schema: manageSkillsSchema })
+  if (context.manageDataSources) definitions.push({ name: 'manage_data_sources', description: manageSourcesDescription, schema: manageSourcesSchema })
+  if (context.createDataSource) definitions.push({ name: 'create_data_source', description: sourceCreationDescription, schema: sourceCreationSchema })
   if (context.manageAutomation) definitions.push({ name: 'manage_automation', description: automationToolDescription + ` Current owner: ${JSON.stringify(context.automationOwner)}. Current members: ${JSON.stringify(context.members?.map(({ id, name, role }) => ({ id, name, role })))}. Default timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`, schema: automationCommandToolSchema })
   if (isCoreAgent(context.agent) && context.legacyTeamName) definitions.push({ name: 'create_team', description: 'Create the explicitly requested named team and its independent employees, inheriting this employee execution configuration. Use the committed result for the final reply; do not repeat after an unknown receipt.', schema: teamModelPlanSchema })
   const organizationFields = { mode: z.enum(['employee_creation', 'organize_only', 'organize_and_execute']), goal: z.string().min(1) }
@@ -57,13 +71,17 @@ export function createNativeProducts(context: EngineContext) {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        const observedInput=name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
+        const observedInput=['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
         if(name==='browser_tool') result=summarizeMedia(result)
         await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
         await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
       }
       await emit(false)
       try {
+        if (name === 'inspect_data_source' || name === 'call_data_source') {
+          const result = name === 'inspect_data_source' ? await context.inspectDataSource!(String(parsed.sourceId)) : await context.callDataSource!(sourceCallSchema.parse(parsed))
+          await emit(true, result); return result
+        }
         if (name === 'send_message') {
           if (!context.publishNativeMessage) throw new Error('公开消息接口未接入')
           const result = await context.publishNativeMessage(String(parsed.content), callId)
@@ -85,6 +103,8 @@ export function createNativeProducts(context: EngineContext) {
           browserQueue=operation
           const result=await operation;await emit(true,result);return result
         }
+        if (name === 'manage_skills' || name === 'manage_data_sources') { const result = name === 'manage_skills' ? await context.manageSkills!(manageSkillsSchema.parse(parsed)) : await context.manageDataSources!(manageSourcesSchema.parse(parsed)); await emit(true, result); return result }
+        if (name === 'create_data_source') { const result = await context.createDataSource!(sourceCreationSchema.parse(parsed)); await emit(true, result); return result }
         if (name === 'manage_automation') {
           const result = await context.manageAutomation!(automationCommandSchema.parse(parsed))
           await emit(true, result); return result
@@ -130,5 +150,5 @@ export function createNativeProducts(context: EngineContext) {
       } catch (error) { await emit(true, { error: error instanceof Error ? error.message : String(error) }, true); throw error }
     },
   }))
-  return { tools, dispose: async () => { if (runtime) await (await runtime.catch(() => undefined))?.dispose() } }
+  return { tools, dispose: async () => { try { await context.closeDataSources?.() } finally { if (runtime) await (await runtime.catch(() => undefined))?.dispose() } } }
 }

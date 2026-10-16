@@ -1,0 +1,24 @@
+Craft Agents
+Copyright 2026 Craft Docs Ltd.
+
+This product includes software developed by Craft Docs Ltd.
+https://craft.do
+
+---
+
+This project uses the Claude Agent SDK, which is subject to Anthropic's
+Commercial Terms of Service: https://www.anthropic.com/legal/commercial-terms
+
+---
+
+Third-party dependencies are listed in package.json files and are subject
+to their respective licenses.
+
+BOAI retained-source notice
+Upstream: https://github.com/craft-ai-agents/craft-agents-oss
+Commit: 22c9f0414ab63e0a22814c9a2ada740206e09091
+api-auth.ts: packages/session-tools-core/src/api-auth.ts, unchanged logic.
+api-request.ts: packages/shared/src/sources/api-tools.ts, retained credential getter, URL/header/body assembly and executeApiRequest. Removed Claude SDK tool wrapper, debug logging and summarizer dependencies; uses a minimal host configuration contract, forbids redirects, caps streamed response bytes at 4 MiB, cancels rejected bodies.
+Source types and MCP transport configuration follow packages/shared/src/sources/types.ts and server-builder.ts. ProductStore, vault, employee grants and runtime tool bridge remain BOAI host responsibilities. OAuth account flows and provider-specific token refresh are not migrated in this increment.
+
+source-setup.ts: adapted from apps/electron/resources/docs/sources.md (Source Setup Process / guide.md Best Practices) and apps/electron/src/renderer/components/ui/EditPopover.tsx (add-source context), same fixed commit. Retains conversational intent, service documentation research, configuration, scoped usage guide and post-save testing. BOAI uses manage_data_sources and its existing schema/store/vault instead of Craft CLI or direct config.json/guide.md/permissions.json writes; skips redundant questions; supports current API/MCP/local auth only, explicitly does not advertise OAuth; employee binding stays separate. API chat reuses BOAI's existing browser session for documentation.

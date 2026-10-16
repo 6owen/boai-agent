@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 手动无时钟、小时按分钟、月按日期及开始日期共用预览与真实触发校验。
  * [INPUT]: 显式时区、周期规则、实际触发时刻与版本。
  * [OUTPUT]: 工作日/星期多选统一校验、规范化 cron 和纯预览；共用日历匹配/预览、稳定手动/周期身份与等待/取消退出占用与准入容量常量。
  * [POS]: 自动化时间和身份的确定性策略；不启动周期时钟。
@@ -16,12 +17,16 @@ export const activeOccurrence = new Set<OccurrenceStatus>(['admitted', 'running'
 export const pendingOccurrence = new Set<OccurrenceStatus>([...activeOccurrence, 'waiting_user', 'waiting_work'])
 const hash = (...parts: (string | number)[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 
-export const scheduleSchema = z.object({ frequency: z.enum(['daily', 'weekly']), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()
+export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'hourly', 'daily', 'weekly', 'monthly']), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()
+type Schedule = Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone' | 'startsOn' | 'dayOfMonth'>
 export function scheduleDays(input: Pick<AutomationInput, 'frequency' | 'weekday' | 'daysOfWeek'>) {
-  return input.frequency === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(input.daysOfWeek ?? [input.weekday])].sort((a, b) => a - b)
+  return input.frequency !== 'weekly' ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(input.daysOfWeek ?? [input.weekday])].sort((a, b) => a - b)
 }
-export function automationCron(input: Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek'>) {
+export function automationCron(input: Pick<Schedule, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'dayOfMonth' | 'startsOn'>) {
+  if (input.frequency === 'manual') return ''
   const [hour, minute] = input.time.split(':').map(Number)
+  if (input.frequency === 'hourly') return `${minute} * * * *`
+  if (input.frequency === 'monthly') return `${minute} ${hour} ${input.dayOfMonth ?? Number(input.startsOn?.slice(8) ?? 1)} * *`
   return `${minute} ${hour} * * ${input.frequency === 'daily' ? '*' : scheduleDays(input).join(',')}`
 }
 
@@ -31,14 +36,20 @@ export function calendarSlot(time: number, timezone: string) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
 }
 
-export function matchesSchedule(d: Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone'>, time: number) {
+export function matchesSchedule(d: Schedule, time: number) {
+  if (d.frequency === 'manual') return false
   const slot = calendarSlot(time, d.timezone)
+  if (d.startsOn && slot.slice(0, 10) < d.startsOn) return false
+  if (d.frequency === 'hourly') return slot.slice(-2) === d.time.slice(-2)
+  if (d.frequency === 'monthly') return slot.endsWith(d.time) && Number(slot.slice(8, 10)) === (d.dayOfMonth ?? Number(d.startsOn?.slice(8) ?? 1))
   return slot.endsWith(d.time) && scheduleDays(d).includes(new Date(`${slot.slice(0, 10)}T00:00:00Z`).getUTCDay())
 }
 
-export function nextTimes(d: Pick<AutomationDefinition, 'cron' | 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone'>, count = 5, after = new Date()) {
+export function nextTimes(d: Schedule & Pick<AutomationDefinition, 'cron'>, count = 5, after = new Date()) {
+  if (d.frequency === 'manual') return []
   const cron = new Cron(d.cron, { timezone: d.timezone, paused: true }), slots = new Set<string>(), result: string[] = []
-  let previous = after
+  // Start at a safe UTC lower bound for the requested local date, including UTC+14.
+  let previous = d.startsOn ? new Date(Math.max(after.getTime(), Date.parse(d.startsOn + 'T00:00:00Z') - 14 * 3600_000 - 1)) : after
   // A DST gap can be returned by the clock as a shifted local time. Admission and preview both reject it.
   for (let attempts = 0; result.length < count && attempts < 400; attempts++) {
     const date = cron.nextRun(previous)

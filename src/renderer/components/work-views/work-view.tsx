@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 有界Work查询、会话/员工范围、活跃状态与原聊天导航。
  * [OUTPUT]: 同一只读任务清单与五列看板；列独立分页/计数，按范围查询保留选中卡和滚动，重核空窗不覆写位置、隐藏停读；员工摘要包含本人子工作，可信自动化回查原触发。
  * [POS]: 会话任务/全局任务/员工当前工作的共用入口，不读取整段聊天或另一份任务表。
@@ -50,7 +51,7 @@ function WorkResults({ query, heading, viewScope, ...props }: Pick<WorkViewProps
     <ScrollFade ref={scroller} className={props.compact ? 'flex max-h-96 flex-col gap-3' : 'flex min-h-0 flex-1 flex-col gap-3 pb-1'} onScroll={event => { if (props.active && page && !loading) positions.set(key, event.currentTarget.scrollTop) }} aria-busy={loading}>
       {page?.items.map(item => <WorkCard key={item.work.id} {...props} item={item} viewKey={key} selected={(selection.key === key ? selection.id : rememberedWorkSelection(key)) === item.work.id} onSelect={() => { rememberWorkSelection(key, item.work.id); setSelection({ key, id: item.work.id }) }} />)}
       {loading && <Loading />}
-      {error && <Banner>{error}<Button size="sm" variant="ghost" onClick={reload}>重新读取</Button></Banner>}
+      {error && <><Banner>{error}</Banner><Button size="sm" variant="ghost" onClick={reload}>重新读取</Button></>}
       {page && !page.items.length && !loading && <p className="my-4 px-1 text-sm text-muted-foreground">{props.compact ? '暂无当前负责的工作。' : '暂无符合条件的工作。'}</p>}
       {page?.nextCursor && !props.compact && <Button size="sm" variant="ghost" disabled={loading} onClick={() => void loadMore()}>加载更多 · 已显示 {page.items.length} / {page.total}</Button>}
       {props.compact && page?.nextCursor && <p className="m-0 text-xs text-muted-foreground">当前显示前 {page.items.length} 项，共 {page.total} 项；查看全部可继续筛选。</p>}

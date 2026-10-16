@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 当前 core 会话、公共组织回执、真实联系人/群快照和显式恢复 IPC。
  * [OUTPUT]: 原请求所属的独立群与已有/新员工入口；未知恢复保留原载荷跨切换/重启，显式只读核对；隐藏停读、迟到拒绝，不自动跳转或续行。
  * [POS]: bobo 讨论聊天的组织结果投影；员工身份独立于群，普通群继续复用正常聊天。
@@ -103,7 +104,7 @@ export function CoreCollaborationResults({ api, conversationId, snapshot, active
   }
   if (!current || !view.receipts.length && !view.error && !pending && !storageError) return null
   return <section className="mx-auto w-full max-w-[760px] space-y-3 px-4 py-3" aria-label="群协作组织结果">
-    {view.error && <Banner>组织结果暂不可核对：{view.error}<Button variant="ghost" size="sm" disabled={busy || recovering} onClick={() => setRevision(value => value + 1)}>核对组织结果</Button></Banner>}
+    {view.error && <><Banner>组织结果暂不可核对：{view.error}</Banner><Button variant="ghost" size="sm" disabled={busy || recovering} onClick={() => setRevision(value => value + 1)}>核对组织结果</Button></>}
     {recoveryError && <Banner>{recoveryError}</Banner>}
     {storageError && <Banner>{storageError}</Banner>}
     {pending && <Button variant="outline" size="sm" disabled={busy || recovering || Boolean(storageError)} onClick={() => void checkPending()}>核对原操作</Button>}

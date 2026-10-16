@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件与 Sonner 操作提示。
- * [OUTPUT]: useMutation 提供稳定操作回调并防止重复提交，允许瞬时错误显式使用 Sonner；透明 WebP 预设/回退头像不叠加底色，上传图片保留既有底色；字段标签/说明、复选框与按钮，以及格式化和支持局部标签切换的未保存守卫、可省略介绍且滚动内容与页脚分离的编辑框架。
+ * [OUTPUT]: useMutation和旧Banner错误统一使用Sonner，不渲染内联报错；状态提示与恢复操作独立保留，共用字段/头像/编辑框架与未保存守卫。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,7 +13,8 @@ import { LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
 import type { AgentAvatar } from '@shared/domain/avatars'
 import { avatarSource } from '@/assets/avatars'
-import { toast } from 'sonner'
+import { ErrorToast, showErrorToast } from './error-feedback'
+export { ErrorToast, showErrorToast } from './error-feedback'
 
 export const colors = ['#6675a4', '#438b80', '#ad8054', '#638ac5', '#a76c90', '#777b8d']
 export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+':\s*(?:Error:)?\s*/, '').replace(/^Error:\s*/, '')
@@ -34,7 +36,8 @@ export function Avatar({ name, color = colors[0], small = false, avatar, seed = 
   return <span className={`avatar${small ? ' small' : ''}`} style={{ background: avatar?.kind === 'image' && failedSource !== source ? `${color}18` : 'transparent', '--avatar-color': color } as CSSProperties} aria-hidden="true"><img src={failedSource === source ? avatarSource(undefined, seed) : source} alt="" draggable={false} onError={() => setFailedSource(source)} /></span>
 }
 export function Banner({ children, kind = 'error', onClose }: { children: ReactNode; kind?: 'error' | 'notice'; onClose?: () => void }) {
-  return <div className={`banner ${kind}`} role={kind === 'error' ? 'alert' : 'status'}><span>{children}</span>{onClose && <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="关闭提示"><X size={15} /></Button>}</div>
+  if (kind === 'error') return <ErrorToast onClose={onClose}>{children}</ErrorToast>
+  return <div className="banner notice" role="status"><span>{children}</span>{onClose && <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="关闭提示"><X size={15} /></Button>}</div>
 }
 export function Field({ label, hint, children, full = false }: { label: string; hint?: string; children: ReactNode; full?: boolean }) {
   const id = useId(), hintId = `${id}-hint`
@@ -54,14 +57,13 @@ export function ResourcePicker({ resources, selected, onChange, empty }: { resou
   if (!resources.length) return <p className="empty-note">{empty}</p>
   return <div className="resource-picker">{resources.map(resource => <label className="resource-option" key={resource.id}><Checkbox checked={selected.includes(resource.id)} onCheckedChange={checked => onChange(checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>)}</div>
 }
-export function useMutation({ errorFeedback = 'inline' }: { errorFeedback?: 'inline' | 'toast' } = {}) {
+export function useMutation() {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const inFlight = useRef(false), errorFeedbackRef = useRef(errorFeedback)
-  errorFeedbackRef.current = errorFeedback
+  const inFlight = useRef(false)
   const run = useCallback(async (fn: () => Promise<void>) => {
     if (inFlight.current) return
     inFlight.current = true; setBusy(true); setError('')
-    try { await fn() } catch (e) { const message = errorText(e); setError(message); if (errorFeedbackRef.current === 'toast') toast.error(message) } finally { inFlight.current = false; setBusy(false) }
+    try { await fn() } catch (e) { const message = errorText(e); setError(message); showErrorToast(message) } finally { inFlight.current = false; setBusy(false) }
   }, [])
   return { busy, error, run, setError }
 }

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: manageSkills/manageDataSources为普通bobo私聊的可选宿主回调，API与本机共用。
+ * [OUTPUT]: 专用数据源会话可注入createDataSource宿主回调，普通聊天保持不可用。
+ * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [OUTPUT]: 当前本人对话可获计划管理薄桥；owner与来源由宿主绑定，不要求先认领Work或另配草稿模型。
  * [OUTPUT]: 2026-10-12原生选定/初始化/API模型与公开目录有独立回执，传输提交不冒充接收；普通通信不新增模型阶段。
@@ -35,6 +38,13 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  dataSources?: import('../shared/domain/sources').SourceSummary[]
+  inspectDataSource?(sourceId: string): Promise<unknown>
+  callDataSource?(input: import('../shared/domain/sources').SourceCall): Promise<unknown>
+  closeDataSources?(): Promise<void>
+  manageSkills?(input: import('./modules/resources/catalog-commands').ManageSkillsCommand): Promise<unknown>
+  manageDataSources?(input: import('./modules/resources/catalog-commands').ManageSourcesCommand): Promise<unknown>
+  createDataSource?(input: import('./modules/sources/source-commands').SourceCreationCommand): Promise<import('../shared/domain/sources').DataSource>
   automationOwner?: import('../shared/domain/automations').AutomationOwner
   manageAutomation?(input: import('./modules/automations/automation-commands').AutomationCommand): Promise<unknown>
   /** Bounded public capabilities only; ordinary discussion remains without Work or tools. */

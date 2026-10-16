@@ -1,0 +1,13 @@
+{
+  "batch": "desktop-03",
+  "scenarios": 8,
+  "evidenceFilesVerified": 27,
+  "tracesVerified": 13,
+  "noCaptureOrCleanupGaps": true,
+  "agentVisualReview": [
+    "MCP配置与混合已安装列表",
+    "自定义整合与窄窗",
+    "技能整合详情"
+  ],
+  "humanReview": "pending"
+}

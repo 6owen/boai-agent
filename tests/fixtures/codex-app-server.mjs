@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 模型目录提供显示名和真实格式推理档位，用于零推理读取合同。
  * [OUTPUT]: 2026-10-10 公开摘要/commentary、错误线程/轮次和原始reasoning合成协议事件，仅用于隔离模块检查。
  * [OUTPUT]: 2026-10-10 夹具读取当前宿主Default to目录声明，保留严格本run路径断言；新增0.161.0与canonical模型/重复游标，不调用真实供应商。
  * [OUTPUT]: 隔离进程只捕获固定启动策略值与实际线程方法，核对系统代理双作用域且原无工具限制保持；新增启动留证不保存目录/认证/原始argv。
@@ -58,7 +59,7 @@ createInterface({ input: process.stdin }).on('line', async line => {
   if (method === 'config/read') return send({ id, result: { config: { model: 'gpt-6.1-sol', model_provider: 'openai', mcp_servers: { personal: {} } } } })
   if (method === 'model/list') {
     await writeFile(`${process.env.CODEX_HOME}/models_cache.json`, await readFile(new URL('./codex-model-catalog.json', import.meta.url)))
-    return send({ id, result: { data: [{ id: 'visible-model-id', model: 'gpt-6.1-sol' }, { id: 'duplicate-model-id', model: 'gpt-6.1-sol' }], nextCursor: mode === 'model-catalog-repeat' ? 'repeated-cursor' : null } })
+    return send({ id, result: { data: [{ id: 'visible-model-id', model: 'gpt-6.1-sol', displayName: 'Protocol fixture', supportedReasoningEfforts: [{ reasoningEffort: 'low', description: 'Fixture' }, { reasoningEffort: 'high', description: 'Fixture' }] }, { id: 'duplicate-model-id', model: 'gpt-6.1-sol' }], nextCursor: mode === 'model-catalog-repeat' ? 'repeated-cursor' : null } })
   }
   if (method === 'account/read') return send({ id, result: { requiresOpenaiAuth: true, account: mode === 'login-missing' ? null : { type: 'chatgpt' } } })
   if (method === 'thread/start' || method === 'thread/resume') {

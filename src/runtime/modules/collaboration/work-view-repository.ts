@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件引用可在消息受理事务内复用相同核源，避免嵌套事务。
  * [INPUT]: 宿主固定SQL清单、当前审批持有者与原消息/材料/成果核验用例。
  * [OUTPUT]: 工作/文件点击的确切身份、版本、范围和审批Run原消息复核；失败不替换原目标。
  * [POS]: 工作视图读取用例；不调度模型、不创建业务对象、不恢复隐藏会话。
@@ -71,7 +72,9 @@ export class WorkViewRepository {
     })
   }
   async resolveFile(input: ConversationFileTargetInput): Promise<ConversationFileTarget> {
-    return this.store.transaction(async tx => {
+    return this.store.transaction(tx => this.resolveFileInTransaction(tx, input))
+  }
+  async resolveFileInTransaction(tx: RecordTransaction, input: ConversationFileTargetInput): Promise<ConversationFileTarget> {
       await this.conversation(tx, input.conversationId)
       let messageId: string | undefined
       if (input.kind === 'material') {
@@ -87,6 +90,5 @@ export class WorkViewRepository {
       }
       const message = await this.message(tx, input.conversationId, messageId)
       return { conversationId: input.conversationId, messageId: message.id, kind: input.kind, id: input.id }
-    })
   }
 }

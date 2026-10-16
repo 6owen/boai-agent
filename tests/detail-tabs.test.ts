@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 同一会话不同Run分别打开过程标签，重复点击同Run去重，普通会话历史保持独立。
+ * [OUTPUT]: 删除某次执行关闭所有页面的同源过程标签，其他标签及所选项保持。
+ * [OUTPUT]: 数据源固定ID复用/显隐/重开请求与跨页面标签隔离回归。
  * [OUTPUT]: 文件修改员工选择支持纯本机Claude，同时拒绝缺失profile与失效/不兼容的显式API来源。
  * [OUTPUT]: 渠道只持一个详情视图，连续打开/返回不增标签；显式来源、关闭后迟到、跨员工/跨页与递归拒绝。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
@@ -14,6 +17,38 @@ import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artif
 import type { Connection, DigitalAgent } from '../src/shared/domain'
 
 describe('detail workspace tabs', () => {
+  it('keeps exact execution tabs distinct from other runs and the full conversation history', () => {
+    let state = reduce(emptyDetailTabs, { type: 'open', target: { type: 'trace', id: 'chat' } })
+    for (const runId of ['one', 'two', 'one']) state = reduce(state, { type: 'open', target: { type: 'trace', id: 'chat', agentId: 'agent', runId } })
+    expect(state.tabs.map(tab => tab.key)).toEqual(['trace:chat', 'trace:chat:one', 'trace:chat:two'])
+    expect(state.activeKey).toBe('trace:chat:one')
+  })
+  it('removes deleted occurrence panels in every workspace and retains unrelated tabs', () => {
+    let state = detailWorkspacesReducer({}, { scope: 'schedules', action: { type: 'open', target: { type: 'automation-occurrence', id: 'deleted' } } })
+    state = detailWorkspacesReducer(state, { scope: 'conversations', action: { type: 'open', target: { type: 'automation-occurrence', id: 'deleted' } } })
+    state = detailWorkspacesReducer(state, { scope: 'schedules', action: { type: 'open', target: { type: 'automation-occurrence', id: 'keep' } } })
+    state = detailWorkspacesReducer(state, { type: 'remove-automation-occurrence', id: 'deleted' })
+    expect(state.conversations).toMatchObject({ tabs: [], shown: false, activeKey: null })
+    expect(state.schedules.tabs).toHaveLength(1)
+    expect(state.schedules.tabs[0].target).toMatchObject({ type: 'automation-occurrence', id: 'keep' })
+    expect(state.schedules.activeKey).toBe(state.schedules.tabs[0].key)
+  })
+  it('reopens the same data-source tab with fresh context without replacing skills or other pages', () => {
+    const source: DetailTarget = { type: 'source', id: 'mcp-a', name: 'MCP', requestId: 'first' }
+    const first = detailWorkspacesReducer({}, { scope: 'skills', action: { type: 'open', target: source } })
+    const skill: DetailTarget = { type: 'local-skill', id: 'mcp-a', name: 'Skill', requestId: 'skill' }
+    const both = detailWorkspacesReducer(first, { scope: 'skills', action: { type: 'open', target: skill } })
+    const other = detailWorkspacesReducer(both, { scope: 'conversations', action: { type: 'open', target: source } })
+    const reopened = detailWorkspacesReducer(other, { scope: 'skills', action: { type: 'open', target: { ...source, name: 'Updated MCP', requestId: 'second' } } })
+    expect(reopened.skills.tabs).toHaveLength(2)
+    expect(reopened.skills.tabs[0].target).toMatchObject({ name: 'Updated MCP', requestId: 'second' })
+    expect(reopened.skills.tabs[1]).toBe(both.skills.tabs[1])
+    expect(reopened.conversations).toBe(other.conversations)
+    expect(reopened.skills.activeKey).toBe(first.skills.activeKey)
+    const hidden = reduce(reopened.skills, { type: 'visibility', shown: false })
+    expect(hidden.tabs).toBe(reopened.skills.tabs)
+    expect(reduce(hidden, { type: 'visibility', shown: true }).activeKey).toBe(first.skills.activeKey)
+  })
   const employee: DetailTarget = { type: 'agent', id: 'researcher', conversationId: 'group-a' }
   const activity: DetailTarget = { type: 'activity', id: 'group-a' }
   it('replaces channel details in one slot and returns to the same employee and room', () => {

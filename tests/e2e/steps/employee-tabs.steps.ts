@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [OUTPUT]: 员工职责定位对齐HEAD已有ARIA名称；保存前配置有效隔离模型来源，六标签尺寸沿现行布局核对，原未保存/键盘/样式断言保持。
  * [INPUT]: 员工共享标签页中文场景、旧资料库启动偏好、Electron fixture 与产品 API。
  * [OUTPUT]: 验证共享滑动层实际中间帧、选中对齐和减少动态效果；保留草稿保护、键盘及明暗窄窗验收。
@@ -164,8 +165,8 @@ Then('资料库入口已移除且旧页面偏好回到会话并保留技能分�
   await expect(page.getByRole('heading', { name: '资料库', exact: true })).toHaveCount(0)
   await expect(page.getByRole('tablist', { name: '资料库分类', exact: true })).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => localStorage.getItem('boai.v2.page'))).toBe('conversations')
-  await navigation.getByRole('button', { name: '技能', exact: true }).click()
-  await expect(navigation.getByRole('button', { name: '技能', exact: true })).toHaveAttribute('aria-current', 'page')
+  await navigation.getByRole('button', { name: '自定义', exact: true }).click()
+  await expect(navigation.getByRole('button', { name: '自定义', exact: true })).toHaveAttribute('aria-current', 'page')
   const tabs = page.getByRole('tablist', { name: '技能分类', exact: true })
   await expect(tabs).toBeVisible()
   for (const name of ['本地', '收藏', '商城']) await expect(tabs.getByRole('tab', { name, exact: true })).toBeVisible()

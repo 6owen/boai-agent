@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex模型目录保留原生支持的推理档位；旧字符串目录由同一读取投影。
  * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
  * [OUTPUT]: 2026-10-10 精确thread/turn接公开summary与commentary，原始reasoning/text不保存；有界限频进度不替代终态。
@@ -12,6 +13,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { codexToolResult } from '../native-tool-result'
+import type { NativeAgentInfo } from '../../../shared/domain/execution'
 import type { LaunchProfile } from '../../../shared/domain/backends'
 import { EXECUTION_PROGRESS_LIMITS, type ModelUsage, type ExecutionProgressEvent } from '../../../shared/domain'
 import { CodexClient, object, string } from './client'
@@ -89,10 +91,14 @@ export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile'
 }
 
 export async function listCodexModels(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>): Promise<string[]> {
+  return (await listCodexModelCatalog(input)).map(model => model.value)
+}
+
+export async function listCodexModelCatalog(input: Pick<CodexPhaseInput, 'profile' | 'cwd' | 'privateHome' | 'signal'>): Promise<NonNullable<NativeAgentInfo['models']>> {
   if (!input.profile.verified) throw new Error('请先测试当前 Codex 连接')
   const { client } = await CodexClient.start({ ...input, native: true })
   try {
-    const models = new Set<string>()
+    const models = new Map<string, NonNullable<NativeAgentInfo['models']>[number]>()
     let cursor: string | undefined
     for (let page = 0; page < CODEX_MODEL_CATALOG_LIMITS.maxPages; page++) {
       const result = await client.request('model/list', { limit: CODEX_MODEL_CATALOG_LIMITS.pageSize, ...(cursor ? { cursor } : {}) })
@@ -100,9 +106,12 @@ export async function listCodexModels(input: Pick<CodexPhaseInput, 'profile' | '
       for (const entry of result.data) {
         const value = object(entry)
         const model = typeof value.model === 'string' ? value.model : value.id
-        if (typeof model === 'string' && model.length && model.length <= 200) models.add(model)
+        if (typeof model === 'string' && model.length && model.length <= 200) {
+          const levels = Array.isArray(value.supportedReasoningEfforts) ? value.supportedReasoningEfforts.flatMap(entry => { const effort = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).reasoningEffort : undefined; return typeof effort === 'string' && effort.length > 0 && effort.length <= 40 ? [effort] : [] }) : undefined
+          models.set(model, { ...models.get(model), value: model, ...(typeof value.displayName === 'string' ? { displayName: value.displayName } : {}), ...(levels ? { supportedEffortLevels: [...new Set(levels)], supportsEffort: levels.length > 0 } : {}) })
+        }
       }
-      if (!result.nextCursor) return [...models]
+      if (!result.nextCursor) return [...models.values()]
       const next = string(result.nextCursor, '模型目录游标')
       if (next === cursor) throw new Error('Codex 模型目录游标没有推进')
       cursor = next

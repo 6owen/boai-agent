@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 渠道投递状态归发送按钮Tooltip，悬停与键盘焦点可查，不常驻正文。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-10 消息卡支持外侧接收回执插槽，原工具条/表情/复制和引用语义保持。
@@ -38,7 +39,7 @@ export function MessageCard({ message, profile = defaultUserProfile, children, r
   const reactionTrigger = useRef<HTMLButtonElement>(null)
   const [placement, setPlacement] = useState<'beside' | 'corner'>('corner')
   const [open, setOpen] = useState(false), [usage, setUsage] = useState<Record<string, number>>({}), [copied, setCopied] = useState(false)
-  const { busy, run } = useMutation({ errorFeedback: 'toast' })
+  const { busy, run } = useMutation()
   useLayoutEffect(() => {
     const measure = () => {
       const available = space.current?.clientWidth ?? 0, width = content.current?.offsetWidth ?? 0, tools = toolbar.current?.offsetWidth ?? 0

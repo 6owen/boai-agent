@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工浏览器表单交互直接执行，无审批卡，真实提交/工作回执及退出保持。
  * [OUTPUT]: 已受理wait动作的隔离网页运行真实while(true)，实际工具栏X与WebContents销毁/未知回执及重开零重放回归。
  * [OUTPUT]: 卡死关闭按原wait动作lease精确核对执行Run与Work取消；已完成的群判断Run保持completed，不误当作执行取消失败。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
@@ -161,14 +162,14 @@ When('正常任务打开网页后网页冒用工具栏和主界面身份',async(
 Then('真实网页无宿主桥且伪造来源不能清理或改变窗口',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;expect(await webpageIsolation(runtime,f.site.origin)).toMatchObject({boai:'undefined',toolbar:'undefined',require:'undefined'});expect(await nativeBrowserViews(runtime)).toHaveLength(1);expect(f.site.mutations()).toBe(0);expect(runtime.errors).toEqual([])
 })
-When('员工请求提交网页表单且用户批准原页面动作',async({runtime,browserMigrationState:state})=>{
+When('员工直接提交网页表单无需逐次批准',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;await selectGroup(runtime,f.first.title)
   await f.send(f.first,'approved-click',{kind:'task',commands:[`navigate ${f.site.origin}/landing`,'snapshot',history=>{const ref=history.match(/(@e\d+) \[button\] "提交一次"/)?.[1];if(!ref)throw new Error('必须使用真实快照的页面 ref');return `click ${ref}`},'snapshot']})
-  await expect.poll(async()=> (await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals.length).toBe(1)
-  expect(f.site.mutations()).toBe(0);const approval=(await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals[0]
-  const card=runtime.page.locator(`[data-approval-id="${approval.id}"]:visible`);await expect(card).toContainText('浏览器操作');await expect(card).toContainText('申请操作网页');await expect(card).not.toContainText('主机权限');await expect(card).not.toContainText('工作目录');await expect(card).toContainText(`${f.site.origin}/landing`);await expect(card).toContainText('页面版本');await card.getByRole('button',{name:'允许这次执行',exact:true}).click();await settled(runtime,f.first,1)
+  await settled(runtime,f.first,1)
+  expect((await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals).toEqual([])
+  await expect(runtime.page.locator('[data-approval-id]')).toHaveCount(0)
 })
-Then('表单只实际提交一次且审批与工作回执可核对',async({runtime,browserMigrationState:state})=>{
+Then('表单只实际提交一次且无审批卡并有工作回执',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!,records=await browserRecords(f.dataPath);expect(f.site.mutations()).toBe(1);expect(records.actions.filter(action=>String(action.command).startsWith('"click" '))).toHaveLength(1);expect(records.actions.every(action=>action.status==='completed')).toBe(true);expect(records.works[0].status).toBe('delivered');expect(records.approvals).toEqual([])
 })
 When('用户在员工真实页面等待期间直接从工具栏访问新页面',async({runtime,browserMigrationState:state})=>{
@@ -216,15 +217,14 @@ When('用户发起新浏览任务后点击工具栏X并清空会话重启',async
 Then('新任务使用新调用代际且重启不自动重开窗口或重放业务',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!,records=await browserRecords(f.dataPath);expect(await nativeBrowserViews(runtime)).toEqual([]);expect(records.scopes).toEqual([]);expect(records.actions.every(action=>!action.command&&!action.reply)).toBe(true);expect(records.works).toEqual([]);expect(f.endpoint.requests).toHaveLength(state.calls!);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
 })
-When('用户逐次批准真实导航和网页下载',async({runtime,browserMigrationState:state})=>{
+When('员工直接导航和下载网页文件',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!;await f.send(f.first,'download',{kind:'task',artifact:true,download:true,commands:[`navigate ${f.site.origin}/landing`,`navigate ${f.site.origin}/second`,'back','forward','reload','snapshot',history=>{const refs=[...history.matchAll(/(@e\d+) \[link\] "下载文本"/g)];if(!refs.length)throw new Error('下载必须使用当前页面实际ref');return `click ${refs.at(-1)![1]}`},'downloads wait 3000']})
-  let approvals=0
   await expect.poll(async()=>{
     const snapshot=await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))
-    for(const approval of snapshot.approvals){expect(approval.kind).toBe('browser');expect(approval.command).toContain(f.site.origin);await runtime.page.evaluate(id=>window.boai.request('approve',{id,approved:true}),approval.id);approvals++}
+    expect(snapshot.approvals).toEqual([])
     const detail=await browserDetail(runtime,f.first.id);return detail.artifacts.length===1&&detail.runs.every(run=>run.status==='completed')&&detail.turns!.every(turn=>turn.status==='completed')
   },{timeout:30_000,intervals:[100]}).toBe(true)
-  expect(approvals).toBe(4);state.artifact=(await browserDetail(runtime,f.first.id)).artifacts[0] as ArtifactVersion
+  state.artifact=(await browserDetail(runtime,f.first.id)).artifacts[0] as ArtifactVersion
 })
 Then('返回前进刷新已实际执行且下载原件发布后可按确切正文检索',async({runtime,browserMigrationState:state})=>{
   const f=state.fixture!,records=await browserRecords(f.dataPath),artifact=state.artifact!,bytes=await readFile(artifact.path)
@@ -352,7 +352,7 @@ When('员工在隐藏窗口填写按键并选择两类选项',async({runtime,bro
   for(const [index,plan] of plans.entries()){
     await f.send(f.first,'hidden-inputs-'+index,plan,(index===0?'请填写备注并选择原生选项，不保存：':'请选择自定义选项并保存当前表单：')+f.site.origin+'/inputs')
     await expect.poll(async()=>{
-      for(const approval of (await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals){expect(approval.kind).toBe('browser');expect(approval.command).toContain(f.site.origin);await runtime.page.evaluate(id=>window.boai.request('approve',{id,approved:true}),approval.id)}
+      expect((await runtime.page.evaluate(()=>window.boai.request('snapshot',undefined))).approvals).toEqual([])
       const d=await browserDetail(runtime,f.first.id);return d.runs.length>index&&d.runs.every(r=>['completed','failed','cancelled'].includes(r.status))&&d.turns!.every(t=>['completed','failed','cancelled'].includes(t.status))
     },{timeout:30000,intervals:[80]}).toBe(true)
   }

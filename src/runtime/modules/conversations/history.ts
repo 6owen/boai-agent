@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 共享会话的单次历史只清原Run过程/快照/观测，保留聊天、其他执行与共享文件。
+ * [OUTPUT]: 清空聊天同事务移除catalogActivities，保留独立的全局技能与数据源。
  * [OUTPUT]: 清空/房间迁移同时失效pluginSessions，旧历史不重解释或重放。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: 聊天清理同事务移除Codex/Claude各自会话映射，不复用旧外部历史。
@@ -49,6 +51,18 @@ export class ConversationHistory {
     }
   }
   remove(conversation: Conversation) { return this.clear(conversation, false, true) }
+  async removeExecutionRecords(runIds: string[]) {
+    const ids = new Set(runIds)
+    return this.store.transaction(async tx => {
+      const removals: { collection: string; id: string }[] = []
+      for (const collection of ['runs', 'snapshots', 'executionEvidence', 'executionClocks', 'nativeActions', 'traceSpans', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
+        for (const item of await tx.list<HistoryRecord>(collection)) if (ids.has(item.id) || item.runId && ids.has(item.runId)) {
+          await tx.remove(collection, item.id); removals.push({ collection, id: item.id })
+        }
+      }
+      return removals
+    })
+  }
   async clear(conversation: Conversation, hide: boolean, remove = false) {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
@@ -106,6 +120,7 @@ export class ConversationHistory {
       }
       const owned = (item: HistoryRecord) => item.conversationId === id
       const messages = new Set((await collect('messages', owned)).map(item => item.id))
+      await collect('catalogActivities', owned)
       await collect('materials', owned)
       const runIds = new Set((await collect('runs', owned)).map(item => item.id))
       const turns = new Set((await collect('turns', owned)).map(item => item.id))

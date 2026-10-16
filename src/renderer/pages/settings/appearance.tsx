@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 主题选项仅列可用插件配色，停用回退值与保留的原选择分开显示。
  * [OUTPUT]: 图片下方内嵌卡片展示玻璃/遮罩百分比与0–32px模糊三行Slider，独立预览/保存；重置浮层仅标题与确认/取消。
  * [INPUT]: 共享外观偏好、真实界面缩略图及受控桌面操作、统一 UI 基础组件。
@@ -64,7 +65,7 @@ export function AppearanceSettings() {
         </PopoverContent>
       </Popover>
     </header>
-    {(error || preview.diagnostic) && <Banner>{error || preview.diagnostic}{error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}</Banner>}
+    {(error || preview.diagnostic) && <><Banner>{error || preview.diagnostic}</Banner>{error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}</>}
     <fieldset disabled={preview.readOnly}>
       <legend className="settings-section-title">视觉风格</legend>
       <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-mode-row mb-0">

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 场景独立目录与真实打包 main/worker。
  * [OUTPUT]: 同页本地/收藏/商城 Tabs 导航；只替换 worker 的系统用户目录读取，隔离原生本机技能扫描与插件开关；导出空白用户目录引导供受管资源场景复用。
  * [POS]: 本机 Skills BDD 支撑；不引入生产环境测试开关。
@@ -30,7 +31,8 @@ export async function localSkillsEntry(runtime: Desktop) {
 }
 
 export async function selectSkillsSection(page: Page, name: string) {
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
+  await page.getByRole('complementary', { name: '自定义导航' }).getByRole('button', { name: '技能', exact: true }).click()
   await page.getByRole('tab', { name: name === '全部技能' ? '本地' : name === '自己' ? '收藏' : name, exact: true }).click()
 }
 export async function selectSkillStore(page: Page, name: string) {

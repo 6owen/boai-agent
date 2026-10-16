@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 公共IPC沿完整类型核对准入表，补齐目录结果与本地技能写入/删除入口。
+ * [OUTPUT]: 放行员工命令永久授权的版本化撤销IPC，真实审批和授权在运行层原子提交。
+ * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
+ * [OUTPUT]: 放行只读本机模型/推理目录，复用原启动项核验与退出清理。
  * [OUTPUT]: 插件目录安装经原生选择与私有runtime通道；运行时列表/启停/卸载IPC及动态发现。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 内置插件固定配置/首帧快照/严格启停IPC；退出等待配置原子保存，外观沿可用插件解析。
@@ -56,6 +60,7 @@ import { PluginSettingsStore } from './plugin-settings'
 import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
+import { isPublicMethod } from './public-methods'
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
@@ -109,42 +114,6 @@ const browsers = new BrowserService({
     } else await requestRuntime('browserControl', { action })
   },
 })
-const methods = new Set<Method>(['scanLocalConnections', 'importLocalConnection', 'importLocalAgent', 'prepareLocalAgent', 'prepareDetectedLocalAgent', 'testLaunchProfileDraft', 'listExternalFiles', 'publishExternalArtifact', 'getAutomation', 'listOwnerAutomations', 'listAutomations', 'listAutomationHistory', 'getAutomationOccurrence', 'getPendingAutomationNavigation', 'saveAutomation', 'previewAutomation', 'pauseAutomation', 'deleteAutomation', 'runAutomation', 'stopAutomation', 'replyAutomation', 'listLaunchProfiles', 'getLaunchProfileStatus', 'saveLaunchProfile', 'deleteLaunchProfile', 'testLaunchProfile', 'sendExternalTask', 'getAppearance', 'updateAppearance', 'importAppearanceBackground', 'removeAppearanceBackground', 'resetAppearance', 'snapshot', 'saveAgent', 'saveConnection', 'getConnectionApiKey', 'deleteConnection', 'testConnection', 'testConnectionDraft', 'listConnectionModels', 'createConversation', 'updateConversationList', 'clearConversationHistory', 'getConversation', 'getConversationTrace', 'sendMessage', 'cancelRun', 'approve', 'importResource', 'removeResource', 'retryRun', 'getAgentHome', 'readAgentFile', 'saveAgentFile', 'regenerateAgentViews', 'getMemory', 'saveMemory', 'deleteMemory', 'clearMemory', 'choosePath', 'openPath', 'exportBackup', 'setUnsavedChanges'])
-for (const method of ['listExecutionHistory', 'listExecutionWindow', 'listExecutionEvidence', 'getExecutionContent', 'listNativeActions', 'respondNativeAction', 'stopNativeExecution'] as const) methods.add(method)
-for (const method of ['listBoboCollaborationOperations', 'getBoboCollaborationOperation', 'resumeBoboCollaboration', 'abandonBoboCollaboration', 'resumeBoboCollaborationStart'] as const) methods.add(method)
-for (const method of ['listLocalSkills', 'getLocalSkillDetail', 'scanLocalSkill', 'openLocalSkill', 'chooseSkillSource', 'cancelSkillScan', 'discardSkillScan', 'getSkillPreview', 'readSkillPreviewFile', 'listSkillOperations', 'listSkillInstallations', 'listSkillMarketplace', 'getSkillMarketplaceDetail', 'refreshSkillMarketplace', 'getSkillDetail', 'readSkillFile', 'getSkillCollections', 'updateSkillCollections', 'scanSkillSource', 'installSkills', 'getSkillOperation', 'cancelSkillOperation'] as const) methods.add(method)
-for (const method of ['checkSkillUpdate', 'listSkillUpdateChecks', 'updateSkill'] as const) methods.add(method)
-for (const method of ['checkAllSkillUpdates', 'getSkillUpdateBatch', 'cancelSkillUpdateBatch'] as const) methods.add(method)
-for (const method of ['planSkillLibraryExport', 'discardSkillLibraryExport', 'cancelSkillLibraryPreview', 'exportSkillLibrary'] as const) methods.add(method)
-for (const method of ['listResourceCleanups', 'retryResourceCleanup'] as const) methods.add(method)
-for (const method of ['acceptTeamCreation', 'getTeamCreation', 'resumeTeamCreation', 'generateTeamPlan', 'cancelTeamGeneration', 'openTeamDraft', 'saveTeamDraft', 'getTeamDraft', 'abandonTeamDraft', 'listTeamCreationRecovery'] as const) methods.add(method)
-for (const method of ['getContactList', 'updateContactList'] as const) methods.add(method)
-methods.add('testLocalConnection')
-for (const method of ['listRuntimePlugins','installRuntimePlugin','setRuntimePluginEnabled','uninstallRuntimePlugin'] as const) methods.add(method)
-methods.add('getPluginSettings')
-methods.add('setPluginEnabled')
-methods.add('getDesktopSettings')
-methods.add('updateDesktopSettings')
-for (const method of ['publishChannelReply', 'publishChannelMessage', 'listChannelMessageDeliveries', 'listChannelBindings', 'saveChannelBinding', 'getChannelBindingReceipt', 'connectChannelBinding', 'disconnectChannelBinding', 'removeChannelBinding', 'listChannelDeliveries'] as const) methods.add(method)
-for (const method of ['generateAutomationDraft', 'getAutomationCreation', 'resumeAutomation'] as const) methods.add(method)
-methods.add('setMessageReaction')
-methods.add('updateUserProfile')
-methods.add('getProfileActivity')
-for (const method of ['listEmployeeExecutions', 'getEmployeeExecution', 'listLaunchProfileModels'] as const) methods.add(method)
-methods.add('startCoreConversation')
-methods.add('getCoreConversationStart')
-methods.add('deleteAgent')
-methods.add('deleteConversation')
-methods.add('getBrowserWindows')
-methods.add('referenceBrowserPage')
-methods.add('openBrowser')
-methods.add('browserControl')
-for (const method of ['chooseMaterialSource', 'prepareMaterial', 'getMaterialPreparation', 'getMaterialPreview', 'recheckMaterial', 'discardMaterial', 'setMaterialAuthorization', 'getMessageReceipt', 'getExternalTaskReceipt'] as const) methods.add(method)
-for (const method of ['getArtifactPreview', 'reviseArtifact', 'adoptArtifact', 'getArtifactAdoptionReceipt'] as const) methods.add(method)
-for (const method of ['prepareLocalSkillBinding', 'bindLocalSkill', 'getSkillBindingReceipt'] as const) methods.add(method)
-for (const method of ['listInbox', 'getInboxItem', 'replyInboxQuestion', 'requestArtifactAcceptance', 'getArtifactAcceptanceReceipt'] as const) methods.add(method)
-for (const method of ['listConversationMessages', 'searchConversations', 'resolveConversationSearchTarget', 'getConversationReading', 'observeConversationReading', 'saveConversationAnchor', 'getConversationView', 'getConversationMetadata'] as const) methods.add(method)
-for (const method of ['queryWorkViews', 'queryConversationFiles', 'resolveWorkViewTarget', 'resolveConversationFileTarget'] as const) methods.add(method)
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
@@ -323,7 +292,7 @@ function registerIpc() {
   ipcMain.handle('boai:request', async (event, payload: { method: Method; input: unknown }) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
-    if (!methods.has(payload.method)) throw new Error(unsupportedRequestMessage)
+    if (!isPublicMethod(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
     if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
@@ -409,6 +378,7 @@ function registerIpc() {
       if (result.canceled || !result.filePaths[0]) return null
       const selected = await realpath(result.filePaths[0]); selectedPaths.add(selected); return selected
     }
+    if (method === 'chooseDataSourceFolder') { z.undefined().parse(input); const result = await dialog.showOpenDialog(window, { title: '选择数据源文件夹', properties: ['openDirectory'] }); return result.canceled || !result.filePaths[0] ? null : realpath(result.filePaths[0]) }
     if (method === 'choosePath') {
       const kind = (input as { kind?: string })?.kind
       if (kind !== 'skill' && kind !== 'knowledge') throw new Error('无效资源类型。')

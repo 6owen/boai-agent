@@ -1,124 +1,90 @@
 /*
- * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
- * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
- * [INPUT]: 员工固定身份、可见会话范围、类型化执行查询和原聊天导航。
- * [OUTPUT]: API/本机共用员工执行详情，历史冻结配置、实际工具/Trace/Work/成果；隐藏停读、迟到隔离、明确停止原工作，不另建聊天或重跑任务。
- * [POS]: 员工资料下属的执行能力视图。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [INPUT]: 员工/群固定身份、有界原执行查询和全局右侧面板导航。
+ * [OUTPUT]: 页内展开收起、定时任务同款两行记录；点击固定Run打开右侧过程，隐藏停读、刷新保留列表、迟到隔离。
+ * [POS]: 通讯录与员工配置共用执行记录，不创建聊天或重复执行。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { isNativeBackend } from '@shared/domain/backends'
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
-import { EMPLOYEE_EXECUTION_LIMITS } from '@shared/domain/employee-executions'
-import type { EmployeeExecutionCursor, EmployeeExecutionDetail, EmployeeExecutionPage } from '@shared/domain/employee-executions'
+import type { EmployeeExecutionCursor } from '@shared/domain/employee-executions'
 import type { DesktopApi } from '@shared/ipc'
-import { Banner, errorText, Loading, useMutation } from '@/components/common'
+import { Banner, errorText, Loading } from '@/components/common'
+import { CatalogSearch } from '@/components/common/catalog-search'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { SelectField } from '@/components/ui/select-field'
-import { ArrowLeft, MessageCircle, RefreshCw } from '@/components/icons'
-import { RunCard } from '@/pages/conversations/-components/run-detail'
-import { TraceDetail } from '@/pages/conversations/-components/trace-detail'
+import { ChevronRight, Clock, RefreshCw } from '@/components/icons'
 import { runLabels } from '@/pages/conversations/presentation'
 
 export type ExecutionSourceNavigation = (conversationId: string, messageId: string, current: () => boolean) => void
-export function EmployeeExecutionPane({ api, agent, snapshot, active, conversationId, onOpenSource }: {
-  api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; active: boolean; conversationId?: string; onOpenSource?: ExecutionSourceNavigation
-}) {
-  const [scope, setScope] = useState(conversationId ?? '')
-  const [cursor, setCursor] = useState<EmployeeExecutionCursor>()
-  const [page, setPage] = useState<EmployeeExecutionPage>()
-  const [selected, setSelected] = useState('')
-  const [detailValue, setDetail] = useState<EmployeeExecutionDetail>()
-  const [loading, setLoading] = useState(false), [detailLoading, setDetailLoading] = useState(false)
-  const [loadError, setLoadError] = useState(''), [detailError, setDetailError] = useState('')
-  const [revision, setRevision] = useState(0)
-  const source = useRef(0)
-  const selectedConversation = useRef<string | undefined>(undefined)
-  const { busy, error, run } = useMutation()
-  const conversations = snapshot.conversations.filter(item => item.agentIds.includes(agent.id) && !item.list?.hidden)
-  const detail = detailValue?.run.id === selected && detailValue.run.agentId === agent.id && conversations.some(item => item.id === detailValue.run.conversationId) ? detailValue : undefined
-  selectedConversation.current = detail?.run.conversationId
+export type EmployeeExecutionTarget = { conversationId: string; agentId: string; runId: string; title: string }
+export const EmployeeExecutionNavigation = createContext<(target: EmployeeExecutionTarget) => void>(() => {})
+type PaneProps = { api: DesktopApi; agent?: DigitalAgent; snapshot: Snapshot; active: boolean; conversationId?: string; onOpenSource?: ExecutionSourceNavigation }
+type Row = EmployeeExecutionTarget & { createdAt: string; status: keyof typeof runLabels; configuration: string }
+
+export function EmployeeExecutionDisclosure(props: PaneProps) {
+  const [open, setOpen] = useState(false), [visited, setVisited] = useState(false)
+  return <Collapsible className="contact-execution-section" open={open} onOpenChange={value => { setOpen(value); if (value) setVisited(true) }}>
+    <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contact-execution-heading" />}><span>查看执行详情</span><ChevronRight /></CollapsibleTrigger>
+    <CollapsibleContent keepMounted={visited}>{visited && <EmployeeExecutionPane {...props} active={props.active && open} />}</CollapsibleContent>
+  </Collapsible>
+}
+
+export function EmployeeExecutionPane({ api, agent, snapshot, active, conversationId }: PaneProps) {
+  const [scope, setScope] = useState(conversationId ?? ''), [pages, setPages] = useState(1)
+  const [rows, setRows] = useState<Row[]>([]), [next, setNext] = useState(false)
+  const [loaded, setLoaded] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState('')
+  const [revision, setRevision] = useState(0), [search, setSearch] = useState(''), [selected, setSelected] = useState('')
+  const openExecution = useContext(EmployeeExecutionNavigation)
+  const conversations = snapshot.conversations.filter(item => agent && item.agentIds.includes(agent.id) && !item.list?.hidden && !item.mergedInto)
   const scopeKey = JSON.stringify(conversations.map(item => item.id).sort())
   useEffect(() => {
-    source.current++
     if (!active) return
     let timer: ReturnType<typeof setTimeout> | undefined
     const unsubscribe = api.subscribe(event => {
       if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
-        if (event.conversationId === scope || event.conversationId === selectedConversation.current) { source.current++; setDetail(undefined); setSelected('') }
-        setRevision(value => value + 1)
-      } else if (event.type === 'changed' || event.type === 'message') {
-        if (!timer) timer = setTimeout(() => { timer = undefined; setRevision(value => value + 1) }, 500)
+        setRows(current => current.filter(row => row.conversationId !== event.conversationId)); setRevision(value => value + 1)
+      } else if (event.type === 'changed' || event.type === 'message' || event.type === 'automation:history-deleted') {
+        if (!timer) timer = setTimeout(() => { timer = undefined; setRevision(value => value + 1) }, 300)
       }
     })
-    return () => { if (timer) clearTimeout(timer); unsubscribe(); source.current++ }
-  }, [api, agent.id, agent.configVersion, active, scopeKey, scope])
+    return () => { unsubscribe(); clearTimeout(timer) }
+  }, [api, active])
   useEffect(() => {
     if (!active) return
     let current = true
-    setPage(undefined); setLoadError(''); setLoading(true)
-    void api.request('listEmployeeExecutions', { agentId: agent.id, ...(scope ? { conversationId: scope } : {}), ...(cursor ? { cursor } : {}) }).then(value => {
-      if (current) setPage(value)
-    }, cause => { if (current) setLoadError(errorText(cause)) }).finally(() => { if (current) setLoading(false) })
+    setLoading(true)
+    void (async () => {
+      const items: Row[] = []; let cursor: EmployeeExecutionCursor | undefined
+      for (let index = 0; index < pages; index++) {
+        if (agent) {
+          const page = await api.request('listEmployeeExecutions', { agentId: agent.id, ...(scope ? { conversationId: scope } : {}), cursor })
+          if (!current) return
+          items.push(...page.items.map(item => ({ runId: item.run.id, agentId: item.run.agentId, conversationId: item.run.conversationId, title: item.conversationTitle, createdAt: item.run.createdAt, status: item.run.status, configuration: [item.configuration.label, item.configuration.modelId].filter(Boolean).join(' · ') })))
+          cursor = page.nextCursor
+        } else if (scope) {
+          const page = await api.request('listExecutionHistory', { conversationId: scope, before: cursor })
+          if (!current) return
+          items.push(...page.items.map(({ run, trigger }) => ({ runId: run.id, agentId: run.agentId, conversationId: run.conversationId, title: trigger || run.agentName, createdAt: run.createdAt, status: run.status, configuration: run.agentName })))
+          cursor = page.next
+        }
+        if (!cursor) break
+      }
+      if (current) { setRows(items); setNext(Boolean(cursor)); setLoaded(true); setError('') }
+    })().catch(cause => { if (current) setError(errorText(cause)) }).finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [api, agent.id, agent.configVersion, active, scope, cursor, scopeKey, revision])
-  useEffect(() => {
-    setDetail(value => value?.run.id === selected && value.run.agentId === agent.id ? value : undefined); setDetailError('')
-    if (!active || !selected) { setDetailLoading(false); return }
-    let current = true
-    setDetailLoading(true)
-    void api.request('getEmployeeExecution', { agentId: agent.id, runId: selected }).then(value => {
-      if (current) setDetail(value)
-    }, cause => { if (current) { setDetail(undefined); setDetailError(errorText(cause)) } }).finally(() => { if (current) setDetailLoading(false) })
-    return () => { current = false }
-  }, [api, agent.id, agent.configVersion, active, selected, scopeKey, revision])
-  const openSource = () => {
-    if (!detail || !onOpenSource) return
-    const generation = source.current
-    void run(async () => {
-      const value = await api.request('getEmployeeExecution', { agentId: agent.id, runId: detail.run.id })
-      if (source.current !== generation) return
-      onOpenSource(value.run.conversationId, value.run.triggerMessageId, () => source.current === generation)
-    })
-  }
-  const stop = () => {
-    if (!detail) return
-    const generation = source.current
-    void run(async () => {
-      const value = await api.request('getEmployeeExecution', { agentId: agent.id, runId: detail.run.id })
-      if (source.current !== generation || !value.work || value.work.ownerAgentId !== agent.id || value.work.activeRunId !== value.run.id || !['queued', 'running', 'waiting_approval'].includes(value.run.status)) return
-      await api.request('cancelRun', { conversationId: value.run.conversationId, workId: value.work.id })
-      if (source.current === generation) setRevision(current => current + 1)
-    })
-  }
-  return <section className="detail-section space-y-4" aria-label={`${agent.name} 的执行详情`}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h3>执行详情</h3><Button variant="outline" size="sm" disabled={loading || busy} onClick={() => setRevision(value => value + 1)}><RefreshCw />刷新</Button></div>
-    <SelectField aria-label="执行记录会话" value={scope} onValueChange={value => { source.current++; setScope(value); setCursor(undefined); setSelected('') }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title }))]} />
-    {error && <Banner>{error}</Banner>}
-    {selected ? <>
-      <Button variant="outline" size="sm" onClick={() => { source.current++; setSelected('') }}><ArrowLeft />返回执行记录</Button>
-      {detailError && <Banner>{detailError}</Banner>}
-      {detailLoading && !detail && <Loading />}
-      {detail && <>
-        <div className="space-y-2"><div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{detail.configuration.kind === 'unknown' ? '尚未记录引擎' : detail.configuration.kind === 'mastra-model' ? '模型 API' : '本机 Agent'}</Badge><strong>{detail.configuration.label}</strong>{detail.configuration.programVersion && <span className="text-sm text-muted-foreground">{detail.configuration.programVersion}</span>}</div><p className="field-hint">{detail.configuration.modelId || '模型尚未记录'} · {detail.conversationTitle}{detail.configuration.configVersion ? ` · 员工配置版本 ${detail.configuration.configVersion}` : ''}</p></div>
-        <div className="flex flex-wrap gap-2">{onOpenSource && <Button variant="outline" size="sm" disabled={busy} onClick={openSource}><MessageCircle />查看原聊天</Button>}{detail.work && ['queued', 'running', 'waiting_approval'].includes(detail.run.status) && <Button variant="secondary" size="sm" disabled={busy} onClick={stop}>停止此工作</Button>}</div>
-        {detail.run.status === 'waiting_approval' && <p className="field-hint">这次执行正在等待批准，请在原聊天中处理。</p>}
-        <RunCard run={detail.run} work={detail.work} busy={busy} historical={false} newerAttempt={false} canRetry={false} onRetry={() => {}} />
-        {!isNativeBackend(detail.run.backend) && detail.run.usage && <p className="field-hint">输入 {detail.run.usage.inputTokens ?? '未知'} tokens · 输出 {detail.run.usage.outputTokens ?? '未知'} tokens</p>}
-        {detail.run.traceError && <Banner>{detail.run.traceError}</Banner>}
-        {detail.spans.length > 0 && <TraceDetail spans={detail.spans} runs={[detail.run]} />}
-        {detail.spansTruncated && <p className="field-hint">这里只显示前 {EMPLOYEE_EXECUTION_LIMITS.traceSpans} 条执行记录，完整记录可在原聊天查看。</p>}
-        {detail.artifacts.length > 0 && <div className="space-y-2"><h4>已发布成果</h4>{detail.artifacts.map(item => <p key={item.id} className="field-hint">{item.name}</p>)}</div>}
-        {detail.artifactsTruncated && <p className="field-hint">这里只显示前 {EMPLOYEE_EXECUTION_LIMITS.artifacts} 个成果，完整清单可在原聊天查看。</p>}
-      </>}
-    </> : <>
-      {loadError && <Banner>{loadError}</Banner>}
-      {loading && <Loading />}
-      {page?.items.map(item => <Card key={item.run.id} className="gap-0 p-0"><CardContent className="p-0"><Button variant="ghost" size="content" className="w-full justify-start p-4 text-left" onClick={() => { source.current++; setSelected(item.run.id) }}><span className="flex min-w-0 flex-1 flex-col gap-1"><span className="truncate font-medium">{item.configuration.label}{item.configuration.modelId ? ` · ${item.configuration.modelId}` : ''}</span><span className="truncate text-sm text-muted-foreground">{item.conversationTitle} · {new Date(item.run.createdAt).toLocaleString('zh-CN')}</span></span><Badge variant="secondary">{item.run.workId && item.run.status === 'completed' ? '本次运行结束' : runLabels[item.run.status]}</Badge></Button></CardContent></Card>)}
-      {page && !page.items.length && <p className="field-hint">此范围还没有执行记录。给员工发消息后，可以在这里查看。</p>}
-      <div className="flex gap-2">{cursor && <Button variant="outline" size="sm" disabled={loading} onClick={() => setCursor(undefined)}>最新记录</Button>}{page?.nextCursor && <Button variant="outline" size="sm" disabled={loading} onClick={() => setCursor(page.nextCursor)}>更早记录</Button>}</div>
-    </>}
+  }, [api, agent?.id, agent?.configVersion, active, scope, pages, scopeKey, revision])
+  const matches = rows.filter(row => `${row.title} ${row.configuration} ${runLabels[row.status]}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+  return <section className="automation-records" aria-label="执行记录">
+    <div className="automation-records-heading"><h3>执行记录</h3><div className="button-row"><Button variant="ghost" size="icon-sm" aria-label="刷新执行记录" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw /></Button><CatalogSearch label="搜索已加载执行记录" value={search} onChange={setSearch} /></div></div>
+    {agent && !conversationId && <SelectField aria-label="执行记录会话" value={scope} onValueChange={value => { setScope(value); setPages(1); setRows([]); setLoaded(false); setSelected('') }} options={[{ value: '', label: '全部会话' }, ...conversations.map(item => ({ value: item.id, label: item.title }))]} />}
+    {error && <><Banner>{error}</Banner><Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button></>}
+    {!loaded && loading && <Loading>正在读取执行记录…</Loading>}
+    <div className="automation-record-list">{matches.map(row => {
+      const subtitle = `${new Date(row.createdAt).toLocaleString('zh-CN', { hour12: false })} · ${row.configuration} · ${runLabels[row.status]}`
+      return <Button key={row.runId} variant="ghost" size="content" className={`conversation-item automation-record-row${selected === row.runId ? ' selected' : ''}`} data-employee-run-id={row.runId} aria-pressed={selected === row.runId} onClick={() => { if (!active) return; setSelected(row.runId); openExecution(row) }}><span className="skill-list-icon"><Clock /></span><span className="conversation-copy"><strong className="conversation-title" title={row.title}>{row.title}</strong><small className="conversation-preview" title={subtitle}>{subtitle}</small></span></Button>
+    })}</div>
+    {loaded && !matches.length && <p className="field-hint">{search ? '已加载记录中没有匹配项' : '暂无执行记录'}</p>}
+    {next && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
   </section>
 }

@@ -1,4 +1,11 @@
 /*
+ * [OUTPUT]: 定时任务公开消息旁展示同一原Run的ExecutionFeed；定位该消息仍显示过程，流式正文不重复，隐藏页停读。
+ * [OUTPUT]: 资源管理结果导航携已保存名称，数据源打开全局右侧配置标签。
+ * [OUTPUT]: 普通核心会话投影真实技能/数据源操作结果卡，点击定位全局目录。
+ * [OUTPUT]: 可记住的宿主命令审批显示“始终允许此类操作”，明确授权只提交当前员工。
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
+ * [OUTPUT]: Composer管理模型使用通讯录导航回调，头像与其他员工详情入口保持原行为。
+ * [OUTPUT]: Composer提及读取当前员工绑定技能/当前会话文件，模型菜单沿当前连接。
  * [OUTPUT]: 聊天正文与输入框始终挂载可见，任务/文件改为右侧面板回调，打开后不暂停主聊天执行流和阅读。
  * [OUTPUT]: 移除旧任务与产物回调；输入区文件入口打开当前文件视图或渠道文件。
  * [OUTPUT]: 标题配置跳转通讯录，执行/渠道共用操作菜单；删除标题置顶和搜索的透传回调。
@@ -54,6 +61,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { isCoreConversation } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { CoreTeamResults } from './core-team-results'
+import { CatalogResults } from './catalog-results'
 import { CoreCollaborationResults } from './core-collaboration-results'
 
 import { Button } from '@/components/ui/button'
@@ -90,7 +98,7 @@ import { Banner } from '@/components/common'
 import { useConversationReading } from './use-conversation-reading'
 import { READING_UI_LIMITS } from '../reading-state'
 import { type ChatQuestionReplies } from '../question-reply'
-export function ChatView({ api, pageActive, questionReplies, artifactActions, onTeamGroup, detail, snapshot, draft, setDraft, busy, onSend, onDetails, onChannels, headerActions, onPublish, onFiles, onTasks, onConfigureAgent, onEditTitle, onClear, onTrace, onSettings, onProfile, onChangeAgent, configurationLocked, onApprove, onOpenPath, onPreviewArtifact, onAddMaterial, onDropMaterials, onPasteMaterials, onRemoveMaterial, onRetryMaterial, onPreviewMaterial, onDiscardSubmission, focusMessage, focusApproval, scrollPosition, onScrollPosition, onReading, onLocation, onPage, paging, pageEdges, restoreAnchor }: { headerActions?: ReactNode; onPublish?(message?: ConversationDetail['messages'][number]): void; onFiles?(): void; onTasks?(): void; api: DesktopApi; pageActive: boolean; questionReplies: ChatQuestionReplies; artifactActions: ChatArtifacts; onTeamGroup(id: string): void; detail: ConversationView; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: () => void; onDetails: () => void; onChannels?: () => void; onConfigureAgent: (agent: DigitalAgent) => void; onEditTitle: (conversation: Conversation) => void; onClear: (id: string, hide: boolean) => Promise<void>; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: (agent?: DigitalAgent) => void; onProfile: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => Promise<ComposerAgentSaveResult>; configurationLocked: boolean; onApprove: (id: string, approved: boolean) => void; onOpenPath: (path: string) => void; onPreviewArtifact(artifact: Artifact): void; onAddMaterial(): void; onDropMaterials(files: File[]): void; onPasteMaterials(files?: File[]): void; onRemoveMaterial(item: MaterialDraftItem): void; onRetryMaterial(item: MaterialDraftItem): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void; onDiscardSubmission(): void; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void; onReading(state: ConversationReadingState): void; onLocation(messageId: string | undefined, following: boolean, offset?: number): void; onPage(direction: 'before' | 'after'): void; paging: boolean; pageEdges: { before: boolean; after: boolean }; restoreAnchor?: { messageId: string; offset?: number } }) {
+export function ChatView({ api, pageActive, questionReplies, artifactActions, onTeamGroup, onOpenCatalog, detail, snapshot, draft, setDraft, busy, onSend, onDetails, onChannels, headerActions, onPublish, onFiles, onTasks, onConfigureAgent, onManageModels, onEditTitle, onClear, onTrace, onSettings, onProfile, onChangeAgent, configurationLocked, onApprove, onOpenPath, onPreviewArtifact, onAddMaterial, onDropMaterials, onPasteMaterials, onRemoveMaterial, onRetryMaterial, onPreviewMaterial, onDiscardSubmission, focusMessage, focusApproval, scrollPosition, onScrollPosition, onReading, onLocation, onPage, paging, pageEdges, restoreAnchor }: { headerActions?: ReactNode; onPublish?(message?: ConversationDetail['messages'][number]): void; onFiles?(): void; onTasks?(): void; api: DesktopApi; pageActive: boolean; questionReplies: ChatQuestionReplies; artifactActions: ChatArtifacts; onTeamGroup(id: string): void; onOpenCatalog?(kind: 'skill' | 'source', id: string, name?: string): void; detail: ConversationView; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: () => void; onDetails: () => void; onChannels?: () => void; onConfigureAgent: (agent: DigitalAgent) => void; onManageModels: (agent: DigitalAgent) => void; onEditTitle: (conversation: Conversation) => void; onClear: (id: string, hide: boolean) => Promise<void>; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: (agent?: DigitalAgent) => void; onProfile: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => Promise<ComposerAgentSaveResult>; configurationLocked: boolean; onApprove: (id: string, approved: boolean, always?: boolean) => void; onOpenPath: (path: string) => void; onPreviewArtifact(artifact: Artifact): void; onAddMaterial(): void; onDropMaterials(files: File[]): void; onPasteMaterials(files?: File[]): void; onRemoveMaterial(item: MaterialDraftItem): void; onRetryMaterial(item: MaterialDraftItem): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void; onDiscardSubmission(): void; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void; onReading(state: ConversationReadingState): void; onLocation(messageId: string | undefined, following: boolean, offset?: number): void; onPage(direction: 'before' | 'after'): void; paging: boolean; pageEdges: { before: boolean; after: boolean }; restoreAnchor?: { messageId: string; offset?: number } }) {
   const conversation = detail.conversation
   const referenceState=useRef({id:conversation.id,draft,pageActive})
   referenceState.current={id:conversation.id,draft,pageActive}
@@ -130,6 +138,19 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
   const activeRuns = detail.runs.filter(run => ['queued','running','waiting_approval'].includes(run.status))
   const executionRuns = latestPage.current || !pageEdges.after ? activeRuns.filter(run => run.phase === 'execution') : []
   const streamingRunIds = new Set(executionRuns.map(run => run.id))
+  const mirrors = (detail.executionMirrors ?? []).map(mirror => ({ ...mirror, messageId: detail.messages.find(message => message.automationPublication?.sourceConversationId === mirror.run.conversationId && message.automationPublication.sourceMessageId === mirror.run.messageId)?.id ?? mirror.messageId })).filter(({ run, triggerMessage, messageId }) =>
+    ['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
+  const mirrorAnchor = (mirror: typeof mirrors[number]) => detail.messages.some(message => message.id === mirror.triggerMessage.id) ? mirror.triggerMessage.id : mirror.messageId
+  const mirroredMessageIds = new Set(mirrors.map(mirror => mirror.messageId).filter(Boolean))
+  const executionCard = (run: typeof activeRuns[number], trigger?: ConversationDetail['messages'][number]) => {
+    const agent = members.find(member => member.id === run.agentId)
+    return <article key={run.id} className="message-row agent">
+      <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
+      <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
+        <ChatExecutionCard api={api} run={run} active={pageActive} onOpen={() => onTrace(trigger)} />
+      </div>
+    </article>
+  }
   const activeTurns = detail.turns?.filter(turn => liveTurn(turn.status)) ?? []
   const active = activeRuns.length > 0 || activeTurns.length > 0
   const composerRef = useRef<PromptBarHandle>(null)
@@ -237,13 +258,16 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
       onTouchStart: event => { touchY.current = event.touches[0]?.clientY },
       onTouchMove: event => { const y = event.touches[0]?.clientY, previous = touchY.current; touchY.current = y; if (y === undefined || previous === undefined) return; if (y > previous) loadAtEdge('before'); else if (y < previous) loadAtEdge('after') },
       onKeyDown: event => { if (event.defaultPrevented) return; if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) loadAtEdge('before'); else if (['ArrowDown', 'PageDown', 'End'].includes(event.key)) loadAtEdge('after') } }}>
-      {reading.error && <Banner>{reading.error}<Button variant="link" size="sm" onClick={() => void reading.check()}>核对阅读状态</Button></Banner>}
-      {!detail.messagePage.items.length && !executionRuns.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
+      {reading.error && <><Banner>{reading.error}</Banner><Button variant="link" size="sm" onClick={() => void reading.check()}>核对阅读状态</Button></>}
+      {!detail.messagePage.items.length && !executionRuns.length && !mirrors.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
       {messageRows.map(({ item, message }, index) => {
         if (!message) return <article key={item.messageId} id={`message-${item.messageId}`} data-reading-message-id={item.messageId} className={focusMessage?.id === item.messageId ? 'message-target' : undefined} tabIndex={-1}>
           <Banner>{item.reason ?? '这条内容已被清理或不可用。'}</Banner>
           {(detail.materials ?? []).filter(material => material.messageId === item.messageId && ['ready', 'unavailable'].includes(material.status)).map(material => <Button key={material.id} variant="link" size="sm" aria-label={`核对材料 ${materialDisplayName(material.name)}`} onClick={() => onPreviewMaterial(material)}>核对材料：{materialDisplayName(material.name)}</Button>)}
         </article>
+        const attachedMirrors = mirrors.filter(mirror => mirrorAnchor(mirror) === message.id)
+        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}</Fragment>
+        if (message.status === 'streaming' && message.automationPublication && message.senderType === 'agent' && !message.content) return null
         // Message events can arrive before the run snapshot; do not flash the old empty typing bubble.
         if (message.status === 'streaming' && message.runId) {
           if (streamingRunIds.has(message.runId)) return null
@@ -290,19 +314,14 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy || !pageActive} onApprove={onApprove} />)}
           </div>
         </article>
+        {attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
         </Fragment>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
+      {isCoreConversation(conversation) && onOpenCatalog && <CatalogResults api={api} conversationId={conversation.id} active={pageActive} onOpen={onOpenCatalog} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
-      {executionRuns.map(run => {
-        const agent = members.find(member => member.id === run.agentId)
-        return <article key={run.id} className="message-row agent">
-          <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
-          <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
-            <ChatExecutionCard api={api} run={run} active={pageActive} onOpen={() => onTrace(detail.messages.find(message => message.id === run.triggerMessageId))} />
-          </div>
-        </article>
-      })}
+      {executionRuns.map(run => executionCard(run, detail.messages.find(message => message.id === run.triggerMessageId)))}
+      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main"><div className="message-meta">{group && <strong>{approval.agentName}</strong>}</div><ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>
@@ -316,14 +335,14 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
       {(draft.artifactRevision || draft.materialEdit) && <FileEditNote annotation={(draft.artifactRevision ?? draft.materialEdit)?.annotation} disabled={sendingLocked} onChange={annotation => setDraft(draft.artifactRevision ? { ...draft, artifactRevision: { ...draft.artifactRevision, annotation } } : { ...draft, materialEdit: { ...draft.materialEdit!, annotation } })} />}
       {(draft.questionReply || draft.artifactRevision || draft.materialEdit) && Boolean(materialDrafts.length || draft.mentionIds.length) && <Banner>请先移除材料或成员点名，再发送这条明确回复；也可以取消关联后作为普通消息发送。</Banner>}
       {draft.browserReference && <div className="flex min-w-0 items-center gap-2 px-3 py-2 text-sm" aria-label="已引用网页"><div className="min-w-0 flex-1"><div className="truncate">{draft.browserReference.title || '网页'}</div><div className="truncate text-xs text-muted-foreground">{draft.browserReference.url}</div></div><Button variant="ghost" size="icon-sm" disabled={sendingLocked} aria-label="移除网页引用" onClick={()=>setDraft({...draft,browserReference:undefined})}><X /></Button></div>}
-      <PromptBar ref={composerRef} attachments={<MaterialDraftBar api={api} pageActive={pageActive} items={materialDrafts} disabled={busy || questionPending || Boolean(draft.submission)} onRemove={onRemoveMaterial} onRetry={onRetryMaterial} onPreview={onPreviewMaterial} />} onPasteMaterials={materialsAllowed ? files => { if (pageActive && !busy && !draft.submission) onPasteMaterials(files) } : undefined} draft={draft} setDraft={setDraft} members={members} group={group} external={external} mentionsAllowed={!replyMode} disabled={historicalChannel || questionPending || artifactRevisionPending} placeholder={historicalChannel ? '旧渠道会话仅保留历史' : draft.artifactRevision || draft.materialEdit ? '告诉这位员工，需要怎样修改这份文件…' : draft.questionReply ? '补充这个原问题，接续同一件事…' : channel ? '继续这条会话，消息仅保留在 BOAI…' : group ? `发消息给 ${conversation.title}，@ 提及 · / 命令` : external ? '描述明确任务，然后点击执行外部任务…' : '说说你想完成什么，/ 查看命令…'} onSend={onSend} onActivity={() => onFiles?.()} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)}>
-        {(openMenu, menu) => <ComposerToolbar api={api} members={members} snapshot={snapshot} group={group} external={external} replyMode={replyMode} busy={busy || questionReplies.busy} active={active} canSend={canSend} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} commandsVisible={menu === 'slash'} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)} onReferenceBrowser={!channel && !isCoreConversation(conversation) && !external && !replyMode ? ()=>void referenceBrowser():undefined} browserReferenceBusy={referencingBrowser} onAddMaterial={materialsAllowed ? onAddMaterial : undefined} materialsDisabled={Boolean(draft.submission) || materialDrafts.length >= MATERIAL_LIMITS.perMessage} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onConfigureAgent} onChangeAgent={onChangeAgent} onSend={onSend} />}
+      <PromptBar api={api} resources={snapshot.resources} conversationId={conversation.id} ref={composerRef} attachments={<MaterialDraftBar api={api} pageActive={pageActive} items={materialDrafts} disabled={busy || questionPending || Boolean(draft.submission)} onRemove={onRemoveMaterial} onRetry={onRetryMaterial} onPreview={onPreviewMaterial} />} onPasteMaterials={materialsAllowed ? files => { if (pageActive && !busy && !draft.submission) onPasteMaterials(files) } : undefined} draft={draft} setDraft={setDraft} members={members} group={group} external={external} mentionsAllowed={!replyMode} disabled={historicalChannel || questionPending || artifactRevisionPending} placeholder={historicalChannel ? '旧渠道会话仅保留历史' : draft.artifactRevision || draft.materialEdit ? '告诉这位员工，需要怎样修改这份文件…' : draft.questionReply ? '补充这个原问题，接续同一件事…' : channel ? '继续这条会话，消息仅保留在 BOAI…' : group ? `发消息给 ${conversation.title}，@ 提及 · / 命令` : external ? '描述明确任务，然后点击执行外部任务…' : '说说你想完成什么，/ 查看命令…'} onSend={onSend} onActivity={() => onFiles?.()} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)}>
+        {(openMenu, menu) => <ComposerToolbar runs={detail.runs} api={api} members={members} snapshot={snapshot} group={group} external={external} replyMode={replyMode} busy={busy || questionReplies.busy} active={active} canSend={canSend} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} commandsVisible={menu === 'slash'} onOpenWorkspace={() => onOpenPath(conversation.workspacePath)} onReferenceBrowser={!channel && !isCoreConversation(conversation) && !external && !replyMode ? ()=>void referenceBrowser():undefined} browserReferenceBusy={referencingBrowser} onAddMaterial={materialsAllowed ? onAddMaterial : undefined} materialsDisabled={Boolean(draft.submission) || materialDrafts.length >= MATERIAL_LIMITS.perMessage} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onManageModels} onChangeAgent={onChangeAgent} onSend={onSend} />}
       </PromptBar>
     </div></div>
     </div>
 }
 
-export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean) => void; busy: boolean }) {
+export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean, always?: boolean) => void; busy: boolean }) {
   const browser = approval.kind === 'browser'
-  return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} tabIndex={-1} role="region" aria-label={`${approval.agentName} 的${browser ? '网页操作' : '命令'}审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} {browser ? '申请操作网页' : '申请运行命令'}</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre>{!browser && <p className="field-hint">工作目录：{approval.cwd}</p>}<p className="field-hint">{browser ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : '命令使用应用的主机权限，请核对实际操作范围。'}</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button></div></CardContent></Card>
+  return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} tabIndex={-1} role="region" aria-label={`${approval.agentName} 的${browser ? '网页操作' : '命令'}审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} {browser ? '申请操作网页' : '申请运行命令'}</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre>{!browser && <p className="field-hint">工作目录：{approval.cwd}</p>}<p className="field-hint">{browser ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : '命令使用应用的主机权限，请核对实际操作范围。'}</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button>{approval.rememberAllowed && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, true, true)}>始终允许此类操作</Button>}</div></CardContent></Card>
 }

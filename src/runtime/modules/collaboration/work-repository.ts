@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 自动化调用事务不再按命令权限拒绝员工，原来源/运行/预算及实际持有者核验保持。
  * [OUTPUT]: 渠道文件内部修订的Work认领/续行按固定父渠道与代际核对原件和材料，不混用原工作身份。
  * [OUTPUT]: 自动化固定分工限定唯一负责人根、稳定子工作及同次真实依赖，交付事务拒绝跳过必需分工。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -395,7 +396,7 @@ export class WorkRepository {
         const conversation = await tx.get<Conversation>('conversations', run.conversationId)
         if (!current || current.status !== 'running' || current.agentId !== run.agentId || current.turnId !== run.turnId || current.conversationId !== run.conversationId || current.workId !== run.workId || JSON.stringify(current.origin) !== JSON.stringify(run.origin) || !turn || turn.conversationId !== run.conversationId || JSON.stringify(turn.origin) !== JSON.stringify(run.origin) || ['cancelled', 'interrupted', 'budget_exhausted'].includes(turn.status)) throw new WorkUnavailableError('自动化调用缺少当前真实运行、轮次或原始来源')
         if (current.phase !== run.phase || phase !== current.phase && !(phase === 'report' && current.phase === 'execution')) throw new WorkUnavailableError('自动化调用阶段与真实运行不一致')
-        if (!agent?.active || agent.allowCommands && !isNativeBackend(agent.executionBackend) || agent.executionBackend?.kind === 'acp-local' || !conversation?.agentIds.includes(agent.id) || await tx.get('conversationCleanup', conversation.id)) throw new WorkUnavailableError('自动化员工或聊天授权已经变化')
+        if (!agent?.active || agent.executionBackend?.kind === 'acp-local' || !conversation?.agentIds.includes(agent.id) || await tx.get('conversationCleanup', conversation.id)) throw new WorkUnavailableError('自动化员工或聊天授权已经变化')
         if (!sameBackendBinding(agent.executionBackend, run.backend) || !sameBackendBinding(agent?.executionBackend, current.backend) || current.backend?.kind === 'acp-local' || native && (!isNativeBackend(agent.executionBackend) || current.backend?.profileId !== agent.executionBackend.profileId)) throw new WorkUnavailableError('自动化运行方式与当前员工不一致')
         if (JSON.stringify(budget.origin) !== JSON.stringify(run.origin) || budget.conversationId !== run.conversationId) throw new WorkUnavailableError('自动化调用不能改绑原始预算')
       }

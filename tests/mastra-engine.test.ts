@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 真实SDK定时判断广告浏览器并执行browser_tool；旧自动化禁用断言被现行合同替代。
+ * [OUTPUT]: 真实SDK数据源管理chat可查浏览器文档并drain；无管理授权的普通chat不提供浏览器。
+ * [OUTPUT]: 实际Mastra SDK普通chat串联两类全局管理工具，验证真实工具回执进入后续模型请求。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: Hermes 文件工具回归：长文续读/精准修改/过期拒绝、来源撤权和真实SDK发布。
  * [OUTPUT]: API实际SDK的report_work回执返回原答复证据，最终正文门禁不变。
@@ -11,7 +14,7 @@
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: Mastra 适配器、消息投影、执行合同、真实附件图片与本地协议服务。
  * [OUTPUT]: 用户图片穿透实际SDK到原生image_url，历史获准图可用于后续交流；外会话/非用户图不投影，Trace只保留实际字节hash摘要。
- * [OUTPUT]: 实际 SDK 判断与 bobo 工具任务不依赖旧 allowBrowser；停用/ACP/自动化/组织/普通 chat/无 Work 仍不提供 task 浏览器。
+ * [OUTPUT]: 实际 SDK 判断与 bobo 工具任务不依赖旧 allowBrowser；停用/ACP/组织/普通 chat/无 Work 仍不提供 task 浏览器。
  * [OUTPUT]: 同轮实际 SDK 多工具写入/发布按受理次序等待退出，真实成果字节/hash 和零重试；新根无修订字段，真实修订仅宿主原请求 literal。
  * [OUTPUT]: 实际 SDK 判断仅核心本人来源展示组织枚举，业务/组织汇报区分真实登记 ID，已声明等待不能被 userQuestion/非法证据覆盖；组织阶段仅三个获准工具、真实调用身份、普通群管理隔离及未知发布不确认副作用。
  * [OUTPUT]: 明确 task ask 的 JSON 判断合同与原有 ask/handoff 无工具实际 SDK 验证；官方 DeepSeek Chat 判断原生 JSON mode 的真实 HTTP 参数、协议拒绝、一次修复/预算和唯一调用用量回执；内建文件工具的真实来源授权、隐藏列举/猜路径拒绝、当前 run 写入和双端产物发布门禁及取消回归；记忆候选字段/版本及有界纠正协议；真实 SDK 开始/回执一一对应和实际技能激活身份回归；唯一请求身份对应原始逐调用用量；日常阶段轻量思考参数与完成前正文流式验收；真实 SDK Trace 的父子完整性、请求输入、工具调用、阶段刷盘与观测失败不重放；模型调用、判断截断有界修复、授权委派投影、工作汇报、预算、门禁与输入精简回归。
@@ -205,9 +208,29 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(legacy.data.currentTaskCapabilities).toEqual({ browser: true })
   })
 
-  it.each(['disconnected', 'inactive', 'acp', 'automation', 'organization'] as const)('does not advertise an executable browser for %s contexts', async kind => {
+  it('advertises the available browser for scheduled work during participation', async () => {
+    const server = await endpoint([JSON.stringify({ action: 'reply', responseKind: 'task', work: { key: 'main', scope: '查询南京天气', deliverable: '天气及来源' } })])
+    const run = await context(server.url, { browserAvailable: true, work: { origin: { automationId: 'plan', occurrenceId: 'occurrence', authorizedFingerprint: 'fingerprint' } } as WorkItem })
+    await new MastraEngine().decide(run.ctx)
+    const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
+    expect(payload.data.currentTaskCapabilities.browser).toBe(true)
+    expect(server.requests[0]!.tools).toBeUndefined()
+  })
+
+  it('provides the actual SDK browser tool to scheduled work', async () => {
+    const server = await endpoint([{ name: 'browser_tool', args: { command: 'snapshot' } }, '已读取本次天气页面。'])
+    const execute = vi.fn(async () => ({ result: { output: '本次天气页面', appendReleaseHint: false } })), drain = vi.fn(async () => {})
+    const run = await context(server.url, { browserSession: { execute, drain } as unknown as BrowserSession })
+    run.ctx.work = { id: 'scheduled-work', sourceMessageId: 'message-1', conversationId: run.ctx.conversation.id, ownerAgentId: run.ctx.agent.id, status: 'running', origin: { automationId: 'plan', occurrenceId: 'occurrence', authorizedFingerprint: 'fingerprint' } } as WorkItem
+    await new MastraEngine().run(run.ctx)
+    expect(server.requests[0]!.tools?.some(tool => tool.function.name === 'browser_tool')).toBe(true)
+    expect(execute).toHaveBeenCalledExactlyOnceWith('snapshot', 'call-0')
+    expect(drain).toHaveBeenCalledOnce()
+  })
+
+  it.each(['disconnected', 'inactive', 'acp', 'organization'] as const)('does not advertise an executable browser for %s contexts', async kind => {
     const server = await endpoint([JSON.stringify({ action: 'pass' })])
-    const run = await context(server.url, { agent: employee({ allowBrowser: true, active: kind !== 'inactive' }), browserAvailable: !['disconnected', 'automation'].includes(kind), ...(kind === 'acp' ? { agent: employee({ allowBrowser: true, executionBackend: { kind: 'acp-local', profileId: 'external' } }) } : {}), ...(kind === 'organization' ? { work: { organization: { mode: 'organize_only' } } as WorkItem } : {}) })
+    const run = await context(server.url, { agent: employee({ allowBrowser: true, active: kind !== 'inactive' }), browserAvailable: kind !== 'disconnected', ...(kind === 'acp' ? { agent: employee({ allowBrowser: true, executionBackend: { kind: 'acp-local', profileId: 'external' } }) } : {}), ...(kind === 'organization' ? { work: { organization: { mode: 'organize_only' } } as WorkItem } : {}) })
     await new MastraEngine().decide(run.ctx)
     const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
     expect(payload.data.currentTaskCapabilities).toEqual({ browser: false })
@@ -246,9 +269,9 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(run.ctx.workBudget?.maxModelCalls).toBe(24);expect(drain).toHaveBeenCalledOnce()
   })
 
-  it.each(['inactive','acp','automation','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
+  it.each(['inactive','acp','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
     const execute=vi.fn(async()=>undefined),drain=vi.fn(async()=>{})
-    const work={id:'original-work',sourceMessageId:'message-1',conversationId:'conversation',ownerAgentId:'agent-a',scope:'原目标',deliverable:'原交付',status:'running',...(kind==='automation'?{origin:{automationId:'automatic',occurrenceId:'occurrence',authorizedFingerprint:'fingerprint'}}:{}),...(kind==='organization'?{organization:{requestId:'original-organization',mode:'organize_only',goal:'只组织群'}}:{})} as WorkItem
+    const work={id:'original-work',sourceMessageId:'message-1',conversationId:'conversation',ownerAgentId:'agent-a',scope:'原目标',deliverable:'原交付',status:'running',...(kind==='organization'?{organization:{requestId:'original-organization',mode:'organize_only',goal:'只组织群'}}:{})} as WorkItem
     const f=await nativeTask({agent:employee({allowBrowser:true,active:kind!=='inactive',...(kind==='acp'?{executionBackend:{kind:'acp-local',profileId:'external'}}:{})}),work:kind==='no-work'?undefined:work,responseKind:kind==='chat'?'chat':'task',browserSession:{execute,drain} as unknown as BrowserSession})
     expect(f.runtime.tools).not.toHaveProperty('browser_tool');expect(execute).not.toHaveBeenCalled()
     await f.runtime.dispose()
@@ -1735,6 +1758,49 @@ it('projects only selected user images and retains an authorized historical imag
   expect(serialized).not.toContain('data:image/png;base64,MISSING')
   expect(projected[0].content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'image', image: images[0].dataUrl })]))
   expect(stored.map(item => item.content)).toEqual(['上一张图', '请继续看图', '同事的说明', '外部'])
+})
+
+it('uses both global catalog tools through the actual SDK in ordinary chat', async () => {
+  const skillInput = { command: { action: 'list', input: {} } }
+  const sourceInput = { command: { action: 'list', input: {} } }
+  const service = await endpoint([{ name: 'manage_skills', args: skillInput }, { name: 'manage_data_sources', args: sourceInput }, '找到本地技能与数据源。'])
+  const manageSkills = vi.fn(async () => ({ skills: [{ id: 'local:example', name: 'example' }] }))
+  const manageDataSources = vi.fn(async () => [{ id: 'source-example', name: 'Example API' }])
+  const f = await context(service.url, { responseKind: 'chat', work: undefined, manageSkills, manageDataSources })
+  await new MastraEngine().run(f.ctx)
+  expect(manageSkills).toHaveBeenCalledWith(skillInput)
+  expect(manageDataSources).toHaveBeenCalledWith(sourceInput)
+  expect(service.requests).toHaveLength(3)
+  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_skills', 'manage_data_sources'])
+  expect(JSON.stringify(service.requests[2].messages)).toContain('source-example')
+  expect(f.deltas.join('')).toBe('找到本地技能与数据源。')
+  expect(f.additionalCalls).toHaveLength(2)
+  for (const name of ['manage_skills', 'manage_data_sources']) expect(f.tools.some(tool => tool.name === name && tool.status === 'completed')).toBe(true)
+})
+
+it('reads setup documentation with the existing browser inside ordinary bobo source management and drains it', async () => {
+  const input = { command: { action: 'guide', input: {} } }
+  const service = await endpoint([{ name: 'manage_data_sources', args: input }, { name: 'browser_tool', args: { command: 'navigate https://example.test/docs' } }, '已核对官方连接文档。'])
+  const execute = vi.fn(async () => ({ result: { output: 'Service endpoint: https://example.test/mcp', appendReleaseHint: false } })), drain = vi.fn(async () => {})
+  const manageDataSources = vi.fn(async () => ({ guide: 'Verify official endpoint, save, then test.' }))
+  const f = await context(service.url, { responseKind: 'chat', work: undefined, manageDataSources, browserSession: { execute, drain } as unknown as BrowserSession })
+  await new MastraEngine().run(f.ctx)
+  expect(manageDataSources).toHaveBeenCalledWith(input)
+  expect(execute).toHaveBeenCalledWith('navigate https://example.test/docs', expect.any(String))
+  expect(service.requests).toHaveLength(3)
+  expect(JSON.stringify(service.requests[2].messages)).toContain('https://example.test/mcp')
+  expect(f.deltas.join('')).toBe('已核对官方连接文档。')
+  expect(f.ctx.work).toBeUndefined()
+  expect(drain).toHaveBeenCalledTimes(1)
+})
+
+it('does not advertise the setup browser in ordinary chat without source management authority', async () => {
+  const service = await endpoint(['你好。'])
+  const execute = vi.fn(), drain = vi.fn(async () => {})
+  const f = await context(service.url, { responseKind: 'chat', work: undefined, browserSession: { execute, drain } as unknown as BrowserSession })
+  await new MastraEngine().run(f.ctx)
+  expect(service.requests[0].tools ?? []).toEqual([])
+  expect(execute).not.toHaveBeenCalled()
 })
 
 it('uses the actual SDK automation tool in chat and publishes only the final receipt-based reply without file Work', async () => {

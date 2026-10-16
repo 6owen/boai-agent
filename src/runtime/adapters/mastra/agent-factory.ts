@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 获得数据源管理回调的普通chat可复用内置browser_tool查设置文档，不需要认领Work；阶段结束实际drain。
+ * [OUTPUT]: 普通bobo聊天可调用全局技能/数据源管理工具，沿原宿主服务。
+ * [OUTPUT]: 授权的数据源创建会话装配create_data_source，与手动配置使用同一schema。
  * [OUTPUT]: 自动化模型工具使用对象根目录；执行仍按动作严格校验，来源与保存回执沿共用服务。
  * [OUTPUT]: 本人对话的计划管理工具独立于文件Work，复用原自动化服务；API与本机工具合同一致。
  * [OUTPUT]: API汇报明确选择本次正文证据，避免重复生成不一致摘句；选择不证明文件、同事或外部动作完成。
@@ -13,6 +16,8 @@
  * [POS]: Mastra Agent 工厂；员工独立判断，工作认领由宿主执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogManagementInstructions } from '../../modules/resources/catalog-commands'
+import { sourceCreationSchema, sourceCreationDescription } from '../../modules/sources/source-commands'
 import { groupInterpretationInstructions, orderedResponseInstruction } from '../../modules/collaboration/group-coordination'
 import type { ProcessInputStepArgs } from '@mastra/core/processors'
 import { Agent } from '@mastra/core/agent'
@@ -22,6 +27,7 @@ import { assertApiContext, type EngineContext } from '../../contracts'
 import { modelConfig } from './model-config'
 import { observeAgent, traceModelRequest } from './trace'
 import { browserChatModel } from './browser-model'
+import { createBrowserTool } from './browser-tool'
 import { createTaskRuntime } from './task-runtime'
 import { bootstrapInstructions, organizationDecisionAllowed, boboResponseInstructions, collaborationResponseInstructions, decisionInstructions, memoryInstructions } from '../../modules/employees/phase-instructions'
 export { bootstrapInstructions, organizationDecisionAllowed } from '../../modules/employees/phase-instructions'
@@ -85,6 +91,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   const ctx = context
   const task = phase === 'task' && (!ctx.decision || ctx.decision.action === 'reply')
   const taskRuntime = task ? await createTaskRuntime(ctx, commandTimeoutMs) : undefined
+  const setupBrowser = !task && ctx.manageDataSources ? ctx.browserSession : undefined
   try {
     assertApiContext(context)
   context.signal.throwIfAborted()
@@ -97,8 +104,9 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
           boboResponseInstructions(ctx),
           collaborationResponseInstructions(ctx),
           ctx.continuation ? `Host-confirmed continuation: ${JSON.stringify(ctx.continuation)}. The current user message answers the listed questions or resumes the listed attempts for the original request. Continue its existing scope using authorized history; do not repeat delivered work or tool effects.` : '',
-          task ? taskRuntime!.instructions : 'Current duty: respond naturally to the CURRENT TURN USER REQUEST. No workspace, knowledge-search, skill, or command tools are available. Historical exchanges and memory can supply relevant background; earlier user tasks and earlier assistant introductions do not prescribe the length or content of this answer. For a simple greeting or thanks, a brief warm acknowledgment is enough. Do not repeat a long introduction, list capabilities, describe tools, or ask for a work topic/materials unless this current request asks for them. A greeting does not require a concrete work assignment. For a substantive current question, answer with the detail that question needs. Do not claim to have executed work.',
+          task ? taskRuntime!.instructions : 'Current duty: respond naturally to the CURRENT TURN USER REQUEST. No workspace, knowledge-search, skill-execution or command tools are available in this chat stage. Use only explicitly provided management tools for catalog or automation operations. Historical exchanges and memory can supply relevant background; earlier user tasks and earlier assistant introductions do not prescribe the length or content of this answer. For a simple greeting or thanks, a brief warm acknowledgment is enough. Do not repeat a long introduction, list capabilities, describe tools, or ask for a work topic/materials unless this current request asks for them. A greeting does not require a concrete work assignment. For a substantive current question, answer with the detail that question needs. Do not claim to have executed work.',
           orderedResponseInstruction(ctx.groupCoordination),
+          ctx.manageSkills || ctx.manageDataSources ? catalogManagementInstructions : '',
           ctx.manageAutomation ? `You may manage this owner's automation plans with manage_automation even in ordinary chat; no file Work is needed. Current owner: ${JSON.stringify(ctx.automationOwner)}. Current members: ${JSON.stringify(ctx.members?.map(({ id, name, role }) => ({ id, name, role })))}. Default timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}. Missing details need clarification; only actual tool receipts prove creation or modification.` : '',
           ctx.decision ? `Your validated participation intent for this response (do not print it): ${JSON.stringify(ctx.decision)}` : '',
           task && ctx.delegateWork ? `Eligible current members for delegate_work (use their exact IDs): ${JSON.stringify((ctx.members ?? []).filter(member => member.active && ctx.conversation.agentIds.includes(member.id) && member.executionBackend?.kind !== 'acp-local').map(({ id, name, role }) => ({ id, name, role })))}` : '',
@@ -106,9 +114,9 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
           task && ctx.dependencyArtifacts?.length ? `Actual delivered dependency files: ${JSON.stringify(ctx.dependencyArtifacts)}. Use read_file with the supplied exact logicalPath when your assignment needs that original; do not rediscover the same file by listing directories. These are source references, not your own publication evidence or additional permissions. The file tool rechecks current identity, hash and authorization. Missing or changed files cannot be replaced with guessed paths or chat statements.` : '',
         ].filter(Boolean).join('\n\n'),
         ...(taskRuntime ? { workspace: taskRuntime.workspace } : {}),
-        tools: { ...taskRuntime?.tools, ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) },
+        tools: { ...taskRuntime?.tools, ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) },
       })
     let disposed = false
-    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.dispose() } } }
-  } catch (error) { await taskRuntime?.dispose(); throw error }
+    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.dispose(); await setupBrowser?.drain() } } }
+  } catch (error) { await taskRuntime?.dispose(); await setupBrowser?.drain(); throw error }
 }

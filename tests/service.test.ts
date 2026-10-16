@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已忘记历史不重入汇报修复；员工命令永久授权保持配置版本，隔离其他员工并支持重启、撤销与关闭清理。
  * [OUTPUT]: API执行文本不重复登记最终答复或旧task_step摘要，最终上下文消息独立发布。
  * [OUTPUT]: 工作接续保留已完成 edit_file 原身份，原等待/修复/不重复副作用回归。
  * [OUTPUT]: 顺序发言不把执行触发来源保存为引用回复，流式、完成与重启保持真实接续关系。
@@ -89,6 +90,84 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it.each(['new-input', 'evidence-repair'] as const)('excludes forgotten history from %s reports without replaying work', async mode => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service)
+    engine.decisionHandler = async context => ({ action: context.messages.find(message => message.id === context.triggerMessageId)?.content === '查询天气' ? 'reply' : 'pass', responseKind: 'task', observedThroughSequence: context.participation!.observedThroughSequence })
+    const forgotten = await send(service, direct, '已忘记的旧消息', 'forgotten-history'); await idle(service, direct, 0)
+    const store = (service as unknown as { store: ProductStore }).store
+    await store.write([{ collection: 'memoryForgets', id: 'forgotten-source', value: { id: 'forgotten-source', ownerAgentId: 'researcher', sourceMessageIds: [forgotten.id], sourceMemoryIds: [], createdAt: new Date().toISOString() } }])
+    let release!: () => void, effects = 0, reports = 0
+    const hold = new Promise<void>(resolve => { release = resolve })
+    engine.handler = async context => {
+      expect(context.messages.some(message => message.id === forgotten.id)).toBe(false)
+      await context.beforeEffect!(); effects++; await context.afterEffect!()
+      await context.onDelta('天气已查到')
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '查询结束', evidence: [{ kind: 'answer', reference: mode === 'evidence-repair' ? '不匹配的摘录' : '天气已查到' }] })
+      await hold
+    }
+    engine.report = async context => {
+      reports++; expect(context.messages.some(message => message.id === forgotten.id)).toBe(false)
+      expect(context.memory?.recall?.inputMessageIds).not.toContain(forgotten.id)
+      return { action: 'publish', text: '天气查询完成', outcome: { disposition: 'delivered', summary: '查询结束', evidence: [{ kind: 'answer', reference: '天气查询完成' }] } }
+    }
+    await send(service, direct, '查询天气', 'current-weather'); await until(() => effects === 1)
+    if (mode === 'new-input') await send(service, direct, '请简短回复', 'new-report-input')
+    release(); await idle(service, direct, 1)
+    const result = await detail(service, direct)
+    expect(effects).toBe(1); expect(reports).toBe(1)
+    expect(result.runs.find(run => run.phase === 'execution')?.status).toBe('completed')
+    expect(result.messages.filter(message => message.senderType === 'agent').at(-1)?.content).toBe('天气查询完成')
+  })
+
+  it('remembers command approval per employee across runs and restart, with explicit revocation', async () => {
+    const { service, engine, root, secrets } = await fixture(); await configure(service)
+    for (const id of ['researcher', 'writer']) await updateAgent(service, (await snapshot(service)).agents.find(agent => agent.id === id)!, { allowCommands: true })
+    const agent = (await snapshot(service)).agents.find(agent => agent.id === 'researcher')!
+    const direct = await conversation(service)
+    const decisions: boolean[] = []
+    engine.handler = async context => {
+      decisions.push(await context.approveCommand('printf first', context.workspace!.runPath))
+      if (decisions.at(-1)) decisions.push(await context.approveCommand('printf second', context.workspace!.runPath))
+      await context.onDelta('检查结束'); await context.onWorkOutcome!({ disposition: 'delivered', summary: '检查结束', evidence: [{ kind: 'answer', reference: '检查结束' }] })
+    }
+    await send(service, direct, '执行检查', 'remember-first')
+    await until(async () => (await snapshot(service)).approvals.length === 1)
+    const approval = (await snapshot(service)).approvals[0]
+    expect(approval.rememberAllowed).toBe(true)
+    await expect(service.handle('approve', { id: approval.id, approved: false, always: true })).rejects.toThrow('不能保存')
+    expect((await snapshot(service)).commandPermissions).toEqual([])
+    const permissions = (service as unknown as { commandPermissions: import('../src/runtime/modules/employees/command-permissions').CommandPermissions }).commandPermissions
+    const grant = permissions.grant.bind(permissions)
+    const failure = vi.spyOn(permissions, 'grant').mockImplementationOnce(async (tx, employee) => { await grant(tx, employee); throw new Error('授权事务提交失败') })
+    await expect(service.handle('approve', { id: approval.id, approved: true, always: true })).rejects.toThrow('授权事务提交失败')
+    failure.mockRestore()
+    expect((await snapshot(service)).commandPermissions).toEqual([])
+    expect((await snapshot(service)).approvals[0].id).toBe(approval.id); expect(decisions).toEqual([])
+    await service.handle('approve', { id: approval.id, approved: true, always: true }); await idle(service, direct, 1)
+    expect(decisions).toEqual([true, true])
+    expect((await snapshot(service)).agents.find(item => item.id === agent.id)?.configVersion).toBe(agent.configVersion)
+    await send(service, direct, '再次执行检查', 'remember-next'); await idle(service, direct, 2)
+    expect(decisions).toEqual([true, true, true, true])
+    const other = await service.handle('createConversation', { kind: 'direct', title: '另一个员工', agentIds: ['writer'] }) as Conversation
+    await send(service, other, '检查', 'other-employee')
+    await until(async () => (await snapshot(service)).approvals.length === 1)
+    await service.handle('approve', { id: (await snapshot(service)).approvals[0].id, approved: false }); await idle(service, other, 1)
+    expect(decisions.at(-1)).toBe(false)
+    await service.close()
+    const reopened = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(reopened); await reopened.init()
+    const permission = (await snapshot(reopened)).commandPermissions![0]
+    expect(permission.agentId).toBe(agent.id)
+    await send(reopened, direct, '重启后执行检查', 'remember-restart'); await idle(reopened, direct, 3)
+    await expect(reopened.handle('revokeCommandPermission', { agentId: agent.id, revision: 'stale' })).rejects.toThrow('已变化')
+    await reopened.handle('revokeCommandPermission', { agentId: agent.id, revision: permission.revision })
+    await send(reopened, direct, '恢复确认后检查', 'remember-revoked')
+    await until(async () => (await snapshot(reopened)).approvals.length === 1)
+    await reopened.handle('approve', { id: (await snapshot(reopened)).approvals[0].id, approved: true, always: true }); await idle(reopened, direct, 4)
+    await updateAgent(reopened, (await snapshot(reopened)).agents.find(item => item.id === agent.id)!, { allowCommands: false })
+    expect((await snapshot(reopened)).commandPermissions).toEqual([])
+  })
+
   it('starts each ordered participant only after the preceding complete reply is committed', async () => {
     const { service, engine } = await fixture(); const connection = await configure(service)
     const ids = ['researcher', 'writer', 'reviewer']

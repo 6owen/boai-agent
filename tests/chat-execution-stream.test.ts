@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
  * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
  * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文仍可见，Run到达后由单一执行卡接管。
  * [OUTPUT]: 思考增量在受控轨迹内更新，收起后新增内容可读，工具接续不丢思考；空态无伪造思考。
@@ -19,9 +20,9 @@ import { nativeActivity } from '../src/runtime/adapters/native-events'
 vi.mock('../src/renderer/pages/conversations/-components/prompt-bar', () => ({ PromptBar: () => null }))
 vi.mock('../src/renderer/pages/conversations/-components/conversation-header', () => ({ ConversationHeader: () => null }))
 vi.mock('../src/renderer/pages/conversations/-components/use-conversation-reading', () => ({ useConversationReading: () => ({}) }))
-const fixture = vi.hoisted(() => ({ evidence: [] as ExecutionEvidence[], active: false }))
+const fixture = vi.hoisted(() => ({ evidence: [] as ExecutionEvidence[], active: false, source: '' }))
 vi.mock('../src/renderer/components/detail-panel/useExecutionWindow', () => ({
-  useExecutionWindow: (_client: unknown, active: boolean) => { fixture.active = active; return { root: useRef(null), evidence: fixture.evidence, loading: false } },
+  useExecutionWindow: (_client: unknown, active: boolean, source: string) => { fixture.active = active; fixture.source = source; return { root: useRef(null), evidence: fixture.evidence, loading: false } },
 }))
 
 const run: AgentRun = { id: 'run', agentId: 'employee', agentName: '员工', phase: 'execution', responseKind: 'task', conversationId: 'chat', triggerMessageId: 'question', messageId: 'answer', status: 'running', createdAt: '2026-10-16T00:00:00Z', toolEvents: [] }
@@ -44,6 +45,39 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })
 const render = async () => { await act(async () => root.render(createElement(ChatView, props))) }
 const textEvent = (text: string, revision: number): ExecutionEvidence => ({ id: 'text', eventType: 'agent.text.block', payload: { text, itemId: 'text' }, agentRunId: run.id, runId: run.id, conversationId: run.conversationId, agentId: run.agentId, createdAt: run.createdAt, updatedAt: run.createdAt, sequence: 1, revision, contentLength: text.length, deferred: false })
+
+test.each([false, true])('mirrors scheduled reasoning and tools from the original run, including located messages (%s)', async located => {
+  const publication = { automationId: 'plan', occurrenceId: 'occurrence', sourceConversationId: 'task-chat', sourceMessageId: 'question' }
+  const trigger = { id: 'published-question', conversationId: 'chat', senderType: 'user' as const, senderId: 'automation', senderName: '定时任务', content: '查天气', status: 'completed' as const, sequence: 1, createdAt: run.createdAt, automationPublication: publication }
+  const answer = { ...trigger, id: 'published-answer', senderType: 'agent' as const, senderId: 'employee', content: '正在查询', status: 'streaming' as const, sequence: 2, automationPublication: { ...publication, sourceMessageId: 'answer' } }
+  const mirroredRun = { ...run, conversationId: 'task-chat' }
+  const onTrace = vi.fn()
+  // A live answer may arrive before the next metadata refresh supplies its public message id.
+  props = { ...props, onTrace, ...(located ? { focusMessage: { id: trigger.id, requestId: 'locate' }, restoreAnchor: { messageId: trigger.id } } : {}), detail: { ...props.detail, runs: [], executionMirrors: [{ run: mirroredRun, triggerMessage: trigger }], messages: [trigger, answer], messagePage: { ...props.detail.messagePage, items: [trigger, answer].map(message => ({ messageId: message.id, sequence: message.sequence, status: 'available' as const, message })) } } }
+  Element.prototype.scrollIntoView = vi.fn()
+  fixture.evidence = [{ ...textEvent('核对天气来源', 1), id: 'reason', conversationId: 'task-chat', eventType: 'agent.reasoning.block' }]
+  await render()
+  expect(host.querySelectorAll('[data-chat-execution-run="run"]')).toHaveLength(1)
+  expect(host.textContent).toContain('核对天气来源')
+  expect(host.textContent).not.toContain('正在查询')
+  expect(fixture.source).toBe('task-chat')
+  fixture.evidence = [...fixture.evidence, { ...textEvent('', 1), ...nativeActivity('browser', { type: 'mcpToolCall', server: 'boai', tool: 'browser_tool', arguments: { action: 'snapshot' }, status: 'completed' }, true), sequence: 2 } as ExecutionEvidence]
+  await render()
+  expect(host.textContent).toContain('browser_tool')
+  expect(host.textContent).toContain('核对天气来源')
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看完整执行过程"]')!.click())
+  expect(onTrace).toHaveBeenCalledWith(trigger)
+  props = { ...props, pageActive: false }; await render()
+  expect(fixture.active).toBe(false)
+  props = { ...props, pageActive: true, detail: { ...props.detail, executionMirrors: [{ run: { ...mirroredRun, status: 'waiting_approval' }, triggerMessage: trigger }] } }; await render()
+  expect(fixture.active).toBe(true)
+  expect(host.textContent).toContain('等待批准')
+  const final = { ...answer, status: 'completed' as const, content: '天气查询完成' }
+  props = { ...props, detail: { ...props.detail, executionMirrors: [], messages: [trigger, final], messagePage: { ...props.detail.messagePage, items: [trigger, final].map(message => ({ messageId: message.id, sequence: message.sequence, status: 'available' as const, message })) } } }
+  await render()
+  expect(host.querySelector('[data-chat-execution-run]')).toBeNull()
+  expect(host.textContent).toContain('天气查询完成')
+})
 
 test('shows the employee execution card immediately and streams updates before a final message exists', async () => {
   await render()

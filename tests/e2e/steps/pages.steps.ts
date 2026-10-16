@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 页面表单校验、固定启用员工的职责草稿保存、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 从本人头像菜单进入设置；模型选择使用实际 Base UI 浮层并断言选中标签；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；默认连接配置/显隐/改回原值不提示，真实修改在返回时确认，保存/放弃后进入其他服务或导入不残留草稿；会话菜单员工配置入口/关闭标签时保护职责草稿，继续编辑未写入、保存真实职责且员工固定启用/无开关，保存后通过技能主导航核对实际分类，页面表单、通讯录搜索与菜单焦点断言；首次连接先获取目录/测试再保存，编辑时回填/查看密钥不产生修改，模型连接草稿/密钥保护、根地址目录、按钮左侧同行反馈、请求前中后按钮等宽/测试仅图标、无副标题与透明毛绒步骤图片/箭头、编辑图标切换及深浅色/窄窗与草稿测试不保存；放弃弹窗保留设置分类和搜索。
  * [POS]: tests/e2e/steps/pages.steps.ts；场景状态仅在本次测试内共享。
@@ -94,7 +95,7 @@ async function saveEmployeeConfiguration(previous: Awaited<ReturnType<typeof cre
     const saved = (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.name === '组件联调员工')
     return saved && { active: saved.active, role: saved.role }
   }).toEqual({ active: true, role: revisedRole })
-  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '技能', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '自定义', exact: true }).click()
   await expect(page.getByRole('tablist', { name: '技能分类', exact: true })).toBeVisible()
   return { page, errors, dialog, revisedRole }
 }

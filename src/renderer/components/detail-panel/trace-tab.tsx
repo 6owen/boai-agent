@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 通讯录固定Run通过原员工详情查询精确读取，同一执行卡片不加载其他历史或额外摘要。
+ * [OUTPUT]: 卡片工具行添加定位聊天记录按钮；原生记录切换及卡片布局保持。
+ * [OUTPUT]: 定时任务按occurrence限定同一次运行，仅显示执行卡片；普通会话保留历史标题和成员筛选。
  * [OUTPUT]: 通用运行时插件参与成果修订候选与真实执行停止，原来源核验保持。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
@@ -26,10 +29,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ExecutionAvatarRail } from './ExecutionAvatarRail'
 import { ExecutionReadingContext } from './useExecutionWindow'
 import { ExecutionContentCache } from './execution-content-cache'
+import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execution-message-button'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
-export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot }: {
-  api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy: boolean; onRetry(id: string): void; onStop(id: string): void
+export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
+  api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
+  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; onNavigateMessage?: ExecutionMessageNavigation
 }) {
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
@@ -43,15 +48,20 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
       if (inFlight) { again = true; return }
       inFlight = true
       try {
-        const page = await api.request('listExecutionHistory', { conversationId, agentId: employee || undefined })
+        const page: ExecutionHistoryPage = runId && agentId
+          ? await api.request('getEmployeeExecution', { agentId, runId }).then(detail => {
+            if (detail.run.conversationId !== conversationId) throw new Error('执行记录来源已变化')
+            return { items: [{ run: detail.run, trigger: title || detail.conversationTitle }] }
+          })
+          : await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined })
         if (!disposed) {
           setItems(previous => [...page.items, ...previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee))]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
           if (messageId) { const target = page.items.find(item => item.run.triggerMessageId === messageId || item.run.messageId === messageId); if (target) setOpen(previous => ({ ...previous, [target.run.id]: true })) }
         }
-      } catch (error) { if (!disposed) setError(errorText(error)) }
+      } catch (error) { if (!disposed) { setError(errorText(error)); if (runId) { setItems([]); caches.current.clear(); setLoaded(true) } } }
       finally { inFlight = false; if (again && !disposed) { again = false; timer = setTimeout(() => void load(), 150) } }
     }
-    const scope = `${conversationId}:${employee}`
+    const scope = `${conversationId}:${employee}:${occurrenceId ?? ''}:${runId ?? ''}`
     if (historyScope.current !== scope) { historyScope.current = scope; paged.current = false; setItems([]); setNext(undefined); setLoaded(false) }
     void load()
     const unsubscribe = api.subscribe(event => {
@@ -59,15 +69,15 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
       if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
-  }, [api, conversationId, employee, active, messageId])
+  }, [api, conversationId, employee, active, messageId, occurrenceId, runId, agentId, title])
   const loadMore = async () => {
-    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
+    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
     catch (error) { setError(errorText(error)) }
   }
   const conversation = snapshot.conversations.find(value => value.id === conversationId)
   const members = (conversation?.agentIds ?? []).map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))
-  return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-    {conversation?.kind === 'group' && <div data-slot="execution-employees" className="group-members shrink-0">
+  return <div className={`flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden${runId ? ' automation-occurrence-panel' : ''}`}>
+    {!occurrenceId && !runId && conversation?.kind === 'group' && <div data-slot="execution-employees" className="group-members shrink-0">
       <ExecutionAvatarRail members={members} items={[{ agentId: '', displayName: '总览', overview: true, statusLabel: '' }, ...members.map(agent => {
         const status = items.find(item => item.run.agentId === agent.id)?.run.status
         return { agentId: agent.id, displayName: agent.name, avatarRef: agent.avatar, color: agent.color, statusLabel: status ? labels[status] : '暂无执行' }
@@ -76,7 +86,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
     <ScrollArea className="h-full min-h-0 min-w-0 flex-1 overflow-hidden" viewportProps={{ className: 'execution-history-body min-w-0', id: 'agent-execution-drawer', 'aria-label': '执行' }}>
     <div className="flex min-w-0 flex-col gap-4 p-4">
       {error && <Banner>{error}</Banner>}{!loaded && !error && <Loading />}
-      <p className="m-0 text-sm text-muted-foreground">执行历史</p>
+      {!occurrenceId && !runId && <p className="m-0 text-sm text-muted-foreground">执行历史</p>}
       {items.map(({ run, trigger }, index) => {
         const view = views[run.id] ?? 'rendered'
         const live = ['running', 'queued', 'waiting_approval'].includes(run.status)
@@ -101,20 +111,22 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           </CardHeader>
           <CollapsibleContent keepMounted={opened}>
             {opened && <ExecutionRunContent api={api} run={run} active={active && expanded} cache={cache} view={view} live={live}
+              onNavigateMessage={onNavigateMessage}
               onViewChange={value => setViews(previous => ({ ...previous, [run.id]: value }))} onError={setError} />}
           </CollapsibleContent>
           </Collapsible>
         </Card>
       })}
-      {loaded && !items.length && <p className="text-sm text-muted-foreground">发送消息后，可在这里查看员工的执行过程。</p>}
+      {loaded && !items.length && <p className="text-sm text-muted-foreground">{emptyMessage}</p>}
       {next && <Button variant="secondary" size="sm" onClick={() => void loadMore()}>加载更早的执行</Button>}
     </div>
   </ScrollArea></div>
 }
 
-function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError }: {
+function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError, onNavigateMessage }: {
   api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view: ExecutionView; live: boolean
   onViewChange(view: ExecutionView): void; onError(error: string): void
+  onNavigateMessage?: ExecutionMessageNavigation
 }) {
   const [following, setFollowing] = useState(true)
   const viewport = useRef<HTMLDivElement>(null)
@@ -149,6 +161,8 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
         <time dateTime={run.createdAt} title={new Date(run.createdAt).toLocaleString('zh-CN')}>{new Date(run.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>
+      <div className="flex shrink-0 items-center gap-1">
+      {onNavigateMessage && <ExecutionMessageButton api={api} run={run} active={active} onNavigate={onNavigateMessage} />}
       <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={view === 'rendered' ? '显示原生记录' : '显示过程视图'} onClick={() => {
         previousHeight.current = transition.current?.getBoundingClientRect().height
         setFollowing(false)
@@ -159,6 +173,7 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
         }
         onViewChange(view === 'rendered' ? 'raw' : 'rendered')
       }} />}>{view === 'rendered' ? <Terminal /> : <Workflow />}</TooltipTrigger><TooltipContent>{view === 'rendered' ? '显示原生记录' : '显示过程视图'}</TooltipContent></Tooltip>
+      </div>
     </div>
     <Separator />
     <ScrollArea className="max-h-[min(60vh,600px)] min-w-0" onPointerDownCapture={event => {

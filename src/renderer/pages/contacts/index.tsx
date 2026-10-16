@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工/群资料复用紧凑配置Card与两行列表；独立执行折叠区和右侧过程导航；滚动预留/同设置Panel reveal。
  * [OUTPUT]: 移除员工资料的旧工作看板导航，保留配置、自动化及执行详情。
  * [OUTPUT]: 通讯录侧栏通过共用 PanelResize 收缩，保留列表状态并在关闭时隔离交互。
  * [OUTPUT]: 通讯录员工/群配置共用归属自动化和原结果聊天定位。
@@ -10,7 +11,7 @@
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useContext, useState, type ReactNode } from 'react'
+import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { GroupAvatar } from '@/components/common/group-avatar'
@@ -20,11 +21,13 @@ import { EmployeeOverview } from '@/components/employee/overview'
 import { GroupEditor } from '@/components/employee/editors'
 import { ChannelConversationInfo } from '@/components/employee/channel-conversation-info'
 import { isChannelConversation } from '@shared/domain/conversation-list'
-import { MessageCircle, Settings } from '@/components/icons'
+import { BookOpen, FileText, MessageCircle, Settings } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
-import { Separator } from '@/components/ui/separator'
+import { ContactProfileCard, ContactProfileRow } from '@/components/employee/profile-card'
+import { EmployeeExecutionDisclosure } from '@/components/employee/execution-pane'
+import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { ContactList, type ContactSelection } from './contact-list'
 import { ContactEditorLayout } from './contact-editor-layout'
 import { PanelResize } from '@/components/common/panel-resize'
@@ -53,6 +56,17 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
   const selectionKey = `${generation}-${selected?.kind}-${selected?.id}`
   const [detail, setDetail] = useState({ key: selectionKey, editing: false })
   if (detail.key !== selectionKey) setDetail({ key: selectionKey, editing: false })
+  const content = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const element = content.current
+    if (!active || !element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    element.style.transition = 'none'; element.dataset.settled = 'false'; element.dataset.open = 'false'
+    void element.offsetWidth
+    element.style.transition = ''; element.dataset.open = 'true'
+    const settle = (event: TransitionEvent) => { if (event.target === element && event.propertyName === 'opacity') element.dataset.settled = 'true' }
+    element.addEventListener('transitionend', settle)
+    return () => { element.removeEventListener('transitionend', settle); element.dataset.settled = 'true' }
+  }, [selectionKey, detail.editing, active])
   const guard = useContext(GuardContext)
   const select = (next: ContactSelection, editing = false) => {
     if (next.kind !== selected?.kind || next.id !== selected.id || editing !== detail.editing) guard.navigate(() => {
@@ -63,9 +77,9 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
     <PanelResize open={sidebarShown} side="left" divider={divider}><ContactList onCreateTeam={onCreateTeam} api={api} snapshot={snapshot} selected={selected} onSelect={select} onMessage={onMessage} onCreate={onCreate} busy={busy} refresh={refresh} onRemoved={(agentIds, groupIds) => {
       if (selected && (selected.kind === 'agent' ? agentIds : groupIds).includes(selected.id)) guard.saved(() => setDetail({ key: selectionKey, editing: false }))
     }} /></PanelResize>
-    <section className="contacts-detail" aria-label="通讯录详情">
+    <section className="contacts-detail" aria-label="通讯录详情"><div ref={content} className="contact-content-transition settings-page-transition t-panel-slide" data-open="true" data-settled="true">
       <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} active={active} onConversation={onConversation} onOpenExecutionSource={onOpenExecutionSource} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
-    </section>
+    </div></section>
   </div>
 }
 
@@ -87,12 +101,15 @@ function ContactDetail({ api, snapshot, selected, refresh, onSelect, onMessage, 
         {agent ? <Avatar name={name} seed={agent.id} avatar={agent.avatar} color={agent.color} /> : <GroupAvatar members={members} />}
         <div className="contact-profile-identity"><h1>{name}</h1>{agent && <p>{agent.role || '数字员工'}</p>}{group && <Badge variant="secondary">群聊</Badge>}</div>
       </header>
-      {agent && <div className="flex flex-wrap gap-3 mb-6"><Button disabled={busy} onClick={() => onMessage(selected)}><MessageCircle />发消息</Button><Button variant="secondary" onClick={() => setEditing(true)}><Settings />编辑配置</Button></div>}
-      <Separator />
+      <div className="flex flex-wrap gap-3 mb-6"><Button disabled={busy} onClick={() => onMessage(selected)}><MessageCircle />发消息</Button><Button variant="secondary" onClick={() => setEditing(true)}><Settings />编辑配置</Button></div>
       {agent ? <EmployeeOverview key={agent.id} api={api} snapshot={snapshot} agent={agent} active={active} onConfigure={() => setEditing(true)} onOpenExecutionSource={onOpenExecutionSource} /> : <div className="contact-group-info">
-        <section aria-label="群成员"><h2>群成员 {group!.agentIds.length}</h2><div className="contact-members">{members.map(member => <Button key={member.id} variant="ghost" size="content" className="contact-member" aria-label={`查看 ${member.name} 的资料`} onClick={() => onSelect({ kind: 'agent', id: member.id })}><Avatar name={member.name} seed={member.id} avatar={member.avatar} color={member.color} /><span>{member.name}</span></Button>)}</div></section>
-        <dl className="contact-facts">{group!.teamSetup && <><div><dt>团队目的</dt><dd>{group!.teamSetup.purpose}</dd></div><div><dt>协作建议</dt><dd>{group!.teamSetup.collaborationGuide || '未设置'}</dd></div>{group!.teamSetup.scenarioKind === 'roleplay' && <div><dt>角色互动</dt><dd>玩家群不包含正式游戏规则、隐藏身份或胜负裁定。</dd></div>}</>}<div><dt>共享知识</dt><dd>{resources(group!.sharedKnowledgeIds)}</dd></div></dl>
+        <ContactProfileCard label="员工组资料">
+          {group!.teamSetup && <><ContactProfileRow icon={<FileText />} title="团队目的">{group!.teamSetup.purpose}</ContactProfileRow><ContactProfileRow icon={<MessageCircle />} title="协作建议">{group!.teamSetup.collaborationGuide || '未设置'}</ContactProfileRow>{group!.teamSetup.scenarioKind === 'roleplay' && <ContactProfileRow icon={<MessageCircle />} title="角色互动">玩家群不包含正式游戏规则、隐藏身份或胜负裁定。</ContactProfileRow>}</>}
+          <ContactProfileRow icon={<BookOpen />} title="共享知识">{resources(group!.sharedKnowledgeIds)}</ContactProfileRow>
+        </ContactProfileCard>
+        <section className="automation-records contact-section" aria-label="群成员"><div className="automation-records-heading"><h3>群成员 {group!.agentIds.length}</h3></div><div className="automation-record-list">{members.map(member => <Button key={member.id} variant="ghost" size="content" className="conversation-item automation-record-row" aria-label={`查看 ${member.name} 的资料`} onClick={() => onSelect({ kind: 'agent', id: member.id })}><Avatar name={member.name} seed={member.id} avatar={member.avatar} color={member.color} /><span className="conversation-copy"><strong className="conversation-title">{member.name}</strong><small className="conversation-preview">{member.role || '数字员工'}</small></span></Button>)}</div></section>
+        <OwnerAutomations api={api} snapshot={snapshot} owner={{ kind: 'group', conversationId: group!.id }} active={active} />
+        <EmployeeExecutionDisclosure key={group!.id} api={api} snapshot={snapshot} conversationId={group!.id} active={active} />
       </div>}
-      {!agent && <><Separator /><div className="contact-actions"><Button disabled={busy} onClick={() => onMessage(selected)}><MessageCircle />发消息</Button><Button variant="secondary" onClick={() => setEditing(true)}><Settings />编辑配置</Button></div></>}
   </div>
 }

@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 新员工计划通过明确归属选择；已有聊天/监控沿原目标设置。
  * [INPUT]: 定时任务生产页面与 Base UI 选择/浮层控件。
- * [OUTPUT]: 复用的语义选择、总览导航、操作菜单与时间预览入口。
+ * [OUTPUT]: 复用的语义选择、总览导航、详情直接操作按钮与时间预览入口。
  * [POS]: 桌面自动化回归支撑，不改变产品状态或绕过 UI 业务操作。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,8 +15,8 @@ export async function openSchedule(page: Page, name: string) {
   await page.locator('.schedule-overview-plan:visible').filter({ hasText: name }).click()
 }
 export async function scheduleAction(page: Page, action: string) {
-  await page.locator('.page-heading:visible').getByRole('button', { name: /^操作 / }).click()
-  await page.getByRole('menuitem', { name: action, exact: true }).click()
+  const names: Record<string, string> = { 暂停计划: '暂停', 恢复计划: '恢复', 删除计划: '删除' }
+  await page.locator('.schedule-content').getByRole('button', { name: names[action] ?? action, exact: true }).click()
 }
 export async function previewSchedule(page: Page) {
   await page.getByRole('button', { name: '时间', exact: true }).click()

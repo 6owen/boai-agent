@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [INPUT]: 持久批量检查、单项检查与更新操作状态、应用变更事件、所属页面标签活跃状态及技能详情导航。
  * [OUTPUT]: 更新详情的收起箭头固定12px；Shell 右侧详情标签内的批量检查/停止，隐藏时暂停列表轮询且恢复不重新发起检查、实时结果与图标操作；逐项展开差异并就地升级，已升级状态不沿用旧批次的可更新标记。
  * [POS]: library 的批量更新区域；由 Shell 常驻标签承载，切换/收起保留状态，不创建弹窗。
@@ -70,7 +71,7 @@ export function SkillUpdateBatchView({ api, onResource, onUpdated, autoStart = f
         {heading(<Tooltip><TooltipTrigger delay={500} render={<Button variant={item.status === 'available' ? 'secondary' : 'ghost'} size="icon-sm" aria-label={label} disabled={item.status === 'pending' || item.status === 'checking'} onClick={() => setSelected({ id: item.resourceId, autoCheck: !['available', 'updating'].includes(item.status) })} />}>
           {loading ? <LoaderCircle className="spinner" /> : item.status === 'available' ? <ArrowUp /> : current ? <Check /> : <RefreshCw />}
         </TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>)}
-        {item.error && <p className="field-hint skill-update-result-error">{item.error}</p>}
+        {item.error && <Banner>{item.error}</Banner>}
       </>}</div>
     })}</div></Card>}
   </section>

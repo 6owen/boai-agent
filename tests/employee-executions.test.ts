@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时记录按持久occurrence和会话身份在分页前筛选；相邻运行、缺失身份和隐藏来源不可混入。
  * [INPUT]: 隔离SQLite内的员工/成员/原消息/运行与冻结配置。
  * [OUTPUT]: 执行读取按当前成员和未清理来源前置过滤，稳定分页、历史配置不随换绑改变，秘密/提示/工具正文不进入清单，零业务写入。
  * [POS]: 员工执行详情读取的业务边界模块验证；不启动Agent或E2E。
@@ -57,4 +58,21 @@ it('does not borrow current employee configuration for a run without a frozen sn
   const store = await fixture(2)
   const [item] = await store.queryEmployeeExecutions({ agentId: 'employee' }, 'run-001')
   expect(item.configuration).toEqual({ kind: 'unknown', label: '执行配置尚未记录', modelId: '' })
+})
+
+it('filters an occurrence before paging even when newer runs share the same conversation', async () => {
+  const store = await fixture(60)
+  const ids = Array.from({ length: 25 }, (_, i) => `run-${String(i).padStart(3, '0')}`)
+  await store.write([record('automationOccurrences', 'selected', { conversationId: 'chat', runIds: ids }), record('automationOccurrences', 'wrong-room', { conversationId: 'other', runIds: ids })])
+  const first = await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected' })
+  expect(first).toHaveLength(21)
+  expect(first.map(item => item.run.id)).toEqual([...ids].reverse().slice(0, 21))
+  const last = first[19].run
+  const next = await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected', before: { id: last.id, createdAt: last.createdAt } })
+  expect([...first.slice(0, 20), ...next].map(item => item.run.id)).toEqual([...ids].reverse())
+  expect(await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'missing' })).toEqual([])
+  expect(await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'wrong-room' })).toEqual([])
+  expect((await store.queryExecutionHistory({ conversationId: 'chat' }))[0].run.id).toBe('run-059')
+  await store.write([record('conversations', 'chat', { agentIds: ['employee'], list: { hidden: true } })])
+  expect(await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected' })).toEqual([])
 })

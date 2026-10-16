@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
+ * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 正文选区打开修改Popover；材料信息不显示解析/材料版号，内部来源核验保持。
  * [OUTPUT]: 透传选文快捷要求给文件编辑宿主；预览不导航聊天。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -11,6 +13,7 @@
  * [POS]: 会话材料独立详情标签的只读预览面板；不执行 Markdown 链接、不直接读取本机路径。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ErrorToast } from '@/components/common/error-feedback'
 import type { ReactNode } from 'react'
 import type { FileEditAnnotation } from '@shared/domain/file-edit'
 import type { ConversationMaterial, MaterialPreview } from '@shared/domain/materials'
@@ -32,9 +35,9 @@ export function MaterialPreviewPanel({ preview, loading, error, line, active = t
   const material = preview?.material
 
   if (loading) return <p role="status" className="field-hint">正在载入材料…</p>
-  if (error) return <p role="alert" className="field-hint text-destructive">{materialErrorText(error)}</p>
+  if (error) return <ErrorToast>{materialErrorText(error)}</ErrorToast>
   if (!preview || !material) return <p className="field-hint">选择材料以查看内容。</p>
-  if (material.status !== 'ready') return <section aria-label="材料不可用"><h3>{materialDisplayName(material.name)}</h3><p role="status" className="field-hint">{materialStatusLabels[material.status]}。{material.status === 'preparing' ? '材料准备完成后可查看原文。' : materialErrorText(material.error)}</p></section>
+  if (material.status !== 'ready') return <section aria-label="材料不可用"><h3>{materialDisplayName(material.name)}</h3>{material.status === 'preparing' ? <p role="status" className="field-hint">材料准备完成后可查看原文。</p> : <ErrorToast>{materialErrorText(material.error)}</ErrorToast>}</section>
 
   const textMaterial = material.format === 'txt' || material.format === 'markdown'
   const file = preview.filePreview ?? (textMaterial ? { kind: material.format === 'markdown' ? 'markdown' as const : 'text' as const, text: preview.text } : undefined)

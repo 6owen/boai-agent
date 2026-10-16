@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 选区校验错误走Sonner，不插入内联错误文字。
  * [OUTPUT]: 仅正文选区打开Selection Actions浮层；标题不再提供员工修改按钮，原模式切换/文件操作保持。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [INPUT]: 宿主已核验的文本/二进制/图片数据、活跃状态及可选header/引用渲染。
@@ -6,6 +7,7 @@
  * [POS]: 全局文件预览组合层；页面保留业务身份、读取与操作权限，不重复格式分发。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { ErrorToast } from '../error-feedback'
 import { useRef, useState, type ReactNode } from 'react'
 import { FILE_EDIT_QUOTE_LIMIT, type FileEditAnnotation } from '@shared/domain/file-edit'
 import { previewSelection } from './selection'
@@ -39,7 +41,7 @@ export function FilePreview({ name, file, binary, image, active = true, line, ma
   const title = (toggle?: ReactNode) => header ? header(toggle) : <FilePreviewHeader name={name}>{toggle}</FilePreviewHeader>
   const content: PreviewContent = binary ?? (file && file.kind !== 'unsupported' ? file : image ? { kind: 'image', url: image.url } : file ?? { kind: 'unsupported', text: '' })
   return <div ref={root} className="flex min-h-0 min-w-0 flex-1 flex-col" onMouseUp={event => { if (!(event.target as Element).closest('[data-slot="file-preview-header"], [data-file-preview-actions]')) capture() }} onKeyUp={event => { if (event.key === 'Shift' || event.key.startsWith('Arrow')) capture() }}>
-    {selectionError && <p role="status" className="field-hint">{selectionError}</p>}
+    {selectionError && <ErrorToast>{selectionError}</ErrorToast>}
     <PreviewPluginView registry={registry ?? managedRegistry} name={name} content={content} active={active} line={line} markdown={markdown} header={title} />
   </div>
 }

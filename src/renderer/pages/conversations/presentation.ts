@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 行内技能/文件标签保留固定来源，普通成员点名仍单独发送。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 内部讨论草稿冻结渠道原消息引用，普通草稿/未知发送沿原隔离。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -19,7 +20,7 @@ export const workDispositionLabels: Record<WorkDisposition, string> = { delivere
 export const deliveryLabels: Record<AgentDelivery['status'], string> = { pending: '待处理', evaluating: '正在判断', ready: '等待发言', waiting: '等待前序结果', passed: '本次不发言', responding: '正在回复', completed: '已处理', failed: '处理失败', cancelled: '已取消', interrupted: '已中断', skipped: '未参与' }
 export const turnLabels: Record<TurnStatus, string> = { queued: '下一轮排队中', evaluating: '成员正在判断', responding: '成员正在回复', executing: '正在执行任务', waiting_user: '等待补充信息', completed: '本轮已完成', cancelled: '本轮已停止', failed: '本轮失败', interrupted: '本轮中断', budget_exhausted: '本轮已达到限额' }
 export const liveTurn = (status: TurnStatus) => ['queued', 'evaluating', 'responding', 'executing'].includes(status)
-export interface DraftMention { id: string; label: string; start: number; end: number }
+export interface DraftMention { resource?: import('@shared/domain/composer-references').ComposerReference; id: string; label: string; start: number; end: number }
 export interface ChatDraft {
   channelReference?: import('@shared/domain/channels').ChannelMessageReference
   browserReference?: import('@shared/ipc/browser').BrowserPageReference
@@ -31,7 +32,7 @@ export interface ChatDraft {
   submission?: {
     kind?: 'external'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string
-    input: { channelReference?: import('@shared/domain/channels').ChannelMessageReference; materialReference?: import('@shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
+    input: { composerReferences?: import('@shared/domain/composer-references').ComposerReference[]; channelReference?: import('@shared/domain/channels').ChannelMessageReference; materialReference?: import('@shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
   }
 }
 

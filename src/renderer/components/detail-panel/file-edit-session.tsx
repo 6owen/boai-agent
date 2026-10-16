@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
  * [OUTPUT]: 关闭后重选可读当前精确原件最近受理结果，新选区草稿/提交独立，不混入其他原件或代际。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -106,7 +107,8 @@ export function FileEditSession({ api, snapshot, edits, conversationId, source, 
         <Button size="xs" variant="secondary" disabled={edits.busy} onClick={() => { void edits.execute(pending, 'check').then(accepted => { if (accepted) { setText(''); setAnnotation({}) } }) }}>核对修改结果</Button>
         {pending.status === 'not_accepted' && <><Button size="xs" disabled={edits.busy || !source} onClick={() => { void edits.execute(pending, 'retry').then(accepted => { if (accepted) { setText(''); setAnnotation({}) } }) }}>重试原修改</Button><Button size="xs" variant="ghost" disabled={edits.busy} onClick={() => edits.discard(pending)}>放弃原请求</Button></>}
       </div> : request && <div className="flex max-h-64 flex-col gap-2 overflow-y-auto" aria-label="本次修改结果">
-        <p className="field-hint" role="status">{running ? '员工正在处理…' : failed ? `处理${failed.status === 'failed' ? '失败' : '已停止'}${failed.error ? `：${failed.error}` : ''}` : result?.artifacts.length ? '修改结果已交付' : result?.runs.length ? '本次处理已结束' : '修改要求已送达员工'}</p>
+        <p className="field-hint" role="status">{running ? '员工正在处理…' : failed ? `处理${failed.status === 'failed' ? '失败' : '已停止'}` : result?.artifacts.length ? '修改结果已交付' : result?.runs.length ? '本次处理已结束' : '修改要求已送达员工'}</p>
+        {failed?.error && <Banner>{failed.error}</Banner>}
         {replies.map(message => <p key={message.id} className="m-0 whitespace-pre-wrap text-sm">{message.content}</p>)}
         {result?.artifacts.map(artifact => <Button key={artifact.id} variant="secondary" size="xs" onClick={() => { setText(''); setAnnotation({}); setOpen(false); onResult(artifact) }}>查看修改结果：{artifact.name}</Button>)}
       </div>}

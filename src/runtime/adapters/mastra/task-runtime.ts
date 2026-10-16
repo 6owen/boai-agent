@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 定时任务沿原Work装配browser_tool，组织/普通chat及未认领工作边界保持。
+ * [OUTPUT]: 宿主命令遵循员工已保存授权，未永久授权时由工具申请确认。
+ * [OUTPUT]: 获准工作装配员工数据源目录/调用工具，退出等待数据源会话关闭。
  * [OUTPUT]: Hermes 文件编辑语义接线：Unicode 分页续读；API 员工精确 edit_file、完整阅读与过期写入保护，原生自主工具保持。
  * [OUTPUT]: report_work与原生入口一致回传必须原样出现在最终答复中的证据；仅提醒，不自动发布或绕过原门禁。
  * [OUTPUT]: API委派在创建前拒绝子工作依赖正在委派的父工作；依赖链须先取真实前置回执，防止猜父ID造成多份审稿；本机工具合同保持。
@@ -6,7 +9,7 @@
  * [OUTPUT]: 文件任务保留获准原文件名/逻辑路径，仅未指定时默认本run目录；材料写入门禁/工具原参数/发布与实际退出保持，不静默迁移拒绝的目标。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
- * [OUTPUT]: 当前启用的内置模型员工默认获准 task 浏览器工具，不读旧能力字段；ACP/停用、普通 chat、无 Work、自动化与组织阶段不提供。
+ * [OUTPUT]: 当前启用的内置模型员工默认获准 task 浏览器工具，不读旧能力字段；ACP/停用、普通 chat、无 Work与组织阶段不提供。
  * [OUTPUT]: 同run文件工具按真实受理次序串行至实际退出，修订发布仅广告宿主原请求literal；汇报按本轮登记 ID 校验，依赖只保存 waiting，组织 Work 仅三个真实组织工具。
  * [OUTPUT]: 命令工具明确由调用本身创建并等待宿主审批，不要求模型先自行获得原生执行批准。
  * [OUTPUT]: 手动已认领工作显式浏览器工具，disposal 等待实际退出；结果协议显式 userQuestion 引用公开问题，不能替代工作依赖等待；成果读取直接使用宿主 hash 校验所得字节而不重开原件；显式宿主修订身份的成果发布；核心身份且宿主授权时提供 create_team，按工具调用身份进入原子发布并复用副作用门禁；原生技能名/路径解析到固定资源身份供激活观测；内建文件工具复核宿主来源授权、隐藏未获准列举项且拒绝猜路径访问；受约束的命令/产物工具、委派/等待及业务结果声明。
@@ -28,6 +31,7 @@ import { logicalPath, workspaceTarget, boundedRead, writeWorkspaceFile, publishA
 import { searchKnowledge } from '../../modules/resources/knowledge-search'
 import { BoundSkillSource } from './bound-skill-source'
 import { abortable, executeCommand } from './host-command'
+import { createSourceTools } from './source-tools'
 import { createBrowserTool } from './browser-tool'
 import { createBoboOrganizationTools } from './bobo-tools'
 import { FileReadBaselines, fileContentHash, readFilePage, replaceFileText, MAX_FILE_PAGE_CHARACTERS } from '../../modules/workspaces/file-editing'
@@ -87,7 +91,8 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
     const tools = {
-      ...(ctx.browserSession && isBrowserCapableAgent(ctx.agent) && ctx.work && !ctx.work.origin && !ctx.work.organization && ctx.responseKind === 'task' ? { browser_tool: createBrowserTool(ctx.browserSession) } : {}),
+      ...createSourceTools(ctx),
+      ...(ctx.browserSession && isBrowserCapableAgent(ctx.agent) && ctx.work && !ctx.work.organization && ctx.responseKind === 'task' ? { browser_tool: createBrowserTool(ctx.browserSession) } : {}),
       ...(isCoreAgent(ctx.agent) && ctx.createTeam ? {
         create_team: createTool({
           id: 'create_team', description: 'Create the team explicitly requested by the user and its group chat in one product operation. Choose the team name, member names, roles and working instructions from the requirement. Returns the committed group and member identities; only a successful receipt proves creation. New members inherit the core Agent execution backend and model configuration with independent identities, workspaces and sessions, with no commands or resource bindings. Do not call for ordinary conversation or repeat an already delivered creation.',
@@ -226,7 +231,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       } : {}),
       ...(ctx.agent.allowCommands ? {
         execute_command: createTool({
-          id: 'execute_command', description: `Request BoAI host approval for this exact command, then wait for its execution result. Calling this tool first displays the command in the user's original chat; it does not run until the user approves there. Do not separately ask for approval in prose or use a native sandbox escalation. A refusal returns approved:false. Cwd: ${scope.runPath}. Approved commands have host user permissions, NOT a security sandbox. Imported skill sources and system files must not be modified. Results stay private until published.`,
+          id: 'execute_command', description: `Run this command under the employee's saved BoAI host permission. If the user has not granted ongoing command permission, the tool displays an approval card in the original chat and waits; otherwise it runs directly. Do not separately ask for approval in prose or use a native sandbox escalation. A refusal returns approved:false. Cwd: ${scope.runPath}. Approved commands have host user permissions, NOT a security sandbox. Imported skill sources and system files must not be modified. Results stay private until published.`,
           inputSchema: z.object({ command: z.string().min(1).max(12_000) }),
           execute: async ({ command }) => {
             check(signal)
@@ -251,8 +256,8 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     if (ctx.organizeCollaboration) for (const name of Object.keys(availableTools)) if (!['find_employees', 'organize_collaboration', 'report_work'].includes(name)) Reflect.deleteProperty(availableTools, name)
     return {
       workspace, tools: availableTools, skills: ctx.organizeCollaboration ? [] : identities,
-      dispose: async () => { filesClosing = true; await fileQueue; try { await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
-      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified; non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.${apiContext ? ' For explicit character limits, use read_file/write_file textMetrics: nonWhitespaceCharacters counts Unicode code points including punctuation/digits/Markdown syntax, excluding whitespace; paragraphCharacters lists counts in blank-line-separated paragraph order, with omittedParagraphs marking bounded statistics. For a summary limit use its actual body paragraph, not the entire file with headings. Aim near the MIDPOINT of a requested range, or comfortably below a maximum, never exactly at the upper boundary. Check the measured receipt BEFORE publishing. If outside the range, rewrite substantially toward that interior target in one pass, removing whole nonessential clauses instead of shaving a few characters over many calls. Use at most two length-only rewrites; if still outside the requested range, report the limitation instead of publishing a noncompliant result. Reserve steps for publication, report_work and the final reply. Always check the new write receipt. Never guess a character count or accept a teammate’s self-reported count. These measurements do not certify task completion, and truncated reads do not measure the unread tail.' : ''}\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions and always need approval. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
+      dispose: async () => { filesClosing = true; await fileQueue; try { await ctx.closeDataSources?.(); await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
+      instructions: `Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified; non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.${apiContext ? ' For explicit character limits, use read_file/write_file textMetrics: nonWhitespaceCharacters counts Unicode code points including punctuation/digits/Markdown syntax, excluding whitespace; paragraphCharacters lists counts in blank-line-separated paragraph order, with omittedParagraphs marking bounded statistics. For a summary limit use its actual body paragraph, not the entire file with headings. Aim near the MIDPOINT of a requested range, or comfortably below a maximum, never exactly at the upper boundary. Check the measured receipt BEFORE publishing. If outside the range, rewrite substantially toward that interior target in one pass, removing whole nonessential clauses instead of shaving a few characters over many calls. Use at most two length-only rewrites; if still outside the requested range, report the limitation instead of publishing a noncompliant result. Reserve steps for publication, report_work and the final reply. Always check the new write receipt. Never guess a character count or accept a teammate’s self-reported count. These measurements do not certify task completion, and truncated reads do not measure the unread tail.' : ''}\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources.\nApproved shell cwd: ${scope.runPath}. Shell commands have host permissions. The host applies this employee’s saved command approval policy; use the tool normally and let it request approval when required. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
-  } catch (error) { try { await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
+  } catch (error) { try { await ctx.closeDataSources?.(); await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
   }

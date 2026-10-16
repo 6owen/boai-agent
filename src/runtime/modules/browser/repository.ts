@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 自动化浏览器沿原Work holder/occurrence/预算和动作事务核验，取消后不能取得新执行权。
  * [OUTPUT]: 受理前仅存网页输入摘要及原参数hash，执行命令仍以原内存信封发送。
  * [OUTPUT]: 本机首次只读沿真实消息/run记账；实际写动作必须持有原Work，旧只读回执保留其原租约，停止后仅结算已开始事实。
  * [INPUT]: 真实 SDK 工具调用、当前 Work 持有者与 Main 实际动作回执。
@@ -38,7 +39,7 @@ export class BrowserRepository {
   }
   private transaction<T>(lease:BrowserLease,phase:'prepare'|'start'|'finish',action:(tx:RecordTransaction)=>Promise<{value:T;effect?:'start'|'confirm'}>) {
     if (lease.workId) return this.works.browserTransaction(lease.runId,phase,async(tx,{work,execution})=>{
-      if (work.id!==lease.workId || work.origin || execution.agentId!==lease.agentId || work.conversationId!==lease.conversationId) throw new Error('浏览器工具调用缺少原手动工作授权')
+      if (work.id!==lease.workId || execution.agentId!==lease.agentId || work.conversationId!==lease.conversationId) throw new Error('浏览器工具调用缺少原工作授权')
       return action(tx)
     })
     return this.store.transaction(async tx=>{

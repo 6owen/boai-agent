@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 普通bobo注入全局目录管理指令，不增加独立Agent或专用会话。
+ * [OUTPUT]: 专用数据源会话注入共享bobo配置指令，沿原生连续聊天/产品工具桥。
+ * [OUTPUT]: 原生bobo专用计划对话同样接收真实通讯录与单员工计划指令。
  * [OUTPUT]: 插件provider复用连续会话、产品取消、原生监督及来源核验；命名空间/恢复标记独立。
  * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 真实原生上下文明确内置浏览器/自动化产品工具及当前可用身份，保持原生循环与选定权限。
@@ -9,12 +12,14 @@
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { catalogManagementInstructions } from '../modules/resources/catalog-commands'
 import { recoverNativeProcesses } from './native-process-guard'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import type { NativeTool } from './native-task'
 import { NativeSessions, digest } from './native-sessions'
 import { decisionMessageData } from './mastra/message-projection'
+import { boboResponseInstructions } from '../modules/employees/phase-instructions'
 import { createNativeProducts } from './native-products'
 
 export interface NativeConversationInput {
@@ -40,7 +45,7 @@ export abstract class NativeConversationEngine {
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
-      const nativeInstructions = [context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
+      const nativeInstructions = [context.manageSkills || context.manageDataSources ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
         'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
         `Working directory: ${context.runtimeDirectory?.cwd ?? context.workspace?.workPath}. Bound resources (additional to native resources): ${JSON.stringify(context.resources.map(({ id, name, kind, path }) => ({ id, name, kind, path })))}`,
         `Current members: ${JSON.stringify(context.members?.map(({ id, name, role }) => ({ id, name, role })) ?? [])}`,
