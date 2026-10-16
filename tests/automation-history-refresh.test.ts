@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 全部清空覆盖分页冻结/确认取消/重复提交、活动保留、部分失败及隐藏停发；不删除用户数据。
  * [OUTPUT]: 删除Popover须明确确认，取消不提交；运行中禁删、失败仅Sonner、迟到列表不能恢复已删行。
  * [INPUT]: 生产AutomationHistory、可控历史请求与连续changed事件。
  * [OUTPUT]: 执行期间后台刷新不增删加载/空态行、不卸载已有记录；首次加载及隐藏停读保持。
@@ -116,4 +117,84 @@ test('disables deletion while active and retains the row with Sonner feedback on
   expect(document.querySelector('[role=alert]')).toBeNull()
   expect(document.body.textContent).not.toContain('文件已外部修改')
   error.mockRestore()
+})
+
+test('clear all freezes every page before deletion, skips ongoing records and does not sweep newly arriving runs', async () => {
+  const first = { ...record, status: 'completed' as const, stateVersion: 7 }
+  const older = { ...first, id: 'older', stateVersion: 3 }
+  const running = { ...record, id: 'running' }, arriving = { ...first, id: 'new' }
+  await render(); await resolve({ occurrences: [first, running] })
+  const request = vi.mocked(api.request), success = vi.spyOn(toast, 'success').mockImplementation(() => 'success')
+  await act(async () => button('全部清空').click())
+  expect(document.body.textContent).toContain('清空当前任务的执行记录及文件？')
+  await act(async () => button('取消').click())
+  expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
+  let finishSecondPage!: (page: AutomationHistoryPage) => void
+  const cursor = { startedAt: record.startedAt, id: record.id }
+  request.mockImplementation(async (method, input) => {
+    if (method === 'deleteAutomationOccurrence') return undefined as never
+    const query = input as { limit?: number; before?: unknown }
+    if (query.limit !== 100) return { occurrences: [arriving, first, running] } as never
+    if (!query.before) return { occurrences: [first, running], nextCursor: cursor } as never
+    return new Promise<AutomationHistoryPage>(resolve => { finishSecondPage = resolve }) as never
+  })
+  await act(async () => button('全部清空').click())
+  await act(async () => { const confirm = button('确认清空'); confirm.click(); confirm.click() })
+  expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
+  expect(request.mock.calls.filter(([method, input]) => method === 'listAutomationHistory' && (input as { limit?: number }).limit === 100)).toEqual([
+    ['listAutomationHistory', { automationId: 'plan', status: 'all', limit: 100, before: undefined }],
+    ['listAutomationHistory', { automationId: 'plan', status: 'all', limit: 100, before: cursor }],
+  ])
+  await act(async () => finishSecondPage({ occurrences: [older] }))
+  expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toEqual([
+    ['deleteAutomationOccurrence', { id: first.id, expectedVersion: 7 }],
+    ['deleteAutomationOccurrence', { id: older.id, expectedVersion: 3 }],
+  ])
+  expect([...host.querySelectorAll('[data-occurrence-id]')].map(row => row.getAttribute('data-occurrence-id'))).toEqual(['new', 'running'])
+  expect(success).toHaveBeenCalledWith('已清空 2 条执行记录')
+  success.mockRestore()
+})
+
+test('clear all preserves failed rows and reports partial cleanup through Sonner', async () => {
+  const rows = [record.id, 'older'].map(id => ({ ...record, id, status: 'completed' as const, stateVersion: 7 }))
+  await render(); await resolve({ occurrences: rows })
+  const error = vi.spyOn(toast, 'error').mockImplementation(() => 'error')
+  vi.mocked(api.request).mockImplementation(async (method, input) => {
+    if (method === 'deleteAutomationOccurrence') {
+      if ((input as { id: string }).id === record.id) throw new Error('文件已外部修改')
+      return undefined as never
+    }
+    return { occurrences: rows } as never
+  })
+  await act(async () => button('全部清空').click())
+  await act(async () => button('确认清空').click())
+  expect([...host.querySelectorAll('[data-occurrence-id]')].map(row => row.getAttribute('data-occurrence-id'))).toEqual([record.id])
+  expect(error).toHaveBeenCalledWith('已删除 1 条，1 条未能删除：文件已外部修改')
+  expect(document.body.textContent).not.toContain('文件已外部修改')
+  error.mockRestore()
+})
+
+test('clear all does not mutate any record when a later history page fails', async () => {
+  await render(); await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
+  const request = vi.mocked(api.request), error = vi.spyOn(toast, 'error').mockImplementation(() => 'error')
+  request.mockImplementation(async (_method, input) => {
+    if ((input as { before?: unknown }).before) throw new Error('历史读取失败')
+    return { occurrences: [{ ...record, status: 'completed', stateVersion: 7 }], nextCursor: { startedAt: record.startedAt, id: record.id } } as never
+  })
+  await act(async () => button('全部清空').click())
+  await act(async () => button('确认清空').click())
+  expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
+  expect(host.querySelector('[data-occurrence-id]')).not.toBeNull()
+  expect(error).toHaveBeenCalledWith('历史读取失败')
+  error.mockRestore()
+})
+
+test('hiding the task during a clear stops unsent deletion requests', async () => {
+  await render(); await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
+  await act(async () => button('全部清空').click())
+  await act(async () => button('确认清空').click())
+  expect(pending).toHaveLength(1)
+  await render(false)
+  await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
+  expect(vi.mocked(api.request).mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
 })

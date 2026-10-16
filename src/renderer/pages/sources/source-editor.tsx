@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API及本地文件夹编辑删除资源级读写设置，权限归员工。
  * [OUTPUT]: 数据源卡片独立紧凑尺寸：32px控件、12px标签/14px图标、10px行留白与sm操作按钮，其他连接表单保持。
  * [OUTPUT]: 表单卡片外层使用共用ScrollArea，标题固定，滚动条贴弹窗右边缘，留白置于滚动内容内部。
  * [OUTPUT]: 复用模型连接弹窗、插画和横向分组表单；标签/图标居左、控件居右，保存操作位于卡片右下。
@@ -18,9 +19,8 @@ import { Banner, GuardContext, useDirty, useMutation } from '@/components/common
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
-import { Database, Eye, EyeOff, FileText, FolderOpen, Key, Pencil, ShieldCheck, Sliders, Terminal } from '@/components/icons'
+import { Database, Eye, EyeOff, FileText, FolderOpen, Key, Pencil, ShieldCheck, Terminal } from '@/components/icons'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { SelectField } from '@/components/ui/select-field'
 import { Dialog } from '@/components/ui/dialog'
 import { ConnectionDialogLayout, ConnectionForm, ConnectionSettingRow } from '../settings/connection-layout'
@@ -70,7 +70,6 @@ export function SourceEditor({ api, source, initialCredential, onClose, onSaved 
             {config.api.authType === 'query' && <ConnectionSettingRow label="Query 参数名" icon={nestedLine} htmlFor={`${fieldId}-query`}><Input id={`${fieldId}-query`} required value={config.api.queryParam ?? ''} placeholder="api_key" onChange={e => setConfig({ ...config, api: { ...config.api, queryParam: e.target.value } })} /></ConnectionSettingRow>}
           </div>
           <ConnectionSettingRow label="测试端点" icon={<Terminal />} htmlFor={`${fieldId}-test-path`} hint="测试连接时会向此相对端点发送一次 GET 请求。"><Input id={`${fieldId}-test-path`} required value={config.api.testPath} placeholder="/health" onChange={e => setConfig({ ...config, api: { ...config.api, testPath: e.target.value } })} /></ConnectionSettingRow>
-          <ConnectionSettingRow label="写入权限" icon={<Sliders />} htmlFor={`${fieldId}-writes`}><label className="source-check"><Checkbox id={`${fieldId}-writes`} checked={config.api.allowWrites} onCheckedChange={value => setConfig({ ...config, api: { ...config.api, allowWrites: !!value } })} />允许 POST、PUT、PATCH、DELETE</label></ConnectionSettingRow>
         </>}
         {config.type === 'mcp' && <>
           <div>
@@ -87,7 +86,6 @@ export function SourceEditor({ api, source, initialCredential, onClose, onSaved 
             <Input id={`${fieldId}-path`} required value={config.local.path} onChange={e => setConfig({ ...config, local: { ...config.local, path: e.target.value } })} placeholder="选择员工可访问的文件夹" />
             <Button type="button" variant="secondary" className="justify-self-start" onClick={() => { void mutation.run(async () => { const path = await api.request('chooseDataSourceFolder', undefined); if (path) setConfig({ ...config, local: { ...config.local, path } }) }) }}>选择文件夹</Button>
           </div></ConnectionSettingRow>
-          <ConnectionSettingRow label="访问权限" icon={<ShieldCheck />} htmlFor={`${fieldId}-access`}><SelectField size="sm" className="h-[32px]" id={`${fieldId}-access`} value={config.local.accessMode} options={[{ value: 'read', label: '只读' }, { value: 'read-write', label: '读取与写入' }]} onValueChange={value => setConfig({ ...config, local: { ...config.local, accessMode: value as 'read' | 'read-write' } })} /></ConnectionSettingRow>
         </>}
         {needsCredential && <ConnectionSettingRow label={credentialLabel} icon={<Key />} htmlFor={`${fieldId}-credential`} hint={credentialLabel === '访问密钥' ? undefined : '使用 JSON 对象填写。'}>
           <InputGroup><InputGroupInput id={`${fieldId}-credential`} aria-label={credentialLabel} type={showCredential ? 'text' : 'password'} autoComplete="off" spellCheck={false} maxLength={32000} value={credential} onChange={e => setCredential(e.target.value)} /><InputGroupAddon align="inline-end" className="pr-2.5 has-[>button]:mr-0"><InputGroupButton type="button" size="icon-xs" className="connection-key-visibility" aria-label={`${showCredential ? '隐藏' : '显示'}${credentialLabel}`} aria-pressed={showCredential} onClick={() => setShowCredential(value => !value)}>{showCredential ? <EyeOff /> : <Eye />}</InputGroupButton></InputGroupAddon></InputGroup>

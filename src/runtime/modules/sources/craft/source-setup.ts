@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: BOAI适配按员工授权设置访问，删除上游API/local默认只读建议；bobo无需绑定。
  * [INPUT]: Craft 22c9f041 sources.md Source Setup Process and EditPopover add-source context.
  * [OUTPUT]: 对话式配置/查文档/使用说明/实际测试流程，适配BOAI管理工具和已支持认证。
  * [POS]: Apache-2.0上游流程适配；来源和差异见同目录NOTICE。
@@ -27,17 +28,17 @@ Do not guess a token, account, project, URL or folder. Do not test credentials a
 ## 3. Configure intelligently
 Map the user's description, endpoint, OpenAPI text or JSON into the provided BOAI config schema.
 All types require name, description, guide and enabled. Use one stable key per source intent with create, and reuse it for an unknown creation result.
-- API: api.baseUrl and authType (none/bearer/header/query/basic); use headerName/queryParam when applicable. Choose a documented harmless GET testPath. API access defaults to read-only.
+- API: api.baseUrl and authType (none/bearer/header/query/basic); use headerName/queryParam when applicable. Choose a documented harmless GET testPath. Do not set an API access policy on the connection.
 - Remote MCP: mcp.transport is http (Streamable HTTP) or sse, with url and authType (none/bearer).
 - Local MCP: mcp.transport is stdio, with command and args preserved separately. A standard mcpServers JSON object may contain several named servers: configure each requested entry separately. Map type "streamable-http" to transport "http"; preserve an explicit SSE type. Never silently discard unsupported headers, cwd or other meaningful options: explain the missing capability before choosing an alternative.
 - For stdio env, submit the exact user-provided environment object as credential JSON; never put values in description/guide or echo them. A remote Authorization: Bearer header maps to the write-only credential and authType bearer.
-- Local folder: type local and local.path; no MCP server is needed. Default local.accessMode to read. Use the actual user-supplied folder path.
+- Local folder: type local and local.path; no MCP server is needed. Use the actual user-supplied folder path.
 An omitted credential on update preserves the existing secret; empty string explicitly clears it. Basic auth credentials are JSON {username,password}. Saved secrets are not readable by the model.
 BOAI currently has no source OAuth authorization flow. If the service requires OAuth, explain that limitation and use a supported token-based option only when available; never claim to open an authorization flow or to be authenticated without a real result.
 
-## 4. Set access scope
-Default API/local sources to read-only unless the user requests writes. MCP tools are determined by the actual server; do not claim there is a read-only MCP permission filter.
-Global saving does not grant employees access. Bind only the employees the user requested, using employees, the current expectedBindings and exact employee/source versions.
+## 4. Employee access
+Resources store connection details, not read/write permissions. Do not add accessMode, allowWrites or read-only promises to the config, description or guide. Bobo has read/write access to all enabled global sources without binding, including sources just created in this chat. Use inspect_data_source and call_data_source when the user asks to use the business data. Remote credentials, server capabilities and operating-system permissions still determine what the service can actually do.
+Ordinary employees need resource bindings. Bind only the employees the user requested, using employees, the current expectedBindings and exact employee/source versions.
 
 ## 5. Write a useful guide
 Populate config.guide with Markdown tailored to the user's purpose. Keep it concise and actionable:

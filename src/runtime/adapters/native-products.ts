@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源工具沿共享可用性判定，核心身份在空目录也可同轮使用新建资源。
  * [OUTPUT]: 普通bobo目录管理与API共用object根schema/宿主回调，观测省略正文与凭据。
  * [OUTPUT]: 原生产品桥沿同一create_data_source schema/宿主回调保存配置；观测省略敏感输入。
  * [OUTPUT]: 本机员工复用数据源目录和调用桥，凭据留在宿主，退出等待会话清理。
@@ -15,7 +16,7 @@ import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manag
 import { sourceCreationSchema, sourceCreationDescription, sourceCreationObservation } from '../modules/sources/source-commands'
 import { z } from 'zod'
 import { sourceCallSchema } from '../../shared/domain/sources'
-import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription } from './mastra/source-tools'
+import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription, hasSourceTools } from './mastra/source-tools'
 import path from 'node:path'
 import { realpath } from 'node:fs/promises'
 import type { EngineContext } from '../contracts'
@@ -45,7 +46,7 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
-  if (context.dataSources?.length && context.inspectDataSource && context.callDataSource) definitions.push(
+  if (hasSourceTools(context)) definitions.push(
     { name: 'inspect_data_source', description: sourceInspectDescription(context), schema: sourceInspectSchema },
     { name: 'call_data_source', description: sourceCallDescription, schema: sourceCallSchema },
   )

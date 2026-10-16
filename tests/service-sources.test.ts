@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实AppService验证bobo无绑定全局及同轮新增源读写、普通chat无Work、停用/私有阶段/结束运行拒绝；普通员工绑定门禁保持。
  * [OUTPUT]: 桌面凭据读取、编辑后回填/清空、版本拒绝与普通DTO隔离；使用测试vault，不读取用户密钥。
  * [OUTPUT]: 新增专用核心会话真实工具保存、普通聊天不暴露、原生桥调用及结束运行拒绝。
  * [INPUT]: Real AppService/SQLite and deterministic employee task engine.
@@ -21,6 +22,55 @@ import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapsh
 import type { DataSource } from '../src/shared/domain/sources'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
+
+it('gives bobo all enabled sources without binding, and can read/write a newly created source in the same chat turn', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-core-sources-')))
+  cleanups.push(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, 'facts.md'), 'GLOBAL_FACT')
+  let existing: DataSource, disabled: DataSource, latest: EngineContext | undefined, failure: unknown
+  const engine: AgentEngine = {
+    test: async () => 'unused',
+    decide: async ctx => {
+      expect(ctx.dataSources?.map(source => source.id)).toEqual([existing.id])
+      await expect(ctx.inspectDataSource!(existing.id)).rejects.toThrow('权限')
+      return { action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence }
+    },
+    run: async ctx => {
+      latest = ctx
+      try {
+        expect(ctx.agent.sourceIds ?? []).toEqual([]); expect(ctx.work).toBeUndefined()
+        await expect(ctx.inspectDataSource!(disabled.id)).rejects.toThrow('不可用')
+        const tools = createSourceTools(ctx)
+        const toolContext = { requestContext: new RequestContext(), observe: noopObserve }
+        expect(JSON.stringify(await tools.call_data_source.execute!({ sourceId: existing.id, tool: 'files', arguments: { operation: 'read', path: 'facts.md' } }, toolContext))).toContain('GLOBAL_FACT')
+        const added = await ctx.manageDataSources!({ command: { action: 'create', input: { key: 'new-folder', config: { name: 'New folder', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } } } }) as DataSource
+        expect(ctx.dataSources?.some(source => source.id === added.id)).toBe(false) // Not in the initial model snapshot.
+        const bridge = createNativeProducts(ctx)
+        const inspect = bridge.tools.find(tool => tool.name === 'inspect_data_source')!
+        expect(JSON.stringify(await inspect.execute({ sourceId: added.id }, 'inspect-new'))).toContain('expectedHash')
+        await bridge.tools.find(tool => tool.name === 'call_data_source')!.execute({ sourceId: added.id, tool: 'files', arguments: { operation: 'write', path: 'new.md', content: 'BOBO_WRITE', expectedHash: null } }, 'write-new')
+        expect(await readFile(join(root, 'new.md'), 'utf8')).toBe('BOBO_WRITE')
+        await tools.call_data_source.execute!({ sourceId: existing.id, tool: 'files', arguments: { operation: 'write', path: 'api-bridge.md', content: 'MASTRA_WRITE', expectedHash: null } }, toolContext)
+        expect(ctx.work).toBeUndefined()
+        await bridge.dispose(); await ctx.onDelta('已读写全局资源')
+      } catch (error) { failure = error; throw error }
+    },
+  }
+  const service = new AppService({ dataPath: join(root, 'app'), skillDiscovery: { homeDir: root }, engine, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  cleanups.push(() => service.close()); await service.init()
+  await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' })
+  const config = { name: 'Existing', type: 'local' as const, description: '', guide: '', enabled: true, local: { path: root } }
+  existing = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config }) as DataSource
+  disabled = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...config, enabled: false } }) as DataSource
+  const room = await service.handle('startCoreConversation', { requestId: randomUUID(), content: '读取资料并创建新文件' }) as Conversation
+  await vi.waitFor(async () => {
+    if (failure) throw failure
+    const detail = await service.handle('getConversation', { id: room.id }) as ConversationDetail
+    expect(detail.messages.some(message => message.senderType === 'agent' && message.status === 'completed' && message.content === '已读写全局资源')).toBe(true)
+  }, { timeout: 15000 })
+  expect(await readFile(join(root, 'api-bridge.md'), 'utf8')).toBe('MASTRA_WRITE')
+  await expect(latest!.inspectDataSource!(existing.id)).rejects.toThrow('权限')
+})
 
 it('returns the saved source credential only through the versioned editor request and saves actual input including blank', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-source-credential-')))
@@ -84,8 +134,8 @@ it('routes bound sources through native and Mastra contracts, rejecting private 
   const service = new AppService({ dataPath: join(root, 'app'), engine, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {} })
   cleanups.push(() => service.close()); await service.init()
   const connection = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' }) as Connection
-  source = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'bound', description: '', guide: '', enabled: true, type: 'local', local: { path: root, accessMode: 'read-write' } } }) as DataSource
-  unrelated = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'unbound', description: '', guide: '', enabled: true, type: 'local', local: { path: root, accessMode: 'read' } } }) as DataSource
+  source = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'bound', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }) as DataSource
+  unrelated = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'unbound', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }) as DataSource
   let employee = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
   const definition = (agent: DigitalAgent) => { const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...value } = agent; return { ...value, expectedConfigVersion: configVersion } }
   employee = await service.handle('saveAgent', { ...definition(employee), connectionId: connection.id, modelId: 'fixture', sourceIds: [source.id] }) as DigitalAgent
@@ -114,7 +164,7 @@ it('grants creation only to a dedicated core user conversation and rejects the e
       const bridge = createNativeProducts(ctx), create = bridge.tools.find(tool => tool.name === 'create_data_source')
       if (ctx.conversation.sourceCreation) {
         expect(ctx.manageAutomation).toBeUndefined(); expect(create).toBeDefined(); expect(ctx.work).toBeUndefined()
-        await create!.execute({ key: 'local', config: { name: '资料', description: '', guide: '', enabled: true, type: 'local', local: { path: root, accessMode: 'read' } } }, 'create-source')
+        await create!.execute({ key: 'local', config: { name: '资料', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }, 'create-source')
       } else expect(create).toBeUndefined()
       await bridge.dispose(); await ctx.onDelta('已按实际回执处理')
     } catch (error) { failure = error; throw error }
@@ -128,6 +178,6 @@ it('grants creation only to a dedicated core user conversation and rejects the e
   const ordinary = await service.handle('startCoreConversation', { requestId: randomUUID(), content: '你好' }) as Conversation; await wait(ordinary)
   const conversation = await service.handle('startCoreConversation', { requestId: randomUUID(), content: '添加资料文件夹', sourceCreation: true }) as Conversation; await wait(conversation)
   expect(await service.handle('listDataSources', undefined)).toMatchObject([{ type: 'local', creationSource: { conversationId: conversation.id, agentId: 'bobo' } }])
-  await expect(context!.createDataSource!({ key: 'late', config: { name: '迟到', description: '', guide: '', enabled: true, type: 'local', local: { path: root, accessMode: 'read' } } })).rejects.toThrow()
+  await expect(context!.createDataSource!({ key: 'late', config: { name: '迟到', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } })).rejects.toThrow()
   await expect(service.handle('startCoreConversation', { requestId: randomUUID(), content: '冲突入口', sourceCreation: true, automationCreation: true })).rejects.toThrow('同时')
 })

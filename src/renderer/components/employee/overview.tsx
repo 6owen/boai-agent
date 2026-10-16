@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 工作方式/实际能力使用紧凑配置Card；定时计划两行列表，执行详情改为页内折叠并定位右侧原Run。
+ * [OUTPUT]: 工作方式/实际能力/技能/数据源使用标题加Card；配置值后紧凑状态，说明仅Tooltip，执行记录直接展示。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 员工资料直接展示只读定时任务列表，点击定位全局管理页。
  * [OUTPUT]: 资料首页移除聊天派生的当前工作看板；执行记录统一从执行详情查看。
@@ -14,18 +14,18 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AgentHome, DigitalAgent, LaunchProfileStatus, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
-import { Banner, errorText, Loading } from '@/components/common'
+import { Banner, errorText } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
-import { FileText, InfoIcon } from '@/components/icons'
-import { ContactProfileCard, ContactProfileRow } from './profile-card'
+import { Cpu, Key } from '@/components/icons'
+import { ContactProfileCard, ContactProfileRow, ContactProfileSection } from './profile-card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SkillContent } from '@/pages/library/skill-content'
 import { employeeCapabilityFacts } from './overview-state'
-import { EmployeeExecutionDisclosure, type ExecutionSourceNavigation } from './execution-pane'
+import { EmployeeExecutionPane } from './execution-pane'
+import { EmployeeResourceCards } from './resource-cards'
 
-export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, onOpenExecutionSource }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void; onOpenExecutionSource?: ExecutionSourceNavigation }) {
+export function EmployeeOverview({ api, snapshot, agent, active, onConfigure }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; onConfigure(): void }) {
   const [home, setHome] = useState<AgentHome | null>(null)
   const [launchStatus, setLaunchStatus] = useState<LaunchProfileStatus>()
   const [skillId, setSkillId] = useState<string>()
@@ -64,22 +64,31 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure, on
     })
   }, [api, active])
   const capabilities = agent.executionBackend && agent.executionBackend.kind !== 'mastra-model' && (loading || error) ? [] : employeeCapabilityFacts(agent, snapshot, home, launchStatus?.profile, launchStatus)
+  const connection = snapshot.connections.find(item => item.id === agent.connectionId)
+  const native = agent.executionBackend && agent.executionBackend.kind !== 'mastra-model'
+  const connectionFact = capabilities.find(fact => fact.id === (native ? 'connection' : 'model'))
+  const connectionName = native ? launchStatus?.profile.name ?? '未配置' : connection?.name ?? '未配置'
+  const connectionStatus = loading && native ? '读取中' : connectionFact?.status ?? '未配置'
+  const remembered = snapshot.commandPermissions?.some(permission => permission.agentId === agent.id)
+  const options = agent.nativeOptions
+  const commandValue = agent.executionBackend?.kind === 'codex-local'
+    ? options?.codexApprovalPolicy ? ({ untrusted: '非可信操作请求批准', 'on-request': 'Agent 按需请求批准', never: '不申请额外权限' })[options.codexApprovalPolicy] : '遵循 Codex 配置'
+    : agent.executionBackend?.kind === 'claude-local'
+      ? options?.claudePermissionMode ? ({ default: '请求批准', acceptEdits: '自动允许编辑文件', plan: '计划模式', dontAsk: '不申请额外权限', bypassPermissions: '完全访问本机' })[options.claudePermissionMode] : '默认权限'
+      : native ? '遵循本机 Agent 配置' : agent.allowCommands ? remembered ? '允许，不再询问' : '允许，执行前确认' : '关闭'
   return <>
-    <ContactProfileCard label="员工资料"><ContactProfileRow icon={<FileText />} title="工作方式">{agent.instructions || <span className="text-muted-foreground">未设置</span>}</ContactProfileRow></ContactProfileCard>
-    <section className="contact-section space-y-3" aria-label="员工实际能力">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="contact-section-title">实际能力</h2><div className="flex flex-wrap gap-1"><Button variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>刷新能力状态</Button><Button variant="ghost" size="sm" onClick={onConfigure}>查看配置与系统文件</Button></div></div>
-      <p className="field-hint">职责与工作方式来自已保存配置；以下状态只表达当前已有记录。</p>
-      {loading && <Loading>正在核对能力说明…</Loading>}
+    <ContactProfileSection title="工作方式"><ContactProfileCard label="工作方式内容" fields={false}><p className="contact-card-copy">{agent.instructions || <span className="text-muted-foreground">未设置</span>}</p></ContactProfileCard></ContactProfileSection>
+    <ContactProfileSection title="实际能力" hint="职责与工作方式来自已保存配置；以下状态只表达当前已有记录。" actions={<div className="flex flex-wrap gap-1"><Button variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>刷新能力状态</Button><Button variant="ghost" size="sm" onClick={onConfigure}>查看配置与系统文件</Button></div>}>
       {error && <><Banner>{`能力说明读取失败：${error}`}</Banner><Button variant="ghost" size="sm" onClick={() => setRevision(value => value + 1)}>重新读取</Button></>}
-      <ContactProfileCard label="实际能力状态">{capabilities.map(fact => <ContactProfileRow key={fact.id} title={fact.name} icon={<InfoIcon />}>
-        <Badge variant="secondary">{fact.status}</Badge>
-        <p className="field-hint">{fact.detail}</p>
-        {fact.skillId && <Button variant="ghost" size="sm" onClick={() => setSkillId(fact.skillId)}>{`查看 ${fact.name} 的来源与说明`}</Button>}
-      </ContactProfileRow>)}</ContactProfileCard>
-      {!agent.skillIds.length && agent.executionBackend?.kind !== 'acp-local' && <p className="field-hint">尚未绑定技能，可在配置中从本机技能选择。</p>}
-    </section>
+      <ContactProfileCard label="实际能力配置">
+        <ContactProfileRow icon={<Cpu />} title="模型连接"><span className="contact-value-status"><span>{connectionName}</span><small className="contact-inline-status" data-positive={connectionStatus === '已配置' || connectionStatus.startsWith('已记录')}>{connectionStatus}</small></span></ContactProfileRow>
+        {agent.executionBackend?.kind === 'claude-local' && <ContactProfileRow icon={<Cpu />} title="模型来源"><span className="contact-value-status"><span>{connection?.name ?? '未配置'}</span><small className="contact-inline-status" data-positive={Boolean(connection?.hasApiKey && (agent.modelId || connection.defaultModel))}>{capabilities.find(fact => fact.id === 'model')?.status ?? '未配置'}</small></span></ContactProfileRow>}
+        <ContactProfileRow icon={<Key />} title="命令授权"><span className="contact-value-status"><span>{commandValue}</span><small className="contact-inline-status" data-positive={native || agent.allowCommands}>{native ? '跟随配置' : agent.allowCommands ? '已启用' : '未启用'}</small></span></ContactProfileRow>
+      </ContactProfileCard>
+    </ContactProfileSection>
+    <EmployeeResourceCards api={api} agent={agent} snapshot={snapshot} active={active} revision={revision} capabilities={capabilities} onOpenSkill={setSkillId} />
     <OwnerAutomations api={api} snapshot={snapshot} owner={{ kind: 'employee', employeeId: agent.id }} active={active} />
-    <EmployeeExecutionDisclosure key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active} onOpenSource={onOpenExecutionSource} />
+    <div className="contact-section"><EmployeeExecutionPane key={agent.id} api={api} agent={agent} snapshot={snapshot} active={active} /></div>
     <Dialog open={active && Boolean(selectedSkill)} onOpenChange={value => { if (!value) setSkillId(undefined) }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{selectedSkill?.name} · 来源与说明</DialogTitle><DialogDescription>当前员工已绑定的受管副本。说明可读取不表示执行依赖或交付效果已验证。</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto">{active && selectedSkill && <SkillContent key={selectedSkill.id} api={api} resourceId={selectedSkill.id} />}</div></DialogContent></Dialog>
   </>
 }

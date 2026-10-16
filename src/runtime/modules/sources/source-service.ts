@@ -3,7 +3,7 @@
  * [OUTPUT]: 普通会话修改/删除/绑定在提交前核验当前授权；测试接入来源取消并再次核验。
  * [OUTPUT]: 会话创建与sourceCreations回执同事务；同消息/稳定键重复核对原源，配置变化或原源删除不重新创建。
  * [INPUT]: ProductStore, encrypted SecretStore, employee registry and explicit versioned requests.
- * [OUTPUT]: Source configuration/bindings, real connection tests and scoped runtime sessions; no startup calls.
+ * [OUTPUT]: Connection-only source configuration, legacy access-flag migration, employee bindings and scoped sessions; no startup calls.
  * [POS]: Sole data-source lifecycle authority; saved credentials never enter public DTOs or execution tools; creation accepts only user-supplied credentials.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
@@ -34,6 +34,14 @@ export class SourceService {
   async init() {
     await recoverSourceProcesses(this.dataPath)
     for (const source of await this.store.load<StoredSource>('dataSources')) {
+      // Old releases stored employee access policy on the shared connection.
+      // Remove only those retired keys; keep identity, revisions, secrets and receipts.
+      const connection = source.type === 'api' ? source.api : source.type === 'local' ? source.local : undefined
+      if (connection && ('allowWrites' in connection || 'accessMode' in connection)) {
+        Reflect.deleteProperty(connection, 'allowWrites'); Reflect.deleteProperty(connection, 'accessMode')
+        dataSourceConfigSchema.parse(this.config(source))
+        await this.store.write([{ collection: 'dataSources', id: source.id, value: source }])
+      }
       dataSourceConfigSchema.parse(this.config(source)); this.sources.set(source.id, source)
     }
   }
@@ -60,6 +68,7 @@ export class SourceService {
   }
   private stored(id: string) { const source = this.sources.get(id); if (!source) throw new Error('数据源不存在'); return source }
   summaries(ids: string[] = []): SourceSummary[] { return ids.flatMap(id => { const source = this.sources.get(id); return source?.enabled ? [{ id, revision: source.revision, name: source.name, description: source.description, type: source.type }] : [] }) }
+  allSummaries() { return this.summaries([...this.sources.keys()]) }
   validateBindings(ids: string[], backend?: string) {
     if (ids.length && !supportsDataSources(backend)) throw new Error('此运行方式尚不支持数据源')
     for (const id of ids) this.stored(id)

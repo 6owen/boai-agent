@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 三类数据源夹具移除已退休的资源级权限字段；本轮未运行E2E。
  * [OUTPUT]: 真实宿主与受控模型覆盖询问缺项/三类型会话保存/重启/手动编辑；两级菜单单行与侧栏滚动边缘核对。
  * [OUTPUT]: 真实帧采样核验会话Collapsible高度过渡；技能选中保留主目录，并使用Shell右侧详情/关闭入口；原收藏和本地扫描流程保持。
  * [INPUT]: Real Electron IPC, isolated skill/folder fixtures and local authenticated HTTP.
@@ -150,9 +151,9 @@ Then('主目录保持且安装列表按四种类型分组', async ({ runtime, so
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await page.evaluate(async folder => {
     const base = { description: '', guide: '', enabled: true }
-    await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...base, name: 'API示例', type: 'api', api: { baseUrl: 'http://127.0.0.1:9', authType: 'none', testPath: '/', allowWrites: false } } })
+    await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...base, name: 'API示例', type: 'api', api: { baseUrl: 'http://127.0.0.1:9', authType: 'none', testPath: '/' } } })
     await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...base, name: 'MCP示例', type: 'mcp', mcp: { url: 'http://127.0.0.1:9/mcp', transport: 'http', authType: 'none' } } })
-    await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...base, name: '文件夹示例', type: 'local', local: { path: folder!, accessMode: 'read' } } })
+    await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...base, name: '文件夹示例', type: 'local', local: { path: folder! } } })
   }, sources.folder)
   const sidebar = page.getByRole('complementary', { name: '自定义导航' })
   for (const label of ['技能', 'MCP', 'API', '本地文件夹']) await expect(sidebar.getByRole('button', { name: `已安装的${label}`, exact: true })).toHaveAttribute('aria-expanded', 'true')
@@ -196,7 +197,7 @@ Given('数据源会话添加使用真实服务和受控模型', async ({ runtime
     const tool = body.tools?.find((t: { function: { name: string } }) => t.function.name === 'create_data_source')
     if (!tool) { text('缺少创建工具'); return }
     const base = { description: '', guide: '', enabled: true }
-    const input = request.includes('mcpServers') ? { key: 'mcp', config: { ...base, name: '会话MCP', type: 'mcp', mcp: { transport: 'stdio', command: 'npx', args: ['-y', 'fixture-mcp'] } }, credential: '{"TOKEN":"SOURCE_CHAT_SECRET"}' } : request.includes('API示例') ? { key: 'api', config: { ...base, name: 'API示例', type: 'api', api: { baseUrl: 'http://127.0.0.1:9/v1', authType: 'none', testPath: '/', allowWrites: false } } } : { key: 'folder', config: { ...base, name: '文件夹示例', type: 'local', local: { path: sources.folder, accessMode: 'read' } } }
+    const input = request.includes('mcpServers') ? { key: 'mcp', config: { ...base, name: '会话MCP', type: 'mcp', mcp: { transport: 'stdio', command: 'npx', args: ['-y', 'fixture-mcp'] } }, credential: '{"TOKEN":"SOURCE_CHAT_SECRET"}' } : request.includes('API示例') ? { key: 'api', config: { ...base, name: 'API示例', type: 'api', api: { baseUrl: 'http://127.0.0.1:9/v1', authType: 'none', testPath: '/' } } } : { key: 'folder', config: { ...base, name: '文件夹示例', type: 'local', local: { path: sources.folder } } }
     emit({ role: 'assistant' }); emit({ tool_calls: [{ index: 0, id: 'source-create', type: 'function', function: { name: 'create_data_source', arguments: JSON.stringify(input) } }] }); emit({}, 'tool_calls'); res.end('data: [DONE]\n\n')
   })
   runtime.trackServer(server); await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))

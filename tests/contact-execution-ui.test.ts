@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
 /*
  * [OUTPUT]: 订阅夹具沿DesktopApi声明回调类型，保持严格类型检查。
- * [INPUT]: 生产通讯录折叠执行列表、TraceTab及受控原IPC。
- * [OUTPUT]: 展开才读取、收起停读、员工/群固定Run导航、刷新不卸载列表、精确详情与迟到响应隔离。
+ * [INPUT]: 生产通讯录直接执行列表、TraceTab及受控原IPC。
+ * [OUTPUT]: 可见读取、隐藏停读、固定Run导航与迟到隔离；员工绑定源/核心已启用源按原权限展示。
  * [POS]: 通讯录执行交互的组件回归，不运行E2E或模型。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 import type { AgentRun, DigitalAgent, Snapshot } from '../src/shared/domain'
 import type { AppEvent, DesktopApi } from '../src/shared/ipc'
-import { EmployeeExecutionDisclosure, EmployeeExecutionNavigation, EmployeeExecutionPane } from '../src/renderer/components/employee/execution-pane'
+import { EmployeeExecutionNavigation, EmployeeExecutionPane } from '../src/renderer/components/employee/execution-pane'
 import { TraceTab } from '../src/renderer/components/detail-panel/trace-tab'
+import { EmployeeResourceCards } from '../src/renderer/components/employee/resource-cards'
 
 vi.mock('../src/renderer/components/detail-panel/execution-feed', () => ({ ExecutionFeed: ({ run }: { run: AgentRun }) => h('div', { 'data-feed-run': run.id }, run.id) }))
 const agent = { id: 'ds', name: 'DS', configVersion: 1 } as DigitalAgent
@@ -39,11 +41,11 @@ afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi
 const click = async (selector: string) => act(async () => host.querySelector<HTMLButtonElement>(selector)!.click())
 const refresh = async () => act(async () => { listeners.forEach(listener => listener({ type: 'changed', conversationId: 'room' })); await vi.advanceTimersByTimeAsync(500) })
 
-it.each(['employee', 'group'])('opens %s records in place and navigates the exact run without a dialog', async kind => {
+it.each(['employee', 'group'])('shows %s records directly and navigates the exact run without a dialog', async kind => {
   const open = vi.fn()
-  await act(async () => root.render(h(EmployeeExecutionNavigation.Provider, { value: open }, h(EmployeeExecutionDisclosure, { api, snapshot, active: true, ...(kind === 'employee' ? { agent } : { conversationId: 'room' }) }))))
-  expect(request).not.toHaveBeenCalled()
-  await click('[data-slot=collapsible-trigger]')
+  const render = async (active: boolean) => act(async () => root.render(h(EmployeeExecutionNavigation.Provider, { value: open }, h(EmployeeExecutionPane, { api, snapshot, active, ...(kind === 'employee' ? { agent } : { conversationId: 'room' }) }))))
+  await render(true)
+  expect(host.querySelector('[data-slot=collapsible-trigger]')).toBeNull()
   const row = host.querySelector('[data-employee-run-id]')!
   expect(row.classList.contains('automation-record-row')).toBe(true)
   expect(row.querySelector('.conversation-title')).not.toBeNull()
@@ -51,10 +53,9 @@ it.each(['employee', 'group'])('opens %s records in place and navigates the exac
   expect(document.querySelector('[role=dialog]')).toBeNull()
   await click('[data-employee-run-id]')
   expect(open).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 'room', agentId: 'ds', runId: 'run-older' }))
-  await click('[data-slot=collapsible-trigger]')
+  await render(false)
   request.mockClear(); await refresh()
   expect(request).not.toHaveBeenCalled()
-  expect(host.querySelector('[data-slot=collapsible-trigger]')?.getAttribute('aria-expanded')).toBe('false')
 })
 
 it('keeps loaded rows during a refresh and ignores a response after leaving the page', async () => {
@@ -83,4 +84,41 @@ it('opens an older exact execution using the original query and one shared proce
   expect(host.textContent).not.toContain('执行历史')
   await render(false); request.mockClear(); await refresh()
   expect(request).not.toHaveBeenCalled()
+})
+
+it('removes a deleted execution from the panel and reports the failure through Sonner', async () => {
+  const notify = vi.spyOn(toast, 'error')
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room', agentId: 'ds', runId: 'run-older' })))
+  expect(host.querySelector('[data-execution-run-id]')).not.toBeNull()
+  request.mockRejectedValue(new Error('执行记录已删除'))
+  await refresh()
+  expect(host.querySelector('[data-execution-run-id]')).toBeNull()
+  expect(host.querySelector('[role=alert]')).toBeNull()
+  expect(host.textContent).not.toContain('执行记录已删除')
+  expect(notify).toHaveBeenCalledWith('执行记录已删除', expect.anything())
+})
+
+it('shows only bound sources for an employee and enabled sources for the core agent', async () => {
+  const sources = [{ id: 'allowed', name: '天气 API', type: 'api', enabled: true }, { id: 'off', name: '已停用 MCP', type: 'mcp', enabled: false }, { id: 'unbound', name: '本地笔记', type: 'local', enabled: true }]
+  request.mockResolvedValue(sources)
+  const render = async (core: boolean) => act(async () => root.render(h(EmployeeResourceCards, { key: String(core), api, snapshot, agent: { ...agent, skillIds: [], knowledgeIds: [], sourceIds: ['allowed', 'off'], ...(core ? { id: 'bobo', systemRole: 'core' as const } : {}) }, active: true, revision: 0, capabilities: [], onOpenSkill: vi.fn() })))
+  await render(false)
+  expect(host.textContent).toContain('天气 API')
+  expect(host.textContent).toContain('已停用 MCP')
+  expect(host.textContent).not.toContain('本地笔记')
+  await render(true)
+  expect(host.textContent).toContain('本地笔记')
+  expect(host.textContent).not.toContain('已停用 MCP')
+  expect(request.mock.calls.every(([method]) => method === 'listDataSources')).toBe(true)
+})
+
+it('does not load resource metadata while hidden or publish a late result after hiding', async () => {
+  let resolve!: (value: unknown) => void
+  request.mockImplementation(() => new Promise(done => { resolve = done }))
+  const render = async (active: boolean) => act(async () => root.render(h(EmployeeResourceCards, { api, snapshot, agent: { ...agent, skillIds: [], knowledgeIds: [], sourceIds: ['allowed'] }, active, revision: 0, capabilities: [], onOpenSkill: vi.fn() })))
+  await render(false); expect(request).not.toHaveBeenCalled()
+  await render(true); expect(request).toHaveBeenCalledOnce()
+  await render(false)
+  await act(async () => resolve([{ id: 'allowed', name: '迟到数据源', type: 'api', enabled: true }]))
+  expect(host.textContent).not.toContain('迟到数据源')
 })

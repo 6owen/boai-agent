@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Frozen source definition, vault-only credentials and an owned abort signal.
- * [OUTPUT]: Craft API requests, MCP HTTP/SSE/stdio sessions and contained local text operations.
+ * [OUTPUT]: Craft API requests, MCP sessions and contained local reads/writes; employee authorization is checked by the host.
  * [POS]: Source transport adapter; no employee or configuration authority.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
@@ -57,12 +57,11 @@ function apiPath(source: Extract<DataSource, { type: 'api' }>, path: string) {
 export async function openSourceSession(source: DataSource, credential: string, dataPath: string, signal: AbortSignal): Promise<SourceSession> {
   signal.throwIfAborted()
   if (source.type === 'api') return {
-    tools: [{ name: 'request', description: `Request a relative endpoint. ${source.api.allowWrites ? 'Writes are enabled.' : 'Only GET is enabled.'}`, inputSchema: z.toJSONSchema(apiSourceRequestSchema, { io: 'input' }) }],
+    tools: [{ name: 'request', description: 'Request a relative endpoint using the employee-authorized operation. The remote service enforces its credential permissions.', inputSchema: z.toJSONSchema(apiSourceRequestSchema, { io: 'input' }) }],
     async call(name, args, signal) {
       if (name !== 'request') throw new Error('未知 API 工具')
       const request = apiSourceRequestSchema.parse(args)
       apiPath(source, request.path)
-      if (request.method !== 'GET' && !source.api.allowWrites) throw new Error('此 API 数据源仅允许读取')
       if (source.api.authType !== 'none' && !credential) throw new Error('数据源尚未配置凭据')
       const result = await executeApiRequest({ name: source.name, baseUrl: source.api.baseUrl, auth: apiAuthSpecFromConfig(source.api) }, parseStoredApiCredential(credential, source.api), request, { signal, timeoutMs: SOURCE_TIMEOUT })
       if (!result.ok) throw new Error(`API 请求失败（HTTP ${result.status}）`)
@@ -75,14 +74,13 @@ export async function openSourceSession(source: DataSource, credential: string, 
     const root = await sourceFolder(source.local.path)
     if (root !== source.local.path) throw new Error('数据源目录来源已变化，请重新配置')
     return {
-      tools: [{ name: 'files', description: `Paths are relative to this bound folder. ${source.local.accessMode === 'read' ? 'Read-only.' : 'Write requires content and expectedHash from a prior read, or null for a new file.'}`, inputSchema: z.toJSONSchema(localSourceRequestSchema, { io: 'input' }) }],
+      tools: [{ name: 'files', description: 'Paths are relative to this source folder. Write requires content and expectedHash from a prior read, or null for a new file. Employee access is checked by the host.', inputSchema: z.toJSONSchema(localSourceRequestSchema, { io: 'input' }) }],
       async call(name, args, signal) {
         if (name !== 'files') throw new Error('未知文件夹工具')
         const request = localSourceRequestSchema.parse(args)
         signal.throwIfAborted()
         if (isAbsolute(request.path)) throw new Error('请使用数据源内的相对路径')
         if (request.operation === 'write') {
-          if (source.local.accessMode !== 'read-write') throw new Error('此文件夹仅允许读取')
           if (request.content === undefined || request.expectedHash === undefined) throw new Error('写入需要正文及原文件 hash；新文件使用 null')
           await writeWorkspaceFile(root, request.path, request.content, request.expectedHash, signal)
           return { written: true, path: request.path, contentHash: fileContentHash(request.content) }

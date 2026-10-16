@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 验证退休权限字段迁移保留身份/版本/凭据，API与本地授权读写及目录/hash边界。
  * [OUTPUT]: 新增会话三种配置、凭据隔离、提交后未知重试/重启/删除不复活/撤权拒绝。
  * [INPUT]: Real SQLite/vault fixtures, HTTP server, local files and supervised MCP processes.
  * [OUTPUT]: Credential isolation, contained reads/writes, revisions, persistence and actual shutdown checks.
@@ -29,6 +30,25 @@ async function http(handler: (req: IncomingMessage, res: ServerResponse) => void
   return `http://127.0.0.1:${(server.address() as { port: number }).port}`
 }
 function dto(config: DataSourceConfig): DataSource { return { ...config, id: randomUUID(), revision: 1, createdAt: '', updatedAt: '', hasCredential: false } }
+
+it('migrates legacy source read-only flags without changing connection identity or contacting the service', async () => {
+  const f = await fixture()
+  const local = { ...dto({ ...base, type: 'local', local: { path: f.root } }), local: { path: f.root, accessMode: 'read' }, credentialId: undefined }
+  const api = { ...dto({ ...base, type: 'api', api: { baseUrl: 'http://127.0.0.1:9', authType: 'bearer', testPath: '/' } }), api: { baseUrl: 'http://127.0.0.1:9', authType: 'bearer', testPath: '/', allowWrites: false }, credentialId: 'legacy-secret' }
+  await f.store.write([local, api].map(({ hasCredential: _hasCredential, ...source }) => ({ collection: 'dataSources', id: source.id, value: source })))
+  f.vault.set('legacy-secret', 'saved-secret')
+  await f.service.close()
+  const restored = new SourceService(f.store, f.secrets, f.root, f.hooks); cleanups.push(() => restored.close()); await restored.init()
+  expect(restored.get(local.id)).toMatchObject({ id: local.id, revision: local.revision, local: { path: f.root } })
+  expect(restored.get(local.id)).not.toHaveProperty('local.accessMode')
+  expect(restored.get(api.id)).not.toHaveProperty('api.allowWrites')
+  expect(restored.get(api.id).hasCredential).toBe(true)
+  expect(await restored.getCredential({ id: api.id, expectedRevision: api.revision })).toBe('saved-secret')
+  expect(JSON.stringify(await f.store.load('dataSources'))).not.toMatch(/accessMode|allowWrites/)
+  expect(f.hooks.changed).not.toHaveBeenCalled()
+  await restored.use(restored.summaries([local.id])[0], 'migrated', signal(), { sourceId: local.id, tool: 'files', arguments: { operation: 'write', path: 'after-migration.md', content: 'written', expectedHash: null } })
+  expect(await readFile(join(f.root, 'after-migration.md'), 'utf8')).toBe('written')
+})
 async function fixture() {
   const root = await folder(), store = new ProductStore(join(root, 'data.sqlite')); await store.init(); cleanups.push(() => store.close())
   const vault = new Map<string, string>(), secrets = { get: async (id: string) => vault.get(id), set: async (id: string, value: string) => { vault.set(id, value) }, delete: async (id: string) => { vault.delete(id) } }
@@ -44,7 +64,7 @@ describe('data sources', () => {
     const calls: { auth?: string; key?: string; url?: string }[] = []
     const baseUrl = await http((req, res) => { calls.push({ auth: req.headers.authorization, key: req.headers['x-api-key'] as string, url: req.url }); res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ auth: req.headers.authorization, key: req.headers['x-api-key'], url: req.url })) })
     const credential = authType === 'basic' ? JSON.stringify({ username: 'fixture-user', password: 'private-password' }) : 'private-token-value'
-    const source = dto({ ...base, type: 'api', api: { baseUrl: baseUrl + '/v1', authType, headerName: 'X-API-Key', queryParam: 'token', testPath: '/health', allowWrites: false } })
+    const source = dto({ ...base, type: 'api', api: { baseUrl: baseUrl + '/v1', authType, headerName: 'X-API-Key', queryParam: 'token', testPath: '/health' } })
     const session = await openSourceSession(source, credential, await folder(), signal())
     const result = JSON.stringify(await session.call('request', { path: '/health', params: { name: 'hello' } }, signal()))
     expect(calls).toHaveLength(1); expect(calls[0].url).toContain('/v1/health')
@@ -55,25 +75,24 @@ describe('data sources', () => {
     expect(result).not.toContain('private-token-value'); expect(result).not.toContain('private-password'); expect(result).not.toContain(Buffer.from('fixture-user:private-password').toString('base64'))
     expect(result).toContain('[redacted]'); await session.close()
   })
-  it('rejects escaped endpoints, redirects, writes and oversized bodies without a second request', async () => {
+  it('allows API write methods while rejecting escaped endpoints, redirects and oversized bodies', async () => {
     const paths: string[] = []
-    const url = await http((req, res) => { paths.push(req.url!); if (req.url === '/v1/redirect') { res.writeHead(302, { Location: '/outside' }); res.end() } else res.end('x'.repeat(4 * 1024 * 1024 + 1)) })
-    const session = await openSourceSession(dto({ ...base, type: 'api', api: { baseUrl: url + '/v1', authType: 'none', testPath: '/', allowWrites: false } }), '', await folder(), signal())
+    const url = await http((req, res) => { paths.push(req.url!); if (req.url === '/v1/redirect') { res.writeHead(302, { Location: '/outside' }); res.end() } else if (req.url === '/v1/edit') res.end('saved'); else res.end('x'.repeat(4 * 1024 * 1024 + 1)) })
+    const session = await openSourceSession(dto({ ...base, type: 'api', api: { baseUrl: url + '/v1', authType: 'none', testPath: '/' } }), '', await folder(), signal())
     for (const path of ['../escape', '%2e%2e/escape', 'http://evil.test', '//evil.test', '/..\\escape']) await expect(session.call('request', { path }, signal())).rejects.toThrow()
-    await expect(session.call('request', { path: '/edit', method: 'POST' }, signal())).rejects.toThrow('读取')
     expect(paths).toEqual([])
+    expect(await session.call('request', { path: '/edit', method: 'POST' }, signal())).toMatchObject({ status: 200, content: 'saved' })
     await expect(session.call('request', { path: '/redirect' }, signal())).rejects.toThrow()
     await expect(session.call('request', { path: '/large' }, signal())).rejects.toThrow()
-    expect(paths).toEqual(['/v1/redirect', '/v1/large'])
+    expect(paths).toEqual(['/v1/edit', '/v1/redirect', '/v1/large'])
   })
   it('reads local pages and requires current hashes for writes, rejecting traversal and symbolic links', async () => {
     const root = await folder(), outside = await folder(); await writeFile(join(root, 'readme.md'), 'source text'); await writeFile(join(outside, 'private.md'), 'private'); await symlink(join(outside, 'private.md'), join(root, 'link.md'))
-    const source = dto({ ...base, type: 'local', local: { path: root, accessMode: 'read' } })
+    const source = dto({ ...base, type: 'local', local: { path: root } })
     const read = await openSourceSession(source, '', root, signal())
     expect(await read.call('files', { operation: 'read', path: 'readme.md', limit: 6 }, signal())).toMatchObject({ content: 'source', truncated: true })
     for (const path of ['../private.md', 'link.md', join(outside, 'private.md')]) await expect(read.call('files', { operation: 'read', path }, signal())).rejects.toThrow()
-    await expect(read.call('files', { operation: 'write', path: 'new.md', content: 'new', expectedHash: null }, signal())).rejects.toThrow('读取')
-    const write = await openSourceSession({ ...source, type: 'local', local: { path: root, accessMode: 'read-write' } }, '', root, signal())
+    const write = await openSourceSession({ ...source, type: 'local', local: { path: root } }, '', root, signal())
     const content = await write.call('files', { operation: 'read', path: 'readme.md' }, signal()) as { contentHash: string }
     await writeFile(join(root, 'readme.md'), 'external change')
     await expect(write.call('files', { operation: 'write', path: 'readme.md', content: 'overwrite', expectedHash: content.contentHash }, signal())).rejects.toThrow()
@@ -83,14 +102,14 @@ describe('data sources', () => {
   })
   it('persists definitions and grants atomically; preserves secrets and rejects stale employee removal', async () => {
     const f = await fixture(); await f.store.write(['one', 'two'].map(id => ({ collection: 'agents', id, value: agent(id) })))
-    let source = await f.save({ ...base, type: 'api', api: { baseUrl: 'http://localhost:9999/v1', authType: 'bearer', testPath: '/', allowWrites: false } }, 'vault-only-secret')
+    let source = await f.save({ ...base, type: 'api', api: { baseUrl: 'http://localhost:9999/v1', authType: 'bearer', testPath: '/' } }, 'vault-only-secret')
     expect(JSON.stringify(source)).not.toContain('vault-only-secret'); expect(source.hasCredential).toBe(true)
     expect(JSON.stringify(await f.store.load('dataSources'))).not.toContain('vault-only-secret')
     source = await f.service.bind({ id: source.id, expectedRevision: source.revision, agents: [{ id: 'one', expectedConfigVersion: 1 }], expectedBindings: [] })
     expect(await f.store.get('agents', 'one')).toMatchObject({ sourceIds: [source.id], configVersion: 2 })
     await f.store.write([{ collection: 'agents', id: 'two', value: { ...agent('two'), sourceIds: [source.id], configVersion: 2 } }])
     await expect(f.service.bind({ id: source.id, expectedRevision: source.revision, agents: [], expectedBindings: [{ id: 'one', expectedConfigVersion: 2 }] })).rejects.toThrow('绑定已变化')
-    await expect(f.service.save({ id: source.id, expectedRevision: 0, config: { ...base, type: 'local', local: { path: f.root, accessMode: 'read' } } })).rejects.toThrow('已变化')
+    await expect(f.service.save({ id: source.id, expectedRevision: 0, config: { ...base, type: 'local', local: { path: f.root } } })).rejects.toThrow('已变化')
     await f.service.close()
     const reopened = new SourceService(f.store, f.secrets, f.root, f.hooks); await reopened.init(); cleanups.push(() => reopened.close())
     expect(reopened.list()).toEqual([source]); expect(f.vault.size).toBe(1)
@@ -100,7 +119,7 @@ describe('data sources', () => {
   it('aborts an actual pending request before revoking and disallows the stale session', async () => {
     let started = false, closed = false
     const url = await http((req, _res) => { started = true; req.on('close', () => { closed = true }) })
-    const f = await fixture(), source = await f.save({ ...base, type: 'api', api: { baseUrl: url, authType: 'none', testPath: '/', allowWrites: false } })
+    const f = await fixture(), source = await f.save({ ...base, type: 'api', api: { baseUrl: url, authType: 'none', testPath: '/' } })
     const ref = f.service.summaries([source.id])[0]
     const running = f.service.use(ref, 'run', signal(), { sourceId: source.id, tool: 'request', arguments: { path: '/pending' } }).catch(error => error)
     await vi.waitFor(() => expect(started).toBe(true))
@@ -169,7 +188,7 @@ it('creates all source kinds with durable receipts, preserving credentials and r
   let allowed = true
   const validate = async () => { if (!allowed) throw new Error('source revoked') }
   const create = sourceCreationCommands(f.service, { source: origin, validate })
-  const command = { key: 'api', config: { ...base, type: 'api' as const, api: { baseUrl: 'http://127.0.0.1:9/v1', authType: 'bearer' as const, testPath: '/', allowWrites: false } }, credential: 'CREATION_SECRET' }
+  const command = { key: 'api', config: { ...base, type: 'api' as const, api: { baseUrl: 'http://127.0.0.1:9/v1', authType: 'bearer' as const, testPath: '/' } }, credential: 'CREATION_SECRET' }
   f.hooks.changed.mockRejectedValueOnce(new Error('lost creation response'))
   await expect(create(command)).rejects.toThrow('lost creation response')
   const saved = await create(command)
@@ -179,7 +198,7 @@ it('creates all source kinds with durable receipts, preserving credentials and r
   expect([...f.vault.values()]).toEqual(['CREATION_SECRET'])
   await expect(create({ ...command, config: { ...command.config, name: 'different' } })).rejects.toThrow('不同')
   const mcp = await create({ key: 'mcp', config: { ...base, type: 'mcp', mcp: { transport: 'stdio', command: 'not-executed', args: ['--example'] } }, credential: '{"TOKEN":"MCP_SECRET"}' })
-  const local = await create({ key: 'local', config: { ...base, type: 'local', local: { path: f.root, accessMode: 'read' } } })
+  const local = await create({ key: 'local', config: { ...base, type: 'local', local: { path: f.root } } })
   expect([saved.type, mcp.type, local.type]).toEqual(['api', 'mcp', 'local'])
   expect(f.service.list().every(source => !source.test)).toBe(true)
   await f.service.close()

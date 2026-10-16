@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo普通资源管理chat装配共享数据源读取/调用工具，支持同轮新增资源。
  * [OUTPUT]: 获得数据源管理回调的普通chat可复用内置browser_tool查设置文档，不需要认领Work；阶段结束实际drain。
  * [OUTPUT]: 普通bobo聊天可调用全局技能/数据源管理工具，沿原宿主服务。
  * [OUTPUT]: 授权的数据源创建会话装配create_data_source，与手动配置使用同一schema。
@@ -16,6 +17,7 @@
  * [POS]: Mastra Agent 工厂；员工独立判断，工作认领由宿主执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { createSourceTools } from './source-tools'
 import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogManagementInstructions } from '../../modules/resources/catalog-commands'
 import { sourceCreationSchema, sourceCreationDescription } from '../../modules/sources/source-commands'
 import { groupInterpretationInstructions, orderedResponseInstruction } from '../../modules/collaboration/group-coordination'
@@ -114,7 +116,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
           task && ctx.dependencyArtifacts?.length ? `Actual delivered dependency files: ${JSON.stringify(ctx.dependencyArtifacts)}. Use read_file with the supplied exact logicalPath when your assignment needs that original; do not rediscover the same file by listing directories. These are source references, not your own publication evidence or additional permissions. The file tool rechecks current identity, hash and authorization. Missing or changed files cannot be replaced with guessed paths or chat statements.` : '',
         ].filter(Boolean).join('\n\n'),
         ...(taskRuntime ? { workspace: taskRuntime.workspace } : {}),
-        tools: { ...taskRuntime?.tools, ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) },
+        tools: { ...taskRuntime?.tools, ...(!task && ctx.manageDataSources ? createSourceTools(ctx) : {}), ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) },
       })
     let disposed = false
     return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; await taskRuntime?.dispose(); await setupBrowser?.drain() } } }

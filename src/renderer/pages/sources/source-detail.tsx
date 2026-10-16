@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源元数据仅展示连接信息，移除API/本地访问范围。
  * [OUTPUT]: 删除通过更多按钮旁的Popover确认，取消不提交，删除期间锁定；确认成功后关闭详情，失败保留入口。
  * [OUTPUT]: 数据源详情不提供员工绑定入口或名单，绑定统一归员工配置；移除反向绑定弹窗。
  * [OUTPUT]: 明确编辑先读取同版本凭据，填入掩码输入框；隐藏或关闭期间的迟到读取不重开编辑器。
@@ -71,11 +72,11 @@ function sourceMetadata(source: DataSource) {
     if (source.mcp.transport === 'stdio') rows.push({ label: '命令', value: source.mcp.command }, { label: '参数', value: source.mcp.args.join(' ') || '无' })
     else { rows.push({ label: '服务地址', value: source.mcp.url }); auth(source.mcp.authType) }
   } else if (source.type === 'api') {
-    rows.push({ label: '基础地址', value: source.api.baseUrl }, { label: '测试路径', value: source.api.testPath }, { label: '访问范围', value: source.api.allowWrites ? '允许读取和写入' : '只读（GET）' })
+    rows.push({ label: '基础地址', value: source.api.baseUrl }, { label: '测试路径', value: source.api.testPath })
     auth(source.api.authType)
     if (source.api.headerName) rows.push({ label: '认证请求头', value: source.api.headerName })
     if (source.api.queryParam) rows.push({ label: '认证参数', value: source.api.queryParam })
     if (source.api.authScheme) rows.push({ label: '认证前缀', value: source.api.authScheme })
-  } else rows.push({ label: '文件夹', value: source.local.path }, { label: '访问范围', value: source.local.accessMode === 'read' ? '只读' : '读取和写入' })
+  } else rows.push({ label: '文件夹', value: source.local.path })
   return rows
 }

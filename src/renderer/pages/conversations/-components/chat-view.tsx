@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 目录结果按所属用户轮次锚定至bobo回复后，单独消息行展示，不堆积在聊天底部。
  * [OUTPUT]: 定时任务公开消息旁展示同一原Run的ExecutionFeed；定位该消息仍显示过程，流式正文不重复，隐藏页停读。
  * [OUTPUT]: 资源管理结果导航携已保存名称，数据源打开全局右侧配置标签。
  * [OUTPUT]: 普通核心会话投影真实技能/数据源操作结果卡，点击定位全局目录。
@@ -58,10 +59,10 @@ import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { UserInfoPopover } from './user-info-popover'
 import { isPersonalMessage, messageDisplayName } from '@shared/domain/profile'
 import { Card, CardContent } from '@/components/ui/card'
-import { isCoreConversation } from '@shared/domain/core-agent'
+import { isCoreAgent, isCoreConversation } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { CoreTeamResults } from './core-team-results'
-import { CatalogResults } from './catalog-results'
+import { CatalogResults, catalogResultsByMessage, useCatalogResults } from './catalog-results'
 import { CoreCollaborationResults } from './core-collaboration-results'
 
 import { Button } from '@/components/ui/button'
@@ -124,6 +125,8 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
   const sendingLocked = busy || questionReplies.busy || questionPending || artifactRevisionPending || Boolean(draft.submission)
   const messages = groupMessages(detail)
   const messageRows = detail.messagePage.items.map(item => ({ item, message: messages.find(message => message.id === item.messageId) }))
+  const catalogItems = useCatalogResults(api, conversation.id, pageActive && isCoreConversation(conversation) && !!onOpenCatalog)
+  const catalogByMessage = catalogResultsByMessage(catalogItems, detail)
   const files = artifactsByMessage(detail)
   const approvalGroups = approvalsByMessage(detail, snapshot.approvals)
   const members = snapshot.agents.filter(agent => conversation.agentIds.includes(agent.id))
@@ -315,10 +318,10 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
           </div>
         </article>
         {attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
+        {onOpenCatalog && catalogByMessage.has(message.id) && <CatalogResults items={catalogByMessage.get(message.id)!} agent={snapshot.agents.find(isCoreAgent)} onOpen={onOpenCatalog} />}
         </Fragment>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
-      {isCoreConversation(conversation) && onOpenCatalog && <CatalogResults api={api} conversationId={conversation.id} active={pageActive} onOpen={onOpenCatalog} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
       {executionRuns.map(run => executionCard(run, detail.messages.find(message => message.id === run.triggerMessageId)))}
       {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run, mirror.triggerMessage))}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通bobo管理chat允许inspect/call_data_source真实SDK接续；普通员工chat工具门禁保持。
  * [OUTPUT]: 判断阶段如实广告定时任务已有浏览器能力，不以自动化origin排除。
  * [OUTPUT]: 数据源管理chat允许原browser_tool接续；无此回调的普通chat不扩工具权限。
  * [OUTPUT]: 全局目录管理支持最多16步SDK工具接续，最终回复沿原发布，输入观测省略正文与凭据。
@@ -174,7 +175,7 @@ export class MastraEngine implements AgentEngine {
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
-          if (!task && !((ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (chunk.payload.toolName === 'manage_data_sources' || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          if (!task && !((ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name

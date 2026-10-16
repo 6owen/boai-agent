@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 配置保存/头像上传忙时透传弹窗关闭锁；原版本化提交、未知回执及非弹窗布局保持。
+ * [OUTPUT]: 核心数据源权限显示默认全部访问，普通员工继续保存sourceIds。
  * [OUTPUT]: 员工命令字段读取独立授权快照，恢复逐次确认经版本化撤销，不改配置草稿或活动运行。
  * [OUTPUT]: API员工命令设置可编辑且保存尊重原值；本机nativeOptions完整回填，命令能力不影响定时任务资格。
  * [OUTPUT]: 员工配置明确选择数据源，保留版本保存/未决核对。
@@ -51,7 +53,7 @@ export const templates = [
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
 function savedAgentForm(agent: DigitalAgent): AgentInput { return { avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
-export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation', identityTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string; identityTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void }) {
+export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation', identityTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string; identityTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
   const [uploading, setUploading] = useState(false)
@@ -75,6 +77,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const baseline = useRef(JSON.stringify(form)), currentForm = useRef(form); currentForm.current = form
   const dirty = JSON.stringify(form) !== baseline.current
   const locked = busy || uploading || bindingLocked || saveUnconfirmed
+  useEffect(() => { onBusyChange?.(busy || uploading); return () => onBusyChange?.(false) }, [busy, uploading, onBusyChange])
   const set = <K extends keyof AgentInput>(key: K, value: AgentInput[K]) => { if (!locked) setForm(current => ({ ...current, [key]: value })) }
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => {
@@ -148,7 +151,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       </fieldset>
       {(form.executionBackend?.kind!=='acp-local')&&<><div className="field full"><span className="field-label">启用的 Skills</span><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationDirty={dirty} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div>
       <fieldset className="contents" disabled={locked}>
-      <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} disabled={locked} active={active && configurationVisible} />
+      <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} disabled={locked} active={active && configurationVisible} allSources={core} />
       <div className="field full"><span className="field-label">可访问的知识库</span><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} empty="还没有知识资料。" /></div>
       </fieldset>
       </>}
@@ -156,7 +159,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   </EditorFrame></>
 }
 
-type GroupEditorProps = { active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }
+type GroupEditorProps = { active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }
 export function GroupEditor(props: GroupEditorProps) {
   const [tab, setTab] = useState('profile'), guard = useContext(GuardContext)
   const group = props.conversation
@@ -167,7 +170,7 @@ export function GroupEditor(props: GroupEditorProps) {
     <TabsContent value="automations"><OwnerAutomations api={props.api} snapshot={props.snapshot} owner={{ kind: 'group', conversationId: group.id }} active={props.active !== false && tab === 'automations'} onConversation={props.onConversation} /></TabsContent>
   </Tabs>
 }
-function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget }: { onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null }) {
+function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget, onBusyChange }: GroupEditorProps) {
   const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')
@@ -178,6 +181,7 @@ function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onD
   const [memoryContextId, setMemoryContextId] = useState(conversation?.memoryContextRef?.kind === 'conversation' ? conversation.memoryContextRef.id : '')
   const [dissolving, setDissolving] = useState(false)
   const { busy, error, run, setError } = useMutation()
+  useEffect(() => { onBusyChange?.(busy); return () => onBusyChange?.(false) }, [busy, onBusyChange])
   const guard = useContext(GuardContext)
   const clean = useDirty({ title, ids, knowledge, teamSetup, memoryScope, memoryContextId })
   const closeDissolve = () => { if (!busy) { setDissolving(false); setError('') } }

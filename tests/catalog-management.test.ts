@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同消息/目标的创建、更新、测试和删除合并结果，普通员工管理隔离与持久回执仍核验。
  * [OUTPUT]: 普通bobo经真实原生产品桥读取设置指南，创建/测试/删除临时本地数据源，验证实际成功测试回执。
  * [INPUT]: 隔离AppService/SQLite、临时home、确定性员工引擎与原生产品桥。
  * [OUTPUT]: 普通bobo会话管理实际技能/数据源、版本冲突/来源边界/结束运行及结果卡回执检查；不运行E2E或外部模型。
@@ -45,10 +46,10 @@ it('uses normal bobo chat for source CRUD, skill CRUD/binding and real navigatio
         expect(sources.inputSchema.type).toBe('object'); expect(skills.inputSchema.type).toBe('object')
         const setup = await sources.execute({ command: { action: 'guide', input: {} } }, 'guide') as { guide: string }
         expect(setup.guide).toContain('Test and validate')
-        let source = await sources.execute({ command: { action: 'create', input: { key: 'api', config: { name: 'My API', description: '', guide: '', enabled: true, type: 'api', api: { baseUrl: 'http://localhost:9', authType: 'bearer', testPath: '/', allowWrites: false } }, credential: 'PRIVATE_CATALOG_SECRET' } } }, 'create') as DataSource
-        const retry = await sources.execute({ command: { action: 'create', input: { key: 'api', config: { name: 'My API', description: '', guide: '', enabled: true, type: 'api', api: { baseUrl: 'http://localhost:9', authType: 'bearer', testPath: '/', allowWrites: false } }, credential: 'PRIVATE_CATALOG_SECRET' } } }, 'retry') as DataSource
+        let source = await sources.execute({ command: { action: 'create', input: { key: 'api', config: { name: 'My API', description: '', guide: '', enabled: true, type: 'api', api: { baseUrl: 'http://localhost:9', authType: 'bearer', testPath: '/' } }, credential: 'PRIVATE_CATALOG_SECRET' } } }, 'create') as DataSource
+        const retry = await sources.execute({ command: { action: 'create', input: { key: 'api', config: { name: 'My API', description: '', guide: '', enabled: true, type: 'api', api: { baseUrl: 'http://localhost:9', authType: 'bearer', testPath: '/' } }, credential: 'PRIVATE_CATALOG_SECRET' } } }, 'retry') as DataSource
         expect(retry.id).toBe(source.id)
-        const sourceConfig = { name: 'Updated API', description: '', guide: '', enabled: true, type: 'api' as const, api: { baseUrl: 'http://localhost:9', authType: 'bearer' as const, testPath: '/', allowWrites: false } }
+        const sourceConfig = { name: 'Updated API', description: '', guide: '', enabled: true, type: 'api' as const, api: { baseUrl: 'http://localhost:9', authType: 'bearer' as const, testPath: '/' } }
         source = await sources.execute({ command: { action: 'update', input: { id: source.id, expectedRevision: source.revision, config: sourceConfig } } }, 'update') as DataSource
         expect(source.hasCredential).toBe(true)
         await expect(sources.execute({ command: { action: 'delete', input: { id: source.id, expectedRevision: 1 } } }, 'stale')).rejects.toThrow('变化')
@@ -57,9 +58,11 @@ it('uses normal bobo chat for source CRUD, skill CRUD/binding and real navigatio
         source = await sources.execute({ command: { action: 'bindings', input: { id: source.id, expectedRevision: source.revision, expectedBindings: [], agents: [{ id: researcher.id, expectedConfigVersion: researcher.configVersion }] } } }, 'bind-source') as DataSource
         expect(JSON.stringify(await sources.execute({ command: { action: 'list', input: {} } }, 'list'))).not.toContain('PRIVATE_CATALOG_SECRET')
         await sources.execute({ command: { action: 'delete', input: { id: source.id, expectedRevision: source.revision } } }, 'delete')
-        const folder = await sources.execute({ command: { action: 'create', input: { key: 'documents', config: { name: 'Documents', description: '', guide: '# Documents\nRead local documents.', enabled: true, type: 'local', local: { path: join(root, 'documents'), accessMode: 'read' } } } } }, 'create-folder') as DataSource
+        const folder = await sources.execute({ command: { action: 'create', input: { key: 'documents', config: { name: 'Documents', description: '', guide: '# Documents\nRead local documents.', enabled: true, type: 'local', local: { path: join(root, 'documents') } } } } }, 'create-folder') as DataSource
         const tested = await sources.execute({ command: { action: 'test', input: { id: folder.id, expectedRevision: folder.revision } } }, 'test-folder') as DataSource
         expect(tested.test?.status).toBe('success')
+        const folderResults = await service.handle('listCatalogResults', { conversationId: context.conversation.id }) as { targetId?: string }[]
+        expect(folderResults.filter(item => item.targetId === folder.id)).toHaveLength(1)
         await sources.execute({ command: { action: 'delete', input: { id: tested.id, expectedRevision: tested.revision } } }, 'delete-folder')
         let skill = await skills.execute({ command: { action: 'save', input: { name: 'example-skill', content: document('first'), expectedHash: null } } }, 'save') as LocalSkillDetail & { contentHash: string; treeHash: string }
         const oldHash = skill.contentHash
@@ -85,7 +88,7 @@ it('uses normal bobo chat for source CRUD, skill CRUD/binding and real navigatio
   expect(await service.handle('listDataSources', undefined)).toEqual([])
   expect((await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')).toMatchObject({ sourceIds: [], skillIds: [] })
   const results = await service.handle('listCatalogResults', { conversationId: room.id }) as { kind: string; removed?: boolean; available: boolean }[]
-  expect(results.filter(item => item.kind === 'source')).toHaveLength(7) // Same source-creation receipt is rendered once.
+  expect(results.filter(item => item.kind === 'source')).toHaveLength(2) // Create, update, test and deletion share one result per target and turn.
   expect(results).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'skill', removed: true, available: false }), expect.objectContaining({ kind: 'source', removed: true, available: false })]))
   await expect(latest!.manageDataSources!({ command: { action: 'list', input: {} } })).rejects.toThrow('失效')
   expect((await readdir(join(root, '.agents/skills'))).some(name => name.startsWith('.boai-removed-'))).toBe(true)

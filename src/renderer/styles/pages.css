@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 通讯录资料/编辑滚动固定预留，员工/群共用紧凑卡片与记录列表、设置同款内容过渡。
+ * [OUTPUT]: 定时任务详情留白对齐通讯录48px/36px；执行记录顶部清空、行删除仅悬停/聚焦/弹层显示。
+ * [OUTPUT]: 通讯录资料/编辑滚动固定预留；分区标题加Card、配置后紧凑状态和技能/数据源列表，执行记录直接展示；设置同款过渡保持。
  * [OUTPUT]: 连接弹窗可选固定标题/卡片外层ScrollArea，滚动条抵达最右边缘；内容承担横向/底部留白，自然高度随视口收缩。
  * [OUTPUT]: 定时任务新建/编辑使用800px自适应Dialog，操作行自然流、唯一外层滚动；对话创建复用聊天弹窗。
  * [OUTPUT]: 定时任务主滚动区稳定预留槽位；过程面板/卡片为覆盖式滚动条固定留位，详情切换沿设置页Panel reveal。
@@ -212,11 +213,11 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .schedule-item.selected { background:var(--selection) }
 .schedule-history-link { display:flex;align-items:center;gap:5px;width:100%;padding:8px;margin:3px 0;min-height:32px;border:0;background:transparent;color:var(--muted-foreground);font-size:12px;text-align:left }
 .schedule-history-link:hover,.schedule-history-link.selected { color:var(--foreground) }
-.schedule-content { flex:1;min-width:0;padding:0 }
+.schedule-content { flex:1;min-width:0;padding:0;container-type:inline-size }
 .schedule-content.page-scroll { scrollbar-gutter:stable }
 .schedule-content>.banner { margin:16px 24px }
 .schedule-content.is-welcome { display:flex;flex-direction:column }
-.schedule-document { max-width:840px;margin:0 auto;padding:36px 32px }
+.schedule-document { max-width:840px;margin:0 auto;padding:48px 36px }
 .schedule-content-transition { --panel-translate-y:8px;min-width:0 }
 .schedule-content-transition.t-panel-slide[data-settled=true] { transform:none;filter:none;will-change:auto }
 @media (prefers-reduced-motion:reduce) {
@@ -228,8 +229,14 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .automation-records { display:flex;flex-direction:column;gap:12px;min-width:0 }
 .automation-records-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px }
 .automation-records-heading h3 { margin:0;font-size:16px;font-weight:600 }
+.automation-record-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .automation-record-list { display:flex;flex-direction:column;min-width:0 }
 .automation-record-row[data-slot=button] { width:100%;font-weight:400 }
+.automation-history-row .automation-record-delete { opacity:0;pointer-events:none;transition:opacity .15s }
+.automation-history-row:is(:hover,:focus-within) .automation-record-delete,.automation-history-row .automation-record-delete[aria-expanded=true] { opacity:1;pointer-events:auto }
+@media (hover:none) {
+  .automation-history-row .automation-record-delete { opacity:1;pointer-events:auto }
+}
 .automation-occurrence-panel { display:flex;flex:1;flex-direction:column;height:100%;min-height:0;min-width:0 }
 /* Base UI hides native scrollbars; reserve its 10px overlay track independently of overflow. */
 .automation-occurrence-panel :is(.execution-history-body,.execution-drawer-body) { scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box }
@@ -255,7 +262,6 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .automation-preview { font-size:12px;line-height:1.7;overflow-wrap:anywhere }
 .automation-preview ol { padding-left:20px;margin:6px 0 }
 @media(max-width:760px) {
-  .schedule-document { padding:24px 20px }
   .schedule-document .form-grid { grid-template-columns:1fr }
 }
 @media(max-width:760px) {
@@ -378,10 +384,21 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-content-transition { min-width:0;min-height:100% }
 .contact-section { margin:20px 0 }
 .contact-section-title { margin:0;font-size:16px;font-weight:600 }
-.contact-profile-card .field-hint { margin:4px 0 0;white-space:normal }
-.contact-execution-section { margin-top:24px }
-.contact-execution-heading[data-slot=button] { display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:16px;font-weight:600 }
-.contact-execution-section [data-slot=collapsible-content]>.automation-records { padding-top:12px }
+.contact-section-heading { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px }
+.contact-section>.contact-profile-card { margin-bottom:0 }
+.contact-card-content { padding:12px 14px }
+.contact-card-copy { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65 }
+.contact-card-empty { margin:0;color:var(--muted-foreground) }
+.contact-value-status { display:flex;align-items:center;flex-wrap:wrap;gap:8px;white-space:normal }
+.contact-inline-status { flex-shrink:0;font-size:11px;color:var(--muted-foreground);font-weight:400 }
+.contact-inline-status[data-positive=true] { color:var(--success) }
+.contact-resource-row { display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:10px 0;text-align:left }
+.contact-resource-row>.app-icon { flex-shrink:0;color:var(--muted-foreground) }
+.contact-resource-copy { min-width:0;flex:1 }
+.contact-resource-copy strong { font-weight:500;overflow-wrap:anywhere }
+.contact-resource-description { display:block;margin-top:3px;color:var(--muted-foreground);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.contact-card-content .contact-resource-row:first-child { padding-top:0 }
+.contact-card-content .contact-resource-row:last-child { padding-bottom:0 }
 .contacts-detail:has(.contact-editor-viewport)>.contact-content-transition { display:flex;flex:1;min-height:0 }
 .contact-document { width:100%;max-width:800px;margin:0 auto;padding:48px 36px }
 .contact-profile-heading { display:flex;align-items:center;gap:18px;margin-bottom:28px }
@@ -425,7 +442,7 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .employee-identity-actions { flex-shrink:0 }
 .employee-identity-actions:empty { display:none }
 @container (max-width:420px) {
-  .contact-document { padding:28px 20px }
+  .contact-document,.schedule-document { padding:28px 20px }
   .contact-profile-heading { gap:12px }
   .contact-facts>div { grid-template-columns:64px minmax(0,1fr);gap:8px }
 }

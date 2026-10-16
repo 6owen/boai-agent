@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo默认访问全部启用数据源并在普通聊天读写，新建资源同轮可用；普通员工绑定/阶段核验保持；目录回执按消息与目标合并。
  * [OUTPUT]: 定时执行记录删除共用原受管清理；独占任务会话释放文件/过程，共享会话按Run清日志；重启续清不重跑。
  * [OUTPUT]: 数据源编辑器凭据读取转交原SourceService按版本核对，不接入模型工具。
  * [OUTPUT]: 主私聊/群聊按现存公开任务指令投影原活动Run，reasoning/工具共用原执行流；清空/撤员/来源失效不投影。
@@ -148,7 +149,7 @@ import type { AppEvent, Method } from '../shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
 import { PARTICIPATION_TIMEOUT_MS } from './contracts'
 import { sourceCreationCommands } from './modules/sources/source-commands'
-import type { CatalogActivity, CatalogResult } from '../shared/domain/catalog-management'
+import { mergeCatalogResults, type CatalogActivity, type CatalogResult } from '../shared/domain/catalog-management'
 import { catalogCommands } from './modules/resources/catalog-commands'
 import { LocalSkillEditing } from './modules/resources/local-skill-editing'
 import { SourceService } from './modules/sources/source-service'
@@ -711,7 +712,7 @@ export class AppService {
           else result.push({ ...row, status: operation?.status ?? 'interrupted', available: false })
         } else result.push({ ...row, available: !row.removed && !!(row.kind === 'skill' ? catalog?.skills.some(skill => skill.id === row.targetId) : this.dataSources.list().some(source => source.id === row.targetId)) })
       }
-      return result
+      return mergeCatalogResults(result)
     }
     if (method === 'listDataSources') { z.undefined().parse(input); return this.dataSources.list() }
     if (method === 'getDataSource') return this.dataSources.get(lookupSchema.parse(input).id)
@@ -2272,7 +2273,7 @@ export class AppService {
   }
   private dataSourceSnapshotValid(snapshot: RunSnapshot) {
     const refs = snapshot.dataSourceRefs ?? [], owner = this.employees.find(snapshot.agent.id)
-    if (refs.some(ref => !owner?.sourceIds?.includes(ref.id))) return false
+    if (!isCoreAgent(owner) && refs.some(ref => !owner?.sourceIds?.includes(ref.id))) return false
     try { this.dataSources.assertCurrent(refs); return true } catch { return false }
   }
   private async contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Promise<Message[]> {
@@ -2522,8 +2523,8 @@ export class AppService {
       context.signal.throwIfAborted()
       const current = this.getAgent(context.agent.id), conversation = this.getConversation(context.conversation.id)
       const snapshot = this.snapshots.get(context.runId), run = this.runs.get(context.runId)
-      if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || !current.sourceIds?.includes(sourceId) || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== 'execution' || context.work?.organization) fail('当前执行没有此数据源的访问权限')
-      const ref = context.dataSources?.find(source => source.id === sourceId) ?? fail('数据源不属于本轮员工绑定')
+      if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || (!isCoreAgent(current) && !current.sourceIds?.includes(sourceId)) || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== 'execution' || context.work?.organization) fail('当前执行没有此数据源的访问权限')
+      const ref = (isCoreAgent(current) ? this.dataSources.summaries([sourceId])[0] : context.dataSources?.find(source => source.id === sourceId)) ?? fail('数据源不可用或未授权')
       this.dataSources.assertCurrent([ref]); await this.assertMaterialRefs(context)
       if (!snapshot!.dataSourceRefs?.some(source => source.id === ref.id)) {
         snapshot!.dataSourceRefs = [...(snapshot!.dataSourceRefs ?? []), ref]
@@ -2536,6 +2537,8 @@ export class AppService {
     const result = await this.dataSources.use(ref, context.runId, context.signal, request, async mutating => {
       await validate()
       if (mutating) {
+        // bobo owns global business resources; ordinary chat needs no employee binding or file Work.
+        if (isCoreAgent(context.agent) && !context.work) return
         if (isNativeBackend(context.agent.executionBackend)) await context.ensureNativeWork?.()
         if (!context.work || !context.beforeEffect) fail('数据源写入需要当前获准工作')
         await context.beforeEffect!(); effectStarted = true; context.signal.throwIfAborted()
@@ -2643,7 +2646,7 @@ export class AppService {
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
       externalInvocations: 0, options: clone(agent.nativeOptions), ...(backend.kind === 'claude-local' ? { modelId: agent.modelId || connection?.defaultModel } : {}), sessionPolicy: 'scoped', toolControl: 'external' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    const context: EngineContext = { dataSources: this.dataSources.summaries(agent.sourceIds),
+    const context: EngineContext = { dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
       closeDataSources: () => this.dataSources.closeRun(run.id), groupCoordination, browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
@@ -2995,7 +2998,7 @@ export class AppService {
           const operationId = ['install', 'update'].includes(command.action) && kind === 'skill' ? value.id : undefined
           const targetId = value.skill?.id ?? value.id
           if ((!targetId && !operationId) || !['create', 'update', 'save', 'delete', 'test', 'bindings', 'install'].includes(command.action)) return
-          const activityId = createHash('sha256').update(JSON.stringify([source.id, kind, command.action, operationId ?? targetId, kind === 'source' ? (output as { revision?: number }).revision : (output as { contentHash?: string }).contentHash])).digest('hex')
+          const activityId = createHash('sha256').update(JSON.stringify([source.id, kind, operationId ?? targetId])).digest('hex')
           const activity: CatalogActivity = { id: activityId, conversationId: conversation.id, messageId: source.id, kind, action: command.action, createdAt: now(), name: value.skill?.name ?? value.name ?? (command.action === 'update' ? '技能更新' : '技能安装'), ...(operationId ? { operationId } : { targetId }), ...(value.removed ? { removed: true } : {}) }
           await this.store.write([{ collection: 'catalogActivities', id: activity.id, value: activity }]); this.changed(conversation.id)
         }

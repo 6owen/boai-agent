@@ -1,6 +1,6 @@
 /*
- * [OUTPUT]: 公共数据源可携带固定会话/消息/员工创建来源；原配置schema保持；目录DTO不带密钥，桌面编辑器沿专用版本化IPC回填。
- * [INPUT]: Craft sources API/MCP/local configuration and explicit employee grants.
+ * [OUTPUT]: 公共数据源携带固定会话/消息/员工创建来源，配置只描述连接；目录DTO不带密钥，桌面编辑器沿专用版本化IPC回填。
+ * [INPUT]: Connection-only API/MCP/local configuration; access authority belongs to the employee.
  * [OUTPUT]: Public source configuration, revision checks and bounded tool requests; catalog DTOs exclude credentials; explicit desktop editing uses a separate credential read.
  * [POS]: Shared data-source contract; separate from model connections and Skills.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
@@ -11,12 +11,12 @@ const text = (max: number) => z.string().trim().min(1).max(max)
 const httpUrl = text(4000).refine(value => { try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.hash } catch { return false } }, '请输入不包含账号密码的 HTTP(S) 地址')
 const base = { name: text(100), description: z.string().max(1000), guide: z.string().max(40000), enabled: z.boolean() }
 export const dataSourceConfigSchema = z.discriminatedUnion('type', [
-  z.object({ ...base, type: z.literal('api'), api: z.object({ baseUrl: httpUrl, authType: z.enum(['none', 'bearer', 'header', 'query', 'basic']), headerName: text(100).optional(), queryParam: text(100).optional(), authScheme: z.string().max(100).optional(), testPath: text(2000).default('/'), allowWrites: z.boolean().default(false) }).strict() }).strict(),
+  z.object({ ...base, type: z.literal('api'), api: z.object({ baseUrl: httpUrl, authType: z.enum(['none', 'bearer', 'header', 'query', 'basic']), headerName: text(100).optional(), queryParam: text(100).optional(), authScheme: z.string().max(100).optional(), testPath: text(2000).default('/') }).strict() }).strict(),
   z.object({ ...base, type: z.literal('mcp'), mcp: z.discriminatedUnion('transport', [
     z.object({ transport: z.enum(['http', 'sse']), url: httpUrl, authType: z.enum(['none', 'bearer']) }).strict(),
     z.object({ transport: z.literal('stdio'), command: text(2000), args: z.array(z.string().max(4000)).max(100) }).strict(),
   ]) }).strict(),
-  z.object({ ...base, type: z.literal('local'), local: z.object({ path: text(8000), accessMode: z.enum(['read', 'read-write']) }).strict() }).strict(),
+  z.object({ ...base, type: z.literal('local'), local: z.object({ path: text(8000) }).strict() }).strict(),
 ])
 export type DataSourceConfig = z.infer<typeof dataSourceConfigSchema>
 export type DataSourceCreationSource = { conversationId: string; messageId: string; agentId: string }

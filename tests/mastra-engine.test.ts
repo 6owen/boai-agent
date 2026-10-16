@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际SDK验证普通bobo在空初始目录下inspect/call_data_source接续和写入回执，不创建Work。
  * [OUTPUT]: 真实SDK定时判断广告浏览器并执行browser_tool；旧自动化禁用断言被现行合同替代。
  * [OUTPUT]: 真实SDK数据源管理chat可查浏览器文档并drain；无管理授权的普通chat不提供浏览器。
  * [OUTPUT]: 实际Mastra SDK普通chat串联两类全局管理工具，验证真实工具回执进入后续模型请求。
@@ -1758,6 +1759,24 @@ it('projects only selected user images and retains an authorized historical imag
   expect(serialized).not.toContain('data:image/png;base64,MISSING')
   expect(projected[0].content).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'image', image: images[0].dataUrl })]))
   expect(stored.map(item => item.content)).toEqual(['上一张图', '请继续看图', '同事的说明', '外部'])
+})
+
+it('uses source inspection and writes through the actual SDK in ordinary bobo chat without bindings or Work', async () => {
+  const sourceId = '63383892-5590-4582-a4f9-9e9013e51d9a'
+  const request = { sourceId, tool: 'files', arguments: { operation: 'write', path: 'note.md', content: 'new note', expectedHash: null } }
+  const server = await endpoint([{ name: 'inspect_data_source', args: { sourceId } }, { name: 'call_data_source', args: request }, '笔记已保存。'])
+  const inspectDataSource = vi.fn(async () => ({ tools: [{ name: 'files', inputSchema: { type: 'object' } }] }))
+  const callDataSource = vi.fn(async () => ({ written: true, path: 'note.md' }))
+  const f = await context(server.url, { responseKind: 'chat', work: undefined, dataSources: [], inspectDataSource, callDataSource, manageDataSources: async () => [] })
+  f.ctx.agent = employee({ id: 'bobo', systemRole: 'core', sourceIds: [] })
+  await new MastraEngine().run(f.ctx)
+  expect(inspectDataSource).toHaveBeenCalledWith(sourceId)
+  expect(callDataSource).toHaveBeenCalledWith(request)
+  expect(server.requests).toHaveLength(3)
+  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_data_source', 'call_data_source']))
+  expect(JSON.stringify(server.requests[2].messages)).toContain('written')
+  expect(f.deltas.join('')).toBe('笔记已保存。')
+  expect(f.ctx.work).toBeUndefined()
 })
 
 it('uses both global catalog tools through the actual SDK in ordinary chat', async () => {

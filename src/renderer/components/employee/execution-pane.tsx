@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工/群固定身份、有界原执行查询和全局右侧面板导航。
- * [OUTPUT]: 页内展开收起、定时任务同款两行记录；点击固定Run打开右侧过程，隐藏停读、刷新保留列表、迟到隔离。
+ * [OUTPUT]: 直接展示执行记录、定时任务同款两行列表；点击固定Run打开右侧过程，隐藏停读、刷新保留列表、迟到隔离。
  * [POS]: 通讯录与员工配置共用执行记录，不创建聊天或重复执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -11,24 +11,14 @@ import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, Loading } from '@/components/common'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { SelectField } from '@/components/ui/select-field'
-import { ChevronRight, Clock, RefreshCw } from '@/components/icons'
+import { Clock, RefreshCw } from '@/components/icons'
 import { runLabels } from '@/pages/conversations/presentation'
 
-export type ExecutionSourceNavigation = (conversationId: string, messageId: string, current: () => boolean) => void
 export type EmployeeExecutionTarget = { conversationId: string; agentId: string; runId: string; title: string }
 export const EmployeeExecutionNavigation = createContext<(target: EmployeeExecutionTarget) => void>(() => {})
-type PaneProps = { api: DesktopApi; agent?: DigitalAgent; snapshot: Snapshot; active: boolean; conversationId?: string; onOpenSource?: ExecutionSourceNavigation }
+type PaneProps = { api: DesktopApi; agent?: DigitalAgent; snapshot: Snapshot; active: boolean; conversationId?: string }
 type Row = EmployeeExecutionTarget & { createdAt: string; status: keyof typeof runLabels; configuration: string }
-
-export function EmployeeExecutionDisclosure(props: PaneProps) {
-  const [open, setOpen] = useState(false), [visited, setVisited] = useState(false)
-  return <Collapsible className="contact-execution-section" open={open} onOpenChange={value => { setOpen(value); if (value) setVisited(true) }}>
-    <CollapsibleTrigger render={<Button variant="ghost" size="content" className="contact-execution-heading" />}><span>查看执行详情</span><ChevronRight /></CollapsibleTrigger>
-    <CollapsibleContent keepMounted={visited}>{visited && <EmployeeExecutionPane {...props} active={props.active && open} />}</CollapsibleContent>
-  </Collapsible>
-}
 
 export function EmployeeExecutionPane({ api, agent, snapshot, active, conversationId }: PaneProps) {
   const [scope, setScope] = useState(conversationId ?? ''), [pages, setPages] = useState(1)

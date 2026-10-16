@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 07:41提交前复查全库类型通过，通讯录/定时历史/目录结果3文件18项通过；此前并行通讯录类型阻塞已解除，旧失败保留。
+[OUTPUT]: source-authority批次178项与消息锚点最终3项通过，初次类型/lint通过；末次全库类型受并行通讯录导出变更阻塞；当前dev重启迁移1→0，无E2E。
 [OUTPUT]: source-editor-compact记录数据源卡片局部尺寸收紧及类型/lint通过，保留贴边滚动，无E2E。
 [OUTPUT]: 行内操作批次source-row-actions五项组件回归/类型/lint通过，真实状态与逐行操作、确认删除、原位刷新；无E2E。
 [OUTPUT]: 编辑滚动批次source-editor-scroll类型/lint通过，卡片外层ScrollArea贴边、标题固定；HMR更新，无E2E。
@@ -237,3 +239,21 @@ Craft的`EditContextKey/EDIT_CONFIGS`是入口到目标路径、提示和校验�
 按19组08 §24，数据源编辑卡片增加局部data-source-editor样式，输入/下拉32px、标签12px/图标14px、行留白10px、标签列128px，sm操作按钮；多行输入缩小字距/内边距。共享模型连接其他调用、表单字段、外层ScrollArea和最右侧滚动条保持。
 
 本批 `.local/2026-10-17-source-editor-compact/typecheck-final.log` 与 `lint-final.log` 通过，diff空白检查通过。下拉尺寸使用显式32px工具类，覆盖原lg高度；多行输入显式字号避免Tailwind层级覆盖局部样式。正常开发前端HMR更新，没有新增测试、运行E2E或重启后台。
+
+## source-authority：核心资源权限与结果卡片（2026-10-17）
+
+按19组08 §25实施。bobo固定核心身份可读写所有启用的数据源，初始空目录也可同轮创建并调用；普通员工依然按绑定、阶段、当前配置/来源和获准Work执行。资源API/local权限字段从schema/向导/表单/详情移除，已有记录保留身份/revision/凭据/回执，只迁移退休键。
+
+目录回执按用户消息/类型/目标合并，新创建和测试更新同一条记录；旧记录在查询时合并。前端不再放在会话底部，以独立员工消息行跟随该轮回复，保留不同轮次、不同资源及不可用状态。
+
+实际验证：`sources`、`service-sources`、`catalog-management`、`catalog-results`、`mastra-engine`五个测试文件178项通过；临时目录真实文件读写、SQLite旧字段迁移/凭据保留、本地HTTP/MCP协议、实际SDK普通chat工具接续及组件导航都在隔离夹具中完成。`pnpm typecheck`和6个修改前端文件的eslint通过。初次类型检查暴露ES2022不支持findLast，改为兼容实现后通过；原失败不代表后续检查未执行。没有运行E2E、真实模型或真实外部数据源测试。
+
+运行状态：重启前只读核对当前数据库运行中任务为0，旧资源权限键计数为1；通过应用正常退出，原Electron/worker/dev进程均退出。重新启动`pnpm dev`保持127.0.0.1:5187，新worker构建于07:24:52，实际目录旧权限键计数变为0，运行中任务仍为0。证明当前用户进程完成了新迁移，不把前端HMR当作后台更新；未修改用户文件夹正文或触发资源业务工具。开发进程继续运行。
+
+本地检查日志位于`.local/2026-10-17-source-authority/`；没有用户凭据/文件正文。桌面视觉效果和真实模型行为未作本轮认证，按用户要求未跑E2E。
+
+最终增量：结果消息锚点改为索引查找后，`catalog-results`三项再次通过，定向lint通过。随后全库类型复查遇到并行通讯录改动：`tests/contact-execution-ui.test.ts:15`仍导入已移出的`EmployeeExecutionDisclosure`，TS2305；本轮未改他人重构。此前类型通过和本次失败分开保留，日志为`typecheck-final.log`。
+
+并行通讯录测试随后移除了旧导入，但末次复查`typecheck-settled.log`仍在该文件45/55行报告TS2769（组件props）与TS2304（render未定义），尚未收口。资源权限与消息卡片的178项相关检查、3项最终组件检查及lint保持通过；不将全库类型结果描述为最终通过。
+
+提交前复查（07:41）：并行通讯录改动完成后，`pnpm typecheck`通过；`contact-execution-ui`、`automation-history-refresh`、`catalog-results`三个测试文件18项通过。之前的全库类型阻塞已解除，旧失败日志保留，新日志为`commit-typecheck.log`及`commit-tests.log`。未运行E2E。
