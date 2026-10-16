@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 侧栏及右侧面板分界线复用 Card 的垂直细线/高光，保留悬停提示、1px布局与扩展拖拽区域。
  * [OUTPUT]: 右侧面板作为全局常驻分栏容器；所有主页面共用尺寸与分割线，取消页面专属窄窗浮层。
  * [OUTPUT]: 文本文件滚动轨道延伸至面板右缘，19px/窄窗26px正文留白移入滚动内容；标题位置保持。
  * [OUTPUT]: 文件预览容器上下留白12px，横向留白及其他详情页保持。
@@ -421,7 +422,8 @@ fieldset {
   z-index:4;
   width:1px;
   flex:0 0 1px;
-  background:var(--legacy-border);
+  background:transparent;
+  box-shadow:var(--shadow-divider-vertical);
   cursor:col-resize;
   touch-action:none
 }
@@ -431,7 +433,8 @@ fieldset {
   inset:0 -3px
 }
 .resize-handle:hover,.resize-handle:focus-visible {
-  background:var(--ring)
+  background:var(--ring);
+  box-shadow:none
 }
 .resize-handle:focus-visible {
   outline:2px solid var(--focus);
