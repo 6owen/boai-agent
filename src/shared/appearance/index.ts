@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 内置主题插件贡献、显示模式、启停快照与外观偏好。
  * [OUTPUT]: BoAI保底主题始终存在，停用插件只影响有效配色、不覆盖原选择。
- * [OUTPUT]: 图片存在时沿 Craft Scenic 使用深色，保留原模式/颜色供移除恢复；旧 imageOpacity 仅兼容存储。
+ * [OUTPUT]: 图片玻璃跟随明暗模式；玻璃/遮罩/模糊独立配置，blurRadius默认8px并允许0关闭；旧配置默认和imageOpacity兼容保持。
  * [OUTPUT]: 外观偏好合同与语义 token；状态背景复用12%颜色混合为不透明表面，供提示卡片/堆叠/关闭按钮共用；Soft 主操作跟随强调色并选择可读前景。
  * [POS]: shared/appearance，主进程与 Renderer 共用的外观真源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -16,10 +16,12 @@ export const interfaceFonts: Record<InterfaceFont, string> = {
   system: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
   geist: 'Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
 }
-export interface AppearancePreferences { schemaVersion: 1; mode: ColorMode | 'system'; themeIds: { light: string; dark: string }; background: { assetId: string | null; imageOpacity: number }; fontFamily: InterfaceFont; zoomFactor: number; customColors: Record<ColorMode, ThemeOverrides> }
+export interface AppearancePreferences { schemaVersion: 1; mode: ColorMode | 'system'; themeIds: { light: string; dark: string }; background: { assetId: string | null; imageOpacity: number; glassOpacity: number | null; overlayOpacity: number; blurRadius: number }; fontFamily: InterfaceFont; zoomFactor: number; customColors: Record<ColorMode, ThemeOverrides> }
 export interface AppearanceSnapshot { preferences: AppearancePreferences; revision: number; sequence: number; resolvedMode: ColorMode; resolvedThemeId: string; diagnostic?: string; readOnly?: boolean }
-export interface AppearancePatch { mode?: AppearancePreferences['mode']; themeIds?: Partial<AppearancePreferences['themeIds']>; background?: { imageOpacity: number }; fontFamily?: InterfaceFont; zoomFactor?: number; customColors?: Partial<Record<ColorMode, Partial<ThemeOverrides>>> }
-export const appearanceDefaults: AppearancePreferences = { schemaVersion: 1, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 1 }, fontFamily: 'geist', zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
+export interface AppearancePatch { mode?: AppearancePreferences['mode']; themeIds?: Partial<AppearancePreferences['themeIds']>; background?: { imageOpacity?: number; glassOpacity?: number | null; overlayOpacity?: number; blurRadius?: number }; fontFamily?: InterfaceFont; zoomFactor?: number; customColors?: Partial<Record<ColorMode, Partial<ThemeOverrides>>> }
+export const appearanceDefaults: AppearancePreferences = { schemaVersion: 1, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 1, glassOpacity: null, overlayOpacity: 0.4, blurRadius: 8 }, fontFamily: 'geist', zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
+export const defaultGlassOpacity = { light: 0.72, dark: 0.55, card: 0.72 } as const
+export const maxBackgroundBlur = 32
 export interface Theme { id: string; name: string; mode: ColorMode; background: string; surface: string; foreground: string; muted: string; border: string; accent: string }
 const coreThemes: Theme[] = [
   { id: 'boai-light', name: 'BoAI 明亮', mode: 'light', background: '#f6f6f6', surface: '#ffffff', foreground: '#0d0d0d', muted: '#5d5d5d', border: '#e5e5e5', accent: '#2563eb' },
@@ -98,9 +100,9 @@ export function themeTokens(theme: Theme): Record<string,string> {
   }
 }
 
-/** Craft ThemeContext Scenic behavior: image mode forces dark without rewriting the saved mode. */
+/** Background images do not override the selected light/dark/system mode. */
 export function resolveAppearanceMode(preferences: AppearancePreferences, systemMode: ColorMode): ColorMode {
-  return preferences.background.assetId ? 'dark' : preferences.mode === 'system' ? systemMode : preferences.mode
+  return preferences.mode === 'system' ? systemMode : preferences.mode
 }
 export function resolveAppearanceTheme(preferences: AppearancePreferences, mode: ColorMode, disabledIds: readonly string[] = []): Theme {
   const overrides = preferences.customColors[mode]

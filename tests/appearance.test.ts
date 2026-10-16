@@ -1,6 +1,6 @@
 /*
  * [INPUT]: AppearanceStore、共享外观合同和临时文件系统。
- * [OUTPUT]: Scenic 图片强制深色、重启/删除原图和移除恢复偏好的回归。
+ * [OUTPUT]: Scenic图片遵循明暗模式；玻璃/遮罩/模糊独立校验、旧配置8px默认、零值重启/备份/换图保留及重置回归。
  * [OUTPUT]: 外观兼容、自定义色、缩放/备份以及正文与 Soft 操作按钮文字对比度回归。
  * [POS]: tests/appearance.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -10,7 +10,7 @@ import { mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppearanceStore } from '../src/main/appearance'
-import { themes, themeTokens, mergeAppearancePatch } from '../src/shared/appearance'
+import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur } from '../src/shared/appearance'
 const roots:string[]=[]
 afterEach(async()=>{await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-appearance-'));roots.push(root);let dark=false;const store=new AppearanceStore(root,()=>dark,()=>{},()=>({width:1,height:1}));await store.init();return {root,store,dark:()=>{dark=true;store.systemChanged()}}}
@@ -32,14 +32,15 @@ it('keeps mode-specific colors, font and scale across restart and resets them to
   await reopened.reset()
   expect(reopened.snapshot().preferences).toMatchObject({fontFamily:'geist',zoomFactor:1,customColors:{light:{accent:null,background:null,foreground:null}}})
 })
-it('adds safe defaults to old settings and rejects unsupported scale/font/color inputs', async () => {
+it.each([undefined, 0.28])('adds safe defaults to old settings with glassOpacity=%s and rejects invalid inputs', async glassOpacity => {
   const {root,store} = await setup()
   const old = {...store.snapshot().preferences} as Record<string,unknown>
   delete old.fontFamily; delete old.zoomFactor; delete old.customColors
+  old.background = { assetId: null, imageOpacity: 0.2, glassOpacity }
   await writeFile(join(root,'settings.json'),JSON.stringify({revision:4,preferences:old}))
   const reopened = new AppearanceStore(root,()=>false,()=>{},()=>({width:1,height:1}))
   await reopened.init()
-  expect(reopened.snapshot()).toMatchObject({revision:4,preferences:{fontFamily:'geist',zoomFactor:1}})
+  expect(reopened.snapshot()).toMatchObject({revision:4,preferences:{fontFamily:'geist',zoomFactor:1,background:{imageOpacity:0.2,glassOpacity:glassOpacity ?? null,overlayOpacity:0.4,blurRadius:8}}})
   for (const patch of [{zoomFactor:0.1},{zoomFactor:4},{fontFamily:'remote-font'},{customColors:{light:{accent:'url(https://example.com)'}}}]) {
     await expect(reopened.update(patch as never,4)).rejects.toThrow()
   }
@@ -47,27 +48,90 @@ it('adds safe defaults to old settings and rejects unsupported scale/font/color 
 })
 it('merges rapid color edits without losing other fields or the other mode', () => {
   expect(mergeAppearancePatch({customColors:{light:{accent:'#007acc'},dark:{background:'#212121'}}},{customColors:{light:{foreground:'#000000'}}})).toEqual({customColors:{light:{accent:'#007acc',foreground:'#000000'},dark:{background:'#212121'}}})
+  expect(mergeAppearancePatch({background:{imageOpacity:0.2,glassOpacity:0.55}},{background:{glassOpacity:0}})).toEqual({background:{imageOpacity:0.2,glassOpacity:0}})
+  expect(mergeAppearancePatch({background:{glassOpacity:0.28,overlayOpacity:0.4}},{background:{overlayOpacity:0}})).toEqual({background:{glassOpacity:0.28,overlayOpacity:0}})
+  expect(mergeAppearancePatch({background:{glassOpacity:0.28,overlayOpacity:0.18}},{background:{blurRadius:0}})).toEqual({background:{glassOpacity:0.28,overlayOpacity:0.18,blurRadius:0}})
 })
 
-it('keeps Scenic dark across restart without overwriting the solid theme or relying on the original image', async () => {
-  const { root, store } = await setup()
-  const before = await store.update({ mode: 'light', themeIds: { light: 'vscode-plus-light', dark: 'nord' }, customColors: { light: { background: '#fafafa' } } }, 0)
+it('keeps glass, overlay and disabled blur through image replacement, restart and backup until reset', async () => {
+  const { root, store, dark } = await setup()
   const file = join(root, 'landscape.png')
   await writeFile(file, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
   const imported = await store.import(file)
-  expect(imported).toMatchObject({ resolvedMode: 'dark', resolvedThemeId: 'nord', preferences: { mode: 'light' } })
-  await rm(file)
+  const glass = await store.update({ background: { glassOpacity: 0.28 } }, imported.revision)
+  const overlay = await store.update({ background: { overlayOpacity: 0.18 } }, glass.revision)
+  const changed = await store.update({ background: { blurRadius: 0 } }, overlay.revision)
+  expect(changed.preferences.background).toEqual({ ...imported.preferences.background, glassOpacity: 0.28, overlayOpacity: 0.18, blurRadius: 0 })
+  dark()
+  expect(store.snapshot()).toMatchObject({ resolvedMode: 'dark', preferences: { background: { glassOpacity: 0.28, overlayOpacity: 0.18, blurRadius: 0 } } })
+  const replaced = await store.import(file)
+  expect(replaced.preferences.background.assetId).not.toBe(imported.preferences.background.assetId)
+  expect(replaced.preferences.background).toMatchObject({ glassOpacity: 0.28, overlayOpacity: 0.18, blurRadius: 0 })
   const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
   await reopened.init()
-  expect(reopened.snapshot()).toMatchObject({ resolvedMode: 'dark', preferences: { background: { assetId: imported.preferences.background.assetId } } })
+  expect(reopened.snapshot().preferences.background).toEqual(replaced.preferences.background)
+  const destination = join(root, 'backup')
+  await reopened.backup(destination)
+  const restored = new AppearanceStore(join(destination, 'appearance'), () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await restored.init()
+  expect(restored.snapshot().preferences.background).toEqual(replaced.preferences.background)
+  const removed = await restored.remove()
+  expect(removed.preferences.background).toMatchObject({ assetId: null, glassOpacity: 0.28, overlayOpacity: 0.18, blurRadius: 0 })
+  expect((await restored.import(file)).preferences.background).toMatchObject({ glassOpacity: 0.28, overlayOpacity: 0.18, blurRadius: 0 })
+  expect((await restored.reset()).preferences.background).toEqual({ assetId: null, imageOpacity: 1, glassOpacity: null, overlayOpacity: 0.4, blurRadius: 8 })
+})
+
+it.each(['glassOpacity', 'overlayOpacity'] as const)('accepts 0–100%% %s and rejects invalid opacity without overwriting settings', async key => {
+  const { store } = await setup()
+  for (const opacity of [0, 1]) {
+    const saved = await store.update({ background: { [key]: opacity } }, store.snapshot().revision)
+    expect(saved.preferences.background[key]).toBe(opacity)
+  }
+  const before = store.snapshot()
+  for (const opacity of [-0.01, 1.01, NaN, Infinity, '0.5']) {
+    await expect(store.update({ background: { [key]: opacity } } as never, before.revision)).rejects.toThrow()
+  }
+  expect(store.snapshot()).toEqual(before)
+})
+
+it('accepts blur off and the maximum radius, rejecting invalid radii without changing settings', async () => {
+  const { store } = await setup()
+  for (const blurRadius of [0, maxBackgroundBlur]) {
+    expect((await store.update({ background: { blurRadius } }, store.snapshot().revision)).preferences.background.blurRadius).toBe(blurRadius)
+  }
+  const before = store.snapshot()
+  for (const blurRadius of [-1, maxBackgroundBlur + 1, 0.5, NaN, Infinity, '8', null]) {
+    await expect(store.update({ background: { blurRadius } } as never, before.revision)).rejects.toThrow()
+  }
+  expect(store.snapshot()).toEqual(before)
+})
+
+it.each(['light', 'dark', 'system'] as const)('preserves %s mode with Scenic across system changes, switching and restart', async mode => {
+  const { root, store, dark } = await setup()
+  const before = await store.update({ mode, themeIds: { light: 'vscode-plus-light', dark: 'nord' }, customColors: { light: { background: '#fafafa' } } }, 0)
+  const file = join(root, 'landscape.png')
+  await writeFile(file, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
+  const imported = await store.import(file)
+  expect(imported).toMatchObject({ resolvedMode: mode === 'dark' ? 'dark' : 'light', resolvedThemeId: mode === 'dark' ? 'nord' : 'vscode-plus-light', preferences: { mode } })
+  dark()
+  const resolvedMode = mode === 'light' ? 'light' : 'dark'
+  expect(store.snapshot()).toMatchObject({ revision: imported.revision, resolvedMode, preferences: { mode, background: imported.preferences.background } })
+  await rm(file)
+  const reopened = new AppearanceStore(root, () => true, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ resolvedMode, preferences: { mode, background: imported.preferences.background } })
+  const otherMode = resolvedMode === 'light' ? 'dark' : 'light'
+  const switched = await reopened.update({ mode: otherMode }, imported.revision)
+  expect(switched).toMatchObject({ resolvedMode: otherMode, preferences: { background: imported.preferences.background } })
+  await reopened.update({ mode }, switched.revision)
   const removed = await reopened.remove()
-  expect(removed).toMatchObject({ resolvedMode: 'light', resolvedThemeId: 'vscode-plus-light', preferences: { customColors: before.preferences.customColors } })
+  expect(removed).toMatchObject({ resolvedMode, resolvedThemeId: resolvedMode === 'light' ? 'vscode-plus-light' : 'nord', preferences: { mode, customColors: before.preferences.customColors, background: { assetId: null } } })
 })
 it('falls back to the saved solid mode when the managed background is missing', async () => {
   const { root, store } = await setup()
   const preferences = store.snapshot().preferences
   preferences.mode = 'light'
-  preferences.background = { assetId: '11111111-1111-1111-1111-111111111111.png', imageOpacity: 0.2 }
+  preferences.background = { ...preferences.background, assetId: '11111111-1111-1111-1111-111111111111.png', imageOpacity: 0.2 }
   await writeFile(join(root, 'settings.json'), JSON.stringify({ revision: 8, preferences }))
   const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
   await reopened.init()

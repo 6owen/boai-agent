@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: Craft Scenic 原生选图/完整画面/跨页交互/重启与移除恢复验收；仅替换一次文件选择。
+ * [OUTPUT]: Craft Scenic选图保持浅色并可切换深色、跨页交互/重启与移除恢复验收；重置先确认，仅替换一次文件选择。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -154,6 +154,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('100%')
   await expect(page!.getByRole('button', { name: '恢复默认外观' })).toBeEnabled()
   await page!.getByRole('button', { name: '恢复默认外观' }).click()
+  await page!.getByRole('button', { name: '确认重置', exact: true }).click()
   await expect(page!.getByLabel('字体', { exact: true })).toContainText('Geist')
   await page!.evaluate(() => document.fonts.ready)
   expect(await page!.evaluate(() => [...document.fonts].some((font) => font.family === 'Geist' && font.status === 'loaded'))).toBe(true)
@@ -209,7 +210,7 @@ When('选择本地背景图片启用玻璃换肤', async ({ runtime, scenario })
   expect(await page.getByAltText('当前背景图片').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth === 1600)).toBe(true)
   const snapshot = await page.evaluate(() => window.boai.request('getAppearance', undefined))
   scenario.scenicAsset = snapshot.preferences.background.assetId!
-  expect(snapshot).toMatchObject({ resolvedMode: 'dark', preferences: { mode: 'light' } })
+  expect(snapshot).toMatchObject({ resolvedMode: 'light', preferences: { mode: 'light' } })
   await rm(file)
 })
 Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, scenario }) => {
@@ -224,13 +225,18 @@ Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, sc
   expect(css).toMatchObject({ size: 'cover', opacity: '1', pointerEvents: 'none', position: 'fixed', blur: 'blur(8px)' })
   expect(css.image).toContain(scenario.scenicAsset)
   expect(css.overlay).toContain('0.4')
-  await expect(page.getByRole('button', { name: '浅色', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '浅色', exact: true })).toBeEnabled()
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await page.getByRole('button', { name: '深色', exact: true }).click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
   await page.getByRole('combobox', { name: '深色配色', exact: true }).click()
   await expect(page.getByRole('option', { name: 'Nord', exact: true })).toBeVisible()
   await expect(page.locator('[data-slot=select-content]')).toHaveCSS('opacity', '1')
   await expect(page.locator('[data-slot=select-content]')).toHaveCSS('background-color', 'rgb(33, 33, 33)')
   await runtime.reviewNativeCheckpoint('图片玻璃设置与可读菜单')
   await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '浅色', exact: true }).click()
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
   // Cancel and invalid input preserve the active image.
   await runtime.app.evaluate(({ dialog }) => {
     const original = dialog.showOpenDialog

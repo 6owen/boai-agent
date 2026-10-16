@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 插件停用只回退有效配色，不覆盖已保存主题选择；显式选择停用配色拒绝。
  * [INPUT]: 外观偏好、图片文件与系统明暗状态。
- * [OUTPUT]: 图片模式解析为深色，原明暗偏好与托管图片持久化保持。
+ * [OUTPUT]: 玻璃/遮罩/0–32px模糊独立校验并持久化；旧配置保持原玻璃、40%遮罩及8px模糊。
  * [OUTPUT]: 经校验、可迁移的主题、字体、缩放及分模式颜色持久化。
  * [POS]: Electron 宿主外观存储，包含版本冲突与备份边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -10,13 +10,13 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { appearanceDefaults, applyAppearancePatch, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
+import { appearanceDefaults, applyAppearancePatch, maxBackgroundBlur, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
 const color = z.string().regex(/^#[0-9a-f]{6}$/i).nullable().optional()
 const colors = z.object({ accent: color, background: color, foreground: color }).strict()
 const patchSchema = z.object({
  mode: z.enum(['light','dark','system']).optional(),
  themeIds: z.object({ light: z.string().max(100).optional(), dark: z.string().max(100).optional() }).strict().optional(),
- background: z.object({ imageOpacity: z.number().min(0).max(1) }).strict().optional(),
+ background: z.object({ imageOpacity: z.number().min(0).max(1).optional(), glassOpacity: z.number().min(0).max(1).nullable().optional(), overlayOpacity: z.number().min(0).max(1).optional(), blurRadius: z.number().int().min(0).max(maxBackgroundBlur).optional() }).strict().optional(),
  fontFamily: z.enum(['system','geist']).optional(),
  zoomFactor: z.number().min(0.75).max(1.5).optional(),
  customColors: z.object({ light: colors.optional(), dark: colors.optional() }).strict().optional(),
@@ -46,7 +46,7 @@ export class AppearanceStore {
    const saved=JSON.parse(await readFile(join(this.root,'settings.json'),'utf8'))
    if(saved.preferences?.schemaVersion>1) { this.readOnly=true; this.diagnostic='此外观配置来自更新版本，已保留原文件；当前使用默认外观。'; return }
    const p=saved.preferences
-   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity}, ...p.fontFamily!==undefined?{fontFamily:p.fontFamily}:{}, ...p.zoomFactor!==undefined?{zoomFactor:p.zoomFactor}:{}, ...p.customColors!==undefined?{customColors:p.customColors}:{} })
+   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity, ...p.background.glassOpacity!==undefined?{glassOpacity:p.background.glassOpacity}:{}, ...p.background.overlayOpacity!==undefined?{overlayOpacity:p.background.overlayOpacity}:{}, ...p.background.blurRadius!==undefined?{blurRadius:p.background.blurRadius}:{}}, ...p.fontFamily!==undefined?{fontFamily:p.fontFamily}:{}, ...p.zoomFactor!==undefined?{zoomFactor:p.zoomFactor}:{}, ...p.customColors!==undefined?{customColors:p.customColors}:{} })
    this.preferences=applyAppearancePatch(this.preferences,normalized)
    this.preferences.background.assetId=typeof p.background.assetId==='string'&&validAsset.test(p.background.assetId)?p.background.assetId:null
    this.revision=Number.isSafeInteger(saved.revision)&&saved.revision>=0?saved.revision:0

@@ -1,10 +1,10 @@
 /*
  * [INPUT]: Craft Agents Scenic CSS, pinned in source-manifest.json; BOAI shell selectors.
- * [OUTPUT]: Full-window image, 40% overlay, 8px glass and gradient frame border.
+ * [OUTPUT]: Independent glass/overlay/blur controls; zero removes surface tint, card highlight and backdrop blur while preserving content and edges.
  * [POS]: Apache-2.0 adapted source. Copyright 2026 Craft Docs Ltd.
  * [PROTOCOL]: Changes require Header, .folder.md and source-manifest updates.
  * Chromium build requires the standard backdrop-filter declaration last.
- * Modified for BOAI: shell selectors, semantic surface aliases; no upstream z-panel stacking.
+ * Modified for BOAI: shell selectors, semantic surface aliases, unified outer gutters and single rounded frame edge; no upstream z-panel stacking.
  */
 /* Scenic mode: Background image layer */
 html[data-scenic]::before {
@@ -19,13 +19,12 @@ html[data-scenic]::before {
   pointer-events: none;
 }
 
-/* Scenic mode dark: Dark overlay gradient to fade the background image
-   Stronger on left (sidebar area) for readability, lighter on right to show more image */
-html.dark[data-scenic]::after {
+/* Keep the image readable with an overlay matching the selected mode. */
+html[data-scenic]::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+  background: linear-gradient(to right, var(--scenic-overlay), var(--scenic-overlay));
   z-index: -1;
   pointer-events: none;
 }
@@ -33,8 +32,10 @@ html.dark[data-scenic]::after {
 html[data-scenic] .content-frame {
   /* Shell cards (list + content) are paper on solid themes and glass in scenic mode */
   background: var(--scenic-panel);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  /* The gradient below owns the edge, with the same radius and origin as the glass. */
+  border: 0;
+  -webkit-backdrop-filter: var(--scenic-backdrop-filter);
+  backdrop-filter: var(--scenic-backdrop-filter);
 }
 
 /* Scenic mode: Gradient border effect for glass panels
@@ -63,17 +64,27 @@ html[data-scenic] .content-frame::before {
 
 /* BOAI adapter: only the outer shell blurs the image; nested panes share that glass. */
 html[data-scenic] {
-  --scenic-panel: oklch(0.2 0.005 270 / 0.55);
+  --scenic-overlay: rgba(255, 255, 255, var(--scenic-overlay-opacity));
+  --scenic-panel: color-mix(in srgb, var(--popover) calc(var(--scenic-glass-opacity) * 100%), transparent);
 }
-html[data-scenic] .app-shell { background: transparent; }
+html.dark[data-scenic] {
+  --scenic-overlay: rgba(0, 0, 0, var(--scenic-overlay-opacity));
+  --scenic-panel: oklch(0.2 0.005 270 / var(--scenic-glass-opacity));
+}
+/* Paint the outer tint once so the toolbar, rail and right/bottom gutters match. */
+html[data-scenic] .app-shell { background: var(--app); }
+html[data-scenic] :is(.global-toolbar, .navigation-rail) { background: transparent; }
 html[data-scenic] .soft-card {
-  /* Craft's 72% floor keeps content cards legible over the image. */
-  background-color: color-mix(in srgb, var(--popover) 72%, transparent);
+  /* Only the background fades; text, controls and the image retain their opacity. */
+  background-color: color-mix(in srgb, var(--popover) calc(var(--scenic-card-opacity) * 100%), transparent);
+  background-image:
+    linear-gradient(var(--soft-hover-layer, transparent), var(--soft-hover-layer, transparent)),
+    linear-gradient(to bottom, color-mix(in srgb, var(--soft-surface-tint) clamp(0%, calc(var(--scenic-glass-strength) * 100%), 100%), transparent), transparent);
 }
 html[data-scenic] .chat-composer {
-  background: rgba(0, 0, 0, 0.15);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: var(--surface-composer);
+  -webkit-backdrop-filter: var(--scenic-backdrop-filter);
+  backdrop-filter: var(--scenic-backdrop-filter);
 }
 /* Portalled menus/dialogs keep BOAI's opaque --popover surface. */
 .appearance-background-preview {

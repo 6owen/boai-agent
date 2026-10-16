@@ -25,8 +25,15 @@
     "BOAI content-frame/chat-composer selectors and existing semantic surface aliases",
     "Keep BOAI local managed image importer/protocol and persistence; no remote theme URLs",
     "Only outer content-frame and composer blur; preserve BOAI stacking and pointer behavior",
-    "Opaque popovers; Scenic uses selected dark palette and accent, retaining solid color overrides for removal",
+    "Opaque popovers; Scenic uses the selected light/dark palette and accent, retaining solid color overrides for removal",
     "Legacy imageOpacity retained in storage but not multiplied into Scenic image; full opacity matches upstream",
-    "Standard backdrop-filter follows WebKit declaration so production CSS preserves Chromium blur"
+    "Standard backdrop-filter follows WebKit declaration so production CSS preserves Chromium blur",
+    "Paint the outer tint once on app-shell; transparent toolbar/navigation share it with right/bottom gutters",
+    "Remove the solid frame border in Scenic mode so the gradient border and clipped glass share one rounded edge",
+    "Background images follow light/dark/system instead of forcing dark; light mode adds a white overlay and palette-tinted glass, composer uses mode-aware surface tokens",
+    "Persist independent glassOpacity for adjustable panel/card backgrounds; null preserves original defaults and image/text opacity remains unchanged",
+    "Persist independent overlayOpacity for the full-window black/white image overlay; default 40% preserves the original appearance",
+    "Persist blurRadius from 0 to 32px, default 8px; zero disables both frame/composer backdrop filters",
+    "Scale shell/list/detail/composer tints and card highlight with glass opacity; zero removes fixed tint/highlight while preserving borders and control surfaces"
   ]
 }

@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 运行时包生命周期/线协议、Pi与ACP连续会话/真实工具副作用及独立模块安装；真实Pi探针显式选择。
  * [INPUT]: 生产插件目录/配置存储/生命周期与真实临时文件、外观配置。
- * [OUTPUT]: 声明边界、持久/CAS/坏配置/写失败及主题停用恢复合同回归。
+ * [OUTPUT]: 声明边界、持久/CAS/坏配置/写失败及显式深色图片的主题停用恢复合同回归。
  * [POS]: 内置插件平台模块验证；实际设置操作归Electron BDD。
  * [PROTOCOL]: 变化同步Header及tests/.folder.md。
  */
@@ -121,7 +121,7 @@ test('disabled theme fallback preserves the saved theme, custom colors and Sceni
   const appearanceRoot = join(root, 'appearance')
   const appearance = new AppearanceStore(appearanceRoot, () => false, vi.fn(), () => ({ width: 1, height: 1 }), disabled)
   await appearance.init()
-  await appearance.update({ mode: 'light', themeIds: { dark: 'nord' }, customColors: { dark: { accent: '#3399cc' } } }, 0)
+  await appearance.update({ mode: 'dark', themeIds: { dark: 'nord' }, customColors: { dark: { accent: '#3399cc' } } }, 0)
   const image = join(root, 'scenery.png')
   await writeFile(image, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
   const original = await appearance.import(image)
