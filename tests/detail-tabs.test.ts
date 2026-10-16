@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件修改员工选择支持纯本机Claude，同时拒绝缺失profile与失效/不兼容的显式API来源。
  * [OUTPUT]: 渠道只持一个详情视图，连续打开/返回不增标签；显式来源、关闭后迟到、跨员工/跨页与递归拒绝。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: 员工渠道标签去重并更新明确会话/消息目标，其他员工与主页面标签独立保留。
@@ -194,6 +195,22 @@ describe('artifact review identity and pending requests', () => {
     expect(artifactRevisionTarget({ ...core, systemRole: undefined }, [local])).toBeUndefined()
     expect(artifactRevisionTarget({ ...core, active: false }, [local])).toBeUndefined()
     expect(artifactRevisionTarget({ ...core, connectionId: empty.id, modelId: 'custom' }, [empty, local])).toEqual({ connection: empty, modelId: 'custom' })
+  })
+  it('offers native Claude without requiring an unrelated API connection', () => {
+    const employee = { id: 'claude', active: true, connectionId: '', modelId: '', executionBackend: { kind: 'claude-local', profileId: 'claude-login' } } as DigitalAgent
+    expect(artifactRevisionTarget(employee, [])).toEqual({ backend: 'claude-local' })
+    expect(artifactRevisionTarget({ ...employee, active: false }, [])).toBeUndefined()
+    expect(artifactRevisionTarget({ ...employee, executionBackend: { kind: 'claude-local', profileId: '' } }, [])).toBeUndefined()
+    expect(artifactRevisionTarget({ ...employee, executionBackend: { kind: 'acp-local', profileId: 'old-acp' } }, [])).toBeUndefined()
+  })
+  it('keeps the explicit Claude provider validation and never substitutes another connection', () => {
+    const connection: Connection = { id: 'anthropic', name: 'Claude', provider: 'anthropic', baseUrl: '', defaultModel: 'claude-test', hasApiKey: true }
+    const employee = { id: 'claude', active: true, connectionId: connection.id, modelId: '', executionBackend: { kind: 'claude-local', profileId: 'claude-api' } } as DigitalAgent
+    expect(artifactRevisionTarget(employee, [connection])).toEqual({ backend: 'claude-local' })
+    expect(artifactRevisionTarget(employee, [{ ...connection, id: 'another' }])).toBeUndefined()
+    for (const patch of [{ hasApiKey: false }, { defaultModel: '' }, { provider: 'openai' as const }, { provider: 'openai-compatible' as const, baseUrl: 'https://example.com/v1' }]) expect(artifactRevisionTarget(employee, [{ ...connection, ...patch }])).toBeUndefined()
+    expect(artifactRevisionTarget({ ...employee, executionBackend: { kind: 'claude-local', profileId: '' } }, [connection])).toBeUndefined()
+    expect(artifactRevisionTarget({ ...employee, executionBackend: { kind: 'codex-local', profileId: 'codex' } }, [connection])).toBeUndefined()
   })
   it('checks the adoption receipt belongs to the frozen request, family and expected adoption revision', () => {
     const input = pending.adoption!.input

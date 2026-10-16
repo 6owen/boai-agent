@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 适配器已经提供文本流时不重复登记onDelta最终正文；发布/上下文/渠道投递语义保持。
+ * [OUTPUT]: 明确关闭/清除浏览器登录资料先通知Main终止真实页面，与原Session drain共同核对退出，避免卡住动作阻止关闭；普通任务drain保持。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 对外渠道拒绝普通本地输入；内部讨论独立会话/限定记忆，固定引用核对；明确机器人外发单次记录并沿原来源回执。
@@ -2915,6 +2917,12 @@ export class AppService {
         this.messages.set(id, posted); publicMessages.set(id, posted); this.emit({ type: 'message', message: posted }); this.changed(conversation.id)
         return { messageId: id, content }
       })
+      const recordExecution = context.onExecutionEvent
+      let hasStreamedText = false
+      context.onExecutionEvent = async event => {
+        if (event.eventType === 'agent.text.block') hasStreamedText = true
+        await recordExecution?.(event)
+      }
       context.onDelta = async delta => {
         if (!alive() || !delta) return
         if (native && !message.content) {
@@ -2925,7 +2933,7 @@ export class AppService {
         }
         message.content += delta
         if (native) this.messages.set(message.id, message)
-        if (!native) await context.onExecutionEvent?.({ id: `text:${run.id}`, eventType: 'agent.text.block', payload: { text: '' }, appendText: delta })
+        if (!native && !hasStreamedText) await recordExecution?.({ id: `text:${run.id}`, eventType: 'agent.text.block', payload: { text: '' }, appendText: delta })
         if (run.responseKind === 'chat') { await this.store.write([record('messages', message)]); if (alive()) this.emit({ type: 'message', message }) }
         else {
           run.draft = { text: message.content, observedThroughSequence: decision.observedThroughSequence, revisions: 0, status: 'private' }
@@ -2934,7 +2942,7 @@ export class AppService {
       }
       context.onTool = async event => {
         if (!alive()) return
-        if (!native) await context.onExecutionEvent?.(nativeActivity(event.id, { type: 'tool', name: event.name, ...(event.status === 'running' ? { arguments: event.detail } : { result: event.detail }), status: event.status }, event.status !== 'running'))
+        if (!native && !(hasStreamedText && event.name === 'task_step')) await context.onExecutionEvent?.(nativeActivity(event.id, { type: 'tool', name: event.name, ...(event.status === 'running' ? { arguments: event.detail } : { result: event.detail }), status: event.status }, event.status !== 'running'))
         const index = run.toolEvents.findIndex(tool => tool.id === event.id), previous = run.toolEvents[index]
         const safe = { ...event, detail: this.redact(event.detail, key), input: previous?.input ?? (event.status === 'running' ? this.redact(event.detail, key) : event.input ? this.redact(event.input, key) : undefined) }
         if (index < 0) run.toolEvents.push(safe); else run.toolEvents[index] = safe
@@ -3337,7 +3345,11 @@ export class AppService {
           const run=this.runs.get(owner.session.lease.runId)
           if(run && !terminal.has(run.status)){this.runControllers.get(run.id)?.abort(new Error('用户关闭浏览器'));await this.finishRun(run,'cancelled','用户关闭浏览器');await this.clearApprovals(run.id)}
         })
-        await owner.session.drain()
+        // A page action can settle only after its WebContents is destroyed. Main must receive
+        // explicit close/clear before we await that action; cancellation alone is not actual exit.
+        await Promise.all([host.request('userControl',{scopeKey:APPLICATION_BROWSER_SCOPE,action:input.action}),owner.session.drain()])
+        this.emit({type:'browser:changed'})
+        return
       }
       await host.request('userControl',{scopeKey:APPLICATION_BROWSER_SCOPE,action:input.action})
     }

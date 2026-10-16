@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 实际销毁后释放WebContents网络计数/时间戳，迟到或无所属页面事件不重新登记。
+ * [OUTPUT]: 明确销毁先关闭真实页面以解除挂起CDP，再核对全部WebContents退出和命令settle；不以超时代替退出。
  * [OUTPUT]: BOAI就绪门禁等待Craft初始页面实际载入，初始化失败明确返回；移除会覆盖随后导航的迟到about:blank回退。
  * [OUTPUT]: Craft v0.15.1后台新帧捕获与不可见临时显示整段迁入；恢复原可见状态/节流，无法确认新帧则返回失败。
  * [OUTPUT]: Craft v0.15.1按键优先走CDP，已知Ctrl/Cmd等原生快捷键回退保留，应用统一窗口/登录与退出保持。
@@ -512,15 +514,16 @@ export class BrowserPaneManager {
   private async destroyActualInstance(id: string): Promise<void> {
     const instance = this.instances.get(id)
     if (!instance) return
-    await this.cancelDownloads(id)
+    // A stuck renderer may only reject its pending CDP/JavaScript requests when
+    // its WebContents closes. Start real destruction before waiting for those.
+    const downloads = this.cancelDownloads(id)
+    void downloads.catch(() => {})
+    this.destroyingIds.add(id)
     this.stop(id)
-    await this.waitForLoads(id)
-    await instance.cdp.drain()
     if (instance.inPageThemeTimer) clearTimeout(instance.inPageThemeTimer)
     instance.inPageThemeTimer = null; instance.themeObserverToken = null
     instance.pendingShowOnReady = false; instance.pendingShowToken += 1
     this.closePopupsForParent(instance.id, 'parent_destroy')
-    this.destroyingIds.add(id)
     if (!instance.window.isDestroyed()) instance.window.destroy()
     if (!instance.window.isDestroyed()) throw new Error('浏览器窗口仍未实际关闭，请核对')
     for (const contents of instance.ownedWebContents) {
@@ -531,6 +534,11 @@ export class BrowserPaneManager {
       }
       if (!contents.isDestroyed()) throw new Error('浏览器页面仍未实际退出，请核对')
     }
+    // Destruction is also an actual end to page loading, even when Chromium did
+    // not emit did-stop-loading for an unresponsive document.
+    instance.resolveLoadDone?.(); instance.loadDone = null; instance.resolveLoadDone = null
+    await downloads
+    await instance.cdp.drain()
     this.finalizeDestroyedInstance(instance, 'destroy')
   }
 
@@ -1865,6 +1873,10 @@ export class BrowserPaneManager {
     this.destroyingIds.delete(instance.id)
     this.closePopupsForParent(instance.id, 'parent_destroy')
     instance.cdp.detach()
+    for (const contents of instance.ownedWebContents) {
+      this.inFlightRequestsByWebContentsId.delete(contents.id)
+      this.lastNetworkActivityByWebContentsId.delete(contents.id)
+    }
     this.instances.delete(instance.id)
     this.removedCallback?.(instance.id)
     mainLog.info(`[browser-pane] Destroyed instance: ${instance.id} (${source})`)
@@ -2301,6 +2313,8 @@ export class BrowserPaneManager {
     if (!parentId) return
 
     this.popupParentByWebContentsId.delete(popupWcId)
+    this.inFlightRequestsByWebContentsId.delete(popupWcId)
+    this.lastNetworkActivityByWebContentsId.delete(popupWcId)
 
     const popups = this.popupWindowsByParentInstanceId.get(parentId)
     if (popups) {
@@ -2353,7 +2367,7 @@ export class BrowserPaneManager {
 
     ses.webRequest.onBeforeRequest((details, callback) => {
       const wcId = details.webContentsId
-      if (typeof wcId === 'number' && wcId > 0) {
+      if (typeof wcId === 'number' && wcId > 0 && this.getInstanceByWebContentsId(wcId)) {
         const current = this.inFlightRequestsByWebContentsId.get(wcId) ?? 0
         this.inFlightRequestsByWebContentsId.set(wcId, current + 1)
         this.lastNetworkActivityByWebContentsId.set(wcId, Date.now())
@@ -2369,13 +2383,12 @@ export class BrowserPaneManager {
     ses.webRequest.onCompleted((details) => {
       const wcId = details.webContentsId
       if (typeof wcId !== 'number' || wcId <= 0) return
+      const instance = this.getInstanceByWebContentsId(wcId)
+      if (!instance) return
 
       const current = this.inFlightRequestsByWebContentsId.get(wcId) ?? 0
       this.inFlightRequestsByWebContentsId.set(wcId, Math.max(0, current - 1))
       this.lastNetworkActivityByWebContentsId.set(wcId, Date.now())
-
-      const instance = this.getInstanceByWebContentsId(wcId)
-      if (!instance) return
 
       this.pushNetworkLog(instance, {
         timestamp: Date.now(),
@@ -2390,13 +2403,12 @@ export class BrowserPaneManager {
     ses.webRequest.onErrorOccurred((details) => {
       const wcId = details.webContentsId
       if (typeof wcId !== 'number' || wcId <= 0) return
+      const instance = this.getInstanceByWebContentsId(wcId)
+      if (!instance) return
 
       const current = this.inFlightRequestsByWebContentsId.get(wcId) ?? 0
       this.inFlightRequestsByWebContentsId.set(wcId, Math.max(0, current - 1))
       this.lastNetworkActivityByWebContentsId.set(wcId, Date.now())
-
-      const instance = this.getInstanceByWebContentsId(wcId)
-      if (!instance) return
 
       this.pushNetworkLog(instance, {
         timestamp: Date.now(),
@@ -2542,6 +2554,7 @@ export class BrowserPaneManager {
 
     pageWc.on('did-stop-loading', () => {
       instance.resolveLoadDone?.(); instance.loadDone = null; instance.resolveLoadDone = null
+      if (this.instances.get(instance.id) !== instance || pageWc.isDestroyed()) return
       instance.isLoading = false
       instance.canGoBack = pageWc.navigationHistory.canGoBack()
       instance.canGoForward = pageWc.navigationHistory.canGoForward()

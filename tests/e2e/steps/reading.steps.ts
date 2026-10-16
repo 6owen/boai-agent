@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 流式阅读核对真实占位消息与执行卡；分页等待期间追加并完成API正文，再核对公开消息不被旧快照覆盖及80条窗口。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
  * [INPUT]: 隐藏/删除会话与旧固定目标、D6 中文场景、会话常驻名称输入与普通搜索 Dialog/可选筛选/实际 Calendar range、真实发布完成身份、万条旧历史、固定文件版本、跨页面全局检索及当前详情作用域与个人浏览 API。
@@ -43,6 +44,14 @@ export const test = base.extend<{ readingState: State }>({ readingState: async (
 const { Given, When, Then } = createBdd(test)
 const readState = (runtime: Desktop, conversationId: string) => runtime.page.evaluate(conversationId => window.boai.request('getConversationReading', { conversationId }), conversationId)
 const view = (runtime: Desktop, conversationId: string): Promise<ConversationView> => runtime.page.evaluate(conversationId => window.boai.request('getConversationView', { conversationId }), conversationId)
+async function streamingView(runtime: Desktop, conversationId: string) {
+  // API chat may buffer publishable text while its live text is shown by the execution card.
+  await expect.poll(async () => {
+    const current = await view(runtime, conversationId)
+    return ['researcher', 'writer'].every(id => current.messages.some(message => message.senderId === id && message.status === 'streaming' && message.runId))
+  }).toBe(true)
+  return view(runtime, conversationId)
+}
 const message = (runtime: Desktop, id: string) => runtime.page.locator(`#message-${id}:visible`)
 const artifact = (runtime: Desktop, id: string) => runtime.page.locator(`[data-artifact-id="${id}"]:visible`)
 const searchDialog = (runtime: Desktop) => runtime.page.getByRole('dialog', { name: '搜索会话内容', exact: true })
@@ -572,7 +581,7 @@ Given('两位员工正在实际并行流式回复而用户回到旧历史', asyn
   readingState.anchor = await savedAnchor(runtime, fixture.group.id)
   await runtime.page.evaluate(conversationId => window.boai.request('sendMessage', { conversationId, content: '请两位分别给普通聊天回复，验证阅读次序。', mentionIds: ['researcher', 'writer'], requestId: 'reading-parallel-chat' }), fixture.group.id)
   await expect.poll(() => fixture.started('researcher') && fixture.started('writer')).toBe(true)
-  const current = await view(runtime, fixture.group.id); readingState.a = current.messages.find(item => item.content.includes('READING_START_A'))!.id; readingState.b = current.messages.find(item => item.content.includes('READING_START_B'))!.id
+  const current = await streamingView(runtime, fixture.group.id); readingState.a = current.messages.find(item => item.senderId === 'researcher' && item.status === 'streaming')!.id; readingState.b = current.messages.find(item => item.senderId === 'writer' && item.status === 'streaming')!.id
   expect(current.messages.find(item => item.id === readingState.a)!.sequence).toBeLessThan(current.messages.find(item => item.id === readingState.b)!.sequence)
   expect(current.reading.completionCount).toBe(0); expect(current.workItems).toEqual([])
 })
@@ -656,17 +665,17 @@ Given('最新历史中的两位员工已经开始实际流式回复', async ({ r
   const fixture = readingState.streams = await prepareReadingStreams(runtime); await openConversation(runtime, fixture.group.title)
   await runtime.page.evaluate(conversationId => window.boai.request('sendMessage', { conversationId, content: '请两位分别给普通聊天回复，验证分页期间的新正文。', mentionIds: ['researcher', 'writer'], requestId: 'reading-page-live' }), fixture.group.id)
   await expect.poll(() => fixture.started('researcher') && fixture.started('writer')).toBe(true)
-  const current = await view(runtime, fixture.group.id)
-  readingState.a = current.messages.find(item => item.content.includes('READING_START_A'))!.id
-  readingState.b = current.messages.find(item => item.content.includes('READING_START_B'))!.id
-  await expect(message(runtime, readingState.a)).toContainText('READING_START_A'); await expect(message(runtime, readingState.b)).toContainText('READING_START_B')
+  const current = await streamingView(runtime, fixture.group.id)
+  readingState.a = current.messages.find(item => item.senderId === 'researcher' && item.status === 'streaming')!.id
+  readingState.b = current.messages.find(item => item.senderId === 'writer' && item.status === 'streaming')!.id
+  await expect(runtime.page.locator('.messages:visible')).toContainText('READING_START_A'); await expect(runtime.page.locator('.messages:visible')).toContainText('READING_START_B')
   expect(await runtime.page.locator('.messages:visible [data-reading-message-id]').count()).toBeLessThanOrEqual(80)
   readingState.calls = fixture.endpoint.requests.length
   readingState.probe = await readingBrowserProbe(runtime)
 })
 When('较新历史响应等待期间员工继续追加正文', async ({ runtime, readingState }) => {
   const fixture = readingState.streams!, container = runtime.page.locator('.messages:visible')
-  for (let page = 0; page < 2 && await message(runtime, readingState.a!).count(); page++) {
+  for (let page = 0; page < 2 && (page === 0 || await message(runtime, readingState.a!).count()); page++) {
     const firstId = await container.locator('[data-reading-message-id]').first().getAttribute('data-reading-message-id')
     await container.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')) })
     await expect.poll(() => container.locator('[data-reading-message-id]').first().getAttribute('data-reading-message-id')).not.toBe(firstId)
@@ -677,7 +686,11 @@ When('较新历史响应等待期间员工继续追加正文', async ({ runtime,
   await container.evaluate(element => { element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event('scroll')) })
   await expect.poll(() => readingState.pageDelay!.captured()).toBe(true); await expect(container).toHaveAttribute('aria-busy', 'true')
   fixture.append('researcher', 'READING_PAGE_NEW_STREAM_BODY\n')
+  // The stale page contains the pre-publication placeholders. Complete both original
+  // streams while it is held, so real public message events race with that snapshot.
+  fixture.finish('researcher'); fixture.finish('writer'); await settled(runtime, fixture.group.id)
   await expect.poll(async () => (await view(runtime, fixture.group.id)).messages.find(message => message.id === readingState.a)?.content).toContain('READING_PAGE_NEW_STREAM_BODY')
+  readingState.calls = fixture.endpoint.requests.length
   await readingState.pageDelay.release()
 })
 Then('旧分页响应不能覆盖新的流式正文且浏览仍有界', async ({ runtime, readingState }) => {
@@ -710,7 +723,6 @@ Then('迟到页不会淘汰当前消息锚点或改变阅读位置', async ({ ru
   await expect(message(runtime, readingState.a!)).toContainText('READING_PAGE_NEW_STREAM_BODY')
   expect(await container.locator('[data-reading-message-id]').count()).toBeLessThanOrEqual(80)
   expect(fixture.endpoint.requests).toHaveLength(readingState.calls!); expect(fixture.errors).toEqual([])
-  fixture.finish('researcher'); fixture.finish('writer'); await settled(runtime, fixture.group.id)
   expect(await readingRecords(fixture.dataPath)).toMatchObject({ works: [], acceptances: [] }); expect(runtime.errors).toEqual([])
 })
 

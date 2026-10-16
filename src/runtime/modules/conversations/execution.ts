@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 正文与思考块按稳定身份累积text，重复快照覆盖原块而非追加重复内容。
  * [OUTPUT]: 2026-10-12消息回答可组合原事务，接受/提交/未知分别记录；多候选和私密输入不误入普通等待队列，重启不重放。
  * [INPUT]: 真实运行事件、用户原生交互回应、产品SQLite事务。
  * [OUTPUT]: 完整执行证据分块合并/稳定位置/代际；待决原生请求只接受明确回答，重启标为中断且不重放。
@@ -33,7 +34,7 @@ export class ExecutionRepository {
       const previousPayload = recordValue(previous?.payload), incomingPayload = recordValue(event.payload)
       const payload = { ...previousPayload, ...incomingPayload }
       if (event.appendText !== undefined) {
-        const field = event.eventType === 'agent.text.block' ? 'text' : 'delta'
+        const field = ['agent.text.block', 'agent.reasoning.block'].includes(event.eventType) ? 'text' : 'delta'
         payload[field] = String(previousPayload[field] ?? '') + event.appendText
       }
       // Item completion may omit the initial arguments; preserve those bytes.

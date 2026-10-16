@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 关闭后重选可读当前精确原件最近受理结果，新选区草稿/提交独立，不混入其他原件或代际。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 原版SelectionActions横向展开五动作；员工Select为同排trigger，不展示位置/选文/员工下方表单。
@@ -22,7 +23,7 @@ import { NavArrowDown } from 'iconoir-react'
 import { SelectionActions } from '@/components/ui/selection-actions'
 import { artifactRevisionTarget } from './artifact-state'
 import type { useFileEdits } from './use-file-edits'
-import { type FileEditRequest, type FileEditSource } from './file-edit-state'
+import { sameFileEditSource, type FileEditRequest, type FileEditSource } from './file-edit-state'
 
 export interface FileEditHandle { begin(source: FileEditSource, annotation: FileEditAnnotation, anchor: DOMRect): void }
 export function FileEditSession({ api, snapshot, edits, conversationId, source, active, onResult, ref }: {
@@ -77,7 +78,10 @@ export function FileEditSession({ api, snapshot, edits, conversationId, source, 
     } catch (failure) { setError(errorText(failure)) }
     finally { setPreparing(false) }
   }
-  const request = pending ?? edits.requests.find(request => request.id === requestId)
+  const accepted = source ? edits.requests.filter(request => request.status === 'accepted' && sameFileEditSource(request.source, source)) : []
+  // Selecting new text starts a fresh draft, but must not discard access to the
+  // accepted response. Only this draft's submission owns the toolbar busy state.
+  const request = pending ?? accepted.find(request => request.id === requestId) ?? accepted.at(-1)
   const result = edits.results.find(result => result.request.id === request?.id)
   const replies = edits.messages.filter(message => result?.messageIds.includes(message.id))
   const running = result?.runs.some(run => run.phase !== 'memory' && ['queued', 'running', 'waiting_approval'].includes(run.status))
@@ -85,7 +89,7 @@ export function FileEditSession({ api, snapshot, edits, conversationId, source, 
   const failure = error || edits.error || edits.readError
   if (!anchor || !active) return null
   return <SelectionActions anchor={anchor} open={open} onOpenChange={setOpen} prompt={text} onPromptChange={setText} onAction={instruction => void submit(instruction)}
-    disabled={!valid || !agentId || edits.busy || preparing} employeeRequired={!agentId} pending={!!pending} busy={!!running || preparing}
+    disabled={!valid || !agentId || edits.busy || preparing} employeeRequired={!agentId} pending={!!pending} busy={!!running && request?.id === requestId || preparing}
     employeeSelector={members.length > 1 || !agentId ? <Select value={agentId} onValueChange={value => { if (value !== null) setAgentId(String(value)) }}>
       <SelectPrimitive.Trigger aria-label="修改执行员工" render={<SelectionActionButton variant="quiet" size="xs" className="shrink-0" />}>
         <span className="max-w-20 truncate">{members.find(agent => agent.id === agentId)?.name ?? '选择员工'}</span><NavArrowDown width={14} height={14} aria-hidden />

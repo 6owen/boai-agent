@@ -1,16 +1,21 @@
 /*
+ * [OUTPUT]: 执行Soft消息卡随内容撑宽并受聊天区域约束；loading行固定对齐，真实过程向下追加。
+ * [OUTPUT]: 执行中员工消息卡直接呈现共享执行流；不向聊天上下文或渠道写入过程消息。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 当前原消息的真实Run/Work、宿主持久阶段、Codex公开摘要及原Trace导航。
  * [OUTPUT]: 已接收回执、聊天内执行卡与共用有界过程清单；不伪造消息、已读或模型思维链。
  * [POS]: 会话和员工执行详情共用的进度投影，审批/交付仍归原业务记录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import type { AgentRun, WorkItem } from '@shared/domain'
+import type { AgentRun } from '@shared/domain'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Icon, Clock, ChevronRight, LoaderCircle, Workflow } from '@/components/icons'
-import { byCreatedAt } from '../activity'
-import { runLabels } from '../presentation'
+import { Icon, Clock } from '@/components/icons'
+import { LoadingState } from '@/components/ui/loading-state'
+import { useState } from 'react'
+import type { DesktopApi } from '@shared/ipc'
+import { ExecutionFeed } from '@/components/detail-panel/execution-feed'
+import { ExecutionContentCache } from '@/components/detail-panel/execution-content-cache'
 
 export function MessageReceipt({ runs }: { runs: AgentRun[] }) {
   const received = runs.some(run => ['codex-local', 'claude-local'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
@@ -30,20 +35,16 @@ export function ExecutionProgress({ run }: { run: AgentRun }) {
   </section>
 }
 
-export function ChatExecutionCard({ runs, work, group, onOpen }: { runs: AgentRun[]; work?: WorkItem; group: boolean; onOpen(): void }) {
-  const ordered = [...runs].filter(run => run.phase !== 'memory').sort(byCreatedAt)
-  const run = [...ordered].reverse().find(value => ['queued', 'running', 'waiting_approval'].includes(value.status)) ?? ordered.at(-1)
-  if (!run) return null
-  // Finished conversational decisions are already represented by the actual reply.
-  if (!run.workId && ['completed', 'cancelled'].includes(run.status)) return null
-  const active = ['queued', 'running'].includes(run.status)
-  const tool = [...run.toolEvents].reverse().find(value => value.status === 'running')
-  const latest = [...(run.progress ?? [])].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt)).at(-1)
-  const label = run.status === 'waiting_approval' ? '等待你的批准' : active && tool ? `正在调用 ${tool.name}` : active && run.phase === 'decision' ? '正在理解你的消息' : active ? latest?.text ?? '正在处理' : run.status === 'completed' && run.workId ? run.disposition === 'delivered' ? '已交付' : run.disposition === 'waiting' ? '等待继续处理' : '本次处理结束' : runLabels[run.status]
-  return <Button variant="outline" size="content" className="chat-execution-card" aria-label={`查看${run.backend?.program?.name ?? '员工'}执行详情`} onClick={onOpen}>
-    {active ? <LoaderCircle className="spinner" data-icon="inline-start" /> : <Workflow data-icon="inline-start" />}
-    <span className="chat-execution-content"><strong>{group ? `${run.agentName} · ` : ''}{run.backend?.program?.name ?? '员工'} · {work ? '处理工作' : '处理消息'}</strong>
-      <span className="truncate">{label}</span>{work && <small className="truncate">{work.deliverable}</small>}
-    </span><ChevronRight data-icon="inline-end" />
-  </Button>
+/** A live view of the run, never a new message in model/channel history. */
+export function ChatExecutionCard({ api, run, active, onOpen }: { api: DesktopApi; run: AgentRun; active: boolean; onOpen(): void }) {
+  const [cache] = useState(() => new ExecutionContentCache())
+  return <div className="message-card soft-card min-w-0 w-fit max-w-full" data-chat-execution-run={run.id} data-execution-run-id={run.id} aria-label={`${run.agentName}的执行过程`}>
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-h-6 min-w-0 items-center gap-1">
+        <LoadingState label={run.status === 'waiting_approval' ? '等待批准' : run.status === 'queued' ? '排队中' : '正在处理'} startedAt={run.createdAt} active={active} working={run.status === 'running'} />
+        <Button variant="ghost" size="icon-2xs" className="text-muted-foreground/70" onClick={onOpen} aria-label="查看完整执行过程" title="查看完整执行过程"><Icon name="ChevronRight" className="size-2.5" /></Button>
+      </div>
+      <ExecutionFeed api={api} run={run} active={active} cache={cache} presentation="chat" />
+    </div>
+  </div>
 }

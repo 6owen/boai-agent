@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-office-preview.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
+ * [OUTPUT]: 加载/下级解析失败回报宿主；超限和取消不记录插件故障。
  * [POS]: common/lody/session-file-office-preview.tsx；Apache-2.0，保留上游注释。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -23,6 +24,7 @@ export type OfficeRenderer = ComponentType<{
   readonly buffer: ArrayBuffer;
   readonly path: string;
   readonly fileActions?: SessionFileErrorActions;
+  readonly onPreviewError?: () => void;
 }>;
 
 const styles = {
@@ -50,6 +52,7 @@ export function SessionFileOfficePreview({
   url,
   active,
   fileActions,
+  onPreviewError,
 }: {
   readonly kind: OfficePreviewKind;
   readonly path: string;
@@ -57,6 +60,7 @@ export function SessionFileOfficePreview({
   readonly url?: string;
   readonly active: boolean;
   readonly fileActions?: SessionFileErrorActions;
+  readonly onPreviewError?: () => void;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<
@@ -80,8 +84,10 @@ export function SessionFileOfficePreview({
             if (!disposed) setState({ status: 'ready', buffer, Renderer });
           },
           (error: unknown) => {
-            if (!disposed) {
-              setState({ status: 'error', tooLarge: error instanceof OfficePreviewTooLargeError });
+            if (!disposed && !controller.signal.aborted) {
+              const tooLarge = error instanceof OfficePreviewTooLargeError;
+              setState({ status: 'error', tooLarge });
+              if (!tooLarge) onPreviewError?.();
             }
           }
         );
@@ -93,7 +99,7 @@ export function SessionFileOfficePreview({
       controller.abort();
       cancelIdle();
     };
-  }, [active, bytes, kind, url]);
+  }, [active, bytes, kind, url, onPreviewError]);
 
   if (state.status === 'error') {
     return (
@@ -125,7 +131,7 @@ export function SessionFileOfficePreview({
   const { Renderer, buffer } = state;
   return (
     <div {...classProps(styles.root)}>
-      <Renderer buffer={buffer} path={path} fileActions={fileActions} />
+      <Renderer buffer={buffer} path={path} fileActions={fileActions} onPreviewError={onPreviewError} />
     </div>
   );
 }

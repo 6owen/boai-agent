@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API执行文本不重复登记最终答复或旧task_step摘要，最终上下文消息独立发布。
  * [OUTPUT]: 工作接续保留已完成 edit_file 原身份，原等待/修复/不重复副作用回归。
  * [OUTPUT]: 顺序发言不把执行触发来源保存为引用回复，流式、完成与重启保持真实接续关系。
  * [OUTPUT]: 群接续字数约束随原轮次冻结、下游上下文和重启保持。
@@ -2053,4 +2054,20 @@ describe('conversation history cleanup', () => {
     await until(async () => { try { await service.handle('clearConversationHistory', { id: target.id, hide: false }); return true } catch { return false } })
     expect((await detail(service, target)).messages).toEqual([])
   })
+})
+
+it('stores streamed API narration once, independently from the final message and legacy task summary', async () => {
+ const { service, engine } = await fixture(); await configure(service)
+ const chat = await conversation(service)
+ engine.handler = async context => {
+  await context.onExecutionEvent?.({ id: 'live-text', eventType: 'agent.text.block', payload: { text: '' }, appendText: '正在读取' })
+  await context.onExecutionEvent?.({ id: 'live-text', eventType: 'agent.text.block', payload: { text: '' }, appendText: '文件' })
+  await context.onTool({ id: 'step', name: 'task_step', status: 'completed', detail: '正在读取文件', createdAt: new Date().toISOString() })
+  await context.onDelta('最终答复')
+ }
+ await send(service, chat, '处理文件', 'stream-once'); await idle(service, chat, 1)
+ const state = await detail(service, chat), run = state.runs.find(run => run.phase === 'execution')!
+ const evidence = await service.handle('listExecutionEvidence', { conversationId: chat.id, runId: run.id }) as import('../src/shared/domain/execution').ExecutionEvidencePage
+ expect(evidence.items.map(event => event.payload)).toEqual([{ text: '正在读取文件' }])
+ expect(state.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['最终答复'])
 })

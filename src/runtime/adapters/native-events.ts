@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex公开summary增量进入思考块；原始reasoning正文仍不暴露。
  * [OUTPUT]: 网页工具原生事件不保留输入值，截图持久化仅存媒体摘要；模型内存结果保持完整媒体。
  * [INPUT]: Rovai codex.rs normalize_event / claude.rs normalize_claude_runtime_events @ f9acc239 (MIT)，真实原生事件。
  * [OUTPUT]: 相同执行语义的TypeScript移植；保留原参数/结果，按Rovai核验文件活动与提取公开文本，私有thinking不进入公开证据。
@@ -58,6 +59,7 @@ export function nativeActivity(id: string, item: Record<string, any>, completed:
 
 export function codexExecutionEvent(method: string, params: Record<string, any>): ExecutionEvent | undefined {
   const item = recordValue(params.item), itemId = String(item.id ?? params.itemId ?? '')
+  if (method === 'item/reasoning/summaryTextDelta') return { id: `reasoning:${itemId}:${params.summaryIndex ?? 0}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: String(params.delta ?? '') }
   if (method.startsWith('item/reasoning/')) return
   if (method === 'item/agentMessage/delta') return { id: `text:${itemId}`, eventType: 'agent.text.block', payload: { itemId, text: '' }, appendText: String(params.delta ?? '') }
   if (method === 'item/started' || method === 'item/completed') {

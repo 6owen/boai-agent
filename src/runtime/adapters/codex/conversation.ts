@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex公开思考摘要完成快照覆盖对应增量块；私有正文不进入执行流。
  * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12原生交互身份关联实际回应写入，材料路径沿原会话接收；不改变工具目录和所选权限。
@@ -81,6 +82,9 @@ export async function runCodexConversation(context: EngineContext, input: Native
       const nativeItem = recordValue(params.item)
       if (nativeItem.type === 'collabAgentToolCall' && Array.isArray(nativeItem.receiverThreadIds)) {
         for (const id of nativeItem.receiverThreadIds) if (typeof id === 'string' && id !== threadId && !children.has(id)) children.set(id, { parentId: child ? `${params.threadId}:${nativeItem.id}` : String(nativeItem.id) })
+      }
+      if (method === 'item/completed' && nativeItem.type === 'reasoning' && Array.isArray(nativeItem.summary)) {
+        for (const [index, text] of nativeItem.summary.entries()) if (typeof text === 'string') await context.onExecutionEvent?.({ id: `${child ? `${params.threadId}:` : ''}reasoning:${nativeItem.id}:${index}`, parentId: child?.parentId, eventType: 'agent.reasoning.block', payload: { text } })
       }
       const event = codexExecutionEvent(method, params)
       if (event && child) {

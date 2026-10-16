@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确关闭沿真实BrowserSession/SQLite取消原运行并先通知Main销毁卡住页面，再等待原动作退出；未知回执不重放。
  * [OUTPUT]: 同实例同URL动态页面可显式重新观察；旧版本首次写入先拒绝且零派发，重新观察后保留当前审批与回执门禁。
  * [OUTPUT]: 本机原消息/run只读回执无Work、实际写入门禁与固定网页引用；停止和人工导航不扩权。
  * [INPUT]: 原浏览器 single parser、真实 SQLite Work/动作回执、宿主桥替身及真实 Mastra/本地模型 HTTP 协议。
@@ -24,6 +25,7 @@ import { summarizeMedia } from '../src/runtime/modules/browser/media'
 import { browserChatPrompt } from '../src/runtime/adapters/mastra/browser-model'
 import { createBrowserTool } from '../src/runtime/adapters/mastra/browser-tool'
 import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
+import { AppService } from '../src/runtime/service'
 import type { EngineContext } from '../src/runtime/contracts'
 import type { TraceSpan } from '../src/shared/domain/traces'
 import { executeBrowserSingleCommand,parseBrowserSingleCommand,getBrowserToolHelp } from '../src/runtime/adapters/mastra/browser-tool-runtime'
@@ -184,6 +186,36 @@ describe('browser receipt authority shares the original SQLite Work transaction'
   })
 })
 describe('per-run browser session actual exit and no replay',()=>{
+  it.each(['close','clear'] as const)('runtime %s reaches Main while the accepted browser action is waiting for page destruction',async action=>{
+    const {repository,lease,store,works}=await fixture(),destroyed=deferred<void>(),started=deferred<void>(),exited=deferred<void>(),controller=new AbortController()
+    const close=vi.fn(()=>destroyed.resolve()),execute=vi.fn(async(envelope:BrowserActionEnvelope)=>{
+      await repository.start({actionId:envelope.actionId,generation:lease.generation,runId:lease.runId,workId:lease.workId});started.resolve()
+      await destroyed.promise;exited.resolve()
+      return {actionId:envelope.actionId,generation:lease.generation,status:'unknown' as const,error:'Target closed'}
+    })
+    const bridge=host(async(method,input)=>{
+      if(method==='currentLease')return lease
+      if(method==='inspect')return {...page,scopeKey:lease.scopeKey}
+      if(method==='executeSingle')return execute(input as BrowserActionEnvelope)
+      if(method==='userControl'){close();return}
+      if(method==='drain'){await exited.promise;return {drained:true}}
+    })
+    const session=new BrowserSession(lease,bridge,repository,{signal:controller.signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true})
+    const run={id:lease.runId,workId:lease.workId,messageId:'message',conversationId:lease.conversationId,status:'running'}
+    // Keep production cancellation, serialization and persistence; only the Electron transport is a controlled fixture.
+    const service=Object.assign(Object.create(AppService.prototype),{options:{browserHost:bridge},browserSessions:new Map([[lease.runId,{session}]]),runControllers:new Map([[lease.runId,controller]]),runs:new Map([[lease.runId,run]]),messages:new Map(),approvals:new Map(),pendingApprovals:new Map(),mutations:Promise.resolve(),store,works,emit:vi.fn(),changed:vi.fn()}) as AppService
+    const running=session.execute('click @e1','hanging-click').catch(error=>error)
+    await started.promise
+    const closing=service.browserControl({action})
+    try { await expect.poll(()=>close.mock.calls.length,{timeout:500}).toBe(1) }
+    finally { destroyed.resolve();await Promise.all([closing,running]) }
+    expect(run.status).toBe('cancelled');expect(controller.signal.aborted).toBe(true)
+    expect((await store.load<{status:string}>('runs'))[0].status).toBe('cancelled')
+    const actions=await store.load<{status:string}>('browserActions')
+    expect(actions).toHaveLength(1);expect(actions[0].status).toBe('unknown');expect(execute).toHaveBeenCalledTimes(1)
+    await expect(session.execute('click @e1','different-call')).rejects.toThrow('租约已结束')
+    expect(execute).toHaveBeenCalledTimes(1)
+  })
   it('rejects before acquire and returns duplicate real screenshot from readonly lookup without reexecution',async()=>{
     const {repository,lease}=await fixture();let calls=0;const done=new Map<string,BrowserActionReply>()
     const bridge=host(async(method,input)=>{

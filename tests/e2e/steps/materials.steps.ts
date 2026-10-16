@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 材料预览保留来源身份，解析与材料版号不显示。
  * [OUTPUT]: 源码隐藏行号栏，来源定位核对实际选中正文行。
  * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
  * [OUTPUT]: Lody原PDF/Office真实发送/核源/阅读，延迟预览后的文件切换、隐藏停读与清理隔离，零新增模型调用。
@@ -62,10 +63,11 @@ async function inspectPreview(runtime: Desktop, material: ConversationMaterial, 
   const source = preview.getByRole('button', { name: '显示源码', exact: true })
   if (await source.isVisible()) await source.click()
   await expect(preview.locator('[data-file-line="2"] .shiki-line-content')).toHaveText(expectedLine)
-  await preview.getByText('材料来源与解析记录', { exact: true }).click()
+  await preview.getByText('材料来源', { exact: true }).click()
   await expect(preview).toContainText(material.id)
   await expect(preview).toContainText(material.contentHash!)
-  await expect(preview).toContainText('text-v1')
+  await expect(preview.getByText('解析版本', { exact: true })).toHaveCount(0)
+  await expect(preview.getByText('材料版本', { exact: true })).toHaveCount(0)
 }
 
 When('用户将文档代码和网页源码作为聊天文件发送', async ({ runtime, materialsState }) => {

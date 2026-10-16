@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 消息先于Run到达时不渲染无正文占位泡，避免旧typing卡闪过后换为执行loading；已有正文/附件保持。
+ * [OUTPUT]: 活动执行以员工消息卡实时呈现文本、思考和工具；最终发布替换活动卡，历史页/隐藏页停止读取。
  * [OUTPUT]: 渠道消息移除重复来源/处理/送达正文，回执归悬停工具条；发布文件归消息正文，已有文件卡不重复显示。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 文件展示不再附加版号，预览/修改沿文件身份办理。
@@ -74,7 +76,7 @@ import { FileEditNote } from './file-edit-note'
 import { SelectField } from '@/components/ui/select-field'
 import type { ArtifactRevisionInput } from '@shared/domain/artifacts'
 import { MessageCard } from './message-card'
-import { MessageReceipt } from './execution-progress'
+import { ChatExecutionCard, MessageReceipt } from './execution-progress'
 import { AgentInfoPopover } from './agent-info-popover'
 import { draftContent } from '../inline-mentions'
 import { MaterialDraftBar, SentMaterialList, type MaterialDraftItem } from './material-list'
@@ -123,6 +125,8 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
   const reading = useConversationReading({ api, active: pageActive, view: detail, root: scrollRef, following, onReading, onLocation })
   const approvals = snapshot.approvals.filter(a => a.conversationId === conversation.id)
   const activeRuns = detail.runs.filter(run => ['queued','running','waiting_approval'].includes(run.status))
+  const executionRuns = latestPage.current || !pageEdges.after ? activeRuns.filter(run => run.phase === 'execution') : []
+  const streamingRunIds = new Set(executionRuns.map(run => run.id))
   const activeTurns = detail.turns?.filter(turn => liveTurn(turn.status)) ?? []
   const active = activeRuns.length > 0 || activeTurns.length > 0
   const composerRef = useRef<PromptBarHandle>(null)
@@ -205,6 +209,7 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
     if (!el) return
     const observer = new ResizeObserver(() => { if (el.clientHeight > 0 && following.current) { el.scrollTop = el.scrollHeight; lastScrollTop.current = el.scrollTop } })
     observer.observe(el)
+    if (el.firstElementChild) observer.observe(el.firstElementChild)
     return () => observer.disconnect()
   }, [])
   return <div data-conversation-view={view} className={`chat-panel${group ? ' group-chat' : ''}`} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }} onDrop={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }}>
@@ -230,12 +235,19 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
       onTouchMove: event => { const y = event.touches[0]?.clientY, previous = touchY.current; touchY.current = y; if (y === undefined || previous === undefined) return; if (y > previous) loadAtEdge('before'); else if (y < previous) loadAtEdge('after') },
       onKeyDown: event => { if (event.defaultPrevented) return; if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) loadAtEdge('before'); else if (['ArrowDown', 'PageDown', 'End'].includes(event.key)) loadAtEdge('after') } }}>
       {reading.error && <Banner>{reading.error}<Button variant="link" size="sm" onClick={() => void reading.check()}>核对阅读状态</Button></Banner>}
-      {!detail.messagePage.items.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
+      {!detail.messagePage.items.length && !executionRuns.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
       {messageRows.map(({ item, message }, index) => {
         if (!message) return <article key={item.messageId} id={`message-${item.messageId}`} data-reading-message-id={item.messageId} className={focusMessage?.id === item.messageId ? 'message-target' : undefined} tabIndex={-1}>
           <Banner>{item.reason ?? '这条内容已被清理或不可用。'}</Banner>
           {(detail.materials ?? []).filter(material => material.messageId === item.messageId && ['ready', 'unavailable'].includes(material.status)).map(material => <Button key={material.id} variant="link" size="sm" aria-label={`核对材料 ${materialDisplayName(material.name)}`} onClick={() => onPreviewMaterial(material)}>核对材料：{materialDisplayName(material.name)}</Button>)}
         </article>
+        // Message events can arrive before the run snapshot; do not flash the old empty typing bubble.
+        if (message.status === 'streaming' && message.runId) {
+          if (streamingRunIds.has(message.runId)) return null
+          if ((latestPage.current || !pageEdges.after) && message.senderType === 'agent' && !message.content
+            && !message.materialIds?.length && !files.get(message.id)?.length && !message.channelPublication?.artifacts.length
+            && !detail.runs.some(run => run.id === message.runId)) return null
+        }
         const agent = snapshot.agents.find(value => value.id === message.senderId)
         const quoted = detail.messages.find(value => value.id === message.replyToMessageId)
         const previous = messageRows[index - 1]?.message
@@ -279,6 +291,15 @@ export function ChatView({ view = 'chat', onViewChange, alternateView, api, page
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
+      {executionRuns.map(run => {
+        const agent = members.find(member => member.id === run.agentId)
+        return <article key={run.id} className="message-row agent">
+          <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
+          <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
+            <ChatExecutionCard api={api} run={run} active={pageActive && view === 'chat'} onOpen={() => onTrace(detail.messages.find(message => message.id === run.triggerMessageId))} />
+          </div>
+        </article>
+      })}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main"><div className="message-meta">{group && <strong>{approval.agentName}</strong>}</div><ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>

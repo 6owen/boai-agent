@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [OUTPUT]: 高原生用量/提问/发布合同夹具；原回答消费原件，无真实模型调用。
@@ -47,6 +48,9 @@ createInterface({input:process.stdin}).on('line',async line=>{
  ev('item/started',{item:{id:'comment',type:'agentMessage',phase:'commentary',text:''}})
  ev('item/agentMessage/delta',{itemId:'comment',delta:'正在处理原生请求。'})
  ev('item/completed',{item:{id:'comment',type:'agentMessage',phase:'commentary',text:'正在处理原生请求。'}})
+ ev('item/reasoning/summaryTextDelta',{itemId:'summary',summaryIndex:0,delta:'先检查'})
+ ev('item/reasoning/summaryTextDelta',{itemId:'summary',summaryIndex:0,delta:'输入'})
+ ev('item/completed',{item:{id:'summary',type:'reasoning',summary:['先检查输入']}})
  ev('item/reasoning/textDelta',{itemId:'private',delta:'private-reasoning-must-not-persist'})
  if(text.includes('NATIVE_APPROVAL')){
   const answer=await ask('item/commandExecution/requestApproval',{threadId,turnId,itemId:'shell',command:'write permission-marker'})

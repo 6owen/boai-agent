@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 选区结果恢复和交付切换共用精确原件身份比较，防止跨文件/hash/材料代际串入结果。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道文件固定来源不变，执行会话独立；结果按真实执行会话/请求读取。
  * [OUTPUT]: 精确固定来源关联交付入口；本次请求真实执行完成后才允许自动查看单一修订产物。
@@ -68,7 +69,7 @@ export function latestFileEditArtifact(results: ReturnType<typeof fileEditResult
   }
 }
 
-function sameFileEditSource(first: FileEditSource, second: FileEditSource) {
+export function sameFileEditSource(first: FileEditSource, second: FileEditSource) {
   return first.kind === second.kind && first.id === second.id && first.conversationId === second.conversationId && first.contentHash === second.contentHash && (first.kind === 'artifact' && second.kind === 'artifact' ? first.logicalArtifactId === second.logicalArtifactId && first.contentVersion === second.contentVersion : first.kind === 'material' && second.kind === 'material' && first.revision === second.revision && first.parseVersion === second.parseVersion)
 }
 

@@ -1,10 +1,12 @@
 /*
  * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-xlsx-renderer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
+ * [OUTPUT]: 实际挂载的解析错误状态回报宿主，文件超限仍只展示局部说明。
  * [POS]: common/lody/session-file-xlsx-renderer.tsx；Apache-2.0，保留上游注释。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { classProps } from './class-props';
+import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from './translation';
 import { ZoomIn, ZoomOut } from './icons';
 import { setWasmSource, XlsxViewer, type XlsxViewerController } from '@extend-ai/react-xlsx';
@@ -71,14 +73,21 @@ function XlsxToolbar({ controller }: { readonly controller: XlsxViewerController
   );
 }
 
+function XlsxPreviewFailure({ onPreviewError, children }: { onPreviewError?: () => void; children: ReactNode }) {
+  useEffect(() => { onPreviewError?.(); }, [onPreviewError]);
+  return children;
+}
+
 export function SessionFileXlsxRenderer({
   buffer,
   path,
   fileActions,
+  onPreviewError,
 }: {
   readonly buffer: ArrayBuffer;
   readonly path: string;
   readonly fileActions?: SessionFileErrorActions;
+  readonly onPreviewError?: () => void;
 }) {
   const { t } = useTranslation();
   const isDark = useResolvedTheme() === 'dark';
@@ -116,7 +125,7 @@ export function SessionFileXlsxRenderer({
               {t('sessions.fileViewer.office.loading', 'Loading document…')}
             </div>
           }
-          errorState={unavailable}
+          errorState={<XlsxPreviewFailure onPreviewError={onPreviewError}>{unavailable}</XlsxPreviewFailure>}
           fileTooLargeState={unavailable}
         />
       </div>

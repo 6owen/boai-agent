@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 已受理wait动作的隔离网页运行真实while(true)，实际工具栏X与WebContents销毁/未知回执及重开零重放回归。
+ * [OUTPUT]: 卡死关闭按原wait动作lease精确核对执行Run与Work取消；已完成的群判断Run保持completed，不误当作执行取消失败。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 隐藏输入/按键/两类选择实际POST，7次截图切页关闭与5次空闲资源检查。
  * [OUTPUT]: 群聊UI固定网页引用与真实隐藏页面新帧PNG像素核验；引用零模型副作用。
@@ -385,4 +387,53 @@ When('浏览器反复截图切页关闭后保持空闲',async({runtime,browserMi
 Then('浏览器短期资源和实际动作退出符合门槛',async({runtime,browserMigrationState:state})=>{
   verifyResources(state.resources!);expect(Math.max(...state.timings!)).toBeLessThan(3000)
   expect(await nativeBrowserViews(runtime)).toEqual([]);expect((await browserRecords(state.fixture!.dataPath)).actions.every(a=>a.status==='completed')).toBe(true)
+})
+
+When('网页脚本卡住正在执行的浏览器动作后用户点击工具栏X',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!
+  await f.send(f.first,'hung-page',{kind:'task',commands:[`navigate ${f.site.origin}/landing`,'wait text BRM_NEVER_READY 30000']})
+  const command='"wait" "text" "BRM_NEVER_READY" "30000"'
+  await expect.poll(async()=>(await browserRecords(f.dataPath)).actions.some(action=>action.command===command&&action.status==='started')).toBe(true)
+  const browser=(await browserWindows(runtime))[0]
+  const accepted=(await browserRecords(f.dataPath)).actions.find(action=>action.command===command&&action.status==='started')!
+  const owner=accepted.lease as {runId:string;workId:string}
+  state.generation=browser.instanceId
+  const contents=await runtime.app.evaluate(({BrowserWindow},origin)=>{
+    const window=BrowserWindow.getAllWindows().find(window=>window.getBrowserViews().some(view=>view.webContents.getURL().startsWith(origin)))
+    if(!window)throw new Error('本场景真实网页窗口不存在')
+    const page=window.getBrowserViews().find(view=>view.webContents.getURL().startsWith(origin))!.webContents
+    // Run in the isolated real page renderer. The main process and trusted toolbar remain responsive.
+    void page.executeJavaScript('document.title="BRM_LOOP_ENTERED"; while (true) {}').catch(()=>{})
+    return {pageId:page.id,allIds:[window.webContents.id,...window.getBrowserViews().map(view=>view.webContents.id)]}
+  },f.site.origin)
+  try {
+    await expect.poll(()=>runtime.app.evaluate(({webContents},id)=>webContents.fromId(id)?.getTitle(),contents.pageId)).toBe('BRM_LOOP_ENTERED')
+    expect((await browserRecords(f.dataPath)).actions.find(action=>action.command===command)?.status).toBe('started')
+    await browserToolbarAction(runtime,browser.instanceId,'close')
+    await expect.poll(()=>runtime.app.evaluate(({webContents},ids)=>ids.filter(id=>!!webContents.fromId(id)),contents.allIds),{timeout:8000}).toEqual([])
+    await expect.poll(async()=>(await browserWindows(runtime))[0]?.control).toBe('closed')
+    const detail=await settled(runtime,f.first,1)
+    expect(detail.runs.find(run=>run.id===owner.runId)).toMatchObject({phase:'execution',status:'cancelled',error:'用户关闭浏览器'})
+    expect(detail.workItems?.find(work=>work.id===owner.workId)).toMatchObject({status:'cancelled'})
+    const actions=(await browserRecords(f.dataPath)).actions
+    expect(actions.filter(action=>action.command===command)).toHaveLength(1)
+    expect(actions.find(action=>action.command===command)?.status).toBe('unknown')
+    state.actions=actions.length;state.calls=f.endpoint.requests.length
+  } finally {
+    // Failed assertions must not leave a busy renderer consuming CPU during later scenarios.
+    await runtime.app.evaluate(({webContents},id)=>{const page=webContents.fromId(id);if(page&&!page.isDestroyed())page.close({waitForBeforeUnload:false})},contents.pageId)
+  }
+})
+Then('卡住页面实际退出且重开浏览器不会重放原任务',async({runtime,browserMigrationState:state})=>{
+  const f=state.fixture!
+  expect(await nativeBrowserViews(runtime)).toEqual([])
+  await openBuiltInBrowser(runtime)
+  const browser=(await browserWindows(runtime))[0]
+  expect(browser.instanceId).not.toBe(state.generation);expect(browser.url).toBe('about:blank')
+  await browserToolbarAction(runtime,browser.instanceId,'navigate',`${f.site.origin}/reopened`)
+  await expect.poll(async()=>(await browserWindows(runtime))[0]?.url).toBe(`${f.site.origin}/reopened`)
+  expect((await browserRecords(f.dataPath)).actions).toHaveLength(state.actions!)
+  expect(f.endpoint.requests).toHaveLength(state.calls!);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
+  await browserToolbarAction(runtime,browser.instanceId,'close')
+  await expect.poll(()=>nativeBrowserViews(runtime)).toEqual([])
 })

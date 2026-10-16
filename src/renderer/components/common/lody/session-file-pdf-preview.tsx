@@ -1,6 +1,8 @@
 /*
  * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-pdf-preview.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
+ * [OUTPUT]: 当前加载失败可回报宿主；取消和已卸载请求不报告故障。
+ * [OUTPUT]: 换源/卸载终止viewer级observer/滚动/文档监听器及本地化观察，再销毁原PDF任务。
  * [POS]: common/lody/session-file-pdf-preview.tsx；Apache-2.0，保留上游注释。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -84,6 +86,7 @@ interface SessionFilePdfPreviewProps {
   readonly bytes?: Uint8Array;
   readonly url?: string;
   readonly fileActions?: SessionFileErrorActions;
+  readonly onPreviewError?: () => void;
 }
 
 interface PageChangingEvent {
@@ -103,7 +106,7 @@ interface FindMatchesCountEvent {
   readonly matchesCount: { readonly current: number; readonly total: number };
 }
 
-export function SessionFilePdfPreview({ bytes, url, fileActions }: SessionFilePdfPreviewProps) {
+export function SessionFilePdfPreview({ bytes, url, fileActions, onPreviewError }: SessionFilePdfPreviewProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerElementRef = useRef<HTMLDivElement>(null);
@@ -140,7 +143,8 @@ export function SessionFilePdfPreview({ bytes, url, fileActions }: SessionFilePd
       externalLinkRel: 'noopener noreferrer nofollow',
     });
     const findController = new PDFFindController({ eventBus, linkService });
-    const pdfViewer = new PDFViewer({
+    // pdfjs 6.3 supports abortSignal and setDocument(null) at runtime; its .d.ts omits both.
+    const viewerOptions = {
       container,
       viewer: viewerElement,
       eventBus,
@@ -148,7 +152,11 @@ export function SessionFilePdfPreview({ bytes, url, fileActions }: SessionFilePd
       findController,
       maxCanvasPixels: MAX_CANVAS_PIXELS,
       textLayerMode: 1,
-    });
+      abortSignal: abortController.signal,
+    };
+    const pdfViewer = new PDFViewer(viewerOptions) as PDFViewer & {
+      setDocument(document: PDFDocumentProxy | null): void;
+    };
     linkService.setViewer(pdfViewer);
     viewerRef.current = pdfViewer;
     eventBusRef.current = eventBus;
@@ -228,9 +236,10 @@ export function SessionFilePdfPreview({ bytes, url, fileActions }: SessionFilePd
         setPdfDocument(loadedDocument);
         setLoading(false);
       } catch {
-        if (!disposed) {
+        if (!disposed && !abortController.signal.aborted) {
           setLoading(false);
           setLoadError(true);
+          onPreviewError?.();
         }
       }
     })();
@@ -245,13 +254,17 @@ export function SessionFilePdfPreview({ bytes, url, fileActions }: SessionFilePd
       eventBus.off('pagesinit', handlePagesInit);
       eventBus.off('updatefindmatchescount', handleFindMatchesCount);
       eventBus.off('updatefindcontrolstate', handleFindMatchesCount);
-      pdfViewer.cleanup();
+      // cleanup() only resets unfinished pages. Detach the document to abort
+      // pdfjs's document-level listeners and release its retained page views.
+      pdfViewer.setDocument(null);
+      linkService.setDocument(null);
+      void pdfViewer.l10n?.destroy().catch(() => {});
       viewerElement.replaceChildren();
       viewerRef.current = null;
       eventBusRef.current = null;
       if (loadingTask) void loadingTask.destroy().catch(() => {});
     };
-  }, [bytes, hasSource, url]);
+  }, [bytes, hasSource, url, onPreviewError]);
 
   useLayoutEffect(() => {
     const viewer = viewerRef.current;

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 最后视图关闭且提交结束后释放全局store；持久原请求重开只恢复/核对，不重发。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 按去重的真实执行会话有界读取内部修改结果；当前提交完成后自动预览一次，历史请求不抢阅读位置，清理均失效。
  * [INPUT]: 文件身份、显式提交/核对动作和已有员工IPC；活跃文件视图。
@@ -6,7 +7,7 @@
  * [POS]: 文件编辑生命周期，与主聊天草稿和路由解耦。
  * [PROTOCOL]: 修改时同步Header和所属.folder.md。
  */
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { DesktopApi } from '@shared/ipc'
 import type { Artifact, Message } from '@shared/domain'
 import { errorText } from '@/components/common'
@@ -26,6 +27,11 @@ function getStore(key: string): Store {
   stores.set(key, store); return store
 }
 function publish(store: Store, patch: Partial<State>) { store.state = { ...store.state, ...patch }; for (const listener of store.listeners) listener() }
+function releaseStore(key: string, store: Store) {
+  // React can unsubscribe/resubscribe within one commit. Wait until all view
+  // subscriptions settle, and retain an unfinished submission across closing.
+  queueMicrotask(() => { if (!store.listeners.size && !store.flights.size && stores.get(key) === store) stores.delete(key) })
+}
 function persist(key: string, store: Store, request: FileEditRequest) {
   const previous = store.state.requests
   const requests = previous.some(item => item.id === request.id) ? previous.map(item => item.id === request.id ? request : item) : [...previous, request]
@@ -38,7 +44,11 @@ function persist(key: string, store: Store, request: FileEditRequest) {
 export function useFileEdits(api: DesktopApi, key: string, conversationId: string, active: boolean) {
   const store = getStore(key)
   const submittedRequest = useRef<{ key: string; id: string } | undefined>(undefined)
-  const state = useSyncExternalStore(listener => { store.listeners.add(listener); return () => { store.listeners.delete(listener) } }, () => store.state)
+  const subscribe = useCallback((listener: () => void) => {
+    store.listeners.add(listener)
+    return () => { store.listeners.delete(listener); releaseStore(key, store) }
+  }, [key, store])
+  const state = useSyncExternalStore(subscribe, () => store.state)
   const [results, setResults] = useState<ReturnType<typeof fileEditResults>>([]), [messages, setMessages] = useState<Message[]>([]), [readError, setReadError] = useState('')
   useEffect(() => api.subscribe(event => {
     if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && (event.conversationId === conversationId || store.state.requests.some(request => request.executionConversationId === event.conversationId))) {
@@ -116,7 +126,7 @@ export function useFileEdits(api: DesktopApi, key: string, conversationId: strin
         throw failure
       }
     } catch (failure) { if (current()) publish(store, { error: errorText(failure) }); return false }
-    finally { store.flights.delete(request.id); publish(store, {}) }
+    finally { store.flights.delete(request.id); publish(store, {}); releaseStore(key, store) }
   }
   const discard = (request: FileEditRequest) => {
     if (store.flights.has(request.id) || request.status !== 'not_accepted') return

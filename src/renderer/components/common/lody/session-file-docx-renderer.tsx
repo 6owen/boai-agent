@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Lody固定源码 packages/components/src/components/sessions/session-file-docx-renderer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
+ * [OUTPUT]: 真实解析/worker失败回报宿主，已取消或过期解析保持静默。
  * [POS]: common/lody/session-file-docx-renderer.tsx；Apache-2.0，保留上游注释。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -38,10 +39,12 @@ export function SessionFileDocxRenderer({
   buffer,
   path,
   fileActions,
+  onPreviewError,
 }: {
   readonly buffer: ArrayBuffer;
   readonly path: string;
   readonly fileActions?: SessionFileErrorActions;
+  readonly onPreviewError?: () => void;
 }) {
   const { t } = useTranslation();
   const [document, setDocument] = useState<ParsedDocxDocument | null>(null);
@@ -64,14 +67,17 @@ export function SessionFileDocxRenderer({
         else setDocument(parsed);
       },
       () => {
-        if (!disposed) setFailed(true);
+        if (!disposed && !controller.signal.aborted) {
+          setFailed(true);
+          onPreviewError?.();
+        }
       }
     );
     return () => {
       disposed = true;
       controller.abort();
     };
-  }, [buffer, path]);
+  }, [buffer, path, onPreviewError]);
 
   useEffect(() => () => document?.dispose(), [document]);
 

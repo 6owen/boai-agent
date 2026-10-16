@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
  * [OUTPUT]: 新增先错误result再非零退出协议，不代替真实供应商错误。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
@@ -54,7 +55,9 @@ createInterface({input:process.stdin}).on('line',async line=>{
  emit({type:'system',subtype:'session_state_changed',state:'working'})
  const id=randomUUID(),stream=event=>emit({type:'stream_event',event})
  stream({type:'message_start',message:{id,model:'fixture',usage:{input_tokens:text.includes('NATIVE_CONFLICTING_USAGE')?1000:10,cache_creation_input_tokens:0,cache_read_input_tokens:0,output_tokens:0}}})
- stream({type:'content_block_start',index:0,content_block:{type:'thinking',thinking:'private-reasoning-must-not-persist'}})
+ stream({type:'content_block_start',index:0,content_block:{type:'thinking',thinking:'先检查'}})
+ stream({type:'content_block_delta',index:0,delta:{type:'thinking_delta',thinking:'输入'}})
+ stream({type:'content_block_delta',index:0,delta:{type:'signature_delta',signature:'private-reasoning-must-not-persist'}})
  stream({type:'content_block_start',index:1,content_block:{type:'text',text:''}})
  stream({type:'content_block_delta',index:1,delta:{type:'text_delta',text:'正在处理原生请求。'}})
  emit({type:'assistant',message:{id,content:[{type:'text',text:'正在处理原生请求。'}]}})

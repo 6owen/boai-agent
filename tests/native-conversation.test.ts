@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: Claude非零退出保留原result错误；真实stdio媒体仍与持久摘要分开。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [OUTPUT]: Codex动态工具和Claude产品MCP实际stdio保存/重复核对与重启查询计划，不创建文件Work或调用API。
@@ -22,6 +23,22 @@ const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it('exposes narration and reasoning while execution is still running, without publishing a final answer', async () => {
+ const f = await setup(), message = await f.send('NATIVE_WAIT')
+ let page: ExecutionEvidencePage | undefined
+ await expect.poll(async () => {
+  const detail = await f.detail(), run = detail.runs.find(run => run.triggerMessageId === message.id && run.phase === 'execution')
+  if (!run) return false
+  page = await f.service.handle('listExecutionEvidence', { conversationId: f.chat.id, runId: run.id }) as ExecutionEvidencePage
+  return page.items.some(event => event.eventType === 'agent.reasoning.block' && (event.payload as {text?:string}).text === '先检查输入')
+ }, { timeout: 4000, interval: 50 }).toBe(true)
+ const live = await f.detail()
+ expect(live.runs.find(run => run.triggerMessageId === message.id)?.status).toBe('running')
+ expect(live.messages.filter(message => message.senderType === 'agent')).toHaveLength(0)
+ expect(page!.items.some(event => event.eventType === 'agent.text.block' && (event.payload as {text?:string}).text === '正在处理原生请求。')).toBe(true)
+ expect(JSON.stringify(page)).not.toContain('private-reasoning')
+})
 
 it('reads images through the native browser tool without Work, then lazily claims a real write and preserves read receipts',async()=>{
  const page={instanceId:'browser-instance',scopeKey:'application-browser',pageVersion:'1',url:'https://example.test/',title:'Current page',obtainedAt:new Date().toISOString()}
@@ -286,7 +303,7 @@ it('refuses native operations when the user denies permission',async()=>{
  const d=await f.wait(m);expect(d.messages.some(m=>m.content==='已拒绝，未执行')).toBe(true)
  await expect(readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','permission-marker'))).rejects.toThrow()
 })
-it('retains complete streamed output, unknown native extensions and excludes private thinking',async()=>{
+it('retains complete streamed output and unknown extensions, excluding private frames/signatures',async()=>{
  const f=await setup(),d=await f.wait(await f.send('NATIVE_LONG')),run=d.runs[0]
  expect(run.status,run.error).toBe('completed')
  const page=await f.service.handle('listExecutionEvidence',{conversationId:f.chat.id,runId:run.id}) as ExecutionEvidencePage

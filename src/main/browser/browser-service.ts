@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 用户明确关闭/清登录资料/应用退出先封禁原租约并实际销毁页面，解除挂起动作后仍等待真实退出；资料仅退出后清除，普通drain语义不变。
+ * [OUTPUT]: 窗口准备与ready期间关闭后，迟到成功/失败均不能恢复旧状态或重新认领；关闭后明确新开窗保持。
  * [OUTPUT]: 页面实际变化后回传refs失效及snapshot下一步，避免沿用填表前节点。
  * [OUTPUT]: 同源本机只读升级Work保留当前refs；其他租约及文档变化仍使refs失效，沿原实际退出。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
@@ -23,6 +25,7 @@ interface Scope {
   lease?: BrowserLease; state: BrowserWindowState; partition: string; active: boolean; origins: Set<string>
   queue: Promise<void>; inFlight?: Promise<BrowserActionReply>; actionReplies: Map<string, { hash: string; reply?: BrowserActionReply; pending?: Promise<BrowserActionReply> }>
   draining?: Promise<{ drained: true }>
+  closing?: Promise<void>
   pageHash?: string; pageCounter: number; releaseRequested: boolean; performingAgentAction: boolean
 }
 export interface BrowserServiceOptions {
@@ -46,6 +49,7 @@ export class BrowserService {
   private registryReady: Promise<void>
   private registryQueue: Promise<void> = Promise.resolve()
   private scopeTransitions = new Map<string, Promise<unknown>>()
+  private shuttingDown = false
   constructor(private readonly options: BrowserServiceOptions) {
     this.registryReady = this.loadRegistry()
     // Keep the original rejection observable by acquire/shutdown while preventing
@@ -145,9 +149,14 @@ export class BrowserService {
     void next.finally(() => { if (this.scopeTransitions.get(scopeKey) === next) this.scopeTransitions.delete(scopeKey) }).catch(() => {})
     return next
   }
+  private canFinishOpening(scope: Scope): boolean {
+    return this.scopes.get(APPLICATION_BROWSER_SCOPE) === scope && !scope.releaseRequested && !['closing', 'closed'].includes(scope.state.control)
+  }
   manualOpen(_input: BrowserManualOpenRequest): Promise<BrowserWindowState> {
     return this.transition(APPLICATION_BROWSER_SCOPE, async () => {
+      if (this.shuttingDown) throw new Error('浏览器正在退出，不再打开新窗口')
       await this.registryReady
+      if (this.shuttingDown) throw new Error('浏览器正在退出，不再打开新窗口')
       const profile = this.profiles.get(APPLICATION_BROWSER_SCOPE)
       if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
       const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
@@ -160,6 +169,7 @@ export class BrowserService {
       const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
       this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' })
       await this.saveRegistry()
+      if (this.shuttingDown) throw new Error('浏览器正在退出，不再打开新窗口')
       const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
       const scope: Scope = {
         partition, active: false, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageCounter: 0, releaseRequested: false, performingAgentAction: false,
@@ -168,7 +178,11 @@ export class BrowserService {
       this.scopes.set(APPLICATION_BROWSER_SCOPE, scope)
       this.manager.createInstance(instanceId, { show: false, partition })
       this.manager.getInstance(instanceId)?.window.setTitle('内置浏览器')
-      try { await this.manager.ready(instanceId) } catch (error) { scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
+      try { await this.manager.ready(instanceId) } catch (error) {
+        if (this.canFinishOpening(scope)) { scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope) }
+        throw error
+      }
+      if (!this.canFinishOpening(scope)) throw new Error('原浏览器已关闭，迟到就绪不能重新打开窗口')
       scope.state.toolbarReady = true
       this.manager.focus(instanceId)
       this.emit(scope)
@@ -181,6 +195,7 @@ export class BrowserService {
     return this.transition(APPLICATION_BROWSER_SCOPE, () => this.acquireScope(lease))
   }
   private async acquireScope(lease: BrowserLease): Promise<void> {
+    if (this.shuttingDown) throw new Error('浏览器正在退出，不再受理新动作')
     await this.registryReady
     if (!lease.scopeKey || !lease.agentId || !lease.conversationId || !lease.runId || (!lease.workId && !lease.sourceMessageId) || !lease.generation || !Number.isSafeInteger(lease.scopeEpoch) || !Number.isSafeInteger(lease.configVersion) || !isAbsolute(lease.downloadDirectory)) throw new Error('无效的浏览器工具调用身份')
     if (this.retiredRuns.has(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器执行代际已退出')
@@ -188,6 +203,7 @@ export class BrowserService {
     if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
     if (profile?.retiredLeases?.includes(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器租约已清理，不得重放')
     const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+    const alreadyClosed = existing?.state.control === 'closed'
     if (existing && ['draining', 'closing'].includes(existing.state.control)) throw new Error('原浏览器动作尚未实际退出，请等待后重试')
     if (existing?.active) { if (existing.lease && sameLease(existing.lease, lease)) return; throw new Error('内置浏览器正由另一任务使用，请等待实际退出') }
     if (existing?.inFlight) throw new Error('原浏览器动作尚未实际退出，请等待后重试')
@@ -196,6 +212,9 @@ export class BrowserService {
     if ((await lstat(lease.downloadDirectory)).isSymbolicLink() || relative(dataRoot, downloadRoot).startsWith('..') || isAbsolute(relative(dataRoot, downloadRoot))) throw new Error('浏览器下载必须位于本次受管工作目录')
     const partition = `persist:boai-browser-${hash(APPLICATION_BROWSER_SCOPE)}`
     this.profiles.set(APPLICATION_BROWSER_SCOPE, { ...profile, scopeKey: APPLICATION_BROWSER_SCOPE, partition, status: 'ready' }); await this.saveRegistry()
+    if (this.shuttingDown) throw new Error('浏览器正在退出，不再受理新动作')
+    if (existing && !alreadyClosed && ['closing', 'closed'].includes(existing.state.control)) throw new Error('原浏览器已关闭，本次未受理的调用不得重新开窗')
+    if (this.retiredRuns.has(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器执行代际已退出')
     const instanceId = existing && existing.state.control !== 'closed' ? existing.state.instanceId : `browser-${randomUUID()}`
     const scope: Scope = {
       lease: structuredClone(lease), partition, active: true, origins: new Set(), queue: Promise.resolve(), actionReplies: new Map(), pageHash: existing?.pageHash, pageCounter: existing?.pageCounter ?? 0, releaseRequested: false, performingAgentAction: false,
@@ -210,7 +229,11 @@ export class BrowserService {
     const promotion = prior && !prior.workId && !!lease.workId && !!prior.sourceMessageId && prior.sourceMessageId === lease.sourceMessageId &&
       prior.runId === lease.runId && prior.agentId === lease.agentId && prior.conversationId === lease.conversationId && prior.configVersion === lease.configVersion && prior.scopeEpoch === lease.scopeEpoch && existing.state.instanceId === instanceId
     if (instance) { instance.downloadDirectory = downloadRoot; if (!promotion) instance.cdp.invalidateRefs(); instance.window.setTitle('内置浏览器') }
-    try { await this.manager.ready(instanceId) } catch (error) { scope.active = false; scope.state.control = 'idle'; scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
+    try { await this.manager.ready(instanceId) } catch (error) {
+      if (this.canFinishOpening(scope)) { scope.active = false; scope.state.control = 'idle'; scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope) }
+      throw error
+    }
+    if (!this.canFinishOpening(scope)) throw new Error('原浏览器已关闭，迟到就绪不能重新认领')
     scope.state.toolbarReady = true
     this.emit(scope)
   }
@@ -391,7 +414,7 @@ export class BrowserService {
   private async performDrain(scope: Scope): Promise<{ drained: true }> {
     if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return { drained: true }
     scope.active = false
-    if (scope.state.control !== 'closed') scope.state.control = 'draining'
+    if (!['closing', 'closed'].includes(scope.state.control)) scope.state.control = 'draining'
     if (scope.lease) this.retiredRuns.add(`${scope.lease.runId}:${scope.lease.generation}`)
     this.emit(scope)
     if (scope.performingAgentAction) this.manager.stop(scope.state.instanceId)
@@ -400,9 +423,27 @@ export class BrowserService {
     await this.manager.waitForLoads(scope.state.instanceId)
     const instance = this.manager.getInstance(scope.state.instanceId); await instance?.cdp.drain()
     if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return { drained: true }
-    if (scope.state.control !== 'closed') scope.state.control = 'idle'
+    if (!['closing', 'closed'].includes(scope.state.control)) scope.state.control = 'idle'
     this.emit(scope)
     return { drained: true }
+  }
+  private closeScope(scope: Scope): Promise<void> {
+    if (scope.closing) return scope.closing
+    scope.active = false; scope.releaseRequested = true
+    if (scope.state.control !== 'closed') scope.state.control = 'closing'
+    this.emit(scope)
+    // Start actual destruction outside the transition queue: that queue may be
+    // waiting on the very renderer this explicit close is meant to terminate.
+    const draining = this.drainScope(scope)
+    const closing = Promise.all([this.manager.destroyInstance(scope.state.instanceId), draining]).then(() => {
+      scope.state.control = 'closed'; this.emit(scope)
+    }).catch(error => {
+      scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope)
+      scope.closing = undefined
+      throw error
+    })
+    scope.closing = closing
+    return closing
   }
   async userControl(input: { scopeKey: string; action: BrowserControlAction }): Promise<void> {
     const scope = this.scopes.get(input.scopeKey)
@@ -417,19 +458,26 @@ export class BrowserService {
       return
     }
     if (input.action === 'clear') { await this.clearScope({ scopeKey: input.scopeKey }); return }
+    if (input.action === 'close') {
+      const closing = this.closeScope(scope)
+      void closing.catch(() => {})
+      await this.transition(input.scopeKey, () => closing)
+      return
+    }
     const draining = this.drainScope(scope)
     void draining.catch(() => {})
     await this.transition(input.scopeKey, async () => {
       await draining
       if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope) return
-      if (input.action === 'close') {
-        scope.state.control = 'closing'; this.emit(scope)
-        try { await this.manager.destroyInstance(scope.state.instanceId); scope.state.control = 'closed'; this.emit(scope) }
-        catch (error) { scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope); throw error }
-      } else { scope.state.control = 'user-controlled'; this.manager.getInstance(scope.state.instanceId)?.cdp.invalidateRefs(); this.emit(scope) }
+      scope.state.control = 'user-controlled'; this.manager.getInstance(scope.state.instanceId)?.cdp.invalidateRefs(); this.emit(scope)
     })
   }
-  clearScope(input: { scopeKey: string }): Promise<{ cleared: true }> { return this.transition(input.scopeKey, () => this.clearScopeState(input)) }
+  clearScope(input: { scopeKey: string }): Promise<{ cleared: true }> {
+    const scope = this.scopes.get(input.scopeKey)
+    const closing = scope ? this.closeScope(scope) : Promise.resolve()
+    void closing.catch(() => {})
+    return this.transition(input.scopeKey, async () => { await closing; return this.clearScopeState(input) })
+  }
   private async clearScopeState(input: { scopeKey: string }): Promise<{ cleared: true }> {
     await this.registryReady
     const profile = this.profiles.get(input.scopeKey), scope = this.scopes.get(input.scopeKey)
@@ -437,7 +485,7 @@ export class BrowserService {
     profile.status = 'clearing'
     if (scope?.lease) profile.retiredLeases = [...new Set([...(profile.retiredLeases ?? []), `${scope.lease.runId}:${scope.lease.generation}`])]
     await this.saveRegistry()
-    if (scope) { scope.state.clearing = true; this.emit(scope); await this.drainScope(scope); scope.state.control = 'closing'; this.emit(scope); await this.manager.destroyInstance(scope.state.instanceId) }
+    if (scope) { scope.state.clearing = true; this.emit(scope); await this.closeScope(scope) }
     if (this.options.clearPartition) await this.options.clearPartition(profile.partition)
     else {
       const partition = session.fromPartition(profile.partition)
@@ -458,5 +506,17 @@ export class BrowserService {
     return scope?.lease && (scope.active || ['draining', 'user-controlled'].includes(scope.state.control)) ? structuredClone(scope.lease) : null
   }
   async disconnectAll(): Promise<void> { await Promise.all([...this.scopes.values()].map(scope => this.transition(APPLICATION_BROWSER_SCOPE, () => this.drainScope(scope)))) }
-  async shutdown(): Promise<void> { await this.registryReady; await this.disconnectAll(); await this.manager.destroyAll() }
+  async shutdown(): Promise<void> {
+    this.shuttingDown = true
+    try {
+      await this.registryReady
+      await Promise.all([...this.scopes.values()].map(scope => this.closeScope(scope)))
+      await Promise.allSettled([...this.scopeTransitions.values()])
+      await this.manager.destroyAll()
+    } finally {
+      // Another app resource may veto quit after the browser has closed. The
+      // main process owns the app-wide gate; a later explicit open may proceed.
+      this.shuttingDown = false
+    }
+  }
 }

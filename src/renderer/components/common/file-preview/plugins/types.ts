@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 宿主已核源的有限预览DTO与内部React视图。
  * [OUTPUT]: 内置只读预览插件合同；不提供路径、业务API或员工执行权。
+ * [OUTPUT]: 可选异步失败回报只表达查看器失败，不传递文档或异常原文。
  * [POS]: file-preview内部扩展点；不是第三方跨进程SDK或安全沙箱。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
@@ -16,6 +17,7 @@ export interface PreviewRendererProps {
   readonly content: PreviewContent
   readonly line?: number
   readonly markdown?: ReactNode
+  readonly onPreviewError?: () => void
   header(toggle?: ReactNode): ReactNode
 }
 

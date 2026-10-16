@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: Hermes 文件工具回归：长文续读/精准修改/过期拒绝、来源撤权和真实SDK发布。
  * [OUTPUT]: API实际SDK的report_work回执返回原答复证据，最终正文门禁不变。
  * [OUTPUT]: 引用网页任务可消费原Work剩余额度超过12步；逐调用预算先拒绝仍不发送，非引用任务保持原上限。
@@ -425,6 +426,26 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       expect(completed).toBe(false)
     } finally { finish?.(); await execution }
     expect(run.deltas.join('')).toBe('今天是星期一。')
+  })
+
+  it('streams task narration and returned reasoning before the final step is published', async () => {
+    let finish: (() => void) | undefined
+    const server = await endpoint((_body, response) => {
+      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      const chunk = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: 'live-task', object: 'chat.completion.chunk', created: 1, model: 'test-model', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
+      chunk({ role: 'assistant', reasoning_content: '先比较输入' }); chunk({ content: '正在核对' })
+      finish = () => { chunk({ content: '，已完成。' }); chunk({}, 'stop'); response.end('data: [DONE]\n\n') }
+    })
+    const events: import('../src/shared/domain/execution').ExecutionEvent[] = []
+    const run = await context(server.url, { onExecutionEvent: async event => { events.push(event) } })
+    let completed = false
+    const execution = new MastraEngine().run(run.ctx).then(() => { completed = true })
+    try {
+      await vi.waitFor(() => expect(events.some(event => event.eventType === 'agent.text.block' && event.appendText === '正在核对')).toBe(true))
+      expect(events.some(event => event.eventType === 'agent.reasoning.block' && event.appendText === '先比较输入')).toBe(true)
+      expect(completed).toBe(false); expect(run.deltas).toEqual([])
+    } finally { finish?.(); await execution }
+    expect(run.deltas).toEqual(['正在核对，已完成。'])
   })
 
   it('exports actual model and tool spans before returning, without exposing credentials or replaying tools', async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API正文/思考增量实时进入执行流；任务最终发布与限字核验仍沿原路径。
  * [OUTPUT]: 引用当前网页的API任务使用原Work调用上限作为SDK循环上限；每步仍经原宿主额度预留，预算值不增加，其他任务保持12步。
  * [OUTPUT]: 网页工具原生事件不保留输入值，截图持久化仅存媒体摘要；模型内存结果保持完整媒体。
  * [OUTPUT]: 当前本人聊天的计划管理允许有界工具/结果接续，沿原API逐调用预算；不创建独立草稿模型。
@@ -101,7 +102,7 @@ export class MastraEngine implements AgentEngine {
       const maxCharacters = !task && ctx.groupCoordination?.mode === 'ordered' ? ctx.groupCoordination.maxReplyCharacters : undefined
       const usage = new UsageRecorder()
       // An explicit length constraint must pass before any draft becomes public or a predecessor.
-      const outputContext = maxCharacters ? { ...ctx, onDelta: async () => {} } : ctx
+      const outputContext = maxCharacters ? { ...ctx, onDelta: async () => {}, onExecutionEvent: async (event: import('../../../shared/domain/execution').ExecutionEvent) => { if (event.eventType !== 'agent.text.block') await ctx.onExecutionEvent?.(event) } } : ctx
       // UI tasks often need more than twelve individual input/observation steps.
       // The original Work budget remains authoritative in prepareStep; this only
       // removes the earlier SDK stop while that same budget still has capacity.
@@ -161,8 +162,11 @@ export class MastraEngine implements AgentEngine {
           stepText = ''; stepHasTools = false; textBlocks = new Set()
         } else if (chunk.type === 'text-delta') {
           textBlocks.add(chunk.payload.id)
+          await ctx.onExecutionEvent?.({ id: `text:${stepId}:${chunk.payload.id}`, eventType: 'agent.text.block', payload: { text: '' }, appendText: chunk.payload.text })
           if (buffered) stepText += chunk.payload.text
           else { finalText += chunk.payload.text; await ctx.onDelta(chunk.payload.text) }
+        } else if (chunk.type === 'reasoning-delta') {
+          await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
           if (!task && !(ctx.manageAutomation && chunk.payload.toolName === 'manage_automation')) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
@@ -185,7 +189,7 @@ export class MastraEngine implements AgentEngine {
           } else finalText = stepText
         } else if (chunk.type === 'error') throw new Error(errorText(chunk.payload.error), { cause: chunk.payload.error })
         else if (chunk.type === 'abort') throw new Error('Run cancelled')
-        // Reasoning events deliberately never enter public text or activity records.
+        // Returned reasoning is execution evidence only; signatures/redacted frames and final reply remain separate.
       }
       check(ctx.signal)
       if (output.error) throw new Error(errorText(output.error), { cause: output.error })

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 选文及标题入口直接定位同一修改Popover，移除底部编辑区中转。
+ * [OUTPUT]: 正文选区打开修改Popover；材料信息不显示解析/材料版号，内部来源核验保持。
  * [OUTPUT]: 透传选文快捷要求给文件编辑宿主；预览不导航聊天。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: 文本/PDF/Office/图片正文共用全局FilePreview，来源行和业务解析记录仍归材料页面。
@@ -45,11 +45,9 @@ export function MaterialPreviewPanel({ preview, loading, error, line, active = t
   return <section className="flex h-full min-h-0 min-w-0 flex-col gap-3" aria-label={`${textMaterial ? '材料原文' : material.format === 'image' ? '材料图片' : '材料文件'} ${materialDisplayName(material.name)}`} data-material-preview-id={material.id}>
     <FilePreview key={`${material.id}:${material.revision}:${material.contentHash}`} name={materialDisplayName(material.name)} file={file} binary={preview.binaryPreview} image={material.format === 'image' ? { url: imageUrl } : undefined} active={active} line={line} header={header} onEdit={onEdit && material.messageId && material.contentHash ? (annotation, anchor) => onEdit(material, annotation, anchor) : undefined} />
       <details className="max-h-40 shrink-0 overflow-y-auto text-xs text-muted-foreground">
-        <summary className="cursor-pointer">材料来源与解析记录</summary>
+        <summary className="cursor-pointer">材料来源</summary>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
           <dt>来源 ID</dt><dd className="min-w-0 break-all"><code>{material.id}</code></dd>
-          <dt>解析版本</dt><dd>{material.parseVersion}</dd>
-          <dt>材料版本</dt><dd>{material.revision}</dd>
           <dt>内容 hash</dt><dd className="min-w-0 break-all"><code>{material.contentHash ?? '未记录'}</code></dd>
         </dl>
       </details>

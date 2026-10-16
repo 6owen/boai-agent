@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 重复关闭页面释放网络计数与时间戳，迟到回调及无归属WebContents不恢复已退出记录。
  * [OUTPUT]: 首次导航等待Craft空白页初始化；准备失败不导航，防止迟到回退覆盖用户目标页。
  * [INPUT]: 内置浏览器下载策略、真实临时目录与可控 Electron 下载事件。
  * [OUTPUT]: 人工原生保存不复用旧工作目录；受管下载固定策略，取消等待真实退出且不取消人工下载；同ID重开后旧回调不能改状态或移除新窗口。
@@ -31,8 +32,35 @@ function fixture(policy: BrowserManagerOptions['downloadPolicy']) {
     ses.emit('will-download', event, item, wc)
     return { item, event, finish: (state = 'completed', chosenPath?: string) => { if (chosenPath) path = chosenPath; item.emit('done', {}, state) } }
   }
-  return { manager, instance, start }
+  return { manager, instance, start, ses }
 }
+
+describe('内置浏览器网络观察释放', () => {
+  it('反复打开关闭页面后计数归零，已退出页面的迟到事件不能重新登记', () => {
+    const { manager, ses } = fixture(() => null)
+    const internals = manager as unknown as { instances: Map<string, unknown>; inFlightRequestsByWebContentsId: Map<number, number>; lastNetworkActivityByWebContentsId: Map<number, number>; finalizeDestroyedInstance(instance: unknown, source: 'closed'): void }
+    internals.instances.clear()
+    const before = ses.webRequest.onBeforeRequest.mock.calls[0][0] as (details: unknown, callback: (result: unknown) => void) => void
+    const completed = ses.webRequest.onCompleted.mock.calls[0][0] as (details: unknown) => void
+    const failed = ses.webRequest.onErrorOccurred.mock.calls[0][0] as (details: unknown) => void
+    for (let id = 1; id <= 30; id++) {
+      let destroyed = false
+      const contents = { id, session: ses, isDestroyed: () => destroyed }
+      const instance = { id: `window-${id}`, window: { isDestroyed: () => destroyed }, ownedWebContents: [contents, contents], networkLogs: [], cdp: { detach: vi.fn() } }
+      internals.instances.set(instance.id, instance)
+      const details = { webContentsId: id, url: 'https://example.com/file', resourceType: 'mainFrame', statusCode: 200 }
+      before(details, vi.fn()); completed(details)
+      expect(internals.inFlightRequestsByWebContentsId.get(id)).toBe(0)
+      expect(internals.lastNetworkActivityByWebContentsId.has(id)).toBe(true)
+      destroyed = true
+      internals.finalizeDestroyedInstance(instance, 'closed')
+      before(details, vi.fn()); completed(details); failed(details)
+    }
+    expect(internals.instances.size).toBe(0)
+    expect(internals.inFlightRequestsByWebContentsId.size).toBe(0)
+    expect(internals.lastNetworkActivityByWebContentsId.size).toBe(0)
+  })
+})
 describe('内置浏览器下载', () => {
   it('人工下载使用原生保存结果，不继承上次工具目录', () => {
     const { instance, start } = fixture(() => ({ kind: 'native' }))

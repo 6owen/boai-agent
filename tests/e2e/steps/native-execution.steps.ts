@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 聊天执行流沿Beautiful UI像素加载/真实计时与思考轨迹展示，验证折叠重开和原最终替换。
+ * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [INPUT]: 第13组原生纠偏规格，原Electron BDD和隔离pnpm dev。
  * [OUTPUT]: 普通聊天、真实工具执行面板、固定文件修订和重启；夹具与真实CLI明确分口径。
  * [POS]: 原生员工新版桌面验收，沿现有测试入口。
@@ -259,4 +261,28 @@ When('本机核心助手创建独立员工并保留执行配置',async({runtime,
  await runtime.restart();await openChat(runtime,state)
  expect((await request<ConversationDetail>(runtime,'getConversation',{id:state.chat.id})).runs).toHaveLength(1)
  await runtime.reviewData('核心重启核对',await request(runtime,'snapshot',undefined))
+})
+
+When('发送消息并在执行结束前查看流式过程', async ({ runtime, nativeState: state }) => {
+ test.skip(state.real, '本场验证隔离协议流，不发送真实模型请求')
+ await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('NATIVE_WAIT')
+ await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
+ const card = runtime.page.locator('[data-chat-execution-run]')
+ await expect(card).toBeVisible()
+ await expect(card).toContainText('正在处理原生请求。')
+ await expect(card).toContainText('先检查输入')
+ await expect(card.locator('[data-slot="loading-state"]')).toBeVisible()
+ await expect(card).not.toContainText('等待员工输出')
+ const thinking = card.getByRole('button', { name: '思考过程', exact: true })
+ await expect(thinking).toHaveAttribute('aria-expanded', 'true')
+ await thinking.click()
+ await expect(thinking).toHaveAttribute('aria-expanded', 'false')
+ await thinking.click()
+ await expect(card.getByText('先检查输入', { exact: true })).toBeVisible()
+ const detail = await request<ConversationDetail>(runtime, 'getConversation', { id: state.chat.id })
+ expect(detail.runs[0].status).toBe('running')
+ expect(detail.messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
+ await runtime.page.screenshot({ path: test.info().outputPath('live-execution.png') })
+ await expect(runtime.page.getByText('普通回复', { exact: true })).toBeVisible()
+ await expect(card).toHaveCount(0)
 })

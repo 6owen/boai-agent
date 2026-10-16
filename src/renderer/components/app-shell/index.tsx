@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 员工事件刷新在显式分页完成后按已加载窗口补读，不取消或淘汰新页；实时消息合并、阅读锚点及卸载/清理隔离保持。
+ * [OUTPUT]: 实时正文仅在当前聊天读取期间缓冲，结束/替换/清理释放；不累计全应用历史消息。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 内部答复明确外发仅携带本轮实际渠道引用，具体内容草稿独立；发送页返回同一渠道容器。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -64,6 +66,7 @@ import type { AppEvent } from '@shared/ipc'
 import type { Artifact, AutomationOrigin, DigitalAgent, Conversation, Message, Snapshot } from '@shared/domain'
 import { READING_LIMITS, type ConversationReadingState, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '@shared/domain/reading'
 import { mergeMessagePages, mergeReadingState, readingSourceKey, sameSearchTarget, updateLiveMessage } from '@/pages/conversations/reading-state'
+import { LiveMessageBuffer } from '@/pages/conversations/live-message-buffer'
 import { ConversationSearch, type ConversationSearchRequest } from '@/pages/conversations/-components/conversation-search'
 import { MATERIAL_LIMITS, type ConversationMaterial } from '@shared/domain/materials'
 import { isCoreAgent, isCoreConversation } from '@shared/domain/core-agent'
@@ -149,7 +152,7 @@ export function AppShell() {
   const [searchRequest, setSearchRequest] = useState<ConversationSearchRequest>(), [conversationSearchOpen, setConversationSearchOpen] = useState(false), [paging, setPaging] = useState(false), [pageEdges, setPageEdges] = useState({ before: true, after: true })
   useEffect(() => { setConversationSearchOpen(false) }, [route.page])
   const [editingTitle, setEditingTitle] = useState<Conversation | null>(null)
-  const pagingFlight = useRef(0)
+  const pagingFlight = useRef(0), refreshAfterPaging = useRef(false)
   const [sourceChecks, setSourceChecks] = useState<Record<string, number>>({})
   const [skillsSection, setSkillsSection] = useState<SkillsSection>('all')
   const [skillProvider, setSkillProvider] = useState<SkillMarketplaceProvider>(() => { try { const value = localStorage.getItem('boai.skills.provider'); return ['skills-sh','clawhub','skillhub'].includes(value ?? '') ? value as SkillMarketplaceProvider : 'skills-sh' } catch { return 'skills-sh' } })
@@ -223,7 +226,7 @@ export function AppShell() {
   const mounted = useRef(true), selectedRef = useRef<string | null>(route.conversationId), snapshotRequest = useRef(0), detailRequest = useRef(0)
   const coreConversationRequest = useRef<{ requestId: string; content: string } | undefined>(undefined)
   const coreDraft = useRef<ChatDraft>(EMPTY_DRAFT)
-  const eventRevision = useRef(0), messageRevisions = useRef(new Map<string, number>()), incoming = useRef(new Map<string, Message>())
+  const liveMessages = useRef(new LiveMessageBuffer())
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeTab = detailTabs.tabs.find(tab => tab.key === detailTabs.activeKey)
   const panel = detailTabs.shown ? activeTab?.detail ?? activeTab?.target : undefined, selectedId = route.conversationId
@@ -249,14 +252,15 @@ export function AppShell() {
     const nextPanes = { ...panesRef.current }; delete nextPanes[id]; panesRef.current = nextPanes; setConversationPanes(nextPanes)
     history.current = history.current.map(entry => entry.conversationId === id ? { ...entry, conversationId: removed ? null : id, focusMessage: undefined, focusApproval: undefined } : entry)
     if (selectedRef.current !== id) return
-    detailRequest.current++; pagingFlight.current = 0; setPaging(false)
+    detailRequest.current++; pagingFlight.current = 0; refreshAfterPaging.current = false; setPaging(false)
     setDetail(null); setDetailLoading(!removed)
     const next = { ...routeRef.current, conversationId: removed ? null : id, focusMessage: undefined, focusApproval: undefined }
     routeRef.current = next; selectedRef.current = next.conversationId; setRoute(next)
   }, [])
-  const refreshDetail = useCallback(async (id: string) => {
-    if (!api || selectedRef.current !== id || routeRef.current.page !== 'conversations' || panesRef.current[id] && panesRef.current[id] !== 'chat' && detailRef.current?.conversation.id === id) return
-    const token = ++detailRequest.current, started = eventRevision.current, focus = routeRef.current.focusMessage
+  const refreshDetail = useCallback(async (id: string, window?: ConversationView['messagePage']) => {
+    if (!api || !mounted.current || selectedRef.current !== id || routeRef.current.page !== 'conversations' || panesRef.current[id] && panesRef.current[id] !== 'chat' && detailRef.current?.conversation.id === id) return
+    if (pagingFlight.current) { refreshAfterPaging.current = true; return }
+    const token = ++detailRequest.current, capture = liveMessages.current.begin(id), focus = routeRef.current.focusMessage
     const current = () => mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations'
     try {
       let location = viewLocations.current.get(id) ?? { initialized: false }
@@ -267,10 +271,14 @@ export function AppShell() {
         location = { initialized: true, messageId: reading.anchor?.messageId, offset: reading.anchor?.offset }
       }
       viewLocations.current.set(id, location)
-      const result = await api.request('getConversationView', { conversationId: id, limit: READING_LIMITS.maxPage, aroundMessageId: location.messageId })
+      // Refresh the loaded range around its center, not around the visible row:
+      // recentering on the scroll anchor would evict the page the user just loaded.
+      const aroundMessageId = location.messageId && window?.conversationId === id && window.items.some(item => item.messageId === location.messageId)
+        ? window.items[Math.floor((window.items.length - 1) / 2)]?.messageId : location.messageId
+      const result = await api.request('getConversationView', { conversationId: id, limit: READING_LIMITS.maxPage, aroundMessageId })
       if (!current()) return
       let messagePage = result.messagePage
-      for (const message of incoming.current.values()) if ((messageRevisions.current.get(message.id) ?? 0) > started) messagePage = updateLiveMessage(messagePage, message, !location.messageId)
+      for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, !location.messageId)
       const updated: ConversationView = { ...result, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }
       const previous = detailRef.current
       if (previous?.conversation.id === id) updated.reading = mergeReadingState(previous.reading, updated.reading)
@@ -282,6 +290,7 @@ export function AppShell() {
         setMessageTimes(previous => ({ ...previous, [id]: previous[id] && previous[id] > last.createdAt ? previous[id] : last.createdAt }))
       }
     } catch (failure) { if (current()) { setDetail(null); setDetailLoading(false); toast.error(errorText(failure)) } }
+    finally { liveMessages.current.finish(capture) }
   }, [api, materialDrafts.reconcile])
   const questionReplies = useChatQuestionReplies(api, {
     conversationId: selectedId ?? undefined, active: route.page === 'conversations' && !conversationSearchOpen,
@@ -316,7 +325,7 @@ export function AppShell() {
     if (!api) { setLoading(false); return }
     const report = (e: unknown) => { if (mounted.current) { toast.error(errorText(e)); setLoading(false); setDetailLoading(false) } }
     void refreshSnapshot().catch(report)
-    const schedule = () => { if (refreshTimer.current) return; refreshTimer.current = setTimeout(() => { refreshTimer.current = null; void refreshSnapshot().catch(report); if (selectedRef.current && routeRef.current.page === 'conversations' && (panesRef.current[selectedRef.current] ?? 'chat') === 'chat') void refreshDetail(selectedRef.current) }, 100) }
+    const schedule = () => { if (refreshTimer.current) return; refreshTimer.current = setTimeout(() => { refreshTimer.current = null; void refreshSnapshot().catch(report); if (selectedRef.current && routeRef.current.page === 'conversations' && (panesRef.current[selectedRef.current] ?? 'chat') === 'chat') void refreshDetail(selectedRef.current, detailRef.current?.messagePage) }, 100) }
     const openAutomationNotice = () => { void api.request('getPendingAutomationNavigation', undefined).then(target => {
       if (!target || !mounted.current) return
       navigate(() => {
@@ -332,7 +341,7 @@ export function AppShell() {
         const id = event.conversationId
         clearArtifactPending(id)
         materialDrafts.invalidate(id)
-        for (const [key, message] of incoming.current) if (message.conversationId === id) { incoming.current.delete(key); messageRevisions.current.delete(key) }
+        liveMessages.current.clear(id)
         drafts.current.delete(id); persistMessageRequests()
         clearConversationLocation(id, event.type === 'conversation:deleted')
         setPreviews(previous => ({ ...previous, [id]: '' })); setMessageTimes(previous => ({ ...previous, [id]: '' }))
@@ -341,16 +350,17 @@ export function AppShell() {
       if (event.type === 'changed') { schedule(); return }
       if (event.type !== 'message') return
       setMessageTimes(previous => { const id = event.message.conversationId, time = event.message.createdAt; return previous[id] && previous[id] >= time ? previous : { ...previous, [id]: time } })
-      incoming.current.set(event.message.id, event.message); messageRevisions.current.set(event.message.id, ++eventRevision.current)
+      liveMessages.current.add(event.message)
       if (event.message.conversationId === selectedRef.current && routeRef.current.page === 'conversations') setDetail(previous => { if (!previous || previous.conversation.id !== event.message.conversationId) return previous; const messagePage = updateLiveMessage(previous.messagePage, event.message, !viewLocations.current.get(event.message.conversationId)?.messageId); return { ...previous, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) } })
       if (event.message.status !== 'streaming') { setPreviews(previous => ({ ...previous, [event.message.conversationId]: `${event.message.senderName}：${event.message.content.slice(0,90)}` })); schedule() }
     })
     openAutomationNotice()
-    return () => { mounted.current = false; unsubscribe(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
+    return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
   }, [api, refreshSnapshot, refreshDetail, materialDrafts.invalidate, clearArtifactPending, clearConversationLocation])
   useEffect(() => {
     selectedRef.current = selectedId
-    pagingFlight.current = 0; setPaging(false)
+    liveMessages.current.clear()
+    pagingFlight.current = 0; refreshAfterPaging.current = false; setPaging(false)
     if (!selectedId) { setDetail(null); setDetailLoading(false); return }
     if (route.page !== 'conversations' || conversationPane !== 'chat' && detailRef.current?.conversation.id === selectedId) { detailRequest.current++; setDetailLoading(false); return }
     setDetailLoading(true)
@@ -410,19 +420,27 @@ export function AppShell() {
     if (!previous || previous.conversation.id !== id) return
     const cursor = direction === 'before' ? previous.messagePage.beforeCursor : previous.messagePage.afterCursor
     if (!cursor) return
-    const token = ++detailRequest.current, started = eventRevision.current; pagingFlight.current = token; setPaging(true)
+    const token = ++detailRequest.current, capture = liveMessages.current.begin(id); pagingFlight.current = token; setPaging(true)
+    let refreshedWindow = previous.messagePage
     try {
       const next = await api.request('getConversationView', { conversationId: previous.conversation.id, limit: READING_LIMITS.page, [direction]: cursor })
       if (!mounted.current || token !== detailRequest.current || selectedRef.current !== id || routeRef.current.page !== 'conversations') return
       if (!next.messagePage.items.length) { setPageEdges(value => ({ ...value, [direction]: false })); return }
       let messagePage = mergeMessagePages(previous.messagePage, next.messagePage, direction)
-      for (const message of incoming.current.values()) if ((messageRevisions.current.get(message.id) ?? 0) > started) messagePage = updateLiveMessage(messagePage, message, false)
+      for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, false)
       const anchorId = viewLocations.current.get(id)?.messageId
       if (anchorId && !messagePage.items.some(item => item.messageId === anchorId)) return
       const latestReading = detailRef.current?.conversation.id === id ? detailRef.current.reading : previous.reading
+      refreshedWindow = messagePage
       setDetail({ ...next, reading: mergeReadingState(latestReading, next.reading), messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }); setPageEdges({ before: true, after: true })
     } catch (failure) { if (mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations') toast.error(errorText(failure)) }
-    finally { if (token === pagingFlight.current) { pagingFlight.current = 0; setPaging(false) } }
+    finally {
+      liveMessages.current.finish(capture)
+      if (token === pagingFlight.current) {
+        pagingFlight.current = 0; setPaging(false)
+        if (refreshAfterPaging.current) { refreshAfterPaging.current = false; void refreshDetail(id, refreshedWindow) }
+      }
+    }
   }
   const saveConversationTitle = async (id: string, title: string) => {
     if (!api) throw new Error('桌面连接暂不可用')
@@ -448,7 +466,7 @@ export function AppShell() {
     await api.request('clearConversationHistory', { id, hide })
     clearConversationLocation(id, hide)
     materialDrafts.invalidate(id)
-    for (const [key, message] of incoming.current) if (message.conversationId === id) { incoming.current.delete(key); messageRevisions.current.delete(key) }
+    liveMessages.current.clear(id)
     drafts.current.delete(id); persistMessageRequests()
     setPreviews(previous => ({ ...previous, [id]: '' }))
     setMessageTimes(previous => ({ ...previous, [id]: '' }))

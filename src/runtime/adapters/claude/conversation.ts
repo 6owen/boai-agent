@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际返回的thinking块及增量独立进入执行流；签名/redacted字段不持久化，不混入最终答复。
  * [OUTPUT]: CLI先返回真实错误result再非零退出时保留原错误，不被通用进程异常覆盖。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12保留公开初始化目录和原生/API模型身份，容量匹配原生条目且带来源；账号/私有字段排除，回应写入独立记账。
@@ -93,6 +94,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   }
   const block = async (id: string, value: Record<string, any>, parent?: string) => {
     if (value.type === 'text') await emit({ id, parentId: parent, eventType: 'agent.text.block', payload: { itemId: id, text: value.text ?? '' } })
+    else if (value.type === 'thinking') await emit({ id, parentId: parent, eventType: 'agent.reasoning.block', payload: { text: value.thinking ?? '' } })
     else if (value.type === 'tool_use' || value.type === 'server_tool_use') {
       tools.set(value.id, value)
       await emit(nativeActivity(value.id, { ...value, arguments: value.input }, false, parent))
@@ -145,12 +147,16 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           if (event.type === 'message_start') { messageIds.set(stream, String(event.message?.id ?? frame.uuid)); if (!parentId) turnInProgress = true }
           const messageId = messageIds.get(stream) ?? String(frame.uuid)
           const id = `text:${messageId}:${event.index}`
-          if (event.type === 'content_block_start') { blocks.set(id, recordValue(event.content_block)); if (event.content_block?.type === 'text') await block(id, event.content_block, parentId) }
+          if (event.type === 'content_block_start') { blocks.set(id, recordValue(event.content_block)); if (['text', 'thinking'].includes(event.content_block?.type)) await block(id, event.content_block, parentId) }
           if (event.type === 'content_block_delta') {
             const value = blocks.get(id)
             if (event.delta?.type === 'text_delta') {
               if (value) value.text = String(value.text ?? '') + String(event.delta.text)
               await emit({ id, parentId, eventType: 'agent.text.block', payload: { itemId: id, text: '' }, appendText: String(event.delta.text) })
+            }
+            if (value && event.delta?.type === 'thinking_delta') {
+              value.thinking = String(value.thinking ?? '') + String(event.delta.thinking ?? '')
+              await emit({ id, parentId, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: String(event.delta.thinking ?? '') })
             }
             if (value && event.delta?.type === 'input_json_delta') value.json = (value.json ?? '') + event.delta.partial_json
           }
@@ -165,7 +171,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           for (const [index, value] of (message.content ?? []).entries()) {
             // Complete messages can omit thinking blocks, changing array indices.
             const prefix = `text:${message.id ?? frame.uuid}:`
-            const streamed = value.type === 'text' ? [...blocks].find(([id, prior]) => id.startsWith(prefix) && !matched.has(id) && prior.type === 'text' && prior.text === value.text)?.[0] : undefined
+            const streamed = ['text', 'thinking'].includes(value.type) ? [...blocks].find(([id, prior]) => id.startsWith(prefix) && !matched.has(id) && prior.type === value.type && (value.type === 'text' ? prior.text === value.text : prior.thinking === value.thinking))?.[0] : undefined
             const id = streamed ?? `${prefix}${index}`; matched.add(id)
             await block(id, value, frame.parent_tool_use_id ?? undefined)
           }

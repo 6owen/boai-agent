@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文件修改允许纯本机Claude；显式Claude API沿共享协议/凭据/模型校验，缺失profile和混合Codex/API绑定不作为可选员工。
  * [OUTPUT]: 本机Codex可在原聊天被明确选为修订员工，宿主受理时核对连接与原版；旧ACP不开放。
  * [INPUT]: 成果修订/采用/显式待验收 DTO、实际员工/连接、详情页面与逻辑家族身份、持久未决请求和只读回执结果。
  * [OUTPUT]: 明确修订员工可执行状态与核心空配置默认连接；修订回执严格绑定原请求/本人/正文与指定员工；按主页面隔离的稳定未决身份与白名单恢复，重启统一 unknown；聊天可核对旧待处理页的原未决请求，不覆盖同成果的另一请求；待验收冻结明确版本/hash，未知只能核对，确认未提交后才原载荷重试或放弃。
@@ -8,6 +9,8 @@
 import { ARTIFACT_LIMITS, type ArtifactAcceptanceInput, type ArtifactAcceptanceReceipt, type ArtifactAdoptionInput, type ArtifactAdoptionReceipt, type ArtifactRevisionInput } from '@shared/domain/artifacts'
 import type { Connection, DigitalAgent, Message } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
+import { isNativeBackend } from '@shared/domain/backends'
+import { claudeProvider } from '@shared/domain/claude-provider'
 
 export type ArtifactRequest<T> = { input: T; status: 'pending' | 'unknown' | 'not_accepted' }
 export interface ArtifactPending {
@@ -30,9 +33,16 @@ export function updateArtifactPending(previous: ArtifactPendingMap, key: string,
   const next = { ...previous }; if (value?.revision || value?.adoption || value?.acceptance) next[key] = value; else delete next[key]
   return next
 }
-export function artifactRevisionTarget(agent: DigitalAgent | undefined, connections: Connection[]): { connection: Connection; modelId: string } | { backend: 'codex-local' } | undefined {
+export function artifactRevisionTarget(agent: DigitalAgent | undefined, connections: Connection[]): { connection: Connection; modelId: string } | { backend: 'codex-local' | 'claude-local' } | undefined {
   if (!agent?.active || agent.executionBackend?.kind === 'acp-local') return
-  if (agent.executionBackend?.kind === 'codex-local') return agent.executionBackend.profileId ? { backend: 'codex-local' } : undefined
+  if (isNativeBackend(agent.executionBackend)) {
+    if (!agent.executionBackend.profileId.trim()) return
+    if (agent.connectionId) {
+      if (agent.executionBackend.kind !== 'claude-local') return
+      try { claudeProvider(connections.find(value => value.id === agent.connectionId), agent.modelId) } catch { return }
+    }
+    return { backend: agent.executionBackend.kind }
+  }
   const ready = (connection: Connection, modelId: string) => Boolean(modelId.trim() && (connection.provider === 'openai-compatible' ? connection.baseUrl.trim() : connection.hasApiKey))
   const connection = agent.connectionId ? connections.find(value => value.id === agent.connectionId) : isCoreAgent(agent) ? connections.find(value => ready(value, value.defaultModel)) : undefined
   const modelId = connection && (agent.modelId || connection.defaultModel)

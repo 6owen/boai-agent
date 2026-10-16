@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 明确关闭/清登录资料/退出可先终止阻塞页面，随后等待真实destroyed及旧动作结束；销毁失败不清资料，普通drain仍等待，未知不重放。
+ * [OUTPUT]: 准备与ready期间关闭的并发回归覆盖认领及人工开窗；迟到成功/失败不得覆盖closed或阻止下一次明确重开。
  * [OUTPUT]: 同消息/run只读升级Work保留原页面refs，不允许另一run继承。
  * [OUTPUT]: 固定实例/原页面引用、同URL重开失效与只读租约不换页面；密码提示不恢复隐形接管状态。
  * [INPUT]: BrowserService 与私有租约/动作、实际文件、可控制退出的驱动 fixture。
@@ -222,6 +224,22 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   await service.userControl({scopeKey:APPLICATION_BROWSER_SCOPE,action:'close'})
   expect(service.list()[0].control).toBe('closed');expect(fake.mocks.cancelDownloads).toHaveBeenCalledTimes(2)
  })
+ it.each(['close','clear','shutdown'] as const)('显式%s先终止页面以解除卡住动作，未知结果不重新执行',async kind=>{
+  const {service,lease,fake,clearPartition}=await fixture();await service.acquire(lease)
+  const entered=deferred<void>(),destroyed=deferred<void>()
+  fake.mocks.clickElement.mockImplementationOnce(async()=>{entered.resolve();await destroyed.promise;throw new Error('Target closed')})
+  fake.mocks.destroyInstance.mockImplementation(async(id:string)=>{fake.instances.delete(id);fake.pages.delete(id);destroyed.resolve()})
+  fake.mocks.destroyAll.mockImplementation(async()=>{fake.instances.clear();fake.pages.clear();destroyed.resolve()})
+  const request=await envelope(service,lease,'click @e1'),action=service.executeSingle(request)
+  await entered.promise
+  const closing=kind==='shutdown'?service.shutdown():service.userControl({scopeKey:lease.scopeKey,action:kind})
+  try { await expect.poll(()=>fake.mocks.destroyInstance.mock.calls.length+fake.mocks.destroyAll.mock.calls.length,{timeout:500}).toBeGreaterThan(0) }
+  finally { destroyed.resolve();await closing }
+  expect((await action).status).toBe('unknown')
+  if(kind==='clear') { expect(clearPartition).toHaveBeenCalledOnce();expect(service.list()[0]).toMatchObject({control:'closed',clearing:false}) }
+  else expect(service.lookup({lease,actionId:request.actionId})?.status).toBe('unknown')
+  expect(fake.mocks.clickElement).toHaveBeenCalledOnce()
+ })
  it('旧窗口重复关闭排在重开后到达时不能关闭新实例',async()=>{
   const {service,fake}=await fixture();await service.manualOpen({})
   const entered=deferred<void>(),exit=deferred<void>()
@@ -230,6 +248,40 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   const reopening=service.manualOpen({}),late=service.userControl({scopeKey:APPLICATION_BROWSER_SCOPE,action:'close'})
   exit.resolve();await first;await reopening;await late
   expect(fake.mocks.destroyInstance).toHaveBeenCalledTimes(1);expect(fake.instances.size).toBe(1);expect(service.list()[0].control).toBe('user-controlled')
+ })
+ it('认领准备期间明确关闭不能被旧认领重新开窗，关闭后新请求仍可打开',async()=>{
+  const {service,lease,fake}=await fixture();await service.manualOpen({})
+  const entered=deferred<void>(),saved=deferred<void>()
+  vi.spyOn(service as any,'saveRegistry').mockImplementationOnce(async()=>{entered.resolve();await saved.promise})
+  const acquiring=service.acquire(lease);void acquiring.catch(()=>{})
+  await entered.promise
+  const closing=service.userControl({scopeKey:lease.scopeKey,action:'close'})
+  await expect.poll(()=>fake.mocks.destroyInstance.mock.calls.length).toBe(1)
+  saved.resolve()
+  await expect(acquiring).rejects.toThrow('已关闭')
+  await closing
+  expect(fake.instances.size).toBe(0);expect(fake.mocks.createInstance).toHaveBeenCalledTimes(1)
+  await service.acquire({...lease,generation:'explicit-new-generation'})
+  expect(fake.instances.size).toBe(1);expect(service.currentLease()?.generation).toBe('explicit-new-generation')
+ })
+ it.each(['acquire-success','acquire-failure','manual-success','manual-failure'] as const)('关闭后的%s就绪回调不能复活旧状态或阻止明确重开',async kind=>{
+  const {service,lease,fake}=await fixture(),entered=deferred<void>(),ready=deferred<void>()
+  fake.mocks.ready.mockImplementationOnce(async()=>{entered.resolve();await ready.promise;if(kind.endsWith('failure'))throw new Error('page exited before ready')})
+  const opening=kind.startsWith('acquire')?service.acquire(lease):service.manualOpen({})
+  void opening.catch(()=>{})
+  await entered.promise
+  const closing=service.userControl({scopeKey:lease.scopeKey,action:'close'})
+  await expect.poll(()=>service.list()[0]?.control).toBe('closed')
+  ready.resolve()
+  await expect(opening).rejects.toThrow()
+  await closing
+  expect(service.list()[0]).toMatchObject({control:'closed',toolbarReady:false})
+  expect(service.list()[0].error).toBeUndefined()
+  expect(fake.mocks.focus).not.toHaveBeenCalled()
+  expect(fake.instances.size).toBe(0)
+  await service.manualOpen({})
+  expect(service.list()[0]).toMatchObject({control:'user-controlled',toolbarReady:true})
+  expect(fake.instances.size).toBe(1)
  })
  it('历史下载记录已清理不能使新调用失败或进入新运行下载证据',async()=>{
   const {service,lease,fake,root}=await fixture();await service.acquire(lease)
@@ -323,10 +375,11 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   const source=await service.inspect(lease);expect(source).toMatchObject({scopeKey:lease.scopeKey,generation:lease.generation,pageVersion:reply.source!.pageVersion})
   const next=await service.executeSingle(await envelope(service,lease,'snapshot'));expect(next.status).toBe('completed');expect(next.source).toMatchObject({scopeKey:lease.scopeKey,generation:lease.generation,pageVersion:source!.pageVersion})
  })
- it('真实关闭失败保留窗口/closing，不能乐观移除徽标',async()=>{
-  const {service,lease,fake}=await fixture();await service.acquire(lease);fake.mocks.destroyInstance.mockRejectedValue(new Error('not actually destroyed'))
-  await expect(service.userControl({scopeKey:lease.scopeKey,action:'close'})).rejects.toThrow('not actually destroyed')
+ it.each(['close','clear'] as const)('真实%s失败保留窗口/closing，不能乐观移除徽标或清登录资料',async action=>{
+  const {service,lease,fake,clearPartition}=await fixture();await service.acquire(lease);fake.mocks.destroyInstance.mockRejectedValue(new Error('not actually destroyed'))
+  await expect(service.userControl({scopeKey:lease.scopeKey,action})).rejects.toThrow('not actually destroyed')
   expect(service.list()[0]?.control).toBe('closing');expect(service.list()[0]?.error).toBe('not actually destroyed');expect(fake.instances.size).toBe(1)
+  expect(clearPartition).not.toHaveBeenCalled()
  })
  it('持久登记让重启后清除原partition；原租约跨重启拒绝，新run可重新使用空profile',async()=>{
   const {service,lease,options,clearPartition}=await fixture();await service.acquire(lease)
@@ -384,6 +437,20 @@ describe('BrowserCDP 实际正文与秘密隔离',()=>{
  })
 })
 describe('BrowserPaneManager 实际页面退出',()=>{
+ it('显式销毁先关闭页面以解除等待页面退出才结束的CDP命令',async()=>{
+  const commandExit=deferred<void>();let windowDestroyed=false
+  const contents=Array.from({length:3},(_,index)=>{
+   let destroyed=false,done=()=>{}
+   return {id:index+1,isDestroyed:()=>destroyed,once:(_event:string,callback:()=>void)=>{done=callback},stop:vi.fn(),close:vi.fn(()=>{destroyed=true;if(index===1)commandExit.resolve();done()})}
+  })
+  const manager=new BrowserPaneManager({rendererDirectory:'/managed/renderer',preloadPath:'/managed/toolbar.cjs',allowNavigation:()=>false,allowNetwork:()=>false,downloadPolicy:()=>null,allowUserNavigation:()=>false,toolbarState:()=>({}),userControl:async()=>{}})
+  const instance={id:'blocked',window:{isDestroyed:()=>windowDestroyed,destroy:()=>{windowDestroyed=true}},pageView:{webContents:contents[1]},ownedWebContents:contents,activeDownloads:new Map(),loadDone:null,cdp:{drain:()=>commandExit.promise,detach:vi.fn()},pendingShowToken:0,inPageThemeTimer:null}
+  ;(manager as any).instances.set(instance.id,instance)
+  const closing=manager.destroyInstance(instance.id)
+  try { await expect.poll(()=>contents[1].close.mock.calls.length,{timeout:500}).toBe(1) }
+  finally { commandExit.resolve();await closing }
+  expect(manager.getInstance(instance.id)).toBeUndefined()
+ })
  it('window销毁使View getter消失时仍等冻结WC实际退出后移除Map；shutdown同样等待',async()=>{
   const entered=deferred<void>(),finished=deferred<void>();let windowDestroyed=false
   const actualContents=Array.from({length:3},(_,index)=>{
