@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 旧ACP显式任务提交前经底部准确配置往返，保留正文与发送语义；零业务调用核对后继续原交付、迁移和重启断言。
  * [OUTPUT]: 旧式ACP经原界面显式任务/人工文件发布、重启再切同员工至Codex；旧无Work/未知用量保持，新请求才生成独立Work。
  * [OUTPUT]: 显式旧ACP迁移保存受理前/后丢答复，经原底部核读/载入和两次重启零重放，再执行原Codex新文件完整断言。
@@ -245,7 +246,7 @@ async function verifyLegacyMigrationUnknownSave(runtime: Desktop, input: { nativ
       await runtime.reviewData(`旧ACP迁移${mode}未知保存只读核对`, { previous, committed, draft, calls, before, after: await records(), legacyRuntime: 'offline ACP protocol fixture' })
       await runtime.reviewNativeCheckpoint(`旧ACP迁移${mode}未知保存保持原草稿`)
       await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
       await expect(editor().getByRole('combobox', { name: '执行后端', exact: true })).toContainText(mode === 'after' ? '本机 Codex' : '外部 ACP')
       await expect(editor().getByRole('button', { name: '保存修改', exact: true })).toBeEnabled()
       await editor().getByRole('button', { name: '取消', exact: true }).click()

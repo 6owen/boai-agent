@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整体执行权限按员工版本保存并派生原生审批/访问范围，API与本机宿主操作共用；清理旧永久命令授权。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: 网关原始推理档位持久化前核对来源匹配目录，直连保留原固定档位。
  * [OUTPUT]: 关闭命令、停用或切离API后端时，同事务清理独立永久命令授权。
@@ -26,6 +27,7 @@ import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/avatars'
 import { assertThinkingPreference, thinkingLevelPattern, thinkingLevels } from '../../../shared/domain/model-preferences'
 import { CORE_AGENT_ID, CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '../../../shared/domain/core-agent'
+import { executionPermissionNativeOptions } from '../../../shared/domain/execution'
 
 export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('runtime-plugin'),profileId:z.string().min(1).max(200),pluginId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/),providerId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/)}).strict(),z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.enum(['acp-local','codex-local','claude-local']),profileId:z.string().min(1).max(200)}).strict()])
 const id = z.string().trim().min(1).max(200)
@@ -35,7 +37,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ nativeOptions: z.object({ effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ executionPermission: z.enum(['read-only','ask','full-access']).optional(), nativeOptions: z.object({ effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -132,6 +134,8 @@ export class EmployeeService {
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
     if (isCoreAgent(previous) && (!input.active || input.allowCommands || !['mastra-model','codex-local','claude-local','runtime-plugin'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用宿主命令或旧 ACP 任务后端')
+    const executionPermission = ['mastra-model', 'codex-local', 'claude-local'].includes(executionBackend.kind) ? input.executionPermission ?? (isCoreAgent(previous) && executionBackend.kind === 'mastra-model' ? undefined : previous?.executionPermission) : undefined
+    if (isCoreAgent(previous) && executionBackend.kind === 'mastra-model' && executionPermission) fail('系统核心 Agent 沿用现有产品权限，不配置宿主执行权限')
     const allowBrowser = executionBackend.kind === 'mastra-model'
     if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定；请先取消这些绑定。')
     if(executionBackend.kind==='acp-local'&&input.allowCommands)fail('外部任务后端暂不支持 BoAI 的命令策略；请先关闭命令。')
@@ -146,7 +150,7 @@ export class EmployeeService {
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
     const { expectedConfigVersion: _, systemRole: _systemRole, ...definition } = input
-    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands: isCoreAgent(previous) ? false : executionPermission ? executionPermission !== 'read-only' : input.allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (previous && previous.instructions !== input.instructions) { const source = await this.homes.read(previous, 'AGENTS.md'); await this.homes.save(previous, 'AGENTS.md', input.instructions, source.hash) }
     if (!previous) await this.homes.initialize(agent)
     await this.store.write([record('agents', agent)], canRememberCommands(agent) ? [] : [{ collection: commandPermissionCollection, id: agent.id }]); this.install(agent.id, agent); await this.homes.commit(agent)

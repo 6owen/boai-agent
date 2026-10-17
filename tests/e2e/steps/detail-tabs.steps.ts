@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 详情回归沿现行员工职责字段和有效隔离模型配置，实际缩窗/缩放保证可滚动；选中标签悬停保持独立选中层，多草稿/滚动/定向保存关闭意图保持。
  * [OUTPUT]: 窗口滑动层覆盖关闭按钮所在整项，切换/键盘排序/关闭/缩放后与真实选中项对齐。
  * [INPUT]: 多标签中文场景、Electron fixture 和真实本地数据。
@@ -99,7 +100,7 @@ Then('员工草稿和滚动位置保留且关闭仅影响对应标签', async ({
   await expect(tabs.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
 })
 
@@ -115,9 +116,10 @@ Then('多份员工草稿只保存指定标签的内容', async ({ runtime }) => 
   await expect(page.getByRole('textbox', { name: '员工职责', exact: true })).toHaveValue('研究员未保存草稿')
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
-  // Closing a dirty background tab activates and submits only that tab's form.
+  // Closing a dirty background tab activates it; cancel and save its own form.
   await tabs.getByRole('button', { name: '关闭 研究员', exact: true }).click()
-  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await page.getByRole('button', { name: '保存修改', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveText(['任务与产物'])
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')?.role).toBe('研究员未保存草稿')
 })
@@ -154,7 +156,7 @@ Then('跨会话和窄窗口中的详情标签仍保持独立', async ({ runtime 
   await expect(tabs.locator('[data-slot=tabs-indicator]')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await page.screenshot({ path: 'test-results/detail-tabs-dark.png', animations: 'disabled' })
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveCount(3)
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'writer')?.role).toBe('只保存写手的新职责')
   const active = tabs.getByRole('tab', { selected: true })

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 分栏配置右侧ScrollArea视口复用会话页scroll-fade的顶部渐隐，滚动条保持贴边。
+ * [OUTPUT]: 首个分类统一为基础配置；左侧菜单编辑模式仅该页显示身份编辑，配置保持挂载和原草稿守卫。
+ * [OUTPUT]: 编辑弹窗可选左侧竖排分类/右侧独立滚动内容，保留同一Tabs/草稿/保存与隐藏停读合同；其他内嵌详情沿原顶部Tabs。
  * [OUTPUT]: 通讯录Dialog复用完整标签/配置，配置保存与头像上传忙时通知弹窗关闭锁。
  * [OUTPUT]: 员工详情加入同一归属自动化配置与执行历史，隐藏停读并沿原草稿守卫。
  * [OUTPUT]: 已保存员工详情增加渠道绑定/授权/连接与独立发送回执，复用原未保存守卫，隐藏停读。
@@ -19,17 +22,18 @@ import { MemoryPane } from './memory-pane'
 import { EmployeeExecutionPane } from './execution-pane'
 import { EmployeeChannelPane } from './channel-pane'
 import { SelectField } from '@/components/ui/select-field'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SkillContent } from '@/pages/library/skill-content'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, FileText, FolderOpen, Plus, RefreshCw } from '@/components/icons/index'
+import { ArrowLeft, AtSign, BookOpen, CalendarClock, Clock, FileText, FolderOpen, Plus, RefreshCw, Settings } from '@/components/icons/index'
 import type { AgentFileContent, AgentHome, Conversation, DigitalAgent, MemoryQuery, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
 import { Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 
 type EmployeeTab = 'profile' | 'files' | 'workspace' | 'memory' | 'execution' | 'channels' | 'automations'
-export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts', onConversation, actionsTarget, onBusyChange }: { api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string; onConversation?(id: string, messageId?: string): void; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }) {
+export function EmployeeDetail({ api, agent, snapshot, conversationId, configurationRequest, refresh, onClose, active = true, scope = 'contacts', onConversation, actionsTarget, onBusyChange, navigation = 'top' }: { navigation?: 'top' | 'sidebar'; api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; conversationId?: string; configurationRequest?: string; refresh: () => Promise<void>; onClose: () => void; active?: boolean; scope?: string; onConversation?(id: string, messageId?: string): void; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }) {
   const [tab, setTab] = useState<EmployeeTab>('profile')
   const [identityTarget, setIdentityTarget] = useState<HTMLDivElement | null>(null)
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null)
@@ -66,18 +70,23 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     }, { resetOnDiscard: false })
   }
   useEffect(() => { if (configurationRequest) selectTab('profile') }, [configurationRequest])
-  return <Tabs className="employee-detail gap-0" value={tab} onValueChange={value => selectTab(value as EmployeeTab)}><div ref={setIdentityTarget} className="employee-identity" />
-    <div className="employee-tabs-bar"><TabsList aria-label="员工详情分类">
-      <TabsTrigger value="profile">配置</TabsTrigger>
-      <TabsTrigger value="files">系统文件</TabsTrigger>
-      <TabsTrigger value="workspace">工作区</TabsTrigger>
-      <TabsTrigger value="memory">记忆</TabsTrigger>
-      <TabsTrigger value="execution">执行详情</TabsTrigger>
-      <TabsTrigger value="channels">渠道</TabsTrigger>
-      {onConversation && <TabsTrigger value="automations">自动化</TabsTrigger>}
-    </TabsList></div>
+  const sidebar = navigation === 'sidebar'
+  const categories = [
+    { value: 'profile', label: '基础配置', icon: Settings },
+    { value: 'files', label: '系统文件', icon: FileText },
+    { value: 'workspace', label: '工作区', icon: FolderOpen },
+    { value: 'memory', label: '记忆', icon: BookOpen },
+    { value: 'execution', label: '执行详情', icon: Clock },
+    { value: 'channels', label: '渠道', icon: AtSign },
+    ...(onConversation ? [{ value: 'automations', label: '自动化', icon: CalendarClock }] : []),
+  ]
+  const menu = <TabsList aria-label="员工详情分类" className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined}>
+    {categories.map(item => <TabsTrigger key={item.value} value={item.value} aria-label={item.label} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[12px]' : undefined}>{sidebar && <item.icon size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{item.label}</span></TabsTrigger>)}
+  </TabsList>
+  const identity = <div ref={setIdentityTarget} className="employee-identity" />
+  const panels = <>
     {error && <Banner>{error}</Banner>}
-    <TabsContent value="profile" keepMounted><AgentEditor key={configurationEpoch} api={api} snapshot={snapshot} agent={agent} identityTarget={identityTarget} footerTarget={footerTarget} actionsTarget={actionsTarget} configurationVisible={tab === 'profile'} identityDisabled={tab !== 'profile' && guard.dirty && !configurationDirty} onDirtyChange={configurationChanged} onRevealConfiguration={revealConfiguration} onBusyChange={onBusyChange} active={active} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
+    <TabsContent value="profile" keepMounted>{sidebar && identity}<AgentEditor key={configurationEpoch} api={api} snapshot={snapshot} agent={agent} identityTarget={identityTarget} footerTarget={footerTarget} actionsTarget={actionsTarget} configurationVisible={tab === 'profile'} identityDisabled={tab !== 'profile' && guard.dirty && !configurationDirty} onDirtyChange={configurationChanged} onRevealConfiguration={revealConfiguration} onBusyChange={onBusyChange} active={active} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>
     <TabsContent value="files"><fieldset className="contents" disabled={configurationDirty}>{fileName ? <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => guard.navigate(() => setFileName(null), { resetOnDiscard: false })} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => selectTab('memory')} /> : <div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '记忆由同一员工持有。这里的文件是来源范围投影，统一记录可在记忆页管理。'}</div></>}</div>}</fieldset></TabsContent>
     <TabsContent value="workspace"><fieldset className="contents" disabled={configurationDirty}><WorkspaceView api={api} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => selectTab('profile')} onRefresh={async () => { await refresh(); await loadHome() }} /></fieldset></TabsContent>
     <TabsContent value="memory"><fieldset className="contents" disabled={configurationDirty}><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></fieldset></TabsContent>
@@ -85,6 +94,10 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     <TabsContent value="channels"><fieldset className="contents" disabled={configurationDirty}><EmployeeChannelPane key={agent.id} api={api} agent={agent} active={active && tab === 'channels'} /></fieldset></TabsContent>
     {onConversation && <TabsContent value="automations"><fieldset className="contents" disabled={configurationDirty}><OwnerAutomations key={agent.id} api={api} snapshot={snapshot} owner={{ kind: 'employee', employeeId: agent.id }} active={active && tab === 'automations'} onConversation={onConversation} /></fieldset></TabsContent>}
     {actionsTarget === undefined && <div ref={setFooterTarget} className="employee-identity-actions" />}
+  </>
+  return <Tabs className={`employee-detail gap-0${sidebar ? ' employee-detail-sidebar h-full' : ''}`} orientation={sidebar ? 'vertical' : 'horizontal'} value={tab} onValueChange={value => selectTab(value as EmployeeTab)}>
+    {sidebar ? <><nav className="employee-menu-nav" aria-label="员工设置">{menu}</nav><ScrollArea className="employee-detail-main" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6' }} contentProps={{ className: 'employee-detail-main-content' }}>{panels}</ScrollArea></>
+      : <>{identity}<div className="employee-tabs-bar">{menu}</div>{panels}</>}
   </Tabs>
 }
 

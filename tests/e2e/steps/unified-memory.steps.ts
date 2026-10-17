@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 统一记忆中文场景、真实 Electron/IPC 和独立 SQLite 旧记录。
  * [OUTPUT]: 列表/编辑/固定/忘记/冲突保留/范围/旧升级的实际 UI 断言。
  * [POS]: T2.5 桌面管理验收；模型质量由手动真实评估记录。
@@ -45,7 +46,7 @@ Then('记忆编辑版本冲突保留草稿并可核对', async ({ runtime }) => 
   await page.evaluate(async () => { const query = { agentId: 'researcher', scope: 'employee' as const }; const view = await window.boai.request('getMemory', query); await window.boai.request('saveMemory', { ...query, content: '另一窗口已保存', expectedEpoch: view.epoch }) })
   await pane.getByRole('button', { name: '保存记忆', exact: true }).click()
   await expect(pane.getByRole('alert')).toContainText('记忆已变更'); await expect(pane.getByRole('textbox', { name: '新增记忆', exact: true })).toHaveValue('不能丢失的草稿')
-  await pane.getByRole('button', { name: '取消', exact: true }).click(); await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await pane.getByRole('button', { name: '取消', exact: true }).click(); await page.getByRole('button', { name: '退出', exact: true }).click()
   await pane.getByRole('button', { name: '刷新', exact: true }).click(); await expect(pane.getByText('另一窗口已保存', { exact: true })).toBeVisible()
 })
 Then('来源聊天限制和旧条目升级持久化', async ({ runtime }) => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 主题外部执行与自动化持久化的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 缩放通过产品外观接口覆盖支持上限 150% 和越界 200% 拒绝，保留窄窗全部布局断言；分页最早记录在运行记录区域断言，不命中侧栏同名计划；主题选择使用实际 Base UI 语义操作；适配七项表单/总览筛选/菜单操作与运行明细，保留原业务断言；普通与自动化聊天共同可见，无来源下拉且保留来源标记；330 条新记录后的真实旧等待/筛选/补充解除与最新结果置顶；追加额度确认/取消、累计用量回执与确认消息定位/重启；真实主进程/worker 通知回执、静音、窗口重载与精确消息/无消息记录定位；现有详情标签的多草稿/冲突/窄窗保存、独立聊天/星期多选/纯预览、历史分页/结果消息定位验收；实际补充入口/原始预算及明确轮次关联的重启验收；主题外部执行与自动化持久化、运行结束/交付待核对分别展示、跨轮次来源持久化断言；外观无保存状态提示、高级 Card 的 Slider 键盘预览和持久化。
  * [POS]: tests/e2e/steps/extensions.steps.ts；场景状态仅在本次测试内共享。
@@ -429,7 +430,7 @@ When('在详情标签中保存独立计划并验证草稿和任务聊天', async
   await tabs.getByRole('tab', { name: '新建定时任务', exact: true }).click()
   expect(await page.locator('.detail-content:visible .editor-scroll').evaluate(element => element.scrollTop)).toBe(draftScroll)
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(editor.getByLabel('标题', { exact: true })).toHaveValue('面板日报')
   await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(760, 800))
   const create = page.locator('.detail-content:visible').getByRole('button', { name: '创建', exact: true })
@@ -459,11 +460,12 @@ When('在详情标签中保存独立计划并验证草稿和任务聊天', async
   await expect(page.getByRole('alert')).toContainText('配置已变更')
   await expect(editor.getByLabel('标题', { exact: true })).toHaveValue('A 的未保存草稿')
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await tabs.getByRole('tab', { name: '另一计划', exact: true }).click()
   await expect(editor.getByLabel('标题', { exact: true })).toHaveValue('B 的已保存修改')
   await tabs.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await page.getByRole('button', { name: '保存修改', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveCount(1)
   const saved = await page.evaluate(() => window.boai.request('listAutomations', undefined))
   expect(saved.definitions.find(d => d.id === second.id)?.name).toBe('B 的已保存修改')

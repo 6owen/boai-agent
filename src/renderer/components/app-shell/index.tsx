@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工资源查看复用资源库数据源/受管资源详情与原导航，编辑器先处理草稿并关闭弹窗；主页面原守卫保持。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 通讯录员工/群执行列表在当前全局右侧标签打开固定Run，沿原未保存守卫与聊天定位。
  * [OUTPUT]: 数据源列表删除后按ID关闭当前资源库中对应详情标签，其他标签保持。
@@ -67,6 +68,7 @@ import { DetailTabSession, type DetailTabHandle } from '../detail-panel/tab-sess
 import { ChannelPublishPanel } from '../detail-panel/channel-publish-panel'
 import { ChannelsTab, type ChannelChatWindow } from '../detail-panel/channels-tab'
 import { EmployeeExecutionNavigation } from '../employee/execution-pane'
+import { EmployeeResourceNavigation } from '../employee/resource-navigation'
 import { TraceTab } from '../detail-panel/trace-tab'
 import { MaterialTab } from '../detail-panel/material-tab'
 import { ArtifactTab } from '../detail-panel/artifact-tab'
@@ -202,7 +204,6 @@ export function AppShell() {
   const [panelGeneration, setPanelGeneration] = useState(0)
   const { guard, dirty, dirtyRef, navigate, saved, leaving, confirmation } = useEditorGuard({
     reset: () => setPanelGeneration(value => value + 1),
-    getForm: () => document.querySelector('[data-edit-form]:not(.detail-panel [data-edit-form])'),
   })
   const anyDirty = dirty || Object.values(tabDirty).some(Boolean)
   const [listShown, setListShown] = useState(true), [listWidth, setListWidth] = useState(() => { const width = pref('listWidth', DEFAULT_LIST_WIDTH); return width === 272 ? DEFAULT_LIST_WIDTH : width })
@@ -518,8 +519,9 @@ export function AppShell() {
     applyRoute({ page: 'conversations', conversationId: null, coreDraft: true })
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.core-chat-start [aria-label="消息内容"]')?.focus())
   })
-  const openCatalogResult = (kind: 'skill' | 'source', id: string, name?: string) => navigate(() => {
+  const openCatalogResult = (kind: 'skill' | 'source' | 'resource', id: string, name?: string) => navigate(() => {
     if (kind === 'source') { const requestId = crypto.randomUUID(); setFocusedSource({ id, requestId }); setFocusedSkill(undefined); dispatchDetails({ type: 'open', target: { type: 'source', id, name: name ?? '数据源', requestId } }, 'skills') }
+    else if (kind === 'resource') { setFocusedSource(undefined); setFocusedSkill(undefined); dispatchDetails({ type: 'open', target: { type: 'resource', id } }, 'skills') }
     else { setFocusedSource(undefined); setSkillsSection('all'); setFocusedSkill({ id, requestId: crypto.randomUUID() }) }
     skillUpdated(); applyRoute({ ...routeRef.current, page: 'skills' })
   })
@@ -878,7 +880,7 @@ export function AppShell() {
     <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={() => setSearchRequest({ requestId: crypto.randomUUID() })}><Search /></DialogTrigger>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
-  return <GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
+  return <GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => openCatalogResult(target.kind, target.id, target.name)}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
     <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={() => navigate(() => { historyIndex.current--; applyRoute(history.current[historyIndex.current]!, false) })} onForward={() => navigate(() => { historyIndex.current++; applyRoute(history.current[historyIndex.current]!, false) })} onToggleList={() => setListShown(shown => !shown)} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([{page:'conversations',icon:Home,label:'会话'},{page:'contacts',icon:Contact,label:'通讯录'},{page:'tasks',icon:Workflow,label:'任务'},{page:'schedules',icon:Clock,label:'定时任务'}] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu open={menu === 'settings'} onOpenChange={open => setMenu(open ? 'settings' : null)}>
       <DropdownMenuTrigger render={<Button ref={userMenuButton} variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
@@ -962,5 +964,5 @@ export function AppShell() {
       {sharingProfile && <ProfileShare api={api} profile={snapshot.userProfile} onClose={() => setSharingProfile(false)} finalFocus={userMenuButton} />}
       {confirmation}
     </div></div>
-  </Tabs></EmployeeExecutionNavigation.Provider></ScheduleNavigationContext.Provider></GuardContext.Provider>
+  </Tabs></EmployeeExecutionNavigation.Provider></EmployeeResourceNavigation.Provider></ScheduleNavigationContext.Provider></GuardContext.Provider>
 }

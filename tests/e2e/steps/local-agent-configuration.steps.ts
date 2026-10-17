@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 真正窗口关闭的未保存测试显式关闭后台常驻，保留原原生关闭/草稿断言。
  * [OUTPUT]: 核心助手未发送首发的正常/受理前后未知保存沿原配置，草稿与零业务调用分别核对；两次实际重启不重放，只有明确发送才建立核心聊天并调用当前本机员工。
  * [OUTPUT]: 同程序独立profile正常保存及切回保留员工/聊天历史，保存与两次重启无调用；明确新消息用当前profile重建原生thread，不把正常换绑继承为其他程序/模型验证。
@@ -121,7 +122,7 @@ Then('本机核心助手未知保存保持首发草稿并在两次重启后只�
       await runtime.reviewData(`核心助手${mode}未知配置与首发未提交`, { kind, previous, committed, draft, calls, before, after: await records() })
       if (mode === 'after') await runtime.reviewNativeCheckpoint('核心助手受理后未知保存保留原首发草稿')
       await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-      await page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+      await page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
       await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(committed.role)
       await editor().getByRole('button', { name: '取消', exact: true }).click(); await unchanged()
       attempts.push(...calls); await runtime.app.evaluate(() => (globalThis as SaveProbe).__bottomSave.dispose()); installed = false
@@ -314,7 +315,7 @@ Then('用户从聊天底部保存原员工并核对两种丢失答复且重启�
       await runtime.reviewData(`底部保存${mode}原草稿与提交事实`, { before, committed, draftRole: role, calls: attempts, facts: await facts() })
       await runtime.reviewNativeCheckpoint(`底部保存${mode}答复丢失后只读核对且草稿保留`)
       await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
       await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(committed.role)
       await expect(editor().getByRole('button', { name: '保存修改', exact: true })).toBeEnabled()
       await editor().getByRole('button', { name: '取消', exact: true }).click()
@@ -513,12 +514,12 @@ Then('员工配置答复丢失后离开或重启不重放且并发编辑不覆�
         if (leave === '放弃编辑') {
           await editor().getByRole('button', { name: '取消', exact: true }).click()
           const confirmation = runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true })
-          await confirmation.getByRole('button', { name: '继续编辑', exact: true }).click()
+          await confirmation.getByRole('button', { name: '取消', exact: true }).click()
           await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(role)
           await expect(editor().getByRole('button', { name: '保存修改', exact: true })).toBeDisabled()
           expect(await inspect()).toEqual(attempts)
           await editor().getByRole('button', { name: '取消', exact: true }).click()
-          await confirmation.getByRole('button', { name: '放弃并退出', exact: true }).click()
+          await confirmation.getByRole('button', { name: '退出', exact: true }).click()
           expect(await inspect()).toEqual(attempts)
           await dispose()
         } else {
@@ -563,7 +564,7 @@ Then('员工配置答复丢失后离开或重启不重放且并发编辑不覆�
     await runtime.reviewData('并发编辑原版本拒绝且草稿保留', { before, newer, draftRole, attempts, facts: await facts(), sessions: await store.load(sessionCollection) })
     await runtime.reviewNativeCheckpoint('并发编辑拒绝覆盖已提交新版本')
     await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-    await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+    await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
     await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(newerRole)
     await expect(editor().getByRole('button', { name: '保存修改', exact: true })).toBeEnabled()
     await editor().getByRole('button', { name: '取消', exact: true }).click()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API/Codex/Claude共用整体执行权限；原生访问范围和审批参数由同一选择派生，旧配置未选择时保留。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 执行历史支持按定时任务单次occurrence身份限定，在分页前排除同会话其他运行。
  * [OUTPUT]: 2026-10-12原生回应接受/提交/未知与公开模型/目录/容量来源合同；提交不等于接收。
@@ -9,6 +10,10 @@
  */
 import type { AgentRun } from './index'
 import type { LiveRuntimeEvent } from '../rovai'
+
+export type ExecutionPermission = 'read-only' | 'ask' | 'full-access'
+export const executionPermissionLabels: Record<ExecutionPermission, string> = { 'read-only': '只读', ask: '请求审批', 'full-access': '完全访问（跳过审批）' }
+export type ExecutionOperation = { kind: 'command' | 'file' | 'source' | 'browser' | 'configuration'; description: string }
 
 export type ExecutionEvent = Pick<LiveRuntimeEvent, 'eventType' | 'payload' | 'canonical'> & {
   id: string
@@ -62,4 +67,12 @@ export type NativeRuntimeOptions = {
   codexApprovalPolicy?: 'untrusted' | 'on-request' | 'never'
   codexSandbox?: 'read-only' | 'workspace-write' | 'danger-full-access'
   claudePermissionMode?: 'default' | 'acceptEdits' | 'plan' | 'dontAsk' | 'bypassPermissions'
+}
+
+/** One employee permission controls both the native access boundary and its approval policy. */
+export function executionPermissionNativeOptions(kind: string, options: NativeRuntimeOptions | undefined, permission?: ExecutionPermission): NativeRuntimeOptions | undefined {
+  if (!permission) return options
+  if (kind === 'codex-local') return { ...options, codexSandbox: permission === 'full-access' ? 'danger-full-access' : 'read-only', codexApprovalPolicy: permission === 'ask' ? 'on-request' : 'never' }
+  if (kind === 'claude-local') return { ...options, claudePermissionMode: permission === 'full-access' ? 'bypassPermissions' : permission === 'read-only' ? 'plan' : 'default' }
+  return options
 }

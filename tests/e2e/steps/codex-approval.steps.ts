@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 真实审批请求不带夹具标记或工具名，按产品默认任务目录发起；观察覆盖原生任务期限，最终保留阶段Trace。
  * [OUTPUT]: 待批准执行及故障重启后的待核对工作从聊天底部打开原员工编辑器拒绝换绑；显式载入原配置，身份/版本/原工作保持。
  * [INPUT]: 隔离桌面、本机员工与原消息审批；离线协议或显式真实供应商。
@@ -54,7 +55,7 @@ Then('原命令审批以{string}结束后旧批准不执行也不重放', async 
     await runtime.page.getByText(reason, { exact: true }).scrollIntoViewIfNeeded()
     await runtime.reviewCheckpoint(stage + '拒绝切换运行方式')
     await runtime.page.getByRole('button', { name: '载入已提交配置', exact: true }).click()
-    await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+    await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
     await expect(runtime.page.getByRole('combobox', { name: '执行后端', exact: true })).toContainText('本机 Codex')
     await runtime.page.getByRole('button', { name: '取消', exact: true }).click()
     await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()

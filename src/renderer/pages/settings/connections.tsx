@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Magpie连接入口与列表共用官网下载的本地SVG，单色mask沿主题着色。
  * [OUTPUT]: 测试与保存共用草稿必填/URL校验，缺少模型等错误统一Sonner反馈，不触发浏览器原生校验气泡。
  * [OUTPUT]: 本机Magpie发现仅填充已识别地址的草稿，明确保存前不修改连接或密钥。
  * [OUTPUT]: 新增Magpie预设、独立只读服务检测、三协议/认证和模型目录，保存保留原稿及revision核对。
@@ -13,6 +14,7 @@ import { ErrorToast, showErrorToast } from '@/components/common/error-feedback'
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
 import anthropicIcon from '@lobehub/icons-static-svg/icons/anthropic.svg'
+import magpieIcon from '@/assets/magpie-small.svg'
 import { LocalAgents, type LocalAgentTarget } from './local-agents'
 import { localAgentSetupEnabled } from '@/components/employee/agent-model-selection'
 import { LocalModelImport } from './local-model-import'
@@ -42,8 +44,8 @@ const providers = {
 } satisfies Record<Provider, { label: string; description: string; icon: string }>
 
 function ProviderIcon({ provider, gateway = false }: { provider: Provider; gateway?: boolean }) {
-  if (gateway) return <span className="connection-provider-icon" aria-hidden="true"><Cpu /></span>
-  return <span className="connection-provider-icon" aria-hidden="true"><span className="connection-brand-icon" style={{ maskImage: `url("${providers[provider].icon}")` }} /></span>
+  const icon = gateway ? magpieIcon : providers[provider].icon
+  return <span className="connection-provider-icon" aria-hidden="true"><span className="connection-brand-icon" style={{ maskImage: `url("${icon}")` }} /></span>
 }
 
 type ConnectionFeedback = { status: 'testing' | 'success' | 'error'; message: string }

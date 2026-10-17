@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式整体执行权限不沿用旧永久命令授权；审批模式始终请求具体操作批准。
  * [INPUT]: 员工身份、明确的命令审批和原SQLite事务。
  * [OUTPUT]: 独立于运行配置版本的员工命令永久授权；审批提交与授权同事务，显式撤销/关闭命令/删除员工清理授权。
  * [POS]: 员工权限仓库；仅作用于BOAI宿主命令，不覆盖本机Agent自己的权限模式。
@@ -10,7 +11,7 @@ import { ProductStore, type RecordTransaction } from '../../adapters/storage/pro
 
 export const commandPermissionCollection = 'employeeCommandPermissions'
 export function canRememberCommands(agent: DigitalAgent) {
-  return agent.active && agent.allowCommands && (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
+  return !agent.executionPermission && agent.active && agent.allowCommands && (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
 }
 export class CommandPermissions {
   constructor(private store: ProductStore) {}

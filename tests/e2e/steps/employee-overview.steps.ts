@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 员工概览中文场景、生产Electron UI与原员工等待Work。
  * [OUTPUT]: 同一个Work的员工/全局/会话任务连续事实与原消息导航、能力状态、配置保存或失联只读核对；保留关键画面和明确来源数据。
  * [POS]: WV4员工资料业务步骤，真实协议/受管技能/传输故障归support/employee-overview。
@@ -183,7 +184,7 @@ Then('编辑草稿保留并只读核对当前版本且不能再次保存', async
 })
 When('用户明确载入已提交配置后再次编辑', async ({ runtime }) => {
   await detail(runtime).getByRole('button', { name: '载入已提交配置', exact: true }).click()
-  await runtime.page.getByRole('alertdialog').getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await runtime.page.getByRole('alertdialog').getByRole('button', { name: '退出', exact: true }).click()
   await expect(detail(runtime).getByRole('textbox', { name: '职责简介', exact: true })).toBeEnabled()
   await detail(runtime).getByRole('textbox', { name: '职责简介', exact: true }).fill('从核对后的版本明确重新编辑')
   await detail(runtime).getByRole('button', { name: '保存修改', exact: true }).click()

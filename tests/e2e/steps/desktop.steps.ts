@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及会话/技能跨页面的右侧窗口草稿；本地 Solar/Carbon 图标及实际离线 mask/尺寸核对。
@@ -277,10 +278,10 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeVisible()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   expect((await detail(page, group.id)).conversation.title).toBe('方案讨论群')
   return { runtime, requests, desktop, launch, snapshot, detail, current, page, direct, group, panel }
 }

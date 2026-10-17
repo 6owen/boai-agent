@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Sonner、body Portal、调用方传入的主题模式、全局主题/Soft 表面 token、本地图标与 Dialog 共用的 ghost 按钮变体。
  * [OUTPUT]: 通知Portal与Dialog同处body，避免根容器层叠上下文遮住真实错误；主题、状态与关闭操作保持。
- * [OUTPUT]: 顶部居中的全局 Sonner 提示入口，左图标/弹性正文/右侧无圈 X 关闭按钮由 skin.css 固定布局；卡片/折叠后层共用状态背景，关闭复用 Dialog ghost 形态并跟随状态图标色与淡色悬停；紧凑正文/圆角/阴影由 skin.css 统一，不读取业务或外观 store。
+ * [OUTPUT]: 顶部居中的全局 Sonner 提示入口；skin.css 让中性卡片/折叠后层共用 Button secondary 细边缘/高光/小阴影，保留圆形状态图标、中性纯 X、紧凑正文、主题与关闭语义，不读取业务或外观 store。
  * [POS]: components/ui 的 Sonner 适配；仅呈现临时通知，不改变业务状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */

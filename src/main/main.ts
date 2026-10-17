@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生未保存关闭确认统一取消/退出，明确退出放弃草稿。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: Magpie本机发现经固定配置端口回退与运行时hello核验，不读取或导出供应商凭据。
@@ -516,7 +517,7 @@ async function confirmDiscard(continueClose: () => void) {
   try {
     if(dirtySources.has('appearance'))await new Promise<void>(resolve=>{const timeout=setTimeout(()=>{appearanceFlushed=undefined;resolve()},3000);appearanceFlushed=()=>{clearTimeout(timeout);appearanceFlushed=undefined;resolve()};sendEvent({type:'appearance:flush'})})
     if(!hasUnsavedChanges()){continueClose();return}
-    const result = await dialog.showMessageBox(window, { type: 'question', title: '有未保存的修改', message: '仍有修改尚未保存', detail: dirtySources.has('appearance')?'外观保存未完成。可以返回重试保存，或放弃尚未保存的外观并关闭。':'可以返回继续编辑，或放弃修改并关闭。', buttons: ['继续编辑', '放弃修改并关闭'], defaultId: 0, cancelId: 0, noLink: true })
+    const result = await dialog.showMessageBox(window, { type: 'question', title: '有未保存的修改', message: '仍有修改尚未保存', detail: dirtySources.has('appearance')?'外观保存尚未完成，退出将放弃未保存的外观修改。':'退出后，未保存的修改将丢失。', buttons: ['取消', '退出'], defaultId: 0, cancelId: 0, noLink: true })
     if (result.response === 1) { dirtySources.clear(); continueClose() }
   } finally { confirmingClose = false }
 }

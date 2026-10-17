@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 会话菜单配置往返通讯录并选中实际员工/群，原草稿、配置保存/放弃与会话复用断言保持。
  * [INPUT]: 通讯录配置/清理/标签管理的中文场景、会话常驻名称输入/检索 Dialog、Electron fixture、隔离 SQLite 旧分类、原生鼠标排序、真实产品 IPC 和工作区文件。
  * [OUTPUT]: 员工工作规则经明确配置/系统文件入口核读AGENTS.md后返回资料概览；保留原指令、零会话创建、配置保存/草稿守卫与会话复用断言。
@@ -111,15 +112,17 @@ async function filterContacts(previous: Awaited<ReturnType<typeof openContacts>>
 
 async function editContactWithGuard(previous: Awaited<ReturnType<typeof filterContacts>>) {
   let { app, page, errors, snapshot, group, nav, contacts, list, detail, groups } = previous
-  // Save and continue must save the form in the main area before switching selection.
+  // Cancel navigation and save through the editor before switching selection.
   await detail.getByRole('button', { name: '编辑配置' }).click()
   await detail.getByRole('textbox', { name: '职责简介' }).fill('核对来源并整理研究结论')
   await groups.getByRole('button', { name: '内容协作群' }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(detail.getByRole('textbox', { name: '职责简介' })).toHaveValue('核对来源并整理研究结论')
   await groups.getByRole('button', { name: '内容协作群' }).click()
-  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await detail.getByRole('button', { name: '保存修改', exact: true }).click()
+  await groups.getByRole('button', { name: '内容协作群' }).click()
   await expect(detail.getByRole('heading', { name: '内容协作群', exact: true })).toBeVisible()
   expect((await snapshot()).agents.find((agent) => agent.id === 'researcher')?.role).toBe('核对来源并整理研究结论')
   await expect(detail.getByRole('region', { name: '群成员' })).toBeVisible()
@@ -181,7 +184,7 @@ async function editGroupWithGuard(previous: Awaited<ReturnType<typeof reuseDirec
   await detail.getByRole('button', { name: '编辑配置' }).click()
   await detail.getByRole('textbox', { name: '群聊名称' }).fill('这项修改不保存')
   await detail.getByRole('button', { name: '返回资料', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(input).toBeVisible()
   await expect(page.locator('.conversation-item.selected')).toContainText('研究写作组')

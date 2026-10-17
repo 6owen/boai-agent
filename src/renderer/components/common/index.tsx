@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 网关就绪按公开本机标识/真实远程凭据核对，三协议共用同一前端规则。
+ * [OUTPUT]: ResourcePicker可提供独立详情入口，查看不切换勾选；网关就绪沿公开标识/真实凭据核对。
  * [OUTPUT]: Magpie本机公开标识和远程密钥分别判断已配置状态。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件与 Sonner 操作提示。
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field as UiField, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { createContext, cloneElement, isValidElement, useCallback, useId, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LoaderCircle, X } from '@/components/icons/index'
+import { ArrowRight, LoaderCircle, X } from '@/components/icons/index'
 import type { Connection, Resource } from '@shared/domain'
 import type { AgentAvatar } from '@shared/domain/avatars'
 import { avatarSource } from '@/assets/avatars'
@@ -56,9 +56,9 @@ export function Field({ label, hint, children, full = false }: { label: string; 
 export function EditorFrame({ title, description, children, footer, leading }: { leading?: ReactNode; title?: string; description?: string; children: ReactNode; footer?: ReactNode }) {
   return <section className="editor-frame"><div className="editor-scroll">{leading}{(title || description) && <div className="editor-intro">{title && <h3>{title}</h3>}{description && <p>{description}</p>}</div>}<div className="editor-body">{children}</div></div>{footer && <footer className="editor-footer">{footer}</footer>}</section>
 }
-export function ResourcePicker({ resources, selected, onChange, empty }: { resources: Resource[]; selected: string[]; onChange: (ids: string[]) => void; empty: string }) {
+export function ResourcePicker({ resources, selected, onChange, empty, onOpen }: { resources: Resource[]; selected: string[]; onChange: (ids: string[]) => void; empty: string; onOpen?(resource: Resource): void }) {
   if (!resources.length) return <p className="empty-note">{empty}</p>
-  return <div className="resource-picker">{resources.map(resource => <label className="resource-option" key={resource.id}><Checkbox checked={selected.includes(resource.id)} onCheckedChange={checked => onChange(checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>)}</div>
+  return <div className="resource-picker">{resources.map(resource => <div className="flex min-w-0 items-center gap-1" key={resource.id}><label className="resource-option min-w-0 flex-1"><Checkbox checked={selected.includes(resource.id)} onCheckedChange={checked => onChange(checked ? [...selected, resource.id] : selected.filter(id => id !== resource.id))} /><span><strong>{resource.name}</strong><small>{resource.description || resource.path}</small></span></label>{onOpen && <Button type="button" variant="ghost" size="icon-xs" aria-label={`查看${resource.kind === 'skill' ? '技能' : '知识资料'} ${resource.name}`} title="查看详情" onClick={() => onOpen(resource)}><ArrowRight /></Button>}</div>)}</div>
 }
 export function useMutation() {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')

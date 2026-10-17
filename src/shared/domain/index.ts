@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工executionPermission统一API/Codex/Claude的整体权限；原生参数由权限派生，旧allowCommands保留兼容。
  * [OUTPUT]: API网关执行按callId保留所选模型与响应路由，不能将末次结果充作整项Work模型。
  * [OUTPUT]: Magpie连接增加独立网关协议/认证及revision；旧Connection字段语义保持。
  * [OUTPUT]: ConversationDetail携带只读executionMirrors：公开任务指令关联原Run，执行/会话身份不复制。
@@ -85,6 +86,8 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  /** Whole employee execution policy; native access and approval parameters follow the same choice. */
+  executionPermission?: import('./execution').ExecutionPermission
   nativeOptions?: import('./execution').NativeRuntimeOptions
   systemRole?: 'core'
   creationSource?: TeamCreationSource | BoboCollaborationSource
@@ -256,7 +259,7 @@ export interface AgentRun {
 }
 export interface Approval {
   id: string
-  kind?: 'command' | 'browser'
+  kind?: import('./execution').ExecutionOperation['kind']
   rememberAllowed?: boolean
   runId: string
   conversationId: string
@@ -328,5 +331,5 @@ export interface ModelUsage { inputTokens?: number; outputTokens?: number; total
 
 /** Additive S1 diagnostics; no credentials or SDK objects cross IPC. */
 export interface SkillReadiness { resourceId: string; name: string; instructions: 'available' | 'invalid'; execution: 'not_checked' | 'disabled'; detail: string; contentHash?: string }
-export interface EmployeeEnvironmentStatus { version: 1; isolation: 'application'; commandMode: 'disabled' | 'host-approved'; skills: SkillReadiness[] }
-export interface RunEnvironmentSummary { version: 1; agentId: string; conversationId: string; runId: string; configVersion: number; policyVersion: number; isolation: 'application'; commandMode: 'disabled' | 'host-approved'; policyHash: string; resourceVersions: { id: string; hash: string }[] }
+export interface EmployeeEnvironmentStatus { version: 1; isolation: 'application'; commandMode: 'disabled' | 'host-approved' | 'host-allowed'; skills: SkillReadiness[] }
+export interface RunEnvironmentSummary { version: 1; agentId: string; conversationId: string; runId: string; configVersion: number; policyVersion: number; isolation: 'application'; commandMode: 'disabled' | 'host-approved' | 'host-allowed'; policyHash: string; resourceVersions: { id: string; hash: string }[] }

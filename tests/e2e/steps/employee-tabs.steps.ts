@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [OUTPUT]: 员工职责定位对齐HEAD已有ARIA名称；保存前配置有效隔离模型来源，六标签尺寸沿现行布局核对，原未保存/键盘/样式断言保持。
  * [INPUT]: 员工共享标签页中文场景、旧资料库启动偏好、Electron fixture 与产品 API。
@@ -80,10 +81,10 @@ When('切换员工标签时继续编辑或放弃修改', async ({ runtime }) => 
   await page.getByRole('tab', { name: '系统文件', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()
   await expect(page.getByRole('tab', { name: '配置', exact: true, includeHidden: true })).toHaveAttribute('aria-selected', 'true')
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(role).toHaveValue('尚未保存的职责')
   await page.getByRole('tab', { name: '系统文件', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '系统文件', exact: true })).toBeVisible()
   await expect(page.getByRole('tabpanel')).toHaveCount(1)
   await page.getByRole('tab', { name: '配置', exact: true }).click()
@@ -96,7 +97,7 @@ When('切换员工标签时继续编辑或放弃修改', async ({ runtime }) => 
   const savedContent = await content.inputValue()
   await content.fill('这份文件草稿不应该保存')
   await page.getByRole('tab', { name: '工作区', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '工作区', exact: true })).toContainText('独立工作区')
   expect((await page.evaluate(() => window.boai.request('readAgentFile', { agentId: 'researcher', name: 'SOUL.md' }))).content).toBe(savedContent)
 })
@@ -106,7 +107,9 @@ Then('保存配置后进入目标标签且键盘可以访问其他分类', async
   await page.getByRole('tab', { name: '配置', exact: true }).click()
   await page.getByRole('textbox', { name: '员工职责', exact: true }).fill('核对每条来源')
   await page.getByRole('tab', { name: '记忆', exact: true }).click()
-  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await page.getByRole('button', { name: '保存修改', exact: true }).click()
+  await page.getByRole('tab', { name: '记忆', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '记忆', exact: true })).toBeVisible()
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')?.role).toBe('核对每条来源')
   const memory = page.getByRole('tab', { name: '记忆', exact: true })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API与本机实际能力优先展示同一整体执行权限，旧原生参数只作为未选择时的兼容配置。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -14,6 +15,7 @@
  * [POS]: 通讯录资料首页的只读概览，配置/文件/工作区/记忆仍由 EmployeeDetail 管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { executionPermissionLabels } from '@shared/domain/execution'
 import { useEffect, useRef, useState } from 'react'
 import type { AgentHome, DigitalAgent, LaunchProfileStatus, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
@@ -74,11 +76,11 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure }: 
   const connectionStatus = loading && native ? '读取中' : connectionFact?.status ?? '未配置'
   const remembered = snapshot.commandPermissions?.some(permission => permission.agentId === agent.id)
   const options = agent.nativeOptions
-  const commandValue = agent.executionBackend?.kind === 'codex-local'
+  const commandValue = agent.executionPermission ? executionPermissionLabels[agent.executionPermission] : agent.executionBackend?.kind === 'codex-local'
     ? options?.codexApprovalPolicy ? ({ untrusted: '非可信操作请求批准', 'on-request': 'Agent 按需请求批准', never: '不申请额外权限' })[options.codexApprovalPolicy] : '遵循 Codex 配置'
     : agent.executionBackend?.kind === 'claude-local'
       ? options?.claudePermissionMode ? ({ default: '请求批准', acceptEdits: '自动允许编辑文件', plan: '计划模式', dontAsk: '不申请额外权限', bypassPermissions: '完全访问本机' })[options.claudePermissionMode] : '默认权限'
-      : native ? '遵循本机 Agent 配置' : agent.allowCommands ? remembered ? '允许，不再询问' : '允许，执行前确认' : '关闭'
+      : native ? '遵循本机 Agent 配置' : agent.executionPermission ? executionPermissionLabels[agent.executionPermission] : agent.allowCommands ? remembered ? '允许，不再询问' : '允许，执行前确认' : '关闭'
   return <>
     <ContactProfileSection title="工作方式"><ContactProfileCard label="工作方式内容" fields={false}><p className="contact-card-copy">{agent.instructions || <span className="text-muted-foreground">未设置</span>}</p></ContactProfileCard></ContactProfileSection>
     <ContactProfileSection title="实际能力" hint="职责与工作方式来自已保存配置；以下状态只表达当前已有记录。" actions={<div className="flex flex-wrap gap-1"><Button variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>刷新能力状态</Button><Button variant="ghost" size="sm" onClick={onConfigure}>查看配置与系统文件</Button></div>}>
@@ -86,7 +88,7 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure }: 
       <ContactProfileCard label="实际能力配置">
         <ContactProfileRow icon={<Cpu />} title="模型连接"><span className="contact-value-status"><span>{connectionName}</span><small className="contact-inline-status" data-positive={connectionStatus === '已配置' || connectionStatus.startsWith('已记录')}>{connectionStatus}</small></span></ContactProfileRow>
         {(agent.executionBackend?.kind === 'claude-local' || agent.executionBackend?.kind === 'codex-local' || agent.executionBackend?.kind === 'runtime-plugin') && <ContactProfileRow icon={<Cpu />} title="模型来源"><span className="contact-value-status"><span>{agent.executionBackend?.kind === 'runtime-plugin' ? agent.connectionId ? connection?.name ?? '未配置' : launchStatus?.profile.name ?? '本机 Agent' : agent.executionBackend?.kind === 'codex-local' ? agent.connectionId ? connection?.name ?? '未配置' : '本机 Codex' : launchStatus?.profile.useExistingLogin ? '本机 Claude' : connection?.name ?? '未配置'}</span><small className="contact-inline-status" data-positive={capabilities.find(fact => fact.id === 'model')?.status === '已配置'}>{capabilities.find(fact => fact.id === 'model')?.status ?? '未配置'}</small></span></ContactProfileRow>}
-        <ContactProfileRow icon={<Key />} title="命令授权"><span className="contact-value-status"><span>{commandValue}</span><small className="contact-inline-status" data-positive={native || agent.allowCommands}>{native ? '跟随配置' : agent.allowCommands ? '已启用' : '未启用'}</small></span></ContactProfileRow>
+        <ContactProfileRow icon={<Key />} title="执行权限"><span className="contact-value-status"><span>{commandValue}</span><small className="contact-inline-status" data-positive={native || agent.allowCommands}>{agent.executionPermission ? '已配置' : native ? '跟随配置' : agent.allowCommands ? '已启用' : '未启用'}</small></span></ContactProfileRow>
       </ContactProfileCard>
     </ContactProfileSection>
     <EmployeeResourceCards api={api} agent={agent} snapshot={snapshot} active={active} revision={revision} capabilities={capabilities} onOpenSkill={setSkillId} />

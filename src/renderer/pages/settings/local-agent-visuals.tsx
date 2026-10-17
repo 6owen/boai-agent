@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Agent 来源名称/程序身份、Lobe 本地彩色/单色品牌 SVG 与透明毛绒 WebP。
- * [OUTPUT]: Agent品牌图标无背景/内边距，支持Pi及常见编程Agent，彩色SVG保留原色、单色随主题适配，未知品牌通用回退；本机Agent向导的毛绒桌面伙伴及扫描/配置提示。
+ * [OUTPUT]: Agent品牌图标与模型连接共用42px圆角容器/24px图形，扫描项20px；彩色SVG保留原色、单色随主题适配，未知品牌回退显式尺寸避免Button缩小；本机Agent向导的毛绒桌面伙伴及扫描/配置提示。
  * [POS]: settings 的本机 Agent 视觉组件，不加载远程图标。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -46,9 +46,9 @@ const brands = [
 export function AgentBrandIcon({ name, executable = '' }: { name: string; executable?: string }) {
   const program = executable.split(/[\\/]/).at(-1) ?? ''
   const brand = brands.find(brand => brand.match.test(program)) ?? brands.find(brand => brand.match.test(name))
-  return <span className="connection-provider-icon local-agent-brand-icon" aria-hidden="true">
+  return <span className="connection-provider-icon" aria-hidden="true">
     {brand?.color ? <img className="connection-brand-icon" src={brand.icon} width={24} height={24} alt="" draggable={false} />
-      : brand ? <span className="connection-brand-icon" style={{ maskImage: `url("${brand.icon}")` }} /> : <Terminal className="size-full" />}
+      : brand ? <span className="connection-brand-icon" style={{ maskImage: `url("${brand.icon}")` }} /> : <Terminal className="connection-brand-icon size-[24px]" />}
   </span>
 }
 

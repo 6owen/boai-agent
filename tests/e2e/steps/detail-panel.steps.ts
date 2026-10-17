@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 窗口顶栏详情标签与内容对齐的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 会话菜单配置入口、窗口顶栏多标签、内容对齐及独立关闭回到相邻标签的真实桌面断言。
  * [POS]: tests/e2e/steps/detail-panel.steps.ts；场景状态仅在本次测试内共享。
@@ -109,10 +110,11 @@ async function saveGroupTitle(previous: Awaited<ReturnType<typeof resizeDetails>
   await panel.getByRole('textbox', { name: '群聊名称', exact: true }).fill('设计协作群')
   await expect(header.locator('[aria-label=未保存]')).toBeVisible()
   await header.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('设计协作群')
   await header.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '保存并退出', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await panel.getByRole('button', { name: '保存设置', exact: true }).click()
   await expect(panel).toBeHidden()
   await expect(trigger).toBeFocused()
   await trigger.click()
@@ -132,7 +134,7 @@ async function returnFromEmployee(previous: Awaited<ReturnType<typeof saveGroupT
   await expect(header.getByRole('tab', { name: '研究员', exact: true })).toBeFocused()
   await panel.getByRole('textbox', { name: '职责简介', exact: true }).fill('未保存职责')
   await header.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(header.getByRole('tab', { selected: true })).toHaveText('设计协作群')
   await panel.locator('.group-member-grid').getByRole('button', { name: '查看 研究员', exact: true }).click()
   await expect(panel.getByRole('textbox', { name: '职责简介', exact: true })).not.toHaveValue('未保存职责')

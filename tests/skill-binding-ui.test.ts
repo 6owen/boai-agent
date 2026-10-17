@@ -1,13 +1,13 @@
 /*
  * [INPUT]: 员工本机技能绑定的纯未决请求与已提交回执投影。
- * [OUTPUT]: 重启未知/载荷白名单、页面员工隔离、迟到/变载荷拒绝及旧回执不撤销后续配置的意图验证。
+ * [OUTPUT]: 重启未知/冻结身份及旧回执保护；独立绑定保留未保存字段和技能增删，不恢复后续已解绑资源。
  * [POS]: D4 Renderer 状态测试；不调用模型、文件或绑定 IPC。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
 import type { DigitalAgent, Resource } from '../src/shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt } from '../src/shared/domain/skills'
-import { committedSkillBindingAgent, restoreSkillBindingPending, skillBindingPendingKey, skillBindingReceiptMatches, updateSkillBindingPending } from '../src/renderer/components/employee/local-skill-binding-state'
+import { committedSkillBindingAgent, mergeSkillBindingDraft, restoreSkillBindingPending, skillBindingPendingKey, skillBindingReceiptMatches, updateSkillBindingPending } from '../src/renderer/components/employee/local-skill-binding-state'
 
 const input: BindLocalSkillInput = { agentId: 'writer', localSkillId: 'local:first', planId: 'plan', requestId: 'request', expectedConfigVersion: 3, contentHash: 'a'.repeat(64) }
 const resource: Resource = { id: 'managed', kind: 'skill', ownerAgentId: 'writer', name: '同名技能', description: '', path: '/managed/skill', createdAt: '2026-10-01' }
@@ -52,5 +52,17 @@ describe('employee skill binding request truth', () => {
     expect(committedSkillBindingAgent(input, receipt, latest)).toBe(latest)
     expect(committedSkillBindingAgent(input, receipt, { ...agent, configVersion: 3 })).toBe(receipt.agent)
     expect(committedSkillBindingAgent(input, { ...receipt, agent: { ...agent, configVersion: 6 } })).toBeUndefined()
+  })
+  it('retains unsaved identity and source choices while adopting the committed binding and unchanged fields', () => {
+    const previous = { ...agent, skillIds: ['old'], sourceIds: ['first'] }
+    const draft = { ...previous, name: '草稿姓名', sourceIds: ['second'] }
+    const committed = { ...previous, role: '已提交职责', skillIds: ['old', 'new'] }
+    expect(mergeSkillBindingDraft(previous, draft, committed)).toMatchObject({ name: '草稿姓名', role: '已提交职责', sourceIds: ['second'], skillIds: ['old', 'new'] })
+  })
+  it('preserves explicit skill additions and removals without reviving a later removed committed binding', () => {
+    const previous = { ...agent, skillIds: ['remove', 'later-removed'] }
+    const draft = { ...previous, skillIds: ['later-removed', 'draft-added'] }
+    const committed = { ...previous, skillIds: ['remove', 'new-bound'] }
+    expect(mergeSkillBindingDraft(previous, draft, committed).skillIds).toEqual(['new-bound', 'draft-added'])
   })
 })

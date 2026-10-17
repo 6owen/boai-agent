@@ -1,7 +1,7 @@
 /*
- * [INPUT]: 员工或员工组的只读配置字段。
- * [OUTPUT]: 分区标题/说明Tooltip和紧凑Card，正文或图标字段行；状态紧随配置值。
- * [POS]: 通讯录资料卡共用展示，不持有编辑草稿。
+ * [INPUT]: 员工或员工组的资料字段与受控编辑内容。
+ * [OUTPUT]: 共用分区标题/说明Tooltip；员工表单Card使用12px标签/内容、32px控件和24px模型操作，保留横向行布局。
+ * [POS]: 通讯录资料与员工表单的展示结构，不持有编辑草稿。
  * [PROTOCOL]: 修改同步Header与所属.folder.md。
  */
 import type { ReactNode } from 'react'
@@ -20,4 +20,10 @@ export function ContactProfileCard({ label, children, fields = true }: { label: 
 }
 export function ContactProfileRow({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return <div className="automation-detail-row"><dt>{icon}<span>{title}</span></dt><dd>{children}</dd></div>
+}
+
+export function EmployeeFormSection({ title, children }: { title: string; children: ReactNode }) {
+  return <ContactProfileSection title={title}>
+    <Card className="contact-profile-card employee-form-card gap-0 rounded-lg bg-muted p-0 [&_[data-slot=field-label]]:text-[12px] [&_[data-slot=input]]:h-[32px] [&_[data-slot=input]]:text-[12px] [&_[data-slot=select-trigger]]:h-[32px] [&_[data-slot=select-trigger]]:text-[12px] [&_.connection-model-actions_button]:h-[24px] [&_.connection-model-actions_.app-icon]:size-[12px]"><div className="connection-fields employee-form-fields soft-divide-y">{children}</div></Card>
+  </ContactProfileSection>
 }

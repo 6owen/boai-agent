@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 原自动化停止/故障finally另留外部阶段Trace、普通调用及原生会话映射；阶段失败时仍保留格式计数与等待位置，原业务断言和清理分界保持。
  * [OUTPUT]: 原UI建立可选独立来源或同程序的独立本机配置；模型ID/本机配置分别在执行、退出待核对及重启时拒绝，原API/来源场景及完整停止断言保持。
  * [INPUT]: 原Claude员工创建、定时表单、真实独立进程、生产文件工具和隔离SQLite。
@@ -156,7 +157,7 @@ Then('Claude员工在定时文件工作执行期间以{string}结束并核对重
       await runtime.reviewNativeCheckpoint(stage + '拒绝保存后待核对的Claude' + (binding === 'model-id' ? '模型ID' : '本机配置'))
     }
     await employeeEditor.getByRole('button', { name: '载入已提交配置', exact: true }).click()
-    await currentPage.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+    await currentPage.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
     await expect(employeeEditor.getByRole('combobox', { name: '执行后端', exact: true })).toContainText('本机 Claude')
     await employeeEditor.getByRole('button', { name: '取消', exact: true }).click()
     await currentPage.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()

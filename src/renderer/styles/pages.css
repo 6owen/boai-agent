@@ -1,4 +1,12 @@
 /*
+ * [OUTPUT]: 员工资源选择与空态取消内层边框/背景，保留单层Card；身份编辑仅配置页，右上关闭与内容留白分开。
+ * [OUTPUT]: 员工编辑外框零内边距、左右栏铺满；留白只在右侧滚动内容内，滚动条贴弹窗右边。
+ * [OUTPUT]: 员工编辑弹窗左侧竖排菜单、右侧独立滚动；固定外框与紧凑菜单，窄窗口收为图标导航。
+ * [OUTPUT]: 新建/编辑员工的工作方式textarea最大200px，超出内容在框内滚动，纵向拖动受上限约束。
+ * [OUTPUT]: 员工新建/编辑表单分区标题14px、卡片内边距12px、行间距8px和32px控件，模型分组与工作方式保持紧凑横向布局。
+ * [OUTPUT]: 员工模型与权限直接使用connection-fields/connection-setting-row横向结构，模型分组和模型ID复用连接设置布局，移除覆盖纵向字段的失效Grid补丁。
+ * [OUTPUT]: 员工创建/编辑共用无卡片身份行；工作方式标题直接接textarea，模型/资源沿独立Card与外部分区标题，底部透明操作行自然滚动。
+ * [OUTPUT]: 我的连接与本机Agent列表共用42px圆角图标容器/24px品牌图形，扫描项仍保持20px紧凑尺寸。
  * [OUTPUT]: 通讯录空状态的过渡容器继承详情区完整高度，恢复插画双向居中；有内容时仍自然高度滚动。
  * [OUTPUT]: 通讯录执行筛选置于标题最右侧，紧凑同高；窄面板仅检索工具换行，标题与筛选保持同行。
  * [OUTPUT]: 通讯录能力状态文字前显示5px同色圆点，与资源库状态点密度一致。
@@ -15,7 +23,7 @@
  * [OUTPUT]: 定时任务复用会话分栏与创建按钮，主区自适应表单/聊天和真实计划卡片。
  * [OUTPUT]: 设置共用滚动容器预留滚动条槽位，个人资料异步内容加载及分类切换不再挤压正文宽度。
  * [OUTPUT]: 外观重置复用共用标题操作栏，删除旧底部操作区样式。
- * [OUTPUT]: 本机Agent品牌图标无背景/内边距，彩色SVG保留原色、单色随主题适配，扫描项20px紧凑尺寸共用。
+ * [OUTPUT]: 本机Agent品牌图标共用连接列表容器，彩色SVG保留原色、单色随主题适配，扫描项20px紧凑尺寸共用。
  * [OUTPUT]: 本机Agent选择页固定高度并受视口约束，shadcn ScrollArea延伸至弹窗边缘，内容内部留白；扫描项采用紧凑内边距/图标/字号，标题/步骤和重扫固定。
  * [OUTPUT]: 渠道选择Popover按内容收缩，列表8px内边距/4px间隔并保留有界滚动。
  * [OUTPUT]: 文件修改只显示Selection Actions浮层，退役底部会话/历史区尺寸；操作条输入透明且保留全局主题。
@@ -81,8 +89,7 @@
 .connection-row { display:flex;align-items:center;gap:14px;padding:18px 20px;min-width:0 }
 .connection-provider-icon,.connection-empty-icon { display:flex;align-items:center;justify-content:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:var(--muted);color:var(--foreground) }
 .connection-brand-icon { display:block;width:24px;height:24px;flex-shrink:0;background:currentColor;mask-size:contain;mask-repeat:no-repeat;mask-position:center }
-img.connection-brand-icon { background:none;object-fit:contain }
-.connection-provider-icon.local-agent-brand-icon { width:24px;height:24px;padding:0;border-radius:0;background:none }
+:is(img,svg).connection-brand-icon { background:none;object-fit:contain }
 .connection-row-body { min-width:0;flex:1 }
 .connection-row-title { display:flex;align-items:center;gap:10px;min-width:0 }
 .connection-row-title strong { min-width:0;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
@@ -432,8 +439,6 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-members { display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:12px }
 .contact-member { display:flex;align-items:center;flex-direction:column;gap:8px;padding:8px 4px;min-width:0 }
 .contact-member>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px }
-.contact-dialog-avatar { display:flex;justify-content:center;margin:0 auto 12px }
-.contact-dialog-avatar .avatar { width:64px;height:64px }
 .contact-configuration-card { overflow:hidden;min-width:0;container-type:inline-size }
 .contact-configuration-card>[data-slot=tabs] { gap:0 }
 .contact-configuration-card>[data-slot=tabs]>[data-slot=tabs-list] { margin:14px 18px 0 }
@@ -444,17 +449,39 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .contact-configuration-card .editor-footer { position:static;height:auto;min-height:52px;flex-basis:auto;flex-wrap:wrap;padding:10px 18px;gap:8px;background:transparent }
 .contact-configuration-card .editor-footer>[data-slot=button]:last-child { margin-left:auto }
 .contact-configuration-card .form-grid { gap:0 }
-.contact-configuration-card .form-grid>:is(.field,[data-slot=field]),.contact-configuration-card .form-grid>fieldset>[data-slot=field],.contact-model-fields>[data-slot=field] { padding:12px 0 }
+.contact-configuration-card .form-grid>:is(.field,[data-slot=field]),.contact-configuration-card .form-grid>fieldset>[data-slot=field] { padding:12px 0 }
 .contact-configuration-card .form-grid>:is(.field,[data-slot=field]),.contact-configuration-card .form-grid>fieldset>[data-slot=field] { border-bottom:1px solid var(--border) }
-.contact-configuration-card .form-grid>[data-slot=field],.contact-configuration-card .form-grid>fieldset>[data-slot=field],.contact-model-fields>[data-slot=field] { display:grid;grid-template-columns:124px minmax(0,1fr);align-items:start;gap:8px 16px }
-.contact-configuration-card .form-grid [data-slot=field]>:not([data-slot=field-label]),.contact-model-fields>[data-slot=field]>:not([data-slot=field-label]) { grid-column:2 }
-.contact-configuration-card .form-grid [data-slot=field]>[data-slot=field-label],.contact-model-fields>[data-slot=field]>[data-slot=field-label] { grid-column:1;grid-row:1;min-height:32px;align-items:center;font-size:12px }
-.contact-model-fields>[data-slot=field]:has(.model-picker-heading),.contact-configuration-card .form-grid [data-slot=field]:has(>.model-picker-heading) { display:flex }
-.connection-editor[data-contact-editor] .connection-setting-row { grid-template-columns:124px minmax(0,1fr);padding:10px 0 }
-.connection-editor[data-contact-editor] .connection-setting-row>[data-slot=field-label] { min-height:32px;font-size:12px }
-.connection-editor[data-contact-editor] .connection-setting-row [data-slot=field-label]>.app-icon { width:14px;height:14px }
-.connection-editor[data-contact-editor] :is([data-slot=input],[data-slot=input-group],[data-slot=select-trigger]),.contact-configuration-card :is([data-slot=input],[data-slot=select-trigger]) { min-height:32px;height:32px;font-size:13px }
+.contact-configuration-card .form-grid>[data-slot=field],.contact-configuration-card .form-grid>fieldset>[data-slot=field] { display:grid;grid-template-columns:124px minmax(0,1fr);align-items:start;gap:8px 16px }
+.contact-configuration-card .form-grid [data-slot=field]>:not([data-slot=field-label]) { grid-column:2 }
+.contact-configuration-card .form-grid [data-slot=field]>[data-slot=field-label] { grid-column:1;grid-row:1;min-height:32px;align-items:center;font-size:12px }
+.contact-configuration-card .form-grid [data-slot=field]:has(>.model-picker-heading) { display:flex }
+.contact-configuration-card :is([data-slot=input],[data-slot=select-trigger]) { min-height:32px;height:32px;font-size:13px }
 .contact-configuration-card .resource-option { min-width:0 }
+.employee-form-layout { min-width:0;container-type:inline-size }
+.employee-form-sections,.form-grid.employee-form-sections { display:flex;flex-direction:column;gap:16px;min-width:0;margin:0;padding:0;border:0 }
+.employee-form-layout .contact-section,.employee-form-sections .contact-section { margin:0 }
+.employee-form-sections .contact-section-title { font-size:14px }
+.employee-form-sections .contact-section-heading { margin-bottom:8px }
+.employee-form-layout .editor-frame { min-height:0 }
+.employee-form-layout .editor-body { padding:0 }
+.employee-form-layout .employee-identity { display:block;padding:0 }
+.employee-form-layout .employee-tabs-bar { padding:0;margin:20px 0;border:0;overflow-x:auto }
+.employee-form-fields { display:grid;gap:0;min-width:0;padding:2px 12px }
+.employee-form-fields.connection-fields .connection-setting-row { grid-template-columns:132px minmax(0,1fr);gap:12px;min-width:0;padding:8px 0 }
+.employee-form-fields :is(.connection-setting-row>[data-slot=field-label],.connection-setting-label) { min-height:32px }
+.employee-form-fields .connection-setting-label { justify-content:flex-start;gap:6px }
+.employee-form-fields .connection-group-heading { min-height:32px;padding:8px 0 4px;gap:8px }
+.employee-form-fields.connection-fields .connection-model-row { padding-top:4px }
+.employee-form-fields .connection-nested-line { width:12px;height:12px }
+.employee-form-sections .contact-section>[data-slot=textarea] { width:100%;max-height:200px;overflow-y:auto;resize:vertical }
+.employee-form-card :is([data-slot=input],[data-slot=input-group],[data-slot=select-trigger]) { min-height:32px;height:32px;font-size:12px }
+.employee-identity-editor { display:flex;flex-direction:row;align-items:center;gap:14px;width:100% }
+.employee-form-layout .employee-identity-editor { padding:8px 0 }
+.employee-form-footer,.employee-form-layout .editor-footer { display:flex;position:static;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex-basis:auto;gap:8px;height:auto;min-height:0;padding:20px 0 0;border:0;background:transparent }
+.employee-form-fields .resource-option { min-width:0 }
+.employee-form-card .resource-picker { max-height:none;overflow:visible;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none }
+.employee-form-card .empty-note { padding:8px 0;border:0;border-radius:0;background:transparent;box-shadow:none }
+.employee-form-card .field { padding:8px 0 }
 .employee-identity>.employee-identity-editor { flex-direction:row;align-items:center;gap:14px;width:100% }
 .employee-identity-editor .avatar { width:72px;height:72px }
 .employee-identity-fields { display:grid;gap:2px;flex:1;min-width:0 }
@@ -467,16 +494,34 @@ img.connection-brand-icon { background:none;object-fit:contain }
 .detail-content .employee-detail>[data-slot=tabs-content]:not([hidden]):not(:has(.editor-frame)) { min-height:0;overflow-y:auto }
 .employee-identity-actions { flex-shrink:0 }
 .employee-identity-actions:empty { display:none }
+.employee-editor-dialog>.employee-editor-layout { display:flex;flex:1;min-width:0;min-height:0;overflow:hidden }
+.employee-editor-layout>.employee-detail-sidebar { flex:1;min-height:0 }
+.employee-detail-sidebar>.employee-menu-nav { flex:0 0 168px;min-width:0;overflow-y:auto;padding:20px 10px 12px;border-right:1px solid var(--border);background:var(--muted) }
+.employee-detail-sidebar .employee-menu { --tabs-pill-bg:var(--selection);border-radius:0;background:transparent }
+.employee-detail-sidebar .employee-menu>.t-tabs-pill { border-radius:var(--radius-md);background-image:none;box-shadow:none }
+.employee-detail-sidebar>.employee-detail-main { flex:1;min-width:0;min-height:0 }
+.employee-detail-main-content { padding:40px 20px 20px }
+.employee-detail-main-content>[data-slot=tabs-content]>.employee-identity { padding-bottom:16px }
+.employee-detail-main-content>[data-slot=tabs-content][hidden] { display:none }
+.employee-detail-main-content .detail-section { padding:0 }
+@media(max-width:700px) {
+  .employee-detail-sidebar>.employee-menu-nav { flex-basis:132px;padding-inline:8px }
+  .employee-detail-main-content { padding:40px 16px 16px }
+}
+@media(max-width:520px) {
+  .employee-detail-sidebar>.employee-menu-nav { flex-basis:48px;padding-inline:6px }
+  .employee-menu-label { display:none }
+  .employee-detail-main-content { padding:40px 12px 12px }
+}
 @container (max-width:420px) {
+  .employee-form-fields.connection-fields .connection-setting-row { grid-template-columns:104px minmax(0,1fr);gap:8px }
+  .employee-identity-editor { gap:10px }
+  .employee-identity-editor .avatar { width:56px;height:56px }
   .contact-document,.schedule-document { padding:28px 20px }
   .contact-configuration-card .form-grid>[data-slot=field],.contact-configuration-card .form-grid>fieldset>[data-slot=field] { grid-template-columns:minmax(0,1fr) }
   .contact-configuration-card .form-grid [data-slot=field]>:not([data-slot=field-label]) { grid-column:1 }
   .contact-profile-heading { gap:12px }
   .contact-facts>div { grid-template-columns:64px minmax(0,1fr);gap:8px }
-}
-@media (max-width:540px) {
-  .connection-editor[data-contact-editor] .connection-setting-row,.contact-model-fields>[data-slot=field] { grid-template-columns:minmax(0,1fr) }
-  .contact-model-fields>[data-slot=field]>:not([data-slot=field-label]) { grid-column:1 }
 }
 
 /* Execution traces share the application surfaces and semantic colors. */

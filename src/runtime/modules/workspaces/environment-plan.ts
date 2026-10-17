@@ -26,6 +26,7 @@ export type EnvironmentInput = {
   agent: DigitalAgent; conversation: Conversation; resources: Resource[]; runId: string
   workspace?: SessionWorkspace; signal: AbortSignal
 }
+const commandMode = (agent: DigitalAgent) => !agent.allowCommands || agent.executionPermission === 'read-only' ? 'disabled' as const : agent.executionPermission === 'full-access' ? 'host-allowed' as const : 'host-approved' as const
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
 
 /** One authorization rule for context, memory provenance, and every task adapter. */
@@ -94,10 +95,10 @@ export async function prepareEnvironment(input: EnvironmentInput): Promise<RunEn
   const versions: ResourceVersion[] = []
   for (const resource of resources) versions.push(await resourceVersion(resource, input.signal))
   input.signal.throwIfAborted()
-  const commandMode = input.agent.allowCommands ? 'host-approved' as const : 'disabled' as const
+  const mode = commandMode(input.agent)
   const identity = { agentId: input.agent.id, conversationId: input.conversation.id, runId: input.runId, configVersion: input.agent.configVersion, policyVersion: input.agent.policyVersion ?? 2 }
   const resourceVersions = versions.map(version => ({ id: version.resource.id, hash: version.hash }))
-  const summary: RunEnvironmentSummary = { version: 1, ...identity, commandMode, isolation: 'application', policyHash: digest(JSON.stringify({ ...identity, workspace, resourceVersions, commandMode })), resourceVersions }
+  const summary: RunEnvironmentSummary = { version: 1, ...identity, commandMode: mode, isolation: 'application', policyHash: digest(JSON.stringify({ ...identity, workspace, resourceVersions, commandMode: mode })), resourceVersions }
   return { version: 1, ...identity, workspace, skills: versions.filter(version => version.resource.kind === 'skill'), knowledge: versions.filter(version => version.resource.kind === 'knowledge'), summary }
 }
 
@@ -105,7 +106,7 @@ export function assertEnvironmentScope(plan: RunEnvironmentPlan, input: Environm
   input.signal.throwIfAborted()
   const ids = authorizedResources(input.agent, input.conversation, input.resources).map(resource => resource.id).sort()
   const planned = [...plan.skills, ...plan.knowledge].map(version => version.resource.id).sort()
-  if (plan.agentId !== input.agent.id || plan.conversationId !== input.conversation.id || plan.runId !== input.runId || plan.configVersion !== input.agent.configVersion || plan.policyVersion !== (input.agent.policyVersion ?? 2) || JSON.stringify(ids) !== JSON.stringify(planned) || plan.summary.commandMode !== (input.agent.allowCommands ? 'host-approved' : 'disabled')) throw new Error('运行环境授权已变更，请重新执行')
+  if (plan.agentId !== input.agent.id || plan.conversationId !== input.conversation.id || plan.runId !== input.runId || plan.configVersion !== input.agent.configVersion || plan.policyVersion !== (input.agent.policyVersion ?? 2) || JSON.stringify(ids) !== JSON.stringify(planned) || plan.summary.commandMode !== commandMode(input.agent)) throw new Error('运行环境授权已变更，请重新执行')
   if (!input.workspace || Object.entries(plan.workspace).some(([key, value]) => path.resolve(input.workspace![key as keyof SessionWorkspace]) !== value)) throw new Error('运行环境不属于当前会话工作区')
 }
 
@@ -120,11 +121,11 @@ export async function describeEnvironment(agent: DigitalAgent, resources: Iterab
       const metadata = source.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1]
       const name = metadata?.match(/^name:\s*(.+)$/m)?.[1]?.trim().replace(/^(['"])(.*)\1$/, '$2')
       if (!metadata || name !== resource.name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length > 64 || !/^description:\s*\S/m.test(metadata)) throw new Error('SKILL.md 元数据无效或名称与目录不一致')
-      skills.push({ resourceId: resource.id, name: resource.name, instructions: 'available', contentHash: version.hash, execution: agent.allowCommands ? 'not_checked' : 'disabled', detail: agent.allowCommands ? '说明可读取；运行时和依赖尚未验证，执行仍需逐次授权。' : '说明可读取；该员工未启用命令执行。' })
+      skills.push({ resourceId: resource.id, name: resource.name, instructions: 'available', contentHash: version.hash, execution: agent.allowCommands ? 'not_checked' : 'disabled', detail: agent.allowCommands ? agent.executionPermission === 'full-access' ? '说明可读取；运行时和依赖尚未验证，执行无需逐次批准。' : '说明可读取；运行时和依赖尚未验证，执行仍需逐次授权。' : '说明可读取；该员工未启用命令执行。' })
     } catch (error) {
       skills.push({ resourceId: resource.id, name: resource.name, instructions: 'invalid', execution: 'not_checked', detail: error instanceof Error ? error.message : '无法读取技能' })
     }
   }
   for (const id of agent.skillIds.filter(id => !bound.some(resource => resource.id === id))) skills.push({ resourceId: id, name: id, instructions: 'invalid', execution: 'not_checked', detail: '绑定资源缺失或不属于该员工' })
-  return { version: 1, isolation: 'application', commandMode: agent.allowCommands ? 'host-approved' : 'disabled', skills }
+  return { version: 1, isolation: 'application', commandMode: commandMode(agent), skills }
 }

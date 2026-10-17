@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整体执行权限派生Claude真实permission-mode及跳过审批参数；只读拒绝原生提权，不影响普通用户问题。
  * [OUTPUT]: 原生配置模式在本次子进程合并loopback代理排除，保持原生来源/远端代理；取消不能留下代理持有的本机请求。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -26,6 +27,7 @@ import { assertClaudeGatewayVersion } from '../../../shared/domain/claude-provid
 import { claudeGatewayEnvironment, claudeLoopbackEnvironment } from './gateway-source'
 import { runClaudeProcess } from './process'
 import { createClaudeToolBridge } from './tools'
+import { executionPermissionNativeOptions } from '../../../shared/domain/execution'
 import { claudeInput } from './input'
 import type { NativeAgentInfo } from '../../../shared/domain/execution'
 
@@ -71,7 +73,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     Object.assign(env, { ANTHROPIC_API_KEY: context.apiKey, ANTHROPIC_AUTH_TOKEN: context.apiKey, ANTHROPIC_BASE_URL: provider!.baseUrl })
     if (managedGateway) env = claudeGatewayEnvironment(context.connection!, selectedModel, context.apiKey, env, context.agent.nativeOptions?.effort)
   }
-  const mode = context.agent.nativeOptions?.claudePermissionMode ?? 'default'
+  const mode = executionPermissionNativeOptions('claude-local', context.agent.nativeOptions, context.agent.executionPermission)?.claudePermissionMode ?? 'default'
   const args = ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--permission-prompt-tool', 'stdio', '--verbose', '--include-partial-messages', '--permission-mode', mode,
     input.threadId ? '--resume' : '--session-id', sessionId, '--append-system-prompt-file', bootstrap, '--mcp-config', bridge.configPath]
   if (selectedModel) args.push('--model', selectedModel)
@@ -135,8 +137,12 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           if (!initialized || request.subtype !== 'can_use_tool' || !request.tool_use_id || !request.tool_name || controls.has(id)) throw new Error('Claude 原生交互缺少有效身份')
           controls.set(id, local)
           const operation = (async () => {
-            if (!context.requestNativeAction) throw new Error('原生批准交互未接入')
             const input = recordValue(request.input), asking = request.tool_name === 'AskUserQuestion'
+            if (!asking && context.agent.executionPermission === 'read-only') {
+              write(JSON.stringify({ type: 'control_response', response: { subtype: 'success', request_id: id, response: { behavior: 'deny', message: '当前员工为只读权限，不能执行此操作。' } } }) + '\n')
+              return
+            }
+            if (!context.requestNativeAction) throw new Error('原生批准交互未接入')
             const response = await context.requestNativeAction({ id, method: request.tool_name, kind: asking ? 'input' : 'approval', title: asking ? '需要你的回复' : String(input.command ?? request.description ?? request.tool_name), detail: request,
               options: asking ? [] : [{ id: 'allow', label: '允许一次' }, ...(Array.isArray(request.permission_suggestions) && request.permission_suggestions.length ? [{ id: 'session', label: '按所示规则允许' }] : []), { id: 'deny', label: '拒绝' }],
               ...(asking ? { questions: (input.questions ?? []).map((q: Record<string, any>) => ({ ...q, id: q.question })) } : {}) }, AbortSignal.any([signal, local.signal]))

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行选择携带整体执行权限，切换模型来源不拆分或重置已选权限。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -20,7 +21,7 @@ import { assertClaudeGatewayVersion, claudeProvider } from '@shared/domain/claud
 import { gatewayCredentialsReady } from '@shared/domain/model-gateway'
 import { assertCodexGatewayVersion, codexGatewayProvider } from '@shared/domain/codex-provider'
 
-export type AgentModelSelection = { executionBackend?: ExecutionBackend; connectionId: string; modelId: string; thinkingLevel?: import('@shared/domain/model-preferences').ThinkingLevel; nativeOptions?: import('@shared/domain/execution').NativeRuntimeOptions }
+export type AgentModelSelection = { executionBackend?: ExecutionBackend; connectionId: string; modelId: string; thinkingLevel?: import('@shared/domain/model-preferences').ThinkingLevel; executionPermission?: import('@shared/domain/execution').ExecutionPermission; nativeOptions?: import('@shared/domain/execution').NativeRuntimeOptions }
 // 全局只管理执行资源；员工绑定资源后仍保留原身份、记忆与工作。
 export const localAgentSetupEnabled = true
 export const agentRunModes = ([{ value: 'api', label: '模型 API' }, { value: 'local', label: '本机 Agent' }] as const).filter(mode => mode.value !== 'local' || localAgentSetupEnabled)

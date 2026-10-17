@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通讯录空状态直接显示，不挂载内容过渡样式或触发显现；有效员工/群资料继续沿原Panel reveal。
  * [OUTPUT]: 编辑员工/员工组打开数据源同款Dialog，资料底页保持，原保存协议及局部草稿保护沿用。
  * [OUTPUT]: 员工/群资料复用紧凑配置Card与两行列表；直接展示执行记录和右侧过程导航；滚动预留/同设置Panel reveal。
  * [OUTPUT]: 移除员工资料的旧工作看板导航，保留配置、自动化及执行详情。
@@ -51,19 +52,20 @@ interface ContactsPageProps {
 
 export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, onCreateTeam, refresh, sidebarShown, divider, generation, busy, active = true, onConversation }: ContactsPageProps) {
   const selectionKey = `${generation}-${selected?.kind}-${selected?.id}`
+  const hasDetail = selected?.kind === 'agent' ? snapshot.agents.some(item => item.id === selected.id) : selected?.kind === 'group' && snapshot.conversations.some(item => item.id === selected.id && item.kind === 'group')
   const [detail, setDetail] = useState({ key: selectionKey, editing: false })
   if (detail.key !== selectionKey) setDetail({ key: selectionKey, editing: false })
   const content = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const element = content.current
-    if (!active || !element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!active || !hasDetail || !element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     element.style.transition = 'none'; element.dataset.settled = 'false'; element.dataset.open = 'false'
     void element.offsetWidth
     element.style.transition = ''; element.dataset.open = 'true'
     const settle = (event: TransitionEvent) => { if (event.target === element && event.propertyName === 'opacity') element.dataset.settled = 'true' }
     element.addEventListener('transitionend', settle)
     return () => { element.removeEventListener('transitionend', settle); element.dataset.settled = 'true' }
-  }, [selectionKey, active])
+  }, [selectionKey, active, hasDetail])
   const guard = useContext(GuardContext)
   const select = (next: ContactSelection, editing = false) => {
     if (next.kind !== selected?.kind || next.id !== selected.id || editing !== detail.editing) guard.navigate(() => {
@@ -74,7 +76,7 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
     <PanelResize open={sidebarShown} side="left" divider={divider}><ContactList onCreateTeam={onCreateTeam} api={api} snapshot={snapshot} selected={selected} onSelect={select} onMessage={onMessage} onCreate={onCreate} busy={busy} refresh={refresh} onRemoved={(agentIds, groupIds) => {
       if (selected && (selected.kind === 'agent' ? agentIds : groupIds).includes(selected.id)) guard.saved(() => setDetail({ key: selectionKey, editing: false }))
     }} /></PanelResize>
-    <section className="contacts-detail" aria-label="通讯录详情"><div ref={content} className="contact-content-transition settings-page-transition t-panel-slide" data-open="true" data-settled="true">
+    <section className="contacts-detail" aria-label="通讯录详情"><div ref={content} className={`contact-content-transition${hasDetail ? ' settings-page-transition t-panel-slide' : ''}`} data-open="true" data-settled="true">
       <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onSelect={select} onMessage={onMessage} busy={busy} active={active} onConversation={onConversation} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
     </div></section>
   </div>

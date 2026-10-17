@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整体执行权限在具体副作用前复用宿主审批回调。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [OUTPUT]: manageSkills/manageDataSources为普通bobo私聊的可选宿主回调，API与本机共用。
@@ -147,6 +148,7 @@ export interface EngineContext {
   onDelta(text: string): Promise<void>
   onTool(event: ToolEvent): Promise<void>
   approveCommand(command: string, cwd: string): Promise<boolean>
+  approveOperation?(operation: import('../shared/domain/execution').ExecutionOperation): Promise<boolean>
 }
 export interface ModelCallObservation {
   modelCallId?: string

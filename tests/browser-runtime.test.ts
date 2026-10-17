@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式整体权限在浏览器交互前等待/拒绝，导航观察保留且批准内容不包含输入正文。
  * [OUTPUT]: 默认浏览器交互/新网站无需审批，仍核对页面版本、参数身份和真实回执。
  * [OUTPUT]: 明确关闭沿真实BrowserSession/SQLite取消原运行并先通知Main销毁卡住页面，再等待原动作退出；未知回执不重放。
  * [OUTPUT]: 同实例同URL动态页面可显式重新观察；旧版本首次写入先拒绝且零派发，重新观察后保留当前审批与回执门禁。
@@ -10,6 +11,7 @@
  * [POS]: tests/browser-runtime.test.ts；Electron 真实页面由 browser-migration BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { authorizeExecution } from '../src/runtime/modules/employees/execution-permissions'
 import { afterEach,describe,expect,it,vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
@@ -489,4 +491,31 @@ describe('原生只读消息来源',()=>{
   await expect(session.execute('snapshot','read-other-page')).rejects.toThrow('重新引用')
   expect(acquire).not.toHaveBeenCalled();await session.drain()
  })
+})
+
+
+it.each(['read-only', 'ask', 'full-access'] as const)('enforces %s before dispatching browser interaction and hides input text', async executionPermission => {
+  const f = await fixture(), controller = new AbortController(), approval = deferred<boolean>()
+  const approveOperation = vi.fn(() => approval.promise)
+  const execute = vi.fn(async (envelope: BrowserActionEnvelope) => {
+    await f.repository.start({ actionId: envelope.actionId, generation: f.lease.generation, runId: f.lease.runId, workId: f.lease.workId })
+    return { actionId: envelope.actionId, generation: f.lease.generation, status: 'completed' as const, result: { output: '完成', appendReleaseHint: false } }
+  })
+  const bridge = host(async (method, input) => method === 'inspect' ? { ...page, scopeKey: f.lease.scopeKey } : method === 'executeSingle' ? execute(input as BrowserActionEnvelope) : method === 'drain' ? { drained: true } : undefined)
+  const context = { agent: { ...f.agent, executionPermission }, signal: controller.signal, approveOperation }
+  const session = new BrowserSession(f.lease, bridge, f.repository, { signal: controller.signal, validate: async () => {}, authorize: command => authorizeExecution(context, { kind: 'browser', description: command }) })
+  await session.execute('navigate https://example.test/', 'navigate')
+  expect(approveOperation).not.toHaveBeenCalled()
+  execute.mockClear()
+  const writing = session.execute('fill @e2 "private-business-input"', 'fill')
+  if (executionPermission === 'read-only') await expect(writing).rejects.toThrow('只读')
+  else if (executionPermission === 'ask') {
+    await vi.waitFor(() => expect(approveOperation).toHaveBeenCalledOnce())
+    expect(execute).not.toHaveBeenCalled()
+    expect(JSON.stringify(approveOperation.mock.calls)).not.toContain('private-business-input')
+    approval.resolve(false)
+    await expect(writing).rejects.toThrow('拒绝')
+  } else await writing
+  expect(execute).toHaveBeenCalledTimes(executionPermission === 'full-access' ? 1 : 0)
+  await session.drain()
 })

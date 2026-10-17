@@ -1,10 +1,10 @@
 /*
  * [INPUT]: 已保存员工、冻结本机技能绑定输入和宿主只读回执。
- * [OUTPUT]: 按页面/员工隔离的最小未决请求、重启未知恢复、完整回执身份检查及真实提交配置选择。
+ * [OUTPUT]: 按页面/员工隔离的最小未决请求、重启未知恢复、完整回执身份检查及真实提交配置选择；绑定后按字段差异保留未保存配置。
  * [POS]: employee 的纯绑定请求状态；不存技能正文或磁盘路径，不调用 IPC 或执行工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { DigitalAgent } from '@shared/domain'
+import type { AgentInput, DigitalAgent } from '@shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt, SkillSource } from '@shared/domain/skills'
 
 export const SKILL_BINDING_PENDING_KEY = 'boai:skills:binding-pending'
@@ -50,6 +50,14 @@ export function committedSkillBindingAgent(input: BindLocalSkillInput, receipt: 
   if (!skillBindingReceiptMatches(input, receipt) || receipt.status !== 'completed' || !receipt.agent || !receipt.resource) return
   if (receipt.agent.id !== input.agentId || receipt.resource.kind !== 'skill' || receipt.resource.ownerAgentId && receipt.resource.ownerAgentId !== input.agentId || !receipt.agent.skillIds.includes(receipt.resource.id) || receipt.agent.configVersion < input.expectedConfigVersion || receipt.agent.configVersion > input.expectedConfigVersion + 1) return
   return latest?.id === input.agentId && latest.configVersion > receipt.agent.configVersion ? latest : receipt.agent
+}
+
+/** Binding changes the committed version; retain the user's edits relative to their previous baseline. */
+export function mergeSkillBindingDraft(previous: AgentInput, draft: AgentInput, committed: AgentInput): AgentInput {
+  const changes = Object.fromEntries(Object.entries(draft).filter(([key, value]) => key !== 'skillIds' && JSON.stringify(value) !== JSON.stringify(previous[key as keyof AgentInput])))
+  const removed = new Set(previous.skillIds.filter(id => !draft.skillIds.includes(id)))
+  const added = draft.skillIds.filter(id => !previous.skillIds.includes(id))
+  return { ...committed, ...changes, skillIds: [...new Set([...committed.skillIds.filter(id => !removed.has(id)), ...added])] }
 }
 
 export function skillBindingSourceLabel(source: SkillSource) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API整体执行权限优先于兼容命令布尔值展示，配置事实不冒充实际执行结果。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -46,7 +47,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
   const connection = snapshot.connections.find(item => item.id === agent.connectionId)
   const model = agent.modelId || connection?.defaultModel
   const facts: EmployeeCapabilityFact[] = [nativeConnection ?? { id: 'model', name: '模型连接', status: connection && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。配置存在不代表连接或输出效果已验证。` : '请在配置中选择连接与模型。' }, {
-    id: 'commands', name: '命令授权', status: agent.allowCommands ? '可申请 · 逐次批准' : '未启用', detail: agent.allowCommands ? '配置允许申请命令执行；具体命令仍在原员工聊天请求批准，当前资料不执行检查。' : '当前员工不能申请执行主机命令。',
+    id: 'commands', name: '执行权限', status: agent.executionPermission ? ({ 'read-only': '只读', ask: '请求审批', 'full-access': '完全访问（跳过审批）' })[agent.executionPermission] : agent.allowCommands ? '可申请 · 逐次批准' : '未启用', detail: agent.executionPermission ? ({ 'read-only': '仅查看资料，不修改文件、写入数据源、操作网页或执行命令。', ask: '具体修改操作在执行前请求批准。', 'full-access': '已配置跳过审批；实际操作仍遵循资源与路径授权。' })[agent.executionPermission] : agent.allowCommands ? '配置允许申请命令执行；具体命令仍在原员工聊天请求批准，当前资料不执行检查。' : '当前员工不能申请执行主机命令。',
   }]
   if (agent.executionBackend?.kind === 'runtime-plugin') facts[1] = { id:'commands', name:'原生命令权限', status:'遵循本机 Agent 配置', detail:'由原生程序及其扩展管理权限。BOAI只接回实际提出的审批/输入请求；BOAI命令开关不限制原生工具。' }
   if (agent.executionBackend?.kind === 'claude-local') {

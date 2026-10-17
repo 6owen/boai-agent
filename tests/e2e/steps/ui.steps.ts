@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 基础组件/生产 MessageCard/Sonner 的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 六种表单控件共用 secondary 表面但仅保留内侧边缘、无底部外侧阴影，普通 Button 保留外侧阴影；聚焦/展开保持中性、校验仍单层红边及组合无双框；ChatComposer 文本/按钮聚焦保持无外侧阴影的中性边缘和32px圆角/独立背景，禁用发送按钮不抑制文本焦点；透明内层只接受 none 或透明零尺寸阴影及比较截图；明暗表单/聊天输入截图后保存清理前审阅检查点；复制短错误和 Sonner 四状态/紧凑/真实折叠/固定左右控件/状态同色纯 X与悬停明暗截图。
+ * [INPUT]: 基础组件/生产 MessageCard/Sonner 的中文场景、Electron fixture 与现有产品 API；复制使用键盘激活，避免测试页相邻控件遮挡鼠标。
+ * [OUTPUT]: 六种表单控件共用 secondary 表面但仅保留内侧边缘、无底部外侧阴影，普通 Button 保留外侧阴影；聚焦/展开保持中性、校验仍单层红边及组合无双框；ChatComposer 文本/按钮聚焦保持无外侧阴影的中性边缘和32px圆角/独立背景，禁用发送按钮不抑制文本焦点；透明内层只接受 none 或透明零尺寸阴影及比较截图；明暗表单/聊天输入截图后保存清理前审阅检查点；复制短错误和 Sonner 四状态/共用Button secondary细边缘与小阴影的中性卡片/32px圆形状态图标/真实折叠/固定左右控件/中性纯 X与悬停明暗截图。
  * [POS]: tests/e2e/steps/ui.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -272,7 +272,10 @@ async function exerciseMessageCopyError(previous: Awaited<ReturnType<typeof load
   const errorToast = page.locator('[data-sonner-toast][data-type=error]')
   for (const attempt of [1, 2]) {
     await message.hover()
-    await message.getByRole('button', { name: '复制 Arvin 的消息' }).click()
+    const copy = message.getByRole('button', { name: '复制 Arvin 的消息' })
+    await copy.focus()
+    await expect(copy).toBeFocused()
+    await copy.press('Enter')
     await expect(message).toHaveAttribute('data-copy-attempts', String(attempt))
     await expect(errorToast).toHaveCount(1)
     await expect(errorToast.locator('[data-title]')).toHaveText('复制失败：未获得剪贴板权限。')
@@ -294,12 +297,12 @@ const toastStates = [
   { type: 'error', button: '错误提示', token: 'destructive', backgroundToken: 'destructive-background' },
   { type: 'success', button: '成功提示', token: 'success', backgroundToken: 'success-background' },
   { type: 'warning', button: '警告提示', token: 'warning', backgroundToken: 'warning-background' },
-  { type: 'info', button: '信息提示', token: 'primary', backgroundToken: 'info-background' },
+  { type: 'info', button: '信息提示', token: 'foreground', backgroundToken: 'selection' },
 ] as const
 type ToastType = typeof toastStates[number]['type']
 
 async function verifyToastLayout(toast: Locator) {
-  await expect(toast.locator('[data-icon]')).toHaveCSS('width', '16px')
+  await expect(toast.locator('[data-icon]')).toHaveCSS('width', '32px')
   await expect(toast.locator('[data-icon]')).toHaveCSS('flex-shrink', '0')
   await expect(toast.locator('[data-content]')).toHaveCSS('flex-grow', '1')
   await expect(toast.locator('[data-content]')).toHaveCSS('min-width', '0px')
@@ -326,11 +329,15 @@ async function verifyToastTheme(page: Page, toast: Locator, type: ToastType, con
   const state = toastStates.find(state => state.type === type)!
   const theme = await page.evaluate(({ token, backgroundToken }) => {
     const sample = document.createElement('div')
-    Object.assign(sample.style, { backgroundColor: `var(--${backgroundToken})`, color: 'var(--foreground)', border: `1px solid var(--${token})`, borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-popover)', fontFamily: 'var(--font-ui-family)' })
+    Object.assign(sample.style, { backgroundColor: 'var(--card)', color: 'var(--foreground)', border: '0', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-control)', fontFamily: 'var(--font-ui-family)' })
     document.body.append(sample)
     const style = getComputedStyle(sample)
-    const result = { background: style.backgroundColor, color: style.color, border: style.borderTopColor, radius: style.borderTopLeftRadius, shadow: style.boxShadow, font: style.fontFamily, closeRadius: '', closeHoverBackground: '' }
-    sample.style.backgroundColor = `color-mix(in srgb,var(--${token}) 12%,transparent)`
+    const result = { background: style.backgroundColor, color: style.color, radius: style.borderTopLeftRadius, shadow: style.boxShadow, font: style.fontFamily, statusColor: '', iconBackground: '', closeRadius: '', closeHoverBackground: '' }
+    sample.style.color = `var(--${token})`
+    sample.style.backgroundColor = `var(--${backgroundToken})`
+    result.statusColor = getComputedStyle(sample).color
+    result.iconBackground = getComputedStyle(sample).backgroundColor
+    sample.style.backgroundColor = 'var(--accent)'
     sample.style.borderRadius = 'var(--radius-control)'
     const closeStyle = getComputedStyle(sample)
     result.closeRadius = closeStyle.borderTopLeftRadius
@@ -340,18 +347,17 @@ async function verifyToastTheme(page: Page, toast: Locator, type: ToastType, con
   }, state)
   await expect(toast).toHaveCSS('background-color', theme.background)
   await expect(toast).toHaveCSS('color', theme.color)
-  await expect(toast).toHaveCSS('border-top-color', theme.border)
-  await expect(toast).toHaveCSS('border-top-width', '1px')
+  await expect(toast).toHaveCSS('border-top-width', '0px')
   await expect(toast).toHaveCSS('border-top-left-radius', theme.radius)
   await expect(toast).toHaveCSS('box-shadow', theme.shadow)
   await expect(toast).toHaveCSS('font-family', theme.font)
   await expect(toast).toHaveCSS('font-size', '12px')
   await expect(toast).toHaveCSS('padding', '12px 14px')
-  await expect(toast).toHaveCSS('gap', '8px')
+  await expect(toast).toHaveCSS('gap', '12px')
   await expect(toast).toHaveCSS('opacity', '1')
   await expect(toast.locator('[data-content]')).toHaveCSS('opacity', contentVisible ? '1' : '0')
   await expect(toast.locator('[data-title]')).toHaveCSS('color', theme.color)
-  await expect(toast.locator('[data-title]')).toHaveCSS('font-weight', '400')
+  await expect(toast.locator('[data-title]')).toHaveCSS('font-weight', '500')
   await expect(toast.locator('[data-title]')).toHaveCSS('line-height', '16.8px')
   const close = toast.locator('[data-close-button]')
   await expect(close).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
@@ -360,9 +366,9 @@ async function verifyToastTheme(page: Page, toast: Locator, type: ToastType, con
   await expect(close).toHaveCSS('border-top-style', 'none')
   await expect(close).toHaveCSS('box-shadow', 'none')
   await expect(close).toHaveCSS('border-top-left-radius', theme.closeRadius)
-  await expect(toast.locator('[data-icon]')).toHaveCSS('color', theme.border)
-  await expect(close).toHaveCSS('color', theme.border)
-  await expect(close).toHaveCSS('color', await toast.locator('[data-icon]').evaluate(element => getComputedStyle(element).color))
+  await expect(toast.locator('[data-icon]')).toHaveCSS('color', theme.statusColor)
+  await expect(toast.locator('[data-icon]')).toHaveCSS('background-color', theme.iconBackground)
+  await expect(close).toHaveCSS('color', theme.color)
   await expect(close.locator('.app-icon')).toHaveCSS('width', '14px')
   await expect(close.locator('.app-icon')).toHaveCSS('height', '14px')
   if (await toast.locator('[data-description]').count()) await expect(toast.locator('[data-description]')).toHaveCSS('font-size', '11px')
@@ -423,7 +429,7 @@ async function verifyReactiveToasts(previous: Awaited<ReturnType<typeof exercise
   const darkError = await verifyToastTheme(page, errorToast, 'error')
   expect(darkError.background).not.toBe(lightError.background)
   expect(darkError.color).not.toBe(lightError.color)
-  expect(darkError.border).not.toBe(lightError.border)
+  expect(darkError.statusColor).not.toBe(lightError.statusColor)
   expect(darkError.font).not.toBe(lightError.font)
   expect(darkError.closeHoverBackground).not.toBe(lightError.closeHoverBackground)
   await errorToast.getByRole('button', { name: '关闭提示' }).click()
@@ -434,12 +440,11 @@ async function verifyReactiveToasts(previous: Awaited<ReturnType<typeof exercise
   await expect(successToast).toContainText('操作完成')
   await expect(successToast).toBeVisible()
   const darkSuccess = await verifyToastTheme(page, successToast, 'success')
-  const { border: darkErrorBorder, background: darkErrorBackground, closeHoverBackground: darkErrorHover, ...darkErrorSurface } = darkError
-  const { border: darkSuccessBorder, background: darkSuccessBackground, closeHoverBackground: darkSuccessHover, ...darkSuccessSurface } = darkSuccess
+  const { statusColor: darkErrorStatus, iconBackground: darkErrorIcon, ...darkErrorSurface } = darkError
+  const { statusColor: darkSuccessStatus, iconBackground: darkSuccessIcon, ...darkSuccessSurface } = darkSuccess
   expect(darkSuccessSurface).toEqual(darkErrorSurface)
-  expect(darkSuccessBorder).not.toBe(darkErrorBorder)
-  expect(darkSuccessBackground).not.toBe(darkErrorBackground)
-  expect(darkSuccessHover).not.toBe(darkErrorHover)
+  expect(darkSuccessStatus).not.toBe(darkErrorStatus)
+  expect(darkSuccessIcon).not.toBe(darkErrorIcon)
   await successToast.evaluate(element => element.setAttribute('data-existing-toast', 'success'))
   await page.evaluate(async () => {
     const state = await window.boai.request('getAppearance', undefined)
@@ -447,12 +452,11 @@ async function verifyReactiveToasts(previous: Awaited<ReturnType<typeof exercise
   })
   await expect(toaster).toHaveAttribute('data-sonner-theme', 'light')
   await expect(successToast).toHaveAttribute('data-existing-toast', 'success')
-  const { border: lightSuccessBorder, background: lightSuccessBackground, closeHoverBackground: lightSuccessHover, ...lightSuccessSurface } = await verifyToastTheme(page, successToast, 'success')
-  const { border: lightErrorBorder, background: lightErrorBackground, closeHoverBackground: lightErrorHover, ...lightErrorSurface } = lightError
+  const { statusColor: lightSuccessStatus, iconBackground: lightSuccessIcon, ...lightSuccessSurface } = await verifyToastTheme(page, successToast, 'success')
+  const { statusColor: lightErrorStatus, iconBackground: lightErrorIcon, ...lightErrorSurface } = lightError
   expect(lightSuccessSurface).toEqual(lightErrorSurface)
-  expect(lightSuccessBorder).not.toBe(lightErrorBorder)
-  expect(lightSuccessBackground).not.toBe(lightErrorBackground)
-  expect(lightSuccessHover).not.toBe(lightErrorHover)
+  expect(lightSuccessStatus).not.toBe(lightErrorStatus)
+  expect(lightSuccessIcon).not.toBe(lightErrorIcon)
   await successToast.getByRole('button', { name: '关闭提示' }).click()
   await expect(page.locator('[data-sonner-toast]')).toHaveCount(0)
   for (const mode of ['light', 'dark'] as const) {
@@ -471,12 +475,11 @@ async function verifyReactiveToasts(previous: Awaited<ReturnType<typeof exercise
       await close.hover()
       await expect(close).toHaveCSS('background-color', theme.closeHoverBackground)
       await expect(close).toHaveCSS('background-image', 'none')
-      await expect(close).toHaveCSS('color', theme.border)
-      await expect(close).toHaveCSS('color', await preview.locator('[data-icon]').evaluate(element => getComputedStyle(element).color))
+      await expect(close).toHaveCSS('color', theme.color)
       if (state.type === 'error') await captureToastPreview(page, `sonner-hover-${mode}`, { preserveHover: true })
       await page.mouse.move(0, 0)
       await expect(close).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-      await expect(close).toHaveCSS('color', theme.border)
+      await expect(close).toHaveCSS('color', theme.color)
       await preview.getByRole('button', { name: '关闭提示' }).click()
       await expect(page.locator('[data-sonner-toast]')).toHaveCount(0)
     }
@@ -521,7 +524,7 @@ async function verifyReactiveToasts(previous: Awaited<ReturnType<typeof exercise
     await longError.getByRole('button', { name: '关闭提示' }).hover()
     await expect(longError.locator('[data-close-button]')).toHaveCSS('background-color', longTheme.closeHoverBackground)
     await expect(longError.locator('[data-close-button]')).toHaveCSS('background-image', 'none')
-    await expect(longError.locator('[data-close-button]')).toHaveCSS('color', longTheme.border)
+    await expect(longError.locator('[data-close-button]')).toHaveCSS('color', longTheme.color)
     await page.mouse.move(0, 0)
     await expect(longError.locator('[data-close-button]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     await captureToastPreview(page, `sonner-long-${mode}`)

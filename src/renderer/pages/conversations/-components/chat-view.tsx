@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行审批按命令/文件/数据源/网页/配置展示真实操作类型，旧命令永久授权保留。
  * [OUTPUT]: 目录结果按所属用户轮次锚定至bobo回复后，单独消息行展示，不堆积在聊天底部。
  * [OUTPUT]: 定时任务公开消息旁展示同一原Run的ExecutionFeed；定位该消息仍显示过程，流式正文不重复，隐藏页停读。
  * [OUTPUT]: 资源管理结果导航携已保存名称，数据源打开全局右侧配置标签。
@@ -346,6 +347,7 @@ export function ChatView({ api, pageActive, questionReplies, artifactActions, on
 }
 
 export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean, always?: boolean) => void; busy: boolean }) {
-  const browser = approval.kind === 'browser'
-  return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} tabIndex={-1} role="region" aria-label={`${approval.agentName} 的${browser ? '网页操作' : '命令'}审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} {browser ? '申请操作网页' : '申请运行命令'}</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre>{!browser && <p className="field-hint">工作目录：{approval.cwd}</p>}<p className="field-hint">{browser ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : '命令使用应用的主机权限，请核对实际操作范围。'}</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button>{approval.rememberAllowed && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, true, true)}>始终允许此类操作</Button>}</div></CardContent></Card>
+  const kind = approval.kind ?? 'command'
+  const labels = { command: '运行命令', browser: '操作网页', file: '修改或发布文件', source: '写入数据源', configuration: '修改配置或委派工作' }
+  return <Card className="approval-card gap-0 p-4" data-approval-id={approval.id} tabIndex={-1} role="region" aria-label={`${approval.agentName} 的${labels[kind]}审批`}><CardContent className="p-0"><div className="approval-topline"><ShieldCheck size={17} /><strong>{approval.agentName} 申请{labels[kind]}</strong><small className="approval-status">待确认</small></div><pre>{approval.command}</pre>{kind === 'command' && <p className="field-hint">工作目录：{approval.cwd}</p>}<p className="field-hint">{kind === 'browser' ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : kind === 'command' ? '命令使用应用的主机权限，请核对实际操作范围。' : '请核对本次操作，批准仅用于这一次执行。'}</p><div className="button-row"><Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button><Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>允许这次执行</Button>{approval.rememberAllowed && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, true, true)}>始终允许此类操作</Button>}</div></CardContent></Card>
 }

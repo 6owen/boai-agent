@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: API/Codex/Claude共用宿主工具的整体权限，实际文件/命令读写与审批拒绝/跳过按后端逐项验证。
+ * [OUTPUT]: 整体权限以真实文件/命令验证只读零写、审批等待/拒绝与完全访问跳过审批。
  * [OUTPUT]: 网关真实SDK跨工具步骤、JSON修复、记忆和汇报的callId/路由逐请求对应；缺头部不继承其他步骤。
  * [OUTPUT]: 实际SDK验证普通bobo在空初始目录下inspect/call_data_source接续和写入回执，不创建Work。
  * [OUTPUT]: 真实SDK定时判断广告浏览器并执行browser_tool；旧自动化禁用断言被现行合同替代。
@@ -1923,5 +1925,48 @@ describe('Hermes-inspired API file editing', () => {
     expect(artifacts).toHaveLength(1)
     expect(await readFile(artifacts[0].path, 'utf8')).toBe(original.replace('十一月一日', '十一月八日'))
     expect(toolResultText(server.requests[2])).toContain('replacements')
+  })
+})
+
+
+describe.each(['mastra-model', 'codex-local', 'claude-local'] as const)('%s employee execution permissions at real tool boundaries', kind => {
+  const executionBackend = kind === 'mastra-model' ? { kind } : { kind, profileId: 'fixture' }
+  it('keeps reads available and blocks file writes, edits, publication and commands in read-only mode', async () => {
+    const f = await nativeTask({ agent: employee({ executionBackend, executionPermission: 'read-only', allowCommands: false }) })
+    await writeFile(path.join(f.ctx.workspace!.workPath, 'original.txt'), 'original')
+    expect(JSON.stringify(await f.runtime.tools.read_file.execute!({ path: 'self:/work/original.txt' }, f.invocation))).toContain('original')
+    await expect(f.runtime.tools.write_file.execute!({ path: 'self:/work/forbidden.txt', content: 'changed' }, f.invocation)).rejects.toThrow('只读')
+    if (kind === 'mastra-model') await expect(f.runtime.tools.edit_file!.execute!({ path: 'self:/work/original.txt', oldText: 'original', newText: 'changed' }, f.invocation)).rejects.toThrow('只读')
+    else expect(f.runtime.tools.edit_file).toBeUndefined()
+    await expect(f.runtime.tools.publish_artifact.execute!({ path: 'self:/work/original.txt' }, f.invocation)).rejects.toThrow('只读')
+    expect(f.runtime.tools.execute_command).toBeUndefined()
+    expect(await readFile(path.join(f.ctx.workspace!.workPath, 'original.txt'), 'utf8')).toBe('original')
+    await expect(readFile(path.join(f.ctx.workspace!.workPath, 'forbidden.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('waits before writing and leaves no file when approval is refused', async () => {
+    let decide!: (approved: boolean) => void
+    const approveOperation = vi.fn(() => new Promise<boolean>(resolve => { decide = resolve }))
+    const f = await nativeTask({ agent: employee({ executionBackend, executionPermission: 'ask', allowCommands: true }), approveOperation })
+    const writing = f.runtime.tools.write_file.execute!({ path: 'self:/work/proof.txt', content: 'approved bytes' }, f.invocation)
+    await vi.waitFor(() => expect(approveOperation).toHaveBeenCalledOnce())
+    await expect(readFile(path.join(f.ctx.workspace!.workPath, 'proof.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    decide(false)
+    await expect(writing).rejects.toThrow('拒绝')
+    await expect(readFile(path.join(f.ctx.workspace!.workPath, 'proof.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    approveOperation.mockResolvedValueOnce(true)
+    await f.runtime.tools.write_file.execute!({ path: 'self:/work/proof.txt', content: 'approved bytes' }, f.invocation)
+    expect(await readFile(path.join(f.ctx.workspace!.workPath, 'proof.txt'), 'utf8')).toBe('approved bytes')
+  })
+
+  it('executes actual file and command writes without an approval callback in full-access mode', async () => {
+    const approveOperation = vi.fn(async () => { throw new Error('Unexpected approval') })
+    const f = await nativeTask({ agent: employee({ executionBackend, executionPermission: 'full-access', allowCommands: true }), approveOperation })
+    await f.runtime.tools.write_file.execute!({ path: 'self:/work/proof.txt', content: 'full access' }, f.invocation)
+    await f.runtime.tools.execute_command!.execute!({ command: "printf 'command access' > command-proof.txt" }, f.invocation)
+    expect(await readFile(path.join(f.ctx.workspace!.workPath, 'proof.txt'), 'utf8')).toBe('full access')
+    expect(await readFile(path.join(f.ctx.workspace!.runPath, 'command-proof.txt'), 'utf8')).toBe('command access')
+    expect(approveOperation).not.toHaveBeenCalled()
+    expect(f.approvals).toEqual([])
   })
 })

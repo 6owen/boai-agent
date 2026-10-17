@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API空模型继承连接默认值，默认模型更新后动态跟随，显式覆盖不受影响。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: 三协议本机网关无需伪造私钥，远程缺凭据或公开标识误用不能提交。
  * [OUTPUT]: 2026-10-10 核对Claude来源与宿主同规则、不自动回退及Codex/API混绑拒绝。
@@ -100,4 +101,15 @@ it('plugin model sources require the tested protocol capability and preserve nat
   expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [gateway], [capable])).toBe(true)
   expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [{ ...gateway, gateway: { ...gateway.gateway!, protocol: 'messages' } }], [capable])).toBe(false)
   expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [], [capable])).toBe(false)
+})
+
+
+it('inherits the selected connection default when the employee model is blank and follows later default changes', () => {
+  const inherited = { ...selected, modelId: '' }
+  expect(agentModelSelectionReady(inherited, connections, [])).toBe(true)
+  expect(agentModelLabel(inherited, connections, [])).toBe('项目连接 · default-b')
+  const updated = connections.map(connection => ({ ...connection, defaultModel: 'new-default' }))
+  expect(agentModelLabel(inherited, updated, [])).toBe('项目连接 · new-default')
+  expect(agentModelLabel(selected, updated, [])).toBe('项目连接 · explicit-model')
+  expect(inherited.modelId).toBe('')
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整体权限经真实AppService/SQLite保存、审批/拒绝/直接执行及重启持久化，命令与文件使用真实任务工具。
  * [OUTPUT]: 步骤上限后新消息接续覆盖同进程/重启、发送去重、原Work/调用数/绝对期限及历史工具保留。
  * [OUTPUT]: 已忘记历史不重入汇报修复；员工命令永久授权保持配置版本，隔离其他员工并支持重启、撤销与关闭清理。
  * [OUTPUT]: API执行文本不重复登记最终答复或旧task_step摘要，最终上下文消息独立发布。
@@ -23,6 +24,9 @@ import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail
 import type { StoredTraceSpan } from '../src/shared/domain/traces'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { RequestContext } from '@mastra/core/request-context'
+import { noopObserve } from '@mastra/core/tools'
 import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
 
 const roots: string[] = []
@@ -2215,4 +2219,51 @@ it('stores streamed API narration once, independently from the final message and
  const evidence = await service.handle('listExecutionEvidence', { conversationId: chat.id, runId: run.id }) as import('../src/shared/domain/execution').ExecutionEvidencePage
  expect(evidence.items.map(event => event.payload)).toEqual([{ text: '正在读取文件' }])
  expect(state.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['最终答复'])
+})
+
+
+it('persists execution modes and applies actual operation approvals before file and command effects', async () => {
+  const { service, engine, root, secrets } = await fixture(); await configure(service)
+  let employee = (await snapshot(service)).agents.find(agent => agent.id === 'researcher')!
+  employee = await updateAgent(service, employee, { executionPermission: 'ask', allowCommands: true, modelId: '' })
+  const direct = await conversation(service)
+  let activeContext!: EngineContext
+  engine.handler = async context => {
+    activeContext = context
+    const runtime = await createTaskRuntime(context)
+    const invocation = { requestContext: new RequestContext(), observe: noopObserve }
+    try {
+      await runtime.tools.write_file.execute!({ path: `self:/runs/${context.runId}/proof.txt`, content: 'file effect' }, invocation)
+      await runtime.tools.execute_command!.execute!({ command: "printf 'command effect' > command.txt" }, invocation)
+      await context.onDelta('实际操作完成')
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '实际操作完成', evidence: [{ kind: 'answer', reference: '实际操作完成' }] })
+    } finally { await runtime.dispose() }
+  }
+  await send(service, direct, '执行权限检查', 'permission-ask')
+  await until(async () => (await snapshot(service)).approvals.length === 1)
+  const fileApproval = (await snapshot(service)).approvals[0]
+  expect(fileApproval).toMatchObject({ kind: 'file', rememberAllowed: false })
+  const askedDirectory = activeContext.workspace!.runPath
+  await expect(readFile(join(askedDirectory, 'proof.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  await service.handle('approve', { id: fileApproval.id, approved: true })
+  await until(async () => (await snapshot(service)).approvals.some(approval => approval.kind === 'command'))
+  const commandApproval = (await snapshot(service)).approvals[0]
+  expect(commandApproval.rememberAllowed).toBe(false)
+  expect(await readFile(join(askedDirectory, 'proof.txt'), 'utf8')).toBe('file effect')
+  await expect(readFile(join(askedDirectory, 'command.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  await service.handle('approve', { id: commandApproval.id, approved: false }); await idle(service, direct, 1)
+  await expect(readFile(join(askedDirectory, 'command.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  employee = await updateAgent(service, employee, { executionPermission: 'full-access' })
+  await send(service, direct, '按完全访问执行检查', 'permission-full'); await idle(service, direct, 2)
+  expect((await snapshot(service)).approvals).toEqual([])
+  expect(await readFile(join(activeContext.workspace!.runPath, 'command.txt'), 'utf8')).toBe('command effect')
+  employee = await updateAgent(service, employee, { executionPermission: 'read-only', allowCommands: true })
+  expect(employee.allowCommands).toBe(false)
+  await send(service, direct, '只读权限检查', 'permission-read'); await idle(service, direct, 3)
+  await expect(readFile(join(activeContext.workspace!.runPath, 'proof.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  expect((await snapshot(service)).approvals).toEqual([])
+  expect((await detail(service, direct)).runs.find(run => run.id === activeContext.runId)?.error).toContain('只读')
+  await service.close()
+  const reopened = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(reopened); await reopened.init()
+  expect((await snapshot(reopened)).agents.find(agent => agent.id === employee.id)).toMatchObject({ executionPermission: 'read-only', allowCommands: false, modelId: '' })
 })

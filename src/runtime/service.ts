@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: API与本机整体权限覆盖宿主文件/数据源/网页/计划及目录/组织管理；原生访问和审批沿同一已保存选择。
+ * [OUTPUT]: API整体执行权限接入文件/命令/数据源/浏览器交互/计划和委派；具体操作审批沿原Run与取消/配置版本门禁。
  * [OUTPUT]: 连接变更/删除/导入按连接取消并等待无Run调用，凭据与来源同锁快照，迟到结果拒绝；团队规划在换凭据前退出。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
@@ -92,6 +94,7 @@
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { authorizeExecution } from './modules/employees/execution-permissions'
 import { GatewayImports } from './modules/backends/gateway-imports'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { composerReferencesSchema, type ComposerReference } from '../shared/domain/composer-references'
@@ -2671,6 +2674,8 @@ export class AppService {
     const result = await this.dataSources.use(ref, context.runId, context.signal, request, async mutating => {
       await validate()
       if (mutating) {
+        await authorizeExecution(context, { kind: 'source', description: `写入数据源 ${ref.name}` })
+        await validate()
         // bobo owns global business resources; ordinary chat needs no employee binding or file Work.
         if (isCoreAgent(context.agent) && !context.work) return
         if (isNativeBackend(context.agent.executionBackend)) await context.ensureNativeWork?.()
@@ -3112,24 +3117,30 @@ export class AppService {
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
       })
       const context = await this.engineContext(run, turn, effective, run.responseKind === 'chat' ? undefined : decision.observedThroughSequence); key = context.apiKey
+      context.approveOperation = operation => this.requestApproval(run, controller, operation.description, this.runDirectories.get(run.id) ?? '', true, operation.kind)
       const source = this.messages.get(turn.triggerMessageId)
       if (source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel && conversation.purpose !== 'automation' && (conversation.purpose !== 'core' || conversation.automationCreation && isCoreAgent(context.agent)) && conversation.purpose !== 'channel-internal') {
         const owner = conversation.automationCreation ? undefined : conversation.kind === 'group' ? { kind: 'group' as const, conversationId: conversation.id } : { kind: 'employee' as const, employeeId: run.agentId }
         context.automationOwner = owner
-        context.manageAutomation = automationCommands(this.automations, this.store, { owner, source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, validate: async () => {
+        const manageAutomation = automationCommands(this.automations, this.store, { owner, source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, validate: async () => {
           effective.throwIfAborted()
           const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)
           if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin) fail('当前用户消息或员工/群授权已失效，不能管理计划')
           await this.assertMaterialRefs(context)
         } })
+        context.manageAutomation = async input => {
+          if (input.action !== 'list' && input.action !== 'get') await authorizeExecution(context, { kind: 'configuration', description: `管理定时任务：${input.action}` })
+          return manageAutomation(input)
+        }
       }
       if (conversation.sourceCreation && conversation.purpose === 'core' && isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel) {
-        context.createDataSource = sourceCreationCommands(this.dataSources, { source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, validate: async () => {
+        const createDataSource = sourceCreationCommands(this.dataSources, { source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, validate: async () => {
           effective.throwIfAborted()
           const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)
           if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || !current.sourceCreation || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin || original.status !== 'completed' || (await this.memory.forgottenMessageIds(run.agentId)).has(source.id)) fail('当前用户消息或员工授权已失效，不能创建数据源')
           await this.assertMaterialRefs(context)
         } })
+        context.createDataSource = async input => { await authorizeExecution(context, { kind: 'configuration', description: '创建数据源' }); return createDataSource(input) }
       }
       if (conversation.purpose === 'core' && !conversation.automationCreation && isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel && run.responseKind === 'chat') {
         const validate = async () => {
@@ -3151,8 +3162,8 @@ export class AppService {
           const activity: CatalogActivity = { id: activityId, conversationId: conversation.id, messageId: source.id, kind, action: command.action, createdAt: now(), name: value.skill?.name ?? value.name ?? (command.action === 'update' ? '技能更新' : '技能安装'), ...(operationId ? { operationId } : { targetId }), ...(value.removed ? { removed: true } : {}) }
           await this.store.write([{ collection: 'catalogActivities', id: activity.id, value: activity }]); this.changed(conversation.id)
         }
-        context.manageSkills = async input => { const result = await commands.skills(input); await recordResult('skill', input.command, result); return result }
-        context.manageDataSources = async input => { const result = await commands.sources(input); await recordResult('source', input.command, result); return result }
+        context.manageSkills = async input => { if (['save', 'delete', 'install', 'update', 'organize', 'bind', 'unbind'].includes(input.command.action)) await authorizeExecution(context, { kind: 'configuration', description: `管理技能：${input.command.action}` }); const result = await commands.skills(input); await recordResult('skill', input.command, result); return result }
+        context.manageDataSources = async input => { if (['create', 'update', 'delete', 'bindings'].includes(input.command.action)) await authorizeExecution(context, { kind: 'configuration', description: `管理数据源：${input.command.action}` }); const result = await commands.sources(input); await recordResult('source', input.command, result); return result }
       }
       const attachBrowser = async () => {
         if (this.options.browserHost && isBrowserCapableAgent(context.agent) && !context.work?.organization && decision.action === 'reply') {
@@ -3171,7 +3182,7 @@ export class AppService {
             await this.assertMaterialRefs(context)
             if (!await this.memory.recallValid(context.memory!)) fail('浏览器任务的记忆来源已失效')
           }
-          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,...(context.work ? {downloadDestination:{root:this.dataPath,runPath:this.runDirectories.get(run.id)!}}:{}),reference,originalRequest:this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId)?.content ?? '',validate})
+          const session=new BrowserSession(lease,this.options.browserHost,this.browser,{signal:effective,...(context.work ? {downloadDestination:{root:this.dataPath,runPath:this.runDirectories.get(run.id)!}}:{}),reference,originalRequest:this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId)?.content ?? '',validate,authorize:command=>authorizeExecution(context,{kind:'browser',description:`操作网页：${command}`})})
           this.browserSessions.set(run.id,{session,validate}); context.browserSession=session
         }
       }
@@ -3270,6 +3281,7 @@ export class AppService {
           })
           context.findEmployees = async query => { await validate(); return this.boboCollaboration.findEmployees(query) }
           context.organizeCollaboration = async (plan, toolCallId) => {
+            await authorizeExecution(context, { kind: 'configuration', description: '创建员工或组织协作' })
             await validate()
             const receipt = await this.boboCollaboration.organize(plan, authority, { modelCallId: this.organizationModelCalls.get(run.id), toolCallId }, effective)
             if (receipt.status === 'committed' && receipt.startIntentId && !effective.aborted) {
@@ -3279,6 +3291,7 @@ export class AppService {
           }
         }
         if (isCoreAgent(context.agent) && conversation.purpose === 'core' && !run.origin && !context.work.organization && context.legacyTeamName) context.createTeam = async plan => {
+          await authorizeExecution(context, { kind: 'configuration', description: '创建员工团队' })
           const accepted = await this.serialize(async () => {
             effective.throwIfAborted()
             if (this.backingUp || this.closing || terminal.has(run.status)) fail('服务或工作已停止，不能创建团队')
@@ -3296,6 +3309,7 @@ export class AppService {
           return { operationId: operation.id, conversationId: group.id, title: group.title, members: operation.memberIds.map(({ agentId }) => { const member = this.getAgent(agentId); return { id: member.id, name: member.name, role: member.role } }) }
         }
         context.delegateWork = async input => {
+          await authorizeExecution(context, { kind: 'configuration', description: '向其他员工委派工作' })
           const child = await this.serialize(async () => {
             if (context.work?.organization) fail('组织工作不能在原讨论中安排业务子工作，请在群内分工')
             effective.throwIfAborted()
@@ -3760,13 +3774,17 @@ export class AppService {
     await this.store.write([record('runs', run), ...(message ? [record('messages', message)] : [])])
     if (message) this.emit({ type: 'message', message }); this.changed(run.conversationId)
   }
-  private async requestApproval(run: AgentRun, controller: AbortController, command: string, cwd: string, commandsAllowed: boolean, kind: 'command' | 'browser' = 'command'): Promise<boolean> {
+  private async requestApproval(run: AgentRun, controller: AbortController, command: string, cwd: string, commandsAllowed: boolean, kind: NonNullable<Approval['kind']> = 'command'): Promise<boolean> {
     if (!commandsAllowed) fail('该员工未启用命令执行')
     if (controller.signal.aborted || terminal.has(run.status)) return false
-    const expected = this.runDirectories.get(run.id) ?? fail('任务工作目录不存在')
-    if (!isAbsolute(cwd) || !isWithin(expected, cwd)) fail('命令只能在本次任务目录内执行')
+    if (kind === 'command') {
+      const expected = this.runDirectories.get(run.id) ?? fail('任务工作目录不存在')
+      if (!isAbsolute(cwd) || !isWithin(expected, cwd)) fail('命令只能在本次任务目录内执行')
+    }
     if (!command.trim() || command.length > 20000) fail('命令为空或过长')
     const agent = this.getAgent(run.agentId)
+    if (!agent.active || agent.configVersion !== this.snapshots.get(run.id)?.agent.configVersion) fail('员工权限配置已变化，本次操作未执行')
+    if (agent.executionPermission === 'read-only') fail('当前员工为只读权限，本次操作未执行')
     const rememberAllowed = kind === 'command' && canRememberCommands(agent)
     if (rememberAllowed && await this.commandPermissions.allows(agent)) return !controller.signal.aborted && !terminal.has(run.status)
     const approval: Approval = { id: randomUUID(), kind, rememberAllowed, runId: run.id, conversationId: run.conversationId, agentName: run.agentName, command, cwd }

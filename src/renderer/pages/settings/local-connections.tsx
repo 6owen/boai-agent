@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 扫描候选与手动添加共用20px图标尺寸，不受Button默认16px图标规则缩小。
  * [OUTPUT]: 运行时插件安装/更新/启停/卸载与当前租约状态；本机扫描及动态配置/测试/保存接入。
  * [OUTPUT]: 首级固定560px高度并受视口约束，扫描结果在共用shadcn ScrollArea内滚动，容器延伸至弹窗边缘、留白归内部内容，标题/步骤/重扫固定；只显示实际程序与一个手动添加，保留候选协议/来源和未接入禁用。
  * [INPUT]: 无密钥登录扫描合同、已有ACP/原生启动项、明确协议草稿预填接口、按真实程序优先匹配的Agent品牌图标/插画、共用弹窗布局和配置编辑器。
@@ -92,7 +93,7 @@ export function LocalConnections({ profiles, api, initialProfile, onSaved, onClo
           </>}
           <div className="connection-provider-options" aria-busy={operation === 'scan'}>
             {options(candidates(result))}
-            <Button variant="surface" size="content" className="connection-provider-option" disabled={working} onClick={() => { setError(''); setSelection({ manual: true, draft: { name: '', executable: '', args: [], useExistingLogin: true } }) }}><span className="connection-provider-icon"><Plus /></span><span><strong>手动添加</strong><small>填写启动命令，或从目录加载</small></span><ChevronRight /></Button>
+            <Button variant="surface" size="content" className="connection-provider-option" disabled={working} onClick={() => { setError(''); setSelection({ manual: true, draft: { name: '', executable: '', args: [], useExistingLogin: true } }) }}><span className="connection-provider-icon"><Plus className="connection-brand-icon size-[20px]" /></span><span><strong>手动添加</strong><small>填写启动命令，或从目录加载</small></span><ChevronRight /></Button>
           </div>
         </ScrollArea>
         <div className="connection-wizard-note"><RefreshCw size={14} /><span>没有找到你的 Agent？</span><Button variant="link" size="content" className="local-agent-rescan" disabled={working} onClick={scan}>{operation === 'scan' ? '正在扫描…' : '重新扫描'}</Button></div>

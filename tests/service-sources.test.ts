@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工整体三档权限实际约束本地数据源写入；审批前零写、只读拒绝、完全访问无审批，旧配置兼容。
  * [OUTPUT]: 真实AppService验证bobo无绑定全局及同轮新增源读写、普通chat无Work、停用/私有阶段/结束运行拒绝；普通员工绑定门禁保持。
  * [OUTPUT]: 桌面凭据读取、编辑后回填/清空、版本拒绝与普通DTO隔离；使用测试vault，不读取用户密钥。
  * [OUTPUT]: 新增专用核心会话真实工具保存、普通聊天不暴露、原生桥调用及结束运行拒绝。
@@ -100,7 +101,7 @@ it('returns the saved source credential only through the versioned editor reques
   await expect(service.handle('getDataSourceCredential', { id: source.id, expectedRevision: source.revision })).rejects.toThrow()
 })
 
-it('routes bound sources through native and Mastra contracts, rejecting private phases, another source and revoked bindings', async () => {
+it.each([undefined, 'read-only', 'ask', 'full-access'] as const)('routes bound sources with %s permission and rejects revoked bindings', async permission => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-source-host-'))); cleanups.push(() => rm(root, { recursive: true, force: true }))
   await writeFile(join(root, 'facts.md'), 'LOCAL_SOURCE_FACT')
   let source: DataSource, unrelated: DataSource, context: EngineContext | undefined, decisionDenied = false, phaseFailure: unknown
@@ -119,7 +120,9 @@ it('routes bound sources through native and Mastra contracts, rejecting private 
         const tools = createSourceTools(ctx)
         const resultFromMastra = await tools.call_data_source.execute!({ sourceId: source.id, tool: 'files', arguments: { operation: 'read', path: 'facts.md' } }, { requestContext: new RequestContext(), observe: noopObserve })
         expect(JSON.stringify(resultFromMastra)).toContain('LOCAL_SOURCE_FACT')
-        await tools.call_data_source.execute!({ sourceId: source.id, tool: 'files', arguments: { operation: 'write', path: 'result.md', content: 'SOURCE_WRITE_RESULT', expectedHash: null } }, { requestContext: new RequestContext(), observe: noopObserve })
+        const writing = tools.call_data_source.execute!({ sourceId: source.id, tool: 'files', arguments: { operation: 'write', path: 'result.md', content: 'SOURCE_WRITE_RESULT', expectedHash: null } }, { requestContext: new RequestContext(), observe: noopObserve })
+        if (permission === 'read-only') await expect(writing).rejects.toThrow('只读')
+        else await writing
         const bridge = createNativeProducts(ctx)
         const tool = bridge.tools.find(tool => tool.name === 'call_data_source')!
         const result = await tool.execute({ sourceId: source.id, tool: 'files', arguments: { operation: 'read', path: 'facts.md' } }, 'call-source')
@@ -138,16 +141,23 @@ it('routes bound sources through native and Mastra contracts, rejecting private 
   unrelated = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'unbound', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }) as DataSource
   let employee = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
   const definition = (agent: DigitalAgent) => { const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...value } = agent; return { ...value, expectedConfigVersion: configVersion } }
-  employee = await service.handle('saveAgent', { ...definition(employee), connectionId: connection.id, modelId: 'fixture', sourceIds: [source.id] }) as DigitalAgent
+  employee = await service.handle('saveAgent', { ...definition(employee), connectionId: connection.id, modelId: 'fixture', sourceIds: [source.id], executionPermission: permission }) as DigitalAgent
   const conversation = await service.handle('createConversation', { kind: 'direct', title: 'source test', agentIds: [employee.id] }) as Conversation
   await service.handle('sendMessage', { conversationId: conversation.id, requestId: randomUUID(), content: '读取数据源的 facts.md 并报告事实', mentionIds: [] })
   await vi.waitFor(async () => {
     const detail = await service.handle('getConversation', { id: conversation.id }) as ConversationDetail
     if (phaseFailure) throw phaseFailure
+    const approvals = (await service.handle('snapshot', undefined) as Snapshot).approvals
+    if (approvals.length) {
+      expect(permission).toBe('ask'); expect(approvals[0].kind).toBe('source'); expect(approvals[0].rememberAllowed).toBe(false)
+      await expect(readFile(join(root, 'result.md'))).rejects.toMatchObject({ code: 'ENOENT' })
+      await service.handle('approve', { id: approvals[0].id, approved: true })
+    }
     expect(detail.messages.some(message => message.senderType === 'agent' && message.status === 'completed' && message.content.includes('LOCAL_SOURCE_FACT'))).toBe(true)
   }, { timeout: 10000 })
   expect(decisionDenied).toBe(true); expect(context).toBeDefined()
-  expect(await readFile(join(root, 'result.md'), 'utf8')).toBe('SOURCE_WRITE_RESULT')
+  if (permission === 'read-only') await expect(readFile(join(root, 'result.md'))).rejects.toMatchObject({ code: 'ENOENT' })
+  else expect(await readFile(join(root, 'result.md'), 'utf8')).toBe('SOURCE_WRITE_RESULT')
   await service.handle('saveAgent', { ...definition(employee), sourceIds: [] })
   await expect(context!.inspectDataSource!(source.id)).rejects.toThrow()
   const snapshot = await service.handle('snapshot', undefined) as Snapshot

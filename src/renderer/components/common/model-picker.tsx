@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 有默认选项时空值显式保留继承，手动输入可清空恢复连接默认模型。
+ * [OUTPUT]: row布局复用连接设置的模型标题/操作及横向模型ID行，保留员工可选模型和原控件名称/必填语义。
  * [OUTPUT]: 手动模型输入与宿主共用1000字符上限，不截断目录原ID。
  * [OUTPUT]: Magpie目录请求携带网关根/协议/认证，来源变化隔离迟到响应。
  * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
@@ -26,7 +28,7 @@ type ModelDraft = Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'defaultMo
 
 export function ModelPicker({ api, draft, onChange, disabled = false, catalogAvailable = true, layout = 'field', placeholder = '输入模型 ID', fallbackModel = '', full = false, catalogSource, fetchModels, defaultOption }: {
   api: DesktopApi; draft: ModelDraft; onChange(model: string): void; disabled?: boolean; catalogAvailable?: boolean
-  layout?: 'field' | 'connection'; placeholder?: string; fallbackModel?: string; full?: boolean
+  layout?: 'field' | 'connection' | 'row'; placeholder?: string; fallbackModel?: string; full?: boolean
   catalogSource?: string; fetchModels?(): Promise<string[]>
   defaultOption?: string
 }) {
@@ -67,9 +69,9 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
   </div>
   const control = manual
     ? <Input maxLength={MODEL_ID_MAX_LENGTH} id={id} aria-label={layout === 'connection' ? '默认模型 ID' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} autoFocus={manual} required={layout === 'connection'} disabled={disabled || loading} value={draft.defaultModel} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
-    : <SelectField id={id} aria-label={layout === 'connection' ? '默认模型' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} required={layout === 'connection'} disabled={disabled || loading} value={draft.defaultModel || fallbackModel} onValueChange={onChange} placeholder={defaultOption || (options.length ? (layout === 'connection' ? '请选择默认模型' : '请选择模型') : '获取列表后选择，或手动填写')} options={[...(defaultOption ? [{ value: '', label: defaultOption }] : []), ...options.map(model => ({ value: model, label: model }))]} />
-  if (layout === 'connection') return <div className="connection-model-picker">
-    <div className="connection-group-heading"><FieldTitle><Cpu />默认模型</FieldTitle>{actions}</div>
+    : <SelectField id={id} aria-label={layout === 'connection' ? '默认模型' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} required={layout === 'connection'} disabled={disabled || loading} value={defaultOption ? draft.defaultModel : draft.defaultModel || fallbackModel} onValueChange={onChange} placeholder={defaultOption || (options.length ? (layout === 'connection' ? '请选择默认模型' : '请选择模型') : '获取列表后选择，或手动填写')} options={[...(defaultOption ? [{ value: '', label: defaultOption }] : []), ...options.map(model => ({ value: model, label: model }))]} />
+  if (layout !== 'field') return <div className="connection-model-picker">
+    <div className="connection-group-heading"><FieldTitle><Cpu />{layout === 'connection' ? '默认模型' : '模型'}</FieldTitle>{actions}</div>
     <Field orientation="horizontal" className="connection-setting-row connection-model-row grid">
       <FieldLabel htmlFor={id}><span className="connection-nested-line" aria-hidden="true" />模型 ID</FieldLabel>
       <div className="connection-setting-control">{control}<FieldDescription id={`${id}-hint`} className="sr-only">使用当前接口地址和密钥获取模型；点击铅笔可手动编辑模型 ID。</FieldDescription></div>

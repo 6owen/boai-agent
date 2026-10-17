@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 创建员工与群聊并保持手动列表状态的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 会话菜单入口、创建员工与群聊并保持手动列表状态的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/creation.steps.ts；场景状态仅在本次测试内共享。
@@ -72,7 +73,7 @@ async function cancelGroupCreation(previous: Awaited<ReturnType<typeof createEmp
   await group.getByRole('button', { name: '移除 研究员', exact: true }).click()
   await expect(group.getByRole('region', { name: '已选成员' })).not.toContainText('研究员')
   await group.getByRole('button', { name: '取消', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出' }).click()
+  await page.getByRole('button', { name: '退出' }).click()
   await expect(group).toBeHidden()
   expect((await snapshot()).conversations).toHaveLength(before)
   return { app, page, errors, snapshot, create, group }

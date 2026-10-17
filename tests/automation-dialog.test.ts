@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: 生产任务Dialog/表单/草稿守卫、React Portal与可控保存回执。
- * [OUTPUT]: 创建/编辑弹窗不替换底页；关闭保护提交本弹窗表单，保存期间禁止关闭；对话草稿关闭后保留。
+ * [OUTPUT]: 创建/编辑弹窗不替换底页；未保存确认仅取消/退出，取消保留草稿并由原表单保存、退出不提交，保存期间禁止关闭；对话草稿关闭后保留。
  * [POS]: 弹窗生命周期组件回归，不运行Electron或调用模型。
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
@@ -72,7 +72,12 @@ test('dirty edit saves only its own form before closing and cannot be dismissed 
   await act(async () => document.querySelector<HTMLButtonElement>('[data-slot=dialog-close]')!.click())
   expect(f.closed).not.toHaveBeenCalled()
   expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('有未保存的修改')
-  await act(async () => button('保存并退出').click())
+  expect([...document.querySelectorAll('[role=alertdialog] button')].map(value => value.textContent)).toEqual(['取消', '退出'])
+  expect(f.request.mock.calls.some(([method]) => method === 'saveAutomation')).toBe(false)
+  await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog] [data-slot=alert-dialog-cancel]')!.click())
+  expect(name.value).toBe('修改后的任务')
+  expect(f.closed).not.toHaveBeenCalled()
+  await act(async () => button('保存修改').click())
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)) })
   expect(f.request.mock.calls.filter(([method]) => method === 'saveAutomation')).toHaveLength(1)
   expect(f.request.mock.calls.find(([method]) => method === 'saveAutomation')?.[1]).toMatchObject({ id: plan.id, name: '修改后的任务', enabled: false, expectedRevision: 1 })
@@ -85,6 +90,17 @@ test('dirty edit saves only its own form before closing and cannot be dismissed 
   expect(f.saved).toHaveBeenCalledOnce()
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.textContent).toBe('原任务详情')
+})
+
+test('exiting a dirty schedule discards without saving', async () => {
+  const f = await fixture({ kind: 'manual', id: plan.id, key: 'discard' })
+  await change(document.querySelector<HTMLInputElement>('input[aria-label="名称"]')!, '不保存的任务')
+  await act(async () => document.querySelector<HTMLButtonElement>('[data-slot=dialog-close]')!.click())
+  await act(async () => button('退出').click())
+  expect(f.closed).toHaveBeenCalledOnce()
+  expect(f.saved).not.toHaveBeenCalled()
+  expect(f.request.mock.calls.some(([method]) => method === 'saveAutomation')).toBe(false)
+  expect(f.backgroundSubmit).not.toHaveBeenCalled()
 })
 
 test('conversation creation opens in a dialog and keeps its draft when closed', async () => {

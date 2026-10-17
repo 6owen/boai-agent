@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同一整体权限经SQLite保存、实际stdio参数与只读提权拒绝核对；原协议夹具不认证真实模型。
  * [OUTPUT]: 浏览器读后写按2026-10-17默认免审批合同验收；保留媒体/惰性Work/来源回执及重启断言，不等待已退役网页审批。
  * [OUTPUT]: Codex/Claude定时浏览器经实际stdio/MCP协议执行读图/写入/回读，沿原occurrence Work。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
@@ -19,7 +20,7 @@ import { tmpdir } from 'node:os'
 import { nativeFixture } from './fixtures/native-product'
 import { createHash } from 'node:crypto'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot } from '../src/shared/domain'
 import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../src/shared/ipc/browser'
 import { parseBrowserSingleCommand } from '../src/runtime/adapters/mastra/browser-tool-runtime'
 import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../src/shared/domain/execution'
@@ -27,6 +28,30 @@ const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it.each(['read-only', 'ask', 'full-access'] as const)('saves whole %s permissions and sends matching native access and approval settings', async executionPermission => {
+ const f=await setup()
+ const {id,configVersion,workspaceRef:_workspace,memoryNamespace:_memory,policyVersion:_policy,...input}=f.agent
+ const saved=await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,executionPermission,nativeOptions:{effort:'low',codexSandbox:'workspace-write',codexApprovalPolicy:'untrusted',claudePermissionMode:'acceptEdits'}}) as DigitalAgent
+ expect(saved.executionPermission).toBe(executionPermission)
+ const d=await f.wait(await f.send(executionPermission==='read-only'?'NATIVE_APPROVAL':'普通交流'))
+ expect(d.runs[0].status,d.runs[0].error).toBe('completed')
+ const cwd=join(f.root,'agents',id,'workspace','sessions',f.chat.id,'work')
+ const calls=(await readFile(join(cwd,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ if(runtime==='codex') {
+  expect(calls[0].params).toMatchObject({sandbox:executionPermission==='full-access'?'danger-full-access':'read-only',approvalPolicy:executionPermission==='ask'?'on-request':'never'})
+ } else {
+  const argv=calls[0].params.argv as string[]
+  expect(argv[argv.indexOf('--permission-mode')+1]).toBe(executionPermission==='full-access'?'bypassPermissions':executionPermission==='read-only'?'plan':'default')
+  expect(argv.includes('--dangerously-skip-permissions')).toBe(executionPermission==='full-access')
+ }
+ if(executionPermission==='read-only') {
+  expect((await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId:d.runs[0].id}) as NativeAction[]).filter(action=>action.status==='pending')).toEqual([])
+  await expect(readFile(join(cwd,'permission-marker'))).rejects.toMatchObject({code:'ENOENT'})
+ }
+ await f.restart()
+ expect((await f.service.handle('snapshot',undefined) as Snapshot).agents.find(agent=>agent.id===id)).toMatchObject({executionPermission,nativeOptions:saved.nativeOptions})
+})
 
 it('uses the BOAI browser from scheduled native work with the original occurrence lease', async () => {
  const actions: BrowserActionEnvelope[] = [], leases: BrowserLease[] = []

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 员工头像上传与跨页面持久化的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 21 款头像顺序、离线加载及背景/孔洞透明、主体保留/浅深色截图、新旧头像与上传图片跨页面持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/avatars.steps.ts；场景状态仅在本次测试内共享。
@@ -201,9 +202,9 @@ async function verifyMemberAppearance(previous: Awaited<ReturnType<typeof saveUp
   await member.getByRole('checkbox').check()
   await group.getByRole('button', { name: '取消', exact: true }).click()
   const leave = page.getByRole('alertdialog')
-  await expect(leave.getByRole('button', { name: '继续编辑', exact: true })).toBeVisible()
-  await expect(leave.getByRole('button', { name: '保存并退出', exact: true })).toBeVisible()
-  await leave.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await expect(leave.getByRole('button', { name: '取消', exact: true })).toBeVisible()
+  await expect(leave.getByRole('button')).toHaveText(['取消', '退出'])
+  await leave.getByRole('button', { name: '退出', exact: true }).click()
   return { runtime, app, page, errors, launch, uploaded, employee, group }
 }
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整体执行权限同时派生原生sandbox/approvalPolicy，覆盖文件/命令/网络访问与审批。
  * [OUTPUT]: 首线程只接纳原生有效写权限产生的精确信任新增，并持久化核对后的来源指纹；其他配置漂移仍在提交前拒绝。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Codex公开思考摘要完成快照覆盖对应增量块；私有正文不进入执行流。
@@ -19,6 +20,7 @@ import { codexExecutionEvent, recordValue } from '../native-events'
 import { CodexClient, object, string } from './client'
 import { codexGatewaySource } from './gateway-source'
 import { assertCodexGatewayVersion } from '../../../shared/domain/codex-provider'
+import { executionPermissionNativeOptions } from '../../../shared/domain/execution'
 
 /** Rovai's native approval decisions, including permission grants (not only shell). */
 export function codexApprovalResult(method: string, params: Record<string, unknown>, option?: string) {
@@ -78,6 +80,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
         return { answers: Object.fromEntries(Object.entries(response.answers ?? {}).map(([key, answers]) => [key, { answers }])) }
       }
       if (/requestApproval$/.test(method) || ['execCommandApproval', 'applyPatchApproval'].includes(method)) {
+        if (context.agent.executionPermission === 'read-only') return codexApprovalResult(method, params, 'decline')
         const response = await context.requestNativeAction({ id, method, kind: 'approval', title: String(params.command ?? params.reason ?? '本机 Codex 请求批准'), detail: params,
           options: [{ id: 'accept', label: '允许一次' }, { id: 'acceptForSession', label: '本次会话允许' }, { id: 'decline', label: '拒绝' }, { id: 'cancel', label: '取消本轮' }] }, signal)
         return codexApprovalResult(method, params, response.option)
@@ -116,7 +119,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
     },
   })
   client = started.client
-    const options = context.agent.nativeOptions
+    const options = executionPermissionNativeOptions('codex-local', context.agent.nativeOptions, context.agent.executionPermission)
     const threadOptions = { cwd: directory.cwd, developerInstructions: input.instructions,
       ...(options?.codexApprovalPolicy ? { approvalPolicy: options.codexApprovalPolicy } : {}),
       ...(options?.codexSandbox ? { sandbox: options.codexSandbox } : {}),

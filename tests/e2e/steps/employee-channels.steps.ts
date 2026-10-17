@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 渠道与执行统一经会话操作菜单进入，保留原面板/来源/草稿业务断言。
  * [OUTPUT]: 渠道草稿断言兼容普通textarea与群聊contenteditable输入，不改变业务发送步骤。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
@@ -190,11 +191,11 @@ Then('渠道资料执行和文件都在同一面板切换且返回保留草稿',
   await unchanged()
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(responsibility).toHaveValue('渠道面板未保存配置')
   await runtime.reviewNativeCheckpoint('渠道二级详情-员工编辑守卫与单容器')
   await page.getByRole('button', { name: '返回渠道聊天', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await channelDraft(page, '侧边渠道独立草稿', true)
   await panel.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '执行过程', exact: true }).click()
@@ -555,10 +556,10 @@ Then('员工已有绑定时不能新增渠道且编辑草稿受原未保存守�
   await pane.getByRole('textbox', { name: '绑定名称', exact: true }).fill('尚未保存的渠道')
   await page.getByRole('tab', { name: '系统文件', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(pane.getByRole('textbox', { name: '绑定名称', exact: true })).toHaveValue('尚未保存的渠道')
   await page.getByRole('tab', { name: '系统文件', exact: true }).click()
-  await page.getByRole('button', { name: '放弃并退出', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '系统文件', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: '渠道', exact: true }).click()
   await expect(pane.getByRole('textbox', { name: '绑定名称', exact: true })).toHaveCount(0)

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 已筛选技能、收藏顺序/分组、选择与全局 DragList 保存回调。
  * [OUTPUT]: 收藏直接沿会话Collapsible内自然布局列表，展开不重测虚拟高度或自动滚动；保留关闭组落点及跨组键盘排序。
- * [OUTPUT]: 仅本地完整目录使用TanStack Virtual，固定拖拽/聚焦/菜单行；收藏和本地共用技能行。
+ * [OUTPUT]: 仅本地完整目录使用TanStack Virtual；本地/收藏和员工选择共用SkillListItem，原拖拽/聚焦/菜单保持。
  * [POS]: library 的本地/收藏列表；复用会话行皮肤与全局拖拽协议。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,7 +12,8 @@ import { DragList, DragListItem, DragListGroupTarget } from '@/components/common
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { ChevronRight, MoreHorizontal, Zap } from '@/components/icons'
+import { ChevronRight, MoreHorizontal } from '@/components/icons'
+import { SkillListItem } from './skill-list-item'
 
 export type SkillEntry = { id: string; name: string; description: string; source: string; searchText: string; local: LocalSkill }
 type Props = {
@@ -75,7 +76,7 @@ function VirtualSkillRows(props: Props & { scroll: RefObject<HTMLDivElement | nu
 
 function SkillRow({ entry, selected, collection, favorites, busy, onSelect, onToggle, onReveal, onMenu }: Props & { entry: SkillEntry; onMenu(id: string | null): void }) {
   return <DragListItem id={entry.id} className={`skill-list-row${entry.id === selected ? ' selected' : ''}`}>{({ dragging, dragProps }) => <>
-          <Button variant="ghost" size="content" className={`conversation-item skill-list-select${entry.id === selected ? ' selected' : ''}${dragging ? ' drag-list-dragging' : ''}`} {...dragProps} aria-pressed={entry.id === selected} onClick={() => { if (!dragging) onSelect(entry.id) }}><span className="skill-list-icon"><Zap /></span><span className="conversation-copy"><strong className="conversation-title">{entry.name}</strong><small className="conversation-preview">{entry.source && <span className="skill-source-badge">{entry.source}</span>}{entry.description || '查看技能说明'}</small></span></Button>
+          <SkillListItem entry={entry} selected={entry.id === selected} dragging={dragging} {...dragProps} onClick={() => { if (!dragging) onSelect(entry.id) }} />
           <DropdownMenu onOpenChange={open => onMenu(open ? entry.id : null)}><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="skill-row-menu" aria-label={`${entry.name} 的操作`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent side="right" align="start" className="w-[240px] p-2"><DropdownMenuItem className="px-2.5 py-2" disabled={busy || !collection} onClick={() => onToggle(entry)}>{favorites.has(entry.id) ? '取消收藏' : '加入收藏'}</DropdownMenuItem><DropdownMenuItem className="whitespace-nowrap px-2.5 py-2" onClick={() => onReveal(entry.id)}>在文件夹中显示</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
   </>}</DragListItem>
 }

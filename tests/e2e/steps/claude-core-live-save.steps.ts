@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: v4真实活动核心请求补全原固定路径及真实wait_for_work例外；原自然快照/字数/48共享预算/绝对期限/两次重启断言保持，旧v3失败另存。
  * [OUTPUT]: 预算前置先按本次原会话/消息/本人核对唯一组织Work及原requestId/mode/key/无parent和origin，再沿该Work预算身份核对原48/16000；普通Work明确分类失败，最终组织回执绑定同一原来源。
  * [OUTPUT]: 新请求收窄本人和新子员工的每次公开汇报至80中文字符；退出后按本次核心工作身份核对四个固定文件实件/不存在/失败，原自然门禁和48/16000预算不变。
@@ -241,7 +242,7 @@ Then('真实活动Claude核心从底部{string}后保留原组织子成果并两
       expect(await runtime.app.evaluate(() => (globalThis as SaveProbe).__bottomSave.calls)).toEqual(saveCalls)
       await runtime.reviewNativeCheckpoint('真实活动核心未知保存冻结草稿与只读核对')
       await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-      await page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+      await page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
       await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(saved.role)
       await editor().getByRole('button', { name: '取消', exact: true }).click()
     }

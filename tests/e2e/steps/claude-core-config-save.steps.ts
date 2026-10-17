@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 原Claude创建、核心组织工具、48共享预算、实际子文件与明确离线负责人屏障。
  * [OUTPUT]: 活动核心从原底部正常/受理前后未知职责保存，未受理不取消，受理后按原服务取消实际执行；子成果/组织身份/原期限保持，两次重启零重放，仅明确新消息执行。
  * [POS]: Claude活动核心配置保存的离线BDD，不代替真实模型、组织树故障或原生关闭验证。
@@ -139,7 +140,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
       expect(await runtime.app.evaluate(() => (globalThis as SaveProbe).__bottomSave.calls)).toEqual(saveCalls)
       await runtime.reviewNativeCheckpoint('活动核心未知保存的冻结草稿与核读入口')
       await editor().getByRole('button', { name: '载入已提交配置', exact: true }).click()
-      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '放弃并退出', exact: true }).click()
+      await runtime.page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
       await expect(editor().getByRole('textbox', { name: '职责简介', exact: true })).toHaveValue(saved.role)
       await editor().getByRole('button', { name: '取消', exact: true }).click()
     }

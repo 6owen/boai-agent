@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 生产个人资料/聊天 UI、真实 IPC 与隔离 Desktop。
  * [OUTPUT]: 当前图表粒度/可访问日期及首次资料门禁，校验嵌套头像错误不掩盖资料冲突； 通过本人菜单/聊天本人头像资料入口进入资料；当前姓名/头像/用户名联动历史昵称、引用、工具条与表情，改名及重启同步且不回写旧 senderName；稳定 senderType/senderId 隔离自动化和员工；损坏旧图片回退、未保存/冲突、运行中保存及主题缩放验收。
  * [POS]: profile.feature 的业务步骤，协议服务在 support/profile。
@@ -135,7 +136,7 @@ Then('个人资料在重启后保留且资料取消不会修改历史', async ({
   await runtime.page.getByRole('button', { name: '编辑', exact: true }).click()
   await runtime.page.getByRole('textbox', { name: '显示名称' }).fill('放弃的名称')
   await runtime.page.getByRole('button', { name: '取消', exact: true }).click()
-  await runtime.page.getByRole('button', { name: '放弃并退出' }).click()
+  await runtime.page.getByRole('button', { name: '退出' }).click()
   await expect(runtime.page.locator('.profile-identity h1')).toHaveText(state.displayName!)
   await expect(runtime.page.getByRole('button', { name: '编辑', exact: true })).toBeFocused()
   for (const kind of ['direct', 'group'] as const) {
@@ -158,16 +159,17 @@ Then('个人资料支持关闭守卫输入校验和冲突恢复', async ({ runti
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).userProfile?.revision).toBe(1)
   expect(await cancelProfileWindowClose(runtime)).toBe('有未保存的修改')
   await page.keyboard.press('Escape'); await expect(page.getByRole('alertdialog')).toBeVisible()
-  await page.getByRole('button', { name: '继续编辑' }).click(); await expect(page.getByRole('textbox', { name: '显示名称' })).toHaveValue('我的草稿')
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消' }).click(); await expect(page.getByRole('textbox', { name: '显示名称' })).toHaveValue('我的草稿')
   await page.getByRole('textbox', { name: '用户名', exact: true }).fill('用户名不合法')
   await page.getByRole('button', { name: '保存', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('用户名需要')
   await page.evaluate(async () => { const saved = (await window.boai.request('snapshot', undefined)).userProfile!; await window.boai.request('updateUserProfile', { expectedRevision: saved.revision, displayName: '其他已保存名称', username: null, avatar: { kind: 'text' } }) })
   await expect(page.getByRole('textbox', { name: '显示名称' })).toHaveValue('我的草稿')
   await expect(page.getByRole('button', { name: '保存', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: '重新载入已保存资料' }).click(); await page.getByRole('button', { name: '放弃并退出' }).click()
+  await page.getByRole('button', { name: '重新载入已保存资料' }).click(); await page.getByRole('button', { name: '退出' }).click()
   await page.getByRole('button', { name: '编辑', exact: true }).click(); await expect(page.getByRole('textbox', { name: '显示名称' })).toHaveValue('其他已保存名称')
   await page.getByRole('textbox', { name: '显示名称' }).fill('最终资料')
-  await page.keyboard.press('Escape'); await page.getByRole('button', { name: '保存并退出' }).click()
+  await page.keyboard.press('Escape'); await page.getByRole('alertdialog').getByRole('button', { name: '取消' }).click()
+  await page.getByRole('dialog', { name: '编辑个人资料' }).getByRole('button', { name: '保存', exact: true }).click()
   await expect(page.getByRole('dialog', { name: '编辑个人资料' })).toBeHidden(); await expect(page.locator('.profile-identity h1')).toHaveText('最终资料')
 })
 Then('编辑个人资料时运行和输入草稿保持且用量可核对', async ({ runtime }) => {

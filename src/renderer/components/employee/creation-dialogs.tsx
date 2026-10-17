@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: API/Codex/Claude创建保留同一个整体执行权限，原生参数随同选择提交，不再丢弃本机权限。
+ * [OUTPUT]: 新建工作方式输入缩为12px/18px行高，沿共用员工表单紧凑密度。
+ * [OUTPUT]: 新建API员工默认请求整体执行审批，模型留空继承连接默认值。
+ * [OUTPUT]: 新建员工直接呈现无卡片/无分区标题的头像、姓名和职责行，Dialog保留无障碍名称。
+ * [OUTPUT]: 新建员工与编辑共用身份布局；模型与权限使用标题加Card，工作方式仅标题和textarea。
  * [OUTPUT]: 员工创建保留数据源同款Dialog；新建员工组恢复原搜索候选/已选成员双栏弹窗及右下角操作。
  * [OUTPUT]: API员工创建默认允许申请命令，可显式关闭；命令选择不被创建载荷覆盖。
  * [OUTPUT]: 创建共用设置页模型目录/手动输入，普通员工默认允许申请命令；旧ACP限制保持。
@@ -15,7 +20,7 @@ import type { Conversation, DigitalAgent, Snapshot, LaunchProfile, ExecutionBack
 import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { Avatar, Banner, colors, GuardContext, useDirty, useMutation } from '@/components/common'
-import { FileText, LoaderCircle, Pencil, Search, Users, X } from '@/components/icons'
+import { LoaderCircle, Search, Users, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -26,9 +31,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { templates } from './editors'
 import { AvatarPicker } from './avatar-picker'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
-import { AgentCommandField } from './agent-command-field'
+import { AgentPermissionField } from './agent-permission-field'
+import type { ExecutionPermission } from '@shared/domain/execution'
 import { avatarPresets, type AgentAvatar } from '@shared/domain/avatars'
-import { ConnectionDialogLayout, ConnectionForm, ConnectionSettingRow } from '@/pages/settings/connection-layout'
+import { ConnectionDialogLayout } from '@/pages/settings/connection-layout'
+import { ContactProfileSection, EmployeeFormSection } from './profile-card'
 
 interface Props {
   api: DesktopApi; snapshot: Snapshot; onClose(): void; onCreated(conversation: Conversation): Promise<void>
@@ -37,7 +44,7 @@ const returnFocus = () => document.querySelector<HTMLElement>('.list-heading [ar
 
 export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated }: Props & { template?: number }) {
   const preset = template === undefined ? undefined : templates[template]
-  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', connectionId: '', modelId: '', allowCommands: true, executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
+  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', connectionId: '', modelId: '', executionPermission: 'ask' as ExecutionPermission, allowCommands: true, executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
   const [profileError, setProfileError] = useState('')
   useEffect(() => { let active = true; void api.request('listLaunchProfiles', undefined).then(value => { if (active) setProfiles(value) }, () => { if (active) setProfileError('本机连接读取失败，请重新打开员工创建窗口。') }); return () => { active = false } }, [api])
@@ -53,26 +60,31 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
     if (!form.name.trim() || uploading || (!created.current && !modelReady)) return
     void run(async () => {
       // Keep the saved employee if opening the conversation needs to be retried.
-      created.current ??= await api.request('saveAgent', { ...form, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], skillIds: [], knowledgeIds: [], allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands, active: true })
+      created.current ??= await api.request('saveAgent', { ...form, executionPermission: ['mastra-model', 'codex-local', 'claude-local'].includes(form.executionBackend.kind) ? form.executionPermission : undefined, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], skillIds: [], knowledgeIds: [], allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands, active: true })
       const conversation = await api.request('createConversation', { kind: 'direct', title: created.current.name, agentIds: [created.current.id] })
       await onCreated(conversation)
     })
   }
   return <Dialog open onOpenChange={open => { if (!open) close() }}>
-    <ConnectionDialogLayout choosing={false} scrollBody label="新建员工" title="新建数字员工" closeLabel="关闭新建员工" working={busy || uploading} onClose={close} initialFocus={nameInput} finalFocus={returnFocus}
-      illustration={<div className="contact-dialog-avatar"><AvatarPicker name={form.name.trim() || '新同事'} value={form.avatar} disabled={busy || Boolean(created.current)} onChange={avatar => setForm(current => ({ ...current, avatar }))} onBusyChange={setUploading} /></div>}>
-      <ConnectionForm data-contact-editor id="create-agent-form" onSubmit={submit} disabled={busy || uploading || Boolean(created.current)} footer={<>
-        <Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}创建员工</Button>
-      </>}>
-          {error && <Banner>{error}</Banner>}
-              <ConnectionSettingRow label="名称" icon={<Pencil />} htmlFor="create-agent-name"><Input ref={nameInput} id="create-agent-name" required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：资料研究员" /></ConnectionSettingRow>
-              <ConnectionSettingRow label="角色" icon={<Users />} htmlFor="create-agent-role"><Input id="create-agent-role" maxLength={300} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="一句话描述这位同事的职责" /></ConnectionSettingRow>
-              <div className="contact-model-fields soft-divide-y">
-              <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
-              {form.executionBackend.kind === 'mastra-model' && <AgentCommandField value={form.allowCommands} onChange={allowCommands => setForm(current => ({ ...current, allowCommands }))} disabled={busy || uploading || Boolean(created.current)} />}
-              </div>
-              <ConnectionSettingRow label="工作方式" icon={<FileText />} htmlFor="create-agent-instructions"><Textarea id="create-agent-instructions" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ConnectionSettingRow>
-      </ConnectionForm>
+    <ConnectionDialogLayout choosing={false} scrollBody showIntro={false} label="新建员工" title="新建数字员工" closeLabel="关闭新建员工" working={busy || uploading} onClose={close} initialFocus={nameInput} finalFocus={returnFocus} illustration={null}>
+      <form data-edit-form id="create-agent-form" className="employee-form-layout" onSubmit={submit}>
+        {error && <Banner>{error}</Banner>}
+        <fieldset className="employee-form-sections" disabled={busy || uploading || Boolean(created.current)}>
+          <div className="employee-identity-editor">
+            <AvatarPicker name={form.name.trim() || '新同事'} value={form.avatar} disabled={busy || Boolean(created.current)} onChange={avatar => setForm(current => ({ ...current, avatar }))} onBusyChange={setUploading} />
+            <div className="employee-identity-fields">
+              <Input ref={nameInput} id="create-agent-name" aria-label="名称" className="employee-identity-name" required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：资料研究员" />
+              <Input id="create-agent-role" aria-label="角色" className="employee-identity-role" maxLength={300} value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="一句话描述这位同事的职责" />
+            </div>
+          </div>
+          <EmployeeFormSection title="模型与权限">
+            <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
+            {form.executionBackend.kind === 'mastra-model' && <AgentPermissionField value={form.executionPermission} onChange={executionPermission => setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' }))} disabled={busy || uploading || Boolean(created.current)} />}
+          </EmployeeFormSection>
+          <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" id="create-agent-instructions" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
+        </fieldset>
+        <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}创建员工</Button></footer>
+      </form>
     </ConnectionDialogLayout>
   </Dialog>
 }

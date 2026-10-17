@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确整体权限在新网页交互派发前核对；只读导航/观察和旧回执核对保持，审批隐藏输入正文。
  * [OUTPUT]: BOAI内置浏览器默认授权全部员工使用，不发起网页审批；页面版本/引用身份/真实调用及未知不重放保持。
  * [OUTPUT]: 同实例同URL的动态页面仅经新snapshot/screenshot/find重新观察；旧版本首次写入拒绝后可恢复，新URL仍需本人重新引用。
  * [OUTPUT]: 批准展示当前页面和输入长度，后台绑定原参数hash，命令参数隐藏填写正文；非密码业务值可能出现在页面/结果；旧截图摘要不冒充可用图片。
@@ -31,7 +32,7 @@ export class BrowserSession {
   private paused?:{promise:Promise<void>;resolve:()=>void;reject:(error:Error)=>void}
   private pauseExit?:Promise<void>
   private resumedSnapshot?:{source:import('../../../shared/ipc/browser').BrowserPageEvidence;output:string}
-  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest?:string; reference?:import('../../../shared/ipc/browser').BrowserPageReference; validate():Promise<void>; approve?(command:string):Promise<boolean>; downloadDestination?:{root:string;runPath:string} }) {
+  constructor(readonly lease:BrowserLease,private host:BrowserHostBridge,private repository:BrowserRepository,private options:{ signal:AbortSignal; originalRequest?:string; reference?:import('../../../shared/ipc/browser').BrowserPageReference; validate():Promise<void>; approve?(command:string):Promise<boolean>; authorize?(command:string):Promise<void>; downloadDestination?:{root:string;runPath:string} }) {
     options.signal.addEventListener('abort',() => { void this.drain().catch(() => {}) },{once:true})
   }
   private async ensure(observePage = false) {
@@ -83,6 +84,11 @@ export class BrowserSession {
     if (target && (source?.instanceId!==target.instanceId || source.url!==target.url)) throw new Error('原引用网页已导航或替换，请在聊天中重新引用目标网页')
     await this.waitActive();await this.options.validate(); this.options.signal.throwIfAborted()
     if(lease.generation!==this.lease.generation) throw new Error('浏览器已交还并刷新页面；原未开始命令未执行，请核对新快照')
+    if (parsed.mutating && !['navigate','back','forward','reload'].includes(parsed.action)) {
+      const summary = ['fill','type','select'].includes(parsed.action) ? `${parsed.action} ${parsed.action === 'type' ? '' : parsed.parts[1]}（输入内容已隐藏）` : parsed.command
+      await this.options.authorize?.(summary)
+      await this.options.validate(); this.options.signal.throwIfAborted()
+    }
     const envelope:BrowserActionEnvelope={lease:lease,actionId,toolCallId,command:parsed.command,argumentHash:hash,...(source ? {expectedPageVersion:source.pageVersion}:{})}
     const prepared=await this.repository.prepare(envelope,parsed.mutating)
     if (!prepared.fresh) {
