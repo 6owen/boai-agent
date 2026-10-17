@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mvcsd0im7wpu5bg1x13",
+    "path": "<HOME>/Library/Application Support/alma/workspaces/default",
+    "name": "Default",
+    "is_temporary": 0,
+    "show_in_list": 1,
+    "is_worktree": 0,
+    "parent_workspace_id": null,
+    "auto_worktree": 0,
+    "auto_worktree_base_branch": null,
+    "is_session": 0,
+    "remote_host_id": null,
+    "project_config": null,
+    "archived_at": null
+  },
+  {
+    "id": "mvcskfvnw1zwo1o7bgr",
+    "path": "<HOME>/Documents/Alma/2026-10-18/chat-mvcskfvn",
+    "name": "hi",
+    "is_temporary": 0,
+    "show_in_list": 0,
+    "is_worktree": 0,
+    "parent_workspace_id": null,
+    "auto_worktree": 0,
+    "auto_worktree_base_branch": null,
+    "is_session": 1,
+    "remote_host_id": null,
+    "project_config": null,
+    "archived_at": null
+  }
+]

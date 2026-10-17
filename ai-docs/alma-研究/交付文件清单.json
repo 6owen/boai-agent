@@ -1,0 +1,912 @@
+{
+  "files": [
+    {
+      "path": ".folder.md",
+      "bytes": 1294,
+      "sha256": "71b5986e098edd741b98327910f033e230e1407bcf05070cf7f023f80fcbebd0"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1426,
+      "sha256": "0018033633b2408d24dc4e1eee7fa8bbdb0beab56bc36ba7b13741509a0b7a2c"
+    },
+    {
+      "path": "alma性格分析.md",
+      "bytes": 25450,
+      "sha256": "724fa834354e79d57e4ace84a05bbe2aaff16a18225f4c52542d2aadfd691aa5"
+    },
+    {
+      "path": "原始文件/.folder.md",
+      "bytes": 947,
+      "sha256": "f85c0b997839aee19d304690bdc20078b33eec2f2ffbf6f9b86d1c1ad2e8abcb"
+    },
+    {
+      "path": "原始文件/Alma-0.4.196-安装包文本原件.zip",
+      "bytes": 9916084,
+      "sha256": "ed67d6f3bca63739435c54cbf49dbb9e72f5dc77b3ccd99b98b2d4a2b75fb416"
+    },
+    {
+      "path": "原始文件/可读源码/.folder.md",
+      "bytes": 730,
+      "sha256": "4c228b859ed43e300aa3b62d39467d6ec936cff81c8d165eddc352914abd7d89"
+    },
+    {
+      "path": "原始文件/可读源码/cli.txt",
+      "bytes": 402383,
+      "sha256": "ce4b7fa0bbed188b22d40d46cf7367b3a64127004ba0f3a5f989ba4782cb3bfe"
+    },
+    {
+      "path": "原始文件/可读源码/fatigue.txt",
+      "bytes": 6596,
+      "sha256": "124113862346fb18c6940e72e2cd7883207f432a3b40bbadd8b48d595b35a771"
+    },
+    {
+      "path": "原始文件/可读源码/main.txt",
+      "bytes": 4194791,
+      "sha256": "b94c2deb1fdc71fb58abdd86b7f0d16aebe3dba7406fa30132ccceed8d762a10"
+    },
+    {
+      "path": "原始文件/安装包来源.json",
+      "bytes": 949,
+      "sha256": "549db4a0a384dead7d70d7aa3f5e74aab7d40d177c8c5f5f6e4dcfd2baeedc73"
+    },
+    {
+      "path": "原始文件/来源文件清单.json",
+      "bytes": 88409,
+      "sha256": "a0d2f64a15ddf317a17fd2241f994a3a9bd36b107570ab1d237ac0aacf394e1a"
+    },
+    {
+      "path": "工具/.folder.md",
+      "bytes": 781,
+      "sha256": "b102c146306b18d652edb98db33ff6babb36c2c7f299d25a8a29baa5e8cae7b7"
+    },
+    {
+      "path": "工具/README.md",
+      "bytes": 1770,
+      "sha256": "c6f1a03effa362745f0e554761b75143135b8725764e7c8f0dd337a76d335b0f"
+    },
+    {
+      "path": "工具/assemble-research.py",
+      "bytes": 13144,
+      "sha256": "c58d5d075551eb1a88b4a86420876a526bc6abde4f29236ece9a4fbd1b975228"
+    },
+    {
+      "path": "工具/export-local-config.py",
+      "bytes": 11094,
+      "sha256": "1d5b09a31bec8bd30c00f2a0f3e8a6231a3c7dff05bf0c12054a12cf79ce84bb"
+    },
+    {
+      "path": "工具/extract-prompts.cjs",
+      "bytes": 9478,
+      "sha256": "43163c9d02ebf88fef1b9e5824a9a1f8c02afe1c1722d0f2dacbc29d4a9fb200"
+    },
+    {
+      "path": "技能/.folder.md",
+      "bytes": 2711,
+      "sha256": "c08a022899c80a0347cd0c897675a11a7591d0ec149ea71ef80419ef1d91c9b6"
+    },
+    {
+      "path": "技能/alchemy/.folder.md",
+      "bytes": 546,
+      "sha256": "df12f408308a5d0d1f2d7ac92b7b9ff24848d135719913d10e00bf71f2e15278"
+    },
+    {
+      "path": "技能/alchemy/SKILL.md",
+      "bytes": 4149,
+      "sha256": "526304087cfd9fb753d1d8086dc2a4103956c1a42a1b873d4951d8be54ca5d3a"
+    },
+    {
+      "path": "技能/artifact-sidebar/.folder.md",
+      "bytes": 555,
+      "sha256": "c98e6a84e698b598c0cd78568688486583bb31a204faf895d2027bd78995e07a"
+    },
+    {
+      "path": "技能/artifact-sidebar/SKILL.md",
+      "bytes": 7328,
+      "sha256": "80d9b2fa4e3e0108d84e13d111650bf42a79ce4e8754c86cec55237eef4c777e"
+    },
+    {
+      "path": "技能/browser/.folder.md",
+      "bytes": 546,
+      "sha256": "5e11995fb9a866a592561b09e8184c4770ee1657b8af08907bc2a2a322e9a6fe"
+    },
+    {
+      "path": "技能/browser/SKILL.md",
+      "bytes": 19595,
+      "sha256": "c91df74b6010f2b5b3d70f2857238c4ccfd7022efb5d6718315aadba6ef7729d"
+    },
+    {
+      "path": "技能/computer-use/.folder.md",
+      "bytes": 600,
+      "sha256": "5694a992bb754b1b0f8a842fd690194ae9416dbe1e74eaf7fd932c44f6f0a33b"
+    },
+    {
+      "path": "技能/computer-use/SKILL.md",
+      "bytes": 15184,
+      "sha256": "27c1d6f4808beb4c2af9b68d8f4364f17cf0cf032a1cc1ecd57a58e87f6d8d42"
+    },
+    {
+      "path": "技能/computer-use/playbooks/.folder.md",
+      "bytes": 971,
+      "sha256": "c90701b350b6a5556de80159bc7998aa175287e68859b56c781a1fa3cbfe828b"
+    },
+    {
+      "path": "技能/computer-use/playbooks/AppleMusic.md",
+      "bytes": 1618,
+      "sha256": "b2b3da0a1e4b0545205a3d066a5be8067bc875fcead15178b3954c8d2a4ae6d9"
+    },
+    {
+      "path": "技能/computer-use/playbooks/Clock.md",
+      "bytes": 2514,
+      "sha256": "a056449146c6c1e36911b8c39e6222e4d811cf8eb874ddda28d83ed87421109d"
+    },
+    {
+      "path": "技能/computer-use/playbooks/IPhoneMirroring.md",
+      "bytes": 640,
+      "sha256": "dc366aab776212175797742f175164bc4e399009a88d9ddd3ec15e20fcb7ade1"
+    },
+    {
+      "path": "技能/computer-use/playbooks/NetEaseMusic.md",
+      "bytes": 3457,
+      "sha256": "fb3d752af51748c8a20638d50ab6f801b79ff14fd630c28caf5056160e348b34"
+    },
+    {
+      "path": "技能/computer-use/playbooks/Notion.md",
+      "bytes": 2225,
+      "sha256": "e473bc06040a67386f70becae6938eb07d6f8dea4763c180028ee7e014d390fa"
+    },
+    {
+      "path": "技能/computer-use/playbooks/Numbers.md",
+      "bytes": 1261,
+      "sha256": "f67b956abfe12fadb80ba7474c4158c6bc858552e4de217c6bc964fdb5ecfd8e"
+    },
+    {
+      "path": "技能/computer-use/playbooks/Spotify.md",
+      "bytes": 1369,
+      "sha256": "6f28be247bf2b8ae3b84fa19a92d754dc9b5bb0b81d3a7e2fe07511fe3522a73"
+    },
+    {
+      "path": "技能/daily-report/.folder.md",
+      "bytes": 551,
+      "sha256": "1906b041bbd824e7a9dd3ecd0b1a3f301b06fb06f64d8beccf6fcd76557e4935"
+    },
+    {
+      "path": "技能/daily-report/SKILL.md",
+      "bytes": 3800,
+      "sha256": "eedba98094725213d3623be8d62f2c96fbd3809b5933013a427ac5fb29b39ec9"
+    },
+    {
+      "path": "技能/discord/.folder.md",
+      "bytes": 546,
+      "sha256": "2bcc9bbca01d66605f39ac56141fc7b360ef5950fa12546fd571c7f0c42e6c0c"
+    },
+    {
+      "path": "技能/discord/SKILL.md",
+      "bytes": 3317,
+      "sha256": "9afbc074ff2f6364f9514423b0279148fb167e765cee8c52114b7db1d7efb264"
+    },
+    {
+      "path": "技能/file-manager/.folder.md",
+      "bytes": 551,
+      "sha256": "69b563196625bf705272dc8197858711f034711f5ab5e2355374b5f33e1e1e16"
+    },
+    {
+      "path": "技能/file-manager/SKILL.md",
+      "bytes": 1940,
+      "sha256": "f2591e5e013b18db7014419ce6d27f7b541443ca460b4cf5fb85d1b0dd2fc909"
+    },
+    {
+      "path": "技能/image-gen/.folder.md",
+      "bytes": 653,
+      "sha256": "a29b94aaadc0bfa1e953641e3efc0d5e38a4323aa4a7226ad98aa526aad356bd"
+    },
+    {
+      "path": "技能/image-gen/SKILL.md",
+      "bytes": 5882,
+      "sha256": "2530fa684d49419756efb8289b91fc46d86f43339cdfcfbfbf14d17e2183b9bc"
+    },
+    {
+      "path": "技能/image-gen/imageGenSkill.test.ts.source.txt",
+      "bytes": 692,
+      "sha256": "cece58d0c89b1d8587781071e6d0bf0fb709431d1f1aec6052e756f1387f8f17"
+    },
+    {
+      "path": "技能/memory-management/.folder.md",
+      "bytes": 556,
+      "sha256": "d00f0909a2cc1d5c474c457c36f9a42c7ca0d08822fed6374b230345a10665e2"
+    },
+    {
+      "path": "技能/memory-management/SKILL.md",
+      "bytes": 5164,
+      "sha256": "de7d537364d277f978f9101cc88e9a4cbeba5227bf83b19563f497249ab8a224"
+    },
+    {
+      "path": "技能/music-gen/.folder.md",
+      "bytes": 548,
+      "sha256": "7dae9366fc362c5f8d3b6f307454c75faeacb93c19501b85871a34ef8aad62dd"
+    },
+    {
+      "path": "技能/music-gen/SKILL.md",
+      "bytes": 3739,
+      "sha256": "a05909df94e57f25a8d544c4e857cdeb1bb5d567386b36d30d346b8f9c72f2b0"
+    },
+    {
+      "path": "技能/music-listener/.folder.md",
+      "bytes": 553,
+      "sha256": "f212770e282bd28e06d6a90393585a8b9f29f5cc17c485c696e2950cb613f8b5"
+    },
+    {
+      "path": "技能/music-listener/SKILL.md",
+      "bytes": 3181,
+      "sha256": "20af55563ff3dd9bfe579e95ed1afbbce33ea7cac4aaefa73953489f97df0eec"
+    },
+    {
+      "path": "技能/notebook/.folder.md",
+      "bytes": 547,
+      "sha256": "57ca6d0369af0572e40845bb021e9a7de6b57354524d6bf6d110f91c79fc2229"
+    },
+    {
+      "path": "技能/notebook/SKILL.md",
+      "bytes": 2013,
+      "sha256": "859ffb57fc205ab150ff2151a39119505cd80c6e1d3c84c59cf343f329a847cf"
+    },
+    {
+      "path": "技能/plan-mode/.folder.md",
+      "bytes": 548,
+      "sha256": "5ee3f1972a93848384f0a1bd561f933200e536bf58832130654927da150c02ae"
+    },
+    {
+      "path": "技能/plan-mode/SKILL.md",
+      "bytes": 1183,
+      "sha256": "0c083c04e288d6ff297952b6e8739088e2f1c25bf7e960ac8a282bc5c311927b"
+    },
+    {
+      "path": "技能/plan-weave/.folder.md",
+      "bytes": 549,
+      "sha256": "3bf72cb828bfca6d85d5f642419fc77bf2c226fa84ba6685bbacb6fea70b7746"
+    },
+    {
+      "path": "技能/plan-weave/SKILL.md",
+      "bytes": 5980,
+      "sha256": "1bc4f7234d01571622ef4159081986184b59b3b6319cf6c1548054cb603c6d12"
+    },
+    {
+      "path": "技能/presentations/.folder.md",
+      "bytes": 552,
+      "sha256": "b4186e5f2d28281c358b54cf37d10390a0305c9d098ea0fb8bb69ea8a8e69645"
+    },
+    {
+      "path": "技能/presentations/SKILL.md",
+      "bytes": 7342,
+      "sha256": "e3cfac408c24e63d27fbf317fe39f8d766753f730df4eb0dd36b3b40d8315862"
+    },
+    {
+      "path": "技能/programmatic-tools/.folder.md",
+      "bytes": 557,
+      "sha256": "ba9fc0ff6b5a7a86f171d1cd498539aef41d34afa1fabaec96f9e5c61b6665b2"
+    },
+    {
+      "path": "技能/programmatic-tools/SKILL.md",
+      "bytes": 2025,
+      "sha256": "db2441c5bda1e92a1f528b2f5195e1afd73475d0791139e9c16f7133eb691242"
+    },
+    {
+      "path": "技能/reactions/.folder.md",
+      "bytes": 548,
+      "sha256": "c457503c0271bfe7aca374586a98f78598eb649a1cabbe0d98281b2695968e7d"
+    },
+    {
+      "path": "技能/reactions/SKILL.md",
+      "bytes": 2000,
+      "sha256": "f116e109caf8edee13cb22c7e298b31d5f7e9bd525e732642a0e970c8cd076c2"
+    },
+    {
+      "path": "技能/references/.folder.md",
+      "bytes": 549,
+      "sha256": "c46a46c44d73f1a02c1b0f2efb6a132aa682d79f7138e758dd4e48ed3f1b6d7e"
+    },
+    {
+      "path": "技能/references/SKILL.md",
+      "bytes": 12839,
+      "sha256": "09062986bdb72f3d608461c62e6f66731057956b57861e2b346bc9bcc7749faa"
+    },
+    {
+      "path": "技能/scheduler/.folder.md",
+      "bytes": 548,
+      "sha256": "70709e610414ec7896b56fc7add3ace01d2ac80e1a4459b0f82b0f00300fd242"
+    },
+    {
+      "path": "技能/scheduler/SKILL.md",
+      "bytes": 7936,
+      "sha256": "54cf20b122a70ed75e628c7b003958dcfeab0a003798e49bc60ed2d2be531c4b"
+    },
+    {
+      "path": "技能/screenshot/.folder.md",
+      "bytes": 549,
+      "sha256": "74d9a3dd360b2be7994acec2cced8c968e420bf0c37fa40efe642cc819ef8153"
+    },
+    {
+      "path": "技能/screenshot/SKILL.md",
+      "bytes": 2267,
+      "sha256": "2af91a4b4dab22d39e7559b50571d46d8092f28039aa10260bb3a418ed74e212"
+    },
+    {
+      "path": "技能/self-management/.folder.md",
+      "bytes": 554,
+      "sha256": "35409c5e6d7617e300c97e38a26a2f044329f2746122d34763cc539ac5697c36"
+    },
+    {
+      "path": "技能/self-management/SKILL.md",
+      "bytes": 11368,
+      "sha256": "549e1d1202af57576873c45f7b4f721a7a6e332a3689abf69172f9ca422c7672"
+    },
+    {
+      "path": "技能/self-reflection/.folder.md",
+      "bytes": 554,
+      "sha256": "81137bc7f699a69f1d1cc56e24657d82fbca71e57be89ad695af0440ac363424"
+    },
+    {
+      "path": "技能/self-reflection/SKILL.md",
+      "bytes": 7958,
+      "sha256": "fe38b55a62565ce2c093ecc5f465aaf61813cc62fdc53eb2b817d2abb247d31c"
+    },
+    {
+      "path": "技能/selfie/.folder.md",
+      "bytes": 545,
+      "sha256": "907dd9c8b3862d91c7b4f48a96a8ad6b88dd7bad4af46a9c3dc284165100289a"
+    },
+    {
+      "path": "技能/selfie/SKILL.md",
+      "bytes": 6166,
+      "sha256": "8f384e59702e7bb60c9a986a6ad6f0f9ecbbfd4055704a489a0b1f008bf86646"
+    },
+    {
+      "path": "技能/send-file/.folder.md",
+      "bytes": 548,
+      "sha256": "5e6ceaea0421d38e40c342abc9e29b745896de374be5da7d9288d81115a7a94e"
+    },
+    {
+      "path": "技能/send-file/SKILL.md",
+      "bytes": 3905,
+      "sha256": "afcd87a2e4faf4d27f319d51ec714bc3e8c1674d4703e331a366b61cafaa3e19"
+    },
+    {
+      "path": "技能/skill-hub/.folder.md",
+      "bytes": 548,
+      "sha256": "8bbf9243b124c53beb8a12e6e494be5bd7a03dcb115a868004ce05a40c688ace"
+    },
+    {
+      "path": "技能/skill-hub/SKILL.md",
+      "bytes": 2505,
+      "sha256": "d178f29448b810104689e635e0b87cd6228ebe3656f5459cb0dd3eb1edd810e1"
+    },
+    {
+      "path": "技能/skill-search/.folder.md",
+      "bytes": 551,
+      "sha256": "d624741d1ba47b3da3e523d5638955318abce9d51b504ecdee3486c7813195dd"
+    },
+    {
+      "path": "技能/skill-search/SKILL.md",
+      "bytes": 1484,
+      "sha256": "ad6bebb9325a81cff323c7674edd3c125a7f3ae5e67baf51322fdf0780d2ee3f"
+    },
+    {
+      "path": "技能/system-info/.folder.md",
+      "bytes": 550,
+      "sha256": "7946f33b69e4ae819613ef991b98ba74cd3afee13fbd6232426733533f7d8dc4"
+    },
+    {
+      "path": "技能/system-info/SKILL.md",
+      "bytes": 1710,
+      "sha256": "ead4cf2e0fd09145e18d0c4d5d34b2d06cd573588173c030f33ed9ed9bb37f53"
+    },
+    {
+      "path": "技能/tasks/.folder.md",
+      "bytes": 544,
+      "sha256": "7bec9457e89d5df3364c4d2fb21a73fa78ebeff4932a5006ce69fcade62fb609"
+    },
+    {
+      "path": "技能/tasks/SKILL.md",
+      "bytes": 2827,
+      "sha256": "07874b675402f879cf44cb9044214974451e7330811cccbd38cdab0667586c40"
+    },
+    {
+      "path": "技能/team/.folder.md",
+      "bytes": 543,
+      "sha256": "7c2cc98dcfa2c7d6d1e0bfbffe31d7a1229c872357fd1d660f134ab270234f64"
+    },
+    {
+      "path": "技能/team/SKILL.md",
+      "bytes": 3606,
+      "sha256": "8caadb954bd4f72274f3bf4c397f2ddfc50a0c97ff2a44cc5477f7a91d73322b"
+    },
+    {
+      "path": "技能/telegram/.folder.md",
+      "bytes": 547,
+      "sha256": "dcddcf5e483681f160213f103f92aa51330e442a211e4839bb3e3e2366d8da44"
+    },
+    {
+      "path": "技能/telegram/SKILL.md",
+      "bytes": 15199,
+      "sha256": "79fde0b80b629497f096d60ef54c2b67c4a06cf7ce16d0083acef163d34718fb"
+    },
+    {
+      "path": "技能/thread-management/.folder.md",
+      "bytes": 556,
+      "sha256": "1b940f4edb3f688cd2e95b3b54148255ac39ec65468c9422aca487fe2d2e1931"
+    },
+    {
+      "path": "技能/thread-management/SKILL.md",
+      "bytes": 1722,
+      "sha256": "b9eba417c041109d6e555b129af38758feadc774daf35c798e176a8fb53c3f6c"
+    },
+    {
+      "path": "技能/todo/.folder.md",
+      "bytes": 543,
+      "sha256": "1923a7367c6cc5adee2fad64136385f1c89321441c039fc3b09c491fad4c14e1"
+    },
+    {
+      "path": "技能/todo/SKILL.md",
+      "bytes": 2234,
+      "sha256": "dc2af9fcb88586400a2ea0025390780583a5d947b6a4a33521f4ba77e45524d3"
+    },
+    {
+      "path": "技能/travel/.folder.md",
+      "bytes": 545,
+      "sha256": "c700d2b549ffd3f472d112315762ea646fabe9f2d8f2e5e0891ba2ccf9d1bf63"
+    },
+    {
+      "path": "技能/travel/SKILL.md",
+      "bytes": 5925,
+      "sha256": "f756ba482390252dcfc1df65a1179267c13a2ac39695a1d1ec4c45a4e4cb810e"
+    },
+    {
+      "path": "技能/twitter-cli/.folder.md",
+      "bytes": 597,
+      "sha256": "678aa82f2d1a404e3344f35bb6460b148faaf46f1fce01d2858c5d92364c0809"
+    },
+    {
+      "path": "技能/twitter-cli/SKILL.md",
+      "bytes": 6512,
+      "sha256": "a0ec17ed5aebe042b95e4bd4ccf019d72e857c68611a37d11285b9beab566fe6"
+    },
+    {
+      "path": "技能/twitter-cli/scripts/.folder.md",
+      "bytes": 571,
+      "sha256": "335a9b8c3d6e12b6925bf387fd68d26146de0215c10925330276b41c9489c61a"
+    },
+    {
+      "path": "技能/twitter-cli/scripts/twitter.source.txt",
+      "bytes": 1467,
+      "sha256": "7aa85e1cf4a7eaad2916c519176b2f0ae68b7253f1c7e509fc13b8e330efdf0e"
+    },
+    {
+      "path": "技能/twitter-media/.folder.md",
+      "bytes": 552,
+      "sha256": "d1d4e20889a3da98180c2c39c400c59053aec9d7e2127e208ead313f4c7da330"
+    },
+    {
+      "path": "技能/twitter-media/SKILL.md",
+      "bytes": 3956,
+      "sha256": "6059a97e9e50ec41c6f33a90c39c7a09ee551cc2476ada56001f4ee92181814b"
+    },
+    {
+      "path": "技能/video-reader/.folder.md",
+      "bytes": 551,
+      "sha256": "3fcede1278576b3e2f8ed286c68c5f8bcb4e8e0fc28d71e6726c1bd0bcb5d1e6"
+    },
+    {
+      "path": "技能/video-reader/SKILL.md",
+      "bytes": 3762,
+      "sha256": "67df179a2269601d36d1bca76138aac168a5585712cd803db443b69a329b2474"
+    },
+    {
+      "path": "技能/voice/.folder.md",
+      "bytes": 544,
+      "sha256": "191e62554b0078ffda42d1f6f3ab9e1d9a7b5276930b7a19ff248d942aa3b1d9"
+    },
+    {
+      "path": "技能/voice/SKILL.md",
+      "bytes": 3804,
+      "sha256": "f3a4b0bfca16d90993571d0a03568b59dfd062e7771d0aa78c0459fdeb6598be"
+    },
+    {
+      "path": "技能/web-fetch/.folder.md",
+      "bytes": 548,
+      "sha256": "27b583fa9b032dd8476eef346e17794cc361ec0b2b917036f89a2f7180dc0c1c"
+    },
+    {
+      "path": "技能/web-fetch/SKILL.md",
+      "bytes": 3032,
+      "sha256": "dec4fb605767746e55dbbdfbb1b16d968fbf465b1c6341df8114a68e00158994"
+    },
+    {
+      "path": "技能/web-search/.folder.md",
+      "bytes": 549,
+      "sha256": "6482be9d875cc9d9d5b826c17d883a995240f759181ad76af1d5bb351405b2c0"
+    },
+    {
+      "path": "技能/web-search/SKILL.md",
+      "bytes": 2900,
+      "sha256": "1c4e4ddf1465bdc045e6559896e88c20977e86160bbb1c5288fa5d5bc4fc9f8c"
+    },
+    {
+      "path": "技能/xiaohongshu-cli/.folder.md",
+      "bytes": 601,
+      "sha256": "b146e574fe9c0c1776afd124dbd4deed4542eccb013b4e3730cb8548b9bdf99a"
+    },
+    {
+      "path": "技能/xiaohongshu-cli/SKILL.md",
+      "bytes": 5361,
+      "sha256": "0e066c0603190b3c72fe5d7a39fd27c0ea7cc247c18b83be309010492e48a348"
+    },
+    {
+      "path": "技能/xiaohongshu-cli/scripts/.folder.md",
+      "bytes": 567,
+      "sha256": "71a64bd53fa1a561096f4e87f5bc1982187e0def6b35fcfa0ec3c729970b3888"
+    },
+    {
+      "path": "技能/xiaohongshu-cli/scripts/xhs.source.txt",
+      "bytes": 461,
+      "sha256": "18138594ce1c200054b19171ad310f7a31ed2d880031c10684d1be67ee9f3cdf"
+    },
+    {
+      "path": "技能/技能来源清单.json",
+      "bytes": 17175,
+      "sha256": "879a5e4c9954ba918c520363eabac9e07624cf0f3b4b96fd2c76bb9f4ec058b1"
+    },
+    {
+      "path": "技能/索引.md",
+      "bytes": 12786,
+      "sha256": "f2cf1088c6ea40fe59ac26eaf9eac88e2aa5d63a960a4e57192af756c3e681c0"
+    },
+    {
+      "path": "提取统计.json",
+      "bytes": 718,
+      "sha256": "e0a76e99e6347b8d280800bad4b80bbaf3dcf64cc1198483f667de1afe672e9f"
+    },
+    {
+      "path": "提示词/.folder.md",
+      "bytes": 817,
+      "sha256": "35ac2992e16e20272d94f1a652ad50000eea32fec380eea31d670828519a7a49"
+    },
+    {
+      "path": "提示词/分类原文/.folder.md",
+      "bytes": 1527,
+      "sha256": "462dfe8541da505f8561c7bfeaae2fa217378a9f655c8beb79a758649d97cff9"
+    },
+    {
+      "path": "提示词/分类原文/01-人格与身份.md",
+      "bytes": 77326,
+      "sha256": "f1bc23572cafef9d156a81e55012de3a5008216e3931e41f7924ec67d0b1060f"
+    },
+    {
+      "path": "提示词/分类原文/02-情绪.md",
+      "bytes": 2174,
+      "sha256": "c51eee48ebe07a866bf866b8839d6012b991829c545e9d666f4d0846f031eee4"
+    },
+    {
+      "path": "提示词/分类原文/03-疲劳与睡眠.md",
+      "bytes": 5829,
+      "sha256": "35dd19a5272d259ca98f19675439bf3cde8159bd3e7cda13f05fae2b74afc07f"
+    },
+    {
+      "path": "提示词/分类原文/04-旅行与经历.md",
+      "bytes": 3702,
+      "sha256": "2d199488213aae0b37e8a695ca42721c724249005bb6a8a54e5b8350fa6087c4"
+    },
+    {
+      "path": "提示词/分类原文/05-记忆与反思.md",
+      "bytes": 15375,
+      "sha256": "a573e33b2a0c6cd8de9f3ef236365b83b9c0da04a65bef6ba33141f9ea267810"
+    },
+    {
+      "path": "提示词/分类原文/06-渠道与主动社交.md",
+      "bytes": 28608,
+      "sha256": "af425364b3cf5b240cfd8f384bb7613fbb6bb86ac155a8d589fd56aae9972bbf"
+    },
+    {
+      "path": "提示词/分类原文/07-自拍与形象.md",
+      "bytes": 4648,
+      "sha256": "b1aed6e894f48f9f54a86d8ba0e896ffecf85ec20177922ef5cbcb34b774fec8"
+    },
+    {
+      "path": "提示词/分类原文/08-活动与问候.md",
+      "bytes": 7722,
+      "sha256": "16be779065f7c3eef27dcd79095f8c6c59b1b41f1e0584fa6f5628fdd8e85861"
+    },
+    {
+      "path": "提示词/分类原文/09-任务与委派.md",
+      "bytes": 67401,
+      "sha256": "dfef8e93df2ae446de9450d8f62a59f87289239864e11b5f5fb4147f39e4838b"
+    },
+    {
+      "path": "提示词/分类原文/10-浏览器与工具.md",
+      "bytes": 139625,
+      "sha256": "8cb0eb0be57980e755ab7549d94ecb42600e6e6b0d983c72d2c444dfa5e0ded9"
+    },
+    {
+      "path": "提示词/分类原文/11-创作与多媒体.md",
+      "bytes": 73657,
+      "sha256": "eb76a9218a77b0002c8d4b2d3feb7c274c7e2da5c89b6b99d5a76848706f62d3"
+    },
+    {
+      "path": "提示词/分类原文/12-权限与安全.md",
+      "bytes": 15453,
+      "sha256": "b7b318e8aefb4f4e285ed16570451151f25ab9f61235999666a4b2749347dac1"
+    },
+    {
+      "path": "提示词/分类原文/13-其他模型任务与候选.md",
+      "bytes": 129857,
+      "sha256": "da5d72b4b31ec8c5056cb81f801240114b6e8a67fab8bb3435be0ea84eeba65e"
+    },
+    {
+      "path": "提示词/本机当前提示词.md",
+      "bytes": 4402,
+      "sha256": "f63c03777a9601c612903b3ff1e1991aeb459a1eb3d90186e267da867f2eb386"
+    },
+    {
+      "path": "提示词/检索数据/.folder.md",
+      "bytes": 1182,
+      "sha256": "f66a837156165d1bd760d9c7514bff26b49711674a9c87c68bd6af3aed69cbf3"
+    },
+    {
+      "path": "提示词/检索数据/all-static-text.jsonl.gz",
+      "bytes": 11558438,
+      "sha256": "58727c4af79f9f95a29d7f20c4495e5d2597d9b15036906c4d21f7a76f225072"
+    },
+    {
+      "path": "提示词/检索数据/extraction-summary.json",
+      "bytes": 104571,
+      "sha256": "7d50b881bc3885c232647f81985078aaec425bcf57e9b64fc83b27bcaf14ccbb"
+    },
+    {
+      "path": "提示词/检索数据/prompt-candidates.jsonl",
+      "bytes": 4823658,
+      "sha256": "109712620f21ae2b5aaeba6b54c69f8c903008934a341a9023bc57ead6f66bcb"
+    },
+    {
+      "path": "提示词/检索数据/prompt-sites.jsonl",
+      "bytes": 94051,
+      "sha256": "3f72aa552673962efb7e45aabd3ff9ceeed4e01fb4b62ae82c1f11affddddbdb"
+    },
+    {
+      "path": "提示词/检索数据/python-static-text.jsonl",
+      "bytes": 43015,
+      "sha256": "4683431f76a96643948777125e7e2904a74869022e7fb21d72cdeff95a0eef30"
+    },
+    {
+      "path": "提示词/模型输入表达式.md",
+      "bytes": 80366,
+      "sha256": "722553055885e5d31848d7690ca6b855120568c628985c4fa0f7e1c581290bcd"
+    },
+    {
+      "path": "提示词/索引.md",
+      "bytes": 79090,
+      "sha256": "bd2424f2a82a0f70fda2e9ecb94f7d4c7d95fb8a65c286e45385d9b9ed404789"
+    },
+    {
+      "path": "校验报告.json",
+      "bytes": 844,
+      "sha256": "f5b93941c49f4cf49e860e18790b01c125ef0740861c43b0b4f7161e6900eb8e"
+    },
+    {
+      "path": "配置/.folder.md",
+      "bytes": 1201,
+      "sha256": "3204a11b41671e0c135b74ff0013036397c5d33e863841dddb71651df3bb1898"
+    },
+    {
+      "path": "配置/config-candidates.jsonl",
+      "bytes": 624394,
+      "sha256": "037f1cd98cbe0f23f78fe7eb83b4cb302c9702fa5f08da00719cf016e174872a"
+    },
+    {
+      "path": "配置/安装包/.folder.md",
+      "bytes": 1976,
+      "sha256": "628e66b687dbe7dfc109915d91ea13453b44e27a3e2842eaaaf3f0bff1829e23"
+    },
+    {
+      "path": "配置/安装包/Info.plist.json",
+      "bytes": 2647,
+      "sha256": "fbf03b093f33559b208c4f4706c6ef68c58305978e9e13e8ec4893eb3de23689"
+    },
+    {
+      "path": "配置/安装包/asar__out__renderer__AppIcons__Assets.xcassets__AppIcon.appiconset__Contents.json",
+      "bytes": 2367,
+      "sha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92"
+    },
+    {
+      "path": "配置/安装包/asar__package.json",
+      "bytes": 5049,
+      "sha256": "914c3cd36aaf84a21bcef34de5ec6101a14aa3e8fa6b5496188059e80d4b7d3b"
+    },
+    {
+      "path": "配置/安装包/resources__Alma Computer Use.app__Contents__Info.plist.json",
+      "bytes": 917,
+      "sha256": "9502f621a176f69b3e423b42b48c30c8c1aea6afa984460d6f40d943869c7421"
+    },
+    {
+      "path": "配置/安装包/resources__AppIcons__Assets.xcassets__AppIcon.appiconset__Contents.json",
+      "bytes": 2367,
+      "sha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92"
+    },
+    {
+      "path": "配置/安装包/resources__CalTool.app__Contents__Info.plist.json",
+      "bytes": 456,
+      "sha256": "07dceca8c3e0700d531061437cd72dfaf092f14c6607e686fb26d03197183f0d"
+    },
+    {
+      "path": "配置/安装包/resources__HapticTool.app__Contents__Info.plist.json",
+      "bytes": 250,
+      "sha256": "ca4f00fc3bd4254c7e5b4c25e060f63618443e541716afffa565a21b1edd07d5"
+    },
+    {
+      "path": "配置/安装包/resources__app-update.yml",
+      "bytes": 362,
+      "sha256": "f8e87a484599738f26c5f0a03faaa4cb27aa6789963c8b44d7c1ea22b6993394"
+    },
+    {
+      "path": "配置/安装包/resources__chrome-extension__manifest.json",
+      "bytes": 898,
+      "sha256": "397078f731cc557d19e38ba06694555d81e8f4ede0b85483dd965a4539f246ae"
+    },
+    {
+      "path": "配置/安装包配置清单.json",
+      "bytes": 3255,
+      "sha256": "edc2b043334522d35d2e3359cb5a8306d9941184595b5f1382d0df8e292eecd5"
+    },
+    {
+      "path": "配置/嵌入配置与状态对象.md",
+      "bytes": 466978,
+      "sha256": "d41b384511765e088a630d53641577c599143a603aae7c7467f6016ad2ce052c"
+    },
+    {
+      "path": "配置/文件路径字面量.jsonl",
+      "bytes": 64241,
+      "sha256": "5e0deffdf9e9266c933edc5f979733b70144f1457710956759347edb2550cde2"
+    },
+    {
+      "path": "配置/本机脱敏/.folder.md",
+      "bytes": 780,
+      "sha256": "a982d717ad0e03926b485064dc3bf9bc043de970f9673646b6b7e6889d18d97b"
+    },
+    {
+      "path": "配置/本机脱敏/database/.folder.md",
+      "bytes": 1785,
+      "sha256": "9b275778c6c1c83af6f4232357d63ae482672f416fb8374b3bdc40849ecea183"
+    },
+    {
+      "path": "配置/本机脱敏/database/app_settings.json",
+      "bytes": 11894,
+      "sha256": "d7f3e2fcb9af95e11fbcef69ad0eadf0cec93ae385a9d702648ef820137cb496"
+    },
+    {
+      "path": "配置/本机脱敏/database/mcp_servers.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/plugin_permissions.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/plugins.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/prompt_apps.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/prompts.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/providers.json",
+      "bytes": 2435,
+      "sha256": "a6acde7e84eef2932242c8a08e58a606d76b952c3f6dde017847ab588575f0bf"
+    },
+    {
+      "path": "配置/本机脱敏/database/skills.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/database/workspaces-selected-config.json",
+      "bytes": 794,
+      "sha256": "48dc95ea442d01c963dd699e4664b130ab1d8db756eb62fdf3b83b6ce8a01807"
+    },
+    {
+      "path": "配置/本机脱敏/electron/.folder.md",
+      "bytes": 625,
+      "sha256": "77421dd9d85d0f0f08f7efe9953a49d0a629e708227d0fa1e690b05b1c6929ca"
+    },
+    {
+      "path": "配置/本机脱敏/electron/Preferences.json",
+      "bytes": 68,
+      "sha256": "faeb249b7f96a42f0c327a16fdc74973abc1812d2172d3df16983462880706c9"
+    },
+    {
+      "path": "配置/本机脱敏/files/.folder.md",
+      "bytes": 838,
+      "sha256": "a45b658bc2f8864b0eb5a2169682fc923661c50df2a56a0fb727a5e33f51b52c"
+    },
+    {
+      "path": "配置/本机脱敏/files/USER.md",
+      "bytes": 440,
+      "sha256": "128494a93a685ca4ae18263d10b7027c78ef3325a75ea11f8f294099066dea43"
+    },
+    {
+      "path": "配置/本机脱敏/files/api-spec.md",
+      "bytes": 12729,
+      "sha256": "74340453958f136c8a582823356381b6d73ab264c6da2bae5f7c8131cb14f307"
+    },
+    {
+      "path": "配置/本机脱敏/files/cron/.folder.md",
+      "bytes": 614,
+      "sha256": "4ad114c5f0a075696354e1f0bf9e9b8b3e1837da911b4ad0c236ae6f73b6022a"
+    },
+    {
+      "path": "配置/本机脱敏/files/cron/jobs.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "配置/本机脱敏/files/mcp.json",
+      "bytes": 719,
+      "sha256": "5b17957f0a646269269cccde7bc113488112a87a1f59fd0a173ba97a24af8625"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/.folder.md",
+      "bytes": 638,
+      "sha256": "9236d430b3bea7b3ea58b68e9ea099fcb0d5caf93f130f0558bf8a41a16bab34"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/mission-control/.folder.md",
+      "bytes": 554,
+      "sha256": "dbd2e5c3c3c61f07b93b4b5d4eeb04984b80746aad388025c83fe13fa8b6f5ca"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/mission-control/SKILL.md",
+      "bytes": 6718,
+      "sha256": "414a7e30e316e540b0f258c5bde013a9f412c54b2a80bc7b620eeea06cd86de1"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/scheduler/.folder.md",
+      "bytes": 548,
+      "sha256": "70709e610414ec7896b56fc7add3ace01d2ac80e1a4459b0f82b0f00300fd242"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/scheduler/SKILL.md",
+      "bytes": 5461,
+      "sha256": "e7ff21bb04946b84a70cc439b845f0d98e0f392ecd6fc40714e97c76670e9f61"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/self-reflection/.folder.md",
+      "bytes": 554,
+      "sha256": "81137bc7f699a69f1d1cc56e24657d82fbca71e57be89ad695af0440ac363424"
+    },
+    {
+      "path": "配置/本机脱敏/files/skills/self-reflection/SKILL.md",
+      "bytes": 6301,
+      "sha256": "f138e172d34ad743a4a32d181399f3347c9263d8d41dfb11ff2c47fed1b203c6"
+    },
+    {
+      "path": "配置/本机脱敏/脱敏与范围记录.json",
+      "bytes": 3887,
+      "sha256": "38b0685a8536b628e723e22e51313ec9f91659c6e999a5e7208335ac4c04e536"
+    },
+    {
+      "path": "配置/配置说明.md",
+      "bytes": 3962,
+      "sha256": "d3e3e4f506157f3da9abe96eed226dadeeacdb30b929582b48f386e51f7bcc06"
+    }
+  ],
+  "excludes": [
+    "交付文件清单.json itself"
+  ]
+}

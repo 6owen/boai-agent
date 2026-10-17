@@ -1,0 +1,95 @@
+[
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "type": "openai",
+    "api_key": null,
+    "models": [],
+    "base_url": "https://api.openai.com/v1",
+    "api_version": null,
+    "enabled": 0,
+    "created_at": "2026-10-17T19:29:12.890Z",
+    "updated_at": "2026-10-17T19:29:25.762Z",
+    "is_response_api": 0,
+    "acp_command": null,
+    "acp_args": null,
+    "acp_mcp_server_ids": null,
+    "acp_auth_method_id": null,
+    "acp_api_provider_id": null,
+    "acp_model_mapping": null,
+    "use_max_completion_tokens": 0,
+    "api_format": null,
+    "custom_headers": null,
+    "copilot_account_id": null,
+    "icon": null,
+    "image_generation_mode": "sync",
+    "available_models": []
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "type": "deepseek",
+    "api_key": "[REDACTED:credential]",
+    "models": [
+      "deepseek-flash"
+    ],
+    "base_url": "https://api.deepseek.com",
+    "api_version": null,
+    "enabled": 1,
+    "created_at": "2026-10-17T19:29:28.436Z",
+    "updated_at": "2026-10-17T19:30:16.430Z",
+    "is_response_api": 0,
+    "acp_command": null,
+    "acp_args": null,
+    "acp_mcp_server_ids": null,
+    "acp_auth_method_id": null,
+    "acp_api_provider_id": null,
+    "acp_model_mapping": null,
+    "use_max_completion_tokens": 0,
+    "api_format": null,
+    "custom_headers": null,
+    "copilot_account_id": null,
+    "icon": null,
+    "image_generation_mode": "sync",
+    "available_models": [
+      {
+        "id": "deepseek-flash",
+        "name": "deepseek-flash",
+        "capabilities": {
+          "vision": true,
+          "imageOutput": false,
+          "functionCalling": true,
+          "jsonMode": true,
+          "streaming": true,
+          "reasoning": true,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 393216,
+          "pricing": {
+            "input": 0.15,
+            "output": 0.6,
+            "cacheRead": 0.003
+          }
+        }
+      },
+      {
+        "id": "deepseek-v4-pro",
+        "name": "deepseek-v4-pro",
+        "capabilities": {
+          "vision": false,
+          "imageOutput": false,
+          "functionCalling": true,
+          "jsonMode": true,
+          "streaming": true,
+          "reasoning": true,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 393216,
+          "pricing": {
+            "input": 0.66,
+            "output": 1.98,
+            "cacheRead": 0.022
+          }
+        }
+      }
+    ]
+  }
+]

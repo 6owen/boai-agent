@@ -1,0 +1,8 @@
+# [INPUT]: 固定安装包中的 resources/app-update.yml
+# [OUTPUT]: 附研究 Header 的配置副本；原始字节见原始归档。
+# [POS]: Alma 研究配置资料，不是 BOAI 配置。
+# [PROTOCOL]: 修改后同步 Header 与 .folder.md。
+provider: generic
+url: https://updates.alma.now/
+useMultipleRangeRequest: false
+updaterCacheDirName: alma-updater

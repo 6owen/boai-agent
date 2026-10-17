@@ -1,0 +1,146 @@
+{
+  "scope": "package plus user-authorized redacted local configuration; no chats, group logs, activity records, raw memories, cookies or OAuth token table",
+  "configPresence": {
+    "SOUL.md": "absent",
+    "USER.md": "present",
+    "SECURITY.md": "absent",
+    "HEARTBEAT.md": "absent",
+    "mcp.json": "present",
+    "fatigue.json": "absent",
+    "group-settings.json": "absent",
+    "emotions/base.md": "absent",
+    "travels/status.json": "absent",
+    "cron/jobs.json": "present",
+    "api-spec.md": "present"
+  },
+  "database": {
+    "readMode": "mode=ro&immutable=1; no WAL present; size/mtime unchanged before/after",
+    "stable": true,
+    "exportedTableRows": {
+      "app_settings": 1,
+      "providers": 2,
+      "prompts": 0,
+      "prompt_apps": 0,
+      "mcp_servers": 0,
+      "skills": 0,
+      "plugins": 0,
+      "plugin_permissions": 0,
+      "workspaces-selected-config": 2
+    },
+    "excluded": [
+      "messages",
+      "chat_threads contents",
+      "memories",
+      "prompt_app_executions",
+      "agent_runs",
+      "agent_missions",
+      "agent_handoffs",
+      "agent_op_traces",
+      "mcp_oauth_tokens",
+      "cookies/session stores"
+    ]
+  },
+  "exported": [
+    {
+      "source": "~/.config/alma/USER.md",
+      "artifact": "files/USER.md"
+    },
+    {
+      "source": "~/.config/alma/mcp.json",
+      "artifact": "files/mcp.json"
+    },
+    {
+      "source": "~/.config/alma/cron/jobs.json",
+      "artifact": "files/cron/jobs.json"
+    },
+    {
+      "source": "~/.config/alma/api-spec.md",
+      "artifact": "files/api-spec.md"
+    },
+    {
+      "source": "~/.config/alma/skills/mission-control/SKILL.md",
+      "artifact": "files/skills/mission-control/SKILL.md"
+    },
+    {
+      "source": "~/.config/alma/skills/scheduler/SKILL.md",
+      "artifact": "files/skills/scheduler/SKILL.md"
+    },
+    {
+      "source": "~/.config/alma/skills/self-reflection/SKILL.md",
+      "artifact": "files/skills/self-reflection/SKILL.md"
+    },
+    {
+      "source": "~/Library/Application Support/Alma/Preferences",
+      "artifact": "electron/Preferences.json"
+    },
+    {
+      "source": "chat_threads.db:app_settings",
+      "artifact": "database/app_settings.json"
+    },
+    {
+      "source": "chat_threads.db:providers",
+      "artifact": "database/providers.json"
+    },
+    {
+      "source": "chat_threads.db:prompts",
+      "artifact": "database/prompts.json"
+    },
+    {
+      "source": "chat_threads.db:prompt_apps",
+      "artifact": "database/prompt_apps.json"
+    },
+    {
+      "source": "chat_threads.db:mcp_servers",
+      "artifact": "database/mcp_servers.json"
+    },
+    {
+      "source": "chat_threads.db:skills",
+      "artifact": "database/skills.json"
+    },
+    {
+      "source": "chat_threads.db:plugins",
+      "artifact": "database/plugins.json"
+    },
+    {
+      "source": "chat_threads.db:plugin_permissions",
+      "artifact": "database/plugin_permissions.json"
+    },
+    {
+      "source": "chat_threads.db:workspaces(selected config columns only)",
+      "artifact": "database/workspaces-selected-config.json"
+    }
+  ],
+  "redactions": [
+    {
+      "field": "files/USER.md",
+      "kind": "identity"
+    },
+    {
+      "field": "files/USER.md",
+      "kind": "identity"
+    },
+    {
+      "field": "files/mcp.json.mcpServers.Context7.env.DEFAULT_MINIMUM_TOKENS",
+      "kind": "env-or-header"
+    },
+    {
+      "field": "files/mcp.json.mcpServers.computer-use.env.ELECTRON_RUN_AS_NODE",
+      "kind": "env-or-header"
+    },
+    {
+      "field": "files/api-spec.md",
+      "kind": "inline-secret"
+    },
+    {
+      "field": "files/api-spec.md",
+      "kind": "inline-secret"
+    },
+    {
+      "field": "database/providers.json[1].api_key",
+      "kind": "credential"
+    }
+  ],
+  "redactionCount": 7,
+  "leakCheck": "passed: collected original sensitive values absent from exported files",
+  "restorable": false
+}

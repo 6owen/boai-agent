@@ -1,0 +1,11 @@
+{
+  "CFBundleIdentifier": "com.yetone.alma.caltool",
+  "CFBundleExecutable": "CalTool",
+  "CFBundleName": "CalTool",
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "1.0.0",
+  "CFBundleVersion": "1",
+  "LSUIElement": true,
+  "NSCalendarsUsageDescription": "Alma needs access to your calendars to query and manage events.",
+  "NSCalendarsFullAccessUsageDescription": "Alma needs full access to your calendars to query and manage events."
+}

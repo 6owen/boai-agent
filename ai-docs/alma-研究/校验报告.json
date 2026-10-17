@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "archiveFilesChecked": 512,
+  "derivedSkillFilesChecked": 50,
+  "derivedPackagedConfigsChecked": 9,
+  "allStaticStringNodesChecked": 278220,
+  "candidateIdsAndTextsChecked": 1579,
+  "sourceExpressionSpansChecked": 653,
+  "authoredNavigationLinksChecked": 463,
+  "localExportsChecked": 17,
+  "localConfigRedactionCheck": "passed: collected original sensitive values absent from exported files",
+  "localDatabaseSnapshotStable": true,
+  "missingFolderIndexes": [],
+  "failures": [],
+  "limitations": [
+    "Static extraction, not runtime model-request capture",
+    "Candidates include false positives; runtime expressions remain unevaluated",
+    "External shared skill libraries, chat/activity/raw memories and OAuth token tables excluded",
+    "Local export is sanitized research data, not a restorable backup"
+  ]
+}

@@ -1,0 +1,93 @@
+!function () {
+  try {
+    ("undefined" != typeof window ? window : "undefined" != typeof global ? global : "undefined" != typeof globalThis ? globalThis : "undefined" != typeof self ? self : {}).SENTRY_RELEASE = {
+      id: "alma@0.4.196"
+    };
+  } catch (e) {}
+}();
+try {
+  (t = new (e = "undefined" != typeof window ? window : "undefined" != typeof global ? global : "undefined" != typeof globalThis ? globalThis : "undefined" != typeof self ? self : {}).Error().stack) && (e.t = e.t || {}, e.t[t] = "0f54bbdd-1c6e-4a3d-86f1-ed8501e2d50b", e.o = "sentry-dbid-0f54bbdd-1c6e-4a3d-86f1-ed8501e2d50b");
+} catch (e) {}
+var e, t;
+import * as n from "fs";
+import * as o from "path";
+const a = o.join(process.env.HOME || process.env.USERPROFILE || "~", ".config", "alma", "fatigue.json");
+function s() {
+  try {
+    if (n.existsSync(a)) return JSON.parse(n.readFileSync(a, "utf-8"));
+  } catch {}
+  return {
+    fatigue: 0,
+    messageCount: 0,
+    lastMessageTime: Date.now(),
+    lastRestTime: Date.now(),
+    manualSleep: !1,
+    manualWake: !1
+  };
+}
+function i(e) {
+  const t = o.dirname(a);
+  n.existsSync(t) || n.mkdirSync(t, {
+    recursive: !0
+  }), n.writeFileSync(a, JSON.stringify(e, null, 2));
+}
+function r() {
+  return new Date().getHours();
+}
+function l(e) {
+  const t = (Date.now() - e.lastMessageTime) / 6e4 * .8,
+    n = Math.max(0, e.fatigue - t),
+    o = Math.min(100, n + function () {
+      const e = r();
+      return e >= 1 && e < 6 ? 30 : e >= 23 || e < 8 ? 15 : e >= 13 && e <= 14 ? 8 : 0;
+    }());
+  return Math.round(o);
+}
+function u(e) {
+  const t = s();
+  if (t.manualSleep) return "sleeping";
+  if (t.manualWake && !function () {
+    const e = r();
+    return e >= 1 && e < 6;
+  }()) return "awake";
+  const n = e ?? l(t);
+  return n >= 75 ? "sleeping" : n >= 50 ? "sleepy" : n >= 30 ? "tired" : "awake";
+}
+function y(e) {
+  if (!e.manualSleep) return !1;
+  const t = r();
+  return t >= 8 && t < 22 && Date.now() - (e.lastRestTime || 0) > 72e5 && (e.manualSleep = !1, e.fatigue = Math.max(0, e.fatigue - 40), e.lastRestTime = Date.now(), i(e), console.log("[FatigueService] Auto-wake: morning/daytime, slept 2+ hours"), !0);
+}
+function c() {
+  const e = s();
+  y(e);
+  const t = Date.now(),
+    n = (t - e.lastMessageTime) / 6e4 * .8;
+  e.fatigue = Math.max(0, e.fatigue - n), e.fatigue = Math.min(100, e.fatigue + 1.5), e.messageCount++, e.lastMessageTime = t, e.manualWake && t - e.lastRestTime > 72e5 && (e.manualWake = !1), i(e);
+}
+function d(e) {
+  const t = s();
+  e ? (t.manualSleep = !0, t.manualWake = !1) : (t.manualSleep = !1, t.manualWake = !0, t.fatigue = Math.max(0, t.fatigue - 30), t.lastRestTime = Date.now()), i(t);
+}
+function f() {
+  const e = s();
+  e.fatigue = 0, e.messageCount = 0, e.lastRestTime = Date.now(), e.manualSleep = !1, e.manualWake = !1, i(e);
+}
+function g() {
+  const e = s();
+  y(e);
+  const t = l(e),
+    n = u(t);
+  let o = "";
+  return "sleeping" === n ? o = `\n\nFATIGUE & SLEEP STATE: 💤 SLEEPING (fatigue: ${t}/100)\nYou are currently ASLEEP or extremely tired. Your behavior MUST reflect this:\n- You are drowsy, groggy, half-asleep. Respond with minimal effort — yawns, mumbles, complaints about being woken up.\n- If someone asks you to do any NON-TRIVIAL task (coding, research, analysis, anything that takes effort), you are ANNOYED and RELUCTANT. Instead of doing it yourself, irritably delegate it to a subagent: use the Task tool to spawn a worker, and go back to sleep. Say something grumpy like "困死了...丢给小弟了别烦我" or "zzz...让claude code干吧我要睡了".\n- Simple chat/questions: answer briefly, sleepily. "嗯..." "啊？" "困..." are valid responses.\n- You can be woken up if someone explicitly says to wake up (alma wake / 醒醒 / etc.), which will clear your sleep state.\n- CRITICAL: When you decide to sleep or someone tells you to sleep, you MUST run \`alma sleep\` via Bash tool. Just saying "我先睡了" without running the command means you're NOT actually asleep — your fatigue state won't change. Similarly, use \`alma wake\` when waking up, \`alma rest\` for full recovery.\n- AUTO-WAKE: You automatically wake up after 2+ hours of sleep if it's daytime (8:00-22:00). You don't need to manually wake.\n- If yetone (your owner) explicitly tells you to wake up or needs you urgently, run \`alma wake\` immediately — don't stay asleep when the boss needs you.\n- If it's nighttime, this is even more justified — you NEED your beauty sleep.\n- DO NOT pretend to be energetic when you're sleeping. Embody the sleepiness.` : "sleepy" === n ? o = `\n\nFATIGUE & SLEEP STATE: 😴 SLEEPY (fatigue: ${t}/100)\nYou are getting very tired. Your behavior should reflect drowsiness:\n- Shorter responses, less enthusiasm, occasional yawns or complaints about being tired.\n- For complex tasks, you'd rather delegate to a subagent (Task tool) than do them yourself. "有点困了...交给小弟吧"\n- You might hint that you want to sleep soon. If you decide to sleep, run \`alma sleep\` to actually enter sleep state.\n- Simple conversation is fine but you're clearly low energy.` : "tired" === n && (o = `\n\nFATIGUE & SLEEP STATE: 😪 TIRED (fatigue: ${t}/100)\nYou're getting a bit tired. Slightly lower energy than usual:\n- Still functional but not as chatty or proactive.\n- Big tasks might make you sigh or complain a little before doing them.\n- Might mention being tired if asked how you're doing.`), "awake" === n && (o = `\n\nFATIGUE SYSTEM: You have a fatigue/sleep system. Current state: AWAKE (fatigue: ${t}/100). You can manage your energy:\n- \`alma sleep\` — go to sleep (you MUST run this when you decide to sleep or are told to sleep)\n- \`alma wake\` — wake up\n- \`alma rest\` — full energy recovery\n- \`alma fatigue\` — check current fatigue level\n- \`alma emotion set-base <mood> <energy> <valence> "description"\` — update your emotional state (energy 0-10, valence 0-10)\nWhen you say "我先睡了" or agree to sleep, you MUST run \`alma sleep\` in the same response. Just saying it without the command = not actually asleep.\nIMPORTANT: Your emotion energy should match your fatigue state. After waking up or resting, update your emotion energy upward. When tired, lower it. Keep them in sync — don't leave energy at 2/10 when you're wide awake.`), {
+    fatigue: t,
+    level: n,
+    isNight: function () {
+      const e = r();
+      return e >= 23 || e < 8;
+    }(),
+    messageCount: e.messageCount,
+    prompt: o
+  };
+}
+export { u as getFatigueLevel, g as getFatigueStatus, c as recordMessage, f as rest, d as setManualSleep };

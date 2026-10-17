@@ -1,0 +1,389 @@
+{"source": "resources/tts/download_model.py", "line": 2, "column": 0, "kind": "Constant", "text": "Download Qwen3-TTS model with JSON progress reporting to stdout."}
+{"source": "resources/tts/download_model.py", "line": 14, "column": 14, "kind": "Constant", "text": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"}
+{"source": "resources/tts/download_model.py", "line": 52, "column": 46, "kind": "Constant", "text": "0"}
+{"source": "resources/tts/download_model.py", "line": 143, "column": 15, "kind": "Constant", "text": "__main__"}
+{"source": "resources/tts/download_model.py", "line": 15, "column": 38, "kind": "Constant", "text": "CustomVoice-1.7B"}
+{"source": "resources/tts/download_model.py", "line": 37, "column": 33, "kind": "Constant", "text": "HF_ENDPOINT"}
+{"source": "resources/tts/download_model.py", "line": 37, "column": 48, "kind": "Constant", "text": ""}
+{"source": "resources/tts/download_model.py", "line": 52, "column": 15, "kind": "Constant", "text": "HF_HUB_ENABLE_HF_TRANSFER"}
+{"source": "resources/tts/download_model.py", "line": 12, "column": 52, "kind": "Constant", "text": "models"}
+{"source": "resources/tts/download_model.py", "line": 80, "column": 12, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 80, "column": 37, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 81, "column": 12, "kind": "Constant", "text": "total"}
+{"source": "resources/tts/download_model.py", "line": 81, "column": 33, "kind": "Constant", "text": "downloaded"}
+{"source": "resources/tts/download_model.py", "line": 81, "column": 50, "kind": "Constant", "text": "speed"}
+{"source": "resources/tts/download_model.py", "line": 80, "column": 22, "kind": "Constant", "text": "downloading"}
+{"source": "resources/tts/download_model.py", "line": 80, "column": 48, "kind": "Constant", "text": "Starting model download..."}
+{"source": "resources/tts/download_model.py", "line": 42, "column": 41, "kind": "Constant", "text": "https://huggingface.co"}
+{"source": "resources/tts/download_model.py", "line": 46, "column": 26, "kind": "Constant", "text": "https://hf-mirror.com"}
+{"source": "resources/tts/download_model.py", "line": 131, "column": 12, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 132, "column": 12, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 133, "column": 12, "kind": "Constant", "text": "downloaded"}
+{"source": "resources/tts/download_model.py", "line": 134, "column": 12, "kind": "Constant", "text": "total"}
+{"source": "resources/tts/download_model.py", "line": 135, "column": 12, "kind": "Constant", "text": "done"}
+{"source": "resources/tts/download_model.py", "line": 131, "column": 22, "kind": "Constant", "text": "success"}
+{"source": "resources/tts/download_model.py", "line": 132, "column": 23, "kind": "Constant", "text": "Model download complete."}
+{"source": "resources/tts/download_model.py", "line": 33, "column": 20, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 33, "column": 41, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 33, "column": 81, "kind": "Constant", "text": "done"}
+{"source": "resources/tts/download_model.py", "line": 33, "column": 30, "kind": "Constant", "text": "success"}
+{"source": "resources/tts/download_model.py", "line": 33, "column": 52, "kind": "Constant", "text": "Model already downloaded."}
+{"source": "resources/tts/download_model.py", "line": 42, "column": 74, "kind": "Constant", "text": "HEAD"}
+{"source": "resources/tts/download_model.py", "line": 47, "column": 23, "kind": "Constant", "text": "HF_ENDPOINT"}
+{"source": "resources/tts/download_model.py", "line": 59, "column": 12, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 60, "column": 12, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 62, "column": 12, "kind": "Constant", "text": "done"}
+{"source": "resources/tts/download_model.py", "line": 63, "column": 12, "kind": "Constant", "text": "error"}
+{"source": "resources/tts/download_model.py", "line": 59, "column": 22, "kind": "Constant", "text": "error"}
+{"source": "resources/tts/download_model.py", "line": 60, "column": 23, "kind": "Constant", "text": "Missing Python dependency: huggingface_hub. Please re-run TTS setup from Alma settings to install dependencies."}
+{"source": "resources/tts/download_model.py", "line": 94, "column": 32, "kind": "Constant", "text": "."}
+{"source": "resources/tts/download_model.py", "line": 113, "column": 16, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 114, "column": 16, "kind": "Constant", "text": "downloaded"}
+{"source": "resources/tts/download_model.py", "line": 115, "column": 16, "kind": "Constant", "text": "total"}
+{"source": "resources/tts/download_model.py", "line": 116, "column": 16, "kind": "Constant", "text": "speed"}
+{"source": "resources/tts/download_model.py", "line": 113, "column": 26, "kind": "Constant", "text": "downloading"}
+{"source": "resources/tts/download_model.py", "line": 139, "column": 16, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 139, "column": 35, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 139, "column": 54, "kind": "Constant", "text": "done"}
+{"source": "resources/tts/download_model.py", "line": 139, "column": 68, "kind": "Constant", "text": "error"}
+{"source": "resources/tts/download_model.py", "line": 139, "column": 26, "kind": "Constant", "text": "error"}
+{"source": "resources/tts/download_model.py", "line": 27, "column": 34, "kind": "Constant", "text": ".safetensors"}
+{"source": "resources/tts/download_model.py", "line": 27, "column": 50, "kind": "Constant", "text": ".npz"}
+{"source": "resources/tts/download_model.py", "line": 27, "column": 58, "kind": "Constant", "text": ".bin"}
+{"source": "resources/tts/download_model.py", "line": 48, "column": 20, "kind": "Constant", "text": "status"}
+{"source": "resources/tts/download_model.py", "line": 49, "column": 20, "kind": "Constant", "text": "message"}
+{"source": "resources/tts/download_model.py", "line": 48, "column": 30, "kind": "Constant", "text": "progress"}
+{"source": "resources/tts/download_model.py", "line": 49, "column": 31, "kind": "Constant", "text": "Using HuggingFace mirror (hf-mirror.com)..."}
+{"source": "resources/tts/download_model.py", "line": 92, "column": 59, "kind": "Constant", "text": "."}
+{"source": "resources/tts/main.py", "line": 13, "column": 39, "kind": "Constant", "text": "false"}
+{"source": "resources/tts/main.py", "line": 13, "column": 11, "kind": "Constant", "text": "TOKENIZERS_PARALLELISM"}
+{"source": "resources/tts/main.py", "line": 14, "column": 24, "kind": "Constant", "text": "ignore"}
+{"source": "resources/tts/main.py", "line": 15, "column": 24, "kind": "Constant", "text": "ignore"}
+{"source": "resources/tts/main.py", "line": 26, "column": 44, "kind": "Constant", "text": "outputs"}
+{"source": "resources/tts/main.py", "line": 27, "column": 39, "kind": "Constant", "text": "models"}
+{"source": "resources/tts/main.py", "line": 28, "column": 39, "kind": "Constant", "text": "voices"}
+{"source": "resources/tts/main.py", "line": 38, "column": 4, "kind": "Constant", "text": "1"}
+{"source": "resources/tts/main.py", "line": 39, "column": 4, "kind": "Constant", "text": "2"}
+{"source": "resources/tts/main.py", "line": 40, "column": 4, "kind": "Constant", "text": "3"}
+{"source": "resources/tts/main.py", "line": 42, "column": 4, "kind": "Constant", "text": "4"}
+{"source": "resources/tts/main.py", "line": 43, "column": 4, "kind": "Constant", "text": "5"}
+{"source": "resources/tts/main.py", "line": 44, "column": 4, "kind": "Constant", "text": "6"}
+{"source": "resources/tts/main.py", "line": 48, "column": 4, "kind": "Constant", "text": "English"}
+{"source": "resources/tts/main.py", "line": 49, "column": 4, "kind": "Constant", "text": "Chinese"}
+{"source": "resources/tts/main.py", "line": 50, "column": 4, "kind": "Constant", "text": "Japanese"}
+{"source": "resources/tts/main.py", "line": 51, "column": 4, "kind": "Constant", "text": "Korean"}
+{"source": "resources/tts/main.py", "line": 55, "column": 4, "kind": "Constant", "text": "Sad and crying, speaking slowly"}
+{"source": "resources/tts/main.py", "line": 56, "column": 4, "kind": "Constant", "text": "Excited and happy, speaking very fast"}
+{"source": "resources/tts/main.py", "line": 57, "column": 4, "kind": "Constant", "text": "Angry and shouting"}
+{"source": "resources/tts/main.py", "line": 58, "column": 4, "kind": "Constant", "text": "Whispering quietly"}
+{"source": "resources/tts/main.py", "line": 75, "column": 11, "kind": "JoinedStr", "text": "f\"temp_{int(time.time())}\""}
+{"source": "resources/tts/main.py", "line": 98, "column": 15, "kind": "JoinedStr", "text": "f\"{timestamp}_{clean_text}.wav\""}
+{"source": "resources/tts/main.py", "line": 126, "column": 26, "kind": "Constant", "text": "\nEnter text (or drag .txt file): "}
+{"source": "resources/tts/main.py", "line": 240, "column": 14, "kind": "Constant", "text": "Vivian"}
+{"source": "resources/tts/main.py", "line": 433, "column": 15, "kind": "Constant", "text": "__main__"}
+{"source": "resources/tts/main.py", "line": 38, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 38, "column": 34, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 38, "column": 84, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 38, "column": 102, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 38, "column": 18, "kind": "Constant", "text": "Custom Voice"}
+{"source": "resources/tts/main.py", "line": 38, "column": 44, "kind": "Constant", "text": "Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"}
+{"source": "resources/tts/main.py", "line": 38, "column": 92, "kind": "Constant", "text": "custom"}
+{"source": "resources/tts/main.py", "line": 38, "column": 122, "kind": "Constant", "text": "CustomVoice"}
+{"source": "resources/tts/main.py", "line": 39, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 39, "column": 34, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 39, "column": 84, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 39, "column": 102, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 39, "column": 18, "kind": "Constant", "text": "Voice Design"}
+{"source": "resources/tts/main.py", "line": 39, "column": 44, "kind": "Constant", "text": "Qwen3-TTS-12Hz-1.7B-VoiceDesign-8bit"}
+{"source": "resources/tts/main.py", "line": 39, "column": 92, "kind": "Constant", "text": "design"}
+{"source": "resources/tts/main.py", "line": 39, "column": 122, "kind": "Constant", "text": "VoiceDesign"}
+{"source": "resources/tts/main.py", "line": 40, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 40, "column": 35, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 40, "column": 78, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 40, "column": 103, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 40, "column": 18, "kind": "Constant", "text": "Voice Cloning"}
+{"source": "resources/tts/main.py", "line": 40, "column": 45, "kind": "Constant", "text": "Qwen3-TTS-12Hz-1.7B-Base-8bit"}
+{"source": "resources/tts/main.py", "line": 40, "column": 86, "kind": "Constant", "text": "clone_manager"}
+{"source": "resources/tts/main.py", "line": 40, "column": 123, "kind": "Constant", "text": "Clones"}
+{"source": "resources/tts/main.py", "line": 42, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 42, "column": 34, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 42, "column": 84, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 42, "column": 102, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 42, "column": 18, "kind": "Constant", "text": "Custom Voice"}
+{"source": "resources/tts/main.py", "line": 42, "column": 44, "kind": "Constant", "text": "Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit"}
+{"source": "resources/tts/main.py", "line": 42, "column": 92, "kind": "Constant", "text": "custom"}
+{"source": "resources/tts/main.py", "line": 42, "column": 122, "kind": "Constant", "text": "CustomVoice"}
+{"source": "resources/tts/main.py", "line": 43, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 43, "column": 34, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 43, "column": 84, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 43, "column": 102, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 43, "column": 18, "kind": "Constant", "text": "Voice Design"}
+{"source": "resources/tts/main.py", "line": 43, "column": 44, "kind": "Constant", "text": "Qwen3-TTS-12Hz-0.6B-VoiceDesign-8bit"}
+{"source": "resources/tts/main.py", "line": 43, "column": 92, "kind": "Constant", "text": "design"}
+{"source": "resources/tts/main.py", "line": 43, "column": 122, "kind": "Constant", "text": "VoiceDesign"}
+{"source": "resources/tts/main.py", "line": 44, "column": 10, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 44, "column": 35, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 44, "column": 78, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 44, "column": 103, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 44, "column": 18, "kind": "Constant", "text": "Voice Cloning"}
+{"source": "resources/tts/main.py", "line": 44, "column": 45, "kind": "Constant", "text": "Qwen3-TTS-12Hz-0.6B-Base-8bit"}
+{"source": "resources/tts/main.py", "line": 44, "column": 86, "kind": "Constant", "text": "clone_manager"}
+{"source": "resources/tts/main.py", "line": 44, "column": 123, "kind": "Constant", "text": "Clones"}
+{"source": "resources/tts/main.py", "line": 48, "column": 16, "kind": "Constant", "text": "Ryan"}
+{"source": "resources/tts/main.py", "line": 48, "column": 24, "kind": "Constant", "text": "Aiden"}
+{"source": "resources/tts/main.py", "line": 48, "column": 33, "kind": "Constant", "text": "Ethan"}
+{"source": "resources/tts/main.py", "line": 48, "column": 42, "kind": "Constant", "text": "Chelsie"}
+{"source": "resources/tts/main.py", "line": 48, "column": 53, "kind": "Constant", "text": "Serena"}
+{"source": "resources/tts/main.py", "line": 48, "column": 63, "kind": "Constant", "text": "Vivian"}
+{"source": "resources/tts/main.py", "line": 49, "column": 16, "kind": "Constant", "text": "Vivian"}
+{"source": "resources/tts/main.py", "line": 49, "column": 26, "kind": "Constant", "text": "Serena"}
+{"source": "resources/tts/main.py", "line": 49, "column": 36, "kind": "Constant", "text": "Uncle_Fu"}
+{"source": "resources/tts/main.py", "line": 49, "column": 48, "kind": "Constant", "text": "Dylan"}
+{"source": "resources/tts/main.py", "line": 49, "column": 57, "kind": "Constant", "text": "Eric"}
+{"source": "resources/tts/main.py", "line": 50, "column": 17, "kind": "Constant", "text": "Ono_Anna"}
+{"source": "resources/tts/main.py", "line": 51, "column": 15, "kind": "Constant", "text": "Sohee"}
+{"source": "resources/tts/main.py", "line": 75, "column": 13, "kind": "Constant", "text": "temp_"}
+{"source": "resources/tts/main.py", "line": 83, "column": 44, "kind": "Constant", "text": "snapshots"}
+{"source": "resources/tts/main.py", "line": 96, "column": 40, "kind": "Constant", "text": "%H-%M-%S"}
+{"source": "resources/tts/main.py", "line": 97, "column": 103, "kind": "Constant", "text": "audio"}
+{"source": "resources/tts/main.py", "line": 98, "column": 28, "kind": "Constant", "text": "_"}
+{"source": "resources/tts/main.py", "line": 98, "column": 41, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 101, "column": 44, "kind": "Constant", "text": "audio_000.wav"}
+{"source": "resources/tts/main.py", "line": 123, "column": 24, "kind": "Constant", "text": "\\ "}
+{"source": "resources/tts/main.py", "line": 123, "column": 31, "kind": "Constant", "text": " "}
+{"source": "resources/tts/main.py", "line": 155, "column": 22, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 163, "column": 41, "kind": "JoinedStr", "text": "f\"temp_convert_{int(time.time())}.wav\""}
+{"source": "resources/tts/main.py", "line": 164, "column": 10, "kind": "JoinedStr", "text": "f\"Converting '{ext}' to WAV...\""}
+{"source": "resources/tts/main.py", "line": 166, "column": 11, "kind": "Constant", "text": "ffmpeg"}
+{"source": "resources/tts/main.py", "line": 166, "column": 21, "kind": "Constant", "text": "-y"}
+{"source": "resources/tts/main.py", "line": 166, "column": 27, "kind": "Constant", "text": "-v"}
+{"source": "resources/tts/main.py", "line": 166, "column": 33, "kind": "Constant", "text": "error"}
+{"source": "resources/tts/main.py", "line": 166, "column": 42, "kind": "Constant", "text": "-i"}
+{"source": "resources/tts/main.py", "line": 167, "column": 11, "kind": "Constant", "text": "-ar"}
+{"source": "resources/tts/main.py", "line": 167, "column": 36, "kind": "Constant", "text": "-ac"}
+{"source": "resources/tts/main.py", "line": 167, "column": 43, "kind": "Constant", "text": "1"}
+{"source": "resources/tts/main.py", "line": 167, "column": 48, "kind": "Constant", "text": "-c:a"}
+{"source": "resources/tts/main.py", "line": 167, "column": 56, "kind": "Constant", "text": "pcm_s16le"}
+{"source": "resources/tts/main.py", "line": 185, "column": 10, "kind": "Constant", "text": "\n--- Enroll New Voice ---"}
+{"source": "resources/tts/main.py", "line": 192, "column": 62, "kind": "Constant", "text": " "}
+{"source": "resources/tts/main.py", "line": 192, "column": 67, "kind": "Constant", "text": "_"}
+{"source": "resources/tts/main.py", "line": 206, "column": 10, "kind": "Constant", "text": "3. Transcript (important for quality):"}
+{"source": "resources/tts/main.py", "line": 212, "column": 42, "kind": "JoinedStr", "text": "f\"{safe_name}.wav\""}
+{"source": "resources/tts/main.py", "line": 213, "column": 42, "kind": "JoinedStr", "text": "f\"{safe_name}.txt\""}
+{"source": "resources/tts/main.py", "line": 222, "column": 10, "kind": "JoinedStr", "text": "f\"Voice saved as '{safe_name}'\""}
+{"source": "resources/tts/main.py", "line": 232, "column": 10, "kind": "JoinedStr", "text": "f\"\\nLoading {info['name']}...\""}
+{"source": "resources/tts/main.py", "line": 239, "column": 10, "kind": "JoinedStr", "text": "f\"\\n--- {info['name']} ---\""}
+{"source": "resources/tts/main.py", "line": 249, "column": 10, "kind": "JoinedStr", "text": "f\"Using: {speaker}\""}
+{"source": "resources/tts/main.py", "line": 251, "column": 10, "kind": "Constant", "text": "\nEmotion Examples:"}
+{"source": "resources/tts/main.py", "line": 254, "column": 62, "kind": "Constant", "text": "Normal tone"}
+{"source": "resources/tts/main.py", "line": 256, "column": 10, "kind": "Constant", "text": "\nSpeed:"}
+{"source": "resources/tts/main.py", "line": 257, "column": 10, "kind": "Constant", "text": "  1. Normal (1.0x)"}
+{"source": "resources/tts/main.py", "line": 258, "column": 10, "kind": "Constant", "text": "  2. Fast (1.3x)"}
+{"source": "resources/tts/main.py", "line": 259, "column": 10, "kind": "Constant", "text": "  3. Slow (0.8x)"}
+{"source": "resources/tts/main.py", "line": 262, "column": 13, "kind": "Constant", "text": "2"}
+{"source": "resources/tts/main.py", "line": 289, "column": 10, "kind": "JoinedStr", "text": "f\"\\nLoading {info['name']}...\""}
+{"source": "resources/tts/main.py", "line": 296, "column": 10, "kind": "JoinedStr", "text": "f\"\\n--- {info['name']} ---\""}
+{"source": "resources/tts/main.py", "line": 316, "column": 10, "kind": "Constant", "text": "\n--- Voice Cloning Manager ---"}
+{"source": "resources/tts/main.py", "line": 317, "column": 10, "kind": "Constant", "text": "  1. Pick from Saved Voices"}
+{"source": "resources/tts/main.py", "line": 318, "column": 10, "kind": "Constant", "text": "  2. Enroll New Voice"}
+{"source": "resources/tts/main.py", "line": 319, "column": 10, "kind": "Constant", "text": "  3. Quick Clone"}
+{"source": "resources/tts/main.py", "line": 320, "column": 10, "kind": "Constant", "text": "  4. Back"}
+{"source": "resources/tts/main.py", "line": 323, "column": 21, "kind": "Constant", "text": "2"}
+{"source": "resources/tts/main.py", "line": 326, "column": 21, "kind": "Constant", "text": "4"}
+{"source": "resources/tts/main.py", "line": 335, "column": 10, "kind": "Constant", "text": "\nLoading Base Model..."}
+{"source": "resources/tts/main.py", "line": 344, "column": 21, "kind": "Constant", "text": "1"}
+{"source": "resources/tts/main.py", "line": 396, "column": 10, "kind": "Constant", "text": " Qwen3-TTS Manager"}
+{"source": "resources/tts/main.py", "line": 399, "column": 10, "kind": "Constant", "text": "\n  Pro Models (1.7B - Best Quality)"}
+{"source": "resources/tts/main.py", "line": 400, "column": 10, "kind": "Constant", "text": "  ---------------------------------"}
+{"source": "resources/tts/main.py", "line": 401, "column": 10, "kind": "Constant", "text": "  1. Custom Voice"}
+{"source": "resources/tts/main.py", "line": 402, "column": 10, "kind": "Constant", "text": "  2. Voice Design"}
+{"source": "resources/tts/main.py", "line": 403, "column": 10, "kind": "Constant", "text": "  3. Voice Cloning"}
+{"source": "resources/tts/main.py", "line": 405, "column": 10, "kind": "Constant", "text": "\n  Lite Models (0.6B - Faster)"}
+{"source": "resources/tts/main.py", "line": 406, "column": 10, "kind": "Constant", "text": "  ---------------------------"}
+{"source": "resources/tts/main.py", "line": 407, "column": 10, "kind": "Constant", "text": "  4. Custom Voice"}
+{"source": "resources/tts/main.py", "line": 408, "column": 10, "kind": "Constant", "text": "  5. Voice Design"}
+{"source": "resources/tts/main.py", "line": 409, "column": 10, "kind": "Constant", "text": "  6. Voice Cloning"}
+{"source": "resources/tts/main.py", "line": 411, "column": 10, "kind": "Constant", "text": "\n  q. Exit"}
+{"source": "resources/tts/main.py", "line": 415, "column": 17, "kind": "Constant", "text": "q"}
+{"source": "resources/tts/main.py", "line": 423, "column": 26, "kind": "Constant", "text": "mode"}
+{"source": "resources/tts/main.py", "line": 425, "column": 15, "kind": "Constant", "text": "custom"}
+{"source": "resources/tts/main.py", "line": 21, "column": 10, "kind": "Constant", "text": "Error: 'mlx_audio' library not found."}
+{"source": "resources/tts/main.py", "line": 22, "column": 10, "kind": "Constant", "text": "Run: source .venv/bin/activate"}
+{"source": "resources/tts/main.py", "line": 97, "column": 90, "kind": "Constant", "text": " "}
+{"source": "resources/tts/main.py", "line": 97, "column": 95, "kind": "Constant", "text": "_"}
+{"source": "resources/tts/main.py", "line": 105, "column": 14, "kind": "JoinedStr", "text": "f\"Saved: outputs/{subfolder}/{filename}\""}
+{"source": "resources/tts/main.py", "line": 163, "column": 43, "kind": "Constant", "text": "temp_convert_"}
+{"source": "resources/tts/main.py", "line": 163, "column": 74, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 164, "column": 12, "kind": "Constant", "text": "Converting '"}
+{"source": "resources/tts/main.py", "line": 164, "column": 29, "kind": "Constant", "text": "' to WAV..."}
+{"source": "resources/tts/main.py", "line": 180, "column": 24, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 180, "column": 32, "kind": "Constant", "text": ""}
+{"source": "resources/tts/main.py", "line": 197, "column": 30, "kind": "Constant", "text": "\n"}
+{"source": "resources/tts/main.py", "line": 198, "column": 14, "kind": "Constant", "text": "Error: Input too long."}
+{"source": "resources/tts/main.py", "line": 212, "column": 55, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 213, "column": 55, "kind": "Constant", "text": ".txt"}
+{"source": "resources/tts/main.py", "line": 216, "column": 26, "kind": "Constant", "text": "w"}
+{"source": "resources/tts/main.py", "line": 222, "column": 12, "kind": "Constant", "text": "Voice saved as '"}
+{"source": "resources/tts/main.py", "line": 222, "column": 39, "kind": "Constant", "text": "'"}
+{"source": "resources/tts/main.py", "line": 227, "column": 37, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 229, "column": 14, "kind": "Constant", "text": "Error: Model not found."}
+{"source": "resources/tts/main.py", "line": 232, "column": 12, "kind": "Constant", "text": "\nLoading "}
+{"source": "resources/tts/main.py", "line": 232, "column": 36, "kind": "Constant", "text": "..."}
+{"source": "resources/tts/main.py", "line": 239, "column": 12, "kind": "Constant", "text": "\n--- "}
+{"source": "resources/tts/main.py", "line": 239, "column": 32, "kind": "Constant", "text": " ---"}
+{"source": "resources/tts/main.py", "line": 242, "column": 10, "kind": "Constant", "text": "Available Speakers: "}
+{"source": "resources/tts/main.py", "line": 249, "column": 12, "kind": "Constant", "text": "Using: "}
+{"source": "resources/tts/main.py", "line": 253, "column": 14, "kind": "JoinedStr", "text": "f\"  - {ex}\""}
+{"source": "resources/tts/main.py", "line": 264, "column": 15, "kind": "Constant", "text": "3"}
+{"source": "resources/tts/main.py", "line": 271, "column": 14, "kind": "Constant", "text": "Generating..."}
+{"source": "resources/tts/main.py", "line": 284, "column": 37, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 286, "column": 14, "kind": "Constant", "text": "Error: Model not found."}
+{"source": "resources/tts/main.py", "line": 289, "column": 12, "kind": "Constant", "text": "\nLoading "}
+{"source": "resources/tts/main.py", "line": 289, "column": 36, "kind": "Constant", "text": "..."}
+{"source": "resources/tts/main.py", "line": 296, "column": 12, "kind": "Constant", "text": "\n--- "}
+{"source": "resources/tts/main.py", "line": 296, "column": 32, "kind": "Constant", "text": " ---"}
+{"source": "resources/tts/main.py", "line": 305, "column": 14, "kind": "Constant", "text": "Generating..."}
+{"source": "resources/tts/main.py", "line": 330, "column": 37, "kind": "Constant", "text": "folder"}
+{"source": "resources/tts/main.py", "line": 332, "column": 14, "kind": "Constant", "text": "Error: Model not found."}
+{"source": "resources/tts/main.py", "line": 349, "column": 14, "kind": "Constant", "text": "\nSaved Voices:"}
+{"source": "resources/tts/main.py", "line": 368, "column": 23, "kind": "Constant", "text": "3"}
+{"source": "resources/tts/main.py", "line": 380, "column": 30, "kind": "JoinedStr", "text": "f\"\\nText for '{os.path.basename(str(ref_audio))}' (or 'exit'): \""}
+{"source": "resources/tts/main.py", "line": 383, "column": 14, "kind": "Constant", "text": "Cloning..."}
+{"source": "resources/tts/main.py", "line": 395, "column": 10, "kind": "Constant", "text": "\n"}
+{"source": "resources/tts/main.py", "line": 397, "column": 10, "kind": "Constant", "text": "="}
+{"source": "resources/tts/main.py", "line": 419, "column": 14, "kind": "Constant", "text": "Invalid selection."}
+{"source": "resources/tts/main.py", "line": 427, "column": 17, "kind": "Constant", "text": "design"}
+{"source": "resources/tts/main.py", "line": 105, "column": 16, "kind": "Constant", "text": "Saved: outputs/"}
+{"source": "resources/tts/main.py", "line": 105, "column": 42, "kind": "Constant", "text": "/"}
+{"source": "resources/tts/main.py", "line": 108, "column": 18, "kind": "Constant", "text": "Playing..."}
+{"source": "resources/tts/main.py", "line": 121, "column": 37, "kind": "Constant", "text": "'"}
+{"source": "resources/tts/main.py", "line": 121, "column": 42, "kind": "Constant", "text": "\""}
+{"source": "resources/tts/main.py", "line": 129, "column": 33, "kind": "Constant", "text": "exit"}
+{"source": "resources/tts/main.py", "line": 129, "column": 41, "kind": "Constant", "text": "quit"}
+{"source": "resources/tts/main.py", "line": 129, "column": 49, "kind": "Constant", "text": "q"}
+{"source": "resources/tts/main.py", "line": 133, "column": 56, "kind": "Constant", "text": ".txt"}
+{"source": "resources/tts/main.py", "line": 134, "column": 18, "kind": "JoinedStr", "text": "f\"Reading from: {os.path.basename(clean_p)}\""}
+{"source": "resources/tts/main.py", "line": 173, "column": 14, "kind": "Constant", "text": "Error: Could not convert audio. Is ffmpeg installed?"}
+{"source": "resources/tts/main.py", "line": 180, "column": 82, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 188, "column": 17, "kind": "Constant", "text": "1. Voice name (e.g. Boss, Mom): "}
+{"source": "resources/tts/main.py", "line": 194, "column": 22, "kind": "Constant", "text": "2. Drag & Drop Reference File: "}
+{"source": "resources/tts/main.py", "line": 207, "column": 21, "kind": "Constant", "text": "   Type EXACTLY what the audio says: "}
+{"source": "resources/tts/main.py", "line": 216, "column": 40, "kind": "Constant", "text": "utf-8"}
+{"source": "resources/tts/main.py", "line": 236, "column": 14, "kind": "JoinedStr", "text": "f\"Load failed: {e}\""}
+{"source": "resources/tts/main.py", "line": 244, "column": 24, "kind": "Constant", "text": "\nSelect Speaker (Name): "}
+{"source": "resources/tts/main.py", "line": 253, "column": 16, "kind": "Constant", "text": "  - "}
+{"source": "resources/tts/main.py", "line": 260, "column": 15, "kind": "Constant", "text": "Choice (1-3): "}
+{"source": "resources/tts/main.py", "line": 293, "column": 14, "kind": "JoinedStr", "text": "f\"Load failed: {e}\""}
+{"source": "resources/tts/main.py", "line": 297, "column": 21, "kind": "Constant", "text": "Describe the voice: "}
+{"source": "resources/tts/main.py", "line": 322, "column": 23, "kind": "Constant", "text": "\nChoice: "}
+{"source": "resources/tts/main.py", "line": 339, "column": 14, "kind": "JoinedStr", "text": "f\"Load failed: {e}\""}
+{"source": "resources/tts/main.py", "line": 347, "column": 18, "kind": "Constant", "text": "No saved voices found."}
+{"source": "resources/tts/main.py", "line": 351, "column": 18, "kind": "JoinedStr", "text": "f\"  {i+1}. {v}\""}
+{"source": "resources/tts/main.py", "line": 358, "column": 49, "kind": "JoinedStr", "text": "f\"{name}.wav\""}
+{"source": "resources/tts/main.py", "line": 359, "column": 48, "kind": "JoinedStr", "text": "f\"{name}.txt\""}
+{"source": "resources/tts/main.py", "line": 363, "column": 18, "kind": "JoinedStr", "text": "f\"Loaded: {name}\""}
+{"source": "resources/tts/main.py", "line": 374, "column": 66, "kind": "Constant", "text": "."}
+{"source": "resources/tts/main.py", "line": 380, "column": 32, "kind": "Constant", "text": "\nText for '"}
+{"source": "resources/tts/main.py", "line": 380, "column": 78, "kind": "Constant", "text": "' (or 'exit'): "}
+{"source": "resources/tts/main.py", "line": 395, "column": 17, "kind": "Constant", "text": "="}
+{"source": "resources/tts/main.py", "line": 429, "column": 17, "kind": "Constant", "text": "clone_manager"}
+{"source": "resources/tts/main.py", "line": 439, "column": 14, "kind": "Constant", "text": "\nExiting..."}
+{"source": "resources/tts/main.py", "line": 134, "column": 20, "kind": "Constant", "text": "Reading from: "}
+{"source": "resources/tts/main.py", "line": 157, "column": 39, "kind": "Constant", "text": "rb"}
+{"source": "resources/tts/main.py", "line": 232, "column": 28, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 236, "column": 16, "kind": "Constant", "text": "Load failed: "}
+{"source": "resources/tts/main.py", "line": 239, "column": 24, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 242, "column": 35, "kind": "Constant", "text": ", "}
+{"source": "resources/tts/main.py", "line": 254, "column": 26, "kind": "Constant", "text": "Emotion Instruction: "}
+{"source": "resources/tts/main.py", "line": 276, "column": 43, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 278, "column": 18, "kind": "JoinedStr", "text": "f\"Error: {e}\""}
+{"source": "resources/tts/main.py", "line": 289, "column": 28, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 293, "column": 16, "kind": "Constant", "text": "Load failed: "}
+{"source": "resources/tts/main.py", "line": 296, "column": 24, "kind": "Constant", "text": "name"}
+{"source": "resources/tts/main.py", "line": 309, "column": 43, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 311, "column": 18, "kind": "JoinedStr", "text": "f\"Error: {e}\""}
+{"source": "resources/tts/main.py", "line": 339, "column": 16, "kind": "Constant", "text": "Load failed: "}
+{"source": "resources/tts/main.py", "line": 351, "column": 20, "kind": "Constant", "text": "  "}
+{"source": "resources/tts/main.py", "line": 351, "column": 27, "kind": "Constant", "text": ". "}
+{"source": "resources/tts/main.py", "line": 355, "column": 22, "kind": "Constant", "text": "Invalid selection."}
+{"source": "resources/tts/main.py", "line": 358, "column": 57, "kind": "Constant", "text": ".wav"}
+{"source": "resources/tts/main.py", "line": 359, "column": 56, "kind": "Constant", "text": ".txt"}
+{"source": "resources/tts/main.py", "line": 363, "column": 20, "kind": "Constant", "text": "Loaded: "}
+{"source": "resources/tts/main.py", "line": 365, "column": 18, "kind": "Constant", "text": "Invalid selection."}
+{"source": "resources/tts/main.py", "line": 388, "column": 43, "kind": "Constant", "text": "output_subfolder"}
+{"source": "resources/tts/main.py", "line": 390, "column": 18, "kind": "JoinedStr", "text": "f\"Error: {e}\""}
+{"source": "resources/tts/main.py", "line": 85, "column": 79, "kind": "Constant", "text": "."}
+{"source": "resources/tts/main.py", "line": 110, "column": 32, "kind": "Constant", "text": "afplay"}
+{"source": "resources/tts/main.py", "line": 136, "column": 35, "kind": "Constant", "text": "r"}
+{"source": "resources/tts/main.py", "line": 139, "column": 22, "kind": "JoinedStr", "text": "f\"Error reading file: {e}\""}
+{"source": "resources/tts/main.py", "line": 192, "column": 23, "kind": "Constant", "text": "[^\\w\\s-]"}
+{"source": "resources/tts/main.py", "line": 192, "column": 36, "kind": "Constant", "text": ""}
+{"source": "resources/tts/main.py", "line": 278, "column": 20, "kind": "Constant", "text": "Error: "}
+{"source": "resources/tts/main.py", "line": 311, "column": 20, "kind": "Constant", "text": "Error: "}
+{"source": "resources/tts/main.py", "line": 353, "column": 28, "kind": "Constant", "text": "\nPick Number: "}
+{"source": "resources/tts/main.py", "line": 361, "column": 36, "kind": "Constant", "text": "r"}
+{"source": "resources/tts/main.py", "line": 369, "column": 26, "kind": "Constant", "text": "\nDrag Reference Audio: "}
+{"source": "resources/tts/main.py", "line": 390, "column": 20, "kind": "Constant", "text": "Error: "}
+{"source": "resources/tts/main.py", "line": 413, "column": 19, "kind": "Constant", "text": "\nSelect: "}
+{"source": "resources/tts/main.py", "line": 136, "column": 49, "kind": "Constant", "text": "utf-8"}
+{"source": "resources/tts/main.py", "line": 139, "column": 24, "kind": "Constant", "text": "Error reading file: "}
+{"source": "resources/tts/main.py", "line": 361, "column": 50, "kind": "Constant", "text": "utf-8"}
+{"source": "resources/tts/main.py", "line": 374, "column": 25, "kind": "Constant", "text": "   Transcript (Optional): "}
+{"source": "resources/tts/main.py", "line": 97, "column": 24, "kind": "Constant", "text": "[^\\w\\s-]"}
+{"source": "resources/tts/main.py", "line": 97, "column": 37, "kind": "Constant", "text": ""}
+{"source": "resources/tts/tts_cli.py", "line": 2, "column": 0, "kind": "Constant", "text": "\nSimple CLI wrapper for Qwen3-TTS — used by Alma for voice generation.\n\nUsage:\n  python3 tts_cli.py --text \"你好世界\" --output /tmp/hello.wav [--voice Vivian] [--emotion \"cheerful\"] [--speed 1.0]\n  python3 tts_cli.py --text \"Hello world\" --output /tmp/hello.wav --voice Chelsie\n"}
+{"source": "resources/tts/tts_cli.py", "line": 17, "column": 39, "kind": "Constant", "text": "false"}
+{"source": "resources/tts/tts_cli.py", "line": 17, "column": 11, "kind": "Constant", "text": "TOKENIZERS_PARALLELISM"}
+{"source": "resources/tts/tts_cli.py", "line": 18, "column": 24, "kind": "Constant", "text": "ignore"}
+{"source": "resources/tts/tts_cli.py", "line": 19, "column": 24, "kind": "Constant", "text": "ignore"}
+{"source": "resources/tts/tts_cli.py", "line": 21, "column": 78, "kind": "Constant", "text": "models"}
+{"source": "resources/tts/tts_cli.py", "line": 107, "column": 15, "kind": "JoinedStr", "text": "f\"/tmp/qwen3_tts_{os.getpid()}\""}
+{"source": "resources/tts/tts_cli.py", "line": 142, "column": 15, "kind": "Constant", "text": "__main__"}
+{"source": "resources/tts/tts_cli.py", "line": 29, "column": 44, "kind": "Constant", "text": "snapshots"}
+{"source": "resources/tts/tts_cli.py", "line": 39, "column": 24, "kind": "Constant", "text": "--text"}
+{"source": "resources/tts/tts_cli.py", "line": 40, "column": 24, "kind": "Constant", "text": "--output"}
+{"source": "resources/tts/tts_cli.py", "line": 41, "column": 24, "kind": "Constant", "text": "--voice"}
+{"source": "resources/tts/tts_cli.py", "line": 42, "column": 24, "kind": "Constant", "text": "--emotion"}
+{"source": "resources/tts/tts_cli.py", "line": 43, "column": 24, "kind": "Constant", "text": "--speed"}
+{"source": "resources/tts/tts_cli.py", "line": 44, "column": 24, "kind": "Constant", "text": "--model"}
+{"source": "resources/tts/tts_cli.py", "line": 45, "column": 24, "kind": "Constant", "text": "--models-dir"}
+{"source": "resources/tts/tts_cli.py", "line": 104, "column": 49, "kind": "Constant", "text": "Speak naturally"}
+{"source": "resources/tts/tts_cli.py", "line": 107, "column": 17, "kind": "Constant", "text": "/tmp/qwen3_tts_"}
+{"source": "resources/tts/tts_cli.py", "line": 38, "column": 49, "kind": "Constant", "text": "Qwen3-TTS CLI"}
+{"source": "resources/tts/tts_cli.py", "line": 39, "column": 54, "kind": "Constant", "text": "Text to speak"}
+{"source": "resources/tts/tts_cli.py", "line": 40, "column": 56, "kind": "Constant", "text": "Output WAV file path"}
+{"source": "resources/tts/tts_cli.py", "line": 41, "column": 43, "kind": "Constant", "text": "Vivian"}
+{"source": "resources/tts/tts_cli.py", "line": 41, "column": 58, "kind": "Constant", "text": "Voice name (default: Vivian for Chinese)"}
+{"source": "resources/tts/tts_cli.py", "line": 42, "column": 45, "kind": "Constant", "text": ""}
+{"source": "resources/tts/tts_cli.py", "line": 42, "column": 54, "kind": "Constant", "text": "Emotion/style instruction (e.g. 'cheerful', 'sad and slow')"}
+{"source": "resources/tts/tts_cli.py", "line": 43, "column": 65, "kind": "Constant", "text": "Speed multiplier (default: 1.0)"}
+{"source": "resources/tts/tts_cli.py", "line": 44, "column": 43, "kind": "Constant", "text": "CustomVoice-1.7B"}
+{"source": "resources/tts/tts_cli.py", "line": 44, "column": 68, "kind": "Constant", "text": "Model folder name"}
+{"source": "resources/tts/tts_cli.py", "line": 45, "column": 59, "kind": "Constant", "text": "Override models directory path"}
+{"source": "resources/tts/tts_cli.py", "line": 55, "column": 14, "kind": "JoinedStr", "text": "f\"Model not found locally, downloading...\""}
+{"source": "resources/tts/tts_cli.py", "line": 93, "column": 14, "kind": "JoinedStr", "text": "f\"Error: Model not found at {MODELS_DIR}/{args.model}\""}
+{"source": "resources/tts/tts_cli.py", "line": 111, "column": 14, "kind": "JoinedStr", "text": "f\"Loading model: {args.model}...\""}
+{"source": "resources/tts/tts_cli.py", "line": 114, "column": 14, "kind": "JoinedStr", "text": "f\"Generating: \\\"{args.text[:50]}...\\\" voice={args.voice} emotion={instruct}\""}
+{"source": "resources/tts/tts_cli.py", "line": 125, "column": 40, "kind": "Constant", "text": "audio_000.wav"}
+{"source": "resources/tts/tts_cli.py", "line": 55, "column": 16, "kind": "Constant", "text": "Model not found locally, downloading..."}
+{"source": "resources/tts/tts_cli.py", "line": 93, "column": 16, "kind": "Constant", "text": "Error: Model not found at "}
+{"source": "resources/tts/tts_cli.py", "line": 93, "column": 54, "kind": "Constant", "text": "/"}
+{"source": "resources/tts/tts_cli.py", "line": 100, "column": 14, "kind": "Constant", "text": "Error: mlx_audio not installed. Run: source .venv/bin/activate && pip install -r requirements.txt"}
+{"source": "resources/tts/tts_cli.py", "line": 111, "column": 16, "kind": "Constant", "text": "Loading model: "}
+{"source": "resources/tts/tts_cli.py", "line": 111, "column": 43, "kind": "Constant", "text": "..."}
+{"source": "resources/tts/tts_cli.py", "line": 114, "column": 16, "kind": "Constant", "text": "Generating: \""}
+{"source": "resources/tts/tts_cli.py", "line": 114, "column": 46, "kind": "Constant", "text": "...\" voice="}
+{"source": "resources/tts/tts_cli.py", "line": 114, "column": 70, "kind": "Constant", "text": " emotion="}
+{"source": "resources/tts/tts_cli.py", "line": 131, "column": 18, "kind": "Constant", "text": "Error: No audio generated"}
+{"source": "resources/tts/tts_cli.py", "line": 134, "column": 14, "kind": "JoinedStr", "text": "f\"Error: {e}\""}
+{"source": "resources/tts/tts_cli.py", "line": 61, "column": 24, "kind": "Constant", "text": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"}
+{"source": "resources/tts/tts_cli.py", "line": 90, "column": 18, "kind": "JoinedStr", "text": "f\"Error downloading model: {e}\""}
+{"source": "resources/tts/tts_cli.py", "line": 127, "column": 56, "kind": "Constant", "text": "."}
+{"source": "resources/tts/tts_cli.py", "line": 134, "column": 16, "kind": "Constant", "text": "Error: "}
+{"source": "resources/tts/tts_cli.py", "line": 31, "column": 79, "kind": "Constant", "text": "."}
+{"source": "resources/tts/tts_cli.py", "line": 84, "column": 28, "kind": "Constant", "text": "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"}
+{"source": "resources/tts/tts_cli.py", "line": 90, "column": 20, "kind": "Constant", "text": "Error downloading model: "}
+{"source": "resources/tts/tts_cli.py", "line": 72, "column": 30, "kind": "Constant", "text": "."}
+{"source": "resources/tts/tts_cli.py", "line": 75, "column": 42, "kind": "Constant", "text": ".safetensors"}
+{"source": "resources/tts/tts_cli.py", "line": 75, "column": 58, "kind": "Constant", "text": ".npz"}
+{"source": "resources/tts/tts_cli.py", "line": 75, "column": 66, "kind": "Constant", "text": ".bin"}

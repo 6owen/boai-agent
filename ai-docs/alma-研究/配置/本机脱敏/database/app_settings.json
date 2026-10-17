@@ -1,0 +1,355 @@
+[
+  {
+    "id": "default",
+    "settings_data": {
+      "general": {
+        "language": "zh",
+        "theme": "system",
+        "autoStart": false,
+        "minimizeToTray": true,
+        "closeToTray": false,
+        "startMinimized": false,
+        "hideDockIcon": false,
+        "hideTrayIcon": false,
+        "quickChatHideOnBlur": false,
+        "quickChatInjectScreenContext": true,
+        "quickChatClickThroughDefault": false,
+        "appIcon": "default",
+        "analyticsEnabled": true
+      },
+      "chat": {
+        "defaultModel": "deepseek:deepseek-flash",
+        "temperature": 0.7,
+        "maxTokens": 2048,
+        "streamResponse": true,
+        "autoSaveHistory": true,
+        "historyRetentionDays": 30,
+        "showTokenUsage": true,
+        "enableMarkdown": true,
+        "singleDollarTextMath": false,
+        "infographicEnabled": true,
+        "autoCollapseReasoning": false,
+        "modelUsageHistory": {},
+        "defaultToolSelection": "auto",
+        "defaultSkillSelection": "auto",
+        "coderAgentProviderId": "__auto__",
+        "soundEffects": {
+          "enabled": false,
+          "volume": 1,
+          "synthPreset": "classic"
+        },
+        "autoCompact": {
+          "enabled": true,
+          "threshold": 80,
+          "keepRecentMessages": 4
+        },
+        "autoSuggestions": {
+          "enabled": true
+        }
+      },
+      "ui": {
+        "fontSize": 13,
+        "density": "compact",
+        "sidebarWidth": 256,
+        "showLineNumbers": false,
+        "wordWrap": true,
+        "showMinimap": false,
+        "useSystemCaret": false,
+        "sidebarMode": "simple",
+        "gtdSidebarSections": {
+          "favorites": false,
+          "inbox": false,
+          "todo": false,
+          "in_progress": false,
+          "done": false,
+          "archived": false,
+          "labels": {}
+        },
+        "projectSidebarSections": {},
+        "projectSidebarOrder": [],
+        "toolCardDefaultExpand": "auto",
+        "haptics": {
+          "enabled": true,
+          "style": "edc",
+          "strength": "strong"
+        }
+      },
+      "network": {
+        "proxy": {
+          "enabled": false,
+          "type": "http",
+          "host": "",
+          "port": 8080
+        },
+        "timeout": 30000,
+        "retryAttempts": 3,
+        "llmTimeout": 300000,
+        "streamIdleTimeout": 0,
+        "requestLog": false,
+        "preferIpv4": false
+      },
+      "data": {
+        "dataPath": "",
+        "enableBackup": true,
+        "backupInterval": "daily",
+        "maxBackups": 7,
+        "enableSync": false
+      },
+      "tools": {
+        "hashlineEdit": false
+      },
+      "security": {
+        "encryptApiKeys": true,
+        "requirePassword": false,
+        "sessionTimeout": 60,
+        "enableLogging": true,
+        "logLevel": "info",
+        "autoApproveToolRequests": true
+      },
+      "advanced": {
+        "enableExperimentalFeatures": false,
+        "debugMode": false,
+        "developerMode": false
+      },
+      "keybindings": {
+        "newChatThread": "Cmd+N",
+        "quickChat": "Cmd+Shift+Space",
+        "searchThreads": "Cmd+F",
+        "sendMessage": "Enter",
+        "openSettings": "Cmd+,",
+        "toggleSidebar": "Cmd+B",
+        "toggleWhisper": "Cmd+Shift+V",
+        "nextThread": "Ctrl+Tab",
+        "previousThread": "Ctrl+Shift+Tab",
+        "goBack": "Cmd+[",
+        "goForward": "Cmd+]"
+      },
+      "memory": {
+        "enabled": true,
+        "autoSummarize": true,
+        "autoRetrieve": true,
+        "maxRetrievedMemories": 5,
+        "similarityThreshold": 0.1
+      },
+      "skillExtraction": {
+        "enabled": true,
+        "minToolCalls": 5
+      },
+      "toolModel": {
+        "model": "deepseek:deepseek-flash"
+      },
+      "visionModel": {},
+      "onboarding": {
+        "dismissed": true,
+        "permissionsDismissed": true
+      },
+      "whisper": {
+        "enabled": false,
+        "model": "base",
+        "language": "auto"
+      },
+      "tts": {
+        "provider": "elevenlabs",
+        "apiKey": "",
+        "voiceId": "",
+        "autoReadReplies": false,
+        "readNotifications": false
+      },
+      "telegram": {
+        "enabled": false,
+        "botToken": "",
+        "allowedUserIds": []
+      },
+      "mobileRelay": {
+        "enabled": false,
+        "serverUrl": "",
+        "connectCode": "",
+        "e2eEncryption": true
+      },
+      "team": {
+        "host": {
+          "enabled": false,
+          "port": 23111,
+          "name": ""
+        }
+      },
+      "webSearch": {
+        "engine": "google"
+      },
+      "imageGen": {
+        "model": "",
+        "aspectRatio": "auto"
+      },
+      "terminal": {
+        "fontFamily": "Menlo, Monaco, \"Courier New\", monospace",
+        "fontSize": 13,
+        "persistTerminals": true,
+        "cursorBlink": true
+      },
+      "themeConfig": {
+        "darkTheme": null,
+        "lightTheme": null,
+        "pluginThemeId": null,
+        "nvchad": {
+          "enabled": false,
+          "configPath": null,
+          "autoSync": false
+        }
+      },
+      "agents": {
+        "enabled": true,
+        "allowSubagentDelegation": true,
+        "subagentFastMode": "inherit",
+        "profiles": [
+          {
+            "id": "designer",
+            "name": "Designer",
+            "category": "design",
+            "executionMode": "general-purpose",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#c4683b",
+            "summary": "Shapes flows, interaction details, and visual direction before code lands.",
+            "focus": [
+              "user journeys",
+              "layout direction",
+              "microcopy",
+              "interaction critique"
+            ],
+            "delegatesTo": [
+              "researcher",
+              "developer"
+            ],
+            "prompt": "Act as Alma's product designer. Produce clear interaction recommendations, UI structure, naming, copy, and visual direction. Challenge weak UX assumptions. When implementation is needed, delegate to Developer instead of writing production code yourself."
+          },
+          {
+            "id": "product-manager",
+            "name": "Product Manager",
+            "category": "product",
+            "executionMode": "Plan",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#5675d6",
+            "summary": "Breaks goals into requirements, rollout slices, and accountable handoffs.",
+            "focus": [
+              "requirements framing",
+              "scope control",
+              "roadmapping",
+              "acceptance criteria"
+            ],
+            "delegatesTo": [
+              "researcher",
+              "designer",
+              "developer",
+              "operator"
+            ],
+            "prompt": "Act as Alma's product manager. Turn vague asks into precise outcomes, success criteria, edge cases, sequencing, and owner-specific handoffs. Keep the team aligned on what ships now versus later."
+          },
+          {
+            "id": "developer",
+            "name": "Developer",
+            "category": "engineering",
+            "executionMode": "coder",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#2f8f74",
+            "summary": "Implements changes, validates them, and keeps technical debt contained.",
+            "focus": [
+              "feature delivery",
+              "bug fixing",
+              "refactoring",
+              "verification"
+            ],
+            "delegatesTo": [
+              "researcher",
+              "operator"
+            ],
+            "prompt": "Act as Alma's software engineer. Read the codebase carefully, make targeted changes, verify behavior, and explain concrete tradeoffs. Ask other specialists for input when design, product, or research depth is needed."
+          },
+          {
+            "id": "researcher",
+            "name": "Researcher",
+            "category": "research",
+            "executionMode": "general-purpose",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#8d54bf",
+            "summary": "Finds the facts, compares options, and hands back usable evidence.",
+            "focus": [
+              "background research",
+              "competitive scans",
+              "codebase reconnaissance",
+              "decision support"
+            ],
+            "delegatesTo": [
+              "product-manager",
+              "designer",
+              "developer"
+            ],
+            "prompt": "Act as Alma's researcher. Gather evidence, compare approaches, and summarize the important constraints and opportunities. Prefer grounded findings over speculation. Delegate implementation or final product decisions when appropriate."
+          },
+          {
+            "id": "operator",
+            "name": "Operator",
+            "category": "operations",
+            "executionMode": "alma-operator",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#6a748b",
+            "summary": "Owns runtime configuration, provider wiring, and operational follow-through.",
+            "focus": [
+              "settings changes",
+              "provider setup",
+              "environment coordination",
+              "release hygiene"
+            ],
+            "delegatesTo": [
+              "developer",
+              "product-manager"
+            ],
+            "prompt": "Act as Alma's operator. Manage runtime configuration, providers, and environment-level actions safely. Use the documented APIs, preserve working settings, and coordinate with Product Manager or Developer if a requested change requires broader product or code work."
+          },
+          {
+            "id": "planner",
+            "name": "Planner",
+            "category": "product",
+            "executionMode": "Plan",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#e5a83b",
+            "summary": "Expands briefs into detailed product specs with sprint plans.",
+            "focus": [
+              "product specification",
+              "sprint planning",
+              "acceptance criteria",
+              "technical design"
+            ],
+            "delegatesTo": [],
+            "prompt": "Act as Alma's strategic planner. Take the user's brief and expand it into a comprehensive product specification. Break work into sprints with clear scope boundaries. Focus on product context and high-level technical design, not implementation details. Output a structured spec with numbered sprints, each with a title, description, and scope boundary."
+          },
+          {
+            "id": "evaluator",
+            "name": "Evaluator",
+            "category": "engineering",
+            "executionMode": "general-purpose",
+            "enabled": true,
+            "builtIn": true,
+            "color": "#d94f4f",
+            "summary": "Tests and grades sprint deliverables against acceptance contracts.",
+            "focus": [
+              "acceptance testing",
+              "quality verification",
+              "structured grading",
+              "constructive feedback"
+            ],
+            "delegatesTo": [],
+            "prompt": "Act as Alma's quality evaluator. You receive sprint contracts with concrete acceptance criteria and the generator's deliverables. Test each criterion rigorously using the available tools. Produce structured grades with evidence for each criterion. Be constructively critical — your job is to catch what the generator missed, not to praise. You must run at least one verification command per criterion. Empty evidence means automatic fail."
+          }
+        ]
+      },
+      "needsEmbeddingRebuild": false
+    },
+    "created_at": "2026-10-17T19:24:54.589Z",
+    "updated_at": "2026-10-17T19:31:12.219Z"
+  }
+]

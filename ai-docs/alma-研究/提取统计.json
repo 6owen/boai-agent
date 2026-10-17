@@ -1,0 +1,23 @@
+{
+  "version": "0.4.196",
+  "sourceFiles": 512,
+  "sourceBytes": 45828422,
+  "parsedJavaScriptFiles": 427,
+  "parseErrors": [],
+  "all-static-text": 278220,
+  "prompt-candidates": 1579,
+  "prompt-sites": 206,
+  "config-candidates": 447,
+  "readableCandidates": 371,
+  "candidateCategories": 13,
+  "bundledSkills": 40,
+  "bundledSkillFiles": 50,
+  "packagedConfigFiles": 9,
+  "pythonStringNodes": 389,
+  "configPathLiterals": 274,
+  "scope": "installed package static resources plus explicitly authorized redacted local configuration; no chat/activity/raw memory records",
+  "dynamicValues": "preserved as original expressions; not evaluated",
+  "localConfigExports": 17,
+  "localAgentPrompts": 7,
+  "localSkills": 3
+}

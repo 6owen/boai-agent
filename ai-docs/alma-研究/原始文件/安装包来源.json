@@ -1,0 +1,25 @@
+{
+  "version": "0.4.196",
+  "bundleId": "com.yetone.alma",
+  "date": "2026-10-18",
+  "source": "/Applications/Alma.app",
+  "scope": "512 packaged resource files including application text, external CLI, all bundled skills and config; original package hash fixed. Local redacted config is separately sourced and never included in the original-resource archive.",
+  "files": {
+    "app.asar": {
+      "bytes": 795259240,
+      "sha256": "b166ef9f1d34de48821faf369c2d58f9c31682971ba72f26d2ad98dc81aa9ffa"
+    },
+    "cli/alma": {
+      "bytes": 458302,
+      "sha256": "75bdd84553d77ba1f542e46c8ef032a8a969ad031433678ebd8168abcc234bd7"
+    },
+    "out/main/index.js": {
+      "bytes": 3152720,
+      "sha256": "f23d7ad014271e55b4edf36719849b2e1406153cdc3ecabab06c6f3edbba9da3"
+    },
+    "out/main/chunks/fatigueService-56N7Zxzs.js": {
+      "bytes": 5894,
+      "sha256": "ac18b9fc5952db802f44939fbd9e885d9d623041999ce4a5ebbf17224179f1d9"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "CFBundleIdentifier": "com.yetone.alma.computer-use",
+  "CFBundleExecutable": "AlmaComputerUse",
+  "CFBundleName": "Alma Computer Use",
+  "CFBundleDisplayName": "Alma Computer Use",
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "1.0.0",
+  "CFBundleVersion": "1",
+  "LSUIElement": true,
+  "LSMinimumSystemVersion": "13.0",
+  "NSAccessibilityUsageDescription": "Alma Computer Use controls other applications on your behalf when the AI agent needs to interact with desktop apps. This permission is used only while an automation command is running.",
+  "NSScreenCaptureUsageDescription": "Alma Computer Use captures individual application windows so the AI agent can see what it is interacting with. The rest of your screen is not captured.",
+  "NSAppleEventsUsageDescription": "Alma Computer Use may request apps to raise a window via Apple Events when the Accessibility action is unavailable."
+}

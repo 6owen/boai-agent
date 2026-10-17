@@ -1,0 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+const skill = readFileSync(new URL('./SKILL.md', import.meta.url), 'utf8');
+
+describe('bundled image-gen skill contract', () => {
+    it('is always advertised without enabling image reads', () => {
+        expect(skill).toMatch(/^always-inject:\s*true$/m);
+        expect(skill).not.toMatch(/^\s*-\s+Read\s*$/m);
+    });
+
+    it('keeps long image commands in the foreground long enough to return their output path', () => {
+        expect(skill).toContain("Bash tool's `timeout` input");
+        expect(skill).toContain('`300000`');
+        expect(skill).toContain('alma send photo <path>');
+    });
+});

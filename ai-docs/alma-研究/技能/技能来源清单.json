@@ -1,0 +1,352 @@
+[
+  {
+    "source": "resources/bundled-skills/alchemy/SKILL.md",
+    "artifact": "技能/alchemy/SKILL.md",
+    "sourceSha256": "e72f3380b071515da57a4626f3222966f004c378c6ab5ef334ef776b1968e2a2",
+    "artifactSha256": "526304087cfd9fb753d1d8086dc2a4103956c1a42a1b873d4951d8be54ca5d3a",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/artifact-sidebar/SKILL.md",
+    "artifact": "技能/artifact-sidebar/SKILL.md",
+    "sourceSha256": "b04aecfa987a9e89d370f642001dc2383e5b304f12f17ff4f69d742734f00ede",
+    "artifactSha256": "80d9b2fa4e3e0108d84e13d111650bf42a79ce4e8754c86cec55237eef4c777e",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/browser/SKILL.md",
+    "artifact": "技能/browser/SKILL.md",
+    "sourceSha256": "30aa813d07cbcfb00b7d26c2e708fb19b9e17979eeefc93e83a0ddfddb298a22",
+    "artifactSha256": "c91df74b6010f2b5b3d70f2857238c4ccfd7022efb5d6718315aadba6ef7729d",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/SKILL.md",
+    "artifact": "技能/computer-use/SKILL.md",
+    "sourceSha256": "adc345953afa023442ab50490dab41985934b097c79130571a7d2e4dbdc7ebd2",
+    "artifactSha256": "27c1d6f4808beb4c2af9b68d8f4364f17cf0cf032a1cc1ecd57a58e87f6d8d42",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/AppleMusic.md",
+    "artifact": "技能/computer-use/playbooks/AppleMusic.md",
+    "sourceSha256": "eda35de41925cc6b0ddd08647b32ea8b9bf40e156a797c71f5c1dd8d4d20b4d0",
+    "artifactSha256": "b2b3da0a1e4b0545205a3d066a5be8067bc875fcead15178b3954c8d2a4ae6d9",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/Clock.md",
+    "artifact": "技能/computer-use/playbooks/Clock.md",
+    "sourceSha256": "03fecd8d3d32dc8a3a72141c3d868b5a3bbf12ea83cdc4152fb6d4eeb2808b50",
+    "artifactSha256": "a056449146c6c1e36911b8c39e6222e4d811cf8eb874ddda28d83ed87421109d",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/IPhoneMirroring.md",
+    "artifact": "技能/computer-use/playbooks/IPhoneMirroring.md",
+    "sourceSha256": "7c7ddebe05c2c50a399cb2ee51ee31f19969a37ad70ac5a3489ee7bd11200d07",
+    "artifactSha256": "dc366aab776212175797742f175164bc4e399009a88d9ddd3ec15e20fcb7ade1",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/NetEaseMusic.md",
+    "artifact": "技能/computer-use/playbooks/NetEaseMusic.md",
+    "sourceSha256": "482f53a86c6229803a0007db7bb8adeee77f80cfe905cdc58b6262efcb4b1337",
+    "artifactSha256": "fb3d752af51748c8a20638d50ab6f801b79ff14fd630c28caf5056160e348b34",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/Notion.md",
+    "artifact": "技能/computer-use/playbooks/Notion.md",
+    "sourceSha256": "fd6683fcf6e102216aca86a6496f1fb7935081ad7dbd1c1d11532d45f2c73dcc",
+    "artifactSha256": "e473bc06040a67386f70becae6938eb07d6f8dea4763c180028ee7e014d390fa",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/Numbers.md",
+    "artifact": "技能/computer-use/playbooks/Numbers.md",
+    "sourceSha256": "0a7c7c1b33dff9fa1233ddd5e2ff75a584991563026b5373fe40bebe770d8377",
+    "artifactSha256": "f67b956abfe12fadb80ba7474c4158c6bc858552e4de217c6bc964fdb5ecfd8e",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/computer-use/playbooks/Spotify.md",
+    "artifact": "技能/computer-use/playbooks/Spotify.md",
+    "sourceSha256": "5491593ab5ce7a22d37b837992e7ea5c56a778a5c54dae4ca699844eb4d88d37",
+    "artifactSha256": "6f28be247bf2b8ae3b84fa19a92d754dc9b5bb0b81d3a7e2fe07511fe3522a73",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/daily-report/SKILL.md",
+    "artifact": "技能/daily-report/SKILL.md",
+    "sourceSha256": "8c85a511f8b0de4a757eda976eb327b5ff896e99df123c6a304d378da5ca67a5",
+    "artifactSha256": "eedba98094725213d3623be8d62f2c96fbd3809b5933013a427ac5fb29b39ec9",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/discord/SKILL.md",
+    "artifact": "技能/discord/SKILL.md",
+    "sourceSha256": "6b65a057495ce0c8f65570b756ece4702a86751e6df40bfa0ec7ef09617ec138",
+    "artifactSha256": "9afbc074ff2f6364f9514423b0279148fb167e765cee8c52114b7db1d7efb264",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/file-manager/SKILL.md",
+    "artifact": "技能/file-manager/SKILL.md",
+    "sourceSha256": "6e5d48870659947eeee01e1c15ef57addfc73a3f364b7239b49eb10fc01e9797",
+    "artifactSha256": "f2591e5e013b18db7014419ce6d27f7b541443ca460b4cf5fb85d1b0dd2fc909",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/image-gen/SKILL.md",
+    "artifact": "技能/image-gen/SKILL.md",
+    "sourceSha256": "1493904a05786672f1590e0b983f9135fe89ef4f8d4e35283c66a30791e2cb24",
+    "artifactSha256": "2530fa684d49419756efb8289b91fc46d86f43339cdfcfbfbf14d17e2183b9bc",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/image-gen/imageGenSkill.test.ts",
+    "artifact": "技能/image-gen/imageGenSkill.test.ts.source.txt",
+    "sourceSha256": "cece58d0c89b1d8587781071e6d0bf0fb709431d1f1aec6052e756f1387f8f17",
+    "artifactSha256": "cece58d0c89b1d8587781071e6d0bf0fb709431d1f1aec6052e756f1387f8f17",
+    "transform": "extension-changed-not-executable"
+  },
+  {
+    "source": "resources/bundled-skills/memory-management/SKILL.md",
+    "artifact": "技能/memory-management/SKILL.md",
+    "sourceSha256": "30f1db2729ea405ada2206db88bc53d017754ad50c56c7d85f719a3e8667ddc1",
+    "artifactSha256": "de7d537364d277f978f9101cc88e9a4cbeba5227bf83b19563f497249ab8a224",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/music-gen/SKILL.md",
+    "artifact": "技能/music-gen/SKILL.md",
+    "sourceSha256": "b29619195807bcee41b5a052a2d5eea641fbdd2f880134dcfa1f9758b0224af6",
+    "artifactSha256": "a05909df94e57f25a8d544c4e857cdeb1bb5d567386b36d30d346b8f9c72f2b0",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/music-listener/SKILL.md",
+    "artifact": "技能/music-listener/SKILL.md",
+    "sourceSha256": "94155e5305a7b9d4148937e6bc1289895fd973afb64212061f4f6f5e66f8e733",
+    "artifactSha256": "20af55563ff3dd9bfe579e95ed1afbbce33ea7cac4aaefa73953489f97df0eec",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/notebook/SKILL.md",
+    "artifact": "技能/notebook/SKILL.md",
+    "sourceSha256": "3068b8136fd7d6cb86ea2d6806d29ba352607daaf846c85e18553fca45dc882f",
+    "artifactSha256": "859ffb57fc205ab150ff2151a39119505cd80c6e1d3c84c59cf343f329a847cf",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/plan-mode/SKILL.md",
+    "artifact": "技能/plan-mode/SKILL.md",
+    "sourceSha256": "4b5de02f91f1b6b51187832189e13908e99bcc6d4882e4660c5dd1c61a93f9bc",
+    "artifactSha256": "0c083c04e288d6ff297952b6e8739088e2f1c25bf7e960ac8a282bc5c311927b",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/plan-weave/SKILL.md",
+    "artifact": "技能/plan-weave/SKILL.md",
+    "sourceSha256": "7f03bb9d7d11afc8b72ac197ebbdf007c02fb63f45fc1ddc8eaab85c885efff4",
+    "artifactSha256": "1bc4f7234d01571622ef4159081986184b59b3b6319cf6c1548054cb603c6d12",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/presentations/SKILL.md",
+    "artifact": "技能/presentations/SKILL.md",
+    "sourceSha256": "bbb526b63ffbd9db5ef1a5b5e404a3f9496f5287c3fdc1caafeb4c5680a40efc",
+    "artifactSha256": "e3cfac408c24e63d27fbf317fe39f8d766753f730df4eb0dd36b3b40d8315862",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/programmatic-tools/SKILL.md",
+    "artifact": "技能/programmatic-tools/SKILL.md",
+    "sourceSha256": "75219df609364145b231700e95d0a1f3d751bcb6034a8fa5ee3cac9ab6cc953e",
+    "artifactSha256": "db2441c5bda1e92a1f528b2f5195e1afd73475d0791139e9c16f7133eb691242",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/reactions/SKILL.md",
+    "artifact": "技能/reactions/SKILL.md",
+    "sourceSha256": "592ce98c9e55b61add21a973b72c83b0c1a6bad6b037f6f93f291686410aa19f",
+    "artifactSha256": "f116e109caf8edee13cb22c7e298b31d5f7e9bd525e732642a0e970c8cd076c2",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/references/SKILL.md",
+    "artifact": "技能/references/SKILL.md",
+    "sourceSha256": "9cd327369857398289e784af16aa32786b4cbefc8150c49aff51a53acf614a3c",
+    "artifactSha256": "09062986bdb72f3d608461c62e6f66731057956b57861e2b346bc9bcc7749faa",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/scheduler/SKILL.md",
+    "artifact": "技能/scheduler/SKILL.md",
+    "sourceSha256": "5f5b49702e1cacb443cd67804451af5e9a29e0739ada1ace798c64b6b44449f5",
+    "artifactSha256": "54cf20b122a70ed75e628c7b003958dcfeab0a003798e49bc60ed2d2be531c4b",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/screenshot/SKILL.md",
+    "artifact": "技能/screenshot/SKILL.md",
+    "sourceSha256": "4c2e321f5f000c0512311f76af7b1590df61ff4fb578fa3faceddd1a38db8e00",
+    "artifactSha256": "2af91a4b4dab22d39e7559b50571d46d8092f28039aa10260bb3a418ed74e212",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/self-management/SKILL.md",
+    "artifact": "技能/self-management/SKILL.md",
+    "sourceSha256": "39bf14a39c332f71f8450960708b255623c49a6528955b46c97653ae6a667a30",
+    "artifactSha256": "549e1d1202af57576873c45f7b4f721a7a6e332a3689abf69172f9ca422c7672",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/self-reflection/SKILL.md",
+    "artifact": "技能/self-reflection/SKILL.md",
+    "sourceSha256": "16ffe4f8a349da12a3e1849dc2b4b56162fccf4eea664d971abdf62c31623904",
+    "artifactSha256": "fe38b55a62565ce2c093ecc5f465aaf61813cc62fdc53eb2b817d2abb247d31c",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/selfie/SKILL.md",
+    "artifact": "技能/selfie/SKILL.md",
+    "sourceSha256": "10a552831d8c95db1c66063b12c78ff62eafc25a7509a9a2df10866ddbd214b8",
+    "artifactSha256": "8f384e59702e7bb60c9a986a6ad6f0f9ecbbfd4055704a489a0b1f008bf86646",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/send-file/SKILL.md",
+    "artifact": "技能/send-file/SKILL.md",
+    "sourceSha256": "749fce8c701866b321e768e60e8ab35af34ed564310293b818fcbe2863c31b75",
+    "artifactSha256": "afcd87a2e4faf4d27f319d51ec714bc3e8c1674d4703e331a366b61cafaa3e19",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/skill-hub/SKILL.md",
+    "artifact": "技能/skill-hub/SKILL.md",
+    "sourceSha256": "e6faa0b0627798dbc65450dd44a0d87ba4e91216c9e477a8ad3bf3161c5bb4db",
+    "artifactSha256": "d178f29448b810104689e635e0b87cd6228ebe3656f5459cb0dd3eb1edd810e1",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/skill-search/SKILL.md",
+    "artifact": "技能/skill-search/SKILL.md",
+    "sourceSha256": "a5e7390c2c4127460b1b698093e808fbbd0d54cbed4e69ab27995148f8dd1f92",
+    "artifactSha256": "ad6bebb9325a81cff323c7674edd3c125a7f3ae5e67baf51322fdf0780d2ee3f",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/system-info/SKILL.md",
+    "artifact": "技能/system-info/SKILL.md",
+    "sourceSha256": "91e133cf901dcaeeabc5d2f0ab7de267cef3e236867a37f59d80c832c2421345",
+    "artifactSha256": "ead4cf2e0fd09145e18d0c4d5d34b2d06cd573588173c030f33ed9ed9bb37f53",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/tasks/SKILL.md",
+    "artifact": "技能/tasks/SKILL.md",
+    "sourceSha256": "633b14c4f550c00c47f04a343b6fc47601d0ea41a6b8162d3385d3cc3afa2d0b",
+    "artifactSha256": "07874b675402f879cf44cb9044214974451e7330811cccbd38cdab0667586c40",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/team/SKILL.md",
+    "artifact": "技能/team/SKILL.md",
+    "sourceSha256": "700f059b1a8caaef5b7c03b0dce6fe72e6d62aae63a1dbe176c233aacc66b1ff",
+    "artifactSha256": "8caadb954bd4f72274f3bf4c397f2ddfc50a0c97ff2a44cc5477f7a91d73322b",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/telegram/SKILL.md",
+    "artifact": "技能/telegram/SKILL.md",
+    "sourceSha256": "94cac69dd93a26054be1e1fd27dc7dc98e5ca5302d4c4b2582e07aa2d4a44a8c",
+    "artifactSha256": "79fde0b80b629497f096d60ef54c2b67c4a06cf7ce16d0083acef163d34718fb",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/thread-management/SKILL.md",
+    "artifact": "技能/thread-management/SKILL.md",
+    "sourceSha256": "91249dca1347c568c7261dc731659b1af252d54e002f57e7da8a45502abbe687",
+    "artifactSha256": "b9eba417c041109d6e555b129af38758feadc774daf35c798e176a8fb53c3f6c",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/todo/SKILL.md",
+    "artifact": "技能/todo/SKILL.md",
+    "sourceSha256": "8a93e1de45fa4819e10cfb99afd008d71ad5a66fc6f6132ef94b85441d51a3e2",
+    "artifactSha256": "dc2af9fcb88586400a2ea0025390780583a5d947b6a4a33521f4ba77e45524d3",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/travel/SKILL.md",
+    "artifact": "技能/travel/SKILL.md",
+    "sourceSha256": "3096e53e4cdf5fd3229001d2713762916c5d87ecf643e0c3b75fe118349e9154",
+    "artifactSha256": "f756ba482390252dcfc1df65a1179267c13a2ac39695a1d1ec4c45a4e4cb810e",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/twitter-cli/SKILL.md",
+    "artifact": "技能/twitter-cli/SKILL.md",
+    "sourceSha256": "bbdeb82e44e6556771e0de19a23c26263632a6490cd06eafb5f1d3b01e3ffe56",
+    "artifactSha256": "a0ec17ed5aebe042b95e4bd4ccf019d72e857c68611a37d11285b9beab566fe6",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/twitter-cli/scripts/twitter",
+    "artifact": "技能/twitter-cli/scripts/twitter.source.txt",
+    "sourceSha256": "7aa85e1cf4a7eaad2916c519176b2f0ae68b7253f1c7e509fc13b8e330efdf0e",
+    "artifactSha256": "7aa85e1cf4a7eaad2916c519176b2f0ae68b7253f1c7e509fc13b8e330efdf0e",
+    "transform": "extension-changed-not-executable"
+  },
+  {
+    "source": "resources/bundled-skills/twitter-media/SKILL.md",
+    "artifact": "技能/twitter-media/SKILL.md",
+    "sourceSha256": "1869f8cd91804f74c8eba158c945fa8f82dbe315d185c6a62fb5af3990b43b0f",
+    "artifactSha256": "6059a97e9e50ec41c6f33a90c39c7a09ee551cc2476ada56001f4ee92181814b",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/video-reader/SKILL.md",
+    "artifact": "技能/video-reader/SKILL.md",
+    "sourceSha256": "4af770d63306b8a7b5cbac2dbbc910b7b60feb288d74e8a3f2b0aa7bfda9bada",
+    "artifactSha256": "67df179a2269601d36d1bca76138aac168a5585712cd803db443b69a329b2474",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/voice/SKILL.md",
+    "artifact": "技能/voice/SKILL.md",
+    "sourceSha256": "0fe25445e011020ec65075559a5760b736c0645a21f66c06d1479e775603ff53",
+    "artifactSha256": "f3a4b0bfca16d90993571d0a03568b59dfd062e7771d0aa78c0459fdeb6598be",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/web-fetch/SKILL.md",
+    "artifact": "技能/web-fetch/SKILL.md",
+    "sourceSha256": "19425b1ee5953892a4384709c56e71b9e3efcf8c420c4987b1a7c28f245350cd",
+    "artifactSha256": "dec4fb605767746e55dbbdfbb1b16d968fbf465b1c6341df8114a68e00158994",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/web-search/SKILL.md",
+    "artifact": "技能/web-search/SKILL.md",
+    "sourceSha256": "572c0d8802b85e16c8c60d2ab0afbb581fc8cea48c13f1267f11f38f87840010",
+    "artifactSha256": "1c4e4ddf1465bdc045e6559896e88c20977e86160bbb1c5288fa5d5bc4fc9f8c",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/xiaohongshu-cli/SKILL.md",
+    "artifact": "技能/xiaohongshu-cli/SKILL.md",
+    "sourceSha256": "86d584f523a0b5be27888ee3a7ab8a0a6be6c648f6a85e206bc049cfe064f3f2",
+    "artifactSha256": "0e066c0603190b3c72fe5d7a39fd27c0ea7cc247c18b83be309010492e48a348",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/bundled-skills/xiaohongshu-cli/scripts/xhs",
+    "artifact": "技能/xiaohongshu-cli/scripts/xhs.source.txt",
+    "sourceSha256": "18138594ce1c200054b19171ad310f7a31ed2d880031c10684d1be67ee9f3cdf",
+    "artifactSha256": "18138594ce1c200054b19171ad310f7a31ed2d880031c10684d1be67ee9f3cdf",
+    "transform": "extension-changed-not-executable"
+  }
+]

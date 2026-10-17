@@ -1,0 +1,65 @@
+[
+  {
+    "source": "Info.plist",
+    "artifact": "配置/安装包/Info.plist.json",
+    "sourceSha256": "468ede13936ec91b033f80e525218493ee8edb5a793c81d3be0b61162fc396b5",
+    "artifactSha256": "fbf03b093f33559b208c4f4706c6ef68c58305978e9e13e8ec4893eb3de23689",
+    "transform": "plist-to-json"
+  },
+  {
+    "source": "asar/out/renderer/AppIcons/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "artifact": "配置/安装包/asar__out__renderer__AppIcons__Assets.xcassets__AppIcon.appiconset__Contents.json",
+    "sourceSha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92",
+    "artifactSha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92",
+    "transform": "exact-copy"
+  },
+  {
+    "source": "asar/package.json",
+    "artifact": "配置/安装包/asar__package.json",
+    "sourceSha256": "914c3cd36aaf84a21bcef34de5ec6101a14aa3e8fa6b5496188059e80d4b7d3b",
+    "artifactSha256": "914c3cd36aaf84a21bcef34de5ec6101a14aa3e8fa6b5496188059e80d4b7d3b",
+    "transform": "exact-copy"
+  },
+  {
+    "source": "resources/Alma Computer Use.app/Contents/Info.plist",
+    "artifact": "配置/安装包/resources__Alma Computer Use.app__Contents__Info.plist.json",
+    "sourceSha256": "e1c34e2f632db409ebc58a0674e3c447580df34889fb1fff6a7fb797b47283e7",
+    "artifactSha256": "9502f621a176f69b3e423b42b48c30c8c1aea6afa984460d6f40d943869c7421",
+    "transform": "plist-to-json"
+  },
+  {
+    "source": "resources/AppIcons/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "artifact": "配置/安装包/resources__AppIcons__Assets.xcassets__AppIcon.appiconset__Contents.json",
+    "sourceSha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92",
+    "artifactSha256": "bfc5b92529fb0c49f05fe2c54c2a2d93e37afb6c03eda831aab2386dfb4a1a92",
+    "transform": "exact-copy"
+  },
+  {
+    "source": "resources/CalTool.app/Contents/Info.plist",
+    "artifact": "配置/安装包/resources__CalTool.app__Contents__Info.plist.json",
+    "sourceSha256": "930117b560e8594b4d91b90d858d91ad6aeb57c96dde950d1f14472ddd6a8c98",
+    "artifactSha256": "07dceca8c3e0700d531061437cd72dfaf092f14c6607e686fb26d03197183f0d",
+    "transform": "plist-to-json"
+  },
+  {
+    "source": "resources/HapticTool.app/Contents/Info.plist",
+    "artifact": "配置/安装包/resources__HapticTool.app__Contents__Info.plist.json",
+    "sourceSha256": "1c34d3b6c9c09792bb3c131fc22173b7675d4c6176169595346c26273b7d0a2c",
+    "artifactSha256": "ca4f00fc3bd4254c7e5b4c25e060f63618443e541716afffa565a21b1edd07d5",
+    "transform": "plist-to-json"
+  },
+  {
+    "source": "resources/app-update.yml",
+    "artifact": "配置/安装包/resources__app-update.yml",
+    "sourceSha256": "d496103cd4945d194dcfd8ea40934624e1510a1903fccefa63ecfb1ab2e77b58",
+    "artifactSha256": "f8e87a484599738f26c5f0a03faaa4cb27aa6789963c8b44d7c1ea22b6993394",
+    "transform": "research-header-added"
+  },
+  {
+    "source": "resources/chrome-extension/manifest.json",
+    "artifact": "配置/安装包/resources__chrome-extension__manifest.json",
+    "sourceSha256": "397078f731cc557d19e38ba06694555d81e8f4ede0b85483dd965a4539f246ae",
+    "artifactSha256": "397078f731cc557d19e38ba06694555d81e8f4ede0b85483dd965a4539f246ae",
+    "transform": "exact-copy"
+  }
+]
