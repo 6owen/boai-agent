@@ -172,7 +172,7 @@ function LocalSkillPicker({ api, onSelect, disabled }: { api: DesktopApi; onSele
     <div className="flex gap-1" role="group" aria-label="技能来源筛选">{filters.map(item => <Button type="button" key={item.value} variant="ghost" size="sm" className="h-7 px-2 text-[12px] font-normal text-primary" aria-label={`筛选${item.label}技能`} aria-pressed={filter === item.value} disabled={disabled} onClick={() => { setFilter(item.value); input.current?.focus() }}>{item.label}</Button>)}</div>
     {error && <Banner>{error}</Banner>}{collection.error && <Banner>{collection.error}</Banner>}
     <ScrollArea className="h-[320px] max-h-[45dvh]" viewportProps={{ className: 'scroll-fade-t scroll-fade-6' }}>
-      <div className="conversation-list skills-browser-list" role="navigation" aria-label="可选择的技能">
+      <div className="conversation-list skills-browser-list m-0 p-0" role="navigation" aria-label="可选择的技能">
         {filtering ? <Loading>正在读取技能…</Loading> : skills.map(skill => <div className="skill-list-row" key={skill.id}><SkillListItem entry={{ name: skill.name, description: skill.description, source: skill.pluginName ?? (skill.source === 'global' ? '' : skill.sourceLabel) }} aria-label={`选择本机技能 ${skill.name}（${skill.sourceLabel}）`} disabled={disabled} onClick={() => onSelect(skill)} /></div>)}
         {!filtering && !skills.length && <p className="field-hint px-2 py-4">{query ? '没有匹配的技能' : filter === 'favorites' ? '还没有收藏的技能' : '尚未发现本机技能'}</p>}
       </div>
