@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [INPUT]: 扫描所得无密钥 API 元数据、已有导入状态、共用兼容接口表单布局与 DesktopApi。
  * [OUTPUT]: Codex/Claude 扫描 API 配置使用统一横向字段/服务分组/卡片操作栏；缺失模型补填、宿主读取凭据的未保存测试和显式导入；已导入项仍可查看/测试，不重复创建连接。
  * [POS]: 添加模型连接第二步内嵌的 API 详情，共用父级 Dialog；返回到同一步的扫描列表。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { MODEL_ID_MAX_LENGTH } from '@shared/domain/model-id'
 import { useContext, useEffect, useId, useRef, useState } from 'react'
 import type { DetectedApiKeyConfig, LocalConfigIssue } from '@shared/domain/local-configs'
 import type { DesktopApi } from '@shared/ipc'
@@ -61,7 +63,7 @@ export function LocalApiConfigEditor({ api, config, imported, onBack, onSaved, o
       <Field orientation="horizontal" className="connection-setting-row connection-url-row grid"><FieldLabel htmlFor={`${fieldId}-url`}><span className="connection-nested-line" aria-hidden="true" />Base URL</FieldLabel><Input id={`${fieldId}-url`} aria-label="接口地址 Base URL" readOnly value={config.baseUrl ?? ''} placeholder="尚未配置" /></Field>
     </div>
     <ConnectionSettingRow label="API Key" htmlFor={`${fieldId}-key`} icon={<Key />}><Input id={`${fieldId}-key`} readOnly value={config.hasApiKey ? '已在本机配置中找到' : '未找到'} /></ConnectionSettingRow>
-    <ConnectionSettingRow label="默认模型 ID" htmlFor={`${fieldId}-model`} icon={<Cpu />}><Input id={`${fieldId}-model`} autoFocus={!config.model} required maxLength={300} readOnly={!!config.model} value={model} placeholder="填写服务支持的模型 ID" onChange={event => { setFeedback(''); setError(''); setModel(event.target.value) }} /></ConnectionSettingRow>
+    <ConnectionSettingRow label="默认模型 ID" htmlFor={`${fieldId}-model`} icon={<Cpu />}><Input id={`${fieldId}-model`} autoFocus={!config.model} required maxLength={MODEL_ID_MAX_LENGTH} readOnly={!!config.model} value={model} placeholder="填写服务支持的模型 ID" onChange={event => { setFeedback(''); setError(''); setModel(event.target.value) }} /></ConnectionSettingRow>
     <ConnectionSettingRow label="接口协议" htmlFor={`${fieldId}-protocol`}><Input id={`${fieldId}-protocol`} readOnly value={config.api === 'anthropic-messages' ? 'Anthropic Messages' : config.api === 'openai-responses' ? 'Responses' : 'Chat Completions'} /></ConnectionSettingRow>
     <ConnectionSettingRow label="配置文件" htmlFor={`${fieldId}-source`} icon={<FolderOpen />}><Input id={`${fieldId}-source`} readOnly value={config.sourcePath ?? '本机配置'} title={config.sourcePath} /></ConnectionSettingRow>
     {imported && <p className="connection-model-message py-3">已导入的连接可在「我的连接」中编辑。</p>}

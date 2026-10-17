@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主材料回执与当前会话中的未发送材料状态。
- * [OUTPUT]: 草稿条目、仅供准备期占位的图片提示、未知准备回执/局部忙碌合同和文本/图片/文件格式、名称、错误的安全展示；只接受宿主核对的静态图片data URI，不保存文件路径或固定员工名单。
+ * [OUTPUT]: 草稿条目、仅供准备期占位的图片提示、未知准备回执/局部忙碌合同和文本/图片/文件格式、名称、错误的安全展示；去除Electron错误包装以和持久材料错误去重，原原因及路径脱敏保持；只接受宿主核对的静态图片data URI，不保存文件路径或固定员工名单。
  * [POS]: 会话材料列表与可信原文预览共用的无副作用展示辅助。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -37,6 +37,7 @@ export function materialImageUrl(preview?: MaterialPreview): string | undefined 
 }
 
 export function materialErrorText(error?: string): string {
-  return error?.replace(/file:\/\/[^\s"'<>，。；]+/g, '[本机路径]')
+  return error?.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '')
+    .replace(/file:\/\/[^\s"'<>，。；]+/g, '[本机路径]')
     .replace(/(^|[\s("'（=:])(?:[A-Za-z]:[\\/]|\/)[^\s"'<>，。；]+/g, '$1[本机路径]').trim() || '材料暂不可用。'
 }

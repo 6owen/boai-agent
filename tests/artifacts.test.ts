@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件与Codex明确网关修订可受理，缺失来源拒绝且不新增修订记录。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 新增真实PDF核源字节、错误hash/外改拒绝与不能作为文本采用的验证。
  * [OUTPUT]: 新增发布准备身份/事务回滚与提交消耗、缺失/未改/外改原件清理边界的真实SQLite验证。
@@ -20,6 +21,7 @@ import { ARTIFACT_LIMITS, type ArtifactAdoptionInput, type ArtifactPublication, 
 import type { MaterialReadRef } from '../src/shared/domain/materials'
 import { FILE_PREVIEW_LIMITS } from '../src/shared/domain/file-preview'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { inspectProgram } from '../src/runtime/modules/backends/program'
 import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
 
 const roots: string[] = [], stores: ProductStore[] = []
@@ -485,4 +487,20 @@ it('resolves an unselected core revision target through the valid default connec
  await expect(f.revise(artifact,'invalid-explicit','invalid-message','bobo')).rejects.toThrow('模型连接')
  await f.store.write([{collection:'agents',id:core.id,value:{...core,systemRole:undefined}}])
  await expect(f.revise(artifact,'fake-core','fake-message','bobo')).rejects.toThrow('模型连接')
+})
+
+
+it.each(['runtime-plugin', 'codex-local'] as const)('%s artifact revision revalidates its explicit gateway before committing the request', async kind => {
+  const f = await fixture(), artifact = await f.register(), file = inspectProgram(process.execPath)
+  const runtimePlugin = { pluginId: 'boai.runtime.pi', providerId: 'pi', packageHash: 'fixture' }
+  const profile = { id: 'native', name: 'Native', protocol: kind === 'runtime-plugin' ? 'runtime-plugin' : 'codex-app-server', runtimePlugin, executable: file.path, executableHash: file.hash, args: [], revision: 1, useExistingLogin: false, hostAccessAcknowledged: true, verified: { name: 'Native', version: kind === 'runtime-plugin' ? '1.3.0' : '0.162.1', protocolVersion: 1, checkedAt: '', modelSource: { protocols: ['chat'] } } }
+  await f.store.write([
+    { collection: 'launchProfiles', id: profile.id, value: profile },
+    { collection: 'connections', id: 'gateway', value: { id: 'gateway', name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'vendor/model', hasApiKey: false, gateway: { kind: 'magpie', protocol: 'chat', auth: 'local' } } },
+    { collection: 'agents', id: 'alice', value: { ...employee('alice'), connectionId: 'gateway', modelId: '', executionBackend: { kind, profileId: profile.id, ...(kind === 'runtime-plugin' ? { pluginId: runtimePlugin.pluginId, providerId: runtimePlugin.providerId } : {}) } } },
+  ])
+  expect((await f.revise(artifact, 'valid-source', 'valid-source-message')).request.targetAgentId).toBe('alice')
+  await f.store.write([], [{ collection: 'connections', id: 'gateway' }])
+  await expect(f.revise(artifact, 'missing-source', 'missing-source-message')).rejects.toThrow('原模型网关连接已不可用')
+  expect((await f.store.load<ArtifactRevisionRequest>('artifactRevisionRequests')).find(value => value.id === 'missing-source')).toBeUndefined()
 })

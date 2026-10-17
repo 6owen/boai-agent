@@ -1,11 +1,14 @@
 /*
+ * [OUTPUT]: 手动模型输入与宿主共用1000字符上限，不截断目录原ID。
+ * [OUTPUT]: Magpie目录请求携带网关根/协议/认证，来源变化隔离迟到响应。
  * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [OUTPUT]: 2026-10-10 共用API与已验证本机目录加载入口，来源/revision隔离；Codex默认模型选项及手动输入不自动改配置。
  * [INPUT]: DesktopApi、连接来源与受控模型值、列表能力及字段布局。
  * [OUTPUT]: 设置与员工配置共用模型目录获取/手动编辑；请求按连接来源隔离，选中模型不随目录自动改写，提示仅同行或占位显示。
- * [POS]: common 的模型选择控件，目录仅保存在当前编辑会话。
+ * [POS]: common 的模型选择控件；草稿目录在当前编辑会话，已保存网关来源由宿主持久核对。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { MODEL_ID_MAX_LENGTH } from '@shared/domain/model-id'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
@@ -19,7 +22,7 @@ import type { ConnectionInput } from '@shared/domain'
 import { unsupportedRequestMessage, type DesktopApi } from '@shared/ipc'
 
 type Catalog = { source: string; status: 'loading' | 'success' | 'error'; models: string[]; error?: string }
-type ModelDraft = Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'defaultModel'>
+type ModelDraft = Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'defaultModel' | 'gateway' | 'expectedRevision'>
 
 export function ModelPicker({ api, draft, onChange, disabled = false, catalogAvailable = true, layout = 'field', placeholder = '输入模型 ID', fallbackModel = '', full = false, catalogSource, fetchModels, defaultOption }: {
   api: DesktopApi; draft: ModelDraft; onChange(model: string): void; disabled?: boolean; catalogAvailable?: boolean
@@ -31,7 +34,7 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
   const [manual, setManual] = useState(false)
   const requestId = useRef(0)
   const id = useId()
-  const source = catalogSource ?? JSON.stringify([draft.id, draft.baseUrl.trim(), draft.apiKey?.trim() || ''])
+  const source = catalogSource ?? JSON.stringify([draft.id, draft.baseUrl.trim(), draft.apiKey?.trim() || '', draft.gateway, draft.expectedRevision])
   const canLoad = catalogAvailable && (!!fetchModels || !!draft.baseUrl.trim())
   const current = catalog?.source === source ? catalog : null
   const loading = current?.status === 'loading'
@@ -45,7 +48,7 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
     const request = ++requestId.current
     setCatalog({ source, status: 'loading', models })
     try {
-      const result = fetchModels ? await fetchModels() : await api.request('listConnectionModels', { id: draft.id, baseUrl: draft.baseUrl.trim(), apiKey: draft.apiKey?.trim() })
+      const result = fetchModels ? await fetchModels() : await api.request('listConnectionModels', { id: draft.id, baseUrl: draft.baseUrl.trim(), apiKey: draft.apiKey?.trim(), ...(draft.gateway ? { gateway: draft.gateway, expectedRevision: draft.expectedRevision } : {}) })
       if (request !== requestId.current) return
       setCatalog({ source, status: 'success', models: result })
       if (result.length) setManual(false)
@@ -63,7 +66,7 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
     </ButtonGroup>
   </div>
   const control = manual
-    ? <Input id={id} aria-label={layout === 'connection' ? '默认模型 ID' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} autoFocus={manual} required={layout === 'connection'} disabled={disabled || loading} value={draft.defaultModel} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
+    ? <Input maxLength={MODEL_ID_MAX_LENGTH} id={id} aria-label={layout === 'connection' ? '默认模型 ID' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} autoFocus={manual} required={layout === 'connection'} disabled={disabled || loading} value={draft.defaultModel} onChange={event => onChange(event.target.value)} placeholder={placeholder} />
     : <SelectField id={id} aria-label={layout === 'connection' ? '默认模型' : '模型 ID'} aria-describedby={layout === 'connection' ? `${id}-hint` : undefined} required={layout === 'connection'} disabled={disabled || loading} value={draft.defaultModel || fallbackModel} onValueChange={onChange} placeholder={defaultOption || (options.length ? (layout === 'connection' ? '请选择默认模型' : '请选择模型') : '获取列表后选择，或手动填写')} options={[...(defaultOption ? [{ value: '', label: defaultOption }] : []), ...options.map(model => ({ value: model, label: model }))]} />
   if (layout === 'connection') return <div className="connection-model-picker">
     <div className="connection-group-heading"><FieldTitle><Cpu />默认模型</FieldTitle>{actions}</div>

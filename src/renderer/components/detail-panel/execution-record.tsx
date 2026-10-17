@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
+ * [OUTPUT]: 运行信息按请求展示网关所选模型/响应头实际模型/响应体报告，缺少头部保持未知。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 原生信息记录分别展示选定/初始化/API模型、公开目录及容量来源，复用原只读CodeBlock。
  * [INPUT]: 原执行证据、完整内容读取回调与共享UI。
@@ -46,6 +48,6 @@ export function ExecutionRunInfo({ run }: { run: AgentRun }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   return <div className="mt-4"><ToolChip title="运行信息" label="运行信息" chip={run.backend?.program?.name ?? run.agentName} open={open} onOpenChange={setOpen} triggerRef={trigger}>
-    <CodeBlock code={JSON.stringify({ runtime: run.backend?.program?.name, model: run.backend?.modelId, selectedModel: run.backend?.selectedModelId, apiReportedModel: run.backend?.reportedModelId, modelSource: run.backend?.modelIdSource, nativeInfo: run.backend?.nativeInfo, session: run.backend?.sessionId, turn: run.backend?.turnId, contextWindowTokens: run.backend?.contextWindowTokens, contextWindowSource: run.backend?.contextWindowSource, options: run.backend?.options, status: run.status, finishedAt: run.finishedAt }, null, 2)} language="json" density="compact" className="max-h-96" tabIndex={0} aria-label="运行信息原生记录" onKeyDown={event => handleToolResultKeyDown(event, trigger.current)} />
+    <CodeBlock code={JSON.stringify({ gatewayModelCalls: run.modelCalls?.map(call => ({ ...call, route: call.route ?? { routeSource: 'unknown' } })), runtime: run.backend?.program?.name, model: run.backend?.modelId, selectedModel: run.backend?.selectedModelId, apiReportedModel: run.backend?.reportedModelId, modelSource: run.backend?.modelIdSource, selectedModelSource: run.backend?.modelSource, nativeInfo: run.backend?.nativeInfo, session: run.backend?.sessionId, turn: run.backend?.turnId, contextWindowTokens: run.backend?.contextWindowTokens, contextWindowSource: run.backend?.contextWindowSource, options: run.backend?.options, status: run.status, finishedAt: run.finishedAt }, null, 2)} language="json" density="compact" className="max-h-96" tabIndex={0} aria-label="运行信息原生记录" onKeyDown={event => handleToolResultKeyDown(event, trigger.current)} />
   </ToolChip></div>
 }

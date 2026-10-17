@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: ACP SDK v1, a declaration-only launch package and Runtime API services.
  * [OUTPUT]: Negotiated sessions, native permission choices, tool/text events and HTTP MCP product tools.
  * [POS]: Reusable ACP driver; contains no OpenCode or other brand dispatch.
@@ -7,11 +8,11 @@
 import { Readable, Writable } from 'node:stream'
 import { randomUUID } from 'node:crypto'
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
-import type { RuntimeProvider, RuntimeServices, RuntimeSubmission } from '../../../shared/plugins/runtime-api'
+import type { RuntimeProvider, RuntimeServices, RuntimeSubmission, RuntimeModelProtocol } from '../../../shared/plugins/runtime-api'
 import { launchNative } from './transport'
 import { toolServer } from './tool-server'
 export const runtimeApiVersion = 1
-export function createRuntime(services: RuntimeServices): RuntimeProvider {
+export function createRuntime(services: RuntimeServices, native: { env?: NodeJS.ProcessEnv; modelId?: string; modelSource?: { protocol: RuntimeModelProtocol; modelId: string } } = {}): RuntimeProvider {
   let child: ReturnType<typeof launchNative> | undefined, connection: ClientSideConnection | undefined
   let initialized: Awaited<ReturnType<ClientSideConnection['initialize']>> | undefined
   let bridge: Awaited<ReturnType<typeof toolServer>> | undefined, exited: Promise<void> | undefined
@@ -21,7 +22,7 @@ export function createRuntime(services: RuntimeServices): RuntimeProvider {
   const resumed = () => { for (const actionId of answered) services.emit({ type: 'action.resumed', actionId }); answered.clear() }
   async function start() {
     if (connection) return
-    child = launchNative(services.launch, services.launch.args); child.stderr.resume(); child.stdin.on('error', () => {})
+    child = launchNative(services.launch, services.launch.args, native.env); child.stderr.resume(); child.stdin.on('error', () => {})
     exited = new Promise(resolve => { child!.once('close', () => resolve()); child!.once('error', () => resolve()) })
     connection = new ClientSideConnection(() => ({
       requestPermission: async request => {
@@ -64,8 +65,13 @@ export function createRuntime(services: RuntimeServices): RuntimeProvider {
         loading = true
         try { options = (await connection!.loadSession({ sessionId: input.resumeRef, cwd: services.launch.cwd, mcpServers: servers })).configOptions ?? undefined; sessionId = input.resumeRef } finally { loading = false }
       } else { const session = await connection!.newSession({ cwd: services.launch.cwd, mcpServers: servers }); sessionId = session.sessionId; options = session.configOptions ?? undefined }
-      if (services.launch.modelId) { const model = options?.find(value => value.category === 'model'); if (!model) throw new Error('此ACP程序未提供模型配置，请留空使用原生默认模型'); await connection!.setSessionConfigOption({ sessionId, configId: model.id, value: services.launch.modelId }) }
-      return { sessionId, ...(capabilities?.loadSession ? { resumeRef: sessionId } : {}) }
+      const selectedModel = native.modelId ?? services.launch.modelId
+      if (selectedModel) {
+        const model = options?.find(value => value.category === 'model'); if (!model) throw new Error('此ACP程序未提供模型配置，请留空使用原生默认模型')
+        const selected = await connection!.setSessionConfigOption({ sessionId, configId: model.id, value: selectedModel })
+        if (native.modelSource && selected.configOptions.find(value => value.id === model.id)?.currentValue !== selectedModel) throw new Error('ACP未确认所选网关模型，未发送本轮消息')
+      }
+      return { sessionId, ...(capabilities?.loadSession ? { resumeRef: sessionId } : {}), ...(native.modelSource ? { modelSource: native.modelSource } : {}) }
     },
     async submit(input: RuntimeSubmission) {
       if (!connection || !sessionId || running) throw new Error('ACP会话未就绪')

@@ -1,4 +1,15 @@
 /*
+ * [OUTPUT]: 连接变更/删除/导入按连接取消并等待无Run调用，凭据与来源同锁快照，迟到结果拒绝；团队规划在换凭据前退出。
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: 无Run连接测试/草稿在启动事务内仅将running置interrupted/unknown，保留原身份和已观察路由；正常关闭等待退出。
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
+ * [OUTPUT]: 网关每次调用固定所选模型/来源并追加本次响应头路由，观察失败不改变业务或用量。
+ * [OUTPUT]: 网关目录按来源/revision独立持久化；乱序或变更后的刷新不安装，执行获固定目录快照。
+ * [OUTPUT]: Magpie连接按明确协议/本机标识或网关密钥解析；目录/识别不调用模型，保存核对revision。
+ * [OUTPUT]: 本人新消息引用原失败工作时传递宿主重试意图；授权与认领同事务，失效快照拒绝，已确认文件/命令/数据源/浏览器操作回执随原Work接续。
  * [OUTPUT]: bobo默认访问全部启用数据源并在普通聊天读写，新建资源同轮可用；普通员工绑定/阶段核验保持；目录回执按消息与目标合并。
  * [OUTPUT]: 定时执行记录删除共用原受管清理；独占任务会话释放文件/过程，共享会话按Run清日志；重启续清不重跑。
  * [OUTPUT]: 数据源编辑器凭据读取转交原SourceService按版本核对，不接入模型工具。
@@ -81,6 +92,8 @@
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { GatewayImports } from './modules/backends/gateway-imports'
+import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { composerReferencesSchema, type ComposerReference } from '../shared/domain/composer-references'
 import { RuntimePlugins } from './modules/backends/runtime-plugins'
 import { PluginEmployeeEngine, runPlugin } from './adapters/plugins/host'
@@ -137,7 +150,10 @@ import type { ChannelPublishInput, ChannelDelivery } from '../shared/domain/chan
 import { mergeRooms } from './modules/conversations/room-migration'
 import { listCodexModels, listCodexModelCatalog, testCodexConnection } from './adapters/codex/turn'
 import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '../shared/domain/employee-executions'
-import { listCompatibleModels, modelCatalogUrl } from './adapters/mastra/model-catalog'
+import { listModelCatalog, modelCatalogUrl, probeMagpie } from './adapters/mastra/model-catalog'
+import { gatewayModelCall, gatewaySelectedModel } from './adapters/mastra/gateway-route'
+import { GATEWAY_CATALOG_COLLECTION, GatewayCatalogStore, gatewayCatalogSource } from './adapters/mastra/gateway-catalog-store'
+import { gatewayApiKey, gatewayEndpoint, gatewayRoot, isLoopbackGateway } from '../shared/domain/model-gateway'
 import { authorizedResources } from './modules/workspaces/environment-plan'
 import { randomUUID } from 'node:crypto'
 import { cp, lstat, mkdir, mkdtemp, realpath, readdir, readFile, rm, rmdir, unlink, writeFile } from 'node:fs/promises'
@@ -217,8 +233,9 @@ const conversationMetadataSchema = z.object({ id, includeTriggerSummaries: z.boo
 const observeReadingSchema = z.object({ conversationId: id, epoch: z.number().int().positive(), expectedRevision: z.number().int().nonnegative(), completions: z.array(z.object({ messageId: id, ordinal: z.number().int().positive(), epoch: z.number().int().positive(), contentHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).max(READING_LIMITS.observedCompletions) }).strict()
 const saveAnchorSchema = z.object({ conversationId: id, epoch: z.number().int().positive(), expectedAnchorRevision: z.number().int().nonnegative(), messageId: id, offset: z.number().int().nonnegative().max(READING_LIMITS.anchorOffset) }).strict()
 const text = (max: number) => z.string().trim().min(1).max(max)
-const connectionSchema = z.object({ id: id.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(300), apiKey: z.string().max(12000).optional() }).strict()
-const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true }).extend({ baseUrl: text(2000) })
+const gatewaySchema = z.object({ kind: z.literal('magpie'), protocol: z.enum(['chat', 'responses', 'messages']), auth: z.enum(['local', 'key']) }).strict()
+const connectionSchema = z.object({ id: id.optional(), expectedRevision: z.number().int().positive().optional(), gateway: gatewaySchema.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value), '无效的模型 ID'), apiKey: z.string().max(12000).optional() }).strict()
+const modelCatalogSchema = connectionSchema.pick({ id: true, baseUrl: true, apiKey: true, gateway: true, expectedRevision: true }).extend({ baseUrl: text(2000) })
 const memoryContextSchema = z.object({ kind: z.enum(['conversation', 'work']), id }).strict()
 const conversationSchema = z.object({ memoryScope: z.enum(['employee', 'conversation']).optional(), memoryContextRef: memoryContextSchema.nullable().optional(), teamSetup: teamSetupSchema.nullable().optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), kind: z.enum(['direct', 'group']), title: text(200), agentIds: ids.min(1).max(12), mode: z.enum(['natural', 'mention', 'coordinator']).optional(), sharedKnowledgeIds: ids.optional() }).strict()
 const conversationListSchema = z.discriminatedUnion('action', [
@@ -279,6 +296,7 @@ export class AppService {
   private readonly claudeEngine: ClaudeEmployeeEngine
   private readonly profiles: LaunchProfiles
   private externalTests=new Set<AbortController>()
+  private readonly connectionCalls = new Map<AbortController, { connectionId: string; task: Promise<void> }>()
   private externalProfileTests=new Map<AbortController,string>()
   private externalTasks=new Set<Promise<void>>()
   private externalRuns=new Map<string,Promise<void>>()
@@ -287,6 +305,7 @@ export class AppService {
   private readonly contactList: ContactListRepository
   private readonly contactDeletion: ContactDeletionService
   private connections = new Map<string, Connection>()
+  private readonly gatewayCatalogs: GatewayCatalogStore
   private conversations = new Map<string, Conversation>()
   private readonly executions: ExecutionRepository
   private readonly channels: EmployeeChannels
@@ -321,6 +340,7 @@ export class AppService {
   constructor(private readonly options: { channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.gatewayCatalogs = new GatewayCatalogStore(this.store)
     this.commandPermissions = new CommandPermissions(this.store)
     this.dataSources = new SourceService(this.store, options.secrets, this.dataPath, {
       critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
@@ -405,6 +425,7 @@ export class AppService {
     })
     this.memory = new MemoryRepository(this.store)
     this.employees = new EmployeeService(this.store, this.homes, {
+      modelCatalog: connection => this.gatewayCatalogs.get(connection),
       connection: id => this.getConnection(id), resource: id => { this.skillUpdates.assertAvailable(id); return this.resources.get(id) },
       cancel: (id, reason) => this.cancelEmployee(id, reason),
       invalidateMemory: (id, matches) => this.invalidateEmployeeMemory(id, matches), changed: () => this.changed(),
@@ -485,6 +506,13 @@ export class AppService {
     })
   }
 
+  async receiveGatewayImport(input: unknown) {
+    if (!this.initialized || this.closing || this.backingUp) fail('运行服务尚未就绪或正在退出')
+    return this.serialize(async () => {
+      const draft = await new GatewayImports(this.store).receive(input)
+      this.options.emit({ type: 'gateway-imports:changed' }); return draft
+    })
+  }
   takeAutomationNotice() { return this.notifications.take() }
   async settleAutomationNotice(input: AutomationNoticeReceipt) {
     const value = z.object({ id: z.string().min(1).max(500), attemptId: z.string().uuid(), status: z.enum(['submitted', 'failed', 'unknown']), error: z.string().max(2000).optional() }).strict().parse(input)
@@ -494,6 +522,16 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    // These operations have no Run to recover. Retain their request identity and
+    // observed route; a process exit cannot establish the model's final result.
+    await this.store.transaction(async tx => {
+      for (const collection of ['connectionTestCalls', 'automationDraftCalls']) {
+        for (const call of await tx.list<{ id: string; status: string; finishedAt?: string; outcome?: string }>(collection, { status: 'running' })) {
+          call.status = 'interrupted'; call.finishedAt = now(); call.outcome = 'unknown'
+          await tx.put(record(collection, call))
+        }
+      }
+    })
     await this.dataSources.init()
     await this.executions.recover()
     await this.codexEngine.recover(this.dataPath)
@@ -517,6 +555,7 @@ export class AppService {
     await this.profiles.init()
     for (const profile of this.profiles.list()) if (profile.runtimePlugin) await this.pluginEngine({ kind: 'runtime-plugin', profileId: profile.id, ...profile.runtimePlugin }).recover(this.dataPath)
     const collections = ['connections', 'conversations', 'resources', 'messages', 'runs', 'requests', 'snapshots', 'approvals', 'artifacts'] as const
+    await this.gatewayCatalogs.init()
     for (const name of collections) {
       const values = await this.store.load<{ id: string }>(name)
       ;(this[name] as Map<string, { id: string }>) = new Map(values.map(value => [value.id, value]))
@@ -864,17 +903,31 @@ export class AppService {
         throw error
       } finally { this.externalTests.delete(controller);this.externalProfileTests.delete(controller) }
     }
-    if (method === 'listConnectionModels') {
+    if (method === 'probeModelGateway') {
+      return probeMagpie(z.object({ baseUrl: text(2000) }).strict().parse(input).baseUrl)
+    }
+    if (method === 'listConnectionModels' || method === 'getConnectionModelCatalog') {
       const draft = modelCatalogSchema.parse(input)
-      modelCatalogUrl(draft.baseUrl)
-      const key = await this.serialize(() => this.draftApiKey({ ...draft, provider: 'openai-compatible' }))
-      return listCompatibleModels(draft.baseUrl, key)
+      const baseUrl = draft.gateway ? gatewayEndpoint(draft.baseUrl, 'v1') : draft.baseUrl
+      modelCatalogUrl(baseUrl)
+      const { key, ticket } = await this.serialize(async () => {
+        const connection = draft.id ? this.getConnection(draft.id) : undefined
+        if (connection && draft.expectedRevision !== undefined && draft.expectedRevision !== (connection.revision ?? 1)) fail('连接已被修改，请刷新后读取模型')
+        const matching = connection?.gateway && draft.gateway && draft.apiKey === undefined &&
+          gatewayCatalogSource({ ...draft, revision: connection.revision }) === gatewayCatalogSource(connection)
+        return { key: await this.draftApiKey({ ...draft, provider: draft.gateway?.protocol === 'messages' ? 'anthropic' : 'openai-compatible' }), ticket: matching ? this.gatewayCatalogs.begin(connection) : undefined }
+      })
+      const catalog = await listModelCatalog(baseUrl, key)
+      if (ticket) await this.serialize(async () => {
+        if (this.closing || this.backingUp || !await this.gatewayCatalogs.commit(ticket, this.connections.get(ticket.id), catalog)) fail('模型目录读取期间连接或目录已变化，请重新刷新')
+      })
+      return method === 'listConnectionModels' ? catalog.models.map(model => model.id) : catalog
     }
     if (method === 'testConnection' || method === 'testConnectionDraft') {
-      const { connection, key } = await this.serialize(async () => {
+      const { connection, key, boundSource } = await this.serialize(async () => {
         if (method === 'testConnection') {
-          const connection = clone(this.getConnection(lookupSchema.parse(input).id))
-          return { connection, key: await this.apiKey(connection) }
+          const boundSource = this.getConnection(lookupSchema.parse(input).id), connection = clone(boundSource)
+          return { connection, key: await this.apiKey(connection), boundSource }
         }
         const draft = connectionSchema.parse(input)
         const baseUrl = draft.baseUrl.trim()
@@ -882,11 +935,11 @@ export class AppService {
         else if (draft.provider === 'openai-compatible') fail('兼容模型需要填写 API 地址')
         const key = await this.draftApiKey({ ...draft, baseUrl })
         if (!key && draft.provider !== 'openai-compatible') fail('请填写 API Key 后测试连接')
-        const connection: Connection = { id: draft.id ?? randomUUID(), name: draft.name, provider: draft.provider, ...(draft.api ? { api: draft.api } : {}), baseUrl, defaultModel: draft.defaultModel, hasApiKey: !!key }
-        return { connection, key }
+        // A draft is a separate source, even while editing a saved connection.
+        const connection: Connection = { id: randomUUID(), revision: 0, name: draft.name, provider: draft.provider, ...(draft.api ? { api: draft.api } : {}), ...(draft.gateway ? { gateway: draft.gateway } : {}), baseUrl, defaultModel: draft.defaultModel, hasApiKey: draft.gateway?.auth === 'local' ? false : !!key }
+        return { connection, key, boundSource: undefined }
       })
-      try { return { text: this.redact(await this.options.engine.test(connection, key), key) } }
-      catch (error) { throw new Error(this.redact(this.errorMessage(error), key)) }
+      return this.testModelConnection(connection, key, method === 'testConnection' ? 'saved' : 'draft', boundSource)
     }
     return this.serialize(async () => {
       switch (method) {
@@ -913,8 +966,8 @@ export class AppService {
             if (backendProtocol(backend.kind) !== (profile.protocol ?? 'acp')) fail('员工运行方式与本机连接协议不一致')
             if (backend.kind === 'codex-local' && !profile.verified) fail('请先测试本机 Codex 连接，再创建员工')
             if (value.id && [...this.conversations.values()].some(c => c.kind === 'group' && c.agentIds.includes(value.id!) && backend.kind === 'acp-local')) fail('此运行方式尚不支持该群，请先将员工移出群聊')
-            if (backend.kind === 'codex-local' && value.connectionId) fail('本机 Codex 员工不使用模型 API 连接')
-            if (backend.kind === 'runtime-plugin') { resolvePluginRuntime({ ...value, executionBackend: backend }, profile); this.runtimePlugins.resolve(profile.runtimePlugin!) }
+            if (backend.kind === 'codex-local') await resolveCodexRuntime({ ...value, executionBackend: backend }, profile, this.connections.get(value.connectionId))
+            if (backend.kind === 'runtime-plugin') { resolvePluginRuntime({ ...value, executionBackend: backend }, profile, this.connections.get(value.connectionId)); this.runtimePlugins.resolve(profile.runtimePlugin!) }
             if (backend.kind === 'claude-local') {
               resolveClaudeRuntime({ ...value, executionBackend: backend }, profile, this.connections.get(value.connectionId))
             }
@@ -936,6 +989,23 @@ export class AppService {
           return saved
         }
         case 'deleteAgent': return this.deleteEmployees([lookupSchema.parse(input).id])
+        case 'listGatewayImports': z.undefined().parse(input); return new GatewayImports(this.store).list()
+        case 'getGatewayImportReceipt': return new GatewayImports(this.store).receipt(z.object({ requestId: z.string().uuid() }).strict().parse(input).requestId)
+        case 'cancelGatewayImport': {
+          await new GatewayImports(this.store).cancel(z.object({ draftId: z.string().uuid() }).strict().parse(input).draftId)
+          this.options.emit({ type: 'gateway-imports:changed' }); return
+        }
+        case 'confirmGatewayImport': {
+          const receipt = await new GatewayImports(this.store).confirm(input as import('../shared/domain/gateway-import').GatewayImportConfirmation)
+          // Read current state: replaying an old receipt must never resurrect a deleted connection or overwrite a later edit.
+          const current = await this.store.get<Connection>('connections', receipt.connection.id)
+          if (current && JSON.stringify(this.connections.get(current.id)) !== JSON.stringify(current)) {
+            this.connections.set(current.id, current); this.gatewayCatalogs.forget(current.id)
+            await this.cancelConnectionCalls(current.id)
+            for (const agent of this.employees.values()) if (agent.connectionId === current.id) await this.cancelEmployee(agent.id, '模型连接已变更')
+          }
+          this.options.emit({ type: 'gateway-imports:changed' }); this.changed(); return receipt
+        }
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
         case 'getConnectionApiKey': return await this.options.secrets.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
         case 'deleteConnection': return this.deleteConnection(lookupSchema.parse(input).id)
@@ -1389,15 +1459,27 @@ export class AppService {
     const imported = !input.id && input.localConfigId ? [...this.connections.values()].find(item => item.localConfigId === input.localConfigId) : undefined
     if (imported) return clone(imported)
     const previous = input.id ? this.getConnection(input.id) : undefined
+    if (previous && input.expectedRevision !== undefined && input.expectedRevision !== (previous.revision ?? 1)) fail('连接已被修改，请重新打开后保存')
+    if (input.gateway) {
+      input.baseUrl = gatewayRoot(input.baseUrl).href.replace(/\/$/, '')
+      if (input.gateway.auth === 'local' && !isLoopbackGateway(input.baseUrl)) fail('远程 Magpie 需要网关密钥认证')
+      input.provider = input.gateway.protocol === 'messages' ? 'anthropic' : 'openai-compatible'
+      input.api = input.gateway.protocol === 'messages' ? undefined : input.gateway.protocol
+      await this.draftApiKey(input)
+    }
     if (input.baseUrl) { let url: URL; try { url = new URL(input.baseUrl) } catch { return fail('模型地址不是有效 URL') }; if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) fail('模型地址必须为不含凭据的 HTTP 或 HTTPS URL') }
     if (input.provider === 'openai-compatible' && !input.baseUrl) fail('兼容模型需要填写 API 地址')
-    const connection: Connection = { id: previous?.id ?? randomUUID(), name: input.name, provider: input.provider, baseUrl: input.baseUrl, defaultModel: input.defaultModel, hasApiKey: false, ...((input.api ?? previous?.api) ? { api: input.api ?? previous?.api } : {}), ...((input.localConfigId ?? previous?.localConfigId) ? { localConfigId: input.localConfigId ?? previous?.localConfigId } : {}) }
-    if (input.apiKey !== undefined) {
+    const connection: Connection = { id: previous?.id ?? randomUUID(), name: input.name, provider: input.provider, baseUrl: input.baseUrl, defaultModel: input.defaultModel, hasApiKey: false, ...(input.gateway ? { gateway: input.gateway, revision: (previous?.revision ?? 0) + 1 } : {}), ...((input.gateway ? input.api : input.api ?? previous?.api) ? { api: input.gateway ? input.api : input.api ?? previous?.api } : {}), ...((input.localConfigId ?? previous?.localConfigId) ? { localConfigId: input.localConfigId ?? previous?.localConfigId } : {}) }
+    // A planner can read credentials between attempts; stop it before replacing them.
+    if (previous) await this.teamGeneration.cancelConnection(previous.id)
+    if (input.gateway?.auth === 'local') await this.options.secrets.delete(connection.id)
+    else if (input.apiKey !== undefined) {
       if (input.apiKey.trim()) await this.options.secrets.set(connection.id, input.apiKey.trim())
       else await this.options.secrets.delete(connection.id)
     }
     connection.hasApiKey = !!await this.options.secrets.get(connection.id)
-    await this.store.write([record('connections', connection)]); this.connections.set(connection.id, connection)
+    await this.store.write([record('connections', connection)], [{ collection: GATEWAY_CATALOG_COLLECTION, id: connection.id }]); this.gatewayCatalogs.forget(connection.id); this.connections.set(connection.id, connection)
+    if (previous) await this.cancelConnectionCalls(connection.id)
     if (previous) for (const agent of this.employees.values()) if (agent.connectionId === connection.id) await this.cancelEmployee(agent.id, '模型连接已变更')
     this.changed(); return clone(connection)
   }
@@ -1413,25 +1495,29 @@ export class AppService {
   }
   private async deleteConnection(id: string) {
     this.getConnection(id)
+    await this.cancelConnectionCalls(id)
     for (const agent of this.employees.values()) if (agent.connectionId === id) await this.cancelEmployee(agent.id, '模型连接已删除')
     await this.options.secrets.delete(id)
     const updates: StoredRecord[] = []
     for (const agent of this.employees.values()) if (agent.connectionId === id) { agent.connectionId = ''; agent.configVersion++; updates.push(record('agents', agent)) }
-    await this.store.write(updates, [{ collection: 'connections', id }]); for (const update of updates) this.employees.install(update.id, update.value as DigitalAgent); this.connections.delete(id); this.changed()
+    await this.store.write(updates, [{ collection: 'connections', id }, { collection: GATEWAY_CATALOG_COLLECTION, id }]); this.gatewayCatalogs.forget(id); for (const update of updates) this.employees.install(update.id, update.value as DigitalAgent); this.connections.delete(id); this.changed()
+    await this.cancelConnectionCalls(id)
   }
   private async apiKey(connection: Connection): Promise<string> {
     const key = await this.options.secrets.get(connection.id)
+    if (connection.gateway) return gatewayApiKey(connection, key ?? '')
     if (!key && connection.provider !== 'openai-compatible') fail('该模型连接尚未设置 API Key')
     return key ?? ''
   }
-  private async draftApiKey(draft: Pick<z.infer<typeof connectionSchema>, 'id' | 'provider' | 'baseUrl' | 'apiKey'>): Promise<string> {
+  private async draftApiKey(draft: Pick<z.infer<typeof connectionSchema>, 'id' | 'provider' | 'baseUrl' | 'apiKey' | 'gateway'>): Promise<string> {
+    if (draft.gateway?.auth === 'local') return gatewayApiKey(draft, '')
     const previous = draft.id ? this.getConnection(draft.id) : undefined
-    if (draft.apiKey !== undefined) return draft.apiKey.trim()
-    if (!previous?.hasApiKey) return ''
+    if (draft.apiKey !== undefined) return gatewayApiKey(draft, draft.apiKey.trim())
+    if (!previous?.hasApiKey) return gatewayApiKey(draft, '')
     const endpoint = draft.baseUrl.trim(), savedEndpoint = previous.baseUrl.trim()
     const sameEndpoint = endpoint === savedEndpoint || (endpoint && savedEndpoint && modelCatalogUrl(endpoint) === modelCatalogUrl(savedEndpoint))
-    if (previous.provider !== draft.provider || !sameEndpoint) fail('接口地址或服务已变更，请重新输入 API Key')
-    return await this.options.secrets.get(previous.id) ?? ''
+    if ((!previous.gateway || !draft.gateway) && previous.provider !== draft.provider || !!previous.gateway !== !!draft.gateway || !sameEndpoint) fail('接口地址或服务已变更，请重新输入 API Key')
+    return gatewayApiKey(draft, await this.options.secrets.get(previous.id) ?? '')
   }
 
   private async updateConversationList(change: ConversationListChange) {
@@ -1704,7 +1790,7 @@ export class AppService {
         const operation = source?.kind === 'bobo-collaboration' ? await this.boboCollaboration.get({ operationId: source.operationId }) : undefined
         if (!previous?.agentIds.includes(agent.id) || operation?.status !== 'committed' || operation.groupConversationId !== previous.id || operation.groupCleared) fail('请由 bobo 发起群协作；普通建群不能添加核心助手')
       }
-      if (input.kind === 'group' && agent.executionBackend?.kind === 'runtime-plugin') { const profile = this.profiles.get(agent.executionBackend.profileId); resolvePluginRuntime(agent, profile); this.runtimePlugins.resolve(profile.runtimePlugin!) }
+      if (input.kind === 'group' && agent.executionBackend?.kind === 'runtime-plugin') { const profile = this.profiles.get(agent.executionBackend.profileId); resolvePluginRuntime(agent, profile, this.connections.get(agent.connectionId)); this.runtimePlugins.resolve(profile.runtimePlugin!) }
       if (input.kind === 'group' && agent.executionBackend?.kind === 'claude-local') {
         resolveClaudeRuntime(agent, this.profiles.get(agent.executionBackend.profileId), this.connections.get(agent.connectionId))
       }
@@ -1712,7 +1798,7 @@ export class AppService {
       if (input.kind === 'group' && agent.executionBackend?.kind === 'codex-local') {
         const profile = this.profiles.get(agent.executionBackend.profileId)
         if (profile.protocol !== 'codex-app-server' || !profile.verified) fail('请先测试本机 Codex 连接，再加入群聊')
-        await resolveCodexRuntime(agent, profile)
+        await resolveCodexRuntime(agent, profile, this.connections.get(agent.connectionId))
       }
     }
     this.validateResources(input.sharedKnowledgeIds ?? [], 'knowledge')
@@ -2096,11 +2182,49 @@ export class AppService {
   private async publishExternal(id:string,relativePath:string){const run=this.externalRun(id),agent=this.getAgent(run.agentId),workspace=this.externalWorkspace(run);await publishArtifact({agent,runId:run.id,signal:new AbortController().signal,onArtifactPreparing:artifact=>this.store.transaction(tx=>this.artifactRepository.preparePublication(tx,artifact,{conversationId:run.conversationId,revisionRequestId:null,sourceWorkId:null,sourceMessageId:null})),onArtifact:async artifact=>{const saved=await this.store.transaction(tx=>this.artifactRepository.register(tx,{...artifact,id:artifact.id!,conversationId:run.conversationId},{conversationId:run.conversationId,revisionRequestId:null,sourceWorkId:null,sourceMessageId:null}));Object.assign(artifact,saved);this.artifacts.set(saved.id,saved)}},workspace,`self:/runs/${run.id}/${relativePath}`);this.changed(run.conversationId)}
 
   private conversationBusy(conversationId:string){return this.clearingConversations.has(conversationId)||[...this.scheduler.turns.values()].some(t=>t.conversationId===conversationId&&(this.scheduler.hasActiveTurn(t.id)||!['completed','failed','cancelled','interrupted','budget_exhausted','waiting_user'].includes(t.status)))||[...this.runs.values()].some(r=>r.conversationId===conversationId&&!terminal.has(r.status))}
+  private assertConnectionCallSource(source: Connection | undefined, controller: AbortController) {
+    if (source && this.connections.get(source.id) !== source) controller.abort(new Error('模型连接已变更或删除，请重新核对'))
+    controller.signal.throwIfAborted()
+  }
+  private async cancelConnectionCalls(connectionId: string) {
+    const calls = [...this.connectionCalls].filter(([, call]) => call.connectionId === connectionId)
+    for (const [controller] of calls) controller.abort(new Error('模型连接已变更或删除，请重新核对'))
+    await this.teamGeneration.cancelConnection(connectionId)
+    await Promise.allSettled(calls.map(([, call]) => call.task))
+  }
+  private async testModelConnection(connection: Connection, key: string, source: 'saved' | 'draft', boundSource?: Connection) {
+    if (this.closing || this.backingUp) fail('服务正在退出或备份，请稍后测试连接')
+    const controller = new AbortController(), callId = randomUUID()
+    const modelCall = gatewayModelCall(connection, callId, 'connection-test')
+    const call = { id: callId, source, baseUrl: connection.baseUrl, modelCall, status: 'running', finishedAt: undefined as string | undefined }
+    const persist = async () => { if (modelCall) { try { await this.store.write([record('connectionTestCalls', call)]) } catch { /* Observation never retries or changes the model result. */ } } }
+    this.externalTests.add(controller)
+    const task = (async () => {
+      await persist()
+      try {
+        this.assertConnectionCallSource(boundSource, controller)
+        const text = await this.options.engine.test(connection, key, { signal: controller.signal, modelCallId: callId, onModelCallRoute: async (id, route) => {
+          if (id !== callId || call.status !== 'running' || !modelCall || modelCall.route) return
+          modelCall.route = clone(route); await persist()
+        } })
+        this.assertConnectionCallSource(boundSource, controller); call.status = 'completed'
+        return { text: this.redact(text, key), ...(modelCall ? { modelCall: clone(modelCall) } : {}) }
+      } catch (error) { call.status = controller.signal.aborted ? 'cancelled' : 'failed'; throw new Error(this.redact(this.errorMessage(error), key)) }
+      finally { call.finishedAt = now(); await persist() }
+    })()
+    const settled = task.then(() => {}, () => {}); this.externalTasks.add(settled)
+    if (boundSource) this.connectionCalls.set(controller, { connectionId: boundSource.id, task: settled })
+    try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled); this.connectionCalls.delete(controller) }
+  }
   private async generateAutomationDraft(input: unknown) {
     const request = automationDraftRequestSchema.parse(input)
     if (this.closing || this.backingUp) fail('服务正在退出或备份，请稍后生成草稿')
     if (!this.options.engine.draftAutomation) fail('当前模型适配器不支持草稿生成，可继续手动创建')
-    const connection = clone(this.getConnection(request.connectionId))
+    // Capture credentials with their source under the same configuration lock.
+    const { boundSource, connection, key } = await this.serialize(async () => {
+      const boundSource = this.getConnection(request.connectionId), connection = clone(boundSource)
+      return { boundSource, connection, key: await this.apiKey(connection) }
+    })
     if (!connection.defaultModel) fail('请先为所选连接配置模型')
     const targets: AutomationDraftTarget[] = []
     for (const agent of this.employees.values()) {
@@ -2111,27 +2235,37 @@ export class AppService {
     }
     const controller = new AbortController(), signal = AbortSignal.any([controller.signal, AbortSignal.timeout(PARTICIPATION_TIMEOUT_MS)])
     this.externalTests.add(controller)
-    const call = { id: request.requestId, draftId: request.draftId, version: request.version, connectionId: connection.id, modelId: connection.defaultModel, createdAt: now(), status: 'running', usage: undefined as ModelUsage | undefined, finishedAt: undefined as string | undefined }
+    const modelCall = gatewayModelCall(connection, request.requestId, 'automation-draft')
+    const call = { id: request.requestId, draftId: request.draftId, version: request.version, connectionId: connection.id, modelId: connection.defaultModel, ...(modelCall ? { modelCall } : {}), createdAt: now(), status: 'running', usage: undefined as ModelUsage | undefined, finishedAt: undefined as string | undefined }
     const task = (async () => {
       await this.store.transaction(async tx => {
         if (await tx.get('automationDraftCalls', call.id)) fail('这次草稿请求已经受理，请明确重新生成；不会自动重试模型')
         await tx.put(record('automationDraftCalls', call))
       })
       try {
-        const output = await this.modelCapacity.run(connection.id, signal, async () => this.options.engine.draftAutomation!({ connection, apiKey: await this.options.secrets.get(connection.id) ?? '', instruction: request.instruction, timezone: request.timezone, targets, signal,
-          onUsage: async usage => { call.usage = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage); await this.store.write([record('automationDraftCalls', call)]) } }))
-        signal.throwIfAborted()
+        const output = await this.modelCapacity.run(connection.id, signal, async () => {
+          this.assertConnectionCallSource(boundSource, controller)
+          return this.options.engine.draftAutomation!({ connection, apiKey: key, instruction: request.instruction, timezone: request.timezone, targets, signal,
+          modelCallId: request.requestId, onModelCallRoute: async (id, evidence) => {
+            if (id !== request.requestId || call.status !== 'running' || !modelCall || modelCall.route) return
+            modelCall.route = clone(evidence); await this.store.write([record('automationDraftCalls', call)])
+          },
+          onUsage: async usage => { call.usage = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage); await this.store.write([record('automationDraftCalls', call)]) } })
+        })
+        this.assertConnectionCallSource(boundSource, controller); signal.throwIfAborted()
         const result = validateAutomationDraft(request, output, targets)
         // Revalidate selected identities after the model returns; revoked authority cannot enter a ready draft.
         if (result.candidate.conversationId || result.candidate.employeeIds?.length) await this.automationFingerprint(result.candidate as AutomationInput)
+        this.assertConnectionCallSource(boundSource, controller)
         call.status = 'completed'
         return { ...result, usage: call.usage }
-      } catch (error) { call.status = 'failed'; throw error }
+      } catch (error) { call.status = controller.signal.aborted ? 'cancelled' : 'failed'; throw error }
       finally { call.finishedAt = now(); await this.store.write([record('automationDraftCalls', call)]) }
     })()
     const settled = task.then(() => {}, () => {})
     this.externalTasks.add(settled)
-    try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled) }
+    this.connectionCalls.set(controller, { connectionId: boundSource.id, task: settled })
+    try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled); this.connectionCalls.delete(controller) }
   }
 
   private async automationFingerprint(target: string | AutomationInput) {
@@ -2154,9 +2288,9 @@ export class AppService {
     // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
     const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [], ...(ownerGroup ? { ownerGroup: { id: ownerGroup.id, version: ownerGroup.configVersion } } : {}) } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
     const runtimeAgents = await Promise.all(agents.map(async a => isNativeBackend(a.executionBackend)
-      ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'runtime-plugin' ? resolvePluginRuntime(a, this.profiles.get(a.executionBackend.profileId)) : a.executionBackend.kind === 'claude-local'
+      ? { id: a.id, version: a.configVersion, runtime: (a.executionBackend.kind === 'runtime-plugin' ? resolvePluginRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId)) : a.executionBackend.kind === 'claude-local'
         ? resolveClaudeRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId))
-        : await resolveCodexRuntime(a, this.profiles.get(a.executionBackend.profileId))).fingerprint }
+        : await resolveCodexRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId))).fingerprint }
       : { id: a.id, version: a.configVersion, connection: this.getConnection(a.connectionId) }))
     return createHash('sha256').update(JSON.stringify({ conversation: scope, agents: runtimeAgents })).digest('hex')
   }
@@ -2567,9 +2701,9 @@ export class AppService {
     if (!agent.active || !conversation.agentIds.includes(agent.id)) fail('员工已停用或移出会话')
     const backend = agent.executionBackend
     const runtimeProfile = isNativeBackend(backend) ? this.profiles.get(backend.profileId) : undefined
-    const connection = backend?.kind === 'runtime-plugin' || backend?.kind === 'codex-local' || backend?.kind === 'claude-local' && runtimeProfile?.useExistingLogin ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : ''))
-    if (backend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, runtimeProfile); this.runtimePlugins.resolve(runtimeProfile!.runtimePlugin!) }
-    if (backend?.kind === 'codex-local') await resolveCodexRuntime(agent, runtimeProfile)
+    const connection = (backend?.kind === 'runtime-plugin' || backend?.kind === 'codex-local') && !agent.connectionId || backend?.kind === 'claude-local' && runtimeProfile?.useExistingLogin ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))?.id ?? '' : ''))
+    if (backend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, runtimeProfile, connection); this.runtimePlugins.resolve(runtimeProfile!.runtimePlugin!) }
+    if (backend?.kind === 'codex-local') await resolveCodexRuntime(agent, runtimeProfile, connection)
     if (backend?.kind === 'claude-local') resolveClaudeRuntime(agent, runtimeProfile, connection)
     const apiKey = connection ? await this.apiKey(connection) : ''
     signal.throwIfAborted()
@@ -2649,7 +2783,7 @@ export class AppService {
     const context: EngineContext = { dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
-      closeDataSources: () => this.dataSources.closeRun(run.id), groupCoordination, browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      closeDataSources: () => this.dataSources.closeRun(run.id), groupCoordination, browserAvailable: !!this.options.browserHost && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
       readTaskFile: path => this.serialize(async () => {
         signal.throwIfAborted()
@@ -2715,7 +2849,22 @@ export class AppService {
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，不能开始模型调用')
         if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
         if (isNativeBackend(run.backend)) { run.backend.externalInvocations++; await this.store.write([record('runs', run)]); return }
+        if (context.connection?.gateway) await this.observeActivity(run, async () => {
+          if (run.modelCalls?.some(call => call.callId === callId)) return
+          const source = context.connection!
+          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, context.agent.modelId), startedAt: now() }]
+          await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls; this.changed(run.conversationId)
+        })
         await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))
+      }),
+      onModelCallRoute: (callId, evidence) => this.serialize(async () => {
+        if (this.closing || !context.connection?.gateway || isNativeBackend(run.backend)) return
+        await this.observeActivity(run, async () => {
+          const index = run.modelCalls?.findIndex(call => call.callId === callId) ?? -1
+          if (index < 0 || run.modelCalls![index].route) return
+          const modelCalls = run.modelCalls!.map((call, position) => position === index ? { ...call, route: clone(evidence) } : call)
+          await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls; this.changed(run.conversationId)
+        })
       }),
       onSkillActivated: (toolCallId, skill) => this.observeActivity(run, () => this.userProfile.skill({ id: `${run.id}:${toolCallId}`, runId: run.id, conversationId: run.conversationId, skillId: skill.id, name: skill.name, createdAt: now() })),
       onModelCallUsage: async (callId, usage, externalComplete) => {
@@ -3051,7 +3200,16 @@ export class AppService {
               intent = { ...intent, key: 'bobo-organization', scope: `发起组织：${organization.goal}`, deliverable: organization.mode === 'employee_creation' ? '发布独立员工并返回真实员工身份' : '发布独立员工群及真实 bobo 目标和分工说明', organization: { mode: organization.mode, goal: organization.goal } }
             }
             const callIds = decision.sourceDecisionRunId && !run.collaborationRequestId ? (await this.store.load<{ id: string; runId: string }>('profileModelCalls')).filter(call => call.runId === decision.sourceDecisionRunId).map(call => call.id) : []
-            return this.works.claim({ conversationId: conversation.id, sourceMessageId, agentId: run.agentId, runId: run.id, intent, nativeTurn: native, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs, ...(organization ? { organization } : {}), ...(!run.origin && (organization || context.runtimeProfile || context.members?.some(member => member.active && isNativeBackend(member.executionBackend))) && decision.sourceDecisionRunId && callIds.length ? { priorDecision: { runId: decision.sourceDecisionRunId, callIds } } : {}) })
+            const retryFromUserMessage = !native && referenced?.status === 'failed' && !referenced.origin && !referenced.collaborationRequestId && !referenced.organization && !referenced.revisionRequestId && !context.artifactRevision && !turn.workId && !turn.wakeId && !turn.origin && event.type === 'user_message' && event.messageId === source?.id && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && source.id !== referenced.sourceMessageId && decision.action === 'reply'
+            if (retryFromUserMessage && referenced.requiresReview) {
+              const authorized = new Set(context.resources.map(resource => resource.id))
+              const previous = [...this.runs.values()].filter(previous => previous.workId === referenced.id && previous.agentId === run.agentId)
+              if (!previous.length || previous.some(previous => {
+                const snapshot = this.snapshots.get(previous.id)
+                return !snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot) || snapshot.resources.some(resource => !authorized.has(resource.id))
+              })) throw new WorkUnavailableError('原执行记录或资源已失效，不能接续已有操作')
+            }
+            return this.works.claim({ conversationId: conversation.id, sourceMessageId, agentId: run.agentId, runId: run.id, intent, retryFromUserMessage, nativeTurn: native, wakeId: turn.wakeId, origin: turn.origin, revisionRequestId: context.artifactRevision?.id, materialSources: context.materialRefs, ...(organization ? { organization } : {}), ...(!run.origin && (organization || context.runtimeProfile || context.members?.some(member => member.active && isNativeBackend(member.executionBackend))) && decision.sourceDecisionRunId && callIds.length ? { priorDecision: { runId: decision.sourceDecisionRunId, callIds } } : {}) })
           })
         } catch (error) {
           if (!(error instanceof WorkUnavailableError)) throw error
@@ -3089,7 +3247,7 @@ export class AppService {
           const snapshot = this.snapshots.get(previous.id)
           const authorized = new Set(context.resources.map(resource => resource.id))
           return previous.id !== run.id && previous.workId === run.workId && previous.agentId === run.agentId && snapshot && !snapshot.invalidated && this.dataSourceSnapshotValid(snapshot) && snapshot.resources.every(resource => authorized.has(resource.id))
-        }).map(previous => ({ runId: previous.id, tools: previous.toolEvents.filter(tool => tool.status === 'completed' && ['write_file', 'edit_file', 'publish_artifact', 'execute_command', 'create_team'].includes(tool.name)) }))
+        }).map(previous => ({ runId: previous.id, tools: previous.toolEvents.filter(tool => tool.status === 'completed' && ['write_file', 'edit_file', 'publish_artifact', 'execute_command', 'create_team', 'call_data_source', 'browser_tool'].includes(tool.name)) }))
         const validateDependencies = async (dependencies: { workId: string }[]) => {
           const visible = new Set((await this.materialMessages(this.getConversation(conversation.id), turn.triggerMessageId, run.agentId)).messages.map(message => message.id))
           const items = await this.authorizedWorkItems(context.conversation, run.agentId, visible)

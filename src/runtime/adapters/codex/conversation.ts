@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 首线程只接纳原生有效写权限产生的精确信任新增，并持久化核对后的来源指纹；其他配置漂移仍在提交前拒绝。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Codex公开思考摘要完成快照覆盖对应增量块；私有正文不进入执行流。
  * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -8,12 +10,15 @@
  * [POS]: Codex员工生产会话驱动；协议移植来源许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { assertCodexNativeSource, prepareCodexNativeSource } from './native-source'
 import { codexToolResult } from '../native-tool-result'
 import { randomUUID } from 'node:crypto'
 import type { EngineContext } from '../../contracts'
 import type { NativeConversationInput } from '../native-conversation'
 import { codexExecutionEvent, recordValue } from '../native-events'
 import { CodexClient, object, string } from './client'
+import { codexGatewaySource } from './gateway-source'
+import { assertCodexGatewayVersion } from '../../../shared/domain/codex-provider'
 
 /** Rovai's native approval decisions, including permission grants (not only shell). */
 export function codexApprovalResult(method: string, params: Record<string, unknown>, option?: string) {
@@ -27,6 +32,8 @@ export async function runCodexConversation(context: EngineContext, input: Native
   context = { ...context, signal: AbortSignal.any([context.signal, controller.signal]) }
   const { runtimeProfile: profile, runtimeDirectory: directory, signal } = context
   if (!profile?.verified || !directory) throw new Error('请先测试本机 Codex 连接')
+  if (context.connection) assertCodexGatewayVersion(profile.verified.version)
+  const gateway = context.connection ? codexGatewaySource(context.connection, context.agent.modelId, context.apiKey, process.env) : undefined
   let threadId = input.threadId ?? '', turnId = '', finalText = '', completedTurn: Record<string, unknown> | undefined
   let resolveDone!: () => void, rejectDone!: (error: Error) => void
   const done = new Promise<void>((resolve, reject) => { resolveDone = resolve; rejectDone = reject }); void done.catch(() => {})
@@ -41,7 +48,11 @@ export async function runCodexConversation(context: EngineContext, input: Native
     if (turn.status === 'completed') resolveDone()
     else rejectDone(new Error(String(recordValue(turn.error).message ?? `Codex 本轮${turn.status === 'interrupted' ? '已中断' : '失败'}`)))
   }
-  const started = await CodexClient.start({ profile, ...directory, signal, native: true,
+  await assertCodexNativeSource(context)
+  const preparation = await prepareCodexNativeSource(context)
+  let client: CodexClient | undefined
+  try {
+  const started = await CodexClient.start({ profile, ...directory, signal, native: true, gatewaySource: gateway,
     onRequest: async (method, params) => {
       await ready; signal.throwIfAborted()
       const child = children.get(String(params.threadId))
@@ -104,20 +115,24 @@ export async function runCodexConversation(context: EngineContext, input: Native
       if (method === 'turn/completed') complete(object(params.turn))
     },
   })
-  const client = started.client
-  try {
+  client = started.client
     const options = context.agent.nativeOptions
     const threadOptions = { cwd: directory.cwd, developerInstructions: input.instructions,
       ...(options?.codexApprovalPolicy ? { approvalPolicy: options.codexApprovalPolicy } : {}),
       ...(options?.codexSandbox ? { sandbox: options.codexSandbox } : {}),
-      ...(context.agent.modelId ? { model: context.agent.modelId } : {}),
+      ...(gateway ? { model: gateway.model, modelProvider: gateway.providerId } : context.agent.modelId ? { model: context.agent.modelId } : {}),
       dynamicTools: [{ type: 'namespace', name: 'boai', description: 'Employee collaboration and publishing in BOAI', tools: input.tools.map(({ name, description, inputSchema }) => ({ type: 'function', name, description, inputSchema, deferLoading: false })) }],
     }
     const thread = await client.request(input.threadId ? 'thread/resume' : 'thread/start', { ...threadOptions, ...(input.threadId ? { threadId: input.threadId, excludeTurns: true } : {}) })
     threadId = string(object(thread.thread).id, '原生会话身份')
     if (input.threadId && input.threadId !== threadId) throw new Error('原生会话身份发生变化')
-    await input.onSession(threadId)
-    await context.onNativeExecution?.({ sessionId: threadId, ...(typeof thread.model === 'string' ? { modelId: thread.model } : {}) })
+    if (gateway && (thread.modelProvider !== gateway.providerId || thread.model !== gateway.model)) throw new Error('Codex实际模型来源与所选网关不一致，未发送本轮消息')
+    const sandbox = recordValue(thread.sandbox)
+    const preparedSource = await preparation?.verify(!input.threadId && ['workspaceWrite', 'dangerFullAccess', 'externalSandbox'].includes(String(sandbox.type)))
+    if (preparedSource) context = { ...context, nativeSourceFingerprint: preparedSource }
+    await input.onSession(threadId, preparedSource)
+    await context.onNativeExecution?.({ sessionId: threadId, ...(typeof thread.model === 'string' ? { modelId: thread.model } : {}), ...(gateway ? { selectedModelId: gateway.model, modelSource: { mode: 'boai-connection' as const, connectionId: context.connection!.id, connectionRevision: context.connection!.revision ?? 1, protocol: 'responses' as const, selectedModelId: gateway.model } } : {}) })
+    await assertCodexNativeSource(context)
     const response = await client.request('turn/start', { threadId, clientUserMessageId: context.triggerMessageId || randomUUID(),
       input: [{ type: 'text', text: input.prompt, text_elements: [] }, ...input.images.map(url => ({ type: 'image', url }))],
       ...(options?.effort ? { effort: options.effort } : {}) })
@@ -129,6 +144,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
     return { text: finalText }
   } finally {
     controller.abort(new Error('Codex 原生turn已退出')); releaseReady()
-    await client.close()
+    preparation?.dispose()
+    await client?.close()
   }
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 通用插件执行路由、独立宿主/租约与产品桥；插件session恢复、私有目录备份排除，旧引擎兼容。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
  * [INPUT]: IPC 请求、AppService、Mastra 适配器与凭据代理。
@@ -67,7 +68,9 @@ port.on('message', async ({ data }) => {
   if (data?.type !== 'request' || shuttingDown) return
   const request = data.request as RpcRequest
   try {
-    const result = request.method as string === '__installRuntimePlugin'
+    const result = request.method as string === '__receiveGatewayImport'
+      ? await service.receiveGatewayImport(request.input)
+      : request.method as string === '__installRuntimePlugin'
       ? await service.installRuntimePlugin((request.input as {directory:string}).directory,(request.input as {expectedRevision:number}).expectedRevision)
       : request.method as string === '__startBrowserAction'
       ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId?:string})

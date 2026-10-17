@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Real package directories and production runtime plugin registry.
  * [OUTPUT]: Independent package/CAS/lifecycle/fingerprint/configuration and discovery invariants.
  * [POS]: Runtime plugin contract tests; no model calls.
@@ -18,7 +20,7 @@ import { nativeRuntimeNamespace } from '../src/shared/domain/backends'
 const roots: string[] = []
 afterEach(async () => { for (const path of roots.splice(0)) await rm(path, {recursive:true,force:true}) })
 async function setup() { const root = await mkdtemp(join(tmpdir(),'boai-runtime-pack-'));roots.push(root);const manager = new RuntimePlugins(join(root,'registry'));await manager.init();return {root,manager} }
-async function pkg(root: string, id='example.runtime', version='1.0.0') { const path=join(root,id+version);await mkdir(path);const manifest={...bundledRuntimePlugins[1],id,version};await writeFile(join(path,'manifest.json'),JSON.stringify(manifest));await writeFile(join(path,'LICENSE'),'Test fixture');return {path,manifest} }
+async function pkg(root: string, id='example.runtime', version='1.0.0') { const path=join(root,id+version);await mkdir(path);const contribution=bundledRuntimePlugins[1].contributions[0];const {modelSource,nativeSourceIdentity,...legacy}=contribution;const manifest={...bundledRuntimePlugins[1],id,version,contributions:[{...legacy,runtimeApiVersion:1,driver:{kind:'builtin',id:'acp'}}]};await writeFile(join(path,'manifest.json'),JSON.stringify(manifest));await writeFile(join(path,'LICENSE'),'Test fixture');return {path,manifest} }
 test('v1 catalog stays compatible while v2 runtime needs an explicit compatible API', () => {
  const plugin = bundledRuntimePlugins[0];expect(definePluginCatalog([plugin])).toHaveLength(1)
  expect(pluginAvailability(plugin,{revision:0,disabledIds:[]})).toBe('enabled')
@@ -60,7 +62,7 @@ test('uninstalling an independent override immediately restores the disabled bun
  const {root,manager}=await setup(), item=await pkg(root,'boai.runtime.opencode','0.2.0')
  const installed=await manager.install(item.path,0)
  const removed=await manager.uninstall(item.manifest.id,installed.revision)
- expect(removed.plugins.find(p=>p.manifest.id===item.manifest.id)).toMatchObject({bundled:true,enabled:false,manifest:{version:'0.1.0'}})
+ expect(removed.plugins.find(p=>p.manifest.id===item.manifest.id)).toMatchObject({bundled:true,enabled:false,manifest:{version:bundledRuntimePlugins[1].version}})
  const restarted=new RuntimePlugins(join(root,'registry'));await restarted.init();expect(restarted.snapshot()).toEqual(removed)
 })
 test('wire validation rejects malformed events and unsupported host methods before dispatch', () => {

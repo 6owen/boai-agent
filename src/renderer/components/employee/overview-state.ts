@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 员工运行选择支持通用插件绑定、原生默认模型和连接能力事实。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
@@ -12,6 +15,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { AgentHome, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '@shared/domain'
+import { pluginGatewayProvider } from '@shared/domain/plugin-model-source'
+import { assertClaudeGatewayVersion, claudeProvider } from '@shared/domain/claude-provider'
+import { assertCodexGatewayVersion, codexGatewayProvider } from '@shared/domain/codex-provider'
 
 export interface EmployeeCapabilityFact { id: string; name: string; status: string; detail: string; skillId?: string }
 
@@ -25,7 +31,7 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
     id: 'connection', name: '本机 Claude', status: !profile ? '启动项不可用' : mismatchedCheck ? '当前程序待核对' : dependencyUnavailable ? '程序不可用' : changed ? '程序核对已失效' : profile.verified ? '已记录程序核对' : '程序待核对',
     detail: checked?.status !== 'available' ? checked?.detail ?? '当前依赖待核对。' : '已核对本机程序版本；这不证明API认证或实际交付。支持独立员工单聊、普通群分工与结果等待、宿主文件任务及PNG、JPEG、GIF、WebP图片输入；图片理解取决于所选模型。支持核心助手建团队与组织群；关闭命令权限后可用于定时任务。',
   }
-  if (agent.executionBackend?.kind === 'runtime-plugin') nativeConnection = { id:'connection', name:profile?.name ?? '运行时插件', status:!profile ? '连接缺失' : checked?.status !== 'available' ? '当前连接待核对' : profile.verified ? '已记录协议握手' : '尚未测试', detail:`${profile?.runtimePlugin?.pluginId ?? agent.executionBackend.pluginId}。模型、工具和登录由原生程序管理；BOAI沿实际协议能力提供会话与产品工具，握手不代表真实业务已验证。` }
+  if (agent.executionBackend?.kind === 'runtime-plugin') nativeConnection = { id:'connection', name:profile?.name ?? '运行时插件', status:!profile ? '连接缺失' : checked?.status !== 'available' ? '当前连接待核对' : profile.verified ? '已记录协议握手' : '尚未测试', detail:`${profile?.runtimePlugin?.pluginId ?? agent.executionBackend.pluginId}。工具和登录由原生程序管理，模型来源沿员工已保存选择；BOAI沿实际协议能力提供会话与产品工具，握手不代表真实业务已验证。` }
   if (agent.executionBackend?.kind === 'acp-local') return [{
     id: 'connection', name: '外部任务连接',
     status: !profile ? '启动项不可用' : mismatchedCheck ? '当前启动项待核对' : dependencyUnavailable ? '执行依赖不可用' : changed ? '连接验证已失效' : profile.verified ? '已记录连接验证' : checked ? '当前配置未验证' : '已配置 · 未验证',
@@ -43,7 +49,21 @@ export function employeeCapabilityFacts(agent: DigitalAgent, snapshot: Snapshot,
     id: 'commands', name: '命令授权', status: agent.allowCommands ? '可申请 · 逐次批准' : '未启用', detail: agent.allowCommands ? '配置允许申请命令执行；具体命令仍在原员工聊天请求批准，当前资料不执行检查。' : '当前员工不能申请执行主机命令。',
   }]
   if (agent.executionBackend?.kind === 'runtime-plugin') facts[1] = { id:'commands', name:'原生命令权限', status:'遵循本机 Agent 配置', detail:'由原生程序及其扩展管理权限。BOAI只接回实际提出的审批/输入请求；BOAI命令开关不限制原生工具。' }
-  if (agent.executionBackend?.kind === 'claude-local') facts.splice(1, 0, { id: 'model', name: 'Claude模型来源', status: connection?.hasApiKey && model ? '已配置' : '尚未配置', detail: connection && model ? `${connection.name} · ${model}。由本机Claude调用，不额外使用API父模型；由原生Agent自主执行。` : '请在员工配置中选择兼容API连接和模型。' })
+  if (agent.executionBackend?.kind === 'claude-local') {
+    let ready = false
+    try { claudeProvider(connection, agent.modelId); assertClaudeGatewayVersion(connection, profile?.verified?.version); ready = true } catch { /* This read-only view does not test a model. */ }
+    facts.splice(1, 0, { id: 'model', name: 'Claude模型来源', status: profile?.useExistingLogin ? '使用本机配置' : ready ? '已配置' : '尚未配置', detail: profile?.useExistingLogin ? '模型来源由本机Claude配置决定；实际来源以本次运行证据为准。' : connection && model ? `${connection.name} · ${model}。由本机Claude调用，不额外使用API父模型；由原生Agent自主执行。` : '请在员工配置中选择兼容API连接和模型。' })
+  }
+  if (agent.executionBackend?.kind === 'codex-local') {
+    let ready = false
+    try { codexGatewayProvider(connection, agent.modelId); assertCodexGatewayVersion(profile?.verified?.version); ready = true } catch { /* Read-only eligibility, not a model test. */ }
+    facts.splice(1, 0, { id: 'model', name: 'Codex模型来源', status: !agent.connectionId ? '使用本机配置' : ready ? '已配置' : '尚未配置', detail: !agent.connectionId ? '模型来源由本机Codex配置决定；实际来源以本次运行证据为准。' : connection && model ? `${connection.name} · ${model}。由本机Codex调用；当前运行按Responses协议使用此网关。` : '原网关连接或模型不可用，请在员工配置中核对。' })
+  }
+  if (agent.executionBackend?.kind === 'runtime-plugin') {
+    let ready = false
+    try { pluginGatewayProvider(connection, agent.modelId, profile?.verified); ready = true } catch { /* Read-only eligibility, not a model test. */ }
+    facts.splice(1, 0, { id: 'model', name: '模型来源', status: !agent.connectionId ? '使用本机配置' : ready ? '已配置' : '尚未配置', detail: !agent.connectionId ? '模型来源由本机 Agent 配置决定；实际来源以本次运行证据为准。' : ready && connection && model ? `${connection.name} · ${model}。由本机 Agent 按所选网关协议调用；凭据仅用于当前进程。` : '原网关连接、模型或插件能力不可用，请在员工配置中核对。' })
+  }
   const currentEnvironment = home?.agentId === agent.id && home.configVersion === agent.configVersion ? home.environment : undefined
   for (const id of agent.skillIds) {
     const resource = snapshot.resources.find(item => item.id === id && item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent.id))

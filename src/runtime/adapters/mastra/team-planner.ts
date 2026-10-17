@@ -1,16 +1,23 @@
 /*
+ * [OUTPUT]: Team plans require confirmed completion before interpreting schema errors; incomplete streams cannot trigger repair.
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: 本次团队需求、公开连接、宿主注入凭据、取消信号与调用用量回调。
  * [OUTPUT]: planner v5 无工具/记忆/工作区的单次结构化方案与已交付 T2 能力边界；能力说明由宿主填充，关闭 SDK 重试并保留异常用量未知。
  * [POS]: T1 内置团队设计助手，复用 modelConfig；修复和预算由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Agent } from '@mastra/core/agent'
+import { z } from 'zod'
 import type { Connection } from '../../../shared/domain'
 import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamPlannerOutputSchema, type TeamGeneration } from '../../../shared/domain/team-creation'
 import { modelConfig, thinkingProviderOptions } from './model-config'
+import { gatewayRouteObserver } from './gateway-route'
+import { assertStreamCompleted } from './stream-completion'
+import type { ModelCallObservation } from '../../contracts'
+import { parseJson } from '../../modules/employees/phase-protocol'
 
 export type TeamUsage = TeamGeneration['attempts'][number]['usage']
-export interface TeamPlannerCall {
+export interface TeamPlannerCall extends ModelCallObservation {
   connection: Connection; modelId: string; apiKey: string; prompt: string; repair?: string; signal: AbortSignal
   usage(value: TeamUsage): Promise<void>
 }
@@ -27,26 +34,28 @@ capabilityNotes 返回空数组，宿主会依据上述真实产品边界填写�
 
 export const planTeam: TeamPlanner = async call => {
   const agent = new Agent({ id: TEAM_PLANNER_VERSION, name: '团队创建助手', instructions: teamPlannerInstructions, model: modelConfig(call.connection, call.apiKey, call.modelId), maxRetries: 0 })
-  const output = await agent.stream(JSON.stringify({ request: call.prompt, ...(call.repair ? { validationErrors: call.repair, instruction: '重新返回完整且符合 schema 的方案，不续写原输出。' } : {}) }), {
+  const output = await agent.stream(JSON.stringify({ request: call.prompt, jsonSchema: z.toJSONSchema(teamPlannerOutputSchema), ...(call.repair ? { validationErrors: call.repair, instruction: '重新返回完整且符合 schema 的方案，不续写原输出。' } : {}) }), {
     abortSignal: call.signal, maxSteps: 1, modelSettings: { maxOutputTokens: TEAM_LIMITS.outputTokens, maxRetries: 0 },
-    structuredOutput: { schema: teamPlannerOutputSchema, jsonPromptInjection: true, errorStrategy: 'strict' },
+    // Parse only after transport completion. SDK structuredOutput replaces its
+    // finish reason with "error" on schema failure, hiding whether EOF was normal.
     providerOptions: thinkingProviderOptions(call.connection, call.modelId, 'auto', 'decision'),
+    onStepFinish: gatewayRouteObserver(call, () => call.modelCallId),
   })
-  let failure: unknown
+  let failure: unknown, text = ''
   for await (const chunk of output.fullStream) {
     if (chunk.type === 'step-finish') {
       const usage = chunk.payload.output.usage
       await call.usage(typeof usage?.inputTokens === 'number' && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0 && typeof usage?.outputTokens === 'number' && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0 ? { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } : 'unknown')
     }
+    if (chunk.type === 'text-delta') text += chunk.payload.text
     if (chunk.type === 'error') failure = chunk.payload.error
   }
   call.signal.throwIfAborted()
+  const finish = await output.finishReason
   if (failure || output.error) {
-    const error = failure || output.error
-    const name = error instanceof Error ? `${error.name} ${error.message}` : String(error)
-    if (/schema|JSON|parse|validation|object.*generat/i.test(name)) throw new TeamPlanFormatError('输出未符合方案结构，请检查字段、人数、姓名和规则长度')
     throw new Error('模型请求失败，请检查连接、认证和模型支持')
   }
-  if (await output.finishReason === 'length') throw new TeamPlanFormatError('输出超过长度上限，请精简方案')
-  try { return await output.object } catch { throw new TeamPlanFormatError('输出未符合方案结构') }
+  if (finish === 'length') throw new TeamPlanFormatError('输出超过长度上限，请精简方案')
+  assertStreamCompleted(finish)
+  try { return teamPlannerOutputSchema.parse(parseJson(text)) } catch { throw new TeamPlanFormatError('输出未符合方案结构，请检查字段、人数、姓名和规则长度') }
 }

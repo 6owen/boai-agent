@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 插件provider复用连续会话、产品取消、原生监督及来源核验；命名空间/恢复标记独立。
+ * [OUTPUT]: 会话准备完成时可原子登记经适配器核验的来源指纹，保持pending/完成状态及原请求身份检查。
  * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 2026-10-14 房间历史合并保守撤销原生线程续用资格，明确新消息才重建。
  * [OUTPUT]: 2026-10-12运行中回答来源和材料与消息同事务登记，未知输入投递不续用旧session；明确新消息才重建，不自动重发。
@@ -104,7 +104,7 @@ export class NativeSessions {
         priorReply: valid ? { messageId: previousReply.id, ...(this.runtime === 'codex' ? { nativeTurnId: previous.turnId } : { hostRunId: previous.completedInvocationId }) } : undefined }
     })
   }
-  async update(session: Session, changes: Partial<Pick<Session, 'threadId' | 'turnId' | 'outputHash' | 'state' | 'completedInvocationId'>>) {
+  async update(session: Session, changes: Partial<Pick<Session, 'threadId' | 'turnId' | 'fingerprint' | 'outputHash' | 'state' | 'completedInvocationId'>>) {
     const collection = this.collection
     await this.store.transaction(async tx => {
       const current = await tx.get<Session>(collection, session.id)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Verified launch configuration and strict LF native JSON streams.
  * [OUTPUT]: Native child ownership, bounded frames, correlated requests and zero automatic replay.
  * [POS]: Bundled SDK utility; parent runner is supervised by BOAI's process guard.
@@ -8,8 +9,8 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
 import { randomUUID } from 'node:crypto'
 import type { RuntimeLaunch } from '../../../shared/plugins/runtime-api'
-export function launchNative(launch: RuntimeLaunch, args: string[]) {
-  return spawn(launch.runtime === 'node' ? process.execPath : launch.executable, [...(launch.runtime === 'node' ? [launch.executable] : []), ...args], { cwd: launch.cwd, env: { ...process.env, ...(launch.runtime === 'node' ? { ELECTRON_RUN_AS_NODE: '1' } : {}) }, shell: false, stdio: ['pipe', 'pipe', 'pipe'] })
+export function launchNative(launch: RuntimeLaunch, args: string[], env: NodeJS.ProcessEnv = process.env) {
+  return spawn(launch.runtime === 'node' ? process.execPath : launch.executable, [...(launch.runtime === 'node' ? [launch.executable] : []), ...args], { cwd: launch.cwd, env: { ...env, ...(launch.runtime === 'node' ? { ELECTRON_RUN_AS_NODE: '1' } : {}) }, shell: false, stdio: ['pipe', 'pipe', 'pipe'] })
 }
 export class JsonLines {
   private pending = new Map<string, { resolve(value: any): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>()

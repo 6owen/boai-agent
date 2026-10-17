@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
+ * [OUTPUT]: 打开预览期间的真实错误使用Sonner；关闭动画期间读取已停用，不将空闲状态报告为错误。
  * [INPUT]: 可选DesktopApi、明确材料身份/版本/hash/解析版本、页面活跃状态和受控图片预览开关。
  * [OUTPUT]: 宿主核对后的静态图片data URI与加载/失败状态；无API明确不可用，隐藏立即卸载Portal/焦点锁，清理、版本变化及迟到读取隔离，普通changed仅后台核对不闪图；全屏深色预览支持关闭/Esc/遮罩关闭和焦点恢复，不提供编辑或下载。
  * [POS]: 会话图片草稿/消息缩略图和全屏预览共用的读取边界；不直接读取路径、不创建object URL或持久保存图片字节。
@@ -79,7 +79,7 @@ export function MaterialImageDialog({ api, material, open, active = true, onOpen
       <DialogPrimitive.Popup className="dark fixed inset-0 z-50 flex items-center justify-center p-6 text-foreground outline-none [--foreground:var(--soft-thumb)]" finalFocus onClick={event => { if (event.target === event.currentTarget) onOpenChange(false) }}>
         <DialogTitle className="sr-only">图片预览 {name}</DialogTitle>
         <DialogClose render={<Button variant="ghost" size="icon-sm" round className="absolute top-4 right-4" aria-label="关闭图片预览" />}><X /></DialogClose>
-        {url ? <img src={url} alt={name} className="max-h-[calc(100vh-3rem)] max-w-full object-contain" draggable={false} onError={() => setFailedImage(key)} /> : image.loading ? <p role="status" className="flex items-center gap-2 text-sm"><LoaderCircle className="spinner" />正在载入图片…</p> : <ErrorToast>{error ?? '图片暂不可用。'}</ErrorToast>}
+        {url ? <img src={url} alt={name} className="max-h-[calc(100vh-3rem)] max-w-full object-contain" draggable={false} onError={() => setFailedImage(key)} /> : image.loading ? <p role="status" className="flex items-center gap-2 text-sm"><LoaderCircle className="spinner" />正在载入图片…</p> : open ? <ErrorToast>{error ?? '图片暂不可用。'}</ErrorToast> : null}
       </DialogPrimitive.Popup>
     </DialogPortal>}
   </Dialog>

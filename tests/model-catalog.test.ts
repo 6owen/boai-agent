@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接测试保留原凭据断言，并核对新增callId/取消signal/路由观察上下文与草稿独立来源。
  * [INPUT]: 模型目录 HTTP 适配、AppService、隔离的本地协议服务、测试引擎与内存凭据。
  * [OUTPUT]: 编辑时读取当前连接密钥、显式清空与省略凭据的区分、根地址/版本前缀模型目录、草稿连接测试不持久化、凭据同地址复用与脱敏、模型 ID 归一化、认证/格式/超时错误与不阻塞产品操作的回归。
  * [POS]: tests/model-catalog.test.ts；仅访问本地测试服务。
@@ -142,14 +143,17 @@ describe('compatible model catalog', () => {
 })
 
 describe('connection draft tests', () => {
+  const observation = expect.objectContaining({ modelCallId: expect.any(String), signal: expect.any(AbortSignal), onModelCallRoute: expect.any(Function) })
   const draft: ConnectionInput = { name: 'Draft', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:12345/v1', defaultModel: 'draft-model', apiKey: 'draft-key' }
 
   it('tests the current model and key without creating a connection or persisting a key', async () => {
     const probe = vi.fn<AgentEngine['test']>().mockResolvedValue('OK')
     const { service, keys } = await serviceFixture(probe)
     await expect(service.handle('testConnectionDraft', draft)).resolves.toEqual({ text: 'OK' })
-    expect(probe).toHaveBeenCalledWith(expect.objectContaining({ defaultModel: 'draft-model', baseUrl: draft.baseUrl, hasApiKey: true }), 'draft-key')
+    expect(probe).toHaveBeenCalledWith(expect.objectContaining({ defaultModel: 'draft-model', baseUrl: draft.baseUrl, hasApiKey: true }), 'draft-key', observation)
     expect(probe.mock.calls[0][0]).not.toHaveProperty('apiKey')
+    expect(probe.mock.calls[0][0].revision).toBe(0)
+    expect(probe.mock.calls[0][2]?.signal?.aborted).toBe(false)
     expect((await service.handle('snapshot', undefined) as Snapshot).connections).toEqual([])
     expect(keys.size).toBe(0)
   })
@@ -160,12 +164,12 @@ describe('connection draft tests', () => {
     const saved = await service.handle('saveConnection', { ...draft, defaultModel: 'saved-model', apiKey: 'saved-key' }) as Connection
     const edited = { ...draft, id: saved.id, baseUrl: `${draft.baseUrl}/`, apiKey: undefined }
     await service.handle('testConnectionDraft', edited)
-    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ defaultModel: 'draft-model' }), 'saved-key')
+    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ defaultModel: 'draft-model' }), 'saved-key', observation)
     await expect(service.handle('testConnectionDraft', { ...edited, baseUrl: `${draft.baseUrl}/other` })).rejects.toThrow('重新输入 API Key')
     await expect(service.handle('testConnectionDraft', { ...edited, provider: 'anthropic' })).rejects.toThrow('重新输入 API Key')
     expect(probe).toHaveBeenCalledTimes(1)
     await service.handle('testConnectionDraft', { ...edited, baseUrl: `${draft.baseUrl}/other`, apiKey: 'preview-key' })
-    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ baseUrl: `${draft.baseUrl}/other` }), 'preview-key')
+    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ baseUrl: `${draft.baseUrl}/other` }), 'preview-key', observation)
     expect(keys.get(saved.id)).toBe('saved-key')
     expect((await service.handle('snapshot', undefined) as Snapshot).connections).toEqual([saved])
   })
@@ -174,7 +178,7 @@ describe('connection draft tests', () => {
     const probe = vi.fn<AgentEngine['test']>().mockResolvedValue('OK')
     const { service } = await serviceFixture(probe)
     await service.handle('testConnectionDraft', { ...draft, apiKey: '' })
-    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ hasApiKey: false }), '')
+    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ hasApiKey: false }), '', observation)
     for (const provider of ['openai', 'anthropic']) {
       await expect(service.handle('testConnectionDraft', { ...draft, provider, baseUrl: '', apiKey: '' })).rejects.toThrow('请填写 API Key')
     }
@@ -189,7 +193,7 @@ describe('connection draft tests', () => {
     const baseUrl = await serve((request, response) => { expect(request.headers.authorization).toBeUndefined(); response.end('{"data":[]}') })
     await service.handle('listConnectionModels', { id: saved.id, baseUrl, apiKey: '' })
     await service.handle('testConnectionDraft', edited)
-    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ hasApiKey: false }), '')
+    expect(probe).toHaveBeenLastCalledWith(expect.objectContaining({ hasApiKey: false }), '', observation)
     expect(keys.get(saved.id)).toBe('draft-key')
     await service.handle('saveConnection', edited)
     await expect(service.handle('getConnectionApiKey', { id: saved.id })).resolves.toBe('')

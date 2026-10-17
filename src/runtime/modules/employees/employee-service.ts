@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
+ * [OUTPUT]: 网关原始推理档位持久化前核对来源匹配目录，直连保留原固定档位。
  * [OUTPUT]: 关闭命令、停用或切离API后端时，同事务清理独立永久命令授权。
  * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
  * [OUTPUT]: 通用runtime-plugin员工/核心绑定schema；原身份与工作退出门禁保持。
@@ -14,6 +16,7 @@
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { MODEL_ID_MAX_LENGTH, validModelId } from '../../../shared/domain/model-id'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { AgentInput, DigitalAgent, Connection, Resource, MemoryEntry } from '../../../shared/domain'
@@ -21,7 +24,7 @@ import { commandPermissionCollection, canRememberCommands } from './command-perm
 import { ProductStore, type StoredRecord, type RecordTransaction } from '../../adapters/storage/product-store'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '../../../shared/domain/avatars'
-import { thinkingLevels } from '../../../shared/domain/model-preferences'
+import { assertThinkingPreference, thinkingLevelPattern, thinkingLevels } from '../../../shared/domain/model-preferences'
 import { CORE_AGENT_ID, CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '../../../shared/domain/core-agent'
 
 export const backendSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('runtime-plugin'),profileId:z.string().min(1).max(200),pluginId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/),providerId:z.string().regex(/^[a-z0-9][a-z0-9.-]{0,99}$/)}).strict(),z.object({kind:z.literal('mastra-model')}).strict(),z.object({kind:z.enum(['acp-local','codex-local','claude-local']),profileId:z.string().min(1).max(200)}).strict()])
@@ -32,12 +35,13 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ nativeOptions: z.object({ effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.enum(thinkingLevels).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().max(300), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ nativeOptions: z.object({ effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
 const fail = (message: string): never => { throw new Error(message) }
 interface EmployeeHooks {
+  modelCatalog?(connection: Connection): import('../../../shared/domain/model-gateway').ModelCatalog | undefined
   connection(id: string): Connection
   resource(id: string): Resource | undefined
   cancel(id: string, reason: string): Promise<void>
@@ -131,7 +135,12 @@ export class EmployeeService {
     const allowBrowser = executionBackend.kind === 'mastra-model'
     if(executionBackend.kind==='acp-local'&&(input.skillIds.length||input.knowledgeIds.length))fail('外部任务后端暂不支持 BoAI 的 Skills、知识绑定；请先取消这些绑定。')
     if(executionBackend.kind==='acp-local'&&input.allowCommands)fail('外部任务后端暂不支持 BoAI 的命令策略；请先关闭命令。')
-    if (input.connectionId) this.hooks.connection(input.connectionId)
+    const connection = input.connectionId ? this.hooks.connection(input.connectionId) : undefined
+    const thinkingLevel = input.thinkingLevel ?? previous?.thinkingLevel
+    if (executionBackend.kind === 'mastra-model') {
+      if (connection) assertThinkingPreference(connection, input.modelId, thinkingLevel, this.hooks.modelCatalog?.(connection))
+      else if (thinkingLevel && !(thinkingLevels as readonly string[]).includes(thinkingLevel)) fail('请先选择模型连接再设置推理档位')
+    }
     this.validateResources(input.skillIds, 'skill'); this.validateResources(input.knowledgeIds, 'knowledge')
     const skillNames = input.skillIds.map(id => this.hooks.resource(id)!.name)
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')

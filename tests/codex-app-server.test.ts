@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立程序核对不冒充认证；沿用登录继续拒绝缺登录，两个入口均不发送推理。
  * [OUTPUT]: 模型目录原生档位/显示名保留，重复条目不丢能力，旧字符串接口兼容。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: 2026-10-10 新增进度精确来源/原始思维隔离/有界文本与真实Work参数结果持久检查，无真实供应商调用。
@@ -59,11 +60,11 @@ it('bounds external summary identities and text without discarding the actual re
   expect([...events.values()].filter(event => event.kind !== 'stage').length).toBeLessThanOrEqual(EXECUTION_PROGRESS_LIMITS.events)
   expect([...events.values()].every(event => event.text.length <= EXECUTION_PROGRESS_LIMITS.text)).toBe(true)
 })
-async function fixture(mode = '') {
+async function fixture(mode = '', useExistingLogin = false) {
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'boai-codex-protocol-'))); roots.push(cwd)
   if (mode) await writeFile(join(cwd, 'fixture-mode'), mode)
   const file = inspectProgram(resolve('tests/fixtures/codex-app-server.mjs'))
-  const profile: LaunchProfile = { id: 'codex-profile', name: 'Codex', protocol: 'codex-app-server', executable: file.path, executableHash: file.hash, runtime: 'node', args: [], revision: 1, useExistingLogin: false, hostAccessAcknowledged: true }
+  const profile: LaunchProfile = { id: 'codex-profile', name: 'Codex', protocol: 'codex-app-server', executable: file.path, executableHash: file.hash, runtime: 'node', args: [], revision: 1, useExistingLogin, hostAccessAcknowledged: true }
   const signal = new AbortController().signal
   const base = { profile, cwd, privateHome: join(cwd, 'private-home'), signal }
   const verified = await testCodexConnection(base)
@@ -74,7 +75,10 @@ it('tests a real session without sending inference and never presents saved logi
   const input = await fixture()
   await expect(readFile(join(input.cwd, 'turn-input.json'))).rejects.toThrow()
   expect(input.profile.verified).toMatchObject({ name: 'Codex', version: '0.159.3', protocolVersion: 2 })
-  await expect(fixture('login-missing')).rejects.toThrow('需要登录')
+  await expect(fixture('login-missing', true)).rejects.toThrow('需要登录')
+  const independent = await fixture('login-missing')
+  expect(independent.profile.verified?.name).toBe('Codex') // Program/protocol check only; explicit gateway authentication belongs to the employee's actual run.
+  await expect(readFile(join(independent.cwd, 'turn-input.json'))).rejects.toThrow()
   expect((await fixture('unknown-version')).profile.verified?.version).toBe('0.160.0') // Current contract probes protocol capabilities instead of a release allowlist.
 })
 

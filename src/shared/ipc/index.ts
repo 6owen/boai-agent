@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
+ * [OUTPUT]: Magpie只读本机发现与手动地址探测分开；仅返回服务名、版本和已核对根地址。
+ * [OUTPUT]: 网关目录读取可核对保存版本，目录快照独立于连接变更。
+ * [OUTPUT]: 增加Magpie只读识别/结构化目录接口，旧模型ID目录兼容网关根地址。
  * [OUTPUT]: 单条定时执行记录按所见版本删除；成功广播历史删除事件，关闭各页同源过程面板。
  * [OUTPUT]: 数据源编辑器专用getDataSourceCredential按ID/版本回填已保存值，普通列表/详情合同不携凭据。
  * [OUTPUT]: 执行卡片通过resolveExecutionMessage核对实际聊天消息后定位；隐藏可显式打开，已删不复活。
@@ -59,6 +64,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'gateway-imports:changed' }
   | { type: 'automation:history-deleted'; occurrenceId: string }
   | { type: 'plugins:changed'; settings: PluginSettingsSnapshot }
   | { type: 'desktop:changed'; settings: DesktopSettings }
@@ -76,6 +82,10 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  listGatewayImports: { input: undefined; output: import('../domain/gateway-import').GatewayImportView[] }
+  cancelGatewayImport: { input: { draftId: string }; output: void }
+  confirmGatewayImport: { input: import('../domain/gateway-import').GatewayImportConfirmation; output: import('../domain/gateway-import').GatewayImportReceipt }
+  getGatewayImportReceipt: { input: { requestId: string }; output: import('../domain/gateway-import').GatewayImportReceipt | null }
   listCatalogResults: { input: { conversationId: string }; output: import('../domain/catalog-management').CatalogResult[] }
   listDataSources: { input: undefined; output: import('../domain/sources').DataSource[] }
   getDataSource: { input: { id: string }; output: import('../domain/sources').DataSource }
@@ -244,9 +254,12 @@ export interface Methods {
   saveConnection: { input: ConnectionInput; output: Connection }
   getConnectionApiKey: { input: { id: string }; output: string }
   deleteConnection: { input: { id: string }; output: void }
-  testConnection: { input: { id: string }; output: { text: string } }
-  testConnectionDraft: { input: ConnectionInput; output: { text: string } }
-  listConnectionModels: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey'>; output: string[] }
+  testConnection: { input: { id: string }; output: { text: string; modelCall?: import('../domain/model-gateway').GatewayModelCall } }
+  testConnectionDraft: { input: ConnectionInput; output: { text: string; modelCall?: import('../domain/model-gateway').GatewayModelCall } }
+  probeModelGateway: { input: { baseUrl: string }; output: import('../domain/model-gateway').GatewayIdentity }
+  discoverModelGateway: { input: undefined; output: import('../domain/model-gateway').GatewayIdentity }
+  getConnectionModelCatalog: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'gateway' | 'expectedRevision'>; output: import('../domain/model-gateway').ModelCatalog }
+  listConnectionModels: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'gateway' | 'expectedRevision'>; output: string[] }
   createConversation: { input: ConversationInput; output: Conversation }
   deleteConversation: { input: { id: string }; output: void }
   updateConversationList: { input: ConversationListChange; output: void }

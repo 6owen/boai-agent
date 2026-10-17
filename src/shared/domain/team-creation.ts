@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: 通用插件员工/Run绑定、能力快照、协议映射及无歧义provider命名空间。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -7,6 +9,7 @@
  * [POS]: shared/domain 团队创建跨进程合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { MODEL_ID_MAX_LENGTH, validModelId } from './model-id'
 import { z } from 'zod'
 import { avatarPresets } from './avatars'
 import type { DigitalAgent, Conversation } from './index'
@@ -44,7 +47,7 @@ export function teamCapabilityNotes(scenarioKind: TeamPlan['scenarioKind'], back
 }
 // A new member omits memberKey; only the host can allocate that identity.
 export const teamEditableSchema = z.object({
-  prompt: z.string().trim().max(4000), selectedConnectionId: z.string().max(200), selectedModelId: z.string().trim().max(300),
+  prompt: z.string().trim().max(4000), selectedConnectionId: z.string().max(200), selectedModelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'),
   createGroup: z.boolean(), groupTitle: z.string().trim().max(200),
   plan: z.object({ ...planFields, plannerVersion: text(80), generationId: teamId, members: z.array(teamMemberSchema.partial({ memberKey: true })).min(1).max(TEAM_LIMITS.members) }).strict().refine(validMembers, '成员姓名不能重复，工作规则合计不能超过 16000 字符').optional(),
 }).strict()
@@ -62,7 +65,7 @@ export interface TeamGeneration {
   id: string; draftId: string; requestId: string; requestHash: string; draftVersion: number; inputHash: string
   plannerVersion: string; schemaVersion: 1; connectionId: string; modelId: string; connectionFingerprint: string
   status: Exclude<TeamGenerationStatus, 'idle'>; deadline: string; startedAt: string; finishedAt?: string
-  attempts: { callId: string; phase: 'initial' | 'repair'; status: 'running' | 'succeeded' | 'failed' | 'interrupted'; usage: { inputTokens: number; outputTokens: number } | 'unknown' }[]
+  attempts: { callId: string; phase: 'initial' | 'repair'; status: 'running' | 'succeeded' | 'failed' | 'interrupted'; usage: { inputTokens: number; outputTokens: number } | 'unknown'; modelCall?: import('./model-gateway').GatewayModelCall }[]
   error?: string; adjustment?: { reason: string; suggestedPrompt: string }
 }
 export interface TeamCreationSource { kind: 'team-planner'; operationId: string; memberKey?: string; plannerVersion: string }

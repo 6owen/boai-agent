@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新消息重试覆盖来源/成员/版本/已消费消息、待核对操作、额度和认领后失败的完整事务回滚。
  * [INPUT]: 真实 SQLite 产品存储和工作控制协议。
  * [OUTPUT]: 认领竞争、预算、旧运行隔离、事务回滚与副本迁移验证。
  * [POS]: tests/work-repository.test.ts。
@@ -30,6 +31,52 @@ const request = (runId: string, agentId = 'researcher', key = 'main') => ({
 const receipt = { messageId: 'answer-1', content: '计算结果为 42。', artifactIds: [] as string[] }
 
 describe('durable work ownership', () => {
+  it.each([
+    ['pending-effect', /已有工具操作需要核对/],
+    ['unknown-effects', /已有工具操作需要核对/],
+    ['confirmed-effects-rollback', /该运行已释放执行权/],
+    ['expired-budget', /调用、用量或时间上限/],
+    ['exhausted-calls', /调用、用量或时间上限/],
+    ['stale-version', /工作版本已变化/],
+    ['peer-message', /新的用户消息/],
+    ['channel-message', /新的用户消息/],
+    ['old-source', /新的用户消息/],
+    ['removed-member', /新的用户消息/],
+    ['consumed-message', /这条接续消息已执行/],
+    ['released-execution', /该运行已释放执行权/],
+  ] as const)('rejects %s message retries atomically without resetting work or budget', async (reason, error) => {
+    const { works, store } = await fixture()
+    const first = await works.claim(request('run-a'))
+    if (['pending-effect', 'unknown-effects', 'confirmed-effects-rollback'].includes(reason)) await works.markEffect('run-a')
+    if (reason === 'confirmed-effects-rollback') await works.confirmEffect('run-a')
+    await works.release('run-a', 'failed')
+    const sourceMessageId = reason === 'old-source' ? 'user-request' : 'continue-request'
+    await store.write([
+      { collection: 'messages', id: 'user-request', value: { id: 'user-request', conversationId: 'group', sequence: 1, senderId: 'user', senderType: 'user', status: 'completed' } },
+      { collection: 'messages', id: sourceMessageId, value: { id: sourceMessageId, conversationId: 'group', sequence: 2, senderId: reason === 'peer-message' ? 'writer' : 'user', senderType: reason === 'peer-message' ? 'agent' : 'user', status: 'completed', ...(reason === 'channel-message' ? { channel: { id: 'external' } } : {}) } },
+      { collection: 'runs', id: 'run-b', value: { id: 'run-b', conversationId: 'group', agentId: 'researcher', phase: 'execution', status: 'running', triggerMessageId: sourceMessageId, turnId: 'continue-turn' } },
+      { collection: 'turns', id: 'continue-turn', value: { id: 'continue-turn', triggerMessageId: sourceMessageId } },
+      { collection: 'conversations', id: 'group', value: { id: 'group', agentIds: reason === 'removed-member' ? [] : ['researcher'] } },
+      { collection: 'agents', id: 'researcher', value: { id: 'researcher', active: true } },
+    ])
+    if (reason === 'expired-budget' || reason === 'exhausted-calls') {
+      const budget = (await works.view('group')).workBudgets[0]
+      if (reason === 'expired-budget') budget.deadlineAt = new Date(0).toISOString()
+      else budget.modelCalls = budget.maxModelCalls
+      await store.write([{ collection: 'workBudgets', id: budget.id, value: budget }])
+    }
+    if (reason === 'consumed-message') await store.write([{ collection: 'runs', id: 'earlier-continue', value: { id: 'earlier-continue', workId: first.id, triggerMessageId: sourceMessageId } }])
+    if (reason === 'unknown-effects') await store.transaction(async tx => {
+      const execution = (await tx.get<import('../src/shared/domain').WorkExecution>('workExecutions', 'run-a'))!
+      delete execution.pendingEffects
+      await tx.put({ collection: 'workExecutions', id: execution.id, value: execution })
+    })
+    if (reason === 'released-execution' || reason === 'confirmed-effects-rollback') await store.write([{ collection: 'workExecutions', id: 'run-b', value: { id: 'run-b', workId: first.id, status: 'released', pendingEffects: 0 } }])
+    const before = await works.view('group'), work = before.workItems[0]
+    await expect(works.claim({ ...request('run-b'), sourceMessageId, retryFromUserMessage: true, intent: { ...request('run-b').intent, workId: work.id, expectedVersion: reason === 'stale-version' ? work.version - 1 : work.version } })).rejects.toThrow(error)
+    expect(await works.view('group')).toEqual(before)
+  })
+
   it('admits one executor for a shared source key, independent of employee and purpose text', async () => {
     const { works } = await fixture()
     const second = request('run-b', 'writer'); second.intent.scope = '另一位员工描述的相同共享目标'

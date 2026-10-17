@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: Codex模型目录保留原生支持的推理档位；旧字符串目录由同一读取投影。
  * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
@@ -12,6 +14,7 @@
  * [POS]: 原生Codex阶段执行；持久映射与业务权威归宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { validModelId } from '../../../shared/domain/model-id'
 import { codexToolResult } from '../native-tool-result'
 import type { NativeAgentInfo } from '../../../shared/domain/execution'
 import type { LaunchProfile } from '../../../shared/domain/backends'
@@ -83,7 +86,7 @@ export async function testCodexConnection(input: Pick<CodexPhaseInput, 'profile'
   const { client, verified } = await CodexClient.start({ ...input, native: true, profile: { ...input.profile, verified: undefined } })
   try {
     const account = await client.request('account/read', { refreshToken: false })
-    if (account.requiresOpenaiAuth && !account.account) throw new Error('Codex需要登录，请先在本机Codex完成登录')
+    if (input.profile.useExistingLogin && account.requiresOpenaiAuth && !account.account) throw new Error('Codex需要登录，请先在本机Codex完成登录')
     await client.request('thread/start', { cwd: input.cwd, ephemeral: true })
     await client.drain()
     return verified
@@ -106,7 +109,7 @@ export async function listCodexModelCatalog(input: Pick<CodexPhaseInput, 'profil
       for (const entry of result.data) {
         const value = object(entry)
         const model = typeof value.model === 'string' ? value.model : value.id
-        if (typeof model === 'string' && model.length && model.length <= 200) {
+        if (typeof model === 'string' && validModelId(model)) {
           const levels = Array.isArray(value.supportedReasoningEfforts) ? value.supportedReasoningEfforts.flatMap(entry => { const effort = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).reasoningEffort : undefined; return typeof effort === 'string' && effort.length > 0 && effort.length <= 40 ? [effort] : [] }) : undefined
           models.set(model, { ...models.get(model), value: model, ...(typeof value.displayName === 'string' ? { displayName: value.displayName } : {}), ...(levels ? { supportedEffortLevels: [...new Set(levels)], supportsEffort: levels.length > 0 } : {}) })
         }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Magpie网关协议/认证及revision进入模型来源指纹，旧直连hash语义保持。
  * [OUTPUT]: 团队允许插件原生默认模型，成员仍按独立员工身份和配置创建。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 严格草稿输入、公开模型配置和 ProductStore 事务。
@@ -22,7 +23,7 @@ export function resolveTeamModel(connection: Connection | undefined, selectedMod
   if (!connection) return teamError('MODEL_UNAVAILABLE', '请选择已有模型连接')
   const modelId = selectedModelId || connection.defaultModel.trim()
   if (!modelId) return teamError('MODEL_UNAVAILABLE', '请先配置有效模型')
-  return { modelId, fingerprint: teamHash({ id: connection.id, provider: connection.provider, baseUrl: connection.baseUrl, api: connection.api ?? 'chat', defaultModel: connection.defaultModel, modelId }) }
+  return { modelId, fingerprint: teamHash({ id: connection.id, provider: connection.provider, baseUrl: connection.baseUrl, api: connection.api ?? 'chat', ...(connection.gateway ? { gateway: connection.gateway, revision: connection.revision } : {}), defaultModel: connection.defaultModel, modelId }) }
 }
 export const teamInputHash = (draft: TeamDraft) => teamHash({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
 export function validateTeamDraft(draft: TeamDraft) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 服务重开仅重算API工作数，混合本机子工作与已清理组织历史不增加或归零原预算。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 新交互工作承接已知但不完整的本机判断用量，unknownCalls及完整性随原请求保持。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
@@ -142,6 +143,25 @@ it.each([true, false])('delegates native=%s parent to the other backend without 
   await expect(f.works.reserveInteractiveCall(task, 'revoked-call', 'execution')).rejects.toThrow('原交互工作')
   await expect(f.works.delegate(f.task.id, { ...proposal, key: 'revoked' })).rejects.toThrow('当前有效员工')
   expect(await f.store.load('workBudgets')).toHaveLength(1)
+})
+
+it.each([true, false])('preserves mixed API/native work counts across two repository restarts with native parent=%s', async native => {
+  const f = await fixture(native, true)
+  const child = await f.works.delegate(f.task.id, { key: 'child', scope: 'Check one fact', deliverable: 'A checked fact', ownerAgentId: 'other' })
+  expect(child.budgetPolicy).toBe(native ? undefined : 'native')
+  const before = await f.budget()
+  expect(before.workItems).toBe(1)
+  const calls = await f.store.load('budgetModelCalls')
+  for (let count = 0; count < 2; count++) {
+    await new WorkRepository(await f.connect()).init()
+    expect(await f.budget()).toEqual(before)
+    expect(await f.store.load('budgetModelCalls')).toEqual(calls)
+  }
+  // Organization budgets retain historical API work that may already have been cleaned up.
+  const historical = { ...before, collaborationRequestId: 'organization', workItems: 4 }
+  await f.store.write([row('workBudgets', historical)])
+  await new WorkRepository(await f.connect()).init()
+  expect(await f.budget()).toEqual(historical)
 })
 
 it('rejects incomplete API decision adoption and a mismatched backend receipt without partial budget writes', async () => {

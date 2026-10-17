@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Shared manifest truth, Runtime API and first-party protocol adapters.
  * [OUTPUT]: Self-contained module and declaration packages plus schema/types; no npm install hooks.
  * [POS]: Independent runtime plugin packaging, also called by the desktop host build.
@@ -11,7 +12,7 @@ import { pathToFileURL } from 'node:url'
 import { z } from 'zod'
 export async function buildRuntimePlugins() {
  const directory='dist/runtime/plugins'
- await build({entryPoints:['src/runtime/adapters/plugins/runner.ts','src/runtime/adapters/plugins/pi.ts','src/runtime/adapters/plugins/acp.ts','src/shared/plugins/runtime-catalog.ts'],outdir:directory,outbase:'src',entryNames:'[name]',outExtension:{'.js':'.mjs'},bundle:true,platform:'node',format:'esm',target:'node22',legalComments:'eof'})
+ await build({entryPoints:['src/runtime/adapters/plugins/runner.ts','src/runtime/adapters/plugins/pi.ts','src/runtime/adapters/plugins/acp.ts','src/runtime/adapters/plugins/opencode.ts','src/shared/plugins/runtime-catalog.ts'],outdir:directory,outbase:'src',entryNames:'[name]',outExtension:{'.js':'.mjs'},bundle:true,platform:'node',format:'esm',target:'node22',legalComments:'eof'})
  const {bundledRuntimePlugins,runtimeManifestSchema}=await import(pathToFileURL(resolve(directory,'runtime-catalog.mjs')).href+`?build=${Date.now()}`)
  await copyFile('src/shared/plugins/runtime-api.ts',join(directory,'runtime-api.ts'))
  await copyFile('node_modules/@agentclientprotocol/sdk/LICENSE',join(directory,'ACP-SDK-LICENSE.txt'))

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 事务list支持固定status过滤，调用者决定恢复语义；无需读取已终态观察记录。
  * [OUTPUT]: 定时执行历史与计划最近结果在分页/统计前排除已删除墓碑。
  * [OUTPUT]: 公开消息write/transaction共用提交钩子，记录首次插入与更新；业务可见性在原事务提交前完成，内存/通知仅在成功提交后更新。
  * [OUTPUT]: 执行历史按occurrence持久runIds和会话身份先过滤后分页，旧共用会话的其他运行不混入。
@@ -77,7 +78,7 @@ export interface MessageCommit { message: import('../../../shared/domain').Messa
 export interface RecordTransaction {
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
-  list<T>(collection: string): Promise<T[]>
+  list<T>(collection: string, filter?: { status: string }): Promise<T[]>
   unreadCompletionCount(query: FirstUnreadCompletionSqlQuery): Promise<number>
   firstUnreadCompletion(query: FirstUnreadCompletionSqlQuery): Promise<ConversationCompletion | undefined>
   put(record: StoredRecord): Promise<void>
@@ -394,8 +395,8 @@ export class ProductStore {
             const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
             return result.rows.length ? JSON.parse(String(result.rows[0].value)) as R : undefined
           },
-          list: async <R>(collection: string) => {
-            const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? ORDER BY rowid', args: [collection] })
+          list: async <R>(collection: string, filter?: { status: string }) => {
+            const result = await transaction.execute({ sql: `SELECT value FROM records WHERE collection=?${filter ? " AND json_extract(value,'$.status')=?" : ''} ORDER BY rowid`, args: filter ? [collection, filter.status] : [collection] })
             return result.rows.map(row => JSON.parse(String(row.value)) as R)
           },
           unreadCompletionCount: async query => Number((await transaction.execute(unreadCompletionCountSql(query))).rows[0].count),

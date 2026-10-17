@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 启动恢复按已保存budgetPolicy只重算API工作数；本机工作不进入预算，组织历史累计值保持。
+ * [OUTPUT]: 新用户消息接续失败工作与认领同事务；复用原重试校验、版本/身份/预算与重复消息门禁，失败全部回滚。
  * [OUTPUT]: 自动化调用事务不再按命令权限拒绝员工，原来源/运行/预算及实际持有者核验保持。
  * [OUTPUT]: 渠道文件内部修订的Work认领/续行按固定父渠道与代际核对原件和材料，不混用原工作身份。
  * [OUTPUT]: 自动化固定分工限定唯一负责人根、稳定子工作及同次真实依赖，交付事务拒绝跳过必需分工。
@@ -45,6 +47,8 @@ const timestamp = () => new Date().toISOString()
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 export interface WorkClaimInput {
   conversationId: string; sourceMessageId: string; agentId: string; runId: string; intent: WorkIntent
+  /** Host-only: a fresh user message explicitly resumes the referenced failed task. */
+  retryFromUserMessage?: boolean
   wakeId?: string; origin?: AutomationOrigin; materialSources?: MaterialReadRef[]; revisionRequestId?: string
   organization?: WorkOrganization
   priorDecision?: { runId: string; callIds: string[] }
@@ -122,7 +126,7 @@ export class WorkRepository {
       for (const budget of await tx.list<WorkBudget>('workBudgets')) {
         if (budget.schemaVersion !== 1) throw new Error('不能读取未知版本的工作预算')
         const migrated = { ...workLimits, ...budget }
-        const retainedItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id).length
+        const retainedItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id && work.budgetPolicy !== 'native').length
         migrated.workItems = budget.collaborationRequestId ? Math.max(budget.workItems, retainedItems) : retainedItems
         await tx.put(row('workBudgets', migrated))
       }
@@ -247,6 +251,23 @@ export class WorkRepository {
       if (work.activeRunId) throw new WorkUnavailableError('工作已有运行持有执行权')
       if (input.intent.workId && input.intent.expectedVersion === undefined) throw new WorkUnavailableError('引用已有工作必须声明观察到的版本')
       if (input.intent.expectedVersion !== undefined && input.intent.expectedVersion !== work.version) throw new WorkUnavailableError('工作版本已变化，请重新读取当前结果')
+      if (input.retryFromUserMessage) {
+        const run = await tx.get<AgentRun>('runs', input.runId)
+        const turn = run?.turnId ? await tx.get<DiscussionTurn>('turns', run.turnId) : undefined
+        const original = await tx.get<Message>('messages', work.sourceMessageId)
+        const conversation = await tx.get<Conversation>('conversations', work.conversationId)
+        const agent = await tx.get<DigitalAgent>('agents', input.agentId)
+        if (!input.intent.workId || work.status !== 'failed' || work.origin || work.collaborationRequestId || work.organization || work.revisionRequestId || input.origin || input.wakeId || input.nativeTurn ||
+          !actualSource || actualSource.id === work.sourceMessageId || actualSource.senderType !== 'user' || actualSource.senderId !== 'user' || actualSource.status !== 'completed' || actualSource.channel || actualSource.origin || actualSource.conversationId !== work.conversationId ||
+          !original || actualSource.sequence <= original.sequence || !run || run.phase !== 'execution' || run.status !== 'running' || run.agentId !== input.agentId || run.conversationId !== work.conversationId || run.triggerMessageId !== actualSource.id ||
+          !turn || turn.triggerMessageId !== actualSource.id || turn.workId || turn.wakeId || turn.origin || turn.collaborationRequestId || !conversation?.agentIds.includes(input.agentId) || !agent?.active || await tx.get('conversationCleanup', work.conversationId)) {
+          throw new WorkUnavailableError('接续必须来自当前会话中新的用户消息及原失败任务')
+        }
+        if ((await tx.list<AgentRun>('runs')).some(previous => previous.id !== run.id && previous.workId === work.id && previous.triggerMessageId === actualSource.id)) throw new WorkUnavailableError('这条接续消息已执行，不能重复重试')
+        // Authorization and claim share this transaction: a later admission failure
+        // must not leave the work ready or consume a retry allowance.
+        await this.prepareRetry(tx, work, input.agentId, true)
+      }
       if (work.status !== 'ready') throw new WorkUnavailableError(`工作当前为 ${work.status}，不能重复执行`)
       if (work.wakeId && work.wakeId !== input.wakeId) throw new WorkUnavailableError('该工作只能由定向接续认领')
       const wake = input.wakeId ? await tx.get<WorkWake>('workWakes', input.wakeId) : undefined
@@ -695,26 +716,36 @@ export class WorkRepository {
   authorizeRetry(workId: string, agentId: string, records: StoredRecord[] = []) {
     return this.store.transaction(async tx => {
       const work = await tx.get<WorkItem>('workItems', workId)
-      if (!work || work.ownerAgentId !== agentId || work.activeRunId || !['failed', 'cancelled'].includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
-      await this.revisionWork(tx, work)
-      if (work.requiresReview) throw new WorkUnavailableError('已有工具操作需要核对，请确认现有结果后发起明确的新请求')
-      const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
-      checkWorkBudget(budget, work.budgetPolicy)
-      if (work.budgetPolicy !== 'native' && budget.retries >= budget.maxRetries) throw new WorkUnavailableError('达到原始工作的重试上限')
-      for (const result of work.requiredResults) {
-        const dependency = await tx.get<WorkItem>('workItems', result.workId)
-        if (dependency?.status !== 'delivered' || dependency.resultVersion < result.resultVersion) throw new WorkUnavailableError('所需依赖尚未交付，不能重试执行')
-      }
-      if (work.parentWorkId) {
-        const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
-        if (parent?.status === 'cancelled' || parent?.status === 'interrupted') throw new WorkUnavailableError('父工作已停止，不能单独重试子工作')
-      }
-      if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId)
-      delete work.wakeId
-      if (work.budgetPolicy !== 'native') budget.retries++; await tx.put(row('workBudgets', budget))
-      work.status = 'ready'; work.version++; work.updatedAt = timestamp()
-      await tx.put(row('workItems', work))
+      if (!work) throw new WorkUnavailableError('当前工作不能重试')
+      await this.prepareRetry(tx, work, agentId)
       for (const record of records) await tx.put(record)
     })
+  }
+  private async prepareRetry(tx: RecordTransaction, work: WorkItem, agentId: string, continuedByUser = false) {
+    if (work.ownerAgentId !== agentId || work.activeRunId || !['failed', 'cancelled'].includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
+    await this.revisionWork(tx, work)
+    if (work.requiresReview) {
+      const executions = continuedByUser ? (await tx.list<WorkExecution>('workExecutions')).filter(execution => execution.workId === work.id) : []
+      // A new explicit continuation may use confirmed results. Unknown/legacy
+      // counters and any unfinished effect still prohibit replay. The ordinary
+      // retry button retains its existing conservative behavior.
+      if (!executions.length || executions.some(execution => execution.status !== 'released' || execution.pendingEffects !== 0)) throw new WorkUnavailableError('已有工具操作需要核对，请确认现有结果后发起明确的新请求')
+    }
+    const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
+    checkWorkBudget(budget, work.budgetPolicy)
+    if (work.budgetPolicy !== 'native' && budget.retries >= budget.maxRetries) throw new WorkUnavailableError('达到原始工作的重试上限')
+    for (const result of work.requiredResults) {
+      const dependency = await tx.get<WorkItem>('workItems', result.workId)
+      if (dependency?.status !== 'delivered' || dependency.resultVersion < result.resultVersion) throw new WorkUnavailableError('所需依赖尚未交付，不能重试执行')
+    }
+    if (work.parentWorkId) {
+      const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
+      if (parent?.status === 'cancelled' || parent?.status === 'interrupted') throw new WorkUnavailableError('父工作已停止，不能单独重试子工作')
+    }
+    if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId)
+    delete work.wakeId
+    if (work.budgetPolicy !== 'native') budget.retries++; await tx.put(row('workBudgets', budget))
+    work.status = 'ready'; work.requiresReview = false; work.version++; work.updatedAt = timestamp()
+    await tx.put(row('workItems', work))
   }
 }

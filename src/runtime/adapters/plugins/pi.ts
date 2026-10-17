@@ -1,5 +1,7 @@
 /*
- * [INPUT]: Pi 0.85.1+ native RPC and Runtime API v1 services.
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [INPUT]: Pi 0.85.1+ native RPC and Runtime API v2 services; explicit sources require verified Pi 1.3.0.
  * [OUTPUT]: Strict JSONL, correlated acceptance, native session files, extension tools and actual settled termination.
  * [POS]: Independently bundled Pi provider; protocol source is Pi's shipped docs/rpc.md.
  * [PROTOCOL]: Update Header and plugins/.folder.md; verify changed upstream commands before release.
@@ -9,10 +11,13 @@ import { isAbsolute, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { launchNative, JsonLines } from './transport'
 import { toolServer } from './tool-server'
+import { piNativeSourceIdentity } from './native-source'
+import { piGatewaySource } from './gateway-source'
 import type { RuntimeProvider, RuntimeServices, RuntimeSessionInput, RuntimeSubmission } from '../../../shared/plugins/runtime-api'
-export const runtimeApiVersion = 1
+export const runtimeApiVersion = 2
 export function createRuntime(services: RuntimeServices): RuntimeProvider {
   const { launch, emit } = services
+  const source = services.modelSource, gateway = source ? piGatewaySource(source) : undefined
   let rpc: JsonLines | undefined, bridge: Awaited<ReturnType<typeof toolServer>> | undefined, extension: string | undefined
   let sessionId = '', text = '', running = false, messageId = '', failure: Error | undefined
   let settled: { resolve(): void; reject(error: Error): void } | undefined
@@ -49,9 +54,10 @@ export function createRuntime(services: RuntimeServices): RuntimeProvider {
     rpc!.write({ type: 'extension_ui_response', id: frame.id, ...(confirm ? { confirmed: response.option === 'yes' } : { value: selected?.label ?? response.answers?.[frame.id]?.join('\n'), cancelled: !selected && !response.answers?.[frame.id]?.length }) })
     answered.add(frame.id)
   }
-  async function start(args: string[]) { rpc = new JsonLines(launchNative(launch, args), event); return rpc.request('get_state', {}, 60000) }
+  async function start(args: string[]) { rpc = new JsonLines(launchNative(launch, args, gateway?.env), event); return rpc.request('get_state', {}, 60000) }
   async function close() { const value = rpc; rpc = undefined; if (value) await value.close(); if (bridge) { await bridge.close(); bridge = undefined } if (extension) { await rm(extension, { force: true }); extension = undefined } }
   return {
+    async inspectSource() { return { fingerprint: await piNativeSourceIdentity(launch) } },
     async probe() {
       const child = launchNative(launch, ['--version']); let version = ''
       child.stdout.on('data', value => { if (version.length < 1000) version += value.toString() }); child.stderr.resume()
@@ -59,8 +65,9 @@ export function createRuntime(services: RuntimeServices): RuntimeProvider {
       version = version.trim(); if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Pi未返回有效版本')
       const [major, minor, patch] = version.split('.').map(Number)
       if (major === 0 && (minor < 85 || minor === 85 && patch < 1)) throw new Error('Pi插件需要0.85.1或更新版本的agent_settled事件')
+      if (source && version !== '1.3.0') throw new Error('明确网关来源需要已核对的Pi 1.3.0')
       await start(['--mode', 'rpc', '--no-session']); await close()
-      return { name: 'Pi', version, protocolVersion: 1, capabilities: { chat: 'supported', resume: 'supported', images: 'supported', tools: 'supported', actions: 'supported', steer: 'supported', followUp: 'supported' } }
+      return { name: 'Pi', version, protocolVersion: 1, ...(version === '1.3.0' ? { modelSource: { protocols: ['chat', 'responses', 'messages'] as ('chat' | 'responses' | 'messages')[] } } : {}), capabilities: { chat: 'supported', resume: 'supported', images: 'supported', tools: 'supported', actions: 'supported', steer: 'supported', followUp: 'supported' } }
     },
     async openSession(input: RuntimeSessionInput) {
       await mkdir(launch.privateHome, { recursive: true, mode: 0o700 })
@@ -68,10 +75,15 @@ export function createRuntime(services: RuntimeServices): RuntimeProvider {
       if (input.resumeRef) { const path = relative(sessions, input.resumeRef); if (!isAbsolute(input.resumeRef) || path.startsWith('..') || isAbsolute(path)) throw new Error('Pi续用引用不属于当前员工会话') }
       bridge = await toolServer(services, input.tools)
       extension = join(launch.privateHome, `boai-${randomUUID()}.mjs`)
-      await writeFile(extension, `export default function(pi) { const tools = ${JSON.stringify(input.tools)}; for (const tool of tools) pi.registerTool({ name: tool.name, label: tool.name, description: tool.description, parameters: tool.inputSchema, async execute(callId, input, signal) { const response = await fetch(${JSON.stringify(bridge.url)}, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: callId, method: 'tools/call', params: { name: tool.name, arguments: input, callId } }), signal }); const value = await response.json(); if (value.error) throw new Error(value.error.message); if (value.result?.isError) throw new Error(value.result.content?.map(part => part.text ?? '').join('\\n') || 'BOAI工具失败'); return { content: value.result.content, details: {} }; } }); }`, { mode: 0o600 })
-      const state = await start(['--mode', 'rpc', '--session-dir', sessions, '--append-system-prompt', input.instructions, '--extension', extension, ...(input.resumeRef ? ['--session', input.resumeRef] : []), ...(launch.modelId ? ['--model', launch.modelId] : [])])
+      await writeFile(extension, `export default function(pi) { ${gateway?.extension ?? ''} const tools = ${JSON.stringify(input.tools)}; for (const tool of tools) pi.registerTool({ name: tool.name, label: tool.name, description: tool.description, parameters: tool.inputSchema, async execute(callId, input, signal) { const response = await fetch(${JSON.stringify(bridge.url)}, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: callId, method: 'tools/call', params: { name: tool.name, arguments: input, callId } }), signal }); const value = await response.json(); if (value.error) throw new Error(value.error.message); if (value.result?.isError) throw new Error(value.result.content?.map(part => part.text ?? '').join('\\n') || 'BOAI工具失败'); return { content: value.result.content, details: {} }; } }); }`, { mode: 0o600 })
+      let state = await start(['--mode', 'rpc', '--session-dir', sessions, '--append-system-prompt', input.instructions, '--extension', extension, ...(input.resumeRef ? ['--session', input.resumeRef] : []), ...(gateway ? ['--provider', gateway.providerId, '--model', source!.modelId] : launch.modelId ? ['--model', launch.modelId] : [])])
+      if (gateway) {
+        await rpc!.request('set_model', { provider: gateway.providerId, modelId: source!.modelId })
+        state = await rpc!.request('get_state')
+        if (state.model?.provider !== gateway.providerId || state.model?.id !== source!.modelId || state.model?.baseUrl !== gateway.baseUrl) throw new Error('Pi实际模型来源与所选网关不一致，未发送本轮消息')
+      }
       if (typeof state?.sessionId !== 'string' || typeof state?.sessionFile !== 'string') throw new Error('Pi未返回持久会话身份')
-      sessionId = state.sessionId; return { sessionId, resumeRef: state.sessionFile }
+      sessionId = state.sessionId; return { sessionId, resumeRef: state.sessionFile, ...(source ? { modelSource: { protocol: source.protocol, modelId: source.modelId } } : {}) }
     },
     async submit(input: RuntimeSubmission) {
       if (!rpc || running) throw new Error('Pi会话未就绪或已有执行')

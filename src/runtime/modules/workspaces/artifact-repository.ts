@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件与Codex成果修订事务核对明确网关连接，来源丢失在创建修订请求前拒绝。
  * [OUTPUT]: 运行时插件成果修订复用原profile与固定来源核验。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 固定渠道文件可在直属内部讨论修订，源hash/权限/清理代际逐次核验；新版本归内部工作，版本链保持且不自动外发。
@@ -14,7 +15,7 @@
  * [POS]: workspaces 的成果持久权威；不按同名关联，不改 Work 结果/预算，不执行模型或继承旧审核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { resolvePluginRuntime } from '../backends/runtime-config'
+import { resolvePluginRuntime, resolveCodexRuntime } from '../backends/runtime-config'
 import { resolveClaudeRuntime } from '../backends/runtime-config'
 import { assertChannelSourceAccess } from '../channels/channel-workspace'
 import { createHash, randomUUID } from 'node:crypto'
@@ -86,14 +87,14 @@ export class ArtifactRepository {
     const conversation = await this.conversation(tx, conversationId), agent = await tx.get<DigitalAgent>('agents', identifier(agentId))
     if (!agent?.active || !conversation.agentIds.includes(agent.id)) throw new Error('请明确选择当前聊天中可执行的员工')
     if (agent.executionBackend?.kind === 'acp-local') throw new Error('首批成果修订不支持外部 ACP 员工')
-    if (agent.executionBackend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId)); return agent }
+    if (agent.executionBackend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId), await tx.get<Connection>('connections', agent.connectionId)); return agent }
     if (agent.executionBackend?.kind === 'claude-local') {
       resolveClaudeRuntime(agent, await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId), await tx.get<Connection>('connections', agent.connectionId))
       return agent
     }
     if (agent.executionBackend?.kind === 'codex-local') {
       const profile = await tx.get<LaunchProfile>('launchProfiles', agent.executionBackend.profileId)
-      if (profile?.protocol !== 'codex-app-server' || !profile.verified) throw new Error('请先测试修订员工的本机 Codex 连接')
+      await resolveCodexRuntime(agent, profile, await tx.get<Connection>('connections', agent.connectionId))
       return agent
     }
     const connection = !agent.connectionId && isCoreAgent(agent)

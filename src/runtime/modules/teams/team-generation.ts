@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 活动团队生成按connectionId取消并等待实际planner退出，连接换源/删除不采用迟到方案。
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: 团队草稿事务、同连接容量、一次模型适配器与密钥读取。
  * [OUTPUT]: 宿主填充权威能力说明；幂等生成、两次调用上限/绝对期限、逐调用用量、取消/迟到/重启隔离。
  * [POS]: 内置助手用例；不创建员工、会话或 Work。
@@ -10,12 +12,14 @@ import type { Connection } from '../../../shared/domain'
 import { avatarPresets } from '../../../shared/domain/avatars'
 import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamPlannerOutputSchema, type TeamDraft, type TeamGeneration } from '../../../shared/domain/team-creation'
 import { TeamPlanFormatError, type TeamPlanner, type TeamUsage } from '../../adapters/mastra/team-planner'
+import { gatewayModelCall } from '../../adapters/mastra/gateway-route'
+import type { GatewayRouteEvidence } from '../../../shared/domain/model-gateway'
 import { ModelCapacity } from '../collaboration/model-capacity'
 import { TeamRepository, editableTeamDraft, readTeamDraft, resolveTeamModel, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 
 const requestSchema = teamVersionSchema.extend({ requestId: teamId }).strict()
 export class TeamGenerationService {
-  private running = new Map<string, { controller: AbortController; task: Promise<void> }>()
+  private running = new Map<string, { connectionId: string; controller: AbortController; task: Promise<void> }>()
   constructor(private readonly repo: TeamRepository, private readonly capacity: ModelCapacity, private readonly planner: TeamPlanner, private readonly hooks: { key(id: string): Promise<string | undefined>; changed(): void }) {}
   async generate(input: unknown) {
     const request = requestSchema.parse(input), requestHash = teamHash(request)
@@ -35,15 +39,23 @@ export class TeamGenerationService {
     if (accepted.draft && accepted.connection) {
       const controller = new AbortController()
       const task = Promise.resolve().then(() => this.execute(accepted.generation, accepted.draft!, accepted.connection!, controller)).finally(() => { this.running.delete(accepted.generation.id); this.hooks.changed() })
-      this.running.set(accepted.generation.id, { controller, task })
+      this.running.set(accepted.generation.id, { connectionId: accepted.connection.id, controller, task })
     }
     this.hooks.changed(); return accepted.generation
   }
-  private async attempt(id: string, phase: 'initial' | 'repair') {
+  private async attempt(id: string, phase: 'initial' | 'repair', connection: Connection) {
     return this.repo.store.transaction(async tx => {
       const value = (await tx.get<TeamGeneration>('teamGenerations', id))!
       if (value.status !== 'running' || Date.now() >= Date.parse(value.deadline) || value.attempts.length >= TEAM_LIMITS.attempts) teamError('GENERATION_FAILED', '生成已停止或预算已用尽')
-      const callId = randomUUID(); value.attempts.push({ callId, phase, status: 'running', usage: 'unknown' }); await tx.put(teamRecord('teamGenerations', value)); return callId
+      const callId = randomUUID(), modelCall = gatewayModelCall(connection, callId, 'team-plan', value.modelId)
+      value.attempts.push({ callId, phase, status: 'running', usage: 'unknown', ...(modelCall ? { modelCall } : {}) }); await tx.put(teamRecord('teamGenerations', value)); return callId
+    })
+  }
+  private async route(id: string, callId: string, evidence: GatewayRouteEvidence) {
+    await this.repo.store.transaction(async tx => {
+      const value = await tx.get<TeamGeneration>('teamGenerations', id), attempt = value?.attempts.find(item => item.callId === callId)
+      if (value?.status !== 'running' || attempt?.status !== 'running' || !attempt.modelCall || attempt.modelCall.route) return
+      attempt.modelCall.route = structuredClone(evidence); await tx.put(teamRecord('teamGenerations', value))
     })
   }
   private async settle(id: string, callId: string, usage?: TeamUsage, status?: 'succeeded' | 'failed') {
@@ -85,9 +97,9 @@ export class TeamGenerationService {
         controller.signal.throwIfAborted()
         try {
           const result = await this.capacity.run(connection.id, controller.signal, async () => {
-            const callId = await this.attempt(generation.id, index ? 'repair' : 'initial')
+            const callId = await this.attempt(generation.id, index ? 'repair' : 'initial', connection)
             try {
-              const output = await this.planner({ connection, modelId: generation.modelId, apiKey: await this.hooks.key(connection.id) ?? '', prompt: draft.prompt, repair, signal: controller.signal, usage: usage => this.settle(generation.id, callId, usage) })
+              const output = await this.planner({ connection, modelId: generation.modelId, apiKey: await this.hooks.key(connection.id) ?? '', prompt: draft.prompt, repair, signal: controller.signal, modelCallId: callId, onModelCallRoute: (id, evidence) => this.route(generation.id, id, evidence), usage: usage => this.settle(generation.id, callId, usage) })
               const parsed = teamPlannerOutputSchema.safeParse(output)
               if (!parsed.success) throw new TeamPlanFormatError(parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ').slice(0, 1000))
               await this.settle(generation.id, callId, undefined, 'succeeded'); return parsed.data
@@ -122,6 +134,11 @@ export class TeamGenerationService {
     return this.repo.abandon(value)
   }
   get busy() { return this.running.size > 0 }
+  async cancelConnection(connectionId: string) {
+    const pending = [...this.running].filter(([, value]) => value.connectionId === connectionId)
+    for (const [generationId] of pending) await this.cancel({ generationId })
+    await Promise.allSettled(pending.map(([, value]) => value.task))
+  }
   async close() {
     for (const id of this.running.keys()) await this.cancel({ generationId: id }, 'interrupted')
     await Promise.allSettled([...this.running.values()].map(value => value.task))

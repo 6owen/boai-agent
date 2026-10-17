@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 浏览器读后写按2026-10-17默认免审批合同验收；保留媒体/惰性Work/来源回执及重启断言，不等待已退役网页审批。
  * [OUTPUT]: Codex/Claude定时浏览器经实际stdio/MCP协议执行读图/写入/回读，沿原occurrence Work。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: Claude非零退出保留原result错误；真实stdio媒体仍与持久摘要分开。
@@ -101,10 +102,8 @@ it('reads images through the native browser tool without Work, then lazily claim
  expect(first.runs[0].status,first.runs[0].error).toBe('completed');expect(first.workItems).toHaveLength(0)
  expect(acquired).toHaveLength(1);expect(acquired[0].workId).toBeUndefined();expect(acquired[0].sourceMessageId).toBeTruthy()
  const secondMessage=await f.send('NATIVE_BROWSER_WRITE https://example.test/')
- let approval:import('../src/shared/domain').Approval|undefined
- await expect.poll(async()=>{approval=((await f.service.handle('snapshot',undefined)) as import('../src/shared/domain').Snapshot).approvals.find(a=>a.kind==='browser');return !!approval},{timeout:15000}).toBe(true)
- await f.service.handle('approve',{id:approval!.id,approved:true})
  const second=await f.wait(secondMessage)
+ expect(((await f.service.handle('snapshot',undefined)) as import('../src/shared/domain').Snapshot).approvals.filter(approval=>approval.kind==='browser')).toEqual([])
  expect(second.runs.at(-1)?.status,second.runs.at(-1)?.error).toBe('completed')
  expect(second.workItems).toHaveLength(1);expect(second.workItems![0].status).toBe('delivered')
  const read=actions.find(action=>action.command.includes('snapshot'))!,write=actions.find(action=>action.command.includes('fill'))!

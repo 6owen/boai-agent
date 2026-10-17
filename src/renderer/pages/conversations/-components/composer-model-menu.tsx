@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: 当前员工的Magpie三协议目录沿保存版本读取，模型展示名与推理原值来自结构化目录。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 当前员工、原连接快照、原生目录和已提交配置保存回调。
  * [OUTPUT]: 当前连接内模型与推理菜单；保留目录/顺序且无顶部或读取提示，保存不插入锁定说明；管理入口在关闭动画完成后跳转通讯录。
@@ -46,26 +48,28 @@ export function ComposerModelMenu({ api, agent, snapshot, locked, runs, onSave, 
     if (!open || (catalog?.source === source && catalog.revision === revision)) return
     let current = true
     if (!unknown) setError('')
-    const request = backend?.kind === 'codex-local' && profile?.verified
+    const request = backend?.kind === 'codex-local' && !committed.connectionId && profile?.verified
       ? api.request('getLaunchProfileModelCatalog', { id: profile.id })
-      : (!native || backend?.kind === 'claude-local') && connection?.provider === 'openai-compatible'
-        ? api.request('listConnectionModels', { id: connection.id, baseUrl: connection.baseUrl }).then(models => models.map(value => ({ value })))
+      : connection?.gateway
+        ? api.request('getConnectionModelCatalog', { id: connection.id, baseUrl: connection.baseUrl, gateway: connection.gateway, expectedRevision: connection.revision }).then(value => value.models.map(model => ({ value: model.id, displayName: model.name, supportedEffortLevels: model.reasoningLevels })))
+      : (!native || backend?.kind === 'claude-local') && connection && (connection.provider === 'openai-compatible' || connection.gateway)
+        ? api.request('listConnectionModels', { id: connection.id, baseUrl: connection.baseUrl, ...(connection.gateway ? { gateway: connection.gateway, expectedRevision: connection.revision } : {}) }).then(models => models.map(value => ({ value })))
         : undefined
     if (!request) { setLoading(false); return }
     setLoading(true)
     void request.then(value => { if (current) { setCatalog({ source, revision, models: value }); setLoading(false) } }, failure => { if (current) { setError(errorText(failure)); setLoading(false) } })
     return () => { current = false }
   }, [api, open, source, revision])
-  const effective = committed.modelId || (!native ? connection?.defaultModel : '') || ''
+  const effective = committed.modelId || connection?.defaultModel || ''
   const modelMap = new Map<string, ComposerModel>()
-  for (const model of [...(nativeInfo?.models ?? []), ...(catalog?.source === source ? catalog.models : [])]) modelMap.set(model.value, { ...modelMap.get(model.value), ...model })
+  for (const model of [...(!connection?.gateway ? nativeInfo?.models ?? [] : []), ...(catalog?.source === source ? catalog.models : [])]) modelMap.set(model.value, { ...modelMap.get(model.value), ...model })
   if (effective && !modelMap.has(effective)) modelMap.set(effective, { value: effective })
   const models = [...modelMap.values()]
-  const options = native ? [{ value: '', displayName: '使用本机 Agent 默认模型' }, ...models] : models
-  const canRefresh = backend?.kind === 'codex-local' ? Boolean(profile?.verified) : (!native || backend?.kind === 'claude-local') && connection?.provider === 'openai-compatible'
+  const options = native ? [{ value: '', displayName: connection?.gateway ? '使用网关连接默认模型' : '使用本机 Agent 默认模型' }, ...models] : models
+  const canRefresh = connection?.gateway ? true : backend?.kind === 'codex-local' ? !committed.connectionId && Boolean(profile?.verified) : (!native || backend?.kind === 'claude-local') && connection?.provider === 'openai-compatible'
   const efforts = composerEfforts(committed, connection, models)
   const effort = native ? committed.nativeOptions?.effort ?? '' : committed.thinkingLevel ?? 'auto'
-  const unavailable = native ? !profile?.verified : !connection
+  const unavailable = native ? !profile?.verified || !!committed.connectionId && !connection : !connection
   const disabled = locked || saving || unknown || unavailable
   const save = async (patch: ComposerModelPatch) => {
     if (disabled || flight.current) return

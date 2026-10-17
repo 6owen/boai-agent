@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 工作方式/实际能力/技能/数据源使用标题加Card；配置值后紧凑状态，说明仅Tooltip，执行记录直接展示。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 员工资料直接展示只读定时任务列表，点击定位全局管理页。
@@ -82,7 +85,7 @@ export function EmployeeOverview({ api, snapshot, agent, active, onConfigure }: 
       {error && <><Banner>{`能力说明读取失败：${error}`}</Banner><Button variant="ghost" size="sm" onClick={() => setRevision(value => value + 1)}>重新读取</Button></>}
       <ContactProfileCard label="实际能力配置">
         <ContactProfileRow icon={<Cpu />} title="模型连接"><span className="contact-value-status"><span>{connectionName}</span><small className="contact-inline-status" data-positive={connectionStatus === '已配置' || connectionStatus.startsWith('已记录')}>{connectionStatus}</small></span></ContactProfileRow>
-        {agent.executionBackend?.kind === 'claude-local' && <ContactProfileRow icon={<Cpu />} title="模型来源"><span className="contact-value-status"><span>{connection?.name ?? '未配置'}</span><small className="contact-inline-status" data-positive={Boolean(connection?.hasApiKey && (agent.modelId || connection.defaultModel))}>{capabilities.find(fact => fact.id === 'model')?.status ?? '未配置'}</small></span></ContactProfileRow>}
+        {(agent.executionBackend?.kind === 'claude-local' || agent.executionBackend?.kind === 'codex-local' || agent.executionBackend?.kind === 'runtime-plugin') && <ContactProfileRow icon={<Cpu />} title="模型来源"><span className="contact-value-status"><span>{agent.executionBackend?.kind === 'runtime-plugin' ? agent.connectionId ? connection?.name ?? '未配置' : launchStatus?.profile.name ?? '本机 Agent' : agent.executionBackend?.kind === 'codex-local' ? agent.connectionId ? connection?.name ?? '未配置' : '本机 Codex' : launchStatus?.profile.useExistingLogin ? '本机 Claude' : connection?.name ?? '未配置'}</span><small className="contact-inline-status" data-positive={capabilities.find(fact => fact.id === 'model')?.status === '已配置'}>{capabilities.find(fact => fact.id === 'model')?.status ?? '未配置'}</small></span></ContactProfileRow>}
         <ContactProfileRow icon={<Key />} title="命令授权"><span className="contact-value-status"><span>{commandValue}</span><small className="contact-inline-status" data-positive={native || agent.allowCommands}>{native ? '跟随配置' : agent.allowCommands ? '已启用' : '未启用'}</small></span></ContactProfileRow>
       </ContactProfileCard>
     </ContactProfileSection>

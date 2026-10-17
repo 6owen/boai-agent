@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [OUTPUT]: manageSkills/manageDataSources为普通bobo私聊的可选宿主回调，API与本机共用。
  * [OUTPUT]: 专用数据源会话可注入createDataSource宿主回调，普通聊天保持不可用。
  * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
@@ -14,7 +16,7 @@
  * [OUTPUT]: 外部阶段用量区分中途观测与已确认终态；只有终态可关闭原请求的未知用量。
  * [OUTPUT]: 本机进程目录独立于任务文件能力，补充问题/只读汇报仍可启动无工具阶段。
  * [OUTPUT]: 执行上下文区分模型 API 与本机配置；API 适配器在构造模型前明确校验，外部员工不制造虚假连接。
- * [INPUT]: 共享工作/产品合同、协作投递引用和授权执行环境。
+ * [INPUT]: 共享工作/产品合同、协作投递引用、独立网关目录快照/逐请求响应路由和授权执行环境。
  * [OUTPUT]: 图片附件仅在当前获准上下文以内存媒体交给模型，不进入持久消息或运行快照。
  * [OUTPUT]: 核心组织阶段的有界员工摘要、宿主原工作授权及已提交真实组织回执 ID；群中 bobo 不持管理工具。
  * [OUTPUT]: 宿主即时核验的依赖成果 ID/hash/逻辑路径；读取仍核对来源，不将同伴文字或元信息当作本人交付。
@@ -38,6 +40,10 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Private native configuration fence; never a provider URL/key or public capability claim. */
+  nativeSourceFingerprint?: string
+  /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
+  modelCatalog?: import('../shared/domain/model-gateway').ModelCatalog
   dataSources?: import('../shared/domain/sources').SourceSummary[]
   inspectDataSource?(sourceId: string): Promise<unknown>
   callDataSource?(input: import('../shared/domain/sources').SourceCall): Promise<unknown>
@@ -115,6 +121,7 @@ export interface EngineContext {
   /** Host reservation for this adapter invocation's first request. */
   modelCallId?: string
   onModelCallStarted?(callId: string, phase: 'chat' | 'task' | 'decision' | 'memory' | 'report', thinking?: string): Promise<void>
+  onModelCallRoute?(callId: string, evidence: import('../shared/domain/model-gateway').GatewayRouteEvidence): Promise<void>
   onSkillActivated?(toolCallId: string, skill: { id: string; name: string }): Promise<void>
   /** Raw per-request usage, never the SDK's zero-filled or cumulative aggregate. */
   onModelCallUsage?(callId: string, usage: ModelUsage, externalComplete?: boolean): Promise<void>
@@ -141,7 +148,11 @@ export interface EngineContext {
   onTool(event: ToolEvent): Promise<void>
   approveCommand(command: string, cwd: string): Promise<boolean>
 }
-export interface AutomationDraftContext {
+export interface ModelCallObservation {
+  modelCallId?: string
+  onModelCallRoute?: EngineContext['onModelCallRoute']
+}
+export interface AutomationDraftContext extends ModelCallObservation {
   connection: Connection
   apiKey: string
   instruction: string
@@ -158,7 +169,7 @@ export interface AgentEngine {
   decide?(context: EngineContext): Promise<ParticipationDecision>
   extractMemory?(context: EngineContext): Promise<MemoryCandidate[]>
   plan?(context: Omit<EngineContext, 'onDelta' | 'onTool' | 'approveCommand'>, members: DigitalAgent[]): Promise<string[]>
-  test(connection: Connection, apiKey: string): Promise<string>
+  test(connection: Connection, apiKey: string, observation?: ModelCallObservation & { signal?: AbortSignal }): Promise<string>
 }
 
 /** API adapters reject local runtime contexts before constructing a model. */

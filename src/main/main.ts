@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
+ * [OUTPUT]: Magpie本机发现经固定配置端口回退与运行时hello核验，不读取或导出供应商凭据。
  * [OUTPUT]: 公共IPC沿完整类型核对准入表，补齐目录结果与本地技能写入/删除入口。
  * [OUTPUT]: 放行员工命令永久授权的版本化撤销IPC，真实审批和授权在运行层原子提交。
  * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
@@ -33,12 +36,15 @@
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { GatewayImportInbox } from './gateway-import-inbox'
+import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { AutomationNotificationConsumer } from './automation-notifications'
 import { BrowserService } from './browser/browser-service'
 import type { BrowserHostMethods, BrowserLease } from '../shared/ipc/browser'
 import type { AutomationNotice } from '../shared/domain/automations'
 import { z } from 'zod'
 import { LocalConfigDiscovery } from './local-configs/discovery'
+import { discoverLocalMagpie } from './local-configs/magpie-discovery'
 import { decodeImage } from './decode-image'
 import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu, clipboard } from 'electron'
 import type { UtilityProcess } from 'electron'
@@ -75,6 +81,15 @@ let quitting = false
 let quitApproved = false
 let creatingWindow: Promise<void> | null = null
 let initialized: Promise<void> | undefined
+let importWindowReady = false
+const importErrors: string[] = []
+const gatewayImportInbox = new GatewayImportInbox(async input => {
+  await requestRuntime('__receiveGatewayImport', input)
+  await showMainWindow()
+}, error => {
+  if (importWindowReady) sendEvent({ type: 'runtime-error', error })
+  else if (importErrors.length < 8) importErrors.push(error)
+})
 const dirtySources = new Set<string>()
 const hasUnsavedChanges = () => dirtySources.size > 0
 let confirmingClose = false
@@ -295,6 +310,8 @@ function registerIpc() {
     if (!isPublicMethod(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
+    if (method === 'listGatewayImports') { importWindowReady = true; for (const error of importErrors.splice(0)) sendEvent({ type: 'runtime-error', error }) }
+    if (method === 'discoverModelGateway') { z.undefined().parse(input); return discoverLocalMagpie(baseUrl => requestRuntime('probeModelGateway', { baseUrl }) as Promise<Methods['probeModelGateway']['output']>) }
     if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
     if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
     if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
@@ -330,7 +347,7 @@ function registerIpc() {
       return localConfigs.scan({ directory: await realpath(selection.filePaths[0]) })
     }
     if (method === 'importLocalConnection' || method === 'testLocalConnection') {
-      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), model: z.string().trim().min(1).max(300).optional() }).strict().parse(input)
+      const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), model: z.string().trim().min(1).max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value), '无效的模型 ID').optional() }).strict().parse(input)
       return requestRuntime(method === 'testLocalConnection' ? 'testConnectionDraft' : 'saveConnection', localConfigs.connection(selected.configId, selected.model))
     }
     if (method === 'saveLaunchProfile' || method === 'testLaunchProfileDraft') {
@@ -460,6 +477,8 @@ async function createWindow(show = true) {
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, zoomFactor: appearance.snapshot().preferences.zoomFactor },
   })
   const mainWindow = window
+  importWindowReady = false
+  mainWindow.webContents.on('did-start-loading', () => { importWindowReady = false })
   mainWindow.once('ready-to-show', () => { if (show && !quitting && !mainWindow.isDestroyed()) mainWindow.show() })
   mainWindow.on('closed', () => { if (window === mainWindow) window = null })
   mainWindow.on('close', event => {
@@ -504,7 +523,11 @@ async function confirmDiscard(continueClose: () => void) {
 
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  app.on('second-instance', () => { void (initialized ?? app.whenReady()).then(showMainWindow) })
+  // Register before any asynchronous initialization so macOS cold-start URLs are retained.
+  app.on('open-url', (event, url) => { event.preventDefault(); gatewayImportInbox.receive(url) })
+  const receiveImportArguments = (args: string[]) => { for (const value of args) if (/^boai:/i.test(value)) gatewayImportInbox.receive(value) }
+  receiveImportArguments(process.argv)
+  app.on('second-instance', (_event, args) => { receiveImportArguments(args); void (initialized ?? app.whenReady()).then(showMainWindow) })
   initialized = app.whenReady().then(async () => {
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
@@ -514,12 +537,13 @@ else {
     nativeTheme.on('updated',()=>appearance.systemChanged())
     protocol.handle('boai-asset',async request=>{try{const url=new URL(request.url);if(url.hostname!=='appearance'||url.search||url.hash)throw new Error('无效路径');const asset=await appearance.asset(decodeURIComponent(url.pathname.slice(1)));return new Response(new Uint8Array(asset.bytes),{headers:{'Content-Type':asset.type,'Cache-Control':'no-store'}})}catch{return new Response('Not found',{status:404})}})
     registerIpc()
+    if (app.isPackaged && !app.setAsDefaultProtocolClient('boai')) importErrors.push('无法注册模型导入链接，请在模型连接中手动添加。')
     installMenu()
     background.init()
     creatingWindow = createWindow(!desktopSettings.hiddenAtLogin(process.argv))
     try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
-    void startRuntime().catch((error) => sendEvent({ type: 'runtime-error', error: error.message }))
+    void startRuntime().then(() => gatewayImportInbox.start()).catch((error) => sendEvent({ type: 'runtime-error', error: error.message }))
     app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })

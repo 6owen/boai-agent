@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 原生准备阶段可登记适配器严格核对后的新来源指纹，首条及后续消息共享同一真实会话；启动不重放。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
+ * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 普通bobo注入全局目录管理指令，不增加独立Agent或专用会话。
  * [OUTPUT]: 专用数据源会话注入共享bobo配置指令，沿原生连续聊天/产品工具桥。
  * [OUTPUT]: 原生bobo专用计划对话同样接收真实通讯录与单员工计划指令。
@@ -25,7 +28,7 @@ import { createNativeProducts } from './native-products'
 export interface NativeConversationInput {
   instructions: string; nativeInstructions?: string; prompt: string; threadId?: string; images: string[]; tools: NativeTool[]
   cancelProducts?(): void
-  onSession(id: string): Promise<void>
+  onSession(id: string, preparedSourceFingerprint?: string): Promise<void>
   onSubmitted(threadId: string, turnId: string): Promise<void>
 }
 export abstract class NativeConversationEngine {
@@ -33,8 +36,12 @@ export abstract class NativeConversationEngine {
   constructor(store: ProductStore, private readonly runtime: string) { this.sessions = new NativeSessions(store, runtime) }
   async recover(dataPath: string) { await recoverNativeProcesses(dataPath,this.runtime); return this.sessions.recover(dataPath) }
   protected abstract conversation(context: EngineContext, input: NativeConversationInput): Promise<{ text: string }>
+  protected sourceFingerprint(_context: EngineContext): Promise<string | undefined> { return Promise.resolve(undefined) }
   async run(context: EngineContext) {
-    const fingerprint = digest(['native-conversation-v2', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch])
+    const nativeSourceFingerprint = await this.sourceFingerprint(context)
+    if (nativeSourceFingerprint) context = { ...context, nativeSourceFingerprint }
+    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch, ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
+    const fingerprint = fingerprintFor(nativeSourceFingerprint)
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
     const productController = new AbortController()
@@ -59,7 +66,7 @@ export abstract class NativeConversationEngine {
         prompt: JSON.stringify({ contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
         images: context.materialImages?.filter(image => newIds.has(image.messageId)).map(image => image.dataUrl) ?? [],
         cancelProducts: () => productController.abort(new Error('原生插件已退出')),
-        onSession: id => this.sessions.update(session, { threadId: id }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),
+        onSession: (id, preparedSource) => this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),
       })
       const reply = result.text.trim() ? [...publicReplies].reverse().find(message => message.content.trim() === result.text.trim())?.content ?? result.text : publicReplies.at(-1)?.content ?? ''
       if (!result.text.trim() && reply) await context.onDelta(reply)

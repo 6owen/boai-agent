@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 默认系统分发单列验收；先核对真实默认包路径，再不指定应用启动/热投递，保留旧副本。
+ * [OUTPUT]: 显式launchUrl通过macOS LaunchServices冷启动实际应用包；同一隔离目录、调试/trace和关闭路径保持，普通重启不重发链接。
  * [OUTPUT]: BOAI_TEST_DEV_SERVER=1 显式沿 pnpm dev 启动 Vite/宿主及原 BDD 调试连接，重启保留同一独立端口/origin以核对真实持久状态，不生成安装包。
  * [OUTPUT]: 原生关闭场景显式核对实际已关闭窗口，只保存无可用结束画面的事实；普通场景仍要求结束截图，trace及实际退出保持。
  * [OUTPUT]: reviewFile可要求必需原件和已登记hash，归档失败向调用者显式拒绝，场景结束前继续保留其余证据。
@@ -14,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Server } from 'node:http'
 import { FeatureReview } from './feature-review'
+import { osUrlLauncher } from './os-url-launch'
 
 export class Desktop {
   readonly errors: string[] = []
@@ -94,21 +97,24 @@ export class Desktop {
     })
   }
 
-  async start(options: { dataDir?: string; rendererURL?: string; mainEntry?: string } = this.options) {
+  async start(options: { dataDir?: string; rendererURL?: string; mainEntry?: string; launchUrl?: string; useDefaultHandler?: boolean } = this.options) {
     if (this.application) throw new Error('桌面已启动；使用 restart 保留数据后重启')
-    this.options = options
+    const { launchUrl, useDefaultHandler, ...restartOptions } = options
+    this.options = restartOptions
     const env = { ...process.env, BOAI_DATA_DIR: options.dataDir ?? this.root, NODE_ENV: 'test' }
     // Never inherit a developer's renderer URL into a production-build scenario.
     delete (env as NodeJS.ProcessEnv).BOAI_RENDERER_URL
     if (options.rendererURL) (env as NodeJS.ProcessEnv).BOAI_RENDERER_URL = options.rendererURL
     const packaged = process.env.BOAI_TEST_PACKAGED_PATH
+    if (launchUrl && (!packaged || options.mainEntry || options.rendererURL)) throw new Error('系统链接冷启动仅用于明确的原版应用包')
+    const osLaunch = launchUrl && packaged ? await osUrlLauncher(options.dataDir ?? this.root, packaged, launchUrl, useDefaultHandler) : undefined
     const dev = process.env.BOAI_TEST_DEV_SERVER === '1'
     if (dev && this.devRendererPort) (env as NodeJS.ProcessEnv).BOAI_TEST_DEV_PORT = this.devRendererPort
     if (dev && (packaged || options.rendererURL)) throw new Error('pnpm dev 场景不能混用安装包或另一个渲染入口')
     const devLauncher = join(this.root, 'launch-dev.sh')
     if (dev) await writeFile(devLauncher, '#!/bin/sh\nexec pnpm dev "$@"\n', { mode: 0o700 })
     this.application = await electron.launch({
-      ...(packaged ? { executablePath: packaged, args: [] } : { ...(dev ? { executablePath: devLauncher, timeout: 60_000 } : {}), args: [options.mainEntry ?? resolve('.')] }),
+      ...(packaged ? { executablePath: osLaunch?.launcher ?? packaged, args: [] } : { ...(dev ? { executablePath: devLauncher, timeout: 60_000 } : {}), args: [options.mainEntry ?? resolve('.')] }),
       env,
     })
     this.launchCount++
@@ -117,6 +123,15 @@ export class Desktop {
     this.window = await this.application.firstWindow()
     this.window.on('pageerror', (error) => this.errors.push(error.message))
     await this.window.waitForFunction(() => Boolean(window.boai))
+    if (osLaunch) {
+      const observed = await this.application.evaluate(({ app }) => ({ pid: process.pid, executable: process.execPath, dataDir: app.getPath('userData'), argv: process.argv, version: app.getVersion(), packaged: app.isPackaged }))
+      if (observed.executable !== osLaunch.binary || observed.dataDir !== resolve(options.dataDir ?? this.root) || !observed.argv.includes(osLaunch.marker) || !observed.packaged) throw new Error('系统冷启动未进入预期应用包或隔离目录')
+      await this.reviewData('LaunchServices实际冷启动导入', { ...osLaunch, observed })
+      this.defer(async () => {
+        try { process.kill(observed.pid, 0) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ESRCH') return; throw error }
+        throw new Error('系统冷启动场景的实际应用进程尚未退出')
+      })
+    }
     if (dev) {
       await this.window.waitForFunction(() => Boolean(document.querySelector('.app-shell')?.getBoundingClientRect().height), undefined, { timeout: 60_000 })
       this.devRendererPort = new URL(this.window.url()).port

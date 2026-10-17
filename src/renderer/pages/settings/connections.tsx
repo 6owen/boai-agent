@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 测试与保存共用草稿必填/URL校验，缺少模型等错误统一Sonner反馈，不触发浏览器原生校验气泡。
+ * [OUTPUT]: 本机Magpie发现仅填充已识别地址的草稿，明确保存前不修改连接或密钥。
+ * [OUTPUT]: 新增Magpie预设、独立只读服务检测、三协议/认证和模型目录，保存保留原稿及revision核对。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 与员工字段共用前端入口开关，当前只挂载模型API连接；本机Agent分区和扫描/配置组件保留供恢复。
  * [INPUT]: 共用连接弹窗/横向表单布局、无独立弹窗的本机模型 API 导入内容、模型连接领域类型、DesktopApi、模型目录选择控件、毛绒步骤插图、Lobe Icons 本地品牌 SVG、未保存守卫、统一 UI/离线图标及 soft-card/共享分割线皮肤。
@@ -6,7 +9,7 @@
  * [POS]: src/renderer/pages/settings/connections.tsx；模型连接设置的界面与交互，按当前服务初始化草稿基准，返回/关闭前保护真实修改，放弃后清理草稿。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { ErrorToast } from '@/components/common/error-feedback'
+import { ErrorToast, showErrorToast } from '@/components/common/error-feedback'
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
 import anthropicIcon from '@lobehub/icons-static-svg/icons/anthropic.svg'
@@ -29,6 +32,8 @@ import { Banner, connectionReady, errorText, GuardContext, useDirty, useMutation
 import { ConnectionModelPicker } from './connection-model-picker'
 import { ConnectionIllustration } from './connection-illustration'
 import { ConnectionDialogLayout, ConnectionForm, ConnectionSettingRow } from './connection-layout'
+import { GatewayConnectionFields } from './gateway-connection-fields'
+import { MAGPIE_DEFAULT_URL } from '@shared/domain/model-gateway'
 
 const providers = {
   openai: { label: 'OpenAI', description: '使用 OpenAI API Key 连接官方模型。', icon: openaiIcon },
@@ -36,7 +41,8 @@ const providers = {
   'openai-compatible': { label: 'OpenAI 兼容接口', description: '连接第三方模型服务或本地部署的模型。', icon: openaiIcon },
 } satisfies Record<Provider, { label: string; description: string; icon: string }>
 
-function ProviderIcon({ provider }: { provider: Provider }) {
+function ProviderIcon({ provider, gateway = false }: { provider: Provider; gateway?: boolean }) {
+  if (gateway) return <span className="connection-provider-icon" aria-hidden="true"><Cpu /></span>
   return <span className="connection-provider-icon" aria-hidden="true"><span className="connection-brand-icon" style={{ maskImage: `url("${providers[provider].icon}")` }} /></span>
 }
 
@@ -71,13 +77,13 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
       {connections.length ? connections.map(connection => {
         const result = feedback[connection.id]
         return <div className="connection-row" key={connection.id}>
-          <ProviderIcon provider={connection.provider} />
+          <ProviderIcon provider={connection.provider} gateway={!!connection.gateway} />
           <div className="connection-row-body">
             <div className="connection-row-title">
               <strong title={connection.name}>{connection.name}</strong><span className="connection-state" data-ready={connectionReady(connection)}>{connectionReady(connection) ? '已配置' : '待完善'}</span>
               {result?.status === 'error' ? <ErrorToast>{result.message}</ErrorToast> : result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role="status">{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
             </div>
-            <p className="connection-row-description">{providers[connection.provider].label}<span aria-hidden="true"> · </span>{connection.defaultModel}</p>
+            <p className="connection-row-description">{connection.gateway ? 'Magpie' : providers[connection.provider].label}<span aria-hidden="true"> · </span>{connection.defaultModel}</p>
             {connection.baseUrl && <p className="connection-endpoint" title={connection.baseUrl}>{connection.baseUrl}</p>}
           </div>
           <DropdownMenu>
@@ -103,7 +109,7 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
 
 function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved, onCancel, finalFocus }: { connections: Connection[]; connection?: Connection; initialApiKey: string; api: DesktopApi; onSaved: () => Promise<void>; onCancel: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
   const [draft, setDraft] = useState(() => {
-    const initial: ConnectionInput = { id: connection?.id, name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey, api: connection?.api ?? 'chat' }
+    const initial: ConnectionInput = { id: connection?.id, ...(connection?.gateway ? { gateway: connection.gateway, expectedRevision: connection.revision ?? 1 } : {}), name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey, api: connection?.api ?? 'chat' }
     return { form: initial, baseline: initial }
   })
   const { form, baseline } = draft
@@ -121,8 +127,17 @@ function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved
   // Service defaults are the starting point; only differences from that draft are edits.
   useDirty(JSON.stringify(form) !== JSON.stringify(baseline))
   const set = <K extends keyof ConnectionInput>(key: K, value: ConnectionInput[K]) => { setTestFeedback(null); setDraft(current => ({ ...current, form: { ...current.form, [key]: value } })) }
+  const validateDraft = () => {
+    const message = !form.name.trim() ? '请填写连接名称'
+      : compatible && !form.baseUrl.trim() ? '请填写接口地址 Base URL'
+      : editor.current?.querySelector<HTMLInputElement>('input[type="url"]')?.validity.typeMismatch ? '请填写有效的接口地址 Base URL'
+      : !form.defaultModel.trim() ? '请选择或填写默认模型'
+      : ''
+    if (message) showErrorToast(message)
+    return !message
+  }
   const testDraft = async () => {
-    if (busy || testInFlight.current || !editor.current?.reportValidity()) return
+    if (busy || testInFlight.current || !validateDraft()) return
     testInFlight.current = true
     setError('')
     setTestFeedback({ status: 'testing', message: '正在测试连接…' })
@@ -153,27 +168,32 @@ function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved
         return { form: initial, baseline: initial }
       }
       const saved = current.baseline
-      return { ...current, form: { ...saved, provider, name: !saved.name || saved.name === providers[saved.provider].label ? providers[provider].label : saved.name } }
+      return { ...current, form: { ...saved, gateway: undefined, provider, name: !saved.name || saved.name === providers[saved.provider].label ? providers[provider].label : saved.name } }
     })
     setError('')
     setTestFeedback(null)
     setChoosing(false)
   }
+  const selectMagpie = () => {
+    const initial: ConnectionInput = { name: 'Magpie', provider: 'openai-compatible', gateway: { kind: 'magpie', protocol: 'chat', auth: 'local' }, baseUrl: MAGPIE_DEFAULT_URL, defaultModel: '', apiKey: '', api: 'chat' }
+    setDraft({ form: initial, baseline: initial }); setImporting(false); setError(''); setTestFeedback(null); setChoosing(false)
+  }
   return <Dialog open onOpenChange={open => { if (!open) close() }}>
-    <ConnectionDialogLayout choosing={choosing} label={connection ? '编辑连接' : '添加模型连接'} title={choosing ? '选择模型服务' : importing ? '导入本机模型配置' : `连接 ${providers[form.provider].label}`}
+    <ConnectionDialogLayout choosing={choosing} label={connection ? '编辑连接' : '添加模型连接'} title={choosing ? '选择模型服务' : importing ? '导入本机模型配置' : `连接 ${form.gateway ? 'Magpie' : providers[form.provider].label}`}
       illustration={<ConnectionIllustration configuring={!choosing} />} working={working} onClose={close} closeLabel="关闭模型连接配置" finalFocus={finalFocus} initialFocus={connection ? nameInput : undefined}
       steps={!connection ? { label: '添加连接进度', first: '选择服务', second: '配置连接' } : undefined}>
       {choosing ? <div className="connection-provider-options">
         {(Object.entries(providers) as [Provider, typeof providers[Provider]][]).map(([provider, details]) => <Button key={provider} variant="surface" size="content" className="connection-provider-option" onClick={() => selectProvider(provider)}><ProviderIcon provider={provider} /><span><strong>{details.label}</strong><small>{details.description}</small></span><ChevronRight size={16} /></Button>)}
+        {!connection && <Button variant="surface" size="content" className="connection-provider-option" onClick={selectMagpie}><ProviderIcon provider="openai-compatible" gateway /><span><strong>Magpie</strong><small>使用已安装的 Magpie 及其中的模型、路由组</small></span><ChevronRight /></Button>}
         {!connection && <Button variant="surface" size="content" className="connection-provider-option" onClick={() => { setError(''); setTestFeedback(null); setImporting(true); setChoosing(false) }}><span className="connection-provider-icon"><FolderOpen /></span><span><strong>导入本机配置</strong><small>读取 Codex、Claude Code 中的模型 API 配置</small></span><ChevronRight /></Button>}
-      </div> : importing ? <LocalModelImport api={api} connections={connections} onBack={() => { setImporting(false); setChoosing(true) }} onWorking={setImportBusy} onSaved={async () => { await onSaved(); guard.saved(onCancel) }} /> : <ConnectionForm ref={editor} disabled={working} onSubmit={event => {
+      </div> : importing ? <LocalModelImport api={api} connections={connections} onBack={() => { setImporting(false); setChoosing(true) }} onWorking={setImportBusy} onSaved={async () => { await onSaved(); guard.saved(onCancel) }} /> : <ConnectionForm ref={editor} noValidate disabled={working} onSubmit={event => {
         event.preventDefault()
-        if (testInFlight.current) return
+        if (working || testInFlight.current || !validateDraft()) return
         void run(async () => {
           const input = { ...form, name: form.name.trim(), baseUrl: form.baseUrl.trim(), defaultModel: form.defaultModel.trim(), apiKey: form.apiKey?.trim() }
           const saved = await api.request('saveConnection', input)
           await onSaved()
-          const baseline = { ...input, id: saved.id }
+          const baseline = { ...input, id: saved.id, ...(saved.gateway ? { expectedRevision: saved.revision } : {}) }
           setDraft({ form: baseline, baseline })
           guard.saved(onCancel)
         })
@@ -194,18 +214,19 @@ function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved
           <UiField orientation="horizontal" className="connection-setting-row connection-url-row grid">
             <div className="connection-setting-label">
               <FieldLabel htmlFor={`${fieldId}-url`}><span className="connection-nested-line" aria-hidden="true" />Base URL</FieldLabel>
-              <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="接口地址说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>{compatible ? '填写服务提供的完整 API 根地址，例如 https://api.openai.com/v1。' : '使用官方服务时留空；也可填写自定义 API 根地址。'}</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="接口地址说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>{form.gateway ? '填写 Magpie 根地址，例如 http://127.0.0.1:3425，无需添加 /v1。' : compatible ? '填写服务提供的完整 API 根地址，例如 https://api.openai.com/v1。' : '使用官方服务时留空；也可填写自定义 API 根地址。'}</TooltipContent></Tooltip>
             </div>
             <Input id={`${fieldId}-url`} aria-label="接口地址 Base URL" type="url" required={compatible} value={form.baseUrl} onChange={event => set('baseUrl', event.target.value)} placeholder={compatible ? 'https://api.openai.com/v1' : '使用官方默认地址'} />
           </UiField>
         </div>
-        <ConnectionSettingRow label="API Key" htmlFor={keyId} icon={<Key />}>
+        {form.gateway && <GatewayConnectionFields api={api} baseUrl={form.baseUrl} gateway={form.gateway} disabled={working} onDiscover={baseUrl => { setTestFeedback(null); setDraft(current => ({ ...current, form: { ...current.form, baseUrl, apiKey: '', gateway: { ...current.form.gateway!, auth: 'local' } } })) }} onChange={gateway => { setTestFeedback(null); setDraft(current => ({ ...current, form: { ...current.form, gateway, provider: gateway.protocol === 'messages' ? 'anthropic' : 'openai-compatible', api: gateway.protocol === 'responses' ? 'responses' : 'chat' } })) }} />}
+        {form.gateway?.auth !== 'local' && <ConnectionSettingRow label={form.gateway ? '网关密钥' : 'API Key'} htmlFor={keyId} icon={<Key />}>
           <div className="connection-setting-control">
             <InputGroup><InputGroupInput id={keyId} type={showKey ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={form.apiKey} onChange={event => set('apiKey', event.target.value)} placeholder="输入 API Key" /><InputGroupAddon align="inline-end" className="pr-2.5 has-[>button]:mr-0"><InputGroupButton size="icon-xs" className="connection-key-visibility" aria-label={showKey ? '隐藏 API Key' : '显示 API Key'} aria-pressed={showKey} onClick={() => setShowKey(current => !current)}>{showKey ? <EyeOff /> : <Eye />}</InputGroupButton></InputGroupAddon></InputGroup>
           </div>
-        </ConnectionSettingRow>
-        {compatible ? <ConnectionModelPicker api={api} draft={form} onChange={value => set('defaultModel', value)} /> : <ConnectionSettingRow label="默认模型 ID" htmlFor={`${fieldId}-model`} icon={<Cpu />} hint="填写服务提供商支持的模型 ID。"><Input id={`${fieldId}-model`} required value={form.defaultModel} onChange={event => set('defaultModel', event.target.value)} placeholder="输入模型 ID" /></ConnectionSettingRow>}
-        {form.provider !== 'anthropic' && <ConnectionSettingRow label="接口协议" htmlFor={`${fieldId}-api`}>
+        </ConnectionSettingRow>}
+        {compatible || form.gateway ? <ConnectionModelPicker api={api} draft={form} onChange={value => set('defaultModel', value)} /> : <ConnectionSettingRow label="默认模型 ID" htmlFor={`${fieldId}-model`} icon={<Cpu />} hint="填写服务提供商支持的模型 ID。"><Input id={`${fieldId}-model`} required value={form.defaultModel} onChange={event => set('defaultModel', event.target.value)} placeholder="输入模型 ID" /></ConnectionSettingRow>}
+        {!form.gateway && form.provider !== 'anthropic' && <ConnectionSettingRow label="接口协议" htmlFor={`${fieldId}-api`}>
           <SelectField id={`${fieldId}-api`} value={form.api ?? 'chat'} onValueChange={selectedValue => set('api', selectedValue as 'chat' | 'responses')} options={[{ value: 'chat', label: 'Chat Completions' }, { value: 'responses', label: 'Responses' }]} />
         </ConnectionSettingRow>}
       </ConnectionForm>}

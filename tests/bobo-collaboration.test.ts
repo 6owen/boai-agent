@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [OUTPUT]: 明确Codex/Claude网关候选在分页前接受本机公开认证，拒绝缺少远程密钥及已移除来源，源变化使原游标失效。
  * [OUTPUT]: Codex/Claude组织继承、既有员工保持、发布前程序与来源复核、SQL分页先过滤分别验证；bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite/受管文件、原用户请求与 Work 持有者，以及故障注入。
  * [OUTPUT]: 员工一等身份、仅缺员准备与新旧 Mastra 默认浏览器能力摘要、三种组织模式/原预算原子发布、幂等/只读恢复和取消实际退出及 hash 清理不变量。
@@ -280,5 +282,41 @@ test.each(['codex', 'claude'] as const)('%s candidate pagination excludes unveri
   expect(JSON.stringify(all)).not.toContain(profile.executable)
   await f.store.write([{ collection: 'launchProfiles', id: profile.id, value: { ...profile, verified: undefined } }])
   await expect(f.service.findEmployees({ limit: 1, cursor: page.cursor })).rejects.toThrow('STALE_CURSOR')
+  expect((await f.service.findEmployees({ limit: 1 })).employees.map(employee => employee.agentId)).toEqual(['writer'])
+})
+
+test.each(['codex', 'claude'] as const)('%s gateway candidates include public local credentials and exclude missing remote credentials before pagination', async runtime => {
+  const f = await fixture(), { profile, core } = await useNativeCore(f, runtime)
+  const gateway = { id: 'gateway', name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'group/work', hasApiKey: false, revision: 1, gateway: { kind: 'magpie', auth: 'local', protocol: 'chat' } }
+  const verified = { ...profile, useExistingLogin: false, verified: { ...profile.verified!, version: runtime === 'codex' ? '0.162.1' : '2.1.302' } }
+  await f.store.write([
+    { collection: 'launchProfiles', id: profile.id, value: verified },
+    { collection: 'connections', id: gateway.id, value: gateway },
+    { collection: 'connections', id: 'missing-secret', value: { ...gateway, id: 'missing-secret', baseUrl: 'https://remote.invalid', gateway: { ...gateway.gateway, auth: 'key' } } },
+    ...['a-missing-secret', 'b-local-gateway'].map(id => ({ collection: 'agents', id, value: { ...core, id, systemRole: undefined, connectionId: id === 'a-missing-secret' ? 'missing-secret' : gateway.id, modelId: '' } })),
+  ])
+  const page = await f.service.findEmployees({ limit: 1 })
+  expect(page.employees.map(employee => employee.agentId)).toEqual(['b-local-gateway'])
+  expect(JSON.stringify(page)).not.toContain(profile.executable)
+  expect(JSON.stringify(page)).not.toContain('127.0.0.1')
+  await f.store.write([], [{ collection: 'connections', id: gateway.id }])
+  await expect(f.service.findEmployees({ limit: 1, cursor: page.cursor })).rejects.toThrow('STALE_CURSOR')
+  expect((await f.service.findEmployees({ limit: 1 })).employees.map(employee => employee.agentId)).toEqual(['writer'])
+})
+
+
+test('plugin gateway candidates require the negotiated protocol before pagination and disappear with a removed source', async () => {
+  const f = await fixture(), { profile, core } = await useNativeCore(f, 'codex')
+  const gateway = { id: 'gateway', name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'group/work', hasApiKey: false, gateway: { kind: 'magpie', auth: 'local', protocol: 'chat' } }
+  const runtimePlugin = { pluginId: 'boai.runtime.pi', providerId: 'pi', packageHash: 'fixture' }
+  const verified = { ...profile, protocol: 'runtime-plugin', runtimePlugin, verified: { ...profile.verified!, modelSource: { protocols: ['chat'] } } }
+  await f.store.write([
+    { collection: 'launchProfiles', id: profile.id, value: verified },
+    { collection: 'launchProfiles', id: 'legacy', value: { ...verified, id: 'legacy', verified: { ...profile.verified!, modelSource: undefined } } },
+    { collection: 'connections', id: gateway.id, value: gateway },
+    ...['a-no-capability', 'b-gateway'].map(id => ({ collection: 'agents', id, value: { ...core, id, systemRole: undefined, connectionId: gateway.id, modelId: '', executionBackend: { kind: 'runtime-plugin', profileId: id === 'a-no-capability' ? 'legacy' : profile.id, pluginId: runtimePlugin.pluginId, providerId: runtimePlugin.providerId } } })),
+  ])
+  expect((await f.service.findEmployees({ limit: 1 })).employees.map(employee => employee.agentId)).toEqual(['b-gateway'])
+  await f.store.write([], [{ collection: 'connections', id: gateway.id }])
   expect((await f.service.findEmployees({ limit: 1 })).employees.map(employee => employee.agentId)).toEqual(['writer'])
 })

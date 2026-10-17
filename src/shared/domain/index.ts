@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: API网关执行按callId保留所选模型与响应路由，不能将末次结果充作整项Work模型。
+ * [OUTPUT]: Magpie连接增加独立网关协议/认证及revision；旧Connection字段语义保持。
  * [OUTPUT]: ConversationDetail携带只读executionMirrors：公开任务指令关联原Run，执行/会话身份不复制。
  * [OUTPUT]: automationPublication保留既有来源身份兼容，公开投递现由公共IM消息提交链路负责。
  * [OUTPUT]: Message可携带automationPublication原任务/occurrence/消息身份，公开投递不复制运行上下文。
@@ -57,7 +59,10 @@ export * from './work'
 export * from './work-views'
 import type { WorkIntent, WorkItem, WorkBudget, WorkDisposition, WorkDraft, WorkWake } from './work'
 export type Provider = 'openai' | 'anthropic' | 'openai-compatible'
+export * from './model-gateway'
 export interface Connection {
+  gateway?: import('./model-gateway').ModelGateway
+  revision?: number
   api?: 'chat' | 'responses'
   localConfigId?: string
   id: string
@@ -68,6 +73,8 @@ export interface Connection {
   hasApiKey: boolean
 }
 export interface ConnectionInput {
+  gateway?: import('./model-gateway').ModelGateway
+  expectedRevision?: number
   api?: 'chat' | 'responses'
   localConfigId?: string
   id?: string
@@ -212,6 +219,8 @@ export interface ExecutionProgressEvent {
 }
 export const EXECUTION_PROGRESS_LIMITS = { events: 24, text: 2000 } as const
 export interface AgentRun {
+  /** Gateway observations by request, not a single inferred model for the whole Work. */
+  modelCalls?: import('./model-gateway').GatewayModelCall[]
   progress?: ExecutionProgressEvent[]
   /** Browser bytes are staged outside workspaces; legacy run directories have unknown completion state. */
   browserDownloadIsolation?: 'isolated' | 'legacy'

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
+ * [OUTPUT]: 公开只读Magpie发现入口，renderer不能指定本地配置路径。
+ * [OUTPUT]: 放行Magpie只读识别和结构化模型目录，沿原主窗口IPC边界。
  * [OUTPUT]: 放行按所见版本删除定时执行记录，资格及文件范围由运行时核验。
  * [OUTPUT]: 放行桌面数据源编辑器按版本读取凭据，原主窗口IPC来源校验保持。
  * [OUTPUT]: 放行只读resolveExecutionMessage，执行身份和消息存活由运行时核验。
@@ -11,6 +14,10 @@ import type { Method } from '../shared/ipc'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  listGatewayImports: true,
+  cancelGatewayImport: true,
+  confirmGatewayImport: true,
+  getGatewayImportReceipt: true,
   abandonBoboCollaboration: true,
   abandonTeamDraft: true,
   acceptTeamCreation: true,
@@ -108,6 +115,9 @@ const methods = {
   listChannelDeliveries: true,
   listChannelMessageDeliveries: true,
   listConnectionModels: true,
+  getConnectionModelCatalog: true,
+  probeModelGateway: true,
+  discoverModelGateway: true,
   listConversationMessages: true,
   listDataSources: true,
   listEmployeeExecutions: true,

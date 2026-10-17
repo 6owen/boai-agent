@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 通讯录员工/群执行列表在当前全局右侧标签打开固定Run，沿原未保存守卫与聊天定位。
  * [OUTPUT]: 数据源列表删除后按ID关闭当前资源库中对应详情标签，其他标签保持。
  * [OUTPUT]: 定时执行历史删除后关闭各页面对应过程标签，保留其他详情与主聊天。
@@ -79,6 +80,7 @@ import { getDesktopClient } from '@/services/request/desktop-client'
 import { DesktopToolbar } from './desktop-toolbar'
 import { PanelResize } from '@/components/common/panel-resize'
 import { HeaderBrowser } from './header-browser'
+import { GatewayImportDialog } from '@/pages/settings/gateway-import-dialog'
 import { SourceDetailPanel } from '@/pages/sources/source-detail'
 import { SkillsNavigation } from './skills-navigation'
 import { DetailPanel, DetailPanelHeader, useDetailPanelLayout } from '../detail-panel'
@@ -952,6 +954,7 @@ export function AppShell() {
           </DetailTabSession>
         })}
       </DetailPanel>
+      <GatewayImportDialog api={api} />
       {editingTitle && <ConversationTitleDialog conversation={editingTitle} busy={busy} onSave={saveConversationTitle} onClose={() => setEditingTitle(null)} />}
       {creation?.type==='agent'&&<CreateAgentDialog key={`agent-${panelGeneration}`} api={api} snapshot={snapshot} template={creation.template} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
       {creation?.type==='group'&&<CreateGroupDialog key={`group-${panelGeneration}`} api={api} snapshot={snapshot} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}

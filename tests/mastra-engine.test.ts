@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网关真实SDK跨工具步骤、JSON修复、记忆和汇报的callId/路由逐请求对应；缺头部不继承其他步骤。
  * [OUTPUT]: 实际SDK验证普通bobo在空初始目录下inspect/call_data_source接续和写入回执，不创建Work。
  * [OUTPUT]: 真实SDK定时判断广告浏览器并执行browser_tool；旧自动化禁用断言被现行合同替代。
  * [OUTPUT]: 真实SDK数据源管理chat可查浏览器文档并drain；无管理授权的普通chat不提供浏览器。
@@ -1485,9 +1486,10 @@ describe('projectMessages', () => {
 })
 
 
-it('maps each real SDK request to its own usage receipt across tool steps, repair, memory and report', async () => {
+it.each(['direct', 'gateway'] as const)('maps each real SDK %s request to its own usage and route across tool steps, repair, memory and report', async kind => {
   const mock = await endpoint((_body, response, index) => {
     const replies = [{ name: 'list_files', args: { path: 'self:/' } }, 'Task done.', 'Invalid decision', '{"action":"pass"}', '{"candidates":[]}', '{"action":"publish","text":"Updated report"}']
+    if (kind === 'gateway' && index !== 1) { response.setHeader('X-Magpie-Model', `vendor/step-${index}`); response.setHeader('X-Magpie-Provider', 'vendor') }
     send(response, replies[index], index, index === 1 ? undefined : { prompt_tokens: 20, completion_tokens: 7, total_tokens: 27 })
   })
   const receipts: { id: string; usage: ModelUsage }[] = []
@@ -1498,6 +1500,9 @@ it('maps each real SDK request to its own usage receipt across tool steps, repai
     onModelCallUsage: async (id, usage) => { receipts.push({ id, usage }) },
     onModelCallStarted: async id => { started.push(id) },
   })
+  const routes: { id: string; actualModelId?: string; source: string }[] = []
+  if (kind === 'gateway') ctx.connection = { ...ctx.connection!, baseUrl: mock.url.replace(/\/v1$/, ''), gateway: { kind: 'magpie', protocol: 'chat', auth: 'local' } }
+  ctx.onModelCallRoute = async (id, evidence) => { routes.push({ id, actualModelId: evidence.actualModelId, source: evidence.routeSource }) }
   const engine = new MastraEngine()
   await engine.run(ctx)
   phase = 'decision'; ctx.modelCallId = 'decision-0'; await engine.decide(ctx)
@@ -1506,6 +1511,7 @@ it('maps each real SDK request to its own usage receipt across tool steps, repai
   await engine.report(ctx, { text: 'Old report', observedThroughSequence: 1, revisions: 0, status: 'private' })
   expect(mock.requests).toHaveLength(6)
   expect(receipts.map(receipt => receipt.id)).toEqual(['task-0', 'task-1', 'decision-0', 'decision-1', 'memory-0', 'report-0'])
+  expect(routes).toEqual(kind === 'gateway' ? ['task-0', 'task-1', 'decision-0', 'decision-1', 'memory-0', 'report-0'].map((id, index) => ({ id, actualModelId: index === 1 ? undefined : `vendor/step-${index}`, source: index === 1 ? 'unknown' : 'response-headers' })) : [])
   expect(started).toEqual(receipts.map(receipt => receipt.id))
   expect(receipts[1].usage).toEqual({})
   expect(receipts.filter(receipt => receipt.id !== 'task-1').every(receipt => JSON.stringify(receipt.usage) === JSON.stringify({ inputTokens: 20, outputTokens: 7, totalTokens: 27 }))).toBe(true)

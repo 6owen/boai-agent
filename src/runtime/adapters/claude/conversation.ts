@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 原生配置模式在本次子进程合并loopback代理排除，保持原生来源/远端代理；取消不能留下代理持有的本机请求。
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 实际返回的thinking块及增量独立进入执行流；签名/redacted字段不持久化，不混入最终答复。
  * [OUTPUT]: CLI先返回真实错误result再非零退出时保留原错误，不被通用进程异常覆盖。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -9,6 +12,7 @@
  * [POS]: Claude生产会话驱动；不采用旧私有阶段或空工具策略，许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { assertClaudeNativeSource } from './native-source'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -18,6 +22,8 @@ import { nativeActivity, recordValue } from '../native-events'
 import { inspectProgram } from '../../modules/backends/program'
 import { CLAUDE_PROGRAM_LIMIT } from './policy'
 import { claudeProvider } from './provider'
+import { assertClaudeGatewayVersion } from '../../../shared/domain/claude-provider'
+import { claudeGatewayEnvironment, claudeLoopbackEnvironment } from './gateway-source'
 import { runClaudeProcess } from './process'
 import { createClaudeToolBridge } from './tools'
 import { claudeInput } from './input'
@@ -50,21 +56,25 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   if (program.hash !== profile.executableHash || program.path !== profile.executable) throw new Error('Claude 程序已变化，请重新测试连接')
   const provider = !profile.useExistingLogin ? context.connection && context.apiKey ? claudeProvider(context.connection, context.agent.modelId) : undefined : undefined
   if (!profile.useExistingLogin && !provider) throw new Error('Claude 显式 API 连接缺少凭据')
+  const managedGateway = !profile.useExistingLogin && !!context.connection?.gateway
+  if (managedGateway) assertClaudeGatewayVersion(context.connection, profile.verified.version)
+  const selectedModel = provider?.model || context.agent.modelId
   const controller = new AbortController(), signal = AbortSignal.any([context.signal, controller.signal])
   await mkdir(directory.cwd, { recursive: true }); await mkdir(directory.privateHome, { recursive: true, mode: 0o700 })
   const bootstrap = join(directory.privateHome, `bootstrap-${randomUUID()}.txt`)
   await writeFile(bootstrap, input.instructions, { flag: 'wx', mode: 0o600 })
   const bridge = await createClaudeToolBridge({ native: true, configDirectory: directory.privateHome, tools: input.tools, signal, onFailure: error => controller.abort(error) })
   const sessionId = input.threadId ?? randomUUID(), initializeId = randomUUID()
-  const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS: '1' }
+  let env: NodeJS.ProcessEnv = { ...(profile.useExistingLogin ? claudeLoopbackEnvironment(process.env) : process.env), CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS: '1' }
   delete env.CLAUDECODE; delete env.CLAUDE_CODE_ENTRYPOINT
   if (!profile.useExistingLogin) {
     Object.assign(env, { ANTHROPIC_API_KEY: context.apiKey, ANTHROPIC_AUTH_TOKEN: context.apiKey, ANTHROPIC_BASE_URL: provider!.baseUrl })
+    if (managedGateway) env = claudeGatewayEnvironment(context.connection!, selectedModel, context.apiKey, env, context.agent.nativeOptions?.effort)
   }
   const mode = context.agent.nativeOptions?.claudePermissionMode ?? 'default'
   const args = ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--permission-prompt-tool', 'stdio', '--verbose', '--include-partial-messages', '--permission-mode', mode,
     input.threadId ? '--resume' : '--session-id', sessionId, '--append-system-prompt-file', bootstrap, '--mcp-config', bridge.configPath]
-  if (context.agent.modelId) args.push('--model', context.agent.modelId)
+  if (selectedModel) args.push('--model', selectedModel)
   if (context.agent.nativeOptions?.effort) args.push('--effort', context.agent.nativeOptions.effort)
   if (mode === 'bypassPermissions') args.push('--dangerously-skip-permissions')
   const prepared = claudeInput(input.prompt, input.images)
@@ -102,7 +112,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     }
   }
   try {
-    await input.onSession(sessionId); await context.onNativeExecution?.({ sessionId, ...(context.agent.modelId ? { selectedModelId: context.agent.modelId } : {}) })
+    await input.onSession(sessionId); await context.onNativeExecution?.({ sessionId, ...(selectedModel ? { selectedModelId: selectedModel } : {}), ...(managedGateway ? { modelSource: { mode: 'boai-connection' as const, connectionId: context.connection!.id, connectionRevision: context.connection!.revision ?? 1, protocol: 'messages' as const, selectedModelId: selectedModel } } : {}) })
     await runClaudeProcess({ executable: profile.executable, runtime: profile.runtime, args, env, cwd: directory.cwd, privateHome: directory.privateHome, signal, native: true,
       onReady: (send, finish) => { write = send; end = finish; write(JSON.stringify({ type: 'control_request', request_id: initializeId, request: { subtype: 'initialize' } }) + '\n') },
       onLine: async line => {
@@ -116,6 +126,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           initialized = true; state = undefined
           nativeInfo = { ...nativeInfo, ...claudePublicInfo(frame.response.response) }
           if (Object.keys(nativeInfo).length) await context.onNativeExecution?.({ nativeInfo })
+          await assertClaudeNativeSource(context)
           write(JSON.stringify(prompt) + '\n'); await input.onSubmitted(sessionId, context.runId); return
         }
         if (frame.type === 'control_cancel_request') { controls.get(frame.request_id)?.abort(new Error('Claude 已撤回此请求')); return }

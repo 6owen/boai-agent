@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已保存员工连接与原生返回的模型能力。
- * [OUTPUT]: 推理选项不跨连接猜测，切换模型/推理保留本机权限，未知档位只按实际目录裁剪。
+ * [OUTPUT]: 网关从当前模型目录提供原始档位，丢失能力仍可返回默认； 推理选项不跨连接猜测，切换模型/推理保留本机权限，未知档位只按实际目录裁剪。
  * [POS]: Composer配置投影回归，不调用模型。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -24,4 +24,16 @@ it('keeps API effort support within the verified provider contract', () => {
   expect(composerEfforts(agent, connection, [])).toEqual(['auto', 'off', 'low', 'high', 'max'])
   expect(composerEfforts(agent, { ...connection, baseUrl: 'https://gateway.example.com' }, [])).toEqual([])
   expect(composerEffortPatch(agent, 'low')).toEqual({ thinkingLevel: 'low' })
+})
+
+it('projects gateway raw effort levels for the exact selected model and lets stale preferences return to default', () => {
+  const agent = { ...native, executionBackend: { kind: 'mastra-model' }, modelId: '', thinkingLevel: 'xhigh' } as DigitalAgent
+  const connection = { provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'vendor/model', gateway: { kind: 'magpie', protocol: 'responses', auth: 'local' } } as Connection
+  const models = [{ value: 'vendor/model', supportedEffortLevels: ['none', 'medium', 'xhigh', 'future_effort'] }, { value: 'other', supportedEffortLevels: ['low'] }]
+  expect(composerEfforts(agent, connection, models)).toEqual(['auto', 'none', 'medium', 'xhigh', 'future_effort'])
+  expect(composerEfforts(agent, connection, [])).toEqual(['auto'])
+  expect(composerEfforts({ ...agent, thinkingLevel: 'auto' }, connection, [])).toEqual([])
+  expect(composerEfforts(agent, { ...connection, gateway: { ...connection.gateway!, protocol: 'messages' } }, models)).toEqual(['auto', 'none', 'medium', 'xhigh', 'future_effort'])
+  expect(composerModelPatch(agent, models[1])).toEqual({ modelId: 'other', thinkingLevel: 'auto' })
+  expect(composerEffortPatch(agent, 'future_effort')).toEqual({ thinkingLevel: 'future_effort' })
 })

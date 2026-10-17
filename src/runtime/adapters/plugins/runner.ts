@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Host-owned JSONL control channel and a pinned module path.
  * [OUTPUT]: Isolated Runtime API lifecycle; only serializable input/events/tools cross the boundary.
  * [POS]: Trusted plugin process; fault isolation, not an OS security sandbox.
@@ -19,13 +21,13 @@ async function request(frame: any) {
     if (frame.method === 'initialize') {
       if (initialized) throw new Error('Runtime already initialized'); initialized = true
       const module = await import(pathToFileURL(frame.input.entry).href)
-      if (module.runtimeApiVersion !== 1 || typeof module.createRuntime !== 'function') throw new Error('插件Runtime API不兼容')
-      const services: RuntimeServices = { launch: frame.input.launch, signal: controller.signal, emit: event => output({ type: 'event', event }), tool: (name, input, callId) => callback('tool', { name, input, callId }), action: input => callback('action', input) }
+      if (module.runtimeApiVersion !== (frame.input.runtimeApiVersion ?? 1) || typeof module.createRuntime !== 'function') throw new Error('插件Runtime API不兼容')
+      const services: RuntimeServices = { launch: frame.input.launch, ...(frame.input.runtimeApiVersion === 2 ? { modelSource: frame.input.modelSource } : {}), signal: controller.signal, emit: event => output({ type: 'event', event }), tool: (name, input, callId) => callback('tool', { name, input, callId }), action: input => callback('action', input) }
       provider = await (module.createRuntime as RuntimeFactory)(services)
       output({ type: 'response', id: frame.id, result: true }); return
     }
     if (!provider) throw new Error('Runtime not initialized')
-    const methods = ['probe', 'openSession', 'submit', 'sendInput', 'interrupt', 'inspect', 'closeSession'] as const
+    const methods = ['probe', 'inspectSource', 'openSession', 'submit', 'sendInput', 'interrupt', 'inspect', 'closeSession'] as const
     if (!methods.includes(frame.method) || typeof provider[frame.method as keyof RuntimeProvider] !== 'function') throw new Error('Runtime method unsupported')
     const result = await (provider[frame.method as keyof RuntimeProvider] as (input?: unknown) => Promise<unknown>).call(provider, frame.input)
     output({ type: 'response', id: frame.id, result })

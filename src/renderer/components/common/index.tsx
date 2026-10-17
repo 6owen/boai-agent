@@ -1,10 +1,13 @@
 /*
+ * [OUTPUT]: 网关就绪按公开本机标识/真实远程凭据核对，三协议共用同一前端规则。
+ * [OUTPUT]: Magpie本机公开标识和远程密钥分别判断已配置状态。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: React、图标、语义外观 token 与共享领域类型、统一 UI 基础组件与 Sonner 操作提示。
  * [OUTPUT]: useMutation和旧Banner错误统一使用Sonner，不渲染内联报错；状态提示与恢复操作独立保留，共用字段/头像/编辑框架与未保存守卫。
  * [POS]: src/renderer/components/common/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { gatewayCredentialsReady } from '@shared/domain/model-gateway'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field as UiField, FieldLabel, FieldDescription } from '@/components/ui/field'
@@ -18,7 +21,7 @@ export { ErrorToast, showErrorToast } from './error-feedback'
 
 export const colors = ['#6675a4', '#438b80', '#ad8054', '#638ac5', '#a76c90', '#777b8d']
 export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+':\s*(?:Error:)?\s*/, '').replace(/^Error:\s*/, '')
-export const connectionReady = (connection: Connection) => Boolean(connection.defaultModel.trim() && (connection.provider === 'openai-compatible' ? connection.baseUrl.trim() : connection.hasApiKey))
+export const connectionReady = (connection: Connection) => Boolean(connection.defaultModel.trim() && (connection.gateway ? gatewayCredentialsReady(connection) : connection.provider === 'openai-compatible' ? connection.baseUrl.trim() : connection.hasApiKey))
 export const timeText = (date: string) => new Date(date).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 export const sizeText = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 export interface Guard { dirty: boolean; setDirty(value: boolean): void; navigate(action: () => void, options?: { resetOnDiscard?: boolean }): void; saved(fallback?: () => void): void }

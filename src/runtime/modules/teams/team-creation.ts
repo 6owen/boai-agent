@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -7,6 +8,7 @@
  * [POS]: 团队原子发布用例；内部准备记录不承载产品草稿，不调用成员模型、不发送消息或创建 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { MODEL_ID_MAX_LENGTH, validModelId } from '../../../shared/domain/model-id'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -22,7 +24,7 @@ import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 const acceptSchema = teamVersionSchema.extend({ planHash: z.string().length(64), requestId: teamId }).strict()
-const agentPlanSchema = z.object({ plan: teamModelPlanSchema, executionBackend: backendSchema.optional(), nativeOptions: agentSchema.shape.nativeOptions, connectionId: z.string().trim().max(200), modelId: z.string().trim().max(300), requestId: teamId }).strict()
+const agentPlanSchema = z.object({ plan: teamModelPlanSchema, executionBackend: backendSchema.optional(), nativeOptions: agentSchema.shape.nativeOptions, connectionId: z.string().trim().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), requestId: teamId }).strict()
 const operationSchema = z.object({ operationId: teamId }).strict()
 export class TeamCreationService {
   private running = new Map<string, { controller: AbortController; task: Promise<void> }>()

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
+ * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: 2026-10-12成功写入回应后独立通知提交事实，等待该观察结束；不重发、不当作原生接收确认。
  * [OUTPUT]: 2026-10-11 持续原生Codex生产驱动保留原生工具/会话及真实权限；旧分阶段协议仅用于兼容回归。
  * [OUTPUT]: 原生路径核对当前程序及必需协议，以Rovai进程归属确认真实退出；旧阶段版本白名单只适用于兼容入口。
@@ -20,6 +22,7 @@ import { waitForProcessGroupExit } from '../mastra/host-command'
 import { assertNativeProcessGuard, nativeProcessGuard } from '../native-process-guard'
 import { join } from 'node:path'
 import { NATIVE_PROCESS_SUPERVISOR } from '../native-process-supervisor'
+import type { codexGatewaySource } from './gateway-source'
 
 type JsonRecord = Record<string, unknown>
 type RpcId = string | number
@@ -40,6 +43,7 @@ export function string(value: unknown, name: string): string {
 export interface CodexClientInput {
   /** Native employees inherit the CLI's tools/config; isolated legacy probes keep their policy. */
   native?: boolean
+  gatewaySource?: ReturnType<typeof codexGatewaySource>
   profile: LaunchProfile
   cwd: string
   privateHome?: string
@@ -104,14 +108,14 @@ export class CodexClient {
     const home = input.profile.useExistingLogin ? process.env.HOME : input.privateHome
     if (!home) throw new Error('Codex缺少明确的本机配置目录')
     if (!input.profile.useExistingLogin) await mkdir(home, { recursive: true })
-    const env: NodeJS.ProcessEnv = { ...(input.native ? process.env : {}), PATH: process.env.PATH, LANG: process.env.LANG ?? 'en_US.UTF-8', HOME: home, USERPROFILE: home,
-      CODEX_HOME: input.profile.useExistingLogin ? input.profile.codexHome ?? `${home}/.codex` : home,
+    const env: NodeJS.ProcessEnv = { ...(input.gatewaySource?.env ?? (input.native ? process.env : {})), PATH: process.env.PATH, LANG: process.env.LANG ?? 'en_US.UTF-8', HOME: home, USERPROFILE: home,
+      CODEX_HOME: input.profile.useExistingLogin ? input.profile.codexHome ?? process.env.CODEX_HOME ?? `${home}/.codex` : home,
       TMPDIR: input.cwd, TMP: input.cwd, TEMP: input.cwd,
       ...(input.profile.runtime === 'node' ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
     }
     input.signal.throwIfAborted()
     const client = new CodexClient(input, input.profile.runtime === 'node' ? process.execPath : file.path,
-      [...(input.profile.runtime === 'node' ? [file.path] : []), ...(input.native ? ['app-server', '--listen', 'stdio://', '-c', 'features.respect_system_proxy=true'] : codexStartupArgs), ...(input.catalogPath ? ['-c', `model_catalog_json=${JSON.stringify(input.catalogPath)}`] : [])], env)
+      [...(input.profile.runtime === 'node' ? [file.path] : []), ...(input.native ? ['app-server', '--listen', 'stdio://', '-c', 'features.respect_system_proxy=true'] : codexStartupArgs), ...(input.catalogPath ? ['-c', `model_catalog_json=${JSON.stringify(input.catalogPath)}`] : []), ...(input.gatewaySource?.args ?? [])], env)
     try {
       const result = await client.request('initialize', { clientInfo: { name: 'boai_agent', title: 'BoAI Agent', version: '0.2.2' }, capabilities: { experimentalApi: true } })
       const version = string(result.userAgent, '程序版本').match(/^(?:boai_agent|Codex Desktop|codex_cli_rs|codex-cli|codex)[ /]([\d]+\.[\d]+\.[\d]+(?:[-+][\w.-]+)?)/i)?.[1]

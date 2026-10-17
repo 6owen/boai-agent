@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [INPUT]: 已验证Claude版本、宿主管理配置目录、明确模型端点与API凭据。
  * [OUTPUT]: 2.1.214最小环境、有界文本/媒体输入与私有格式器合同/提醒；格式提交不授予业务权限，任务仅本次明确MCP，不继承订阅登录或插件。
  * [POS]: Claude适配策略；不声明工具任务、员工UI或供应商能力已经接入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { validModelId } from '../../../shared/domain/model-id'
 export const CLAUDE_VERIFIED_VERSION = '2.1.214'
 export const CLAUDE_PROGRAM_LIMIT = 512 * 1024 * 1024
 export const CLAUDE_TEXT_INPUT_LIMIT = 2 * 1024 * 1024
@@ -33,7 +35,7 @@ export function claudeProviderEnvironment(input: { configDirectory: string; base
     !(url.protocol === 'https:' || (url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname)))) {
     throw new Error('Claude模型端点必须是HTTPS或明确的本机回环地址')
   }
-  if (!input.apiKey.trim() || !input.model.trim() || input.model.length > 200) throw new Error('Claude需要明确的模型和API凭据')
+  if (!input.apiKey.trim() || !validModelId(input.model)) throw new Error('Claude需要明确的模型和API凭据')
   return { ...claudeEnvironment(input.configDirectory), ANTHROPIC_BASE_URL: input.baseUrl,
     ANTHROPIC_API_KEY: input.apiKey, ANTHROPIC_MODEL: input.model,
     ANTHROPIC_DEFAULT_HAIKU_MODEL: input.model, ANTHROPIC_DEFAULT_SONNET_MODEL: input.model,

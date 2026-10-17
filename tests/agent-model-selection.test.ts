@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
+ * [OUTPUT]: 三协议本机网关无需伪造私钥，远程缺凭据或公开标识误用不能提交。
  * [OUTPUT]: 2026-10-10 核对Claude来源与宿主同规则、不自动回退及Codex/API混绑拒绝。
  * [INPUT]: 全局模型选择合同与隔离API/本机配置。
  * [OUTPUT]: 明确API来源不受列表顺序影响，本机按实际协议而非品牌绑定，失效/未测试/不适用连接拒绝提交且不自动回退。
@@ -76,4 +78,26 @@ it('exposes only host-accepted Claude API sources and never enables a Codex/API 
   expect(agentModelSelectionReady({ ...choice, connectionId: 'deepseek' }, [deepseek], [claude])).toBe(true)
   const codex = profile('codex', 'codex-app-server')
   expect(agentModelSelectionReady({ ...selectAgentProfile(selected, codex), connectionId: 'chosen' }, connections, [codex])).toBe(false)
+})
+
+it.each(['chat', 'responses', 'messages'] as const)('accepts the configured local Magpie %s source without a fake private key', protocol => {
+  const connection: Connection = { id: 'gateway', name: 'Magpie', provider: protocol === 'messages' ? 'anthropic' : 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'vendor/model', hasApiKey: false, gateway: { kind: 'magpie', protocol, auth: 'local' } }
+  const value = { ...selected, connectionId: connection.id }
+  expect(agentModelSelectionReady(value, [connection], [])).toBe(true)
+  expect(agentModelSelectionReady(value, [{ ...connection, baseUrl: 'https://remote.test' }], [])).toBe(false)
+  expect(agentModelSelectionReady(value, [{ ...connection, gateway: { ...connection.gateway!, auth: 'key' } }], [])).toBe(false)
+})
+
+
+it('plugin model sources require the tested protocol capability and preserve native-only compatibility', () => {
+  const saved = { ...profile('plugin', 'runtime-plugin'), runtimePlugin: { pluginId: 'boai.runtime.pi', providerId: 'pi', packageHash: 'fixture' } }
+  const choice = selectAgentProfile(selected, saved)
+  const gateway: Connection = { id: 'gateway', name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'vendor/model', hasApiKey: false, gateway: { kind: 'magpie', protocol: 'chat', auth: 'local' } }
+  expect(agentModelSelectionReady(choice, [], [saved])).toBe(true)
+  expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [gateway], [saved])).toBe(false)
+  const capable = { ...saved, verified: { ...saved.verified!, modelSource: { protocols: ['chat' as const] } } }
+  expect(agentModelConnections(choice, [...connections, gateway], capable)).toEqual([gateway])
+  expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [gateway], [capable])).toBe(true)
+  expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [{ ...gateway, gateway: { ...gateway.gateway!, protocol: 'messages' } }], [capable])).toBe(false)
+  expect(agentModelSelectionReady({ ...choice, connectionId: gateway.id }, [], [capable])).toBe(false)
 })

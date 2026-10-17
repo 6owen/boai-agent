@@ -86,6 +86,7 @@
   },
   "build": {
     "appId": "com.boai.agent",
+    "buildVersion": "0.2.3",
     "productName": "BoAI Agent",
     "directories": {
       "output": "release"
@@ -120,7 +121,16 @@
       ]
     },
     "electronDist": "node_modules/electron/dist",
-    "npmRebuild": false
+    "npmRebuild": false,
+    "protocols": [
+      {
+        "name": "BOAI model connection import",
+        "schemes": [
+          "boai"
+        ],
+        "role": "Editor"
+      }
+    ]
   },
   "devDependencies": {
     "@babel/core": "7.29.7",

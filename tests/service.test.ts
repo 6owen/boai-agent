@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 步骤上限后新消息接续覆盖同进程/重启、发送去重、原Work/调用数/绝对期限及历史工具保留。
  * [OUTPUT]: 已忘记历史不重入汇报修复；员工命令永久授权保持配置版本，隔离其他员工并支持重启、撤销与关闭清理。
  * [OUTPUT]: API执行文本不重复登记最终答复或旧task_step摘要，最终上下文消息独立发布。
  * [OUTPUT]: 工作接续保留已完成 edit_file 原身份，原等待/修复/不重复副作用回归。
@@ -90,6 +91,71 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it.each([[false, 'write_file'], [true, 'write_file'], [false, 'call_data_source'], [false, 'browser_tool']] as const)('continues a step-limited work from a new user message with its original identity (restart=%s, effect=%s)', async (restart, effectTool) => {
+    const { service: initialService, engine, root, secrets } = await fixture(); await configure(initialService)
+    let service = initialService
+    const direct = await conversation(service)
+    engine.handler = async context => {
+      for (let step = 1; step < 12; step++) await context.onAdditionalModelCall!()
+      await context.beforeEffect!(); await context.afterEffect!()
+      await context.onTool({ id: 'confirmed-effect', name: effectTool, status: 'completed', detail: '已完成本次操作', createdAt: new Date().toISOString() })
+      throw new Error('已达到单次任务的工具步骤上限，请继续发送消息')
+    }
+    await send(service, direct, '查看目录并汇总内容', 'step-limit-initial'); await idle(service, direct, 1)
+    const before = await detail(service, direct)
+    const original = before.runs.find(run => run.phase === 'execution')!
+    expect(before.workBudgets![0].modelCalls).toBe(12)
+    expect(before.workItems![0].requiresReview).toBe(true)
+    if (restart) {
+      await service.close()
+      service = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(service); await service.init()
+      expect(engine.contexts).toHaveLength(1)
+    }
+    engine.decisionHandler = async context => {
+      const work = context.workItems!.find(work => work.id === original.workId)!
+      return { action: 'reply', responseKind: 'task', work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version }, observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    engine.handler = async context => {
+      expect(context.completedWorkTools?.flatMap(run => run.tools)).toEqual([expect.objectContaining({ id: 'confirmed-effect', name: effectTool })])
+      await context.onDelta('目录汇总完成')
+    }
+    await send(service, direct, '继续', 'step-limit-continue')
+    await send(service, direct, '继续', 'step-limit-continue'); await idle(service, direct, 2)
+    const after = await detail(service, direct)
+    const runs = after.runs.filter(run => run.phase === 'execution')
+    expect(runs.map(run => ({ status: run.status, error: run.error }))).toEqual([
+      { status: 'failed', error: original.error }, { status: 'completed', error: undefined },
+    ])
+    expect(engine.contexts).toHaveLength(2)
+    expect(runs[1].workId).toBe(original.workId)
+    expect(runs[0].toolEvents).toEqual(original.toolEvents)
+    expect(engine.contexts[1].work?.budgetId).toBe(engine.contexts[0].work?.budgetId)
+    expect(after.workItems).toHaveLength(1)
+    expect(after.workItems![0].sourceMessageId).toBe(before.workItems![0].sourceMessageId)
+    expect(after.workBudgets![0]).toMatchObject({ id: before.workBudgets![0].id, deadlineAt: before.workBudgets![0].deadlineAt, modelCalls: 13, retries: 1, runs: 2 })
+  })
+
+  it('rejects a failed-work continuation when its confirmed operation context was invalidated', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service)
+    engine.handler = async context => { await context.beforeEffect!(); await context.afterEffect!(); throw new Error('已达到单次任务的工具步骤上限，请继续发送消息') }
+    await send(service, direct, '处理本次材料', 'invalid-context-initial'); await idle(service, direct, 1)
+    const before = await detail(service, direct)
+    const original = before.runs.find(run => run.phase === 'execution')!
+    const snapshots = (service as unknown as { snapshots: Map<string, { invalidated?: boolean }> }).snapshots
+    snapshots.get(original.id)!.invalidated = true
+    engine.decisionHandler = async context => {
+      const work = context.workItems!.find(work => work.id === original.workId)!
+      return { action: 'reply', responseKind: 'task', work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version }, observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    await send(service, direct, '继续', 'invalid-context-continue'); await idle(service, direct, 2)
+    const after = await detail(service, direct)
+    expect(after.runs.filter(run => run.phase === 'execution').at(-1)?.error).toBe('原执行记录或资源已失效，不能接续已有操作')
+    expect(engine.contexts).toHaveLength(1)
+    expect(after.workItems).toEqual(before.workItems)
+    expect(after.workBudgets).toEqual(before.workBudgets)
+  })
+
   it.each(['new-input', 'evidence-repair'] as const)('excludes forgotten history from %s reports without replaying work', async mode => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service)

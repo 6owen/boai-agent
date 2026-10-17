@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群计划误填employeeId须给出可执行纠错，拒绝期间零创建；同key省略归属字段后沿原群保存。
  * [OUTPUT]: bobo专用创建会话单员工保存、同请求幂等和普通核心/员工越权拒绝。
  * [OUTPUT]: 模型目录对象根和跨供应商regex保持运行时动作/路径拒绝，不放松校验。
  * [OUTPUT]: 官方MCP工具列表schema验证所有产品工具，防止一个非法根schema使整份目录不可用。
@@ -36,12 +37,12 @@ async function setup() {
     await service.handle('saveAgent', { ...fields, connectionId: connection.id, allowCommands: false })
   }
   const chat = await service.handle('createConversation', { kind: 'direct', title: '计划对话', agentIds: ['researcher'] }) as Conversation
-  const send = async (fn: typeof handler) => {
+  const send = async (fn: typeof handler, conversationId = chat.id) => {
     handler = fn
-    await service.handle('sendMessage', { conversationId: chat.id, content: '按本轮明确要求管理自动化', mentionIds: [], requestId: crypto.randomUUID() })
-    await expect.poll(async () => (await service.handle('getConversation', { id: chat.id }) as ConversationDetail).turns?.every(t => ['completed', 'failed', 'cancelled'].includes(t.status)), { timeout: 8000 }).toBe(true)
-    const detail = await service.handle('getConversation', { id: chat.id }) as ConversationDetail
-    expect(detail.runs.filter(run => run.phase === 'execution' || !run.phase).every(run => run.status === 'completed')).toBe(true)
+    await service.handle('sendMessage', { conversationId, content: '按本轮明确要求管理自动化', mentionIds: [], requestId: crypto.randomUUID() })
+    await expect.poll(async () => (await service.handle('getConversation', { id: conversationId }) as ConversationDetail).turns?.every(t => ['completed', 'failed', 'cancelled'].includes(t.status)), { timeout: 8000 }).toBe(true)
+    const detail = await service.handle('getConversation', { id: conversationId }) as ConversationDetail
+    expect(detail.runs.filter(run => run.phase === 'execution' || !run.phase).every(run => run.status === 'completed'), JSON.stringify(detail.runs.filter(run => run.error).map(run => run.error))).toBe(true)
     return detail
   }
   return { root, service, chat, send, setHandler(fn: typeof handler) { handler = fn }, get context() { return current! } }
@@ -71,6 +72,24 @@ it('saves from the original employee chat, deduplicates mutations and refuses st
     expect((await ctx.manageAutomation!({ action: 'list', limit: 20 }) as AutomationListPage).definitions.map(d => d.id)).toEqual([saved.id])
   })
   expect(await f.service.handle('getAutomation', { id: saved!.id })).toMatchObject({ revision: 3, time: '10:00', enabled: false })
+})
+
+it('explains a misplaced group employeeId and saves the corrected same-key request without changing ownership', async () => {
+  const f = await setup()
+  const group = await f.service.handle('createConversation', { kind: 'group', title: '群计划归属', agentIds: ['researcher', 'writer'] }) as Conversation
+  let saved: AutomationDefinition | undefined
+  await f.send(async ctx => {
+    if (ctx.agent.id !== 'researcher' || !ctx.manageAutomation) return
+    expect(ctx.automationOwner).toEqual({ kind: 'group', conversationId: group.id })
+    const collaboration = { coordinatorId: 'researcher', assignments: [{ employeeId: 'writer', instruction: '采集一个数字', deliverable: '数字', dependsOn: [] }, { employeeId: 'researcher', instruction: '汇总实际数字', deliverable: '汇总', dependsOn: ['writer'] }] }
+    const request = { action: 'save' as const, key: 'group-plan', plan: { ...plan, conversationPolicy: 'new-conversation' as const, collaboration } }
+    await expect(ctx.manageAutomation!({ ...request, employeeId: 'researcher' })).rejects.toThrow('删除 employeeId')
+    expect((await ctx.manageAutomation!({ action: 'list', limit: 20 }) as AutomationListPage).definitions).toEqual([])
+    saved = await ctx.manageAutomation!(request) as AutomationDefinition
+    expect(await ctx.manageAutomation!(request)).toMatchObject({ id: saved.id, revision: 1 })
+  }, group.id)
+  expect(saved).toMatchObject({ owner: { kind: 'group', conversationId: group.id }, collaboration: { coordinatorId: 'researcher' }, enabled: false })
+  expect((await f.service.handle('listOwnerAutomations', { owner: { kind: 'group', conversationId: group.id } }) as AutomationListPage).definitions).toHaveLength(1)
 })
 
 it('native product management uses the same host receipt without lazy Work or file tools', async () => {
