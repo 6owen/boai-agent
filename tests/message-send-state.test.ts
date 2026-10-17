@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
- * [OUTPUT]: 技能/文件引用随原请求恢复，不能伪造本机路径或在重启后重绑来源。
+ * [OUTPUT]: 技能/数据源/文件引用随原请求恢复，不能伪造本机路径或在重启后重绑来源。
  * [INPUT]: 普通/ACP原请求、材料版本引用与跨重启快照。
  * [OUTPUT]: 原请求独立于后续草稿，重启unknown且同指纹可清除；仅保存引用，不泄露媒体/路径；保留旧ACP并拒绝损坏新版。
  * [POS]: 消息发送持久边界回归；不把恢复解释为发送授权。
@@ -78,4 +78,15 @@ it('freezes composer resource identity across unknown-send recovery', () => {
   expect(restored.get('chat')?.submission).toMatchObject({ status: 'unknown', input: { composerReferences } })
   expect(pendingMessageRequests(restored)).toEqual({ chat: entry })
   expect(() => restorePendingMessageDrafts({ chat: { ...entry, input: { ...entry.input, composerReferences: [{ ...composerReferences[0], path: '/secret' }] } } })).toThrow()
+})
+
+
+it('restores the exact selected source version without granting a member mention or rebinding on restart', () => {
+  const reference = { kind: 'source' as const, id: 'source-a', name: '资料库', agentId: 'researcher', revision: 8 }
+  const input = { content: '@资料库 核对原资料', mentionIds: [], composerReferences: [reference] }
+  const restored = restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'source-request', input } }).get('chat')!
+  expect(restored.submission).toMatchObject({ status: 'unknown', input })
+  expect(restored.mentionIds).toEqual([])
+  expect(pendingMessageRequests(new Map([['chat', restored]]))).toMatchObject({ chat: { input } })
+  expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'source-request', input: { ...input, composerReferences: [{ ...reference, credential: 'DO_NOT_SEND' }] } } })).toThrow()
 })

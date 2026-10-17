@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 群资料复用原64px拼图头像及文字排版，头像按钮无额外内边距，名称自动保存保持成员入口外观。
+ * [OUTPUT]: 身份自动保存不改变资料页操作按钮透明度或悬停外观；分区编辑的可见性优先于全局disabled样式，避免批量闪现。
+ * [OUTPUT]: 员工身份纯文本直接编辑复用原contact-profile标题/描述/头像布局，不引入Input高度/留白；空描述显示原数字员工占位。
+ * [OUTPUT]: 员工资料分区编辑按钮仅悬停/键盘聚焦显示，触屏保留入口；顶部身份直接编辑，无基本信息标题。
  * [OUTPUT]: 员工资源选择与空态取消内层边框/背景，保留单层Card；身份编辑仅配置页，右上关闭与内容留白分开。
  * [OUTPUT]: 员工编辑外框零内边距、左右栏铺满；留白只在右侧滚动内容内，滚动条贴弹窗右边。
  * [OUTPUT]: 员工编辑弹窗左侧竖排菜单、右侧独立滚动；固定外框与紧凑菜单，窄窗口收为图标导航。
@@ -407,6 +411,9 @@
 .contact-section { margin:20px 0 }
 .contact-section-title { margin:0;font-size:16px;font-weight:600 }
 .contact-section-heading { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px }
+.contact-section .soft-button.contact-section-edit { opacity:0 }
+.contact-section:is(:hover,:focus-within) .soft-button.contact-section-edit { opacity:1 }
+@media (hover:none) { .contact-section .soft-button.contact-section-edit { opacity:1 } }
 .contact-section>.contact-profile-card { margin-bottom:0 }
 .contact-card-content { padding:12px 14px }
 .contact-card-copy { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65 }
@@ -423,11 +430,21 @@
 .contact-card-content .contact-resource-row:first-child { padding-top:0 }
 .contact-card-content .contact-resource-row:last-child { padding-bottom:0 }
 .contact-document { width:100%;max-width:800px;margin:0 auto;padding:48px 36px }
+.contact-document[data-identity-saving] .contact-profile-actions>.soft-button { opacity:1;cursor:pointer }
+.contact-document[data-identity-saving] .contact-profile-actions>.soft-button-primary:hover { background-image:linear-gradient(to bottom,var(--soft-emphasis-highlight),transparent) }
+.contact-document[data-identity-saving] .contact-profile-actions>.soft-button-secondary:hover { --soft-hover-layer:var(--soft-hover) }
+.contact-document[data-identity-saving] .contact-section-edit { cursor:pointer }
+.contact-document[data-identity-saving] .contact-section-edit:hover { background:var(--accent) }
 .contact-profile-heading { display:flex;align-items:center;gap:18px;margin-bottom:28px }
-.contact-profile-heading>.avatar,.contact-profile-heading>.group-avatar { width:64px;height:64px;font-size:26px;border-radius:var(--radius-control) }
+.contact-profile-heading>.contact-group-avatar,.contact-profile-heading>.avatar,.contact-profile-heading>.group-avatar { width:64px;height:64px;font-size:26px;border-radius:var(--radius-control) }
+.contact-group-avatar { padding:0;flex-shrink:0 }
+.contact-group-avatar>.group-avatar { width:100%;height:100% }
+.contact-document[data-identity-saving] .contact-group-avatar,.contact-document[data-identity-saving] .contact-profile-card .conversation-item { opacity:1;cursor:pointer }
 .contact-profile-identity { min-width:0;flex:1 }
 .contact-profile-identity h1 { font-size:20px;line-height:1.4;font-weight:600;margin:0;overflow-wrap:anywhere }
 .contact-profile-identity p { font-size:13px;line-height:1.6;color:var(--muted-foreground);margin:4px 0 8px;overflow-wrap:anywhere }
+.contact-profile-text { outline:none;cursor:text;white-space:pre-wrap;min-width:1ch }
+.contact-profile-text:empty::before { content:attr(data-placeholder);color:var(--muted-foreground);pointer-events:none }
 .contact-facts { margin:22px 0;display:grid;gap:16px }
 .contact-facts>div { display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;font-size:13px;line-height:1.7 }
 .contact-facts dt { color:var(--muted-foreground) }
@@ -488,8 +505,8 @@
 .employee-identity-fields .employee-identity-name { height:44px;font-size:20px;font-weight:550 }
 .employee-identity-fields .employee-identity-role { height:36px;font-size:14px;color:var(--muted-foreground) }
 .employee-identity-fields [data-slot=input]:not(:hover):not(:focus-visible):not([aria-invalid=true]) { background:transparent;border-color:transparent;box-shadow:none }
-.employee-identity-editor .avatar-edit-badge { opacity:0;transition:opacity .15s }
-.employee-identity-editor .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge { opacity:1 }
+.employee-identity-editor .avatar-edit-badge,.contact-profile-heading .avatar-edit-badge { opacity:0;transition:opacity .15s }
+.employee-identity-editor .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge,.contact-profile-heading .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge { opacity:1 }
 .employee-detail>[data-slot=tabs-content][hidden] { display:none }
 .detail-content .employee-detail>[data-slot=tabs-content]:not([hidden]):not(:has(.editor-frame)) { min-height:0;overflow-y:auto }
 .employee-identity-actions { flex-shrink:0 }

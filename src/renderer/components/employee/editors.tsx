@@ -1,5 +1,14 @@
 /*
- * [OUTPUT]: 本机技能独立绑定后更新配置基线/版本并保留原草稿；技能/数据源/知识可经未保存守卫打开原资源详情。
+ * [OUTPUT]: 群配置与资料页共用字段和保存载荷，成员头像/添加打开同一双栏选择器，原高级配置基础分类保留。
+ * [OUTPUT]: 单独发布身份自动保存的待提交/请求/头像上传状态，页面操作锁与外观反馈解耦，普通配置保存保持。
+ * [OUTPUT]: 资料页身份自动保存直接发布已提交员工回执，不调用全量资料刷新；其他配置保存/未知核对保持。
+ * [OUTPUT]: 资料页身份复用原h1/描述排版和64px头像，使用纯文本contenteditable失焦保存；不渲染空身份表单占位，创建/弹窗输入框保持。
+ * [OUTPUT]: 资料页身份输入失焦/头像选择自动保存，共用单个版本化草稿；仅提交身份字段，保留其他分区及保存期间新输入，失败沿原未知核对。
+ * [OUTPUT]: 员工基础配置支持资料页按分区就地编辑，标题右侧保存/取消复用原版本化提交、技能回执及未知核对；非模型分区保存保留原权限。
+ * [OUTPUT]: 群成员下方配置复用员工分区Card与横向设置行，群聊设置/团队背景/共享知识独立分区，说明沿Tooltip及原保存载荷保持。
+ * [OUTPUT]: 员工组配置支持与员工一致的左侧基础配置/自动化菜单及右侧渐隐滚动，保存忙时禁切分类；默认顶部导航及原草稿、成员和解散边界保持。
+ * [OUTPUT]: 技能/数据源添加入口固定在分区标题右侧，Card仅承载已有绑定；技能无绑定时不显示空Card。
+ * [OUTPUT]: 技能更多菜单红色移除经Popover确认；选择器关闭/重选已有技能更新原草稿，新增绑定更新基线/版本并保留草稿，不插入状态提示DOM。
  * [OUTPUT]: API/Codex/Claude同一整体权限保存实际策略，原生审批和访问范围同步调整，旧原生配置未选择时保留。
  * [OUTPUT]: 员工创建/编辑身份行无卡片或分区标题；工作方式仅标题和textarea；模型与权限及资源绑定沿外部分区标题与Card呈现。
  * [OUTPUT]: 配置保存/头像上传忙时透传弹窗关闭锁；原版本化提交、未知回执及非弹窗布局保持。
@@ -28,27 +37,32 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { SourcePicker } from '@/pages/sources/source-picker'
+import { ConnectionSettingRow } from '@/pages/settings/connection-layout'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { SelectField } from '@/components/ui/select-field'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog'
 import type { LaunchProfile } from '@shared/domain'
-import { useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { FileText, LoaderCircle, Search, ShieldCheck } from '@/components/icons/index'
+import { CalendarClock, FileText, LoaderCircle, Search, Settings, ShieldCheck } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '@shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt } from '@shared/domain/skills'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
-import { Banner, colors, EditorFrame, errorText, Field, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common/index'
+import { Banner, colors, EditorFrame, errorText, GuardContext, ResourcePicker, showErrorToast, useDirty, useMutation } from '@/components/common/index'
+import { toast } from 'sonner'
+import { GroupConfigurationFields, groupConfigurationInput } from './group-configuration-fields'
 import { GroupMembers } from './group-members'
 import { AvatarPicker } from './avatar-picker'
+import { ProfileText } from './profile-text'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
 import { AgentPermissionField } from './agent-permission-field'
 import { LocalSkillBinding } from './local-skill-binding'
+import { BoundSkillList } from './bound-skill-list'
 import { committedSkillBindingAgent, mergeSkillBindingDraft } from './local-skill-binding-state'
 import { EmployeeResourceNavigation, type EmployeeResourceTarget } from './resource-navigation'
 import { ContactProfileSection, EmployeeFormSection } from './profile-card'
@@ -58,17 +72,19 @@ export const templates = [
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
 function savedAgentForm(agent: DigitalAgent): AgentInput { return { executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
-export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, active = true, scope = 'creation', identityTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; active?: boolean; scope?: string; identityTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void }) {
+export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge'
+export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
   const [uploading, setUploading] = useState(false)
+  const [identityPending, setIdentityPending] = useState(false), [identitySaving, setIdentitySaving] = useState(false)
   const [profiles, setProfiles] = useState<LaunchProfile[]>([]), [profileError, setProfileError] = useState('')
   useEffect(() => {
-    if (!active) return
+    if (!active || section && section !== 'model') return
     let current = true
     void api.request('listLaunchProfiles', undefined).then(value => { if (current) { setProfiles(value); setProfileError('') } }, () => { if (current) setProfileError('本机连接读取失败，请重新打开员工配置。') })
     return () => { current = false }
-  }, [api, active])
+  }, [api, active, section])
   const initialVersion = useRef(agent?.configVersion)
   const preset = template === undefined ? undefined : templates[template]
   const [form, setForm] = useState<AgentInput>(() => {
@@ -78,12 +94,13 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const { busy, error, run, setError } = useMutation()
   const guard = useContext(GuardContext)
   const resourceNavigation = useContext(EmployeeResourceNavigation)
-  const [bindingLocked, setBindingLocked] = useState(false), [bindingNotice, setBindingNotice] = useState(''), [boundResources, setBoundResources] = useState<Resource[]>([])
-  const [saveUnconfirmed, setSaveUnconfirmed] = useState(false), [checkedAgent, setCheckedAgent] = useState<DigitalAgent | null>(null), [saveCheckNotice, setSaveCheckNotice] = useState('')
+  const [bindingLocked, setBindingLocked] = useState(false), [boundResources, setBoundResources] = useState<Resource[]>([])
+  const [saveUnconfirmed, setSaveUnconfirmed] = useState(false), [checkedAgent, setCheckedAgent] = useState<DigitalAgent | null>(null)
   const baseline = useRef(JSON.stringify(form)), currentForm = useRef(form); currentForm.current = form
   const dirty = JSON.stringify(form) !== baseline.current
   const locked = busy || uploading || bindingLocked || saveUnconfirmed
-  useEffect(() => { onBusyChange?.(busy || uploading); return () => onBusyChange?.(false) }, [busy, uploading, onBusyChange])
+  useEffect(() => { onBusyChange?.(busy || identityPending || uploading || Boolean(section && bindingLocked)); return () => onBusyChange?.(false) }, [busy, identityPending, uploading, section, bindingLocked, onBusyChange])
+  useEffect(() => { onIdentityBusyChange?.(inlineIdentity && (identityPending || identitySaving || uploading)); return () => onIdentityBusyChange?.(false) }, [inlineIdentity, identityPending, identitySaving, uploading, onIdentityBusyChange])
   const set = <K extends keyof AgentInput>(key: K, value: AgentInput[K]) => { if (!locked) setForm(current => ({ ...current, [key]: value })) }
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => {
@@ -101,9 +118,10 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     if (!committed || !receipt.resource) throw new Error('已完成回执没有可核对的员工绑定，请保留原请求核对。')
     const updated = savedAgentForm(committed)
     const draft = mergeSkillBindingDraft(JSON.parse(baseline.current) as AgentInput, currentForm.current, updated)
+    if (committed.skillIds.includes(receipt.resource.id) && !draft.skillIds.includes(receipt.resource.id)) draft.skillIds.push(receipt.resource.id)
     baseline.current = JSON.stringify(updated); initialVersion.current = committed.configVersion; currentForm.current = draft; setForm(draft); guard.setDirty(JSON.stringify(draft) !== baseline.current)
     setBoundResources(previous => [...previous.filter(resource => resource.id !== receipt.resource!.id), receipt.resource!])
-    try { await onSaved(); setBoundResources([]) } catch { setBindingNotice('技能绑定已提交，列表刷新未完成；请重新打开员工配置核对。') }
+    try { await onSaved() } catch { showErrorToast('技能绑定已提交，列表刷新未完成；请重新打开员工配置核对。') }
   }
   const availableResources = [...new Map([...boundResources, ...snapshot.resources].map(resource => [resource.id, resource])).values()]
   const openResource = resourceNavigation ? (target: EmployeeResourceTarget) => {
@@ -111,79 +129,129 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     guard.navigate(() => { onClose(); resourceNavigation(target) }, { resetOnDiscard: false })
   } : undefined
   const allowTaskOnly = !core && !form.skillIds.length && !form.knowledgeIds.length && !form.sourceIds?.length && !form.allowCommands && !snapshot.conversations.some(conversation => conversation.kind === 'group' && agent && conversation.agentIds.includes(agent.id))
-  const modelReady = agentModelSelectionReady(form, snapshot.connections, profiles, allowTaskOnly)
+  const modelReady = Boolean(section && section !== 'model') || agentModelSelectionReady(form, snapshot.connections, profiles, allowTaskOnly)
   const readCommittedConfiguration = async () => {
     if (!agent) return
     try {
       const current = (await api.request('snapshot', undefined)).agents.find(item => item.id === agent.id)
       setCheckedAgent(current ?? null)
-      setSaveCheckNotice(current ? `已读取当前配置版本 ${current.configVersion}；本次编辑基于版本 ${initialVersion.current}。${current.configVersion !== initialVersion.current ? '配置版本已经变化。' : '版本未变也不作为本次保存的请求回执。'}当前草稿保留，请核对后载入已提交配置。` : '员工已不在当前资料中。当前草稿保留，不再提交旧配置。')
-    } catch (reason) { setCheckedAgent(null); setSaveCheckNotice(`当前配置核对失败：${errorText(reason)}。当前草稿保留，尚未确认保存结果。`) }
+      toast.message(current ? `已读取当前配置版本 ${current.configVersion}；本次编辑基于版本 ${initialVersion.current}。${current.configVersion !== initialVersion.current ? '配置版本已经变化。' : '版本未变也不作为本次保存的请求回执。'}当前草稿保留，请核对后载入已提交配置。` : '员工已不在当前资料中。当前草稿保留，不再提交旧配置。')
+    } catch (reason) { setCheckedAgent(null); showErrorToast(`当前配置核对失败：${errorText(reason)}。当前草稿保留，尚未确认保存结果。`) }
   }
   const loadCommittedConfiguration = () => {
     if (!checkedAgent) return
     guard.navigate(() => {
       const updated = savedAgentForm(checkedAgent)
       initialVersion.current = checkedAgent.configVersion; baseline.current = JSON.stringify(updated); currentForm.current = updated; setForm(updated)
-      setSaveUnconfirmed(false); setSaveCheckNotice('已载入当前已提交配置，可在此版本上重新编辑。'); setError(''); guard.setDirty(false)
+      setSaveUnconfirmed(false); setError(''); guard.setDirty(false)
     }, { resetOnDiscard: false })
   }
-  const submit = (event: FormEvent) => {
-    event.preventDefault(); if (uploading || bindingLocked || saveUnconfirmed || !modelReady) return
-    void run(async () => {
+  const save = async (identityOnly = false) => {
+    if (busy || uploading || bindingLocked || saveUnconfirmed || !active || (identityOnly ? identityDisabled : !modelReady)) return
+    const previous = JSON.parse(baseline.current) as AgentInput
+    const submitted = identityOnly ? { ...previous, name: form.name, role: form.role, avatar: form.avatar } : form
+    if (identityOnly && !submitted.name.trim()) { showErrorToast('请输入员工名称。'); return }
+    if (identityOnly && JSON.stringify(submitted) === baseline.current) return
+    if (identityOnly) setIdentitySaving(true)
+    await run(async () => {
       let committed: DigitalAgent
-      try { committed = await api.request('saveAgent', { ...form, expectedConfigVersion: initialVersion.current, name: form.name.trim(), role: form.role.trim(), executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? undefined : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: !core && form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }
-      catch (reason) { if (agent) { setSaveUnconfirmed(true); await readCommittedConfiguration() }; throw reason }
+      try { committed = await api.request('saveAgent', { ...submitted, expectedConfigVersion: initialVersion.current, name: submitted.name.trim(), role: submitted.role.trim(), ...(identityOnly || section && section !== 'model' ? {} : { executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? undefined : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: !core && form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }) }
+      catch (reason) { setIdentityPending(false); if (agent) { setSaveUnconfirmed(true); await readCommittedConfiguration() }; throw reason }
       const updated = savedAgentForm(committed)
-      initialVersion.current = committed.configVersion; baseline.current = JSON.stringify(updated); currentForm.current = updated; setForm(updated); guard.setDirty(false)
-      try { await onSaved() } catch (reason) { throw new Error(`配置已保存为版本 ${committed.configVersion}，资料刷新失败：${errorText(reason)}。请返回资料重新核对。`) }
-      guard.saved(actionsTarget === undefined ? onClose : undefined)
+      // Identity saves must not submit or erase another section's draft, including new typing during the request.
+      const changes = identityOnly ? Object.fromEntries(Object.entries(currentForm.current).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(submitted[key as keyof AgentInput]))) : {}
+      const draft = { ...updated, ...changes }
+      initialVersion.current = committed.configVersion; baseline.current = JSON.stringify(updated); currentForm.current = draft; setForm(draft); guard.setDirty(JSON.stringify(draft) !== baseline.current)
+      try { if (identityOnly && onIdentitySaved) onIdentitySaved(committed); else await onSaved() } catch (reason) { throw new Error(`配置已保存为版本 ${committed.configVersion}，资料刷新失败：${errorText(reason)}。请返回资料重新核对。`) }
+      if (!identityOnly) guard.saved(actionsTarget === undefined ? onClose : undefined)
     })
+    if (identityOnly) setIdentitySaving(false)
   }
-  const identity = <div className="employee-identity-editor">
-    <AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={locked || identityDisabled} onChange={avatar => { if (!identityDisabled) set('avatar', avatar) }} onBusyChange={setUploading} />
+  useEffect(() => {
+    if (!inlineIdentity || !identityPending || busy || uploading || bindingLocked || saveUnconfirmed || !active || identityDisabled) return
+    setIdentityPending(false)
+    void save(true)
+  })
+  const submit = (event: FormEvent) => { event.preventDefault(); void save(inlineIdentity && section === 'identity') }
+  const identityLocked = inlineIdentity ? identityDisabled || uploading || bindingLocked || saveUnconfirmed || busy && !identitySaving : locked || identityDisabled
+  const setIdentity = <K extends 'name' | 'role' | 'avatar'>(key: K, value: AgentInput[K]) => {
+    if (identityLocked) return
+    setForm(current => ({ ...current, [key]: value }))
+    if (inlineIdentity && key === 'avatar') setIdentityPending(true)
+  }
+  const identityBlur = inlineIdentity ? () => {
+    if (identityDisabled || saveUnconfirmed) return
+    const saved = JSON.parse(baseline.current) as AgentInput
+    if ((['name', 'role', 'avatar'] as const).some(key => JSON.stringify(form[key]) !== JSON.stringify(saved[key]))) setIdentityPending(true)
+  } : undefined
+  const avatarPicker = <AvatarPicker name={form.name || '新同事'} seed={agent?.id} value={form.avatar} disabled={identityLocked} onChange={avatar => setIdentity('avatar', avatar)} onBusyChange={setUploading} />
+  const identity = inlineIdentity ? <>
+    {avatarPicker}
+    <div className="contact-profile-identity">
+      <ProfileText as="h1" label={core ? '助手名称' : '员工名称'} value={form.name} placeholder={core ? '助手名称' : '员工姓名'} maxLength={80} disabled={identityLocked} onChange={value => setIdentity('name', value)} onBlur={identityBlur} />
+      <ProfileText as="p" label="员工职责" value={form.role} placeholder="数字员工" maxLength={300} disabled={identityLocked} onChange={value => setIdentity('role', value)} onBlur={identityBlur} />
+    </div>
+  </> : <div className="employee-identity-editor">
+    {avatarPicker}
     <div className="employee-identity-fields">
-      <Input form={formId} required maxLength={80} aria-label={core ? '助手名称' : '员工名称'} className="employee-identity-name" disabled={locked || identityDisabled} value={form.name} onChange={event => { if (!identityDisabled) set('name', event.target.value) }} placeholder={core ? '助手名称' : '员工姓名'} />
-      <Input form={formId} maxLength={300} aria-label="员工职责" className="employee-identity-role" disabled={locked || identityDisabled} value={form.role} onChange={event => { if (!identityDisabled) set('role', event.target.value) }} placeholder="一句话描述擅长的工作" />
+      <Input form={formId} required maxLength={80} aria-label={core ? '助手名称' : '员工名称'} className="employee-identity-name" disabled={identityLocked} value={form.name} onChange={event => setIdentity('name', event.target.value)} onBlur={identityBlur} onKeyDown={inlineIdentity ? event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.blur() } } : undefined} placeholder={core ? '助手名称' : '员工姓名'} />
+      <Input form={formId} maxLength={300} aria-label="员工职责" className="employee-identity-role" disabled={identityLocked} value={form.role} onChange={event => setIdentity('role', event.target.value)} onBlur={identityBlur} onKeyDown={inlineIdentity ? event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.blur() } } : undefined} placeholder="一句话描述擅长的工作" />
     </div>
   </div>
   const commandPermission = snapshot.commandPermissions?.find(permission => permission.agentId === agent?.id)
-  const saveAction = <Button type="submit" form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
-  const actions = actionsTarget === undefined ? <><Button variant="secondary" disabled={busy || uploading} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined
-  return <>{identityTarget && createPortal(identity, identityTarget)}{actionsTarget && createPortal(saveAction, actionsTarget)}{actions && !configurationVisible && footerTarget && (dirty || busy || uploading) && createPortal(<footer className="editor-footer">{actions}</footer>, footerTarget)}<EditorFrame leading={identityTarget === undefined ? <div className="employee-identity">{identity}</div> : undefined} footer={actions}>
-    <form data-edit-form={configurationVisible || dirty ? true : undefined} id={formId} onSubmit={submit} className="form-grid employee-form-sections">
+  const saveAction = <Button type="submit" size={section ? 'sm' : 'default'} form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{section || actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
+  const actions = actionsTarget === undefined ? <><Button type="button" size={section ? 'sm' : 'default'} variant="secondary" disabled={busy || uploading || Boolean(section && bindingLocked)} onClick={() => guard.navigate(onClose, section ? { resetOnDiscard: false } : undefined)}>取消</Button>{saveAction}</> : undefined
+  const inlineActions = section ? <div className="flex items-center gap-2">{actions}</div> : undefined
+  const visible = (key: AgentConfigurationSection) => !section || section === key
+  const content = <form data-edit-form={dirty || configurationVisible && (!inlineIdentity || section !== 'identity') ? true : undefined} id={formId} onSubmit={submit} className="form-grid employee-form-sections">
       {error && <div className="full"><Banner>{error}</Banner></div>}
-      {bindingNotice && <div className="full"><Banner kind="notice">{bindingNotice}</Banner></div>}
-      {saveCheckNotice && <div className="full"><Banner kind="notice">{saveCheckNotice}</Banner>{saveUnconfirmed && <div className="button-row"><Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => { void run(readCommittedConfiguration) }}>重新核对配置</Button>{checkedAgent && <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={loadCommittedConfiguration}>载入已提交配置</Button>}</div>}</div>}
+      {saveUnconfirmed && <div className="button-row full"><Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => { void run(readCommittedConfiguration) }}>重新核对配置</Button>{checkedAgent && <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={loadCommittedConfiguration}>载入已提交配置</Button>}</div>}
       <fieldset className="contents" disabled={locked}>
-      <EmployeeFormSection title="模型与权限">
+      {visible('model') && <EmployeeFormSection title="模型与权限" actions={inlineActions}>
       <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
       {!core && (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' })) }} disabled={locked} full />}
-      </EmployeeFormSection>
-      <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
+      </EmployeeFormSection>}
+      {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
       </fieldset>
-      {(form.executionBackend?.kind!=='acp-local')&&<><EmployeeFormSection title="技能"><div className="field full"><fieldset className="contents" disabled={locked}><ResourcePicker resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} selected={form.skillIds} onChange={ids => set('skillIds', ids)} onOpen={openResource && (resource => openResource({ kind: 'resource', id: resource.id, name: resource.name }))} empty="还没有绑定技能，可从本机技能选择。" /></fieldset>{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} /> : <><Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button><p className="field-hint">请先保存员工配置，再绑定本机技能。</p></>}</div></EmployeeFormSection>
+      {(form.executionBackend?.kind!=='acp-local')&&<>{visible('skills') && <EmployeeFormSection title="技能" actions={<div className="flex flex-wrap items-center gap-2">{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} resources={availableResources} skillIds={form.skillIds} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} onChange={ids => set('skillIds', ids)} /> : <Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button>}{inlineActions}</div>}>
+        {form.skillIds.length > 0 && <div className="field full">
+        <BoundSkillList resources={availableResources.filter(item => item.kind === 'skill' && (!item.ownerAgentId || item.ownerAgentId === agent?.id))} ids={form.skillIds} disabled={locked} onRemove={id => set('skillIds', form.skillIds.filter(value => value !== id))} onOpen={openResource && (resource => openResource({ kind: 'resource', id: resource.id, name: resource.name }))} />
+        </div>}
+      </EmployeeFormSection>}
       <fieldset className="contents" disabled={locked}>
-      <EmployeeFormSection title="数据源"><SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} /></EmployeeFormSection>
-      <EmployeeFormSection title="知识资料"><div className="field full"><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} onOpen={openResource && (resource => openResource({ kind: 'resource', id: resource.id, name: resource.name }))} empty="还没有知识资料。" /></div></EmployeeFormSection>
+      {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
+      {visible('knowledge') && <EmployeeFormSection title="知识资料" actions={inlineActions}><div className="field full"><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} onOpen={openResource && (resource => openResource({ kind: 'resource', id: resource.id, name: resource.name }))} empty="还没有知识资料。" /></div></EmployeeFormSection>}
       </fieldset>
       </>}
     </form>
-  </EditorFrame></>
+  return <>{identityTarget && createPortal(identity, identityTarget)}{actionsTarget && createPortal(saveAction, actionsTarget)}{actions && !configurationVisible && footerTarget && (dirty || busy || uploading) && createPortal(<footer className="editor-footer">{actions}</footer>, footerTarget)}{inlineIdentity ? section === 'identity' && !saveUnconfirmed ? null : sectionTarget ? createPortal(content, sectionTarget) : content : <EditorFrame leading={visible('identity') && identityTarget === undefined ? section ? <ContactProfileSection title="基本信息" actions={inlineActions}>{identity}</ContactProfileSection> : <div className="employee-identity">{identity}</div> : undefined} footer={section ? undefined : actions}>{content}</EditorFrame>}</>
 }
 
-type GroupEditorProps = { active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }
+type GroupEditorProps = { navigation?: 'top' | 'sidebar'; active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }
 export function GroupEditor(props: GroupEditorProps) {
   const [tab, setTab] = useState('profile'), guard = useContext(GuardContext)
+  const [busy, setBusy] = useState(false)
+  const { onBusyChange } = props
+  const configurationBusyChanged = useCallback((value: boolean) => { setBusy(value); onBusyChange?.(value) }, [onBusyChange])
   const group = props.conversation
-  if (!group || group.channel || group.purpose && group.purpose !== 'personal' || !props.onConversation) return <GroupConfiguration {...props} />
-  return <Tabs value={tab} onValueChange={value => guard.navigate(() => setTab(value), { resetOnDiscard: false })}>
-    <TabsList aria-label="群聊详情分类"><TabsTrigger value="profile">配置</TabsTrigger><TabsTrigger value="automations">自动化</TabsTrigger></TabsList>
-    <TabsContent value="profile"><GroupConfiguration {...props} /></TabsContent>
-    <TabsContent value="automations"><OwnerAutomations api={props.api} snapshot={props.snapshot} owner={{ kind: 'group', conversationId: group.id }} active={props.active !== false && tab === 'automations'} onConversation={props.onConversation} /></TabsContent>
+  const sidebar = props.navigation === 'sidebar'
+  const canAutomate = group && !group.channel && (!group.purpose || group.purpose === 'personal') && props.onConversation
+  if (!sidebar && !canAutomate) return <GroupConfiguration {...props} />
+  const menu = <TabsList className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined} aria-label="群聊详情分类">
+    <TabsTrigger value="profile" aria-label={sidebar ? '基础配置' : '配置'} disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[12px]' : undefined}>{sidebar && <Settings size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{sidebar ? '基础配置' : '配置'}</span></TabsTrigger>
+    {canAutomate && <TabsTrigger value="automations" aria-label="自动化" disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[12px]' : undefined}>{sidebar && <CalendarClock size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>自动化</span></TabsTrigger>}
+  </TabsList>
+  const configuration = <GroupConfiguration {...props} onBusyChange={configurationBusyChanged} />
+  const panels = <>
+    {/* Discard the draft immediately after guarded navigation, without waiting for the panel exit animation. */}
+    <TabsContent value="profile">{tab === 'profile' && configuration}</TabsContent>
+    {canAutomate && <TabsContent value="automations"><OwnerAutomations api={props.api} snapshot={props.snapshot} owner={{ kind: 'group', conversationId: group.id }} active={props.active !== false && tab === 'automations'} onConversation={props.onConversation} /></TabsContent>}
+  </>
+  return <Tabs className={sidebar ? 'employee-detail employee-detail-sidebar h-full gap-0' : undefined} orientation={sidebar ? 'vertical' : 'horizontal'} value={tab} onValueChange={value => { if (!busy && value !== tab) guard.navigate(() => setTab(value), { resetOnDiscard: false }) }}>
+    {sidebar ? <><nav className="employee-menu-nav" aria-label="员工组设置">{menu}</nav><ScrollArea className="employee-detail-main" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6' }} contentProps={{ className: 'employee-detail-main-content' }}>{panels}</ScrollArea></> : <>{menu}{panels}</>}
   </Tabs>
 }
-function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, onOpenAgent, actionsTarget, onBusyChange }: GroupEditorProps) {
+function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, actionsTarget, onBusyChange }: GroupEditorProps) {
   const formId = useId()
   const initialVersion = useRef(conversation?.configVersion)
   const [title, setTitle] = useState(conversation?.title ?? '')
@@ -208,22 +276,13 @@ function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onD
       guard.saved(onClose)
     })
   }
-  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { id: conversation?.id, expectedConfigVersion: initialVersion.current, title: title.trim(), kind: 'group', agentIds: ids, mode: 'natural', sharedKnowledgeIds: knowledge, memoryScope, memoryContextRef: memoryContextId ? { kind: 'conversation', id: memoryContextId } : null, ...(conversation?.teamSetup ? { teamSetup } : {}) }); initialVersion.current = result.configVersion; clean(); await onSaved(result); guard.saved(actionsTarget === undefined ? onClose : undefined) }) }
+  const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { ...groupConfigurationInput(conversation, { title, ids, knowledge, teamSetup, memoryScope, memoryContextId }), expectedConfigVersion: initialVersion.current }); initialVersion.current = result.configVersion; clean(); await onSaved(result); guard.saved(actionsTarget === undefined ? onClose : undefined) }) }
   const saveAction = <Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : conversation ? '保存设置' : '创建群聊'}</Button>
   const dissolveAction = conversation && <Button type="button" variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>
-  return <>{actionsTarget && createPortal(saveAction, actionsTarget)}<EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} onOpenAgent={onOpenAgent} />} footer={actionsTarget === undefined ? <>{dissolveAction}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined}>
-    <form data-edit-form id={formId} className="form-grid" onSubmit={submit}>
+  return <>{actionsTarget && createPortal(saveAction, actionsTarget)}<EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} />} footer={actionsTarget === undefined ? <>{dissolveAction}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined}>
+    <form data-edit-form id={formId} className="form-grid employee-form-sections" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
-      <Field label="群聊名称" full><Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：我的内容工作室" /></Field>
-      <Field label="新交流的记忆范围" full hint="收紧立即生效；放宽后只有新交流使用新范围，旧记录不自动升级。"><SelectField value={memoryScope} onValueChange={value => setMemoryScope(value as 'employee' | 'conversation')} options={[{ value: 'employee', label: '各员工在相关聊天中使用' }, { value: 'conversation', label: '仅在此聊天使用' }]} /></Field>
-      <Field label="关联事项（可选）" full hint="明确关联已有聊天中的临时约定，同名聊天不会自动关联。"><SelectField value={memoryContextId} onValueChange={setMemoryContextId} options={[{ value: '', label: '不关联' }, ...snapshot.conversations.filter(c => c.id !== conversation?.id && ids.every(id => c.agentIds.includes(id))).map(c => ({ value: c.id, label: c.title }))]} /></Field>
-
-      {teamSetup && <>
-        <Field label="团队目的" full><Textarea required maxLength={1000} value={teamSetup.purpose} onChange={e => setTeamSetup({ ...teamSetup, purpose: e.target.value })} /></Field>
-        <Field label="协作建议" hint="这是背景建议，不改变发言调度或工具权限" full><Textarea maxLength={2000} value={teamSetup.collaborationGuide} onChange={e => setTeamSetup({ ...teamSetup, collaborationGuide: e.target.value })} /></Field>
-        <Button type="button" variant="outline" onClick={() => setTeamSetup(null)}>移除团队背景</Button>
-      </>}
-      <div className="field full"><span className="field-label">群内共享知识</span><p className="field-hint">只有明确共享的资料才可用于这个群的任务。员工私聊不会自动加入群上下文。</p><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={knowledge} onChange={setKnowledge} empty="还没有可共享的知识资料。" /></div>
+      <GroupConfigurationFields value={{ title, ids, knowledge, teamSetup, memoryScope, memoryContextId }} onChange={next => { setTitle(next.title); setKnowledge(next.knowledge); setTeamSetup(next.teamSetup); setMemoryScope(next.memoryScope); setMemoryContextId(next.memoryContextId) }} snapshot={snapshot} conversationId={conversation?.id} />
       {actionsTarget !== undefined && dissolveAction && <div className="full">{dissolveAction}</div>}
     </form>
   </EditorFrame><AlertDialog open={dissolving} onOpenChange={open => { if (!open) closeDissolve() }}>

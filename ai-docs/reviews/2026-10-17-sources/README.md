@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: Composer数据源指定已接线并在真实开发窗口可见；模块65项与已有两场Electron通过，原来源版本/断言/定位及动画取证失败单独保留，最终截图批次见下文。
 [OUTPUT]: 07:41提交前复查全库类型通过，通讯录/定时历史/目录结果3文件18项通过；此前并行通讯录类型阻塞已解除，旧失败保留。
 [OUTPUT]: source-authority批次178项与消息锚点最终3项通过，初次类型/lint通过；末次全库类型受并行通讯录导出变更阻塞；当前dev重启迁移1→0，无E2E。
 [OUTPUT]: source-editor-compact记录数据源卡片局部尺寸收紧及类型/lint通过，保留贴边滚动，无E2E。
@@ -257,3 +258,18 @@ Craft的`EditContextKey/EDIT_CONFIGS`是入口到目标路径、提示和校验�
 并行通讯录测试随后移除了旧导入，但末次复查`typecheck-settled.log`仍在该文件45/55行报告TS2769（组件props）与TS2304（render未定义），尚未收口。资源权限与消息卡片的178项相关检查、3项最终组件检查及lint保持通过；不将全库类型结果描述为最终通过。
 
 提交前复查（07:41）：并行通讯录改动完成后，`pnpm typecheck`通过；`contact-execution-ui`、`automation-history-refresh`、`catalog-results`三个测试文件18项通过。之前的全库类型阻塞已解除，旧失败日志保留，新日志为`commit-typecheck.log`及`commit-tests.log`。未运行E2E。
+
+
+## Composer 数据源指定（2026-10-17）
+
+现行合同为[19组08 §26](../../spec/19.应用插件架构/08-Composer与技能数据源整合设计.md#26-composer-明确指定数据源2026-10-17)。单员工输入框数据库图标打开可搜索列表，选中沿原编辑器插入资源原子标签；只列员工绑定且启用源，bobo列全部启用源。受理和实际工具/发布前核对当前身份/绑定与源revision，选择本身不改变绑定、不测试或调用源。引用持久化及未知回执沿原发送链路。
+
+- 模块：`service-sources`、`message-send-state`、`inline-mentions`、`service-materials`四文件65项通过。包含真实SQLite保存、普通员工与bobo首发、同名源ID隔离、启停/撤权、源版本拒绝、重复请求核对、选择后尚未调用工具时取消运行、Mastra与本机产品桥的真实本地文件读取、未知引用恢复与凭据字段拒绝。原日志见`.local/reviews/composer-sources-20261017-final3/unit-final.log`。
+- 类型检查、定向UI lint和源码构建通过，构建日志保留在`.local/reviews/composer-sources-20261017-final3/build.log`。本轮不生成安装包。
+- `final3`原两场Electron通过：旧斜线/技能/文件/成员提及，以及新数据源绑定/启用过滤、搜索键盘选择、快速删除撤销、迟到读取隔离、消息固定引用、实际退出与重启核对。场景使用隔离目录及本地HTTP等待夹具，未调用真实供应商模型。
+- 初始失败保留：源引用最初冻结整个员工配置版本，与bobo首发自动接入默认连接冲突；改为固定源revision并实时核对当前授权。取消测试曾错误要求没有流式取消消息、以及所有阶段均取消，后按具体execution Run核对，未放宽产品门禁。首两场桌面因Command实际可访问名称/旧构建定位失败；随后桌面暴露快速插入和删除被合并进一个撤销步骤，已在共享MentionInput分隔标签操作的历史边界。`final3`原深色图为主题过渡中画面，另批补稳定取证；保留`final4`等待背景动画的取证超时，不当作产品功能通过。
+- 当前普通开发窗口在只读确认0个未终结Run且没有编辑弹窗后从应用菜单正常退出，旧主进程14856与dev进程14854已退出；按`pnpm dev`重启为主进程52160/dev进程52137。实际窗口保留原目录和数据，数据库按钮已列出用户原有“本地文件夹”与LegalDataHunter；未发送用户消息、修改绑定或调用这两个源。
+
+最新`final5`同一源码两场Electron再次通过（16.0s）：深色取证前仅结束有限过渡并等待真实绘制，最终浅/深搜索与标签画面均为Electron原生整幅PNG，0场景留证缺口/0清理错误。审阅页为`.local/reviews/composer-sources-20261017-final5-report/index.html`；原`final3`通过与过渡画面、`final4`取证超时仍分别保留。
+
+原批次位于`.local/reviews/composer-sources-20261017*`。报告保留“缺少运行前源码/构建摘要”缺口；本轮构建日志不冒充预先固定的构建清单。技术通过不表示用户效果认可，未认证真实供应商模型、发行包或其他平台。

@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 真实保存暂停与目录刷新期间核对菜单高度/顺序/无冗余文案，连续切换使用新版本，管理跳转通讯录且保留草稿。
  * [INPUT]: 当前模型目录、隔离Electron真实IPC与本地技能/文件。
- * [OUTPUT]: 当前连接内保存/重启/失败、隐藏权限、斜线命令、资源精确身份与群点名真实UI验收。
+ * [OUTPUT]: 当前连接内保存/重启/失败、隐藏权限、斜线命令、资源精确身份与群点名真实UI验收；数据源搜索/绑定过滤/原子删除撤销/迟到目录隔离/发送与重启。
  * [POS]: Composer BDD步骤；HTTP只提供目录并保持任务等待，不调用真实供应商。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -13,9 +13,10 @@ import { join } from 'node:path'
 import { test as base } from '../support/test'
 import { messageDraft } from '../support/editor-controls'
 import { nextMaterialDialog } from '../support/materials'
+import type { DataSource } from '../../../src/shared/domain/sources'
 import type { Conversation, DigitalAgent, Resource } from '../../../src/shared/domain'
 
-type State = { direct?: Conversation; group?: Conversation; employee?: DigitalAgent; writer?: DigitalAgent; connectionId?: string; skill?: Resource; materialId?: string; catalogRequests?: number; holdCatalog?: boolean; releaseCatalog?: () => void }
+type State = { source?: DataSource; sourceAgentVersion?: number; direct?: Conversation; group?: Conversation; employee?: DigitalAgent; writer?: DigitalAgent; connectionId?: string; skill?: Resource; materialId?: string; catalogRequests?: number; holdCatalog?: boolean; releaseCatalog?: () => void }
 export const test = base.extend<{ scenario: State }>({ scenario: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 
@@ -228,5 +229,98 @@ Then('推理设置重启后仍保留且模型连接未变化', async ({ runtime,
   await runtime.restart()
   const agent = (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')!
   expect(agent).toMatchObject({ connectionId: scenario.connectionId, modelId: 'deepseek-v4-pro', thinkingLevel: 'low', allowCommands: scenario.employee!.allowCommands })
+  expect(runtime.errors).toEqual([])
+})
+
+
+When('在输入框搜索并指定员工已绑定的数据源', async ({ runtime, scenario }) => {
+  const page = runtime.page, root = await realpath(runtime.root)
+  const setup = await page.evaluate(async path => {
+    const appearance = await window.boai.request('getAppearance', undefined)
+    await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: appearance.revision })
+    const config = { name: 'My Obsidian LLM Wiki', description: '产品知识资料', guide: '', enabled: true, type: 'local' as const, local: { path } }
+    const source = await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config })
+    await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...config, name: '未绑定资料' } })
+    const disabled = await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { ...config, name: '已停用资料', enabled: false } })
+    const agent = (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'researcher')!
+    const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...definition } = agent
+    const saved = await window.boai.request('saveAgent', { ...definition, sourceIds: [source.id, disabled.id], expectedConfigVersion: configVersion })
+    return { source, version: saved.configVersion }
+  }, root)
+  scenario.source = setup.source; scenario.sourceAgentVersion = setup.version
+  const input = page.getByRole('textbox', { name: '消息内容' }), trigger = page.getByRole('button', { name: '指定数据源', exact: true })
+  await input.fill('请从指定资料核对 ')
+  await trigger.click()
+  const popup = page.getByRole('dialog', { name: '指定数据源' })
+  await expect(popup.getByRole('option')).toHaveCount(1)
+  await expect(popup.getByRole('option', { name: setup.source.name, exact: true })).toBeVisible()
+  await expect(popup).not.toContainText('未绑定资料')
+  await expect(popup).not.toContainText('已停用资料')
+  await runtime.reviewNativeCheckpoint('数据源指定浅色搜索浮层')
+  const search = popup.getByPlaceholder('搜索数据源…')
+  await search.fill('不存在的资料')
+  await expect(popup.getByRole('option')).toHaveCount(0)
+  await expect(popup).toContainText('没有匹配的可用数据源')
+  await search.fill('Obsidian')
+  await expect(popup.getByRole('option')).toHaveCount(1)
+  await page.evaluate(async () => {
+    const appearance = await window.boai.request('getAppearance', undefined)
+    await window.boai.request('updateAppearance', { patch: { mode: 'dark' }, expectedRevision: appearance.revision })
+  })
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await page.evaluate(async () => {
+    for (const animation of document.getAnimations()) if (animation.effect?.getTiming().iterations !== Infinity) { try { animation.finish() } catch { /* Some compositor-owned transitions cannot be finished explicitly. */ } }
+    await new Promise(requestAnimationFrame)
+    await new Promise(requestAnimationFrame)
+  })
+  await runtime.reviewNativeCheckpoint('数据源指定深色搜索浮层')
+  await search.press('ArrowDown'); await search.press('Enter')
+  await expect(popup).toBeHidden()
+  await expect(input).toBeFocused()
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await input.press('Backspace')
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveCount(0)
+  await input.press('ControlOrMeta+z')
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await runtime.app.evaluate(({ ipcMain }) => {
+    const original = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers.get('boai:request')!
+    let held = false
+    ipcMain.removeHandler('boai:request')
+    ipcMain.handle('boai:request', async (event, payload) => {
+      const result = await original(event, payload)
+      if (!held && payload.method === 'listDataSources') {
+        held = true
+        await new Promise<void>(resolve => { (globalThis as unknown as { releaseComposerSources: () => void }).releaseComposerSources = resolve })
+      }
+      return result
+    })
+  })
+  await trigger.click()
+  await expect(popup).toContainText('正在读取数据源')
+  await page.locator('.conversation-item[aria-label="菜单协作"]').click()
+  await runtime.app.evaluate(() => (globalThis as unknown as { releaseComposerSources: () => void }).releaseComposerSources())
+  await expect(popup).toBeHidden()
+  await expect(trigger).toHaveCount(0)
+  await page.locator('.conversation-item[aria-label="研究员"]').click()
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await runtime.reviewNativeCheckpoint('数据源指定标签与原草稿')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+})
+
+Then('数据源标签随消息保存且重启不改变来源或绑定', async ({ runtime, scenario }) => {
+  const read = () => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), scenario.direct!.id)
+  await expect.poll(async () => (await read()).messages.filter(message => message.senderType === 'user').length).toBe(1)
+  const message = (await read()).messages.find(message => message.senderType === 'user')!
+  const reference = { kind: 'source', id: scenario.source!.id, name: scenario.source!.name, agentId: 'researcher', revision: scenario.source!.revision }
+  expect(message.content).toContain('@' + scenario.source!.name)
+  expect(message.composerReferences).toEqual([reference]); expect(message.mentionIds).toEqual([])
+  expect(JSON.stringify(message.composerReferences)).not.toContain(await realpath(runtime.root))
+  await runtime.page.evaluate(id => window.boai.request('cancelRun', { conversationId: id }), scenario.direct!.id)
+  await runtime.restart()
+  const restored = await read()
+  expect(restored.messages.find(value => value.id === message.id)!.composerReferences).toEqual([reference])
+  const employee = (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')!
+  expect(employee.configVersion).toBe(scenario.sourceAgentVersion)
+  expect(employee.sourceIds).toContain(scenario.source!.id)
   expect(runtime.errors).toEqual([])
 })

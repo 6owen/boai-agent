@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源Composer引用核对固定ID/源版本、绑定/启用、核心首发/重复请求与真实双工具桥；选择本身成为来源失效依赖，不授予权限。
  * [OUTPUT]: 员工整体三档权限实际约束本地数据源写入；审批前零写、只读拒绝、完全访问无审批，旧配置兼容。
  * [OUTPUT]: 真实AppService验证bobo无绑定全局及同轮新增源读写、普通chat无Work、停用/私有阶段/结束运行拒绝；普通员工绑定门禁保持。
  * [OUTPUT]: 桌面凭据读取、编辑后回填/清空、版本拒绝与普通DTO隔离；使用测试vault，不读取用户密钥。
@@ -190,4 +191,85 @@ it('grants creation only to a dedicated core user conversation and rejects the e
   expect(await service.handle('listDataSources', undefined)).toMatchObject([{ type: 'local', creationSource: { conversationId: conversation.id, agentId: 'bobo' } }])
   await expect(context!.createDataSource!({ key: 'late', config: { name: '迟到', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } })).rejects.toThrow()
   await expect(service.handle('startCoreConversation', { requestId: randomUUID(), content: '冲突入口', sourceCreation: true, automationCreation: true })).rejects.toThrow('同时')
+})
+
+
+it.each(['researcher', 'bobo'])('keeps selected source identity through message acceptance and both tool bridges for %s', async agentId => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-composer-sources-')))
+  cleanups.push(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, 'facts.md'), 'SELECTED_SOURCE_FACT')
+  let selected: DataSource, employee: DigitalAgent, context: EngineContext | undefined, failure: unknown
+  const calls: string[] = []
+  const engine: AgentEngine = {
+    test: async () => 'ok',
+    decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence }),
+    run: async ctx => {
+      context = ctx
+      try {
+        const references = ctx.messages.find(message => message.id === ctx.triggerMessageId)!.composerReferences!
+        expect(references).toEqual([{ kind: 'source', id: selected.id, name: selected.name, agentId, revision: selected.revision }])
+        const tools = createSourceTools(ctx)
+        const request = { sourceId: references[0].id, tool: 'files', arguments: { operation: 'read', path: 'facts.md' } }
+        expect(JSON.stringify(await tools.call_data_source.execute!(request, { requestContext: new RequestContext(), observe: noopObserve }))).toContain('SELECTED_SOURCE_FACT')
+        const bridge = createNativeProducts(ctx)
+        try { expect(JSON.stringify(await bridge.tools.find(tool => tool.name === 'call_data_source')!.execute(request, 'selected-source'))).toContain('SELECTED_SOURCE_FACT') }
+        finally { await bridge.dispose() }
+        calls.push(references[0].id)
+        await ctx.onDelta('SELECTED_SOURCE_FACT')
+      } catch (error) { failure = error; throw error }
+    },
+  }
+  const service = new AppService({ dataPath: join(root, 'app'), engine, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  cleanups.push(() => service.close()); await service.init()
+  const connection = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' }) as Connection
+  const config = { name: '同名资料', description: '', guide: '', enabled: true, type: 'local' as const, local: { path: root } }
+  selected = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config }) as DataSource
+  const unrelated = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config }) as DataSource
+  const disabled = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...config, enabled: false } }) as DataSource
+  const original = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === agentId)!
+  const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...definition } = original
+  employee = await service.handle('saveAgent', { ...definition, connectionId: connection.id, modelId: 'fixture', sourceIds: agentId === 'bobo' ? [] : [selected.id], expectedConfigVersion: configVersion }) as DigitalAgent
+  const direct = agentId === 'bobo' ? undefined : await service.handle('createConversation', { kind: 'direct', title: '指定数据源', agentIds: [agentId] }) as Conversation
+  const reference = { kind: 'source' as const, id: selected.id, name: selected.name, agentId, revision: selected.revision }
+  const submit = (ref: typeof reference, requestId = randomUUID()) => direct
+    ? service.handle('sendMessage', { conversationId: direct.id, requestId, content: '@同名资料 请读取事实', mentionIds: [], composerReferences: [ref] })
+    : service.handle('startCoreConversation', { requestId, content: '@同名资料 请读取事实', composerReferences: [ref] })
+  for (const ref of [{ ...reference, revision: reference.revision + 1 }, { ...reference, agentId: 'writer' }, { ...reference, id: disabled.id }, ...(agentId === 'bobo' ? [] : [{ ...reference, id: unrelated.id }])]) {
+    await expect(submit(ref)).rejects.toThrow()
+  }
+  expect(calls).toEqual([])
+  const requestId = randomUUID(), accepted = await submit(reference, requestId) as Conversation | import('../src/shared/domain').Message
+  const conversationId = direct?.id ?? accepted.id
+  await vi.waitFor(async () => { const view = await service.handle('getConversation', { id: conversationId }) as ConversationDetail; expect(view.runs.some(run => run.status === 'completed')).toBe(true) }, { timeout: 8000 })
+  if (failure) throw failure
+  expect(context).toBeDefined(); expect(calls).toEqual([selected.id])
+  const view = await service.handle('getConversation', { id: conversationId }) as ConversationDetail
+  expect(view.messages.find(message => message.senderType === 'user')!.composerReferences).toEqual([reference])
+  await service.handle('saveDataSource', { id: selected.id, expectedRevision: selected.revision, config: { ...config, enabled: false } })
+  await expect(submit(reference)).rejects.toThrow('已变化')
+  expect((await submit(reference, requestId) as { id: string }).id).toBe(accepted.id)
+  expect(calls).toEqual([selected.id])
+})
+
+it('invalidates a core run when its selected source changes before any source tool is called', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-selected-source-revocation-')))
+  cleanups.push(() => rm(root, { recursive: true, force: true }))
+  let active: EngineContext | undefined
+  const engine: AgentEngine = { test: async () => 'ok', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence }), run: async ctx => {
+    active = ctx
+    await new Promise<void>(resolve => { if (ctx.signal.aborted) resolve(); else ctx.signal.addEventListener('abort', () => resolve(), { once: true }) })
+  } }
+  const service = new AppService({ dataPath: join(root, 'app'), engine, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  cleanups.push(() => service.close()); await service.init()
+  await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' })
+  const source = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: '资料', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }) as DataSource
+  const core = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'bobo')!
+  const conversation = await service.handle('startCoreConversation', { requestId: randomUUID(), content: '@资料 核对', composerReferences: [{ kind: 'source', id: source.id, name: source.name, agentId: core.id, revision: source.revision }] }) as Conversation
+  await vi.waitFor(() => expect(active).toBeDefined())
+  expect(active!.agent.sourceIds ?? []).toEqual([])
+  await service.handle('removeDataSource', { id: source.id, expectedRevision: source.revision })
+  expect(active!.signal.aborted).toBe(true)
+  const view = await service.handle('getConversation', { id: conversation.id }) as ConversationDetail
+  expect(view.messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toEqual([])
+  expect(view.runs.find(run => run.id === active!.runId)).toMatchObject({ status: 'cancelled' })
 })

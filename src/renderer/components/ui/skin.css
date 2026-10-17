@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群成员头像区取消底部分割线，与后续群聊设置独立分区保持一致。
  * [OUTPUT]: 员工头像选择按钮及头像使用全局md圆角，取消全圆裁切，新建/编辑共用。
  * [OUTPUT]: Composer 模型按钮悬停和菜单展开使用主题 selection 背景，增强触发器反馈，禁用时不生效。
  * [OUTPUT]: 输入聚焦不再重新施加边缘阴影，所有组合输入内层始终无框；透明/圆角输入保持原形状，默认表面与错误态保持。
@@ -284,8 +285,8 @@ details>summary::marker { font-size:12px }
 .drag-list-row[data-drop=after]::before { bottom:3px }
 .drag-list-row[data-drop=after]::after { bottom:0 }
 
-/* Compact member cards keep the add action last and removal at the avatar corner. */
-.group-members { padding:18px 16px 14px;border-bottom:1px solid var(--border) }
+/* Compact member avatars and the trailing add action share the member picker. */
+.group-members { padding:18px 16px 14px }
 .group-member-grid { display:grid;grid-template-columns:repeat(auto-fill,60px);gap:10px 8px }
 .group-member { position:relative;min-width:0 }
 .group-member-profile { display:flex;flex-direction:column;align-items:center;gap:6px;width:60px;padding:5px 3px;min-width:0 }

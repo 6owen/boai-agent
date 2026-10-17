@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群创建与成员编辑复用双栏GroupMemberSelection，原创建回执和草稿守卫保持。
  * [OUTPUT]: API/Codex/Claude创建保留同一个整体执行权限，原生参数随同选择提交，不再丢弃本机权限。
  * [OUTPUT]: 新建工作方式输入缩为12px/18px行高，沿共用员工表单紧凑密度。
  * [OUTPUT]: 新建API员工默认请求整体执行审批，模型留空继承连接默认值。
@@ -19,15 +20,13 @@ import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Conversation, DigitalAgent, Snapshot, LaunchProfile, ExecutionBackend } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
-import { Avatar, Banner, colors, GuardContext, useDirty, useMutation } from '@/components/common'
-import { LoaderCircle, Search, Users, X } from '@/components/icons'
+import { Banner, colors, GuardContext, useDirty, useMutation } from '@/components/common'
+import { LoaderCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { FieldLegend, FieldSet } from '@/components/ui/field'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Textarea } from '@/components/ui/textarea'
+import { GroupMemberSelection } from './group-member-selection'
 import { templates } from './editors'
 import { AvatarPicker } from './avatar-picker'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
@@ -90,17 +89,16 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
 }
 
 export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) {
-  const [query, setQuery] = useState(''), [ids, setIds] = useState<string[]>([])
+  const [ids, setIds] = useState<string[]>([])
   const created = useRef<Conversation | null>(null)
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
   useDirty(ids)
   const available = snapshot.agents.filter(agent => !isCoreAgent(agent) && agent.active && agent.executionBackend?.kind !== 'acp-local')
   const selected = ids.map(id => available.find(a => a.id === id)).filter((a): a is DigitalAgent => Boolean(a))
-  const matches = available.filter(agent => `${agent.name} ${agent.role}`.toLowerCase().includes(query.trim().toLowerCase()))
   const locked = busy || Boolean(created.current)
   const close = () => { if (!busy) guard.navigate(onClose) }
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
+  const submit = (event?: FormEvent) => {
+    event?.preventDefault()
     if (!selected.length || selected.length > 12) return
     void run(async () => {
       created.current ??= await api.request('createConversation', { kind: 'group', title: selected.map(a => a.name).join('、').slice(0, 200), agentIds: selected.map(a => a.id), mode: 'natural', sharedKnowledgeIds: [] })
@@ -111,30 +109,7 @@ export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) 
     <DialogContent showCloseButton={false} finalFocus={returnFocus} className="max-h-[calc(100dvh-32px)] overflow-y-auto p-6 sm:max-w-[720px]">
       <form data-edit-form id="create-group-form" className="flex min-h-0 flex-col gap-5" onSubmit={submit}>
         {error && <Banner>{error}</Banner>}
-        <div className="grid min-h-0 grid-cols-1 gap-5 sm:grid-cols-2">
-          <FieldSet className="min-w-0 gap-3">
-            <FieldLegend className="sr-only">选择群成员</FieldLegend>
-            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索群成员" placeholder="搜索名称或角色" value={query} onChange={e => setQuery(e.target.value)} /></InputGroup>
-            <div className="h-[200px] overflow-y-auto sm:h-[340px]">
-              {matches.map(agent => <label className="creation-member" key={agent.id}>
-                <Checkbox checked={ids.includes(agent.id)} disabled={locked || (selected.length >= 12 && !ids.includes(agent.id))} onCheckedChange={checked => setIds(current => checked ? [...current, agent.id] : current.filter(id => id !== agent.id))} />
-                <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><span className="conversation-copy"><strong className="conversation-title">{agent.name}</strong><small className="conversation-preview">{agent.role || '数字员工'}</small></span>
-              </label>)}
-              {!matches.length && <p className="empty-note">{available.length ? '没有匹配的员工' : '还没有可加入群聊的员工'}</p>}
-            </div>
-          </FieldSet>
-          <section className="flex min-w-0 flex-col gap-3" aria-label="已选成员">
-            <DialogHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle>发起群聊</DialogTitle><span className="creation-selection-heading">已选择 {selected.length} 位员工</span></div>
-              <DialogDescription className="sr-only">选择 1–12 位数字员工，群名称和资料可在创建后编辑。</DialogDescription>
-            </DialogHeader>
-            <div className="h-[160px] overflow-y-auto sm:h-0 sm:flex-1">
-              {selected.map(agent => <div className="creation-member" key={agent.id}><Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} /><span className="conversation-copy"><strong className="conversation-title">{agent.name}</strong><small className="conversation-preview">{agent.role || '数字员工'}</small></span><Button variant="ghost" size="icon-sm" round disabled={locked} aria-label={`移除 ${agent.name}`} onClick={() => setIds(current => current.filter(id => id !== agent.id))}><X /></Button></div>)}
-              {!selected.length && <div className="creation-selection-empty"><Users /><span>选择一起工作的同事</span></div>}
-            </div>
-            <DialogFooter variant="plain"><Button variant="ghost" disabled={busy} onClick={close}>取消</Button><Button variant="ink" type="submit" disabled={busy || !selected.length}>{busy && <LoaderCircle className="spinner" />}完成</Button></DialogFooter>
-          </section>
-        </div>
+        <GroupMemberSelection agents={available} ids={ids} onChange={setIds} title="发起群聊" busy={busy} locked={locked} confirmDisabled={busy} onCancel={close} onConfirm={() => submit()} />
       </form>
     </DialogContent>
   </Dialog>

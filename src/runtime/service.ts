@@ -27,7 +27,7 @@
  * [OUTPUT]: 定时任务与命令能力解耦；API定时命令沿员工原权限及聊天批准流程，不因automation来源拒绝。
  * [OUTPUT]: 数据源独立配置/凭据与员工sourceIds接线；版本核对、撤权和实际调用退出沿宿主边界。
  * [OUTPUT]: 定时任务专用bobo会话获得单员工计划工具，原消息/来源/回执和员工执行核验共用。
- * [OUTPUT]: Composer技能/文件固定引用在受理及执行时核验，首发同合同；历史失效引用不重解释。
+ * [OUTPUT]: Composer技能/数据源/文件固定引用在受理及执行时核验，首发同合同；数据源核对当前员工启用/绑定与源版本并登记快照依赖，历史失效引用不重解释。
  * [OUTPUT]: Composer按已验证本机profile读取模型与真实推理档位，不调用模型任务。
  * [OUTPUT]: 通用插件执行路由、独立宿主/租约与产品桥；插件session恢复、私有目录备份排除，旧引擎兼容。
  * [OUTPUT]: 通用运行时插件复用原员工/会话/渠道/Work；Mastra及旧原生适配保持，包管理与品牌协议下沉。
@@ -2495,7 +2495,7 @@ export class AppService {
     return { messages: visible, images: images.filter(image => visible.some(message => message.id === image.messageId)), refs: [...new Map(visible.flatMap(message => message.materialSources ?? []).map(ref => [`${ref.id}:${ref.revision}`, ref])).values()] }
   }
   private async validateComposerReferences(tx: RecordTransaction, conversation: Conversation, references: ComposerReference[], exactVersion: boolean) {
-    if (conversation.agentIds.length !== 1) fail('技能和文件提及请在单员工会话中使用')
+    if (conversation.agentIds.length !== 1) fail('资源提及请在单员工会话中使用')
     const agent = await tx.get<DigitalAgent>('agents', conversation.agentIds[0])
     if (!agent?.active || agent.executionBackend?.kind === 'acp-local') fail('当前员工不能使用资源提及')
     for (const ref of references) {
@@ -2503,6 +2503,9 @@ export class AppService {
       if (ref.kind === 'skill') {
         const resource = await tx.get<Resource>('resources', ref.id)
         if (exactVersion && ref.configVersion !== agent!.configVersion || !agent!.skillIds.includes(ref.id) || resource?.kind !== 'skill' || resource.ownerAgentId && resource.ownerAgentId !== agent!.id) fail('技能绑定已变化，请重新选择')
+      } else if (ref.kind === 'source') {
+        const source = await tx.get<import('../shared/domain/sources').DataSource>('dataSources', ref.id)
+        if ((!isCoreAgent(agent) && !agent!.sourceIds?.includes(ref.id)) || !source?.enabled || source.revision !== ref.revision) fail('数据源配置或绑定已变化，请重新选择')
       } else {
         if (ref.conversationId !== conversation.id) fail('文件不属于当前会话')
         await this.workViewReading.resolveFileInTransaction(tx, { id: ref.id, conversationId: ref.conversationId, kind: ref.kind, contentHash: ref.contentHash, ...(ref.kind === 'material' ? { revision: ref.revision } : {}) })
@@ -2779,7 +2782,8 @@ export class AppService {
       }
     }
     signal.throwIfAborted()
-    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
+    const selectedSourceIds = [...new Set(messages.flatMap(message => (message.composerReferences ?? []).filter(ref => ref.kind === 'source' && ref.agentId === agent.id).map(ref => ref.id)))]
+    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, ...(selectedSourceIds.length ? { dataSourceRefs: this.dataSources.summaries(selectedSourceIds) } : {}), artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     if (runtimeProfile && isNativeBackend(backend)) run.backend = { ...(backend.kind === 'runtime-plugin' ? {pluginId:backend.pluginId,providerId:backend.providerId} : {}), kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },

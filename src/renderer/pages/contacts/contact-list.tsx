@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工和群聊右键菜单统一使用高级配置，基础配置在资料页就地编辑。
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
  * [OUTPUT]: 通讯录群聊只列BOAI群，外部渠道在会话页管理查看，不提供本地群成员编辑。
  * [OUTPUT]: 核心助手独立置顶，群聊与联系人各自折叠，普通员工按全局顺序平面展示；加号菜单的通讯录管理入口承接批量管理；员工/群聊右键资料、配置、发消息和删除确认，保留搜索、拖拽/键盘排序与本机折叠状态。
@@ -68,13 +69,13 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   const row = (item: ContactSelection, name: string, description: string, avatar: ReactNode) => <DragListItem key={item.id} id={item.id} className="conversation-row">{({ dragging, dragProps }) => <ContextMenu>
     <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: selected?.kind === item.kind && selected.id === item.id, 'drag-list-dragging': dragging })} />}
       {...dragProps} aria-label={name} aria-current={selected?.kind === item.kind && selected.id === item.id ? 'true' : undefined}
-      aria-description={item.kind === 'agent' && isCoreAgent(snapshot.agents.find(agent => agent.id === item.id)) ? '系统助手。右键查看资料、编辑配置或发消息。' : '可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。'} onClick={() => { if (!dragging) onSelect(item) }}>
+      aria-description={item.kind === 'agent' && isCoreAgent(snapshot.agents.find(agent => agent.id === item.id)) ? '系统助手。右键查看资料、高级配置或发消息。' : '可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。'} onClick={() => { if (!dragging) onSelect(item) }}>
       {avatar}<span className="conversation-copy"><span className="conversation-title">{name}</span><span className="conversation-preview">{description}</span></span>
     </ContextMenuTrigger>
     <ContextMenuContent className="w-44"><ContextMenuGroup>
       <ContextMenuItem disabled={busy} onClick={() => onMessage(item)}><MessageCircle />发消息</ContextMenuItem>
       <ContextMenuItem onClick={() => onSelect(item)}><Contact />查看资料</ContextMenuItem>
-      <ContextMenuItem onClick={() => onSelect(item, true)}><Settings />编辑配置</ContextMenuItem>
+      <ContextMenuItem onClick={() => onSelect(item, true)}><Settings />高级配置</ContextMenuItem>
     </ContextMenuGroup>
       {(item.kind === 'group' || !isCoreAgent(snapshot.agents.find(agent => agent.id === item.id))) && <><ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={disabled} onClick={() => { mutation.setError(''); setDeleting({ selection: item, name }) }}><Trash2 />{item.kind === 'group' ? '解散群聊' : '删除员工'}</ContextMenuItem></>}
     </ContextMenuContent>

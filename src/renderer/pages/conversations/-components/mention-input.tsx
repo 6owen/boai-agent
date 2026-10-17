@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 单聊/群聊统一原子编辑器，资源标签保持来源和整体删除。
+ * [OUTPUT]: 单聊/群聊统一原子编辑器，资源标签保持来源和整体删除；外部选择标签独立成撤销步骤，快速删除后撤销不连带清除原草稿。
  * [INPUT]: 受控草稿、候选键盘回调与共享 Button 皮肤/class 合并、Tiptap 编辑模型。
  * [OUTPUT]: 原补充请求待核对时冻结编辑，锁定变化不触发正文更新；实际行内原子标签、文字高度光标/选区/整体删除和撤销，标签以 inline 留白替代固定高度 flex；外部提及恢复编辑器实际选区，恢复草稿时光标置末，纯文本粘贴不冒认点名身份。
  * [OUTPUT]: 文件/图片粘贴先交附件入口，不被旧纯文本handlePaste吞掉；普通文本保持当前选区替换与IME边界。
@@ -8,6 +8,7 @@
  */
 import { useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { Editor } from '@tiptap/core'
+import { closeHistory } from '@tiptap/pm/history'
 import { cn } from 'cn'
 import { buttonVariants } from '@/components/ui/button'
 import type { ComposerReference } from '@shared/domain/composer-references'
@@ -43,8 +44,10 @@ export function MentionInput(props: Props) {
       const { doc } = instance.state
       const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name, resource: member.resource ?? null } }] : textNodes(text)
       const positions = { from: documentPosition(doc, range.start), to: documentPosition(doc, range.end) }
+      if (member) instance.view.dispatch(closeHistory(instance.state.tr))
       if (content.length) instance.commands.insertContentAt(positions, content)
       else instance.commands.deleteRange(positions)
+      if (member) instance.view.dispatch(closeHistory(instance.state.tr))
       // EditorView restores its transaction's selection as well as focusing without scrolling.
       // Native DOM focus alone returns a blurred contenteditable's caret to the paragraph start.
       instance.view.focus()

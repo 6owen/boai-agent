@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 草稿、已绑定技能、当前会话文件、成员和共享原子编辑器。
- * [OUTPUT]: /命令与@技能/文件/成员筛选；资源固定引用随消息发送，选择不执行工具；键盘/IME、附件粘贴与草稿保持。
+ * [OUTPUT]: /命令与@技能/文件/成员筛选，工具栏数据源选择共用原子标签插入；资源固定引用随消息发送，选择不执行工具；键盘/IME、附件粘贴与草稿保持。
  * [POS]: Composer输入增强；文件目录惰性有界读取，实际权限由宿主核验。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -39,7 +39,7 @@ interface Props {
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
   conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void; onPasteMaterials?(files?: File[]): void
-  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null): ReactNode
+  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void): ReactNode
 }
 export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, conversationReady = true, mentionsAllowed = true, disabled = false, onSend, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null), richInput = useRef<MentionInputHandle>(null)
@@ -100,7 +100,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     const row = rows.find(item => item.id === id)
     if (!row) return
     const range = token?.kind === menu ? token : richInput.current?.selection() ?? selection
-    if (row.file && api && row.resource && row.resource.kind !== 'skill') {
+    if (row.file && api && row.resource && (row.resource.kind === 'artifact' || row.resource.kind === 'material')) {
       const expected = current.current
       setPicking(true); setError('')
       try { await api.request('resolveConversationFileTarget', { id: row.file.id, conversationId: row.resource.conversationId, kind: row.file.kind, contentHash: row.file.contentHash, revision: row.file.revision }) }
@@ -143,7 +143,11 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
     <ChatComposer ref={anchor}>{attachments}
       <MentionInput ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
-      {children(openMenu, menu)}
+      {children(openMenu, menu, reference => {
+        if (disabled || !mentionsAllowed || external || !primary || reference.agentId !== primary.id) return
+        richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })
+        close()
+      })}
     </ChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-[320px] max-w-[calc(100vw-24px)] gap-1.5 p-2">
       <PopoverTitle>{displayedMenu === 'at' ? primary ? '提及技能和文件' : '提及成员' : '命令'}</PopoverTitle>
