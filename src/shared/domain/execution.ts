@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [OUTPUT]: API/Codex/Claude共用整体执行权限；原生访问范围和审批参数由同一选择派生，旧配置未选择时保留。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 执行历史支持按定时任务单次occurrence身份限定，在分页前排除同会话其他运行。
@@ -8,10 +10,13 @@
  * [POS]: 员工执行面板与运行时共用合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { z } from 'zod'
 import type { AgentRun } from './index'
 import type { LiveRuntimeEvent } from '../rovai'
 
-export type ExecutionPermission = 'read-only' | 'ask' | 'full-access'
+export const executionPermissionSchema = z.enum(['read-only', 'ask', 'full-access'])
+export type ExecutionPermission = z.infer<typeof executionPermissionSchema>
+export type MessagePermissionExpectation = { permission: ExecutionPermission; agentIds: string[] }
 export const executionPermissionLabels: Record<ExecutionPermission, string> = { 'read-only': '只读', ask: '请求审批', 'full-access': '完全访问（跳过审批）' }
 export type ExecutionOperation = { kind: 'command' | 'file' | 'source' | 'browser' | 'configuration'; description: string }
 
@@ -63,6 +68,8 @@ export type NativeExecutionReceipt = {
   nativeInfo?: NativeAgentInfo
 }
 export type NativeRuntimeOptions = {
+  /** Explicitly return permission decisions to the selected native configuration. */
+  useNativePermissions?: boolean
   effort?: string
   codexApprovalPolicy?: 'untrusted' | 'on-request' | 'never'
   codexSandbox?: 'read-only' | 'workspace-write' | 'danger-full-access'
@@ -71,6 +78,7 @@ export type NativeRuntimeOptions = {
 
 /** One employee permission controls both the native access boundary and its approval policy. */
 export function executionPermissionNativeOptions(kind: string, options: NativeRuntimeOptions | undefined, permission?: ExecutionPermission): NativeRuntimeOptions | undefined {
+  if (options?.useNativePermissions && ['codex-local', 'claude-local'].includes(kind)) return { useNativePermissions: true, ...(options.effort ? { effort: options.effort } : {}) }
   if (!permission) return options
   if (kind === 'codex-local') return { ...options, codexSandbox: permission === 'full-access' ? 'danger-full-access' : 'read-only', codexApprovalPolicy: permission === 'ask' ? 'on-request' : 'never' }
   if (kind === 'claude-local') return { ...options, claudePermissionMode: permission === 'full-access' ? 'bypassPermissions' : permission === 'read-only' ? 'plan' : 'default' }

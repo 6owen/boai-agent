@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 备份忙时断言按现行公共资源错误文案，并核对未创建备份目录；原取消/退出/删除与副本断言保持。
  * [INPUT]: 真实 AppService/SQLite、本机发现目录、受管副本和不调用模型的隔离 fixture。
  * [OUTPUT]: D4 来源/hash/员工版本冻结、同事务授权/回执、幂等冲突和未知核对，配置竞争/原子回滚/重启零重放、hash 安全清理与外改保留、删除 tombstone 和备份迁移验收。
  * [POS]: 本机技能到已保存员工绑定的宿主集成回归。
@@ -383,7 +384,8 @@ test('cancel and exit retain ownership until the real file preparation returns; 
   })
   const pending = fixture.api('bindLocalSkill', input); await copied.promise
   try {
-    await expect(fixture.service.backup(join(fixture.root, 'blocked-backup'))).rejects.toThrow('技能管理操作')
+    await expect(fixture.service.backup(join(fixture.root, 'blocked-backup'))).rejects.toThrow('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+    await expect(readdir(join(fixture.root, 'blocked-backup'))).rejects.toMatchObject({ code: 'ENOENT' })
     await expect(fixture.api('deleteAgent', { id: 'researcher' })).rejects.toThrow('技能管理操作')
     await fixture.api('cancelSkillOperation', { id: input.requestId })
     expect((await fixture.api('getSkillBindingReceipt', { requestId: input.requestId }))?.status).toBe('running')

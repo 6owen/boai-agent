@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原清理恢复先处理关联讨论，保留其独立待决回执，最后完成父会话删除并保持共享资料。
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
  * [OUTPUT]: T2 清理前来源屏障与后续历史清理各推进版本；待提交和提交中通知的清理/状态与引用不复活；无 Work 的自动化预算及调用回执清理验证；Trace 随会话删除；自动化跨工作证据清除/等待终结/去重保留、关联记录删除、共享数据保留、重启续清与符号链接边界验证。
  * [POS]: tests/conversation-history.test.ts。
@@ -11,6 +12,7 @@ import { join } from 'node:path'
 import type { Conversation } from '../src/shared/domain'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { ConversationHistory } from '../src/runtime/modules/conversations/history'
+import { prepareSessionDeletion, sessionFingerprint, type SessionOperationRecord } from '../src/runtime/modules/conversations/session-operations'
 const fixtures: { root: string; store: ProductStore }[] = []
 const row = (collection: string, id: string, value: object) => ({ collection, id, value: { id, ...value } })
 async function setup() {
@@ -22,6 +24,24 @@ async function setup() {
   return { root, store, conversation, history: new ConversationHistory(store, root) }
 }
 afterEach(async () => { for (const { root, store } of fixtures.splice(0)) { await store.close(); await rm(root, { recursive: true, force: true }) } })
+
+it('recovers dependent discussion cleanup before completing the parent session receipt', async () => {
+  const { root, store, conversation, history } = await setup()
+  const discussion: Conversation = { ...conversation, id: 'discussion', purpose: 'channel-internal', channelDiscussion: { conversationId: conversation.id, epoch: 1 }, workspacePath: join(root, 'workspaces', 'discussion') }
+  await mkdir(discussion.workspacePath, { recursive: true })
+  await store.write([row('conversations', discussion.id, discussion), row('messages', 'parent-message', { conversationId: conversation.id }), row('messages', 'discussion-message', { conversationId: discussion.id })])
+  const receipt = (requestId: string, conversationId: string): SessionOperationRecord => ({ id: requestId, requestId, operation: 'delete', conversationId, state: 'pending', fingerprint: sessionFingerprint({ operation: 'delete', conversationId }) })
+  await prepareSessionDeletion(store, discussion, [], receipt('discussion-request', discussion.id))
+  await prepareSessionDeletion(store, conversation, [discussion], receipt('parent-request', conversation.id))
+  expect(await history.recover()).toEqual([])
+  expect(await store.get('conversations', discussion.id)).toBeUndefined()
+  expect(await store.get('conversations', conversation.id)).toMatchObject({ list: { hidden: true } })
+  expect(await store.get('sessionReceipts', 'discussion-request')).toMatchObject({ state: 'completed' })
+  expect(await store.get('sessionReceipts', 'parent-request')).toMatchObject({ state: 'completed' })
+  expect(await store.load('messages')).toEqual([])
+  expect(await store.load('conversationCleanup')).toEqual([])
+  expect(await store.get('resources', 'shared')).toMatchObject({ name: '共享知识' })
+})
 
 it('removes linked content while preserving other conversations, contacts, shared resources and native trigger identities', async () => {
   const { root, store, conversation, history } = await setup()

@@ -1,4 +1,16 @@
 /*
+ * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
+ * [OUTPUT]: 审批可携原生命令身份，目录永久授权不授予后续命令自动执行。
+ * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
+ * [OUTPUT]: 上传附件的名称/字节摘要留在原消息，临时选择token不持久化。
+ * [OUTPUT]: 本轮API模型覆盖沿原请求与执行，冻结来源且临时凭据不写入公开记录或默认配置。
+ * [OUTPUT]: 消息可保存本次业务workingDirectory，不改变受管工作区或员工授权。
+ * [OUTPUT]: Run可保存精确取消的原身份范围，不复制执行状态或建立第二调度账本。
+ * [OUTPUT]: 员工保存可选webSearch偏好，缺省自动；知识/目录与原执行权限不受其扩权。
+ * [OUTPUT]: knowledge资源可保存独立受管副本/内容身份与来源，名称保持知识资料。
+ * [OUTPUT]: 命令审批可携多个真实目录目标，永久批准只保存目录；原单目录合同兼容。
+ * [OUTPUT]: 员工目录独立directoryRevision及保存预期版本，审批支持明确目录目标/权限。
+ * [OUTPUT]: 员工可选directoryGrants表示业务目录授权，独立于工作区/cwd及整体执行权限。
  * [OUTPUT]: 员工executionPermission统一API/Codex/Claude的整体权限；原生参数由权限派生，旧allowCommands保留兼容。
  * [OUTPUT]: API网关执行按callId保留所选模型与响应路由，不能将末次结果充作整项Work模型。
  * [OUTPUT]: Magpie连接增加独立网关协议/认证及revision；旧Connection字段语义保持。
@@ -86,6 +98,10 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
+  directoryGrants?: import('./directory-access').DirectoryGrant[]
+  /** Directory additions may advance without changing model/runtime configuration. */
+  directoryRevision?: number
   /** Whole employee execution policy; native access and approval parameters follow the same choice. */
   executionPermission?: import('./execution').ExecutionPermission
   nativeOptions?: import('./execution').NativeRuntimeOptions
@@ -102,6 +118,7 @@ export interface DigitalAgent {
   connectionId: string
   modelId: string
   sourceIds?: string[]
+  webSearch?: import('./sources').WebSearchPreference
   skillIds: string[]
   knowledgeIds: string[]
   /** Compatibility input only; browser availability follows active Mastra backend capability, never this old switch. */
@@ -113,8 +130,9 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number }
 export interface Resource {
+  knowledge?: import('./knowledge').KnowledgeContent
   id: string
   kind: 'skill' | 'knowledge'
   name: string
@@ -171,6 +189,10 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  permissionExpectation?: import('./execution').MessagePermissionExpectation
+  attachmentInputs?: Omit<import('./material-upload').SubmittedMaterial, 'selectionId'>[]
+  apiModelSource?: import('./model-source').RequestModelSource
+  workingDirectory?: string
   /** Public copy delivered to the employee main chat; execution keeps its original isolated identity. */
   automationPublication?: { automationId: string; occurrenceId: string; sourceConversationId: string; sourceMessageId: string }
   channelReference?: import('./channels').ChannelMessageReference
@@ -188,6 +210,7 @@ export interface Message {
   artifactRevisionRequestId?: string
   materialIds?: string[]
   materialSources?: MaterialReadRef[]
+  knowledgeSources?: import('./knowledge').KnowledgeReadRef[]
   reactions?: MessageReaction[]
   origin?: AutomationOrigin
   id: string
@@ -222,6 +245,8 @@ export interface ExecutionProgressEvent {
 }
 export const EXECUTION_PROGRESS_LIMITS = { events: 24, text: 2000 } as const
 export interface AgentRun {
+  /** Frozen original identities only; never select a later resumed run when cancellation is repeated. */
+  cancellation?: import('./run-cancellation').RunCancellationScope
   /** Gateway observations by request, not a single inferred model for the whole Work. */
   modelCalls?: import('./model-gateway').GatewayModelCall[]
   progress?: ExecutionProgressEvent[]
@@ -259,7 +284,12 @@ export interface AgentRun {
 }
 export interface Approval {
   id: string
-  kind?: import('./execution').ExecutionOperation['kind']
+  /** Native command identity; approving directories does not grant a reusable command rule. */
+  nativeOrigin?: import('./directory-access').DirectoryNativeOrigin
+  kind?: import('./execution').ExecutionOperation['kind'] | 'directory'
+  directory?: import('./directory-access').DirectoryAccessRequest
+  /** One command approval also grants these missing directories, never ongoing command permission. */
+  commandDirectories?: import('./directory-access').DirectoryAccessRequest[]
   rememberAllowed?: boolean
   runId: string
   conversationId: string

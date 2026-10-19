@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 显式业务cwd只核对已存在目录，原受管目录仍可初始化。
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
+ * [OUTPUT]: 运行私有命名目录profile通过参数注入；原生配置文件和进程实际退出合同保持。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: 2026-10-12成功写入回应后独立通知提交事实，等待该观察结束；不重发、不当作原生接收确认。
@@ -12,6 +16,8 @@
  * [POS]: 原生Codex app-server传输；会话/Work状态由上层宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { employeeEnvironment } from '../../../shared/cli/employee-environment'
+import { workingDirectoryTarget } from '../../modules/workspaces/working-directory'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { StringDecoder } from 'node:string_decoder'
@@ -41,9 +47,12 @@ export function string(value: unknown, name: string): string {
   return value
 }
 export interface CodexClientInput {
+  existingCwd?: boolean
+  cliEnvironment?: import('../../../shared/cli/run-access').RunCliEnvironment
   /** Native employees inherit the CLI's tools/config; isolated legacy probes keep their policy. */
   native?: boolean
   gatewaySource?: ReturnType<typeof codexGatewaySource>
+  /** Host-built private named permission profile; no user configuration writes. */
   profile: LaunchProfile
   cwd: string
   privateHome?: string
@@ -104,11 +113,12 @@ export class CodexClient {
     if (input.profile.protocol !== 'codex-app-server' || input.profile.args.length) throw new Error('请选择受管Codex app-server配置')
     const file = inspectProgram(input.profile.executable)
     if (file.path !== input.profile.executable || file.hash !== input.profile.executableHash) throw new Error('Codex程序已变化，请重新保存并测试')
-    await mkdir(input.cwd, { recursive: true })
+    if (input.existingCwd) await workingDirectoryTarget(input.cwd)
+    else await mkdir(input.cwd, { recursive: true })
     const home = input.profile.useExistingLogin ? process.env.HOME : input.privateHome
     if (!home) throw new Error('Codex缺少明确的本机配置目录')
     if (!input.profile.useExistingLogin) await mkdir(home, { recursive: true })
-    const env: NodeJS.ProcessEnv = { ...(input.gatewaySource?.env ?? (input.native ? process.env : {})), PATH: process.env.PATH, LANG: process.env.LANG ?? 'en_US.UTF-8', HOME: home, USERPROFILE: home,
+    const env: NodeJS.ProcessEnv = { ...employeeEnvironment(input.gatewaySource?.env ?? (input.native ? process.env : {}), input.cliEnvironment), PATH: process.env.PATH, LANG: process.env.LANG ?? 'en_US.UTF-8', HOME: home, USERPROFILE: home,
       CODEX_HOME: input.profile.useExistingLogin ? input.profile.codexHome ?? process.env.CODEX_HOME ?? `${home}/.codex` : home,
       TMPDIR: input.cwd, TMP: input.cwd, TEMP: input.cwd,
       ...(input.profile.runtime === 'node' ? { ELECTRON_RUN_AS_NODE: '1' } : {}),

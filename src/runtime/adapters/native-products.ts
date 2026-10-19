@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: select_web_search复用API本轮选择合同和宿主授权，惰性Work前处理，不新增模型阶段。
+ * [OUTPUT]: request_directory共用API目录申请合同，在惰性Work之前等待原审批；不替代原生工具权限检查。
+ * [OUTPUT]: 本机知识工具共用当前授权/固定版本，读取在惰性Work认领之前执行。
  * [OUTPUT]: 数据源工具沿共享可用性判定，核心身份在空目录也可同轮使用新建资源。
  * [OUTPUT]: 普通bobo目录管理与API共用object根schema/宿主回调，观测省略正文与凭据。
  * [OUTPUT]: 原生产品桥沿同一create_data_source schema/宿主回调保存配置；观测省略敏感输入。
@@ -12,11 +16,13 @@
  * [POS]: BOAI业务边界与原生工具目录之间的薄桥。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { createKnowledgeOperations } from '../modules/resources/knowledge-tools'
+import { createDirectoryRequestOperation } from '../modules/workspaces/directory-tool'
 import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogObservation } from '../modules/resources/catalog-commands'
 import { sourceCreationSchema, sourceCreationDescription, sourceCreationObservation } from '../modules/sources/source-commands'
 import { z } from 'zod'
 import { sourceCallSchema } from '../../shared/domain/sources'
-import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription, hasSourceTools } from './mastra/source-tools'
+import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription, hasSourceTools, createWebSearchSelectionOperation } from './mastra/source-tools'
 import path from 'node:path'
 import { realpath } from 'node:fs/promises'
 import type { EngineContext } from '../contracts'
@@ -38,6 +44,9 @@ export function createNativeProducts(context: EngineContext) {
   let runtime: Promise<Awaited<ReturnType<typeof createTaskRuntime>>> | undefined
   const organization = isCoreAgent(context.agent) && context.conversation.purpose === 'core' && !context.legacyTeamName
   const reportShape = Object.fromEntries(Object.entries(modelWorkOutcomeSchema({ organization }).shape).filter(([key]) => key !== 'userQuestion'))
+  const knowledgeOperations = createKnowledgeOperations(context)
+  const directoryRequest = createDirectoryRequestOperation(context)
+  const searchChoice = createWebSearchSelectionOperation(context)
   const definitions: { name: string; description: string; schema: z.ZodType }[] = [
     { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
     { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
@@ -46,6 +55,9 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
+  definitions.push(...knowledgeOperations)
+  if (searchChoice) definitions.push(searchChoice)
+  if (directoryRequest) definitions.push(directoryRequest)
   if (hasSourceTools(context)) definitions.push(
     { name: 'inspect_data_source', description: sourceInspectDescription(context), schema: sourceInspectSchema },
     { name: 'call_data_source', description: sourceCallDescription, schema: sourceCallSchema },
@@ -79,6 +91,10 @@ export function createNativeProducts(context: EngineContext) {
       }
       await emit(false)
       try {
+        if (name === searchChoice?.name) { const result = await searchChoice.execute(parsed); await emit(true, result); return result }
+        if (name === directoryRequest?.name) { const result = await directoryRequest.execute(parsed); await emit(true, result); return result }
+        const knowledge = knowledgeOperations.find(operation => operation.name === name)
+        if (knowledge) { const result = await knowledge.execute(parsed); await emit(true, result); return result }
         if (name === 'inspect_data_source' || name === 'call_data_source') {
           const result = name === 'inspect_data_source' ? await context.inspectDataSource!(String(parsed.sourceId)) : await context.callDataSource!(sourceCallSchema.parse(parsed))
           await emit(true, result); return result

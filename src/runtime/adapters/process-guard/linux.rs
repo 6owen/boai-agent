@@ -1,6 +1,6 @@
 /*
 [INPUT]: Rovai managed_process/linux.rs @ f9acc2395283d49f0ce247dc0af2207c155f6eb6 (MIT).
-[OUTPUT]: Directly imported identity-bound native descendant supervision; upstream body unchanged.
+[OUTPUT]: Identity-bound native supervision; BOAI adds same-UID desktop observation and pidfd root-exit checks.
 [POS]: Platform module for BOAI process guard; license is in this directory.
 [PROTOCOL]: Preserve provenance and update .folder.md if changed.
 */
@@ -116,6 +116,7 @@ impl Process {
 }
 
 pub(super) struct ProcessTree {
+    root: i32,
     processes: BTreeMap<i32, Process>,
 }
 
@@ -125,8 +126,20 @@ impl ProcessTree {
         let process = Process::open(pid, &root)?
             .ok_or_else(|| io::Error::other("managed root identity changed"))?;
         Ok(Self {
+            root: pid,
             processes: BTreeMap::from([(pid, process)]),
         })
+    }
+
+    pub(super) fn observe(pid: i32) -> io::Result<Self> {
+        if pid <= 1 || pid == std::process::id() as i32 || fs::metadata(format!("/proc/{pid}"))?.uid() != unsafe { libc::geteuid() } {
+            return Err(io::Error::other("desktop process identity unavailable"));
+        }
+        Self::new(pid)
+    }
+
+    pub(super) fn root_alive(&self) -> io::Result<bool> {
+        self.processes.get(&self.root).map(|process| process.exited().map(|exited| !exited)).unwrap_or(Ok(false))
     }
 
     pub(super) fn capture(&mut self) -> io::Result<()> {
@@ -154,6 +167,7 @@ impl ProcessTree {
             else {
                 continue;
             };
+            if pid == std::process::id() as i32 { continue; }
             if !entry.metadata().is_ok_and(|metadata| metadata.uid() == uid) {
                 continue;
             }

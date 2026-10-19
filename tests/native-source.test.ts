@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Isolated native configuration files, environment references and read-only source helpers.
- * [OUTPUT]: Change-sensitive opaque identity, deterministic absence, bounded files and directory overrides.
+ * [OUTPUT]: Change-sensitive provider identity, CLI transport lease independence, bounded files and directory overrides.
  * [POS]: Offline G2a source contract; actual CLI behavior is verified separately.
  * [PROTOCOL]: Update Header and tests/.folder.md when source coverage changes.
  */
@@ -9,10 +9,21 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { nativeConfigurationIdentity } from '../src/runtime/adapters/native-source'
+import { employeeEnvironment } from '../src/shared/cli/employee-environment'
 import { piNativeSourceIdentity, opencodeNativeSourceIdentity } from '../src/runtime/adapters/plugins/native-source'
 const roots: string[] = []
 afterEach(async () => { vi.unstubAllEnvs(); for (const path of roots.splice(0)) await rm(path, { recursive: true, force: true }) })
 async function root() { const value = await mkdtemp(join(tmpdir(), 'boai-native-source-')); roots.push(value); return value }
+test('CLI transport leases do not change native provider identity but provider changes still do', async () => {
+  const original = { HOME: '/synthetic-home', PRIVATE_PROVIDER_TOKEN: 'provider-a', BOAI_CUSTOM_SOURCE: 'custom-a' }
+  const baseline = await nativeConfigurationIdentity([], employeeEnvironment(original))
+  for (const run of ['first', 'second']) {
+    expect(await nativeConfigurationIdentity([], employeeEnvironment(original, { BOAI_CLI_EMPLOYEE_RUN: run }))).toBe(baseline)
+    expect(await nativeConfigurationIdentity([], employeeEnvironment(original, { BOAI_CLI_EMPLOYEE_RUN: run, BOAI_SERVER_URL: `ws://127.0.0.1:${run === 'first' ? 1234 : 4321}`, BOAI_SERVER_TOKEN: `synthetic-${run}` }))).toBe(baseline)
+  }
+  expect(await nativeConfigurationIdentity([], employeeEnvironment({ ...original, PRIVATE_PROVIDER_TOKEN: 'provider-b' }))).not.toBe(baseline)
+  expect(await nativeConfigurationIdentity([], employeeEnvironment({ ...original, BOAI_CUSTOM_SOURCE: 'custom-b' }))).not.toBe(baseline)
+})
 test('identity captures external file, missing-file creation and custom environment credential changes without exposing any value', async () => {
   const path = join(await root(), 'settings.json'), environment = { HOME: '/synthetic-home', PRIVATE_PROVIDER_TOKEN: 'private-test-a' }
   const absent = await nativeConfigurationIdentity([path], environment)

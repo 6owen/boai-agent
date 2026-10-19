@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 同时构建独立Node serve装配，原worker共用owner；CLI客户端仍单文件且不内联服务依赖。
+ * [OUTPUT]: 构建无Electron依赖的BOAI CLI客户端，并分发固定Craft CLI/协议来源许可。
  * [OUTPUT]: 运行时插件独立构建/SDK与清单产物随应用分发；新增桌面场景纳入F11审阅。
  * [OUTPUT]: 随 runtime 分发 Hermes 文件工具策略的 MIT 许可和固定来源清单。
  * [OUTPUT]: 随渲染资源分发 Craft Scenic 的 Apache 许可、NOTICE 与固定迁入清单。
@@ -18,11 +20,14 @@ export async function buildHost() {
   await buildProcessGuard()
   await Promise.all([
     buildRuntimePlugins(),
+    build({ entryPoints: ['src/cli/index.ts'], outfile: 'dist/cli/index.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" }, sourcemap: true }),
     build({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
     build({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     build({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     build({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
+    build({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/shared/cli/${name}`, `dist/cli/${name}`)
   await copyFile('src/runtime/adapters/channels/rovai/LICENSE.txt', 'dist/runtime/rovai-channels-LICENSE.txt')
   await copyFile('src/runtime/adapters/channels/rovai/source-manifest.json', 'dist/runtime/rovai-channels-source-manifest.json')
   await copyFile('src/runtime/modules/workspaces/hermes/LICENSE.txt', 'dist/runtime/hermes-file-tools-LICENSE.txt')

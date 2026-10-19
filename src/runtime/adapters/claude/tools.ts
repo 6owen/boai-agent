@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生取消后暂不回传普通工具错误，进程实际退出并关闭桥时再释放；已受理宿主操作仍等待真实退出。
  * [OUTPUT]: 显式宿主图片沿MCP原生image部件返回，普通JSON文本与原2MiB消息边界保持。
  * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
  * [OUTPUT]: 原生会话产品工具无固定48次限制；普通工具错误回给Agent处理，传输/身份故障保留。
@@ -58,6 +59,8 @@ export async function createClaudeToolBridge(input: {
   }
   let rejectStopped!: (reason: Error) => void
   const stopped = new Promise<never>((_, reject) => { rejectStopped = reject }); void stopped.catch(() => {})
+  let releaseCancelledReplies!: () => void
+  const cancelledReplies = new Promise<void>(resolve => { releaseCancelledReplies = resolve })
   const abort = () => rejectStopped(input.signal.reason instanceof Error ? input.signal.reason : new Error('Claude工具阶段已停止'))
   input.signal.addEventListener('abort', abort, { once: true })
   if (input.signal.aborted) abort()
@@ -105,6 +108,10 @@ export async function createClaudeToolBridge(input: {
       } catch (error) {
         failedRequests++
         if (!input.native) fail(error)
+        // A normal error reply can start another native model request while the
+        // process supervisor is still stopping. Keep this response pending until
+        // the owner has observed process exit and closes the bridge's sockets.
+        if (input.native && input.signal.aborted) await cancelledReplies
         return { content: [{ type: 'text' as const, text: input.native && error instanceof Error ? error.message : 'The host did not confirm this operation. Do not retry it or bypass the refusal.' }], isError: true }
       }
     })()
@@ -139,6 +146,7 @@ export async function createClaudeToolBridge(input: {
     rejectStopped(new Error('Claude工具桥已关闭'))
     server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))
+    releaseCancelledReplies()
     // SDK JSON response resolvers are discarded by close(). Let each already
     // accepted handler finish, including host effects, before closing transport.
     await Promise.allSettled([...active])

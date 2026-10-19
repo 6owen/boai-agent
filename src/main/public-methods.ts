@@ -1,4 +1,17 @@
 /*
+ * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
+ * [OUTPUT]: CLI安装/状态/卸载仅主窗口IPC准入，不进入WS公共channel。
+ * [OUTPUT]: 有界客户端附件字节上传复用原材料选择/准备与会话授权，不接收服务器源路径。
+ * [OUTPUT]: 运行时版本查询复用程序身份/原验证与插件内容核验；未知明确、零启动，CLI区分自身及服务版本，验证归21组01 §12.9。
+ * [OUTPUT]: 本人公开入口允许精确run取消与只读实际退出投影，原身份与权限由服务核对。
+ * [OUTPUT]: 会话操作仅本人公共入口；创建/清空隐藏及回执沿原业务事务与清理屏障。
+ * [OUTPUT]: 员工私聊发送入口使用原服务身份/受理，不接受自行指定权限。
+ * [OUTPUT]: 原消息执行状态与精确取消沿本人入口；取消回执不等于底层已退出。
+ * [OUTPUT]: 只读知识文件清单沿主窗口白名单准入。
+ * [OUTPUT]: 公开员工知识解绑方法，沿既有宿主来源校验。
+ * [OUTPUT]: 公开员工知识资料共享操作，仍由宿主验证当前员工/会话与请求身份。
+ * [OUTPUT]: 放行知识资料保留/列表/预览及回执，文件输入由主进程解析选择身份。
+ * [OUTPUT]: 公共准入补员工目录选择与审批回执查询，仍完整覆盖公开Methods。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 公开只读Magpie发现入口，renderer不能指定本地配置路径。
  * [OUTPUT]: 放行Magpie只读识别和结构化模型目录，沿原主窗口IPC边界。
@@ -14,6 +27,9 @@ import type { Method } from '../shared/ipc'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  transferMaterial: true,
+  prepareUploadedMaterial: true,
+  sendEmployeeMessage: true,
   listGatewayImports: true,
   cancelGatewayImport: true,
   confirmGatewayImport: true,
@@ -23,9 +39,13 @@ const methods = {
   acceptTeamCreation: true,
   adoptArtifact: true,
   approve: true,
+  getDirectoryApprovalReceipt: true,
   bindLocalSkill: true,
   browserControl: true,
   cancelRun: true,
+  getCancellationTargets: true,
+  getRunCancellation: true,
+  cancelRunExecution: true,
   cancelSkillLibraryPreview: true,
   cancelSkillOperation: true,
   cancelSkillScan: true,
@@ -34,10 +54,23 @@ const methods = {
   checkAllSkillUpdates: true,
   checkSkillUpdate: true,
   chooseDataSourceFolder: true,
+  chooseEmployeeDirectory: true,
   chooseMaterialSource: true,
+  chooseKnowledgeSource: true,
+  saveEmployeeKnowledge: true,
+  removeEmployeeKnowledge: true,
+  setEmployeeKnowledgeSharing: true,
+  getEmployeeKnowledgeReceipt: true,
+  listEmployeeKnowledge: true,
+  getKnowledgeCitationPreview: true,
+  getEmployeeKnowledgeFiles: true,
+  getEmployeeKnowledgePreview: true,
   choosePath: true,
   chooseSkillSource: true,
   clearConversationHistory: true,
+  createEmployeeSession: true,
+  deleteSession: true,
+  getSessionReceipt: true,
   clearMemory: true,
   connectChannelBinding: true,
   createConversation: true,
@@ -78,6 +111,9 @@ const methods = {
   getDataSource: true,
   getDataSourceCredential: true,
   getDesktopSettings: true,
+  getCliInstallation: true,
+  installCli: true,
+  uninstallCli: true,
   getEmployeeExecution: true,
   getExecutionContent: true,
   getExternalTaskReceipt: true,
@@ -89,6 +125,8 @@ const methods = {
   getMaterialPreview: true,
   getMemory: true,
   getMessageReceipt: true,
+  getMessageExecution: true,
+  cancelMessageExecution: true,
   getPendingAutomationNavigation: true,
   getPluginSettings: true,
   getProfileActivity: true,
@@ -134,6 +172,7 @@ const methods = {
   listOwnerAutomations: true,
   listResourceCleanups: true,
   listRuntimePlugins: true,
+  getRuntimeVersions: true,
   listSkillInstallations: true,
   listSkillMarketplace: true,
   listSkillOperations: true,

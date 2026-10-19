@@ -1,3 +1,11 @@
+/*
+ * [OUTPUT]: 资源版本核验可由旧知识目录预览/替换复用，沿相同文件界限。
+ * [OUTPUT]: 资源文本读取严格UTF-8并保留原字节hash，拒绝二进制替代字符。
+ * [INPUT]: 当前员工/会话授权、资源身份及受管文件。
+ * [OUTPUT]: 冻结资源版本并排除撤权知识；知识内容身份替换使原计划失效，不使不含该资料的计划失效。
+ * [POS]: API与本机运行共用的资源授权及文件版本边界。
+ * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
+ */
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, open, readdir } from 'node:fs/promises'
@@ -32,12 +40,12 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 /** One authorization rule for context, memory provenance, and every task adapter. */
 export function authorizedResources(agent: DigitalAgent, conversation: Conversation, resources: Iterable<Resource>): Resource[] {
   const skills = new Set(agent.skillIds)
-  const knowledge = new Set(conversation.kind === 'group' ? agent.knowledgeIds.filter(id => conversation.sharedKnowledgeIds.includes(id)) : agent.knowledgeIds)
-  return [...resources].filter(resource => (!resource.ownerAgentId || resource.ownerAgentId === agent.id) && (resource.kind === 'skill' ? skills.has(resource.id) : knowledge.has(resource.id))).map(resource => structuredClone(resource))
+  const knowledge = new Set(conversation.kind === 'group' || conversation.channel || conversation.purpose === 'channel-internal' ? agent.knowledgeIds.filter(id => conversation.sharedKnowledgeIds.includes(id)) : agent.knowledgeIds)
+  return [...resources].filter(resource => !resource.knowledge?.revoked && (!resource.ownerAgentId || resource.ownerAgentId === agent.id) && (resource.kind === 'skill' ? skills.has(resource.id) : knowledge.has(resource.id))).map(resource => structuredClone(resource))
 }
 
 /** Hash bounded, ordinary files without following links. No executable content is run. */
-async function resourceVersion(resource: Resource, signal: AbortSignal): Promise<ResourceVersion> {
+export async function resourceVersion(resource: Resource, signal: AbortSignal): Promise<ResourceVersion> {
   const suppliedRoot = path.resolve(resource.path)
   const root = await restrictedPath([suppliedRoot], suppliedRoot), files: ResourceVersion['files'] = []
   let count = 0, bytes = 0
@@ -70,6 +78,7 @@ async function resourceVersion(resource: Resource, signal: AbortSignal): Promise
     } finally { await handle.close() }
   }
   await visit(root, 0)
+  if (resource.knowledge && (files.length !== 1 || files[0].path !== root || files[0].hash !== resource.knowledge.contentHash || files[0].size !== resource.knowledge.size)) throw new Error('知识资料副本已被外部修改，请核对资料后重新执行')
   return { resource: { ...structuredClone(resource), path: root }, files, hash: digest(JSON.stringify(files.map(file => ({ path: path.relative(root, file.path), hash: file.hash, size: file.size })))) }
 }
 
@@ -77,7 +86,7 @@ export async function readVersionedText(file: string, versions: ResourceVersion[
   const version = versions.find(version => version.files.some(entry => entry.path === file))
   const expected = version?.files.find(entry => entry.path === file)
   if (!version || !expected) throw new Error('文件不属于本次运行授权的资源版本')
-  const text = await boundedRead(await restrictedPath([path.resolve(version.resource.path)], file))
+  const text = await boundedRead(await restrictedPath([path.resolve(version.resource.path)], file), { strictUtf8: true })
   if (digest(text) !== expected.hash) throw new Error('资源内容已变更，请重新执行以使用新版本')
   return text
 }
@@ -106,6 +115,10 @@ export function assertEnvironmentScope(plan: RunEnvironmentPlan, input: Environm
   input.signal.throwIfAborted()
   const ids = authorizedResources(input.agent, input.conversation, input.resources).map(resource => resource.id).sort()
   const planned = [...plan.skills, ...plan.knowledge].map(version => version.resource.id).sort()
+  for (const version of plan.knowledge) {
+    const current = input.resources.find(resource => resource.id === version.resource.id)
+    if (current?.knowledge?.copyId !== version.resource.knowledge?.copyId || current?.knowledge?.revision !== version.resource.knowledge?.revision) throw new Error('知识资料内容已变更，请重新执行')
+  }
   if (plan.agentId !== input.agent.id || plan.conversationId !== input.conversation.id || plan.runId !== input.runId || plan.configVersion !== input.agent.configVersion || plan.policyVersion !== (input.agent.policyVersion ?? 2) || JSON.stringify(ids) !== JSON.stringify(planned) || plan.summary.commandMode !== commandMode(input.agent)) throw new Error('运行环境授权已变更，请重新执行')
   if (!input.workspace || Object.entries(plan.workspace).some(([key, value]) => path.resolve(input.workspace![key as keyof SessionWorkspace]) !== value)) throw new Error('运行环境不属于当前会话工作区')
 }

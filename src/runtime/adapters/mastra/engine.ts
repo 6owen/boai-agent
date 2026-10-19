@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 普通问答的select_web_search沿原工具循环和预算，实际选择由宿主核对。
+ * [OUTPUT]: 普通搜索问答沿原追加模型预算与阶段输出缓冲，不创建文件Work；只允许已装配的源工具。
+ * [OUTPUT]: 知识问答允许有预算的多步只读调用；工具步骤文字不冒充最终答复。
  * [OUTPUT]: Public/private API results require confirmed model completion; clean EOF cannot publish or trigger JSON repair.
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [OUTPUT]: 各API阶段使用真实SDK逐step响应记录网关路由，缺失保持未知且观测失败不重发。
@@ -24,6 +27,8 @@
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { hasKnowledge, knowledgeToolNames } from '../../modules/resources/knowledge-tools'
+import { hasChatSourceTools, sourceToolNames } from './source-tools'
 import { catalogObservation } from '../../modules/resources/catalog-commands'
 import { sourceCreationObservation } from '../../modules/sources/source-commands'
 import { groupInterpretationSchema, replyCharacterCount, validateGroupInterpretation } from '../../modules/collaboration/group-coordination'
@@ -126,7 +131,7 @@ export class MastraEngine implements AgentEngine {
         let previousFinish: { reason: string | undefined } | undefined
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
-          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.manageAutomation || ctx.createDataSource) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
+          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {
             previousFinish = { reason: event.finishReason }
@@ -173,7 +178,7 @@ export class MastraEngine implements AgentEngine {
       events.set(id, event)
       await ctx.onTool(event)
     }
-    const buffered = task || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
+    const buffered = task || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
     let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     try {
       for await (const chunk of output.fullStream) {
@@ -196,7 +201,7 @@ export class MastraEngine implements AgentEngine {
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
-          if (!task && !((ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          if (!task && !((hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name

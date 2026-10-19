@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开只读hostInUse，宿主离开时只取消实际依赖浏览器的运行。
  * [OUTPUT]: 明确整体权限在新网页交互派发前核对；只读导航/观察和旧回执核对保持，审批隐藏输入正文。
  * [OUTPUT]: BOAI内置浏览器默认授权全部员工使用，不发起网页审批；页面版本/引用身份/真实调用及未知不重放保持。
  * [OUTPUT]: 同实例同URL的动态页面仅经新snapshot/screenshot/find重新观察；旧版本首次写入拒绝后可恢复，新URL仍需本人重新引用。
@@ -23,6 +24,7 @@ export function browserRequestOrigins(content:string) {
   return [...origins]
 }
 export class BrowserSession {
+  get hostInUse() { return this.acquired || !!this.acquiring || this.inFlight.size > 0 }
   get reference() { return this.options.reference }
   private acquired=false
   private acquiring?:Promise<void>

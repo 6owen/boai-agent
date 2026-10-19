@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 写文件与双路径移动共用原子预留的文件锁，避免并发覆盖与锁顺序死锁；发布合同保持。
+ * [OUTPUT]: 文件写入在创建父目录、写锁内及截断前复核可选业务目录目标/授权；原材料hash和逻辑路径保持。
  * [OUTPUT]: 员工文本工具可要求严格 UTF-8 解码，技能预览保留原二进制识别；可选 hash/不存在基线在同路径写入锁内、截断前核对。
  * [OUTPUT]: 复制共享原件前等待宿主持久准备记录，准备失败不创建原件；完成登记后才返回发布结果。
  * [INPUT]: 当前员工会话工作区、宿主材料来源授权门禁与真实文件请求。
@@ -95,16 +97,27 @@ export async function workspaceTarget(root: string, relative: string, createPare
 }
 
 const workspaceWrites = new Map<string, Promise<unknown>>()
-export async function writeWorkspaceFile(root: string, relative: string, content: string, expectedHash?: string | null, signal?: AbortSignal) {
+/** Reserve every path together so two-file moves and single-file writes cannot deadlock. */
+export async function withFileMutationLocks<T>(paths: string[], operation: () => Promise<T>): Promise<T> {
+  const keys = [...new Set(paths.map(value => path.resolve(value)))].sort()
+  const previous = Promise.all(keys.map(key => workspaceWrites.get(key)).filter(Boolean)).catch(() => undefined)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve }), reservation = previous.then(() => gate)
+  for (const key of keys) workspaceWrites.set(key, reservation)
+  await previous
+  try { return await operation() }
+  finally { release(); for (const key of keys) if (workspaceWrites.get(key) === reservation) workspaceWrites.delete(key) }
+}
+export async function writeWorkspaceFile(root: string, relative: string, content: string, expectedHash?: string | null, signal?: AbortSignal, verify?: () => Promise<void>) {
   signal?.throwIfAborted()
+  await verify?.()
   const target = await workspaceTarget(root, relative, true)
   const key = path.join(await realpath(path.dirname(target)), path.basename(target))
-  const pending = (workspaceWrites.get(key) ?? Promise.resolve()).catch(() => undefined).then(() => write())
-  workspaceWrites.set(key, pending)
-  try { await pending } finally { if (workspaceWrites.get(key) === pending) workspaceWrites.delete(key) }
+  await withFileMutationLocks([key], write)
 
   async function write() {
     signal?.throwIfAborted()
+    await verify?.()
     await workspaceTarget(root, relative, true)
     // Do not use O_TRUNC before checking the opened file: reject hard links and final symlinks.
     const flags = expectedHash === undefined ? constants.O_WRONLY | constants.O_CREAT
@@ -124,6 +137,7 @@ export async function writeWorkspaceFile(root: string, relative: string, content
       const bytes = Buffer.from(content, 'utf8')
       // Explicit positions preserve the same write behavior with or without the guarded read.
       signal?.throwIfAborted()
+      await verify?.()
       await handle.truncate(0)
       for (let offset = 0; offset < bytes.length;) {
         const result = await handle.write(bytes, offset, bytes.length - offset, offset)

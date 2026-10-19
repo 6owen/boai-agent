@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行连接失联时立即关闭仍有员工动作的页面，再等待原CDP/队列真实退出；空闲窗口保持原drain。
  * [OUTPUT]: 有效员工租约默认允许HTTP(S)浏览和交互，无域名或逐次审批门禁；旧页面版本、真实开始握手、取消/退出及下载核验保持。
  * [OUTPUT]: 用户明确关闭/清登录资料/应用退出先封禁原租约并实际销毁页面，解除挂起动作后仍等待真实退出；资料仅退出后清除，普通drain语义不变。
  * [OUTPUT]: 窗口准备与ready期间关闭后，迟到成功/失败均不能恢复旧状态或重新认领；关闭后明确新开窗保持。
@@ -497,7 +498,15 @@ export class BrowserService {
     const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
     return scope?.lease && (scope.active || ['draining', 'user-controlled'].includes(scope.state.control)) ? structuredClone(scope.lease) : null
   }
-  async disconnectAll(): Promise<void> { await Promise.all([...this.scopes.values()].map(scope => this.transition(APPLICATION_BROWSER_SCOPE, () => this.drainScope(scope)))) }
+  async disconnectAll(): Promise<void> {
+    await Promise.all([...this.scopes.values()].map(scope => {
+      // stop() only stops navigation; a DOM wait/evaluation can remain pending.
+      // End the old action's page before awaiting its queue, as with explicit close.
+      const draining = scope.inFlight ? this.closeScope(scope) : this.drainScope(scope)
+      void draining.catch(() => {})
+      return this.transition(APPLICATION_BROWSER_SCOPE, async () => { await draining })
+    }))
+  }
   async shutdown(): Promise<void> {
     this.shuttingDown = true
     try {

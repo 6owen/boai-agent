@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 指定另一员工修订时按修订员工目录批准，原作者许可不外借，旧成果和外部原件保持。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [INPUT]: 真实 AppService/SQLite/受管成果原件、受控模型判断与原生 createTaskRuntime 文件发布。
  * [OUTPUT]: 复制未提交时不伪造历史成果、宿主核读后不二次读取外改、独立成果身份/明确修订版本、新根预算与目标隔离、核心新请求模型回退而旧回执只读、消息关系/最终回复事务与未知提交核对、发布工具权限和逐工具原版 hash 门禁、采用幂等与历史、材料授权失效、hash 清理冲突及封闭 SQLite 的异路径备份恢复不重放验收。
@@ -117,6 +118,50 @@ async function revise(service: AppService, conversation: Conversation, input: Ar
 }
 
 describe('service artifact delivery boundaries', () => {
+  it('requests directory access for the revision employee without inheriting the original author grant', async () => {
+    const f = await fixture(), business = join(f.root, 'coding'); await mkdir(business)
+    const path = join(business, 'source.txt'); await writeFile(path, 'REVISION-DIRECTORY-ORIGINAL')
+    const first = await original(f.service, f.engine, f.group)
+    for (const id of ['researcher', 'writer']) {
+      const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, creationSource: _c, systemRole: _s, ...agent } = (await snapshot(f.service)).agents.find(agent => agent.id === id)!
+      await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, executionPermission: 'ask', directoryGrants: id === 'researcher' ? [{ path: business, access: 'read-write' }] : [] })
+    }
+    const input = revision(f.group, first.artifact, { targetAgentId: 'writer' }), reads: string[] = []
+    f.engine.handler = async context => {
+      expect(context.agent.id).toBe('writer'); expect(context.artifactRevision?.id).toBe(input.requestId)
+      const runtime = await createTaskRuntime(context)
+      try {
+        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve }) as { content: string }
+        reads.push(result.content)
+      } finally { await runtime.dispose() }
+      await publish(f.service, context, [{ text: V2, replacement: true }])
+    }
+    await f.service.handle('reviseArtifact', input)
+    await vi.waitFor(async () => expect((await snapshot(f.service)).approvals).toHaveLength(1))
+    const approval = (await snapshot(f.service)).approvals[0]
+    expect((await detail(f.service, f.group)).runs.find(run => run.id === approval.runId)?.agentId).toBe('writer')
+    expect(approval.directory).toMatchObject({ directory: business, access: 'read-only' }); expect(reads).toEqual([])
+    expect((await detail(f.service, f.group)).artifacts).toHaveLength(1)
+    await f.service.handle('approve', { id: approval.id, approved: true, always: false })
+    const fileApprovals = []
+    for (const description of ['写入文件', '发布文件']) {
+      await vi.waitFor(async () => expect((await snapshot(f.service)).approvals.some(item => item.kind === 'file')).toBe(true))
+      const pending = (await snapshot(f.service)).approvals.find(item => item.kind === 'file')!
+      expect(pending.command).toContain(description); fileApprovals.push(pending)
+      await f.service.handle('approve', { id: pending.id, approved: true })
+    }
+    await settled(f.service, f.group)
+    const current = await detail(f.service, f.group), replacement = current.artifacts.find(artifact => artifact.revisionRequestId === input.requestId)!
+    expect(reads).toEqual(['REVISION-DIRECTORY-ORIGINAL']); expect(replacement.ownerAgentId).toBe('writer')
+    expect(await readFile(replacement.path, 'utf8')).toBe(V2); expect(await readFile(first.artifact.path, 'utf8')).toBe(V1)
+    expect(await readFile(path, 'utf8')).toBe('REVISION-DIRECTORY-ORIGINAL')
+    if (process.env.BOAI_DIRECTORY_LIFECYCLE_EVIDENCE_DIR) {
+      const output = join(process.env.BOAI_DIRECTORY_LIFECYCLE_EVIDENCE_DIR, 'revision'); await mkdir(output, { recursive: true })
+      await storeOf(f.service).backup(join(output, 'boai.sqlite'))
+      await writeFile(join(output, 'facts.json'), JSON.stringify({ externalRequests: 0, reads, approval, fileApprovals, first: first.artifact, replacement, current, state: await snapshot(f.service) }, null, 2))
+    }
+  })
+
   it('does not infer a legacy artifact while a real publication is copied but not yet committed', async () => {
     const { service, engine, direct } = await fixture()
     let copied!: Artifact, release!: () => void, markCopied!: () => void

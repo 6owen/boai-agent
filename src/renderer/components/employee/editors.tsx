@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 检索偏好沿员工草稿保存；主动解绑同次重置，旧缺省不因身份编辑补写。
+ * [OUTPUT]: 知识资料配置收敛为数量/文件区入口；导航走原草稿守卫，独立知识绑定回填版本时保留其他未保存字段。
+ * [OUTPUT]: 员工授权目录沿原配置草稿保存；运行中新增的持久授权独立版本回填，不覆盖其他未保存字段。
  * [OUTPUT]: 群配置与资料页共用字段和保存载荷，成员头像/添加打开同一双栏选择器，原高级配置基础分类保留。
  * [OUTPUT]: 单独发布身份自动保存的待提交/请求/头像上传状态，页面操作锁与外观反馈解耦，普通配置保存保持。
  * [OUTPUT]: 资料页身份自动保存直接发布已提交员工回执，不调用全量资料刷新；其他配置保存/未知核对保持。
@@ -57,6 +61,7 @@ import { Banner, colors, EditorFrame, errorText, GuardContext, ResourcePicker, s
 import { toast } from 'sonner'
 import { GroupConfigurationFields, groupConfigurationInput } from './group-configuration-fields'
 import { GroupMembers } from './group-members'
+import { DirectoryGrantFields } from './directory-grants'
 import { AvatarPicker } from './avatar-picker'
 import { ProfileText } from './profile-text'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
@@ -71,12 +76,12 @@ export const templates = [
   { name: '方案写手', role: '把想法写成清晰方案', instructions: '你是一位方案写手。理解目标与受众，基于获准资料撰写清楚自然的内容。', icon: FileText, color: colors[1] },
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
-function savedAgentForm(agent: DigitalAgent): AgentInput { return { executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
-export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge'
+function savedAgentForm(agent: DigitalAgent): AgentInput { return { webSearch: agent.webSearch, directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision, executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
+export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge' | 'directories'
 export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState(false), [choosingDirectory, setChoosingDirectory] = useState(false)
   const [identityPending, setIdentityPending] = useState(false), [identitySaving, setIdentitySaving] = useState(false)
   const [profiles, setProfiles] = useState<LaunchProfile[]>([]), [profileError, setProfileError] = useState('')
   useEffect(() => {
@@ -98,8 +103,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   const [saveUnconfirmed, setSaveUnconfirmed] = useState(false), [checkedAgent, setCheckedAgent] = useState<DigitalAgent | null>(null)
   const baseline = useRef(JSON.stringify(form)), currentForm = useRef(form); currentForm.current = form
   const dirty = JSON.stringify(form) !== baseline.current
-  const locked = busy || uploading || bindingLocked || saveUnconfirmed
-  useEffect(() => { onBusyChange?.(busy || identityPending || uploading || Boolean(section && bindingLocked)); return () => onBusyChange?.(false) }, [busy, identityPending, uploading, section, bindingLocked, onBusyChange])
+  const locked = busy || uploading || choosingDirectory || bindingLocked || saveUnconfirmed
+  useEffect(() => { onBusyChange?.(busy || identityPending || uploading || choosingDirectory || Boolean(section && bindingLocked)); return () => onBusyChange?.(false) }, [busy, identityPending, uploading, choosingDirectory, section, bindingLocked, onBusyChange])
   useEffect(() => { onIdentityBusyChange?.(inlineIdentity && (identityPending || identitySaving || uploading)); return () => onIdentityBusyChange?.(false) }, [inlineIdentity, identityPending, identitySaving, uploading, onIdentityBusyChange])
   const set = <K extends keyof AgentInput>(key: K, value: AgentInput[K]) => { if (!locked) setForm(current => ({ ...current, [key]: value })) }
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
@@ -113,6 +118,25 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     if (!agent || bindingLocked || saveUnconfirmed || JSON.stringify(currentForm.current) !== baseline.current || agent.configVersion <= (initialVersion.current ?? 0)) return
     const updated = savedAgentForm(agent); baseline.current = JSON.stringify(updated); initialVersion.current = agent.configVersion; setForm(updated)
   }, [agent, bindingLocked, saveUnconfirmed])
+  useEffect(() => {
+    if (!agent || locked || agent.configVersion <= (initialVersion.current ?? 0)) return
+    const previous = JSON.parse(baseline.current) as AgentInput, updated = savedAgentForm(agent)
+    if (Object.keys(updated).some(key => key !== 'knowledgeIds' && JSON.stringify(updated[key as keyof AgentInput]) !== JSON.stringify(previous[key as keyof AgentInput]))) return
+    const draft = mergeSkillBindingDraft(previous, currentForm.current, updated)
+    draft.knowledgeIds = updated.knowledgeIds
+    baseline.current = JSON.stringify(updated); initialVersion.current = agent.configVersion; currentForm.current = draft; setForm(draft)
+    guard.setDirty(JSON.stringify(draft) !== baseline.current)
+  }, [agent, locked])
+  useEffect(() => {
+    if (!agent || busy || choosingDirectory || bindingLocked || saveUnconfirmed || agent.configVersion !== initialVersion.current) return
+    const previous = JSON.parse(baseline.current) as AgentInput
+    if ((agent.directoryRevision ?? 0) <= (previous.expectedDirectoryRevision ?? 0)) return
+    const directoryDirty = JSON.stringify(currentForm.current.directoryGrants) !== JSON.stringify(previous.directoryGrants)
+    if (directoryDirty) return
+    const authorization = { directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision }
+    baseline.current = JSON.stringify({ ...previous, ...authorization })
+    const updated = { ...currentForm.current, ...authorization }; currentForm.current = updated; setForm(updated)
+  }, [agent, busy, choosingDirectory, bindingLocked, saveUnconfirmed])
   const bindingCommitted = async (receipt: SkillBindingReceipt, input: BindLocalSkillInput) => {
     const committed = committedSkillBindingAgent(input, receipt, agent)
     if (!committed || !receipt.resource) throw new Error('已完成回执没有可核对的员工绑定，请保留原请求核对。')
@@ -147,7 +171,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     }, { resetOnDiscard: false })
   }
   const save = async (identityOnly = false) => {
-    if (busy || uploading || bindingLocked || saveUnconfirmed || !active || (identityOnly ? identityDisabled : !modelReady)) return
+    if (busy || uploading || choosingDirectory || bindingLocked || saveUnconfirmed || !active || (identityOnly ? identityDisabled : !modelReady)) return
     const previous = JSON.parse(baseline.current) as AgentInput
     const submitted = identityOnly ? { ...previous, name: form.name, role: form.role, avatar: form.avatar } : form
     if (identityOnly && !submitted.name.trim()) { showErrorToast('请输入员工名称。'); return }
@@ -155,7 +179,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     if (identityOnly) setIdentitySaving(true)
     await run(async () => {
       let committed: DigitalAgent
-      try { committed = await api.request('saveAgent', { ...submitted, expectedConfigVersion: initialVersion.current, name: submitted.name.trim(), role: submitted.role.trim(), ...(identityOnly || section && section !== 'model' ? {} : { executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? undefined : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: !core && form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }) }
+      try { committed = await api.request('saveAgent', { ...submitted, expectedConfigVersion: initialVersion.current, name: submitted.name.trim(), role: submitted.role.trim(), ...(identityOnly || section && section !== 'model' ? {} : { executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: !core && form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }) }
       catch (reason) { setIdentityPending(false); if (agent) { setSaveUnconfirmed(true); await readCommittedConfiguration() }; throw reason }
       const updated = savedAgentForm(committed)
       // Identity saves must not submit or erase another section's draft, including new typing during the request.
@@ -200,7 +224,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   </div>
   const commandPermission = snapshot.commandPermissions?.find(permission => permission.agentId === agent?.id)
   const saveAction = <Button type="submit" size={section ? 'sm' : 'default'} form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{section || actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
-  const actions = actionsTarget === undefined ? <><Button type="button" size={section ? 'sm' : 'default'} variant="secondary" disabled={busy || uploading || Boolean(section && bindingLocked)} onClick={() => guard.navigate(onClose, section ? { resetOnDiscard: false } : undefined)}>取消</Button>{saveAction}</> : undefined
+  const actions = actionsTarget === undefined ? <><Button type="button" size={section ? 'sm' : 'default'} variant="secondary" disabled={busy || uploading || choosingDirectory || Boolean(section && bindingLocked)} onClick={() => guard.navigate(onClose, section ? { resetOnDiscard: false } : undefined)}>取消</Button>{saveAction}</> : undefined
   const inlineActions = section ? <div className="flex items-center gap-2">{actions}</div> : undefined
   const visible = (key: AgentConfigurationSection) => !section || section === key
   const content = <form data-edit-form={dirty || configurationVisible && (!inlineIdentity || section !== 'identity') ? true : undefined} id={formId} onSubmit={submit} className="form-grid employee-form-sections">
@@ -209,7 +233,15 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       <fieldset className="contents" disabled={locked}>
       {visible('model') && <EmployeeFormSection title="模型与权限" actions={inlineActions}>
       <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
-      {!core && (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' })) }} disabled={locked} full />}
+      {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: !core && executionPermission !== 'read-only' })) }} disabled={locked} full />}
+      </EmployeeFormSection>}
+      {visible('directories') && <EmployeeFormSection title={(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? '授权目录' : '目录访问'} actions={(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? inlineActions : undefined}>
+        {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <DirectoryGrantFields api={api} value={form.directoryGrants} fullAccess={form.executionPermission === 'full-access'} disabled={locked} onBusyChange={setChoosingDirectory} onChange={directoryGrants => setForm(current => ({ ...current, directoryGrants }))} /> : <p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p>}
+        {agent && (agent.directoryRevision ?? 0) > (form.expectedDirectoryRevision ?? 0) && <Button type="button" variant="secondary" size="sm" disabled={locked} onClick={() => {
+          const authorization = { directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision }
+          baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), ...authorization })
+          setForm(current => ({ ...current, ...authorization }))
+        }}>载入已批准目录，保留其他草稿</Button>}
       </EmployeeFormSection>}
       {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
       </fieldset>
@@ -219,8 +251,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
         </div>}
       </EmployeeFormSection>}
       <fieldset className="contents" disabled={locked}>
-      {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
-      {visible('knowledge') && <EmployeeFormSection title="知识资料" actions={inlineActions}><div className="field full"><ResourcePicker resources={snapshot.resources.filter(item => item.kind === 'knowledge' && !item.ownerAgentId)} selected={form.knowledgeIds} onChange={ids => set('knowledgeIds', ids)} onOpen={openResource && (resource => openResource({ kind: 'resource', id: resource.id, name: resource.name }))} empty="还没有知识资料。" /></div></EmployeeFormSection>}
+      {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} searchPreference={form.webSearch ?? { mode: 'auto' }} onSearchPreferenceChange={value => set('webSearch', value)} onChange={ids => { if (!locked) setForm(current => ({ ...current, sourceIds: ids, ...(current.webSearch?.mode === 'source' && (current.sourceIds ?? []).includes(current.webSearch.sourceId) && !ids.includes(current.webSearch.sourceId) ? { webSearch: { mode: 'auto' } } : {}) })) }} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
+      {visible('knowledge') && <EmployeeFormSection title="知识资料">{agent ? <Button type="button" variant="ghost" size="sm" disabled={locked || !openResource} onClick={() => openResource?.({ kind: 'knowledge-files', id: agent.id, name: agent.name })}>知识资料 · {agent.knowledgeIds.length} 份</Button> : <p className="field-hint">保存员工后，在文件区域管理知识资料。</p>}</EmployeeFormSection>}
       </fieldset>
       </>}
     </form>

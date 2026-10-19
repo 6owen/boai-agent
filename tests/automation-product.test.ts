@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 手动触发真实自动化来源沿员工搜索绑定，私有判断零源调用，查询/正文与重复触发/重启不重放。
  * [OUTPUT]: 执行历史删除核对真实目录/日志释放、主聊和其他记录保留、过期/运行门禁、重启续清与旧触发不重放。
  * [OUTPUT]: IM聊天在无公开正文时投影同一次任务执行，读取原思考证据；清空后撤去镜像，不复制或重跑Run。
  * [OUTPUT]: 任务浏览器经过真实宿主上下文/工具/SQLite动作回执；普通与任务消息定位、清空后拒绝均回归。
@@ -17,7 +18,7 @@ import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { tmpdir } from 'node:os'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { AutomationDefinition, AutomationHistoryPage, AutomationInput, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../src/shared/domain'
@@ -30,6 +31,8 @@ import { mainConversations } from '../src/shared/domain/conversation-list'
 import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../src/shared/ipc/browser'
 import type { BrowserRepository } from '../src/runtime/modules/browser/repository'
 import type { ConversationView } from '../src/shared/domain/reading'
+import type { DataSource } from '../src/shared/domain/sources'
+import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
 
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0).reverse()) await dispose() })
@@ -63,6 +66,46 @@ async function stagedDownload(f: Awaited<ReturnType<typeof setup>>, conversation
   ])
   return { directory, path, bytes }
 }
+it('retrieves public web facts in an automation with the executing employee binding and no duplicate or restart calls', async () => {
+  const server = await webSearchServer()
+  try {
+    let source: DataSource, other: DataSource, error: unknown, executed = 0, decisionDenied = 0
+    const f = await setup({ engine: {
+      test: async () => 'unused', decide: async ctx => {
+        if (ctx.participation?.hasRespondedInTurn) return { action: 'pass', observedThroughSequence: ctx.participation.observedThroughSequence }
+        try { await expect(ctx.inspectDataSource!(source.id)).rejects.toThrow('权限'); decisionDenied++ } catch (failure) { error = failure; throw failure }
+        return { action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence }
+      },
+      run: async ctx => {
+        try {
+          expect(ctx.agent.id).toBe('researcher'); expect(ctx.dataSources?.map(source => source.id)).toEqual([source.id])
+          await expect(ctx.inspectDataSource!(other.id)).rejects.toThrow('权限')
+          await ctx.inspectDataSource!(source.id)
+          expect(JSON.stringify(await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_search', arguments: { query: 'public Orion launch schedule' } }))).toContain(resultUrl)
+          expect(JSON.stringify(await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_extract', arguments: { urls: [resultUrl] } }))).toContain(pageText)
+          executed++; await ctx.onDelta(pageText + ' ' + resultUrl)
+        } catch (failure) { error = failure; throw failure }
+      },
+    } })
+    source = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: webSourceConfig }) as DataSource
+    other = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...webSourceConfig, name: 'Unbound search' } }) as DataSource
+    const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, directoryRevision, systemRole: _s, creationSource: _c, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
+    await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [source.id], webSearch: { mode: 'source', sourceId: source.id } })
+    const plan = await f.service.handle('saveAutomation', { ...f.input, prompt: '通过本人搜索源查证公开资料', notify: false }) as AutomationDefinition
+    const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence
+    await vi.waitFor(async () => { if (error) throw error; expect((await f.view()).occurrences.find(row => row.id === occurrence.id)?.status).toBe('completed') }, { timeout: 10000 })
+    expect(executed).toBe(1); expect(decisionDenied).toBe(1); expect(server.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
+    const detail = await f.detail(occurrence.conversationId)
+    expect(detail.messages.some(message => message.senderType === 'agent' && message.content === pageText + ' ' + resultUrl)).toBe(true)
+    expect(detail.runs.every(run => run.origin?.occurrenceId === occurrence.id)).toBe(true)
+    expect((await f.service.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence).id).toBe(occurrence.id)
+    await f.service.close(); const restored = await f.make()
+    expect((await restored.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail).messages).toEqual(detail.messages)
+    expect((await restored.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence).id).toBe(occurrence.id)
+    expect(executed).toBe(1); expect(server.calls).toHaveLength(2)
+    if (process.env.BOAI_REVIEW_RUN_DIR) { const dir = join(process.env.BOAI_REVIEW_RUN_DIR, 'search-entries'); await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'automation.json'), JSON.stringify({ executed, decisionDenied, calls: server.calls, detail, occurrence: await restored.handle('getAutomationOccurrence', { id: occurrence.id }), externalRequests: 0, trigger: 'manual-original-automation-path', modelMode: 'controlled-engine-real-MCP-SDK' }, null, 2)) }
+  } finally { await server.close() }
+})
 it('deletes one completed execution and its private files while preserving the plan, other runs and IM messages', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-first' }) as AutomationOccurrence

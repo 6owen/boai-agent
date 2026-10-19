@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 首条消息前核对实际permission rules及managed-only来源；原始设置包含已失效ask不再被接受。
+ * [OUTPUT]: 已装配的request_directory可进入受核验产品桥，目录决定仍归宿主原审批；避免只读申请被通用原生批准先拒绝。
+ * [OUTPUT]: 已核验Claude直接文件操作走员工目录批准；发送消息前核对原生有效ask规则，控制请求失败不重试。
+ * [OUTPUT]: 显式业务cwd只核对原目录，不因进程准备而创建或授予写入。
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 整体执行权限派生Claude真实permission-mode及跳过审批参数；只读拒绝原生提权，不影响普通用户问题。
  * [OUTPUT]: 原生配置模式在本次子进程合并loopback代理排除，保持原生来源/远端代理；取消不能留下代理持有的本机请求。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
@@ -13,6 +19,7 @@
  * [POS]: Claude生产会话驱动；不采用旧私有阶段或空工具策略，许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { workingDirectoryTarget } from '../../modules/workspaces/working-directory'
 import { assertClaudeNativeSource } from './native-source'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile, unlink } from 'node:fs/promises'
@@ -62,7 +69,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   if (managedGateway) assertClaudeGatewayVersion(context.connection, profile.verified.version)
   const selectedModel = provider?.model || context.agent.modelId
   const controller = new AbortController(), signal = AbortSignal.any([context.signal, controller.signal])
-  await mkdir(directory.cwd, { recursive: true }); await mkdir(directory.privateHome, { recursive: true, mode: 0o700 })
+  if (context.workingDirectory) await workingDirectoryTarget(directory.cwd); else await mkdir(directory.cwd, { recursive: true }); await mkdir(directory.privateHome, { recursive: true, mode: 0o700 })
   const bootstrap = join(directory.privateHome, `bootstrap-${randomUUID()}.txt`)
   await writeFile(bootstrap, input.instructions, { flag: 'wx', mode: 0o600 })
   const bridge = await createClaudeToolBridge({ native: true, configDirectory: directory.privateHome, tools: input.tools, signal, onFailure: error => controller.abort(error) })
@@ -73,9 +80,10 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     Object.assign(env, { ANTHROPIC_API_KEY: context.apiKey, ANTHROPIC_AUTH_TOKEN: context.apiKey, ANTHROPIC_BASE_URL: provider!.baseUrl })
     if (managedGateway) env = claudeGatewayEnvironment(context.connection!, selectedModel, context.apiKey, env, context.agent.nativeOptions?.effort)
   }
-  const mode = executionPermissionNativeOptions('claude-local', context.agent.nativeOptions, context.agent.executionPermission)?.claudePermissionMode ?? 'default'
-  const args = ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--permission-prompt-tool', 'stdio', '--verbose', '--include-partial-messages', '--permission-mode', mode,
+  const mode = executionPermissionNativeOptions('claude-local', context.agent.nativeOptions, context.agent.executionPermission)?.claudePermissionMode
+  const args = ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--permission-prompt-tool', 'stdio', '--verbose', '--include-partial-messages',
     input.threadId ? '--resume' : '--session-id', sessionId, '--append-system-prompt-file', bootstrap, '--mcp-config', bridge.configPath]
+  if (mode) args.push('--permission-mode', mode)
   if (selectedModel) args.push('--model', selectedModel)
   if (context.agent.nativeOptions?.effort) args.push('--effort', context.agent.nativeOptions.effort)
   if (mode === 'bypassPermissions') args.push('--dangerously-skip-permissions')
@@ -85,6 +93,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   const messageIds = new Map<string, string>()
   const blocks = new Map<string, Record<string, any>>(), tools = new Map<string, Record<string, any>>(), tasks = new Set<string>()
   const controls = new Map<string, AbortController>(), pending = new Set<Promise<void>>()
+  let submission: Promise<void> | undefined
   const emit = context.onExecutionEvent ?? (async () => {})
   let endedAt = 0, resultWaitAt = 0, turnInProgress = false
   let inputAccepted = false, contextModel: string | undefined, nativeModel: string | undefined
@@ -113,12 +122,15 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
       if (String(value.name).startsWith('mcp__boai__')) bridge.announce(value.id, value.name, value.input)
     }
   }
+  let cli: import('../../../shared/cli/run-access').RunCliEnvironmentLease | undefined
   try {
+    cli = await context.acquireCliEnvironment?.()
     await input.onSession(sessionId); await context.onNativeExecution?.({ sessionId, ...(selectedModel ? { selectedModelId: selectedModel } : {}), ...(managedGateway ? { modelSource: { mode: 'boai-connection' as const, connectionId: context.connection!.id, connectionRevision: context.connection!.revision ?? 1, protocol: 'messages' as const, selectedModelId: selectedModel } } : {}) })
-    await runClaudeProcess({ executable: profile.executable, runtime: profile.runtime, args, env, cwd: directory.cwd, privateHome: directory.privateHome, signal, native: true,
+    await runClaudeProcess({ executable: profile.executable, runtime: profile.runtime, args, env, cliEnvironment: cli?.env, cwd: directory.cwd, privateHome: directory.privateHome, signal, native: true,
       onReady: (send, finish) => { write = send; end = finish; write(JSON.stringify({ type: 'control_request', request_id: initializeId, request: { subtype: 'initialize' } }) + '\n') },
       onLine: async line => {
         const frame = recordValue(JSON.parse(line))
+        if (frame.type !== 'control_response') await submission
         if (frame.session_id && frame.session_id !== sessionId) throw new Error('Claude 事件不属于当前原生会话')
         if (initialized && !inputAccepted && ['stream_event', 'assistant', 'result'].includes(frame.type)) {
           inputAccepted = true; await context.onNativeExecution?.({ sessionId, inputAccepted: true })
@@ -128,13 +140,20 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           initialized = true; state = undefined
           nativeInfo = { ...nativeInfo, ...claudePublicInfo(frame.response.response) }
           if (Object.keys(nativeInfo).length) await context.onNativeExecution?.({ nativeInfo })
-          await assertClaudeNativeSource(context)
-          write(JSON.stringify(prompt) + '\n'); await input.onSubmitted(sessionId, context.runId); return
+          // Control replies use this same serial reader. Awaiting a new control
+          // request here would prevent its response from ever being processed.
+          const preparation = (async () => {
+            signal.throwIfAborted(); await assertClaudeNativeSource(context)
+            write(JSON.stringify(prompt) + '\n'); submission = input.onSubmitted(sessionId, context.runId); await submission
+          })()
+          pending.add(preparation)
+          void preparation.catch(error => controller.abort(error)).finally(() => { pending.delete(preparation); maybeEnd() })
+          return
         }
         if (frame.type === 'control_cancel_request') { controls.get(frame.request_id)?.abort(new Error('Claude 已撤回此请求')); return }
         if (frame.type === 'control_request') {
-          const request = recordValue(frame.request), id = String(frame.request_id), local = new AbortController()
-          if (!initialized || request.subtype !== 'can_use_tool' || !request.tool_use_id || !request.tool_name || controls.has(id)) throw new Error('Claude 原生交互缺少有效身份')
+          const request = recordValue(frame.request), id = frame.request_id, local = new AbortController()
+          if (!initialized || typeof id !== 'string' || !id || request.subtype !== 'can_use_tool' || !request.tool_use_id || !request.tool_name || controls.has(id)) throw new Error('Claude 原生交互缺少有效身份')
           controls.set(id, local)
           const operation = (async () => {
             const input = recordValue(request.input), asking = request.tool_name === 'AskUserQuestion'
@@ -230,6 +249,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     if (resultError) throw new Error(resultError, { cause: error })
     throw error
   } finally {
+    cli?.release()
     clearInterval(watchdog)
     controller.abort(new Error('Claude 原生会话已退出'))
     await Promise.allSettled([...pending]); await bridge.close(); await unlink(bootstrap)

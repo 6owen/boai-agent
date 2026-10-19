@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工知识解绑仅撤回该员工及其派生来源，其他员工独立的同资料记忆保持。
  * [INPUT]: 真实 SQLite 多连接、MemoryRepository 与范围/生命周期策略。
  * [OUTPUT]: 自动纠正多级派生失效、原来源修复及无关记忆隔离。
  * [OUTPUT]: 无关清空不取消精确召回、条目/获知指纹/原文与派生回复的相关失效；旧快照和提取仍保守，纠正/忘记/期限不可绕过。
@@ -98,6 +99,15 @@ it('propagates revocation through memories and observations rather than checking
   await repository.invalidateResources(['k'])
   expect((await repository.get(employee)).entries).toHaveLength(0)
   expect(await repository.observations('a')).toHaveLength(0)
+})
+it('limits resource revocation to the unbound employee while preserving independent references owned by another employee', async () => {
+  const { repository } = await fixture(), other: MemoryQuery = { agentId: 'b', scope: 'employee' }
+  const own = await repository.extract(employee, [{ content: '员工甲资料结论', sourceMessageIds: ['m'], sourceResourceIds: ['k'] }], 0, ['m'], ['k'], policy('own'))
+  await repository.extract(employee, [{ content: '员工甲派生结论', sourceMessageIds: ['derived'] }], own.epoch, ['derived'], [], { ...policy('derived'), sourceMemoryIds: [own.entries[0].id] })
+  const independent = await repository.extract(other, [{ content: '员工乙独立资料结论', sourceMessageIds: ['m'], sourceResourceIds: ['k'] }], 0, ['m'], ['k'], policy('other'))
+  await repository.invalidateResources(['k'], 'a')
+  expect((await repository.get(employee)).entries).toEqual([])
+  expect((await repository.get(other)).entries).toEqual(independent.entries)
 })
 it('expires on read, archives low-frequency experiences and retains pinned or long-term memories', async () => {
   const { repository } = await fixture()

@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 原生命令additionalPermissions接组合目录审批；其余无法确认范围的提权继续拒绝。
+ * [OUTPUT]: 用户所选业务cwd必须已存在，不由本机进程准备隐式创建。
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
+ * [OUTPUT]: 目录策略接原生permissions请求/身份和turn范围；通用逃逸批准暂拒绝，完整能力仍受后端准入门禁。
  * [OUTPUT]: 整体执行权限同时派生原生sandbox/approvalPolicy，覆盖文件/命令/网络访问与审批。
  * [OUTPUT]: 首线程只接纳原生有效写权限产生的精确信任新增，并持久化核对后的来源指纹；其他配置漂移仍在提交前拒绝。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
@@ -53,8 +58,10 @@ export async function runCodexConversation(context: EngineContext, input: Native
   await assertCodexNativeSource(context)
   const preparation = await prepareCodexNativeSource(context)
   let client: CodexClient | undefined
+  let cli: import('../../../shared/cli/run-access').RunCliEnvironmentLease | undefined
   try {
-  const started = await CodexClient.start({ profile, ...directory, signal, native: true, gatewaySource: gateway,
+  cli = await context.acquireCliEnvironment?.()
+  const started = await CodexClient.start({ profile, ...directory, existingCwd: !!context.workingDirectory, signal, native: true, gatewaySource: gateway, cliEnvironment: cli?.env,
     onRequest: async (method, params) => {
       await ready; signal.throwIfAborted()
       const child = children.get(String(params.threadId))
@@ -148,6 +155,6 @@ export async function runCodexConversation(context: EngineContext, input: Native
   } finally {
     controller.abort(new Error('Codex 原生turn已退出')); releaseReady()
     preparation?.dispose()
-    await client?.close()
+    try { await client?.close() } finally { cli?.release() }
   }
 }

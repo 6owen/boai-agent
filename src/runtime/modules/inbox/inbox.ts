@@ -1,11 +1,11 @@
 /*
+ * [OUTPUT]: 查询/回答schema归共享领域；原只读资格投影同时服务桌面及CLI。
  * [INPUT]: 固定 SQL 待处理来源、原 Work/问题事务和当前审批/成果只读核对。
  * [OUTPUT]: 有界稳定分页、当前资格/安全动作、原成果固定版本；自动化问题虚拟身份精确核对原消息/Work/触发版本及当前材料，失效零旧正文；查询零模型/零新工作。
  * [OUTPUT]: 自动化汇总get/list复用精确问题的原负责人/Work/当前版本和跨hook核验，不把较晚交付或已答正文投影为补充问题。
  * [POS]: D5 只读收件箱投影；终态仍由原来源拥有。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { z } from 'zod'
 import type { Approval, AutomationOccurrence, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, WorkItem } from '../../../shared/domain'
 import type { InboxItem, InboxPage, InboxQuery } from '../../../shared/domain/inbox'
 import type { ArtifactAcceptance } from '../../../shared/domain/artifacts'
@@ -14,9 +14,6 @@ import { WorkRepository, WorkUnavailableError } from '../collaboration/work-repo
 import type { InboxSqlRow } from './inbox-sql'
 import { automationQuestionSource, questionSource, validateQuestionReply, type QuestionSource } from './user-question'
 
-const id = z.string().min(1).max(600)
-export const inboxQuerySchema = z.object({ kind: z.enum(['question', 'approval', 'failure', 'acceptance']).optional(), search: z.string().trim().max(1000).optional(), before: z.object({ time: z.string().datetime(), id }).strict().optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
-export const inboxReplySchema = z.object({ questionId: id, expectedRevision: z.number().int().positive(), content: z.string().trim().min(1).max(100000), requestId: z.string().trim().min(1).max(200) }).strict()
 interface InboxHooks {
   approval(id: string): Approval | undefined
   acceptance(id: string): Promise<ArtifactAcceptance | null>

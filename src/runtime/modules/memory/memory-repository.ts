@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 资源派生记忆失效可限定当前员工，旧共享资料解绑不清除其他员工独立有效来源。
  * [INPUT]: SQLite 原子记录事务、统一记忆合同及确定性范围/生命周期策略。
  * [OUTPUT]: 召回同事务精确核对实际条目/获知授权/输入来源，旧快照保守代际门禁；无关清空不取消任务，相关忘记/纠正/范围/到期仍失效。
  * [OUTPUT]: 自动纠正与手工编辑共用多级派生失效，启动只修复旧失效来源投影且保留无关记忆；兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
@@ -321,7 +322,7 @@ export class MemoryRepository {
     }
     return true
   }
-  invalidateResources(ids: string[]) { return this.invalidate(entry => entry.sourceResourceIds.some(id => ids.includes(id)), observation => observation.sourceResourceIds.some(id => ids.includes(id))) }
+  invalidateResources(ids: string[], ownerAgentId?: string) { return this.invalidate(entry => (!ownerAgentId || entry.ownerAgentId === ownerAgentId) && entry.sourceResourceIds.some(id => ids.includes(id)), observation => (!ownerAgentId || observation.ownerAgentId === ownerAgentId) && observation.sourceResourceIds.some(id => ids.includes(id))) }
   invalidateMessages(ids: string[]) { return this.invalidate(entry => entry.sourceMessageIds.some(id => ids.includes(id)), observation => observation.sourceMessageIds.some(id => ids.includes(id))) }
   invalidateConversation(agentId: string, conversationId: string) {
     return this.invalidate(entry => entry.ownerAgentId === agentId && sourceConversations(entry).includes(conversationId), item => item.ownerAgentId === agentId && (item.sourceConversationIds ?? [item.conversationId]).includes(conversationId))

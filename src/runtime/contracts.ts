@@ -1,4 +1,16 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
+ * [OUTPUT]: 本轮文字检索选择共用宿主门禁和run局部状态，浅复制上下文仍保留同一选择，不持久修改员工偏好。
+ * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
+ * [OUTPUT]: 本轮API模型覆盖沿原请求与执行，冻结来源且临时凭据不写入公开记录或默认配置。
+ * [OUTPUT]: 执行上下文区分业务workingDirectory与受管workspace，默认文件和命令仅在实际访问时申请授权。
+ * [OUTPUT]: 原执行适配器登记实际CLI工具目录，关闭目录并排空原调用后才销毁运行资源。
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
+ * [OUTPUT]: SecretStore可提供不解密的可用性查询，独立宿主无桌面钥匙串时保留元信息读取。
+ * [OUTPUT]: 知识查询共用宿主实时授权回调，普通读取不创建Work。
+ * [OUTPUT]: 原生目录策略可读取宿主核验的当前材料/资源精确路径，不扩大到整个产品数据目录。
+ * [OUTPUT]: 执行上下文增加员工/运行专属目录授权端口，临时授权生命周期由原宿主管理。
  * [OUTPUT]: 整体执行权限在具体副作用前复用宿主审批回调。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
@@ -36,16 +48,25 @@ export const DEFAULT_MODEL_CAPACITY = 6
 
 // Only the host and runtime know secrets. These values never enter a renderer snapshot.
 export interface SecretStore {
+  /** Metadata can remain readable when a headless host cannot decrypt desktop credentials. */
+  has?(connectionId: string): Promise<boolean>
   get(connectionId: string): Promise<string | undefined>
   set(connectionId: string, value: string): Promise<void>
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Acquired only at actual process launch; release after the original process/group has exited. Never serialize credentials. */
+  acquireCliEnvironment?(): Promise<import('../shared/cli/run-access').RunCliEnvironmentLease>
+  registerCliTools?(tools: import('../shared/cli/run-access').RunCliTool[]): () => Promise<void>
+  /** Host-owned directory scope; never supplied by model input or shared with another employee/run. */
+  directoryAccess?: import('./modules/workspaces/directory-run').RunDirectoryAccess
   /** Private native configuration fence; never a provider URL/key or public capability claim. */
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('../shared/domain/model-gateway').ModelCatalog
   dataSources?: import('../shared/domain/sources').SourceSummary[]
+  webSearchSelection?: import('./modules/sources/search-selection').WebSearchSelectionState
+  selectWebSearch?(input: import('./modules/sources/search-selection').SelectWebSearch): Promise<ReturnType<typeof import('./modules/sources/search-selection').searchSelection>>
   inspectDataSource?(sourceId: string): Promise<unknown>
   callDataSource?(input: import('../shared/domain/sources').SourceCall): Promise<unknown>
   closeDataSources?(): Promise<void>
@@ -72,11 +93,17 @@ export interface EngineContext {
   canAccessTaskPath?(path: string, operation: 'read' | 'list' | 'write' | 'publish'): Promise<boolean>
   /** Registered shared artifacts return the same bytes that the host validated, with no second filesystem read. */
   readTaskFile?(path: string): Promise<{ content: string } | null>
+  /** Revalidate live employee/conversation/resource permission before and after knowledge reads. */
+  assertKnowledgeAccess?(resourceIds: string[]): Promise<void>
+  recordKnowledgeRead?(reference: import('../shared/domain/knowledge').KnowledgeReadRef): void
   agent: DigitalAgent
   connection?: Connection
   runtimeProfile?: import('../shared/domain/backends').LaunchProfile
   /** Process home survives no-tool question phases; this grants no workspace tool capability. */
   runtimeDirectory?: { cwd: string; privateHome: string }
+  permissionExpectation?: import('../shared/domain/execution').MessagePermissionExpectation
+  modelSource?: import('../shared/domain/model-source').RequestModelSource
+  workingDirectory?: string
   apiKey: string
   conversation: Conversation
   messages: Message[]

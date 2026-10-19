@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确crash入口先留原trace/画面，再SIGKILL当前隔离Electron并等真实exit；不把关闭回执当进程死亡。
  * [OUTPUT]: 默认系统分发单列验收；先核对真实默认包路径，再不指定应用启动/热投递，保留旧副本。
  * [OUTPUT]: 显式launchUrl通过macOS LaunchServices冷启动实际应用包；同一隔离目录、调试/trace和关闭路径保持，普通重启不重发链接。
  * [OUTPUT]: BOAI_TEST_DEV_SERVER=1 显式沿 pnpm dev 启动 Vite/宿主及原 BDD 调试连接，重启保留同一独立端口/origin以核对真实持久状态，不生成安装包。
@@ -143,6 +144,23 @@ export class Desktop {
   async restart(options?: { expectedWindowClosed: true }) {
     await this.close(options)
     await this.start()
+  }
+
+  async crash() {
+    const app = this.app, child = app.process()
+    if (!child.pid || child.exitCode !== null || child.signalCode !== null) throw new Error('隔离桌面进程未处于可注入故障状态')
+    await this.reviewCheckpoint(`第 ${this.launchCount} 次启动故障前画面`)
+    const path = this.info.outputPath(`desktop-${this.launchCount}-before-crash.zip`)
+    await app.context().tracing.stop({ path })
+    await this.review?.trace(path, this.launchCount)
+    await this.info.attach(`桌面启动 ${this.launchCount} 故障前`, { path, contentType: 'application/zip' })
+    const exited = new Promise<void>(resolve => child.once('exit', () => resolve()))
+    if (!child.kill('SIGKILL')) throw new Error('隔离Electron未收到故障信号')
+    await exited
+    this.application = undefined; this.window = undefined
+    const facts = { pid: child.pid, exitCode: child.exitCode, signalCode: child.signalCode, traceEndsBeforeFault: true }
+    await this.reviewData(`第 ${this.launchCount} 次启动实际进程故障`, facts)
+    return facts
   }
 
   async close(options?: { expectedWindowClosed: true }) {

@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 员工目录上下文传给本地源/MCP；stdio许可改变先排空旧进程再为新调用建会话，不重放旧工具。
+ * [OUTPUT]: DeepSeek自定义GET测试端点保持原语义；默认测试才执行一次明确查询。
+ * [OUTPUT]: DeepSeek核准POST走只读搜索授权；明确测试执行一次真实查询，不以静态目录宣称连接成功。
+ * [OUTPUT]: 搜索候选与web-read准入共用Tavily/Exa识别，仍只执行实际核准工具和原员工权限。
+ * [OUTPUT]: 首选来源按员工授权保存；主动解绑重置自动，全局删除保留失效首选；工具前回调携带实际分类。
+ * [OUTPUT]: 普通问答web-read仅连接已识别搜索候选并返回核准只读工具；其余来源/工具在调用前拒绝，不启动本地进程。
  * [OUTPUT]: 桌面编辑器可按固定ID/版本读取已保存凭据，公共目录及员工工具仍不携带密钥。
  * [OUTPUT]: 普通会话修改/删除/绑定在提交前核验当前授权；测试接入来源取消并再次核验。
  * [OUTPUT]: 会话创建与sourceCreations回执同事务；同消息/稳定键重复核对原源，配置变化或原源删除不重新创建。
@@ -10,13 +16,16 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { DigitalAgent } from '../../../shared/domain'
-import { dataSourceConfigSchema, saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema, supportsDataSources, type DataSource, type DataSourceCreationSource, type SourceCall, type SourceSummary, type SourceTool } from '../../../shared/domain/sources'
+import { dataSourceConfigSchema, saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema, supportsDataSources, webSearchProvider, type DataSource, type DataSourceCreationSource, type SourceCall, type SourceSummary, type SourceTool } from '../../../shared/domain/sources'
 import type { SecretStore } from '../../contracts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { openSourceSession, recoverSourceProcesses, sourceFolder, redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-provider'
+import { isCoreAgent } from '../../../shared/domain/core-agent'
+import type { WebSearchPreference } from '../../../shared/domain/sources'
+import type { RunDirectoryAccess } from '../workspaces/directory-run'
 
 type StoredSource = DataSource extends infer T ? T extends DataSource ? Omit<T, 'hasCredential'> & { credentialId?: string } : never : never
-type Lease = { sourceId: string; runId: string; revision: number; controller: AbortController; session: Promise<SourceSession>; active: Set<Promise<unknown>>; detach(): void }
+type Lease = { sourceId: string; runId: string; revision: number; directoryKey?: string; controller: AbortController; session: Promise<SourceSession>; active: Set<Promise<unknown>>; detach(): void }
 interface Hooks {
   critical<T>(action: () => Promise<T>): Promise<T>
   install(agents: DigitalAgent[]): void
@@ -67,7 +76,7 @@ export class SourceService {
     })
   }
   private stored(id: string) { const source = this.sources.get(id); if (!source) throw new Error('数据源不存在'); return source }
-  summaries(ids: string[] = []): SourceSummary[] { return ids.flatMap(id => { const source = this.sources.get(id); return source?.enabled ? [{ id, revision: source.revision, name: source.name, description: source.description, type: source.type }] : [] }) }
+  summaries(ids: string[] = []): SourceSummary[] { return ids.flatMap(id => { const source = this.sources.get(id); return source?.enabled ? [{ id, revision: source.revision, name: source.name, description: source.description, type: source.type, ...(webSearchProvider(this.public(source)) ? { webSearchProvider: webSearchProvider(this.public(source)) } : {}) }] : [] }) }
   allSummaries() { return this.summaries([...this.sources.keys()]) }
   validateBindings(ids: string[], backend?: string) {
     if (ids.length && !supportsDataSources(backend)) throw new Error('此运行方式尚不支持数据源')
@@ -79,12 +88,24 @@ export class SourceService {
     this.pendingMutations++
     const next = this.tail.then(action).finally(() => { this.pendingMutations-- }); this.tail = next.catch(() => {}); return next
   }
-  private async changedAgents(tx: RecordTransaction, sourceId: string, selected?: Set<string>) {
+  normalizeSearchPreference(input: WebSearchPreference | undefined, previous: DigitalAgent | undefined, sourceIds: string[]): WebSearchPreference | undefined {
+    const preference = input ?? previous?.webSearch
+    if (!preference) return undefined
+    if (preference.mode !== 'source') return preference
+    const unchanged = previous?.webSearch?.mode === 'source' && previous.webSearch.sourceId === preference.sourceId
+    if (unchanged && !isCoreAgent(previous) && previous.sourceIds?.includes(preference.sourceId) && !sourceIds.includes(preference.sourceId)) return { mode: 'auto' }
+    // Preserve an unavailable saved preference for unrelated edits; never silently substitute it in configuration.
+    if (unchanged) return preference
+    const source = this.sources.get(preference.sourceId)
+    if (!source?.enabled || !webSearchProvider(this.public(source)) || !isCoreAgent(previous) && !sourceIds.includes(preference.sourceId)) throw new Error('首选检索来源必须是当前员工可用的搜索数据源')
+    return preference
+  }
+  private async changedAgents(tx: RecordTransaction, sourceId: string, selected?: Set<string>, resetPreference = false) {
     const agents: DigitalAgent[] = []
     for (const agent of await tx.list<DigitalAgent>('agents')) {
       const bound = (agent.sourceIds ?? []).includes(sourceId), shouldBind = selected ? selected.has(agent.id) : bound
       if (!bound && !shouldBind) continue
-      const updated = { ...agent, sourceIds: [...(agent.sourceIds ?? []).filter(id => id !== sourceId), ...(shouldBind ? [sourceId] : [])], configVersion: agent.configVersion + 1 }
+      const updated = { ...agent, ...(resetPreference && bound && !shouldBind && agent.webSearch?.mode === 'source' && agent.webSearch.sourceId === sourceId ? { webSearch: { mode: 'auto' as const } } : {}), sourceIds: [...(agent.sourceIds ?? []).filter(id => id !== sourceId), ...(shouldBind ? [sourceId] : [])], configVersion: agent.configVersion + 1 }
       await tx.put({ collection: 'agents', id: agent.id, value: updated }); agents.push(updated)
     }
     return agents
@@ -161,7 +182,7 @@ export class SourceService {
             this.validateBindings([value.id], agent.executionBackend?.kind)
           }
           await tx.put({ collection: 'dataSources', id: next.id, value: next })
-          return this.changedAgents(tx, next.id, new Set(value.agents.map(agent => agent.id)))
+          return this.changedAgents(tx, next.id, new Set(value.agents.map(agent => agent.id)), true)
         })
         this.sources.set(next.id, next); this.hooks.install(agents); return next
       })
@@ -182,36 +203,48 @@ export class SourceService {
       await this.hooks.changed(value.id, agents)
     }))
   }
-  private async lease(ref: SourceSummary, runId: string, signal: AbortSignal) {
+  private async lease(ref: SourceSummary, runId: string, signal: AbortSignal, directories?: RunDirectoryAccess): Promise<Lease> {
     signal.throwIfAborted(); if (this.closing) throw new Error('数据源服务正在退出')
     this.assertCurrent([ref])
     const key = `${runId}:${ref.id}`
+    const source = this.stored(ref.id)
+    const directoryKey = directories && source.type === 'mcp' && source.mcp.transport === 'stdio'
+      ? JSON.stringify([directories.agent.executionPermission, directories.agent.directoryGrants, directories.temporaryGrants]) : undefined
     let lease = this.leases.get(key)
+    if (lease && lease.directoryKey !== directoryKey) {
+      await this.drain(current => current === lease)
+      return this.lease(ref, runId, signal, directories)
+    }
     if (!lease) {
       const controller = new AbortController(), abort = () => controller.abort(signal.reason)
       signal.addEventListener('abort', abort, { once: true })
-      const source = this.stored(ref.id)
       const session = (async () => {
         const credential = source.credentialId ? await this.secrets.get(source.credentialId) ?? '' : ''
-        return openSourceSession(this.public(source), credential, this.dataPath, controller.signal)
+        return openSourceSession(this.public(source), credential, this.dataPath, controller.signal, directories)
       })()
-      lease = { sourceId: ref.id, runId, revision: ref.revision, controller, session, active: new Set(), detach: () => signal.removeEventListener('abort', abort) }
+      lease = { sourceId: ref.id, runId, revision: ref.revision, directoryKey, controller, session, active: new Set(), detach: () => signal.removeEventListener('abort', abort) }
       this.leases.set(key, lease)
     }
     if (lease.revision !== ref.revision) throw new Error('数据源会话版本已变化')
     return lease
   }
-  async use(ref: SourceSummary, runId: string, signal: AbortSignal, request?: SourceCall, beforeCall?: (mutating: boolean) => Promise<void>) {
-    const lease = await this.lease(ref, runId, signal)
+  async use(ref: SourceSummary, runId: string, signal: AbortSignal, request?: SourceCall, beforeCall?: (mutating: boolean, tool: SourceTool) => Promise<void>, mode: 'all' | 'web-read' = 'all', directories?: RunDirectoryAccess) {
+    if (mode === 'web-read' && !webSearchProvider(this.public(this.stored(ref.id)))) throw new Error('普通问答仅可使用已核准的搜索或网页正文工具')
+    const lease = await this.lease(ref, runId, signal, directories)
     const operation = (async () => {
       const session = await lease.session
       signal.throwIfAborted(); lease.controller.signal.throwIfAborted(); this.assertCurrent([ref])
-      if (!request) return { source: ref, guide: this.stored(ref.id).guide, tools: session.tools }
+      if (!request) {
+        const tools = mode === 'web-read' ? session.tools.filter(tool => tool.readOnly && tool.webCapability) : session.tools
+        if (mode === 'web-read' && !tools.length) throw new Error('搜索工具的当前服务版本或格式尚未核准，请核对数据源')
+        return { source: ref, guide: this.stored(ref.id).guide, tools }
+      }
       const tool = session.tools.find(tool => tool.name === request.tool)
       if (!tool) throw new Error('数据源不提供此工具，请先读取工具目录')
+      if (mode === 'web-read' && (!tool.readOnly || !tool.webCapability)) throw new Error('普通问答不能调用未核准的搜索工具或写入操作')
       const source = this.stored(ref.id)
-      const mutating = source.type === 'api' ? request.arguments.method !== undefined && request.arguments.method !== 'GET' : source.type === 'local' ? request.arguments.operation === 'write' : !tool.readOnly
-      await beforeCall?.(mutating)
+      const mutating = tool.readOnly && tool.webCapability ? false : source.type === 'api' ? request.arguments.method !== undefined && request.arguments.method !== 'GET' : source.type === 'local' ? request.arguments.operation === 'write' : !tool.readOnly
+      await beforeCall?.(mutating, tool)
       signal.throwIfAborted(); lease.controller.signal.throwIfAborted(); this.assertCurrent([ref])
       const result = await session.call(request.tool, request.arguments, AbortSignal.any([signal, lease.controller.signal]))
       signal.throwIfAborted(); lease.controller.signal.throwIfAborted(); this.assertCurrent([ref]); return result
@@ -223,16 +256,18 @@ export class SourceService {
       throw new Error(String(redactSourceValue(error instanceof Error ? error.message : '数据源调用失败', credential)))
     } finally { lease.active.delete(operation) }
   }
-  async test(input: unknown, authority?: { validate(): Promise<void>; signal: AbortSignal }) {
+  async test(input: unknown, authority?: { validate(): Promise<void>; signal: AbortSignal; directories?: RunDirectoryAccess }) {
     await authority?.validate()
     const value = dataSourceIdentitySchema.parse(input), source = this.checkRevision(value.id, value.expectedRevision)!
     if (!source.enabled) throw new Error('请先启用数据源')
     const ref = this.summaries([source.id])[0], runId = `test:${randomUUID()}`
     let result: NonNullable<DataSource['test']>
     try {
-      const output = await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])])) as { tools: SourceTool[] }
-      if (source.type === 'api') await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'request', arguments: { path: source.api.testPath, method: 'GET' } })
-      result = { status: 'success', checkedAt: new Date().toISOString(), message: source.type === 'mcp' ? `已读取 ${output.tools.length} 个工具` : source.type === 'local' ? '文件夹可以访问' : '测试端点请求成功', tools: output.tools.map(({ name, description }) => ({ name, description })) }
+      const output = await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), undefined, undefined, 'all', authority?.directories) as { tools: SourceTool[] }
+      const deepseek = source.type === 'api' && source.api.testPath === '/' && webSearchProvider(this.public(source)) === 'deepseek'
+      if (deepseek) await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'deepseek_search', arguments: { query: 'DeepSeek', count: 1 } })
+      else if (source.type === 'api') await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'request', arguments: { path: source.api.testPath, method: 'GET' } })
+      result = { status: 'success', checkedAt: new Date().toISOString(), message: deepseek ? 'DeepSeek 搜索请求成功（已执行一次测试查询）' : source.type === 'mcp' ? `已读取 ${output.tools.length} 个工具` : source.type === 'local' ? '文件夹可以访问' : '测试端点请求成功', tools: output.tools.map(({ name, description }) => ({ name, description })) }
     } catch (error) {
       const credential = source.credentialId ? await this.secrets.get(source.credentialId) ?? '' : ''
       result = { status: 'failed', checkedAt: new Date().toISOString(), message: String(redactSourceValue(error instanceof Error ? error.message : '连接失败', credential)).slice(0, 1000) }
@@ -251,7 +286,7 @@ export class SourceService {
     for (const [key, lease] of selected) {
       await Promise.allSettled([...lease.active])
       const session = await lease.session.catch(() => undefined)
-      await session?.close(); lease.detach(); this.leases.delete(key)
+      await session?.close(); lease.detach(); if (this.leases.get(key) === lease) this.leases.delete(key)
     }
   }
   closeRun(runId: string) { return this.drain(lease => lease.runId === runId) }

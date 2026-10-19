@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Adapter-selected configuration paths and the actual inherited native environment.
- * [OUTPUT]: Bounded read-only configuration identities; optional projections share the same bytes for guarded native preparation.
+ * [OUTPUT]: Bounded read-only provider identities excluding transient CLI transport leases; projections share the same guarded bytes.
  * [POS]: Native session compatibility fence, not a configuration parser or execution authority.
  * [PROTOCOL]: Update Header and adapters/.folder.md when changing snapshot semantics.
  */
@@ -23,7 +23,7 @@ export async function nativeConfigurationIdentities(files: string[], environment
   const hashes = Array.from({ length: projections.length + 1 }, () => createHash('sha256').update('native-source-v1'))
   // These are process transport details, not native configuration. Everything
   // else stays opaque so custom provider env references remain covered.
-  const transport = new Set(['NODE_CHANNEL_FD', 'NODE_CHANNEL_SERIALIZATION_MODE', 'ELECTRON_RUN_AS_NODE'])
+  const transport = new Set(['NODE_CHANNEL_FD', 'NODE_CHANNEL_SERIALIZATION_MODE', 'ELECTRON_RUN_AS_NODE', 'BOAI_SERVER_URL', 'BOAI_SERVER_TOKEN', 'BOAI_CLI_EMPLOYEE_RUN'])
   const encodedEnvironment = JSON.stringify(Object.entries(environment).filter(([key]) => !transport.has(key)).sort(([a], [b]) => a.localeCompare(b)))
   for (const hash of hashes) hash.update(encodedEnvironment)
   for (const path of [...new Set(files.map(path => resolve(path)))].sort()) {

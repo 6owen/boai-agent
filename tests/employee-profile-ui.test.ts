@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 首选检索使用真实Select沿草稿保存；候选授权、失效来源、解绑重置与旧身份编辑保持。
+ * [OUTPUT]: 知识配置使用数量入口；独立资料绑定回填新版本并保留未保存工作方式与目录草稿。
+ * [OUTPUT]: 验证组合命令多目录审批显示与本次/持久选项，明确持久目录不改变后续命令审批。
+ * [OUTPUT]: 新增目录审批三选项、目录选择仅草稿和审批持久版本回填保留其他未保存字段。
  * [OUTPUT]: 身份自动保存期间维持静默外观标记与导航锁，连续输入保存后清除标记；普通配置保存不进入静默反馈。
  * [INPUT]: 生产EmployeeProfile、原AgentEditor/高级配置Dialog、受控IPC和页面草稿守卫。
  * [OUTPUT]: 身份保存局部更新不刷新页面，保留DOM/焦点/滚动及后台能力读取；原文字编辑、并发草稿/版本保护和高级配置隔离，无E2E。
@@ -13,8 +18,12 @@ import type { AgentInput, DigitalAgent, Snapshot } from '../src/shared/domain'
 import type { AppEvent, DesktopApi } from '../src/shared/ipc'
 import { GuardContext } from '../src/renderer/components/common'
 import { useEditorGuard } from '../src/renderer/components/common/use-editor-guard'
+import { AgentEditor } from '../src/renderer/components/employee/editors'
+import { ApprovalCard } from '../src/renderer/pages/conversations/-components/chat-view'
 import { EmployeeProfile } from '../src/renderer/pages/contacts/employee-profile'
 import { ContactsPage } from '../src/renderer/pages/contacts'
+import { webSourceConfig } from './fixtures/web-search-server'
+import { SourcePicker } from '../src/renderer/pages/sources/source-picker'
 
 const agent = { id: 'alice', name: 'Alice', role: '研究员', instructions: '原工作方式', color: '#438b80', configVersion: 3, active: true, connectionId: 'api', modelId: '', executionBackend: { kind: 'mastra-model' }, skillIds: [], knowledgeIds: [], sourceIds: [], allowCommands: true } as DigitalAgent
 let root: Root, host: HTMLDivElement, request: ReturnType<typeof vi.fn<(method: string, input?: unknown) => Promise<unknown>>>, api: DesktopApi, committed: DigitalAgent
@@ -82,10 +91,67 @@ async function fixture(fullPage = false) {
   return { refresh, onMessage, identitySaved, updateSnapshot: () => updateSnapshot() }
 }
 
+test('search preference lists only usable bound candidates and saves with the original employee draft', async () => {
+  const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef'
+  const sources = [{ ...webSourceConfig, id, revision: 1, name: '已绑定搜索', createdAt: '', updatedAt: '', hasCredential: false }, { ...webSourceConfig, id: 'other', revision: 1, name: '未绑定搜索', createdAt: '', updatedAt: '', hasCredential: false }]
+  committed = { ...agent, sourceIds: [id] }
+  const original = request.getMockImplementation()!
+  request.mockImplementation((method, input) => method === 'listDataSources' ? Promise.resolve(sources) : original(method, input))
+  await fixture(); await click('编辑数据源')
+  const select = document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="首选检索方式"]')!
+  await act(async () => select.click())
+  const options = [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+  expect(options.map(option => option.textContent)).toEqual(['自动', 'BOAI 浏览器', '已绑定搜索'])
+  await act(async () => { const option = options.find(option => option.textContent === '已绑定搜索')!; option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); option.click() })
+  expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
+  await act(async () => button('保存').click())
+  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ expectedConfigVersion: 3, sourceIds: [id], webSearch: { mode: 'source', sourceId: id }, instructions: agent.instructions }))
+  expect(committed.webSearch).toEqual({ mode: 'source', sourceId: id })
+  expect(host.querySelector('[aria-label="数据源列表"]')?.textContent).toContain('首选检索方式已绑定搜索')
+})
+
+test('shows a disabled preferred source and resets it in the same draft when the user removes its binding', async () => {
+  const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef', source = { ...webSourceConfig, id, enabled: false, revision: 1, name: '旧搜索', createdAt: '', updatedAt: '', hasCredential: false }
+  committed = { ...agent, sourceIds: [id], webSearch: { mode: 'source', sourceId: id } }
+  const original = request.getMockImplementation()!
+  request.mockImplementation((method, input) => method === 'listDataSources' ? Promise.resolve([source]) : original(method, input))
+  await fixture()
+  expect(host.querySelector('[aria-label="数据源列表"]')?.textContent).toContain('旧搜索（已停用）')
+  await click('编辑数据源'); await click('数据源操作 旧搜索')
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent === '移除')!.click())
+  await act(async () => button('确认移除').click())
+  expect(document.querySelector('[role="combobox"][aria-label="首选检索方式"]')?.textContent).toContain('自动')
+  expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
+  await act(async () => button('保存').click())
+  expect(committed.webSearch).toEqual({ mode: 'auto' }); expect(committed.sourceIds).toEqual([])
+})
+
+test('refreshes source availability while editing and discards a pending catalog after hiding', async () => {
+  const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef', source = { ...webSourceConfig, id, revision: 1, name: '活动搜索', createdAt: '', updatedAt: '', hasCredential: false }
+  let pending: ((value: unknown) => void) | undefined
+  request.mockImplementation(async method => { if (method === 'listDataSources') return new Promise(resolve => { pending = resolve }); throw new Error('Unexpected request') })
+  const props = { api, ids: [id], onChange() {}, disabled: false, active: true, searchPreference: { mode: 'source' as const, sourceId: id }, onSearchPreferenceChange() {} }
+  await act(async () => root.render(h(SourcePicker, props)))
+  await act(async () => pending!([source]))
+  expect(host.textContent).toContain('活动搜索')
+  await act(async () => { subscribers.forEach(listener => listener({ type: 'changed' })); await new Promise(resolve => setTimeout(resolve, 150)) })
+  await act(async () => pending!([{ ...source, enabled: false }]))
+  expect(host.querySelector('[role="combobox"]')?.textContent).toContain('活动搜索（已停用）')
+  await act(async () => { subscribers.forEach(listener => listener({ type: 'changed' })); await new Promise(resolve => setTimeout(resolve, 150)) })
+  await act(async () => root.render(h(SourcePicker, { ...props, active: false })))
+  await act(async () => pending!([{ ...source, name: '迟到内容' }]))
+  expect(host.textContent).not.toContain('迟到内容')
+  const reads = request.mock.calls.length
+  await act(async () => { subscribers.forEach(listener => listener({ type: 'changed' })); await new Promise(resolve => setTimeout(resolve, 150)) })
+  expect(request.mock.calls).toHaveLength(reads)
+})
+
 test('profile edits only the selected section and saves the original version without changing hidden permissions', async () => {
   const f = await fixture()
   expect(host.querySelectorAll('form[data-edit-form]')).toHaveLength(0)
-  for (const label of ['模型与权限', '工作方式', '技能', '数据源', '知识资料']) expect(host.querySelector(`[aria-label="编辑${label}"]`)).not.toBeNull()
+  for (const label of ['模型与权限', '工作方式', '技能', '数据源']) expect(host.querySelector(`[aria-label="编辑${label}"]`)).not.toBeNull()
+  expect(host.querySelector('[aria-label="编辑知识资料"]')).toBeNull()
+  expect(button('知识资料 · 0 份')).toBeDefined()
   expect(host.textContent).not.toContain('基本信息')
   expect(host.querySelector('input[aria-label="员工名称"]')).toBeNull()
   expect(identityField('员工名称').tagName).toBe('H1')
@@ -382,4 +448,87 @@ test('the contact context menu opens advanced settings after discarding the inli
   expect(document.querySelector('[role=dialog] [aria-label="基础配置"]')).toBeNull()
   expect(host.querySelector('textarea')).toBeNull()
   expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
+})
+
+
+test('directory approval displays scope and sends distinct run/persistent choices', async () => {
+  const approve = vi.fn()
+  await act(async () => root.render(h(ApprovalCard, { busy: false, onApprove: approve, approval: { id: 'directory', kind: 'directory', runId: 'run', conversationId: 'chat', agentName: '员工', command: '读取项目要求', cwd: '/projects/reports', rememberAllowed: true, directory: { directory: '/projects/reports', target: '/projects/reports/spec.md', access: 'read-only', reason: '读取项目要求' } } })))
+  expect(host.textContent).toContain('/projects/reports/spec.md'); expect(host.textContent).toContain('只读')
+  await act(async () => button('允许本次运行').click()); expect(approve).toHaveBeenLastCalledWith('directory', true)
+  await act(async () => button('始终允许此目录').click()); expect(approve).toHaveBeenLastCalledWith('directory', true, true)
+  await act(async () => button('拒绝').click()); expect(approve).toHaveBeenLastCalledWith('directory', false)
+})
+
+test('combined command approval shows every directory and keeps command permission one-time', async () => {
+  const approve = vi.fn()
+  await act(async () => root.render(h(ApprovalCard, { busy: false, onApprove: approve, approval: { id: 'combined', kind: 'command', runId: 'run', conversationId: 'chat', agentName: '员工', command: 'copy report', cwd: '/managed/run', rememberAllowed: true, commandDirectories: [{ directory: '/reports', target: '/reports', access: 'read-only', reason: '读取' }, { directory: '/output', target: '/output', access: 'read-write', reason: '输出' }] } })))
+  expect(host.textContent).toContain('/reports'); expect(host.textContent).toContain('/output'); expect(host.textContent).toContain('/managed/run')
+  expect(host.textContent).toContain('命令仅批准这一次'); expect(host.textContent).toContain('后续命令仍按员工权限审批')
+  expect(host.textContent).not.toContain('始终允许此类操作')
+  await act(async () => button('允许命令及本次目录访问').click()); expect(approve).toHaveBeenLastCalledWith('combined', true)
+  await act(async () => button('运行命令并保留目录授权').click()); expect(approve).toHaveBeenLastCalledWith('combined', true, true)
+  await act(async () => button('拒绝').click()); expect(approve).toHaveBeenLastCalledWith('combined', false)
+})
+
+test('directory selection stays in draft until save and persistent approvals preserve other edits', async () => {
+  committed = { ...agent, directoryGrants: [{ path: '/coding', access: 'read-write' }], directoryRevision: 1 }
+  let refresh!: () => void
+  function Editor() {
+    const [data, setData] = useState(snapshot), [epoch, setEpoch] = useState(0)
+    const { guard, confirmation } = useEditorGuard({ reset: () => setEpoch(value => value + 1) })
+    refresh = () => setData(snapshot())
+    return h(GuardContext.Provider, { value: guard }, h(AgentEditor, { key: epoch, api, snapshot: data, agent: data.agents[0], onClose() {}, onSaved: async () => refresh() }), confirmation)
+  }
+  await act(async () => root.render(h(Editor)))
+  await change('工作方式', 'KEEP-DRAFT')
+  committed = { ...committed, directoryRevision: 2, directoryGrants: [...committed.directoryGrants!, { path: '/reports', access: 'read-only' }] }
+  await act(async () => refresh())
+  expect((host.querySelector('textarea[aria-label="工作方式"]') as HTMLTextAreaElement).value).toBe('KEEP-DRAFT')
+  expect(host.textContent).toContain('/reports')
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'chooseEmployeeDirectory' ? '/selected' : original(method, input))
+  await act(async () => button('添加授权目录').click())
+  expect(request.mock.calls.filter(([method]) => method === 'saveAgent')).toHaveLength(0)
+  expect(host.textContent).toContain('/selected')
+  await act(async () => button('保存修改').click())
+  const saved = request.mock.calls.find(([method]) => method === 'saveAgent')![1] as AgentInput
+  expect(saved.instructions).toBe('KEEP-DRAFT'); expect(saved.expectedDirectoryRevision).toBe(2)
+  expect(saved.directoryGrants).toEqual([{ path: '/coding', access: 'read-write' }, { path: '/reports', access: 'read-only' }, { path: '/selected', access: 'read-write' }])
+})
+
+test('independent knowledge changes preserve instruction and directory drafts while saving the committed binding version', async () => {
+  committed = { ...agent, directoryGrants: [{ path: '/coding', access: 'read-write' }], directoryRevision: 1 }
+  let refresh!: () => void
+  function Editor() {
+    const [data, setData] = useState(snapshot)
+    const { guard, confirmation } = useEditorGuard({ reset() {} })
+    refresh = () => setData(snapshot())
+    return h(GuardContext.Provider, { value: guard }, h(AgentEditor, { api, snapshot: data, agent: data.agents[0], onClose() {}, onSaved: async () => refresh() }), confirmation)
+  }
+  await act(async () => root.render(h(Editor)))
+  await change('工作方式', 'KEEP-KNOWLEDGE-DRAFT')
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'chooseEmployeeDirectory' ? '/selected' : original(method, input))
+  await act(async () => button('添加授权目录').click())
+  committed = { ...committed, knowledgeIds: ['retained'], configVersion: committed.configVersion + 1 }
+  await act(async () => refresh())
+  expect((host.querySelector('textarea[aria-label="工作方式"]') as HTMLTextAreaElement).value).toBe('KEEP-KNOWLEDGE-DRAFT')
+  expect(host.textContent).toContain('/selected')
+  expect(host.textContent).toContain('知识资料 · 1 份')
+  expect(request.mock.calls.filter(([method]) => method === 'saveAgent')).toHaveLength(0)
+  await act(async () => button('保存修改').click())
+  const saved = request.mock.calls.find(([method]) => method === 'saveAgent')![1] as AgentInput
+  expect(saved).toMatchObject({ instructions: 'KEEP-KNOWLEDGE-DRAFT', expectedConfigVersion: 4, knowledgeIds: ['retained'], expectedDirectoryRevision: 1 })
+  expect(saved.directoryGrants).toEqual([{ path: '/coding', access: 'read-write' }, { path: '/selected', access: 'read-write' }])
+})
+
+
+test.each(['codex-local', 'claude-local'] as const)('native %s directory view explains native ownership without an API allowlist editor', async kind => {
+  committed={...agent,executionBackend:{kind,profileId:'native'},directoryGrants:[{path:'/coding',access:'read-write'}],directoryRevision:1}
+  await act(async()=>root.render(h(AgentEditor,{api,snapshot:snapshot(),agent:committed,section:'directories',onClose(){},onSaved:async()=>{}})))
+  expect(host.textContent).toContain('本机 Agent 使用自身的目录、工具和审批配置')
+  expect(button('添加授权目录')).toBeUndefined()
+  expect(host.textContent).not.toContain('接入中')
+  expect(request.mock.calls.some(([method])=>method==='chooseEmployeeDirectory'||method==='saveAgent')).toBe(false)
 })

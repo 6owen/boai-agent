@@ -1,4 +1,23 @@
 /*
+ * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
+ * [OUTPUT]: CLI安装管理为桌面专用IPC，版本核对且不接受renderer指定程序路径。
+ * [OUTPUT]: session create显式模式核对保存权限并进入稳定请求身份，旧回执不受后来改权影响。
+ * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
+ * [OUTPUT]: 员工/核心首发接收固定附件摘要及短期上传选择，重复核对不依赖临时token。
+ * [OUTPUT]: 有界客户端附件字节上传复用原材料选择/准备与会话授权，不接收服务器源路径。
+ * [OUTPUT]: 本轮API模型覆盖沿原请求与执行，冻结来源且临时凭据不写入公开记录或默认配置。
+ * [OUTPUT]: send/run及核心首发转交本次工作位置，服务器核验路径，授权保持独立。
+ * [OUTPUT]: sendEmployeeMessage携带原Composer固定引用，核心首发及已有私聊共用核验。
+ * [OUTPUT]: 运行时版本查询复用程序身份/原验证与插件内容核验；未知明确、零启动，CLI区分自身及服务版本，验证归21组01 §12.9。
+ * [OUTPUT]: 公开精确run取消、候选对象和实际退出查询；原消息取消入口保持。
+ * [OUTPUT]: 员工主私聊创建/会话清空隐藏与持久操作回执，共用原身份和清理日志。
+ * [OUTPUT]: 按明确员工发送原私聊消息；请求身份、核心首发与普通受理共用原回执。
+ * [OUTPUT]: 原消息执行查询/精确取消共用Run/Turn/Work与实际宿主活动，不创建第二执行账本。
+ * [OUTPUT]: 员工知识文件清单与相对文件选择预览；旧目录核验仍由宿主处理。
+ * [OUTPUT]: 员工知识移除使用版本化请求身份和持久回执。
+ * [OUTPUT]: 知识保存支持原条目内容替换，明确会话共享携带请求与版本身份。
+ * [OUTPUT]: 员工知识资料提供宿主文件选择、保留/列表/预览及只读回执入口。
+ * [OUTPUT]: 员工目录选择及原审批回执查询；审批继续使用原approve方法与可信本人入口。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [OUTPUT]: Magpie只读本机发现与手动地址探测分开；仅返回服务名、版本和已核对根地址。
@@ -53,6 +72,7 @@ import type { ConversationListChange } from '../domain/conversation-list'
 import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
 import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
 import type { DesktopPatch, DesktopSettings } from './desktop'
+import type { CliInstallation } from './cli-installation'
 import type { PluginEnableInput, PluginSettingsSnapshot } from '../plugins/types'
 import type { LocalConfigScanResult } from '../domain/local-configs'
 import type { StoredTraceSpan } from '../domain/traces'
@@ -94,8 +114,10 @@ export interface Methods {
   testDataSource: { input: import('../domain/sources').DataSourceIdentity; output: import('../domain/sources').DataSource }
   removeDataSource: { input: import('../domain/sources').DataSourceIdentity; output: void }
   setDataSourceBindings: { input: import('../domain/sources').DataSourceBindingsInput; output: import('../domain/sources').DataSource }
+  chooseEmployeeDirectory: { input: undefined; output: string | null }
   chooseDataSourceFolder: { input: undefined; output: string | null }
   listRuntimePlugins: { input: undefined; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
+  getRuntimeVersions: { input: undefined; output: import('../domain/runtime-versions').RuntimeVersions }
   installRuntimePlugin: { input: { expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog | null }
   setRuntimePluginEnabled: { input: { id: string; enabled: boolean; expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
   uninstallRuntimePlugin: { input: { id: string; expectedRevision: number }; output: import('../plugins/runtime-catalog').RuntimePluginCatalog }
@@ -237,6 +259,9 @@ export interface Methods {
   getExternalTaskReceipt: { input: { conversationId: string; requestId: string }; output: Message | null }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
   getDesktopSettings: { input: undefined; output: DesktopSettings }
+  getCliInstallation: { input: undefined; output: CliInstallation }
+  installCli: { input: { expectedRevision: string }; output: CliInstallation | null }
+  uninstallCli: { input: { expectedRevision: string }; output: CliInstallation }
   updateDesktopSettings: { input: { patch: DesktopPatch; expectedRevision: number }; output: DesktopSettings }
   updateAppearance: { input: { patch: AppearancePatch; expectedRevision: number }; output: AppearanceSnapshot }
   importAppearanceBackground: { input: undefined; output: AppearanceSnapshot | null }
@@ -261,11 +286,17 @@ export interface Methods {
   getConnectionModelCatalog: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'gateway' | 'expectedRevision'>; output: import('../domain/model-gateway').ModelCatalog }
   listConnectionModels: { input: Pick<ConnectionInput, 'id' | 'baseUrl' | 'apiKey' | 'gateway' | 'expectedRevision'>; output: string[] }
   createConversation: { input: ConversationInput; output: Conversation }
+  createEmployeeSession: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; employeeId: string; name?: string; requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt }
+  deleteSession: { input: { conversationId: string; requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt }
+  getSessionReceipt: { input: { requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt | null }
+  sendEmployeeMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; materialSelections?: MaterialSelection[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; employeeId: string; content: string; requestId: string }; output: Message }
   deleteConversation: { input: { id: string }; output: void }
   updateConversationList: { input: ConversationListChange; output: void }
   clearConversationHistory: { input: { id: string; hide: boolean }; output: void }
   getConversation: { input: { id: string }; output: ConversationDetail }
   getConversationTrace: { input: { conversationId: string; messageId: string; turnId?: string }; output: StoredTraceSpan[] }
+  transferMaterial: { input: import('../domain/material-upload').MaterialUploadInput; output: import('../domain/material-upload').MaterialUploadReceipt }
+  prepareUploadedMaterial: { input: { conversationId: string; selectionId: string; requestId: string }; output: ConversationMaterial }
   chooseMaterialSource: { input: undefined; output: { id: string; name: string } | null }
   prepareMaterial: { input: { conversationId: string; selectionId: string; requestId: string; authorizedAgentIds?: string[] }; output: ConversationMaterial }
   getMaterialPreparation: { input: { requestId: string }; output: ConversationMaterial | null }
@@ -274,13 +305,28 @@ export interface Methods {
   discardMaterial: { input: { id: string; expectedRevision: number }; output: void }
   setMaterialAuthorization: { input: { id: string; expectedRevision: number; authorizedAgentIds: string[] }; output: ConversationMaterial }
   getMessageReceipt: { input: { requestId: string }; output: Message | null }
+  getMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution | null }
+  cancelMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution }
   referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
-  sendMessage: { input: { composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  sendMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
+  getCancellationTargets: { input: { conversationId: string }; output: import('../domain/run-cancellation').CancellationTarget[] }
+  getRunCancellation: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }
+  cancelRunExecution: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }
   cancelRun: { input: { conversationId: string; workId?: string; runId?: string }; output: void }
+  getDirectoryApprovalReceipt: { input: { id: string }; output: import('../domain/directory-access').DirectoryApprovalReceipt | null }
   approve: { input: { id: string; approved: boolean; always?: boolean }; output: void }
   revokeCommandPermission: { input: { agentId: string; revision: string }; output: void }
   importResource: { input: { kind: Resource['kind']; path: string; ownerAgentId?: string }; output: Resource }
+  chooseKnowledgeSource: { input: undefined; output: { id: string; name: string } | null }
+  saveEmployeeKnowledge: { input: import('../domain/knowledge').SaveEmployeeKnowledgeInput; output: import('../domain/knowledge').KnowledgeReceipt }
+  setEmployeeKnowledgeSharing: { input: import('../domain/knowledge').KnowledgeSharingInput; output: import('../domain/knowledge').KnowledgeReceipt }
+  removeEmployeeKnowledge: { input: import('../domain/knowledge').RemoveEmployeeKnowledgeInput; output: import('../domain/knowledge').KnowledgeReceipt }
+  getEmployeeKnowledgeReceipt: { input: { requestId: string }; output: import('../domain/knowledge').KnowledgeReceipt | null }
+  listEmployeeKnowledge: { input: { agentId: string }; output: Resource[] }
+  getKnowledgeCitationPreview: { input: import('../domain/knowledge').KnowledgeCitationInput; output: import('../domain/knowledge').KnowledgePreview }
+  getEmployeeKnowledgeFiles: { input: { agentId: string; resourceId: string }; output: import('../domain/knowledge').KnowledgeFilesView }
+  getEmployeeKnowledgePreview: { input: { agentId: string; resourceId: string; contentHash: string; fileKey?: string }; output: import('../domain/knowledge').KnowledgePreview }
   removeResource: { input: { id: string }; output: void }
   retryRun: { input: { id: string; requestId: string }; output: void }
   getAgentHome: { input: { agentId: string; conversationId?: string }; output: AgentHome }

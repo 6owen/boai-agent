@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 安装中备份阻断沿统一资源管理错误文案，原取消/复制目录清理及之后真实备份断言保持。
  * [INPUT]: 真实 AppService/SQLite、完整 ZIP、受控 HTTPS/GitHub/商店响应与取消信号。
  * [OUTPUT]: 场景独立 home 隔离本机扫描；真实更新写入断点快照恢复与上游名称/路径变更拒绝；安装取消/备份竞争、实际包与来源、更新确认/回滚、批量检查、使用阻断和删除清理验证。
  * [POS]: Skills 多来源安装集成回归；不访问真实网络或执行包内代码。
@@ -178,7 +179,7 @@ test('backup refuses an uncommitted installation and cancellation removes the co
     expect((await api('snapshot', undefined)).resources).toEqual([])
     expect(await readdir(join(dataPath, 'skills'))).not.toEqual([])
     const blocked = join(root, 'blocked-backup')
-    await expect(service.backup(blocked)).rejects.toThrow('技能管理操作')
+    await expect(service.backup(blocked)).rejects.toThrow('资源管理操作')
     await expect(readdir(blocked)).rejects.toThrow('ENOENT')
     await api('cancelSkillOperation', { id: operation.id }); release()
     await vi.waitFor(() => expect(manager.busy).toBe(false))

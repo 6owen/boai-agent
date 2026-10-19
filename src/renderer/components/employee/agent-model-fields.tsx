@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: Codex/Claude权限只展示整体执行权限，选择同步访问范围与审批；API模型默认继承连接模型。
  * [OUTPUT]: 员工运行方式/连接直接复用ConnectionSettingRow横向行；模型选择复用连接设置的分组与模型ID横向布局。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
@@ -56,7 +57,7 @@ export function AgentModelFields({ api, value, connections, profiles, onChange, 
     {native && backend?.kind === 'claude-local' && profile?.useExistingLogin && <ConnectionSettingRow label="模型" full={full}><Input value={value.modelId} disabled={disabled} placeholder="留空使用 Claude 默认模型，也可填写 sonnet、opus 或模型 ID" onChange={event => onChange({ ...value, modelId: event.target.value })} /></ConnectionSettingRow>}
     {backend?.kind === 'runtime-plugin' && !value.connectionId && <ConnectionSettingRow label="模型" full={full}><Input value={value.modelId} disabled={disabled} placeholder="留空使用本机 Agent 默认模型" onChange={event => onChange({...value,modelId:event.target.value})} /></ConnectionSettingRow>}
     {native && <ConnectionSettingRow label="思考强度" full={full}><Input value={value.nativeOptions?.effort ?? ''} disabled={disabled} placeholder="遵循本机 Agent 默认值" onChange={event => option('effort', event.target.value)} /></ConnectionSettingRow>}
-    {native && <AgentPermissionField value={value.executionPermission} disabled={disabled} full={full} onChange={executionPermission => onChange({ ...value, executionPermission, nativeOptions: executionPermissionNativeOptions(backend!.kind, value.nativeOptions, executionPermission) })} />}
+    {native && <AgentPermissionField value={value.nativeOptions?.useNativePermissions ? undefined : value.executionPermission} onNativeDefault={() => onChange({ ...value, executionPermission: undefined, nativeOptions: { useNativePermissions: true, ...(value.nativeOptions?.effort ? { effort: value.nativeOptions.effort } : {}) } })} disabled={disabled} full={full} onChange={executionPermission => onChange({ ...value, executionPermission, nativeOptions: executionPermissionNativeOptions(backend!.kind, { ...value.nativeOptions, useNativePermissions: false }, executionPermission) })} />}
     {needsApi && <>
       {!optionalSource && <ConnectionSettingRow label={mode === 'api' ? '模型连接' : 'Agent 的模型 API'} full={full} hint={mode === 'local' ? '选择本机 Agent 调用的模型来源。' : !connections.length ? '还没有模型连接，请先在设置中添加。' : undefined}>
         <SelectField required disabled={disabled || !availableConnections.length} value={connection ? value.connectionId : ''} placeholder={value.connectionId && !connection ? '原模型连接不适用于此引擎' : '请选择模型连接'} onValueChange={connectionId => onChange({ ...value, connectionId, modelId: '', ...(value.thinkingLevel ? { thinkingLevel: 'auto' } : {}) })} options={modelConnectionOptions(availableConnections)} />

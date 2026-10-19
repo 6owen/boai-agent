@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 会话删除操作与原清理屏障同事务登记pending，最终清理同事务完成回执；创建回执清理后失效，重复删除不清后续新消息。
+ * [OUTPUT]: 清理会话同时移除原运行的目录审批回执，保留员工持久授权和业务目录原件。
  * [OUTPUT]: 共享会话的单次历史只清原Run过程/快照/观测，保留聊天、其他执行与共享文件。
  * [OUTPUT]: 清空聊天同事务移除catalogActivities，保留独立的全局技能与数据源。
  * [OUTPUT]: 清空/房间迁移同时失效pluginSessions，旧历史不重解释或重放。
@@ -22,15 +24,21 @@ import type { ArtifactRepository } from '../workspaces/artifact-repository'
 import type { ConversationReadingRepository } from './reading-repository'
 import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
+import type { SessionOperationRecord } from './session-operations'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
-interface Cleanup { id: string; hide: boolean; remove?: boolean }
+interface Cleanup { id: string; hide: boolean; remove?: boolean; sessionRequestId?: string }
+interface HistoryClearResult { conversation: Conversation; removals: { collection: string; id: string }[]; memoryEpochs: { id: string; epoch: number }[]; occurrences: AutomationOccurrence[] }
 export class ConversationHistory {
   constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository) {}
   async recover() {
     const conflicts: { conversationId: string; error: string }[] = []
-    for (const pending of await this.store.load<Cleanup>('conversationCleanup')) {
-      const conversation = (await this.store.load<Conversation>('conversations')).find(item => item.id === pending.id)
+    const conversations = await this.store.load<Conversation>('conversations')
+    const cleanups = await this.store.load<Cleanup>('conversationCleanup')
+    cleanups.sort((a, b) => Number(!!conversations.find(room => room.id === b.id)?.channelDiscussion) - Number(!!conversations.find(room => room.id === a.id)?.channelDiscussion))
+    for (const pending of cleanups) {
+      const conversation = conversations.find(item => item.id === pending.id)
+      if ((await this.store.load<Cleanup>('conversationCleanup')).some(item => conversations.some(room => room.id === item.id && room.channelDiscussion?.conversationId === pending.id))) { conflicts.push({ conversationId: pending.id, error: '关联讨论清理尚未完成' }); continue }
       if ((await this.store.load<{conversationId:string}>('browserCleanups')).some(item=>item.conversationId===pending.id)) { conflicts.push({conversationId:pending.id,error:'浏览器存储尚未实际清理'}); continue }
       if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
         const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
@@ -63,7 +71,7 @@ export class ConversationHistory {
       return removals
     })
   }
-  async clear(conversation: Conversation, hide: boolean, remove = false) {
+  async clear(conversation: Conversation, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord): Promise<HistoryClearResult> {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
     const runs = (await this.store.load<HistoryRecord>('runs')).filter(item => item.conversationId === id)
@@ -79,7 +87,18 @@ export class ConversationHistory {
     }
     // Validate every parent before deleting anything; never follow recorded artifact/source paths.
     for (const path of paths) await this.safe(path)
-    await this.store.write([{ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}) } }])
+    const sessionRequestId = await this.store.transaction(async tx => {
+      const pending = await tx.get<Cleanup>('conversationCleanup', id)
+      if (sessionReceipt && pending && pending.sessionRequestId !== sessionReceipt.requestId) throw new Error('原会话清理尚未结束，请先核对原操作')
+      const requestId = pending?.sessionRequestId ?? sessionReceipt?.requestId
+      if (sessionReceipt) {
+        const previous = await tx.get<SessionOperationRecord>('sessionReceipts', sessionReceipt.requestId)
+        if (previous && (previous.fingerprint !== sessionReceipt.fingerprint || previous.state !== 'pending')) throw new Error('会话操作身份或状态已变化')
+        await tx.put({ collection: 'sessionReceipts', id: sessionReceipt.id, value: sessionReceipt })
+      }
+      await tx.put({ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}), ...(requestId ? { sessionRequestId: requestId } : {}) } })
+      return requestId
+    })
     // Revoke derived memory even if a later hash conflict preserves a private original.
     const memoryRepository = new MemoryRepository(this.store)
     for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
@@ -108,7 +127,8 @@ export class ConversationHistory {
       for (const name of names) if (name.includes(`-sessions_${id}_`)) await rm(join(conflicts, name), { force: true })
     }
     if (!remove) await mkdir(join(this.dataPath, 'workspaces', id), { recursive: true })
-    return this.store.transaction(async tx => {
+    let committedResult: HistoryClearResult | undefined
+    try { return await this.store.transaction(async tx => {
       await this.materials?.invalidateConversation(tx, id)
       await this.artifacts?.invalidateConversation(tx, id)
       await this.reading?.resetConversation(tx, id)
@@ -127,7 +147,7 @@ export class ConversationHistory {
       const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of ['executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {
@@ -192,8 +212,25 @@ export class ConversationHistory {
         }
       } else await tx.put({ collection: 'conversations', id, value: cleared })
       for (const item of removals) await tx.remove(item.collection, item.id)
+      for (const receipt of await tx.list<SessionOperationRecord>('sessionReceipts')) if (receipt.conversationId === id && receipt.operation === 'create' && receipt.state === 'completed') {
+        await tx.put({ collection: 'sessionReceipts', id: receipt.id, value: { ...receipt, state: 'cleared' } })
+      }
+      if (sessionRequestId) {
+        const remaining = new Set((await tx.list<Cleanup>('conversationCleanup')).map(item => item.id))
+        if ((await tx.list<Conversation>('conversations')).some(room => room.channelDiscussion?.conversationId === id && remaining.has(room.id))) throw new Error('关联讨论清理尚未完成')
+        const receipt = await tx.get<SessionOperationRecord>('sessionReceipts', sessionRequestId)
+        if (!receipt || receipt.operation !== 'delete' || receipt.conversationId !== id || receipt.state !== 'pending') throw new Error('原会话删除回执不可确认')
+        await tx.put({ collection: 'sessionReceipts', id: receipt.id, value: { ...receipt, state: 'completed' } })
+      }
       await tx.remove('conversationCleanup', id)
-      return { conversation: cleared, removals, memoryEpochs, occurrences }
-    })
+      committedResult = { conversation: cleared, removals, memoryEpochs, occurrences }
+      return committedResult
+    }) } catch (error) {
+      // Reconcile a lost commit acknowledgement with the receipt written in that
+      // exact transaction, so the host can install its actual removals once.
+      const saved = sessionRequestId ? await this.store.get<SessionOperationRecord>('sessionReceipts', sessionRequestId) : undefined
+      if (committedResult && saved?.state === 'completed') return committedResult
+      throw error
+    }
   }
 }

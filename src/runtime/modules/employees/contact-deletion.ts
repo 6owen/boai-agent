@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除员工同时转移知识副本/未提交准备的清理身份，并清除回执中的文件来源。
  * [OUTPUT]: 删除员工同时清理独立永久命令授权。
  * [INPUT]: 宿主已检查空闲的整批员工身份、可选偏好/标签版本、SQLite 和应用数据目录。
  * [OUTPUT]: D4 专属 UUID 副本在删除事务保存真实 hash 清理授权，沿资源清理器失败/重启续清；旧员工目录合同保持原边界。
@@ -18,6 +19,7 @@ import type { SkillInstallation } from '../../../shared/domain/skills'
 import type { BindingFiles } from '../resources/skill-binding-files'
 import type { ResourceCleanups } from '../resources/resource-cleanups'
 import { clearSkillBindingReceipts } from '../resources/skill-binding-records'
+import type { KnowledgeOperation } from '../resources/knowledge-management'
 
 export interface ContactDeletionInput { agentIds: string[]; expectedRevision?: number; category?: { id: string; expectedRevision: number } }
 interface Cleanup { id: string; agentIds: string[]; status: 'pending' | 'failed'; error?: string; bindingResourceIds?: string[] }
@@ -75,14 +77,20 @@ export class ContactDeletionService {
       const resources = (await tx.list<Resource>('resources')).filter(resource => resource.ownerAgentId && ids.has(resource.ownerAgentId)), resourceIds = new Set(resources.map(resource => resource.id))
       for (const resource of resources) {
         const installation = await tx.get<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations', resource.id)
-        if (installation?.bindingCopy) {
-          if (!this.bindingCleanups) throw new Error('技能绑定副本清理服务不可用')
+        if (installation?.bindingCopy || resource.knowledge) {
+          if (!this.bindingCleanups) throw new Error('员工资源副本清理服务不可用')
           await this.bindingCleanups.prepare(tx, resource)
           ;(cleanup.bindingResourceIds ??= []).push(resource.id)
         }
         await remove('resources', resource.id)
-        if (!installation?.bindingCopy) await remove('resourceCleanups', resource.id)
+        if (!installation?.bindingCopy && !resource.knowledge) await remove('resourceCleanups', resource.id)
         if (resource.kind === 'skill') await detachSkillRecords(tx, resource.id)
+      }
+      for (const operation of await tx.list<KnowledgeOperation>('knowledgeOperations')) {
+        if (!ids.has(operation.receipt.agentId) || !operation.resource?.knowledge || resourceIds.has(operation.resource.id)) continue
+        if (!this.bindingCleanups) throw new Error('知识资料副本清理服务不可用')
+        await this.bindingCleanups.prepare(tx, operation.resource)
+        ;(cleanup.bindingResourceIds ??= []).push(operation.resource.id)
       }
       for (const copy of await clearSkillBindingReceipts(tx, { agentIds: input.agentIds })) {
         if (!this.bindingCleanups) throw new Error('技能绑定副本清理服务不可用')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确选择本机连接默认遵循该连接原生权限，不把API整体权限转成原生限制；仍可随后明确选择原生模式。
  * [OUTPUT]: 运行选择携带整体执行权限，切换模型来源不拆分或重置已选权限。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
@@ -47,7 +48,7 @@ export function changeAgentRunMode(value: AgentModelSelection, mode: 'api' | 'lo
 export function selectAgentProfile(value: AgentModelSelection, profile: LaunchProfile): AgentModelSelection {
   if (profile.protocol === 'runtime-plugin' && profile.runtimePlugin) return { executionBackend: {kind:'runtime-plugin',profileId:profile.id,pluginId:profile.runtimePlugin.pluginId,providerId:profile.runtimePlugin.providerId}, connectionId:'',modelId:'' }
   const kind = profile.protocol === 'codex-app-server' ? 'codex-local' : profile.protocol === 'claude-cli' ? 'claude-local' : 'acp-local'
-  return { executionBackend: { kind, profileId: profile.id }, connectionId: kind === 'claude-local' && !profile.useExistingLogin ? value.connectionId : '', modelId: kind === 'claude-local' ? value.modelId : '' }
+  return { ...(kind === 'codex-local' || kind === 'claude-local' ? { executionPermission: undefined, nativeOptions: { ...value.nativeOptions, useNativePermissions: true } } : {}), executionBackend: { kind, profileId: profile.id }, connectionId: kind === 'claude-local' && !profile.useExistingLogin ? value.connectionId : '', modelId: kind === 'claude-local' ? value.modelId : '' }
 }
 
 export function agentModelSelectionReady(value: AgentModelSelection, connections: Connection[], profiles: LaunchProfile[], allowTaskOnly = true): boolean {

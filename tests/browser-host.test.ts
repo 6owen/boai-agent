@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接断开与显式关闭同样终止挂起动作页面并核对unknown；空闲人工页面保持。
  * [OUTPUT]: 员工默认读取和交互当前网页，无审批时仍核对参数hash/页面版本/真实开始握手。
  * [OUTPUT]: 明确关闭/清登录资料/退出可先终止阻塞页面，随后等待真实destroyed及旧动作结束；销毁失败不清资料，普通drain仍等待，未知不重放。
  * [OUTPUT]: 准备与ready期间关闭的并发回归覆盖认领及人工开窗；迟到成功/失败不得覆盖closed或阻止下一次明确重开。
@@ -225,7 +226,7 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   await service.userControl({scopeKey:APPLICATION_BROWSER_SCOPE,action:'close'})
   expect(service.list()[0].control).toBe('closed');expect(fake.mocks.cancelDownloads).toHaveBeenCalledTimes(2)
  })
- it.each(['close','clear','shutdown'] as const)('显式%s先终止页面以解除卡住动作，未知结果不重新执行',async kind=>{
+ it.each(['close','clear','shutdown','disconnect'] as const)('%s先终止页面以解除卡住动作，未知结果不重新执行',async kind=>{
   const {service,lease,fake,clearPartition}=await fixture();await service.acquire(lease)
   const entered=deferred<void>(),destroyed=deferred<void>()
   fake.mocks.clickElement.mockImplementationOnce(async()=>{entered.resolve();await destroyed.promise;throw new Error('Target closed')})
@@ -233,13 +234,20 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   fake.mocks.destroyAll.mockImplementation(async()=>{fake.instances.clear();fake.pages.clear();destroyed.resolve()})
   const request=await envelope(service,lease,'click @e1'),action=service.executeSingle(request)
   await entered.promise
-  const closing=kind==='shutdown'?service.shutdown():service.userControl({scopeKey:lease.scopeKey,action:kind})
+  const closing=kind==='shutdown'?service.shutdown():kind==='disconnect'?service.disconnectAll():service.userControl({scopeKey:lease.scopeKey,action:kind})
   try { await expect.poll(()=>fake.mocks.destroyInstance.mock.calls.length+fake.mocks.destroyAll.mock.calls.length,{timeout:500}).toBeGreaterThan(0) }
   finally { destroyed.resolve();await closing }
   expect((await action).status).toBe('unknown')
   if(kind==='clear') { expect(clearPartition).toHaveBeenCalledOnce();expect(service.list()[0]).toMatchObject({control:'closed',clearing:false}) }
   else expect(service.lookup({lease,actionId:request.actionId})?.status).toBe('unknown')
   expect(fake.mocks.clickElement).toHaveBeenCalledOnce()
+ })
+ it('运行连接断开保留没有员工动作的人工页面',async()=>{
+  const {service,fake}=await fixture();await service.manualOpen({})
+  const instanceId=service.list()[0].instanceId
+  await service.disconnectAll()
+  expect(fake.instances.has(instanceId)).toBe(true)
+  expect(fake.mocks.destroyInstance).not.toHaveBeenCalled()
  })
  it('旧窗口重复关闭排在重开后到达时不能关闭新实例',async()=>{
   const {service,fake}=await fixture();await service.manualOpen({})

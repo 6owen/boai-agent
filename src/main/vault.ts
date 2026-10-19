@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Electron safeStorage and the current profile's encrypted credential file.
+ * [OUTPUT]: Serialized vault access and metadata-only existence checks for the trusted local runtime.
+ * [POS]: Desktop credential provider; encryption remains in Electron, never in the Node service.
+ * [PROTOCOL]: 变化同步Header与所属.folder.md。
+ */
 import { safeStorage } from 'electron'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
@@ -22,6 +28,7 @@ export class CredentialVault {
     try { return safeStorage.decryptString(Buffer.from(value, 'base64')) }
     catch { throw new Error('无法解密模型凭据，请重新填写 API Key。') }
   }
+  async has(id: string) { await this.queue; return !!(await this.read())[id] }
   private mutate(operation: (values: Record<string, string>) => void) {
     const next = this.queue.then(async () => {
       const values = await this.read()

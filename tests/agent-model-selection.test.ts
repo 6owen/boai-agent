@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API切本机默认遵循原生权限，保留明确思考配置而不继承API只读限制。
  * [OUTPUT]: API空模型继承连接默认值，默认模型更新后动态跟随，显式覆盖不受影响。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: 三协议本机网关无需伪造私钥，远程缺凭据或公开标识误用不能提交。
@@ -112,4 +113,11 @@ it('inherits the selected connection default when the employee model is blank an
   expect(agentModelLabel(inherited, updated, [])).toBe('项目连接 · new-default')
   expect(agentModelLabel(selected, updated, [])).toBe('项目连接 · explicit-model')
   expect(inherited.modelId).toBe('')
+})
+
+
+it.each(['codex-app-server','claude-cli'] as const)('selecting %s starts with native permissions instead of inheriting API restrictions',protocol=>{
+ const choice=selectAgentProfile({...selected,executionPermission:'read-only',nativeOptions:{effort:'low',codexSandbox:'read-only',claudePermissionMode:'plan'}},profile('native',protocol))
+ expect(choice.executionPermission).toBeUndefined()
+ expect(choice.nativeOptions).toMatchObject({useNativePermissions:true,effort:'low'})
 })

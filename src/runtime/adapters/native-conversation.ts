@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 明确cwd沿员工目录授权或既有原生权限进入进程，改变cwd使旧会话不可续用；未配置BOAI目录策略不虚称隔离。
+ * [OUTPUT]: CLI直接使用本轮原生产品工具实例；关闭时中止/排空原调用，不另建Work或执行器。
+ * [OUTPUT]: 本机公开上下文接收同一检索首选与本轮指定，原生自主循环保持。
+ * [OUTPUT]: 本机会话指纹包含获准知识内容版本，更新后不续用旧原生上下文。
  * [OUTPUT]: 原生准备阶段可登记适配器严格核对后的新来源指纹，首条及后续消息共享同一真实会话；启动不重放。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -15,11 +20,14 @@
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { hasKnowledge, knowledgeInstructions } from '../modules/resources/knowledge-tools'
+import { searchSelectionInstructions } from '../modules/sources/search-selection'
 import { catalogManagementInstructions } from '../modules/resources/catalog-commands'
 import { recoverNativeProcesses } from './native-process-guard'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import type { NativeTool } from './native-task'
+import { workingDirectoryTarget } from '../modules/workspaces/working-directory'
 import { NativeSessions, digest } from './native-sessions'
 import { decisionMessageData } from './mastra/message-projection'
 import { boboResponseInstructions } from '../modules/employees/phase-instructions'
@@ -38,9 +46,15 @@ export abstract class NativeConversationEngine {
   protected abstract conversation(context: EngineContext, input: NativeConversationInput): Promise<{ text: string }>
   protected sourceFingerprint(_context: EngineContext): Promise<string | undefined> { return Promise.resolve(undefined) }
   async run(context: EngineContext) {
+    if (context.workingDirectory) {
+      if (!context.runtimeDirectory) throw new Error('当前原生运行不具备目录访问上下文')
+      // cwd selects a project; the native Agent owns access and approval rules.
+      const target = await workingDirectoryTarget(context.workingDirectory)
+      context = { ...context, runtimeDirectory: { ...context.runtimeDirectory, cwd: target.path } }
+    }
     const nativeSourceFingerprint = await this.sourceFingerprint(context)
     if (nativeSourceFingerprint) context = { ...context, nativeSourceFingerprint }
-    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch, ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
+    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
     const fingerprint = fingerprintFor(nativeSourceFingerprint)
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
@@ -49,12 +63,15 @@ export abstract class NativeConversationEngine {
       const published = await context.publishNativeMessage!(content, callId); publicReplies.push(published); return published
     } : undefined }
     const products = createNativeProducts(nativeContext)
+    const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
       const nativeInstructions = [context.manageSkills || context.manageDataSources ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
         'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
         `Working directory: ${context.runtimeDirectory?.cwd ?? context.workspace?.workPath}. Bound resources (additional to native resources): ${JSON.stringify(context.resources.map(({ id, name, kind, path }) => ({ id, name, kind, path })))}`,
+        hasKnowledge(context) ? knowledgeInstructions : '',
+        searchSelectionInstructions(context),
         `Current members: ${JSON.stringify(context.members?.map(({ id, name, role }) => ({ id, name, role })) ?? [])}`,
       ].join('\n\n')
       const instructions = [nativeInstructions,
@@ -71,6 +88,6 @@ export abstract class NativeConversationEngine {
       const reply = result.text.trim() ? [...publicReplies].reverse().find(message => message.content.trim() === result.text.trim())?.content ?? result.text : publicReplies.at(-1)?.content ?? ''
       if (!result.text.trim() && reply) await context.onDelta(reply)
       await this.sessions.update(session, { state: 'completed', outputHash: digest(reply), completedInvocationId: context.runId })
-    } finally { productController.abort(); await products.dispose() }
+    } finally { productController.abort(); try { await releaseCliTools?.() } finally { await products.dispose() } }
   }
 }

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: Actual SDK/MCP text-choice loop preserves original chat budget, selection events and no file Work.
+ * [OUTPUT]: 普通搜索问答实际SDK/MCP两协议接续、来源引用/预算、工具失败和澄清无工具。
+ * [OUTPUT]: 普通知识问答经实际Mastra/HTTP协议检索与分页读取，记录原预算与引用；无Work或写入工具。
  * [OUTPUT]: API/Codex/Claude共用宿主工具的整体权限，实际文件/命令读写与审批拒绝/跳过按后端逐项验证。
  * [OUTPUT]: 整体权限以真实文件/命令验证只读零写、审批等待/拒绝与完全访问跳过审批。
  * [OUTPUT]: 网关真实SDK跨工具步骤、JSON修复、记忆和汇报的callId/路由逐请求对应；缺头部不继承其他步骤。
@@ -27,7 +30,7 @@
  */
 import { workEvidenceError } from '../src/runtime/modules/collaboration/work-protocol'
 import { createServer, type ServerResponse } from 'node:http'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -43,6 +46,9 @@ import type { TraceSpan } from '../src/shared/domain/traces'
 import type { EngineContext } from '../src/runtime/contracts'
 import type { BrowserSession } from '../src/runtime/modules/browser/session'
 import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
+import { openSourceSession } from '../src/runtime/modules/sources/source-provider'
+import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
+import { searchSelection, validateWebSearchChoice, assertSearchSelection } from '../src/runtime/modules/sources/search-selection'
 
 type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; response_format?: { type: string }; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string; parameters?: { properties: Record<string, unknown> } } }[] }
 const cleanup: (() => Promise<void>)[] = []
@@ -963,6 +969,144 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(mock.requests).toHaveLength(2)
     expect(additionalCalls).toHaveLength(1)
     expect(ctx.memory).toEqual(before)
+  })
+
+  it('answers web questions through actual SDK and MCP protocols with real tool results, original budget and no file Work', async () => {
+    const mcp = await webSearchServer(); cleanup.push(() => mcp.close())
+    const sourceId = randomUUID()
+    const model = await endpoint([
+      { name: 'inspect_data_source', args: { sourceId }, preface: '正在检索。' },
+      { name: 'call_data_source', args: { sourceId, tool: 'tavily_search', arguments: { query: 'Orion launch' } } },
+      { name: 'call_data_source', args: { sourceId, tool: 'tavily_extract', arguments: { urls: [resultUrl] } } },
+      `周五发布。[来源](${resultUrl})`,
+    ])
+    const f = await context(model.url, { responseKind: 'chat', dataSources: [{ id: sourceId, name: 'Search', description: '', type: 'mcp', revision: 1, webSearchProvider: 'tavily' }] })
+    const session = await openSourceSession({ ...webSourceConfig, id: sourceId, revision: 1, createdAt: '', updatedAt: '', hasCredential: false }, '', f.directory, f.ctx.signal)
+    cleanup.push(() => session.close())
+    f.ctx.inspectDataSource = async id => { expect(id).toBe(sourceId); return { tools: session.tools.filter(tool => tool.webCapability) } }
+    f.ctx.callDataSource = async input => { expect(input.sourceId).toBe(sourceId); return session.call(input.tool, input.arguments, f.ctx.signal) }
+    await new MastraEngine().run(f.ctx)
+    expect(model.requests).toHaveLength(4); expect(f.additionalCalls).toHaveLength(3)
+    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source'])
+    expect(toolResultText(model.requests[2])).toContain(resultUrl)
+    expect(toolResultText(model.requests[3])).toContain(pageText)
+    expect(mcp.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
+    expect(f.deltas).toEqual([`周五发布。[来源](${resultUrl})`])
+    expect(f.ctx.work).toBeUndefined(); expect(f.approvals).toEqual([]); expect(f.artifacts).toEqual([])
+    expect(f.tools.filter(event => event.status === 'completed').map(event => event.name)).toEqual(['inspect_data_source', 'task_step', 'call_data_source', 'call_data_source'])
+    if (process.env.BOAI_REVIEW_RUN_DIR) {
+      const target = path.join(process.env.BOAI_REVIEW_RUN_DIR, 'api-web-search'); await mkdir(target, { recursive: true })
+      await writeFile(path.join(target, 'evidence.json'), JSON.stringify({ classification: 'actual-mastra-and-mcp-controlled-http', realProviderRequests: 0, requests: model.requests, mcpCalls: mcp.calls, tools: f.tools, answer: f.deltas.join(''), additionalModelCalls: f.additionalCalls.length }, null, 2))
+    }
+  })
+
+  it('uses a current-text choice in the actual SDK loop before inspecting, searching and reading the selected MCP source', async () => {
+    const mcp = await webSearchServer(); cleanup.push(() => mcp.close())
+    const sourceId = randomUUID(), messageId = 'current-search-choice', quote = '这次使用 Search 来源搜索并阅读原文。'
+    const model = await endpoint([
+      { name: 'select_web_search', args: { mode: 'source', sourceId, revision: 1, messageId, quote } },
+      { name: 'inspect_data_source', args: { sourceId } },
+      { name: 'call_data_source', args: { sourceId, tool: 'tavily_search', arguments: { query: 'Orion launch' } } },
+      { name: 'call_data_source', args: { sourceId, tool: 'tavily_extract', arguments: { urls: [resultUrl] } } },
+      `周五发布。[来源](${resultUrl})`,
+    ])
+    const ref = { id: sourceId, name: 'Search', description: '', type: 'mcp' as const, revision: 1, webSearchProvider: 'tavily' as const }
+    const f = await context(model.url, { responseKind: 'chat', agent: employee({ webSearch: { mode: 'browser' } }), messages: [message(quote, 1, { id: messageId })], triggerMessageId: messageId, dataSources: [ref], webSearchSelection: {} })
+    const session = await openSourceSession({ ...webSourceConfig, id: sourceId, revision: 1, createdAt: '', updatedAt: '', hasCredential: false }, '', f.directory, f.ctx.signal); cleanup.push(() => session.close())
+    f.ctx.selectWebSearch = async input => { validateWebSearchChoice(f.ctx, input); f.ctx.webSearchSelection!.choice = input; return searchSelection(f.ctx) }
+    f.ctx.inspectDataSource = async id => { expect(id).toBe(sourceId); assertSearchSelection(f.ctx, ref); return { tools: session.tools.filter(tool => tool.webCapability) } }
+    f.ctx.callDataSource = async input => { assertSearchSelection(f.ctx, ref); return session.call(input.tool, input.arguments, f.ctx.signal) }
+    await new MastraEngine().run(f.ctx)
+    expect(model.requests).toHaveLength(5); expect(f.additionalCalls).toHaveLength(4)
+    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source', 'select_web_search'])
+    expect(toolResultText(model.requests[1])).toContain(sourceId)
+    expect(toolResultText(model.requests[4])).toContain(pageText)
+    expect(mcp.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
+    expect(f.tools.filter(tool => tool.status === 'completed' && tool.name === 'select_web_search')).toHaveLength(1)
+    expect(f.deltas).toEqual([`周五发布。[来源](${resultUrl})`]); expect(f.ctx.agent.webSearch).toEqual({ mode: 'browser' }); expect(f.ctx.work).toBeUndefined(); expect(f.approvals).toEqual([])
+    if (process.env.BOAI_REVIEW_RUN_DIR) {
+      const target = path.join(process.env.BOAI_REVIEW_RUN_DIR, 'api-text-search'); await mkdir(target, { recursive: true })
+      await writeFile(path.join(target, 'evidence.json'), JSON.stringify({ classification: 'actual-sdk-and-mcp-controlled-http', externalRequests: 0, requests: model.requests, mcpCalls: mcp.calls, tools: f.tools, deltas: f.deltas, work: null, approvals: f.approvals, additionalCalls: f.additionalCalls.length }, null, 2))
+    }
+  })
+
+  it.each(['ask', 'request_handoff', 'no-web-source'] as const)('does not expose search tools for %s', async kind => {
+    const model = await endpoint(['请提供要查询的主题。']), inspect = vi.fn(), call = vi.fn()
+    const f = await context(model.url, { responseKind: 'chat', inspectDataSource: inspect, callDataSource: call, dataSources: [{ id: randomUUID(), name: 'Source', description: '', type: 'mcp', revision: 1, ...(kind !== 'no-web-source' ? { webSearchProvider: 'tavily' as const } : {}) }], ...(kind !== 'no-web-source' ? { decision: { action: kind, observedThroughSequence: 1 } } : {}) })
+    await new MastraEngine().run(f.ctx)
+    expect(model.requests).toHaveLength(1); expect(model.requests[0].tools?.length ?? 0).toBe(0)
+    expect(inspect).not.toHaveBeenCalled(); expect(call).not.toHaveBeenCalled(); expect(f.ctx.work).toBeUndefined()
+  })
+
+  it('preserves an explicitly selected ordinary source in SDK chat but does not treat a historical selection as current', async () => {
+    const sourceId = randomUUID(), reference = { kind: 'source' as const, id: sourceId, name: 'Files', agentId: 'agent-a', revision: 1 }
+    const model = await endpoint([{ name: 'call_data_source', args: { sourceId, tool: 'files', arguments: { operation: 'read', path: 'facts.md' } } }, '已读取当前指定资料。', '下一轮普通回答。'])
+    const call = vi.fn(async () => ({ content: 'Explicit source fact' }))
+    const f = await context(model.url, { responseKind: 'chat', triggerMessageId: 'message-1', messages: [message('读取所选资料', 1, { composerReferences: [reference] })], inspectDataSource: vi.fn(), callDataSource: call, dataSources: [{ id: sourceId, name: 'Files', description: '', type: 'local', revision: 1 }] })
+    await new MastraEngine().run(f.ctx)
+    expect(model.requests[0].tools?.map(tool => tool.function.name)).toEqual(['inspect_data_source', 'call_data_source'])
+    expect(call).toHaveBeenCalledTimes(1); expect(toolResultText(model.requests[1])).toContain('Explicit source fact')
+    f.ctx.messages.push(message('谢谢', 2)); f.ctx.triggerMessageId = 'message-2'
+    await new MastraEngine().run(f.ctx)
+    expect(model.requests[2].tools?.length ?? 0).toBe(0); expect(call).toHaveBeenCalledTimes(1)
+  })
+
+  it('feeds an actual MCP quota error to the model as failure without a successful source event or automatic retry', async () => {
+    const quota = JSON.parse(await readFile(new URL('./fixtures/tavily-keyless-quota.json', import.meta.url), 'utf8'))
+    const mcp = await webSearchServer(async () => quota); cleanup.push(() => mcp.close())
+    const sourceId = randomUUID(), model = await endpoint([{ name: 'call_data_source', args: { sourceId, tool: 'tavily_search', arguments: { query: 'public documentation' } } }, '搜索额度不足，未取得网页结果。'])
+    const f = await context(model.url, { responseKind: 'chat', dataSources: [{ id: sourceId, name: 'Search', description: '', type: 'mcp', revision: 1, webSearchProvider: 'tavily' }] })
+    const session = await openSourceSession({ ...webSourceConfig, id: sourceId, revision: 1, createdAt: '', updatedAt: '', hasCredential: false }, '', f.directory, f.ctx.signal); cleanup.push(() => session.close())
+    f.ctx.inspectDataSource = async () => ({ tools: session.tools })
+    f.ctx.callDataSource = async input => session.call(input.tool, input.arguments, f.ctx.signal)
+    await new MastraEngine().run(f.ctx)
+    expect(mcp.calls).toHaveLength(1); expect(model.requests).toHaveLength(2)
+    expect(toolResultText(model.requests[1])).toContain('monthly_cap_reached_bonus_eligible')
+    expect(f.tools.filter(event => event.name === 'call_data_source').map(event => event.status)).toEqual(['running', 'failed'])
+    expect(f.deltas).toEqual(['搜索额度不足，未取得网页结果。'])
+  })
+
+  it('stops search follow-up before the next model request when the original chat budget refuses it', async () => {
+    const sourceId = randomUUID(), inspect = vi.fn(async () => ({ tools: [] }))
+    const model = await endpoint([{ name: 'inspect_data_source', args: { sourceId }, preface: '查阅中' }, '不能出现的成功'] )
+    const f = await context(model.url, { responseKind: 'chat', dataSources: [{ id: sourceId, name: 'Search', description: '', type: 'mcp', revision: 1, webSearchProvider: 'tavily' }], inspectDataSource: inspect, callDataSource: vi.fn(), onAdditionalModelCall: async () => { throw new Error('原问答预算不足') } })
+    await expect(new MastraEngine().run(f.ctx)).rejects.toThrow('原问答预算不足')
+    expect(model.requests).toHaveLength(1); expect(inspect).toHaveBeenCalledTimes(1); expect(f.deltas).toEqual([])
+  })
+
+  it('answers ordinary questions through real knowledge tools and budgets each follow-up without file execution tools', async () => {
+    const source = '# Orion\nLaunch is Friday.\n负责员工：小波。'
+    let file = '', citation = ''
+    let reference: {resourceId: string; path: string; contentHash: string}
+    const mock = await endpoint((body, response, index) => {
+      if (index === 0) send(response, { name: 'search_knowledge', args: { query: 'Orion' }, preface: '正在查阅资料。' }, index)
+      else if (index === 1) {
+        const hit = JSON.parse(String(body.messages.filter(message => message.role === 'tool').at(-1)!.content)).results[0]
+        reference = { resourceId: hit.resourceId, path: hit.path, contentHash: hit.contentHash }; citation = hit.citation
+        send(response, { name: 'read_knowledge', args: { ...reference, limit: 12 } }, index)
+      } else if (index === 2) send(response, { name: 'read_knowledge', args: { ...reference, offset: 12 } }, index)
+      else send(response, `周五发布。${citation}`, index)
+    })
+    const fixture = await context(mock.url, { responseKind: 'chat' }), { ctx } = fixture
+    file = path.join(fixture.directory, 'facts.md'); await writeFile(file, source)
+    ctx.agent.knowledgeIds = ['facts']; ctx.conversation.sharedKnowledgeIds = ['facts']
+    ctx.resources = [{ id: 'facts', name: 'Orion', kind: 'knowledge', description: '', path: file, createdAt: '' }]
+    const checks: string[][] = []; ctx.assertKnowledgeAccess = async ids => { checks.push(ids) }
+    await new MastraEngine().run(ctx)
+    expect(mock.requests).toHaveLength(4)
+    expect(fixture.additionalCalls).toHaveLength(3)
+    expect(mock.requests[0].tools!.map(tool => tool.function.name).sort()).toEqual(['inspect_knowledge', 'read_knowledge', 'search_knowledge'])
+    expect(toolResultText(mock.requests[1])).toContain('Launch is Friday')
+    expect(toolResultText(mock.requests[2])).toContain('nextOffset')
+    expect(toolResultText(mock.requests[3])).toContain('负责员工：小波')
+    expect(fixture.deltas.join('')).toBe(`周五发布。${citation}`)
+    expect(checks.every(ids => ids.join() === 'facts')).toBe(true); expect(checks.length).toBeGreaterThanOrEqual(6)
+    expect(ctx.work).toBeUndefined(); expect(fixture.approvals).toEqual([]); expect(fixture.artifacts).toEqual([])
+    if (process.env.BOAI_REVIEW_RUN_DIR) {
+      const target = path.join(process.env.BOAI_REVIEW_RUN_DIR, 'api-knowledge'); await mkdir(target, { recursive: true })
+      await writeFile(path.join(target, 'original.md'), source)
+      await writeFile(path.join(target, 'evidence.json'), JSON.stringify({ classification: 'actual-mastra-controlled-http', realProviderRequests: 0, requests: mock.requests, tools: fixture.tools, answer: fixture.deltas.join(''), additionalModelCalls: fixture.additionalCalls.length, sourceHash: createHash('sha256').update(source).digest('hex') }, null, 2))
+    }
   })
 
   it('uses native bound skills, searches actual knowledge with citations, writes and reads a real artifact', async () => {

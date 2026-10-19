@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地网页显式白底深色正文，使生产浏览器原始PNG可审阅，不修改截图字节。
  * [OUTPUT]: 隔离后台表单服务按实际POST核对输入/原生选择/自定义选择；不伪造网页驱动。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 隔离 Electron、离线真实 Mastra HTTP 工具协议、可观测本地网页与原生产浏览器窗口/事务。
@@ -32,7 +33,7 @@ function sendTool(response: ServerResponse, name: string, args: unknown, index: 
   response.write(`data: ${JSON.stringify({ id: `browser-${index}`, object: 'chat.completion.chunk', choices: [], usage: { prompt_tokens: 100, completion_tokens: 100, total_tokens: 200 } })}\n\n`); response.end('data: [DONE]\n\n')
 }
 function webpage(cookie: string) {
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>浏览器迁移公开资料</title></head><body><h1>浏览器迁移公开资料</h1><p>${BROWSER_PAGE_MARKER}：固定事实为蓝色星球有三项观察。</p><p>COOKIE_SCOPE:${cookie || 'none'}</p><label>登录密码<input type="password" aria-label="登录密码" value="${BROWSER_PASSWORD}"></label><label>说明<input aria-label="说明" id="note"></label><button aria-label="提交一次" onclick="fetch('/mutate',{method:'POST'}).then(()=>document.getElementById('status').textContent='SUBMITTED_ONCE')">提交一次</button><a href="/download.txt" download="浏览结果.txt">下载文本</a><p id="status">NOT_SUBMITTED</p><div style="height:900px">用于真实滚动和截图的内容</div><script>if(location.search.includes("wait=1"))setTimeout(()=>document.getElementById("status").textContent="WAIT_READY",1800)</script></body></html>`
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>浏览器迁移公开资料</title><style>body{background:#fff;color:#111}</style></head><body><h1>浏览器迁移公开资料</h1><p>${BROWSER_PAGE_MARKER}：固定事实为蓝色星球有三项观察。</p><p>COOKIE_SCOPE:${cookie || 'none'}</p><label>登录密码<input type="password" aria-label="登录密码" value="${BROWSER_PASSWORD}"></label><label>说明<input aria-label="说明" id="note"></label><button aria-label="提交一次" onclick="fetch('/mutate',{method:'POST'}).then(()=>document.getElementById('status').textContent='SUBMITTED_ONCE')">提交一次</button><a href="/download.txt" download="浏览结果.txt">下载文本</a><p id="status">NOT_SUBMITTED</p><div style="height:900px">用于真实滚动和截图的内容</div><script>if(location.search.includes("wait=1"))setTimeout(()=>document.getElementById("status").textContent="WAIT_READY",1800)</script></body></html>`
 }
 export async function browserFixtureSite(runtime: Desktop) {
   const hits: BrowserSiteHit[] = []; const formSubmissions: Record<string, string>[] = []; let mutations = 0

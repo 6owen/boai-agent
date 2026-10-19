@@ -1,4 +1,13 @@
 /*
+ * [OUTPUT]: 同时启动丢失owner时先等自己的worker退出，再有界认证附着胜出服务；原业务请求只在ready后提交。
+ * [OUTPUT]: CLI安装状态等待原运行服务就绪再认证连接，启动失败仍如实不可用。
+ * [OUTPUT]: CLI安装由原生目录选择和当前应用路径派生，退出等待安装写入。
+ * [OUTPUT]: CLI启动期端点注册直接使用已ready的原worker请求队列，避免等待自身ready；普通调用仍等待完整启动。
+ * [OUTPUT]: 员工CLI凭据沿私有worker桥核验，保留原错误码；用户owner token不进入worker或员工上下文。
+ * [OUTPUT]: 同profile桌面优先附着独立服务；退出等待已开始的连接/初始化后排空实际宿主，不停止独立owner。
+ * [OUTPUT]: Craft式CLI回环入口沿原worker/vault/browser，随机凭据仅私有连接文件，退出等待原服务与监听关闭。
+ * [OUTPUT]: 知识资料选取复用私有selectionId；renderer不能给保留入口传任意宿主路径。
+ * [OUTPUT]: 员工授权目录使用专用系统选择器，仅返回真实路径，不扫描、保存或执行。
  * [OUTPUT]: 原生未保存关闭确认统一取消/退出，明确退出放弃草稿。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
@@ -37,6 +46,7 @@
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { saveEmployeeKnowledgeSchema } from '../shared/domain/knowledge'
 import { GatewayImportInbox } from './gateway-import-inbox'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { AutomationNotificationConsumer } from './automation-notifications'
@@ -58,7 +68,7 @@ import { resolveTheme, zoomFactors } from '../shared/appearance'
 import { unsupportedRequestMessage, type Methods } from '../shared/ipc'
 import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
-import type { Method, RpcResponse } from '../shared/ipc'
+import type { AppEvent, Method, RpcResponse } from '../shared/ipc'
 import type { Snapshot } from '../shared/domain'
 import { MATERIAL_LIMITS } from '../shared/domain/materials'
 import { MaterialSources } from './material-sources'
@@ -68,16 +78,32 @@ import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
 import { isPublicMethod } from './public-methods'
+import { openDesktopCli, desktopCliConnection } from './cli-service'
+import { CliInstaller } from './cli-installation'
+import { CliError, type ErrorCode } from '../shared/cli/protocol'
+import { AttachedRuntime, findAttachedRuntime, waitForAttachedRuntime } from './attached-runtime'
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
 if (process.env.BOAI_DATA_DIR) app.setPath('userData', resolve(process.env.BOAI_DATA_DIR))
 const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
+const cliInstaller = new CliInstaller(join(legacyDataPath, 'cli-installation'), { platform: process.platform, executable: process.execPath, entry: resolve(__dirname, '../cli/index.mjs'), dataPath, version: app.getVersion() })
+const cliInstallationStatus = async (): Promise<Methods['getCliInstallation']['output']> => {
+  const installation = await cliInstaller.status()
+  // The renderer can request settings before the worker has published discovery.
+  // Join the original startup promise; a failed startup still reports unavailable.
+  await startRuntime().catch(() => {})
+  return { ...installation, connection: await desktopCliConnection(dataPath) }
+}
 let window: BrowserWindow | null = null
-let runtime: UtilityProcess | null = null
+type RuntimeHandle = UtilityProcess | AttachedRuntime
+let runtime: RuntimeHandle | null = null
+const desktopHostId = randomUUID()
 let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['output'] = null
 let ready: Promise<void> | null = null
+let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
+let cliStarting: Promise<void> | undefined
 let quitting = false
 let quitApproved = false
 let creatingWindow: Promise<void> | null = null
@@ -133,6 +159,7 @@ const browsers = new BrowserService({
 
 function sendEvent(event: unknown) {
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
+  cli?.publish(event as AppEvent)
 }
 
 const automationNotifications = new AutomationNotificationConsumer({
@@ -152,19 +179,54 @@ const automationNotifications = new AutomationNotificationConsumer({
 })
 function flushAutomationNotifications() { void automationNotifications.flush().catch(error => sendEvent({ type: 'runtime-error', error: `通知提交状态未能保存：${String(error)}` })) }
 
+class RuntimeStartupOwnedError extends Error {}
+
 function startRuntime() {
   if (ready) return ready
-  ready = browserConnectionDrain.then(() => new Promise<void>((resolveReady, rejectReady) => {
+  ready = browserConnectionDrain.then(async () => {
+    const attached = await findAttachedRuntime(dataPath, app.getVersion(), desktopHostId)
+    try { await connectRuntime(attached) }
+    catch (error) {
+      if (!(error instanceof RuntimeStartupOwnedError) || quitting) throw error
+      // connectRuntime reports ownership rejection only after the uninitialized worker exits.
+      const winner = await waitForAttachedRuntime(dataPath, app.getVersion(), desktopHostId, { stopping: () => quitting })
+      await connectRuntime(winner)
+    }
+  }).catch(error => { if (!runtime) ready = null; throw error })
+  return ready
+}
+
+function connectRuntime(attached: AttachedRuntime | null) {
+  return new Promise<void>((resolveReady, rejectReady) => {
+    let workerReady = false, ownershipRejected = false
     // Only carry platform essentials into the worker. Model credentials arrive through the vault.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USER|SHELL|LANG|LC_.*|TMPDIR|TEMP|TMP|SystemRoot|APPDATA|LOCALAPPDATA|USERPROFILE)$/i.test(key)))
-    const child = utilityProcess.fork(join(__dirname, '../runtime/worker.mjs'), [dataPath], {
+    const child = attached ?? utilityProcess.fork(join(__dirname, '../runtime/worker.mjs'), [dataPath], {
       serviceName: 'BoAI Agent Runtime', stdio: 'pipe', env: { ...env, BOAI_NATIVE_PROCESS_GUARD: join(__dirname,'../native/boai-process-guard').replace('app.asar/','app.asar.unpacked/') },
     })
     runtime = child
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)
     child.on('message', async (message) => {
       if (runtime !== child) return
-      if (message?.type === 'ready') { clearTimeout(timer); resolveReady(); flushAutomationNotifications(); return }
+      if (message?.type === 'owner-busy' && !workerReady && !(child instanceof AttachedRuntime)) { ownershipRejected = true; child.kill(); return }
+      if (message?.type === 'ready') {
+        workerReady = true
+        clearTimeout(timer)
+        try {
+          if (!(child instanceof AttachedRuntime) && !cli && !quitting) cli = await openDesktopCli(dataPath, app.getVersion(), { runAccess: async input => {
+            if (quitting) throw new CliError('SERVER_BUSY', '应用正在退出')
+            const reply = await requestCurrentRuntime(child, '__runCliAccess', input) as { ok: boolean; result?: unknown; code: ErrorCode; message: string }
+            if (!reply.ok) throw new CliError(reply.code, reply.message)
+            return reply.result
+          }, request: async (method, input) => {
+            if (quitting) throw new Error('应用正在退出，不再受理 CLI 请求')
+            return await requestRuntime(method, input) as never
+          } })
+          resolveReady(); flushAutomationNotifications()
+        } catch (error) { rejectReady(error) }
+        return
+      }
+      if (message?.type === 'attach-error') { clearTimeout(timer); rejectReady(new Error(message.error)); return }
       if (message?.type === 'stopped') return
       if (message?.type === 'response') {
         const response = message.response as RpcResponse
@@ -188,8 +250,9 @@ function startRuntime() {
       else if (message?.type === 'secret') {
         try {
           if (typeof message.key !== 'string' || message.key.length > 200) throw new Error('无效凭据标识。')
-          let value: string | undefined
-          if (message.operation === 'get') value = await vault.get(message.key)
+          let value: string | boolean | undefined
+          if (message.operation === 'has') value = await vault.has(message.key)
+          else if (message.operation === 'get') value = await vault.get(message.key)
           else if (message.operation === 'set' && typeof message.value === 'string') await vault.set(message.key, message.value)
           else if (message.operation === 'delete') await vault.delete(message.key)
           else throw new Error('无效凭据操作。')
@@ -204,22 +267,23 @@ function startRuntime() {
     child.on('exit', (code) => {
       clearTimeout(timer)
       if (runtime !== child) return
+      if (ownershipRejected && !workerReady) { runtime = null; rejectReady(new RuntimeStartupOwnedError('原运行服务已取得所有权')); return }
       // Replacing the connection cannot issue a new lease until old actions really exit.
       browserConnectionDrain = browsers.disconnectAll().catch(error => { sendEvent({ type: 'runtime-error', error: String(error) }); throw error })
       void browserConnectionDrain.catch(() => {})
       runtime = null
       ready = null
-      const error = new Error(`本地运行服务已退出（${code}），下一次操作会重新启动。`)
+      const error = new Error(child instanceof AttachedRuntime ? '独立服务连接已断开，请核对原请求；不会自动重发。' : `本地运行服务已退出（${code}），下一次操作会重新启动。`)
       rejectReady(error)
       for (const request of pending.values()) { clearTimeout(request.timer); request.reject(error) }
       pending.clear()
       if (!quitting) sendEvent({ type: 'runtime-error', error: error.message })
     })
-  }))
-  return ready
+    if (child instanceof AttachedRuntime) void child.start()
+  })
 }
 
-async function handleBrowserHostRequest(child: UtilityProcess, method: keyof BrowserHostMethods, input: unknown): Promise<unknown> {
+async function handleBrowserHostRequest(child: RuntimeHandle, method: keyof BrowserHostMethods, input: unknown): Promise<unknown> {
   await browserConnectionDrain
   if (runtime !== child) throw new Error('浏览器原运行连接已失效。')
   switch (method) {
@@ -248,12 +312,17 @@ async function handleBrowserHostRequest(child: UtilityProcess, method: keyof Bro
 
 async function requestRuntime(method: string, input?: unknown, waitForCompletion = false) {
   await startRuntime()
+  return requestCurrentRuntime(runtime!, method, input, waitForCompletion)
+}
+
+function requestCurrentRuntime(child: RuntimeHandle, method: string, input?: unknown, waitForCompletion = false) {
+  if (!child || runtime !== child) return Promise.reject(new Error('原运行服务连接已失效。'))
   return new Promise<unknown>((resolveRequest, reject) => {
     const id = randomUUID()
     // Temporary input files must remain until the importer responds or its worker really exits.
     const timer = waitForCompletion ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
     pending.set(id, { resolve: resolveRequest, reject, timer })
-    try { runtime!.postMessage({ type: 'request', request: { id, method, input } }) }
+    try { child.postMessage({ type: 'request', request: { id, method, input }, waitForCompletion }) }
     catch (error) { clearTimeout(timer); pending.delete(id); reject(error) }
   })
 }
@@ -317,9 +386,35 @@ function registerIpc() {
     if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
     if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
+    if (method === 'getCliInstallation') { z.undefined().parse(input); return cliInstallationStatus() }
+    if (method === 'installCli' || method === 'uninstallCli') {
+      const value = z.object({ expectedRevision: z.string().regex(/^[a-f0-9]{64}$/) }).strict().parse(input)
+      if (method === 'uninstallCli') { await cliInstaller.uninstall(value.expectedRevision); return cliInstallationStatus() }
+      const status = await cliInstaller.status()
+      if (status.revision !== value.expectedRevision) throw new Error('命令行安装状态已变化，请刷新后重试。')
+      let directory: string | undefined
+      if (!status.commandPath) {
+        const selection = await dialog.showOpenDialog(window, { title: '选择 boai 命令的安装目录', defaultPath: join(app.getPath('home'), '.local', 'bin'), properties: ['openDirectory', 'createDirectory'] })
+        if (selection.canceled || !selection.filePaths[0]) return null
+        directory = selection.filePaths[0]
+      }
+      await cliInstaller.install(directory, value.expectedRevision)
+      return cliInstallationStatus()
+    }
     if (method === 'updateDesktopSettings') {
       const value = z.object({ patch: z.object({ runInBackground: z.boolean().optional(), startHidden: z.boolean().optional(), openAtLogin: z.boolean().optional() }).strict(), expectedRevision: z.number().int().nonnegative() }).strict().parse(input)
       return desktopSettings.update(value.patch, value.expectedRevision)
+    }
+    if (method === 'chooseKnowledgeSource') {
+      z.undefined().parse(input)
+      const selection = await dialog.showOpenDialog(window, { title: '添加知识资料', properties: ['openFile'] })
+      return selection.canceled || !selection.filePaths[0] ? null : materialSources.selectPath(selection.filePaths[0])
+    }
+    if (method === 'saveEmployeeKnowledge') {
+      const value = saveEmployeeKnowledgeSchema.parse(input)
+      if (value.source.kind !== 'file') return requestRuntime(method, value)
+      if (!materialSources.has(value.source.selectionId)) throw new Error('文件选择已失效，请先核对原知识资料操作回执')
+      return materialSources.prepare(value.source.selectionId, (source, temporary) => requestRuntime(method, { ...value, source: { kind: 'file', ...source } }, temporary))
     }
     if (method === 'chooseMaterialSource') {
       z.undefined().parse(input)
@@ -396,6 +491,7 @@ function registerIpc() {
       if (result.canceled || !result.filePaths[0]) return null
       const selected = await realpath(result.filePaths[0]); selectedPaths.add(selected); return selected
     }
+    if (method === 'chooseEmployeeDirectory') { z.undefined().parse(input); const result = await dialog.showOpenDialog(window, { title: '选择员工授权目录', properties: ['openDirectory', 'showHiddenFiles'] }); return result.canceled || !result.filePaths[0] ? null : realpath(result.filePaths[0]) }
     if (method === 'chooseDataSourceFolder') { z.undefined().parse(input); const result = await dialog.showOpenDialog(window, { title: '选择数据源文件夹', properties: ['openDirectory'] }); return result.canceled || !result.filePaths[0] ? null : realpath(result.filePaths[0]) }
     if (method === 'choosePath') {
       const kind = (input as { kind?: string })?.kind
@@ -544,7 +640,7 @@ else {
     creatingWindow = createWindow(!desktopSettings.hiddenAtLogin(process.argv))
     try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
-    void startRuntime().then(() => gatewayImportInbox.start()).catch((error) => sendEvent({ type: 'runtime-error', error: error.message }))
+    cliStarting = startRuntime().then(() => gatewayImportInbox.start()).catch(error => sendEvent({ type: 'runtime-error', error: error.message }))
     app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })
@@ -554,10 +650,14 @@ else {
     event.preventDefault()
     if (quitting) return
     quitting = true
-    const child = runtime
-    const runtimeExit = child ? stopRuntime(child) : Promise.resolve()
+    // Discovery/initialization may still be creating the handle. Do not snapshot null and skip its drain.
+    const runtimeExit = (ready ?? Promise.resolve()).catch(() => {}).then(() => {
+      const child = runtime
+      return child instanceof AttachedRuntime ? child.detach() : child ? stopRuntime(child) : undefined
+    })
     // A timeout may terminate the worker, but never counts as Chromium action exit.
-    void Promise.all([runtimeExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), pluginSettings.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
+    const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
+    void Promise.all([runtimeExit, cliExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
       quitting = false
       void showMainWindow()
       dialog.showErrorBox('应用尚未退出', error instanceof Error ? error.message : String(error))

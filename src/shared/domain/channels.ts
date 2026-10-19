@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面与CLI明确渠道发布共用严格输入schema；绑定、来源、hash和去重仍由原服务核对。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 内部讨论固定原消息引用；用户明确外发固定原来源/文件hash与绑定版本，回执独立于执行完成。
  * [OUTPUT]: 2026-10-14现行分离合同：本人ID仅用于平台消息归属显示，不再决定主私聊路由或历史合并。
@@ -9,6 +10,8 @@
  * [POS]: 第16组跨进程渠道合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { z } from 'zod'
+
 export const CHANNEL_PLATFORMS = ['feishu', 'lark', 'telegram', 'dingtalk'] as const
 export type ChannelPlatform = typeof CHANNEL_PLATFORMS[number]
 export const CHANNEL_NAMES: Record<ChannelPlatform, string> = { feishu: '飞书', lark: 'Lark', telegram: 'Telegram', dingtalk: '钉钉' }
@@ -101,3 +104,9 @@ export interface ChannelPublishInput {
   artifacts: Pick<ChannelArtifactReference, 'id' | 'conversationId' | 'contentHash'>[]
   requestId: string
 }
+
+const channelId = z.string().trim().min(1).max(200)
+const channelContentHash = z.string().regex(/^[a-f0-9]{64}$/)
+export const channelPublishSchema = z.object({ conversationId: channelId, sourceMessageId: channelId, content: z.string().trim().max(12000), artifacts: z.array(z.object({ id: channelId, conversationId: channelId, contentHash: channelContentHash }).strict()).max(8), requestId: channelId }).strict().refine(value => !!value.content || value.artifacts.length > 0, '请输入内容或选择文件')
+export const channelReplySchema = z.object({ conversationId: channelId, messageId: channelId, contentHash: channelContentHash, requestId: channelId }).strict()
+export const channelDeliveriesQuerySchema = z.object({ conversationId: channelId, messageIds: z.array(channelId).max(80) }).strict()

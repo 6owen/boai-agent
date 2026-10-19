@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确聊天夹具识别宿主追加的材料参考数据，不误选为成果任务。
  * [OUTPUT]: 可选明确revisionContent与隔离原样本生成命令；命令经原聊天逐次批准/真实执行后才publish，默认原交付与修订保持。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 可独立准备原有文件协议端点，供 UI 新员工贯穿场景复用；可选确定聊天回复，默认成果场景行为保持。
@@ -47,7 +48,7 @@ export async function prepareArtifactProtocol(runtime: Desktop, options: Artifac
       if (system.includes('Private participation decision')) {
         const data = JSON.parse(contentText(messages.at(-1)!.content)).data
         const current = data.currentTurnMessages?.find((message: { id: string; content: string }) => message.id === data.originalUserRequestId)
-        if (current && options.chatReplies?.[current.content]) { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
+        if (current && Object.keys(options.chatReplies ?? {}).some(request => current.content === request || current.content.startsWith(request + '\n{\"referenceData\":true,'))) { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
         if (current?.content === '这条是日常问候，请不要作为文件任务补充。') { sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: 'reply', responseKind: 'chat' }); return }
         sendTeamOutput(response, data.participation?.hasRespondedInTurn || data.currentTurn?.ownCompletedMessageIds?.length ? { action: 'pass' } : { action: options.askForSupplement && !data.continuation?.replyToTurnIds?.length ? 'ask' : 'reply', responseKind: 'task', work: { key: `artifact-${data.originalUserRequestId}`, scope: '按明确请求发布可检查报告', deliverable: 'Markdown 报告和真实来源' } }); return
       }

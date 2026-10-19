@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 同一真实宿主普通问答矩阵覆盖Tavily MCP与DeepSeek POST三档权限，未绑定/私有阶段拒绝且零Work/审批。
+ * [OUTPUT]: 三档员工权限下普通搜索经原宿主只读调用、零Work/审批；绑定/私有阶段/普通本地来源不可绕过。
  * [OUTPUT]: 数据源Composer引用核对固定ID/源版本、绑定/启用、核心首发/重复请求与真实双工具桥；选择本身成为来源失效依赖，不授予权限。
  * [OUTPUT]: 员工整体三档权限实际约束本地数据源写入；审批前零写、只读拒绝、完全访问无审批，旧配置兼容。
  * [OUTPUT]: 真实AppService验证bobo无绑定全局及同轮新增源读写、普通chat无Work、停用/私有阶段/结束运行拒绝；普通员工绑定门禁保持。
@@ -10,7 +12,9 @@
  * [PROTOCOL]: 变化同步 Header 与 tests/.folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdtemp, realpath, writeFile, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, realpath, writeFile, readFile, rm, mkdir } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+import { createClient } from '@libsql/client'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -22,8 +26,76 @@ import { createSourceTools } from '../src/runtime/adapters/mastra/source-tools'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
 import type { DataSource } from '../src/shared/domain/sources'
+import { webSearchServer, webSourceConfig, deepSeekSearchServer, deepSeekSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
+
+it.each((['tavily', 'deepseek'] as const).flatMap(provider => (['read-only', 'ask', 'full-access'] as const).map(permission => ({ provider, permission }))))('uses $provider web tools in ordinary $permission employee chat without creating Work or approvals', async ({ provider, permission }) => {
+  const deepseek = provider === 'deepseek', searchTool = deepseek ? 'deepseek_search' : 'tavily_search', readTool = deepseek ? 'deepseek_fetch' : 'tavily_extract', sourceConfig = deepseek ? deepSeekSourceConfig : webSourceConfig
+  const server = deepseek ? await deepSeekSearchServer() : await webSearchServer(); cleanups.push(() => server.close())
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-web-chat-host-'))); cleanups.push(() => rm(root, { recursive: true, force: true }))
+  let source: DataSource, unbound: DataSource, local: DataSource, latest: EngineContext | undefined, failure: unknown
+  const engine: AgentEngine = {
+    test: async () => 'unused',
+    decide: async ctx => {
+      await expect(ctx.inspectDataSource!(source.id)).rejects.toThrow('权限')
+      return { action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence }
+    },
+    run: async ctx => {
+      latest = ctx
+      try {
+        expect(ctx.work).toBeUndefined()
+        expect(ctx.dataSources?.find(ref => ref.id === source.id)?.webSearchProvider).toBe(provider)
+        await expect(ctx.inspectDataSource!(unbound.id)).rejects.toThrow('权限')
+        await expect(ctx.inspectDataSource!(local.id)).rejects.toThrow('普通问答仅可')
+        const tools = createSourceTools(ctx, true), invocation = { requestContext: new RequestContext(), observe: noopObserve }
+        const catalog = await tools.inspect_data_source.execute!({ sourceId: source.id }, invocation) as { tools: { name: string }[] }
+        expect(catalog.tools.map(tool => tool.name).sort()).toEqual([readTool, searchTool].sort())
+        await expect(ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_crawl', arguments: {} })).rejects.toThrow(deepseek ? '不提供' : '普通问答不能')
+        const search = await tools.call_data_source.execute!({ sourceId: source.id, tool: searchTool, arguments: { query: 'Orion' } }, invocation)
+        expect(JSON.stringify(search)).toContain(resultUrl)
+        const read = await tools.call_data_source.execute!({ sourceId: source.id, tool: readTool, arguments: deepseek ? { url: resultUrl } : { urls: [resultUrl] } }, invocation)
+        expect(JSON.stringify(read)).toContain(pageText)
+        expect(ctx.work).toBeUndefined()
+        await ctx.onDelta(`周五发布。[来源](${resultUrl})`)
+      } catch (error) { failure = error; throw error }
+    },
+  }
+  const service = new AppService({ dataPath: join(root, 'app'), skillDiscovery: { homeDir: root }, engine, secrets: { get: async () => 'fixture-search-secret', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  cleanups.push(() => service.close()); await service.init()
+  const connection = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' }) as Connection
+  source = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: sourceConfig, ...(deepseek ? { credential: 'fixture-search-secret' } : {}) }) as DataSource
+  unbound = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: sourceConfig, ...(deepseek ? { credential: 'fixture-search-secret' } : {}) }) as DataSource
+  local = await service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { name: 'Local', description: '', guide: '', enabled: true, type: 'local', local: { path: root } } }) as DataSource
+  const employee = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
+  const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...definition } = employee
+  await service.handle('saveAgent', { ...definition, expectedConfigVersion: configVersion, connectionId: connection.id, modelId: 'fixture', sourceIds: [source.id, local.id], executionPermission: permission })
+  const room = await service.handle('createConversation', { kind: 'direct', title: 'Search', agentIds: [employee.id] }) as Conversation
+  await service.handle('sendMessage', { conversationId: room.id, requestId: randomUUID(), content: '搜索 Orion 发布时间并读取网页', mentionIds: [] })
+  await vi.waitFor(async () => {
+    if (failure) throw failure
+    const detail = await service.handle('getConversation', { id: room.id }) as ConversationDetail
+    expect(detail.messages.some(message => message.senderType === 'agent' && message.status === 'completed' && message.content.includes(resultUrl))).toBe(true)
+    expect(detail.workItems ?? []).toEqual([]); expect(detail.artifacts).toEqual([])
+    expect(detail.runs.every(run => !run.workId)).toBe(true)
+    const execution = detail.runs.filter(run => run.phase === 'execution')
+    expect(execution.length).toBeGreaterThan(0)
+    expect(execution.every(run => run.responseKind === 'chat' && run.status === 'completed')).toBe(true)
+  }, { timeout: 15000 })
+  expect((await service.handle('snapshot', undefined) as Snapshot).approvals).toEqual([])
+  expect(server.calls.map(call => call.name)).toEqual([searchTool, readTool])
+  if (deepseek) expect(server.calls.every(call => 'authenticated' in call && call.authenticated)).toBe(true)
+  await expect(latest!.inspectDataSource!(source.id)).rejects.toThrow('权限')
+  if (process.env.BOAI_REVIEW_RUN_DIR) {
+    const detail = await service.handle('getConversation', { id: room.id })
+    await service.close()
+    const target = join(process.env.BOAI_REVIEW_RUN_DIR, 'host-web-search', provider, permission); await mkdir(target, { recursive: true })
+    // A native libsql WAL can outlive close(); export a consistent database, not the uncheckpointed main file.
+    const database = createClient({ url: pathToFileURL(join(root, 'app', 'boai.sqlite')).href })
+    try { await database.execute({ sql: 'VACUUM INTO ?', args: [join(target, 'boai.sqlite')] }) } finally { database.close() }
+    await writeFile(join(target, 'evidence.json'), JSON.stringify({ classification: 'actual-app-service-controlled-engine-and-http-source', realProviderRequests: 0, permission, calls: server.calls, detail }, null, 2))
+  }
+})
 
 it('gives bobo all enabled sources without binding, and can read/write a newly created source in the same chat turn', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-core-sources-')))

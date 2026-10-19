@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 官方DeepSeek API Bearer配置可发现搜索/读取候选；固定POST工具由宿主独立核准。
+ * [OUTPUT]: Tavily/Exa官方固定端点可作为搜索候选，真实工具身份仍由宿主版本/schema核准。
+ * [OUTPUT]: 员工检索偏好为自动/浏览器/固定源；候选端点识别共用纯函数，不宣称连接成功。
+ * [OUTPUT]: SourceSummary标识搜索候选提供方，仅用于按需发现，不宣称实际目录或业务已验证。
+ * [OUTPUT]: SourceTool携带宿主核准的搜索/正文能力及实际schema/server版本；目录提示本身不授予只读权限。
  * [OUTPUT]: 公共数据源携带固定会话/消息/员工创建来源，配置只描述连接；目录DTO不带密钥，桌面编辑器沿专用版本化IPC回填。
  * [INPUT]: Connection-only API/MCP/local configuration; access authority belongs to the employee.
  * [OUTPUT]: Public source configuration, revision checks and bounded tool requests; catalog DTOs exclude credentials; explicit desktop editing uses a separate credential read.
@@ -30,8 +35,36 @@ export const dataSourceBindingsSchema = dataSourceIdentitySchema.extend({ agents
 export type DataSourceBindingsInput = z.infer<typeof dataSourceBindingsSchema>
 export const sourceCallSchema = z.object({ sourceId: z.string().uuid(), tool: text(200), arguments: z.record(z.string(), z.unknown()).default({}) }).strict()
 export type SourceCall = z.infer<typeof sourceCallSchema>
-export type SourceSummary = Pick<DataSource, 'id' | 'name' | 'description' | 'type' | 'revision'>
-export type SourceTool = { name: string; description?: string; inputSchema: Record<string, unknown>; readOnly?: boolean }
+export type SourceSummary = Pick<DataSource, 'id' | 'name' | 'description' | 'type' | 'revision'> & { webSearchProvider?: 'tavily' | 'exa' | 'deepseek' }
+export const webSearchPreferenceSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('auto') }).strict(),
+  z.object({ mode: z.literal('browser') }).strict(),
+  z.object({ mode: z.literal('source'), sourceId: z.string().uuid() }).strict(),
+])
+export type WebSearchPreference = z.infer<typeof webSearchPreferenceSchema>
+export function webSearchProvider(source: DataSourceConfig): SourceSummary['webSearchProvider'] {
+  if (source.type === 'api') {
+    try {
+      const url = new URL(source.api.baseUrl)
+      if (url.origin === 'https://api.deepseek.com' && ['/', '/v1', '/v1/', '/v1/tools', '/v1/tools/'].includes(url.pathname) && !url.search && !url.hash && !url.username && !url.password && source.api.authType === 'bearer' && (!source.api.authScheme || source.api.authScheme === 'Bearer')) return 'deepseek'
+    } catch { /* Invalid legacy configuration is not a candidate. */ }
+    return undefined
+  }
+  if (source.type !== 'mcp' || source.mcp.transport !== 'http') return undefined
+  try {
+    const url = new URL(source.mcp.url)
+    if (!['/mcp', '/mcp/'].includes(url.pathname) || url.search || url.hash || url.username || url.password) return undefined
+    if (url.origin === 'https://mcp.tavily.com') return 'tavily'
+    if (url.origin === 'https://mcp.exa.ai') return 'exa'
+  } catch { /* Invalid legacy configuration is not a candidate. */ }
+}
+export function webSearchPreferenceLabel(preference: WebSearchPreference | undefined, sources: DataSource[]) {
+  if (!preference || preference.mode === 'auto') return '自动'
+  if (preference.mode === 'browser') return 'BOAI 浏览器'
+  const source = sources.find(source => source.id === preference.sourceId)
+  return source ? `${source.name}${!source.enabled ? '（已停用）' : !webSearchProvider(source) ? '（搜索不可用）' : ''}` : '原搜索源已不可用'
+}
+export type SourceTool = { name: string; description?: string; inputSchema: Record<string, unknown>; readOnly?: boolean; webCapability?: { provider: NonNullable<SourceSummary['webSearchProvider']>; kind: 'search' | 'read-url'; serverVersion: string; schemaHash: string } }
 export const apiSourceRequestSchema = z.object({ path: z.string().max(4000), method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).default('GET'), params: z.record(z.string(), z.unknown()).optional() }).strict()
 export const localSourceRequestSchema = z.object({ operation: z.enum(['list', 'read', 'write']), path: z.string().max(8000).default('.'), content: z.string().max(1024 * 1024).optional(), offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(48000).default(48000), expectedHash: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional() }).strict()
 export const DATA_SOURCE_LABELS = { api: 'API', mcp: 'MCP', local: '本地文件夹' } as const

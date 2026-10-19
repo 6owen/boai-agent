@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 渠道私聊/群沿当前API员工目录批准，另一员工授权不外借，临时许可不跨来源续聊。
+ * [OUTPUT]: CLI公开RPC/独立产物沿原渠道事务续聊与明确发送；旧hash/撤权拒绝、未知结果与重启不重放。
+ * [OUTPUT]: 渠道私聊/群搜索沿本人源绑定与原首选，平台来信仅原渠道回发、BOAI续聊不回发、重复/重启零重放。
+ * [OUTPUT]: 渠道停止/解除与同记录本人续聊的活动知识读取和迟到发布隔离回归。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI/本人平台两创建顺序隔离、旧归一/别名保留后新渠道房间、真实阅读提示/隐藏恢复/重启回归。
@@ -12,10 +16,17 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
+import { execFile } from 'node:child_process'
+import { resolve } from 'node:path'
+import { promisify } from 'node:util'
+import { DatabaseSync } from 'node:sqlite'
+import { openDesktopCli } from '../src/main/cli-service'
+import { readLocalConnection } from '../src/cli/discovery'
+import { CliRpcClient } from '../src/cli/client'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
@@ -24,6 +35,13 @@ import type { ChannelBindingState, ChannelDelivery, ChannelBindingInput } from '
 import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../src/shared/domain'
 import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
 import { isChannelConversation, mainConversations, sortedConversations } from '../src/shared/domain/conversation-list'
+import { createKnowledgeOperations } from '../src/runtime/modules/resources/knowledge-tools'
+import type { Resource } from '../src/shared/domain'
+import type { DataSource } from '../src/shared/domain/sources'
+import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
+import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { RequestContext } from '@mastra/core/request-context'
+import { noopObserve } from '@mastra/core/tools'
 
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { await Promise.all(services.splice(0).map(service => service.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -35,15 +53,16 @@ class Secrets implements SecretStore {
 }
 class Engine implements AgentEngine {
   contexts: EngineContext[] = []
+  handler?: (context: EngineContext) => Promise<void>
   async test() { return 'fixture' }
   async decide(context: EngineContext) {
     const trigger = context.messages.find(message => message.id === context.triggerMessageId)
     return { action: context.messages.some(message => message.senderId === context.agent.id && message.sequence > (trigger?.sequence ?? Infinity) && message.status === 'completed') ? 'pass' as const : 'reply' as const, responseKind: 'chat' as const, observedThroughSequence: Math.max(0, ...context.messages.map(message => message.sequence)) }
   }
-  async run(context: EngineContext) { this.contexts.push(context); await context.onDelta(`答复-${context.agent.id}`) }
+  async run(context: EngineContext) { this.contexts.push(context); if (this.handler) await this.handler(context); else await context.onDelta(`答复-${context.agent.id}`) }
 }
 async function fixture(connectFailure?: unknown, groupName?: (chatId: string) => Promise<string | undefined>) {
-  const root = await mkdtemp(join(tmpdir(), 'boai-channels-')); roots.push(root)
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-channels-'))); roots.push(root)
   const secrets = new Secrets(), engine = new Engine()
   const incoming = new Map<string, (event: ChannelInbound) => Promise<void>>()
   const observed = new Map<string, () => void>()
@@ -84,6 +103,181 @@ async function legacySibling(f: Awaited<ReturnType<typeof fixture>>, binding: Ch
 }
 
 describe('employee channel business connection', () => {
+  it.each(['direct', 'group'] as const)('uses only the executing employee directory grants for %s channel access and local continuation', async kind => {
+    const f = await fixture(), business = await realpath(await mkdtemp(join(tmpdir(), 'boai-channel-directory-'))); roots.push(business)
+    const path = join(business, 'original.txt'); await writeFile(path, 'CHANNEL-DIRECTORY-ORIGINAL')
+    for (const id of ['writer', 'researcher']) {
+      const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, creationSource: _c, systemRole: _s, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === id)!
+      await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, executionPermission: 'ask', directoryGrants: id === 'researcher' ? [{ path: business, access: 'read-write' }] : [] })
+    }
+    const reads: string[] = [], failures: string[] = []
+    f.engine.handler = async context => {
+      expect(context.agent.id).toBe('writer')
+      const runtime = await createTaskRuntime(context)
+      try {
+        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve }) as { content: string }
+        reads.push(result.content); await context.onDelta(result.content)
+      } catch (error) { failures.push(String(error)); throw error }
+      finally { await runtime.dispose() }
+    }
+    const binding = await f.connect(await f.save()), incoming = event({ kind, chatId: kind === 'group' ? 'group' : 'private' })
+    await f.incoming.get(binding.id)!(incoming)
+    await until(async () => (await f.service.handle('snapshot', undefined) as Snapshot).approvals.length === 1)
+    const first = (await f.service.handle('snapshot', undefined) as Snapshot).approvals[0]
+    expect(first.directory).toMatchObject({ directory: business, access: 'read-only' }); expect(reads).toEqual([]); expect(f.sent).toEqual([])
+    await f.service.handle('approve', { id: first.id, approved: true, always: false })
+    await until(() => f.sent.length === 1)
+    expect(reads).toEqual(['CHANNEL-DIRECTORY-ORIGINAL']); expect(f.sent[0].text).toBe(reads[0])
+    const room = (await channels(f.service))[0]
+    await f.service.handle('sendMessage', { conversationId: room.id, requestId: randomUUID(), content: '本人在BOAI继续读取同一原件', mentionIds: [] })
+    await until(async () => (await f.service.handle('snapshot', undefined) as Snapshot).approvals.length === 1)
+    const second = (await f.service.handle('snapshot', undefined) as Snapshot).approvals[0]
+    expect(second.id).not.toBe(first.id); expect(second.directory?.directory).toBe(business)
+    await f.service.handle('approve', { id: second.id, approved: false })
+    await until(async () => (await detail(f.service, room.id)).runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)))
+    expect(reads).toHaveLength(1); expect(f.sent).toHaveLength(1); expect(failures).toHaveLength(1); expect(failures[0]).toContain('拒绝')
+    expect(await readFile(path, 'utf8')).toBe('CHANNEL-DIRECTORY-ORIGINAL')
+    await f.service.close(); f.service = await f.create()
+    expect(reads).toHaveLength(1); expect(f.sent).toHaveLength(1)
+    const state = await f.service.handle('snapshot', undefined) as Snapshot
+    expect(state.agents.find(agent => agent.id === 'writer')?.directoryGrants).toEqual([]); expect(state.approvals).toEqual([])
+    if (process.env.BOAI_DIRECTORY_LIFECYCLE_EVIDENCE_DIR) {
+      const output = join(process.env.BOAI_DIRECTORY_LIFECYCLE_EVIDENCE_DIR, `channel-${kind}`); await mkdir(output, { recursive: true })
+      await (f.service as unknown as { store: ProductStore }).store.backup(join(output, 'boai.sqlite'))
+      await writeFile(join(output, 'facts.json'), JSON.stringify({ externalRequests: 0, reads, failures, first, second, state, sent: f.sent, detail: await detail(f.service, room.id) }, null, 2))
+    }
+  })
+
+  it.each(['direct', 'group'] as const)('uses the executing employee web source for %s channel messages, local continuation and restart', async kind => {
+    const server = await webSearchServer()
+    try {
+      const f = await fixture()
+      const source = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: webSourceConfig }) as DataSource
+      const other = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...webSourceConfig, name: 'Other employee search' } }) as DataSource
+      for (const id of ['writer', 'researcher']) {
+        const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, directoryRevision, systemRole: _s, creationSource: _c, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === id)!
+        const own = id === 'writer' ? source : other
+        await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [own.id], webSearch: { mode: 'source', sourceId: own.id } })
+      }
+      let error: unknown
+      f.engine.handler = async ctx => {
+        try {
+          expect(ctx.agent.id).toBe('writer'); expect(ctx.dataSources?.map(source => source.id)).toEqual([source.id])
+          await expect(ctx.inspectDataSource!(other.id)).rejects.toThrow('权限')
+          const catalog = await ctx.inspectDataSource!(source.id)
+          expect(JSON.stringify(catalog)).toContain('tavily_search')
+          const search = await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_search', arguments: { query: 'public Orion launch schedule' } })
+          expect(JSON.stringify(search)).toContain(resultUrl)
+          const body = await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_extract', arguments: { urls: [resultUrl] } })
+          expect(JSON.stringify(body)).toContain(pageText); expect(ctx.work).toBeUndefined()
+          await ctx.onDelta(pageText + ' ' + resultUrl)
+        } catch (failure) { error = failure; throw failure }
+      }
+      const binding = await f.connect(await f.save()), input = event({ kind, chatId: kind === 'group' ? 'group' : 'private', text: '请用本人绑定来源查证公共资料' })
+      await f.incoming.get(binding.id)!(input)
+      await vi.waitFor(() => { if (error) throw error; expect(f.sent).toHaveLength(1) }, { timeout: 10000 })
+      const room = (await channels(f.service))[0]
+      expect(f.sent[0]).toMatchObject({ bindingId: binding.id, text: pageText + ' ' + resultUrl, externalThreadId: input.externalThreadId })
+      await f.incoming.get(binding.id)!(input); expect(server.calls).toHaveLength(2); expect(f.sent).toHaveLength(1)
+      await f.service.handle('sendMessage', { conversationId: room.id, requestId: randomUUID(), content: '在本地继续查证相同公共资料', mentionIds: [] })
+      await vi.waitFor(async () => { if (error) throw error; expect((await detail(f.service, room.id)).messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toHaveLength(2) }, { timeout: 10000 })
+      expect(server.calls).toHaveLength(4); expect(f.sent).toHaveLength(1)
+      const before = await detail(f.service, room.id); await f.service.close(); f.service = await f.create()
+      await until(async () => (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0].status === 'connected')
+      expect((await detail(f.service, room.id)).messages).toEqual(before.messages); expect(server.calls).toHaveLength(4)
+      await f.incoming.get(binding.id)!({ ...input, eventId: 'after-restart', externalThreadId: 'lark:after-restart' })
+      await vi.waitFor(() => { if (error) throw error; expect(f.sent).toHaveLength(2) }, { timeout: 10000 })
+      expect(server.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract', 'tavily_search', 'tavily_extract', 'tavily_search', 'tavily_extract'])
+      expect((await detail(f.service, room.id)).workItems).toEqual([])
+      if (process.env.BOAI_REVIEW_RUN_DIR) { const dir = join(process.env.BOAI_REVIEW_RUN_DIR, 'search-entries'); await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'channel-' + kind + '.json'), JSON.stringify({ kind, calls: server.calls, sent: f.sent, detail: await detail(f.service, room.id), externalRequests: 0, modelMode: 'controlled-engine-and-channel-transport-real-MCP-SDK' }, null, 2)) }
+    } finally { await server.close() }
+  })
+
+  it.each(['direct', 'group'] as const)('revokes prior knowledge provenance and does not share it with a replacement %s recipient', async kind => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    const original = event({ kind, chatId: kind === 'group' ? 'group' : 'private' })
+    await f.incoming.get(binding.id)!(original); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0], path = join(f.root, 'reference.md')
+    await writeFile(path, '只有原获准会话可用的知识')
+    const agent = ((await f.service.handle('snapshot', undefined)) as Snapshot).agents.find(agent => agent.id === 'writer')!
+    await f.service.handle('saveEmployeeKnowledge', { requestId: randomUUID(), agentId: agent.id, expectedConfigVersion: agent.configVersion, source: { kind: 'file', path, name: '规范.md' } })
+    const resource = (await f.service.handle('listEmployeeKnowledge', { agentId: agent.id }) as Resource[])[0]
+    await f.service.handle('setEmployeeKnowledgeSharing', { requestId: randomUUID(), agentId: agent.id, resourceId: resource.id, conversationId: room.id, expectedConfigVersion: (await detail(f.service, room.id)).conversation.configVersion, shared: true })
+    f.engine.handler = async context => {
+      const read = createKnowledgeOperations(context).find(tool => tool.name === 'read_knowledge')
+      await context.onDelta(read ? (await read.execute({ resourceId: resource.id, path: resource.path, contentHash: resource.knowledge!.contentHash }) as { content: string }).content : '没有获准知识资料')
+    }
+    await f.incoming.get(binding.id)!({ ...original, eventId: 'knowledge-history' }); await until(() => f.sent.length === 2)
+    expect(f.sent[1].text).toBe('只有原获准会话可用的知识')
+    const answer = (await detail(f.service, room.id)).messages.find(message => message.content === f.sent[1].text)!
+    const store = (f.service as unknown as { store: ProductStore }).store
+    expect(await store.get('memoryObservations', answer.runId!)).toBeTruthy()
+    await f.service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    expect(await store.get('memoryObservations', answer.runId!)).toBeTruthy()
+    expect((await store.get<{ invalidated?: boolean }>('snapshots', answer.runId!))?.invalidated).not.toBe(true)
+    const stopped = (await f.service.handle('listChannelBindings', { agentId: agent.id }) as ChannelBindingState[])[0]
+    const edited = await f.service.handle('saveChannelBinding', { id: stopped.id, agentId: agent.id, platform: stopped.platform, appId: stopped.appId, name: stopped.name, expectedRevision: stopped.revision, allowedUserIds: kind === 'direct' ? ['replacement'] : ['owner'], allowedChatIds: kind === 'group' ? ['replacement-group'] : [], requestId: randomUUID() }) as ChannelBindingState
+    expect((await store.get<{ invalidated?: boolean }>('snapshots', answer.runId!))?.invalidated).toBe(true)
+    expect(await store.get('memoryObservations', answer.runId!)).toBeUndefined()
+    await f.connect(edited)
+    await f.incoming.get(binding.id)!({ ...original, eventId: 'replacement', userId: kind === 'direct' ? 'replacement' : 'owner', chatId: kind === 'group' ? 'replacement-group' : 'private' })
+    await until(() => f.sent.length === 3)
+    expect(f.sent[2].text).toBe('没有获准知识资料')
+    expect(f.engine.contexts.at(-1)?.conversation.id).not.toBe(room.id)
+    expect(f.engine.contexts.at(-1)?.resources.some(item => item.id === resource.id)).toBe(false)
+    expect((await f.service.handle('listEmployeeKnowledge', { agentId: agent.id }) as Resource[]).map(item => item.id)).toContain(resource.id)
+    expect((await detail(f.service, room.id)).messages.some(message => message.id === answer.id)).toBe(true)
+  })
+
+  it.each((['disconnect', 'remove', 'reconnect', 'local'] as const).flatMap(operation => ['between-reads', 'in-flight-read'].map(stage => ({ operation, stage }))))('invalidates active external knowledge on $operation at $stage while retaining owner-local access', async ({ operation, stage }) => {
+    const f = await fixture(), binding = await f.connect(await f.save())
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0], path = join(f.root, 'private-reference.md')
+    await writeFile(path, '知识资料：项目颜色蓝色。')
+    const agent = ((await f.service.handle('snapshot', undefined)) as Snapshot).agents.find(agent => agent.id === 'writer')!
+    await f.service.handle('saveEmployeeKnowledge', { requestId: randomUUID(), agentId: agent.id, expectedConfigVersion: agent.configVersion, source: { kind: 'file', path, name: '参考.md' } })
+    const resource = (await f.service.handle('listEmployeeKnowledge', { agentId: agent.id }) as Resource[])[0]
+    await f.service.handle('setEmployeeKnowledgeSharing', { requestId: randomUUID(), agentId: agent.id, resourceId: resource.id, conversationId: room.id, expectedConfigVersion: (await detail(f.service, room.id)).conversation.configVersion, shared: true })
+    let held: EngineContext | undefined, first = '', second = '', error = '', done = false
+    let release!: () => void
+    const pause = new Promise<void>(resolve => { release = resolve })
+    f.engine.handler = async context => {
+      const read = createKnowledgeOperations(context).find(tool => tool.name === 'read_knowledge')!
+      const args = { resourceId: resource.id, path: resource.path, contentHash: resource.knowledge!.contentHash }
+      try {
+        first = (await read.execute(args) as { content: string }).content
+        if (stage === 'between-reads') { held = context; await pause }
+        else {
+          const access = context.assertKnowledgeAccess!
+          let checks = 0
+          context.assertKnowledgeAccess = async ids => {
+            // The third gate follows the actual file read, before returning bytes.
+            if (++checks === 3) { held = context; await pause }
+            await access(ids)
+          }
+        }
+        try { second = (await read.execute(args) as { content: string }).content } catch (failure) { error = String(failure) }
+        await context.onDelta('迟到参考答案：蓝色')
+      } finally { done = true }
+    }
+    try {
+      if (operation === 'local') await f.service.handle('sendMessage', { conversationId: room.id, content: '本人继续查阅资料', requestId: randomUUID(), mentionIds: [] })
+      else await f.incoming.get(binding.id)!(event({ eventId: 'knowledge-active', text: '请查阅资料' }))
+      await until(() => !!held)
+      await f.service.handle(operation === 'remove' ? 'removeChannelBinding' : 'disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+      if (operation === 'reconnect') await f.connect((await f.service.handle('listChannelBindings', { agentId: agent.id }) as ChannelBindingState[])[0])
+      release(); await until(() => done)
+      await until(async () => (await detail(f.service, room.id)).runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)))
+      expect(first).toBe('知识资料：项目颜色蓝色。')
+      expect(held!.signal.aborted).toBe(operation !== 'local')
+      expect(second).toBe(operation === 'local' ? first : '')
+      expect(Boolean(error)).toBe(operation !== 'local')
+      const answers = (await detail(f.service, room.id)).messages.filter(message => message.status === 'completed' && message.content.includes('迟到参考答案'))
+      expect(answers).toHaveLength(operation === 'local' ? 1 : 0)
+      expect(f.sent).toHaveLength(1)
+    } finally { release() }
+  })
+
   it('includes local continuation in the same record paging, search and unread counts', async () => {
     const f = await fixture(), binding = await f.connect(await f.save())
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
@@ -664,13 +858,83 @@ describe('employee channel business connection', () => {
     let release!: () => void, entered!: () => void
     const started = new Promise<void>(resolve => { entered = resolve }), gate = new Promise<void>(resolve => { release = resolve })
     const run = f.engine.run.bind(f.engine)
-    f.engine.run = async context => { entered(); await gate; await run(context) }
+    let finished = false
+    f.engine.run = async context => { entered(); await gate; try { await run(context) } finally { finished = true } }
     await f.incoming.get(binding.id)!(event()); await started
     await f.service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
     const stopped = (await f.service.handle('listChannelBindings', { agentId: 'writer' }) as ChannelBindingState[])[0]
     const edited = await f.service.handle('saveChannelBinding', { id: stopped.id, agentId: 'writer', platform: 'feishu', appId: stopped.appId, name: stopped.name, expectedRevision: stopped.revision, allowedUserIds: ['other'], allowedChatIds: [], requestId: 'revoke-old-user' }) as ChannelBindingState
     await f.connect(edited); release()
-    await until(async () => (await detail(f.service, (await channels(f.service))[0].id)).messages.some(message => message.senderType === 'agent' && message.status === 'completed'))
+    await until(() => finished)
+    const view = await detail(f.service, (await channels(f.service))[0].id)
+    expect(view.runs.some(run => run.phase === 'execution' && run.status === 'cancelled')).toBe(true)
+    expect(view.messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
     expect(f.sent).toHaveLength(0)
   })
+})
+
+for (const transport of ['rpc', 'standalone'] as const) it.skipIf(transport === 'standalone' && process.env.BOAI_CLI_CHANNEL_PROCESS_TEST !== '1')(`continues a channel privately and publishes only explicitly through CLI ${transport}, preserving unknown and restart receipts`, async () => {
+  const f = await fixture(), binding = await f.connect(await f.save())
+  const cleanup: (() => Promise<unknown> | void)[] = []
+  const commands: { method: string; code: number; stdout?: string; stderr?: string }[] = []
+  const connect = async (app: AppService) => {
+    const server = await openDesktopCli(f.root, 'test', { request: async (method, input) => app.handle(method, input) as never }); cleanup.push(() => server.close())
+    const metadata = await readLocalConnection(f.root), client = new CliRpcClient(metadata.url, metadata); cleanup.push(() => client.destroy()); await client.connect()
+    return { server, client, invoke: async <T>(method: string, input: unknown): Promise<T> => {
+      if (transport === 'rpc') return client.invoke(method, input) as Promise<T>
+      try {
+        const result = await promisify(execFile)(process.execPath, [resolve('dist/cli/index.mjs'), '--data-dir', f.root, 'invoke', method, JSON.stringify(input), '--json'], { cwd: f.root, env: { PATH: process.env.PATH, HOME: f.root, TMPDIR: f.root }, timeout: 15000, maxBuffer: 2 * 1024 * 1024 })
+        commands.push({ method, code: 0, ...result }); expect(result.stderr).toBe(''); return JSON.parse(result.stdout) as T
+      } catch (error) {
+        const e = error as { code?: number; stdout?: string; stderr?: string }
+        commands.push({ method, code: e.code ?? -1, stdout: e.stdout, stderr: e.stderr }); throw error
+      }
+    } }
+  }
+  try {
+    const cli = await connect(f.service)
+    await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
+    const room = (await channels(f.service))[0]
+    const local = await cli.invoke<Message>('sendMessage', { conversationId: room.id, content: '仅在BOAI内部讨论，不外发。', mentionIds: [], requestId: 'cli-channel-local' })
+    await until(async () => (await detail(f.service, room.id)).messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length === 2)
+    const before = await detail(f.service, room.id), answer = before.messages.at(-1)!, source = before.messages[0]
+    expect(f.sent).toHaveLength(1); expect(local.channel).toBeUndefined()
+    const calls = f.engine.contexts.length, contentHash = createHash('sha256').update(JSON.stringify([answer.id, answer.conversationId, answer.content, answer.status])).digest('hex')
+    const selected = { conversationId: room.id, messageId: answer.id, contentHash, requestId: 'cli-publish-reply' }
+    await expect(cli.invoke('publishChannelReply', { ...selected, contentHash: 'f'.repeat(64) })).rejects.toThrow()
+    expect(f.sent).toHaveLength(1)
+    const published = await cli.invoke<Message>('publishChannelReply', selected); expect(published.id).toBe(answer.id)
+    await until(() => f.sent.length === 2)
+    expect((await cli.invoke<ChannelDelivery[]>('listChannelMessageDeliveries', { conversationId: room.id, messageIds: [answer.id] }))[0].status).toBe('sent')
+    expect((await cli.invoke<Message>('publishChannelReply', selected)).id).toBe(answer.id)
+    expect(f.sent).toHaveLength(2); expect(f.engine.contexts).toHaveLength(calls)
+    const explicit = { conversationId: room.id, sourceMessageId: source.id, content: '明确发送这条说明。', artifacts: [], requestId: 'cli-publish-new' }
+    const sent = await cli.invoke<Message>('publishChannelMessage', explicit)
+    await until(() => f.sent.length === 3)
+    expect(f.sent.at(-1)).toMatchObject({ text: explicit.content, externalThreadId: 'lark:private:event-1' })
+    await expect(cli.invoke('publishChannelMessage', { ...explicit, content: '相同请求不同文字' })).rejects.toThrow()
+    await expect(cli.invoke('publishChannelMessage', { ...explicit, requestId: 'bad-shape', hiddenPermission: 'full-access' })).rejects.toThrow()
+    f.failSend.add(binding.id)
+    const unknownInput = { ...explicit, content: '外部受理后回执失联。', requestId: 'cli-publish-unknown' }
+    const unknown = await cli.invoke<Message>('publishChannelMessage', unknownInput)
+    await until(async () => (await cli.invoke<ChannelDelivery[]>('listChannelMessageDeliveries', { conversationId: room.id, messageIds: [unknown.id] }))[0]?.status === 'unknown')
+    const beforeRestart = await detail(f.service, room.id)
+    cli.client.destroy(); await cli.server.close(); await f.service.close()
+    const restarted = await f.create(), next = await connect(restarted)
+    expect((await next.invoke<Message>('publishChannelReply', selected)).id).toBe(answer.id)
+    expect((await next.invoke<Message>('publishChannelMessage', explicit)).id).toBe(sent.id)
+    expect((await next.invoke<Message>('publishChannelMessage', unknownInput)).id).toBe(unknown.id)
+    expect(await next.invoke('getMessageReceipt', { requestId: unknownInput.requestId })).toMatchObject({ id: unknown.id })
+    expect((await detail(restarted, room.id)).messages).toEqual(beforeRestart.messages)
+    expect(f.sent).toHaveLength(4); expect(f.engine.contexts).toHaveLength(calls)
+    await restarted.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: binding.revision })
+    await expect(next.invoke('publishChannelMessage', { ...explicit, requestId: 'cli-revoked' })).rejects.toThrow()
+    expect(f.sent).toHaveLength(4); expect(f.engine.contexts).toHaveLength(calls)
+    if (process.env.BOAI_REVIEW_RUN_DIR) {
+      const directory = join(process.env.BOAI_REVIEW_RUN_DIR, 'cli-channel-' + transport); await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, 'facts.json'), JSON.stringify({ transport, local, selected, sent, unknown, beforeRestart, afterRestart: await detail(restarted, room.id), deliveries: await next.invoke('listChannelMessageDeliveries', { conversationId: room.id, messageIds: [answer.id, sent.id, unknown.id] }), actualSends: f.sent, calls, commands, externalRequests: 0 }, null, 2))
+      const db = new DatabaseSync(join(f.root, 'boai.sqlite'), { readOnly: true })
+      try { db.exec(`VACUUM INTO '${join(directory, 'boai.sqlite').replaceAll("'", "''")}'`) } finally { db.close() }
+    }
+  } finally { for (const close of cleanup.reverse()) await close() }
 })

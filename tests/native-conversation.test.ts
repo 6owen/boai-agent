@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: Codex/Claude真实stdio知识工具读取、同版本续聊及更新/重启会话资格；无Work，夹具非真实模型。
  * [OUTPUT]: 同一整体权限经SQLite保存、实际stdio参数与只读提权拒绝核对；原协议夹具不认证真实模型。
  * [OUTPUT]: 浏览器读后写按2026-10-17默认免审批合同验收；保留媒体/惰性Work/来源回执及重启断言，不等待已退役网页审批。
  * [OUTPUT]: Codex/Claude定时浏览器经实际stdio/MCP协议执行读图/写入/回读，沿原occurrence Work。
@@ -28,6 +31,96 @@ const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it('preserves native configuration and explicit cwd when old API directory metadata exists', async () => {
+ const f=await setup(), outside=await realpath(await mkdtemp(join(tmpdir(),'boai-native-cwd-')))
+ disposals.push(()=>rm(outside,{recursive:true,force:true}))
+ await f.service.close()
+ const store=new ProductStore(join(f.root,'boai.sqlite'));await store.init()
+ const inherited={...f.agent,directoryGrants:[{path:join(outside,'offline-api-directory'),access:'read-only' as const}],directoryRevision:1,nativeOptions:{codexSandbox:'workspace-write' as const,codexApprovalPolicy:'on-request' as const,claudePermissionMode:'acceptEdits' as const}}
+ await store.write([{collection:'agents',id:inherited.id,value:inherited}]);await store.close();await f.restart()
+ const {configVersion,memoryNamespace,workspaceRef,policyVersion,directoryRevision,...definition}=inherited
+ const saved=await f.service.handle('saveAgent',{...definition,expectedConfigVersion:configVersion,expectedDirectoryRevision:1,name:'沿用本机配置'}) as DigitalAgent
+ expect(saved.directoryGrants).toEqual(inherited.directoryGrants);expect(saved.nativeOptions).toEqual(inherited.nativeOptions)
+ const first=await f.wait(await f.send('普通交流'))
+ expect(first.runs.every(run=>run.status==='completed'),JSON.stringify(first.runs)).toBe(true)
+ const sent=await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'在指定目录继续',mentionIds:[],requestId:crypto.randomUUID(),workingDirectory:outside}) as Message
+ const second=await f.wait(sent)
+ expect(second.runs.every(run=>run.status==='completed'),JSON.stringify(second.runs)).toBe(true)
+ expect(second.workItems).toEqual([])
+ expect((await f.service.handle('snapshot',undefined) as Snapshot).approvals).toEqual([])
+ for(const cwd of [join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work'),outside]){
+  const calls=(await readFile(join(cwd,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+  if(runtime==='codex'){
+   expect(calls[0].params).toMatchObject({cwd,sandbox:'workspace-write',approvalPolicy:'on-request'})
+   expect(calls[0].params).not.toHaveProperty('permissions')
+   const names=calls[0].params.dynamicTools.flatMap((entry:{tools?:{name:string}[]})=>(entry.tools??[]).map(tool=>tool.name))
+   expect(names).not.toContain('request_directory');expect(names).toContain('publish_artifact')
+  }else{
+   const argv=calls[0].params.argv as string[]
+   expect(argv[argv.indexOf('--permission-mode')+1]).toBe('acceptEdits')
+   for(const flag of ['--settings','--setting-sources','--strict-mcp-config','--dangerously-skip-permissions'])expect(argv).not.toContain(flag)
+  }
+ }
+ const inheritedAgain=await f.service.handle('saveAgent',{...definition,expectedConfigVersion:saved.configVersion,expectedDirectoryRevision:1,executionPermission:'full-access',nativeOptions:{...inherited.nativeOptions,useNativePermissions:true}}) as DigitalAgent
+ expect(inheritedAgain.executionPermission).toBeUndefined();expect(inheritedAgain.nativeOptions).toEqual({useNativePermissions:true})
+ const third=await f.wait(await f.send('重新沿用本机配置'))
+ expect(third.runs.every(run=>run.status==='completed'),JSON.stringify(third.runs)).toBe(true)
+ const inheritedCalls=(await readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ const last=inheritedCalls.at(-1).params
+ if(runtime==='codex'){expect(last).not.toHaveProperty('sandbox');expect(last).not.toHaveProperty('approvalPolicy')}
+ else {expect(last.argv).not.toContain('--permission-mode');expect(last.argv).not.toContain('--dangerously-skip-permissions');expect(last.argv).not.toContain('--settings')}
+ const runCount=third.runs.length;await f.restart()
+ expect((await f.detail()).runs).toHaveLength(runCount)
+ expect((await f.service.handle('snapshot',undefined) as Snapshot).agents.find(agent=>agent.id===saved.id)?.directoryGrants).toEqual(inherited.directoryGrants)
+ if(process.env.BOAI_NATIVE_CONFIG_EVIDENCE_DIR){
+  const target=join(process.env.BOAI_NATIVE_CONFIG_EVIDENCE_DIR,runtime);await mkdir(target,{recursive:true})
+  const store=new ProductStore(join(f.root,'boai.sqlite'));await store.init()
+  try{await store.backup(join(target,'boai.sqlite'))}finally{await store.close()}
+  await writeFile(join(target,'facts.json'),JSON.stringify({runtime,agent:inheritedAgain,requests:inheritedCalls,externalCwdRequests:(await readFile(join(outside,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line)),runs:third.runs,workItems:third.workItems,restartRunCount:runCount,externalRequests:0},null,2))
+ }
+})
+
+it('reads knowledge through native product tools without Work and rebuilds the native session only when the knowledge version changes', async () => {
+ const f=await setup(), source=join(f.root,'knowledge-source.md'), first='# 品牌规范\n标题蓝色。', second='# 品牌规范\n标题绿色。'
+ await writeFile(source,first)
+ const receipt=await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:f.agent.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'}}) as import('../src/shared/domain/knowledge').KnowledgeReceipt
+ const resource=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../src/shared/domain').Resource[])[0]
+ for(let i=0;i<2;i++){
+  const detail=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
+  expect(detail.runs.every(run=>run.status==='completed'),JSON.stringify(detail.runs.map(run=>({status:run.status,error:run.error})))).toBe(true)
+  expect(detail.messages.filter(message=>message.senderType==='agent').at(-1)?.content).toContain(first)
+  expect(detail.workItems).toEqual([])
+ }
+ await writeFile(source,second)
+ await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:receipt.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'},replace:{resourceId:resource.id,revision:resource.knowledge!.revision,contentHash:resource.knowledge!.contentHash}})
+ const changed=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
+ expect(changed.runs.every(run=>run.status==='completed'),JSON.stringify(changed.runs.map(run=>({status:run.status,error:run.error})))).toBe(true)
+ expect(changed.messages.filter(message=>message.senderType==='agent').at(-1)?.content).toContain(second)
+ const beforeRestart=changed.runs.length
+ await f.restart();expect((await f.detail()).runs).toHaveLength(beforeRestart)
+ const restarted=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
+ expect(restarted.runs.every(run=>run.status==='completed'),JSON.stringify(restarted.runs.map(run=>({status:run.status,error:run.error})))).toBe(true);expect(restarted.workItems).toEqual([])
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ const requests=(await readFile(join(cwd,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(requests.map(request=>request.method)).toEqual(['thread/start','thread/resume','thread/start','thread/resume'])
+ const reads=(await readFile(join(cwd,'native-knowledge-reads.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(reads.map(read=>read.content)).toEqual([first,first,second,second])
+ expect(reads.every(read=>read.contentHash===createHash('sha256').update(read.content).digest('hex'))).toBe(true)
+ const current=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../src/shared/domain').Resource[])[0]
+ // Identical bytes still receive a new immutable copy/path and revision.
+ await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:receipt.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'},replace:{resourceId:current.id,revision:current.knowledge!.revision,contentHash:current.knowledge!.contentHash}})
+ const copied=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
+ expect(copied.runs.every(run=>run.status==='completed')).toBe(true);expect(copied.workItems).toEqual([])
+ const finalRequests=(await readFile(join(cwd,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ const finalReads=(await readFile(join(cwd,'native-knowledge-reads.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(finalRequests.map(request=>request.method)).toEqual(['thread/start','thread/resume','thread/start','thread/resume','thread/start'])
+ expect(finalReads.at(-1).content).toBe(second);expect(finalReads.at(-1).citation).not.toBe(finalReads.at(-2).citation)
+ if(process.env.BOAI_REVIEW_RUN_DIR){
+  const target=join(process.env.BOAI_REVIEW_RUN_DIR,`native-knowledge-${runtime}`);await mkdir(target,{recursive:true})
+  await writeFile(join(target,'evidence.json'),JSON.stringify({classification:'isolated-native-protocol',realProviderRequests:0,requests:finalRequests,reads:finalReads,detail:copied},null,2))
+ }
+})
 
 it.each(['read-only', 'ask', 'full-access'] as const)('saves whole %s permissions and sends matching native access and approval settings', async executionPermission => {
  const f=await setup()

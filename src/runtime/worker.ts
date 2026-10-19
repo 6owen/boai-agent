@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 仅启动竞争失败时发owner-busy，主进程等本worker实际退出再认证附着原服务；不受理业务。
+ * [OUTPUT]: 原父端口与附着桌面复用显式dispatchRuntime，内部方法不开放给普通CLI。
+ * [OUTPUT]: 与独立服务共用owner装配；原服务/适配器实际排空后才释放配置锁。
  * [OUTPUT]: 版本化Magpie系统导入先持久草稿、明确确认后事务保存连接/回执；冷启动有界队列、未知核对和Sonner反馈，完整应用验收仍待运行。
  * [OUTPUT]: 通用插件执行路由、独立宿主/租约与产品桥；插件session恢复、私有目录备份排除，旧引擎兼容。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
@@ -9,9 +12,10 @@
  */
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { AppService } from './service'
+import { startOwnedRuntime } from './bootstrap'
+import { RuntimeOwnedError } from './owner'
 import { MastraEngine } from './adapters/mastra/engine'
-import type { AutomationNoticeReceipt } from '../shared/domain/automations'
+import { dispatchRuntime } from './dispatch'
 import type { RpcRequest } from '../shared/ipc'
 import type { BrowserHostBridge, BrowserHostMethods } from '../shared/ipc/browser'
 import type { SecretStore } from './contracts'
@@ -44,7 +48,8 @@ const browserHost:BrowserHostBridge = {
   }),
 }
 process.env.BOAI_RUNTIME_PLUGIN_BUNDLE ??= fileURLToPath(new URL('./plugins/', import.meta.url)).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')
-const service = new AppService({ dataPath, secrets, browserHost, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
+let starting: ReturnType<typeof startOwnedRuntime>
+let service: Awaited<ReturnType<typeof startOwnedRuntime>>['service']
 let shuttingDown = false
 port.on('message', async ({ data }) => {
   if (data?.type === 'browser-host-result') {
@@ -61,32 +66,27 @@ port.on('message', async ({ data }) => {
   }
   if (data?.type === 'shutdown') {
     shuttingDown = true
-    await service.close()
+    try { await (await starting).close() }
+    catch (error) { if (!(error instanceof RuntimeOwnedError)) throw error }
     port.postMessage({ type: 'stopped' })
     return
   }
-  if (data?.type !== 'request' || shuttingDown) return
+  if (data?.type !== 'request' || shuttingDown || !service) return
   const request = data.request as RpcRequest
   try {
-    const result = request.method as string === '__receiveGatewayImport'
-      ? await service.receiveGatewayImport(request.input)
-      : request.method as string === '__installRuntimePlugin'
-      ? await service.installRuntimePlugin((request.input as {directory:string}).directory,(request.input as {expectedRevision:number}).expectedRevision)
-      : request.method as string === '__startBrowserAction'
-      ? await service.startBrowserAction(request.input as {actionId:string;generation:string;runId:string;workId?:string})
-      : request.method as string === '__takeAutomationNotice'
-      ? await service.takeAutomationNotice()
-      : request.method as string === '__settleAutomationNotice'
-        ? await service.settleAutomationNotice(request.input as AutomationNoticeReceipt)
-        : request.method as string === '__backup'
-      ? await service.backup((request.input as { destination: string }).destination)
-      : request.method as string === '__exportSkillLibrary'
-        ? await service.exportSkillLibrary((request.input as { input: unknown }).input, (request.input as { destination: string }).destination)
-        : await service.handle(request.method, request.input)
+    const result = await dispatchRuntime(service, request.method, request.input)
     port.postMessage({ type: 'response', response: { id: request.id, result } })
   } catch (error) {
     port.postMessage({ type: 'response', response: { id: request.id, error: error instanceof Error ? error.message : '操作失败' } })
   }
 })
-await service.init()
-port.postMessage({ type: 'ready' })
+starting = startOwnedRuntime({ dataPath, secrets, browserHost, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
+try {
+  const owned = await starting; service = owned.service
+  if (!shuttingDown) port.postMessage({ type: 'ready', owner: owned.owner })
+} catch (error) {
+  if (!(error instanceof RuntimeOwnedError)) throw error
+  // No AppService was initialized and no business request was accepted. The parent stops this
+  // losing process and authenticates the winner only after observing our actual exit.
+  port.postMessage({ type: 'owner-busy' })
+}

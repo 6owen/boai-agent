@@ -1,12 +1,17 @@
 /*
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
+ * [OUTPUT]: 员工目录策略启用时通过macOS Seatbelt限制命令及继承后代的实际读写；原取消/进程组退出保持，旧配置和完全访问沿原宿主执行。
  * [OUTPUT]: stdout/stderr 分别增量解码 UTF-8，管道拆包不会损坏中文/emoji；原字节上限和实际退出保持。
  * [INPUT]: 宿主逐次批准的命令、受管工作目录和取消信号。
  * [OUTPUT]: 有界命令结果与可复用POSIX进程组退出核对；取消/超时期间保留执行占用，Windows等待taskkill回执。
- * [POS]: API与本机员工共用的宿主命令执行器；不是外部程序安全沙箱。
+ * [POS]: API与本机员工共用的宿主命令执行器；可选员工目录隔离，其他宿主能力仍沿原授权。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
+import { directoryCommandBoundary, type CommandDirectoryScope } from '../../modules/workspaces/directory-command'
+import { employeeEnvironment } from '../../../shared/cli/employee-environment'
+import type { RunCliEnvironment } from '../../../shared/cli/run-access'
 const MAX_TOOL_OUTPUT = 48_000
 const EXIT_CHECK_INTERVAL_MS = 10
 const check = (signal: AbortSignal) => signal.throwIfAborted()
@@ -34,18 +39,21 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<
   })
 }
 
-/** Approved host command, not a security sandbox. Limits lifetime, output and inherited secrets. */
-export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number) {
+/** Optional employee filesystem policy; lifetime, output and process-group ownership stay shared. */
+export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number, directories?: CommandDirectoryScope, cli?: RunCliEnvironment) {
   check(signal)
-  const env: NodeJS.ProcessEnv = {}
+  const boundary = directories ? await directoryCommandBoundary(command, directories) : undefined
+  check(signal)
+  const env: NodeJS.ProcessEnv = employeeEnvironment({}, cli)
   for (const key of ['PATH', 'HOME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot', 'COMSPEC', 'LANG', 'LC_ALL']) {
     if (process.env[key]) env[key] = process.env[key]
   }
   env.BOAI_RUN_DIR = cwd
+  if (directories) env.TMPDIR = env.TMP = env.TEMP = cwd
   return new Promise<{ exitCode: number | null; stdout: string; stderr: string; truncated: boolean }>((resolve, reject) => {
     const child = process.platform === 'win32'
       ? spawn(process.env.COMSPEC || 'cmd.exe', ['/d', '/s', '/c', command], { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
-      : spawn('/bin/sh', ['-c', command], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : spawn(boundary?.command ?? '/bin/sh', boundary?.args ?? ['-c', command], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = '', size = 0, truncated = false, failure: Error | undefined
     const decoders = { stdout: new StringDecoder('utf8'), stderr: new StringDecoder('utf8') }
     const killers = new Set<Promise<void>>()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: DeepSeek官方API配置自动提供搜索/正文工具，测试执行一次明确的公开搜索。
  * [OUTPUT]: BOAI适配按员工授权设置访问，删除上游API/local默认只读建议；bobo无需绑定。
  * [INPUT]: Craft 22c9f041 sources.md Source Setup Process and EditPopover add-source context.
  * [OUTPUT]: 对话式配置/查文档/使用说明/实际测试流程，适配BOAI管理工具和已支持认证。
@@ -29,6 +30,7 @@ Do not guess a token, account, project, URL or folder. Do not test credentials a
 Map the user's description, endpoint, OpenAPI text or JSON into the provided BOAI config schema.
 All types require name, description, guide and enabled. Use one stable key per source intent with create, and reuse it for an unknown creation result.
 - API: api.baseUrl and authType (none/bearer/header/query/basic); use headerName/queryParam when applicable. Choose a documented harmless GET testPath. Do not set an API access policy on the connection.
+- DeepSeek Search/Fetch: use type api, baseUrl https://api.deepseek.com, authType bearer and the user-provided DeepSeek API key. BOAI exposes fixed deepseek_search/deepseek_fetch tools. With default testPath / an explicit test performs one public query (DeepSeek, count 1), potentially billed by the provider; no request is made merely by saving or inspecting. A custom GET testPath preserves the original endpoint test. Generic API request remains available under normal employee operation permissions; only the fixed search/fetch tools qualify for read-only web chat. This source is independent of the employee model connection.
 - Remote MCP: mcp.transport is http (Streamable HTTP) or sse, with url and authType (none/bearer).
 - Local MCP: mcp.transport is stdio, with command and args preserved separately. A standard mcpServers JSON object may contain several named servers: configure each requested entry separately. Map type "streamable-http" to transport "http"; preserve an explicit SSE type. Never silently discard unsupported headers, cwd or other meaningful options: explain the missing capability before choosing an alternative.
 - For stdio env, submit the exact user-provided environment object as credential JSON; never put values in description/guide or echo them. A remote Authorization: Bearer header maps to the write-only credential and authType bearer.

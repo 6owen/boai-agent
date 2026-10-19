@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 普通问答仅核准搜索/正文，拒绝本地/未知工具；目录变化阻止旧工具及迟到响应。
+ * [OUTPUT]: 未核准MCP提示不放宽权限；实际HTTP协议重放官方额度响应，核准搜索按只读门禁且业务失败不冒充成功。
  * [OUTPUT]: 验证退休权限字段迁移保留身份/版本/凭据，API与本地授权读写及目录/hash边界。
  * [OUTPUT]: 新增会话三种配置、凭据隔离、提交后未知重试/重启/删除不复活/撤权拒绝。
  * [INPUT]: Real SQLite/vault fixtures, HTTP server, local files and supervised MCP processes.
@@ -18,6 +20,7 @@ import { SourceService } from '../src/runtime/modules/sources/source-service'
 import { openSourceSession, redactSourceValue } from '../src/runtime/modules/sources/source-provider'
 import { type DataSource, type DataSourceConfig } from '../src/shared/domain/sources'
 import type { DigitalAgent } from '../src/shared/domain'
+import { webSearchServer, webSourceConfig, webResult, pageText, resultUrl } from './fixtures/web-search-server'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -140,7 +143,7 @@ describe('data sources', () => {
     const result = await f.service.use(ref, 'mcp-run', signal(), { sourceId: source.id, tool: 'echo', arguments: { value: 'hello' } }, async value => { mutating.push(value) })
     expect(JSON.stringify(result)).toContain('hello'); expect(JSON.stringify(result)).not.toContain('private-mcp-token')
     await f.service.use(ref, 'mcp-run', signal(), { sourceId: source.id, tool: 'write', arguments: {} }, async value => { mutating.push(value) })
-    expect(mutating).toEqual([false, true]); const child = Number(await readFile(pidFile, 'utf8'))
+    expect(mutating).toEqual([true, true]); const child = Number(await readFile(pidFile, 'utf8'))
     await new Promise(resolve => setTimeout(resolve, 300))
     await f.service.closeRun('mcp-run')
     await vi.waitFor(() => expect(() => process.kill(child, 0)).toThrow(), { timeout: 5000 })
@@ -182,6 +185,88 @@ it.each(['http', 'sse'] as const)('connects to real local MCP %s transport with 
   await f.service.closeRun('network')
 })
 
+it('classifies official search through the real source service but rejects a quota response marked isError=false', async () => {
+  const { Server } = await import('@modelcontextprotocol/sdk/server/index.js')
+  const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
+  const { ListToolsRequestSchema, CallToolRequestSchema } = await import('@modelcontextprotocol/sdk/types.js')
+  const catalog = JSON.parse(await readFile(new URL('./fixtures/tavily-catalog.json', import.meta.url), 'utf8'))
+  const quota = JSON.parse(await readFile(new URL('./fixtures/tavily-keyless-quota.json', import.meta.url), 'utf8'))
+  const server = new Server(catalog.serverInfo, { capabilities: { tools: {} } })
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() })
+  let calls = 0
+  const modes: (string | string[] | undefined)[] = []
+  server.setRequestHandler(ListToolsRequestSchema, async () => catalog.catalog)
+  server.setRequestHandler(CallToolRequestSchema, async request => { expect(request.params.name).toBe('tavily_search'); calls++; return quota })
+  await server.connect(transport)
+  const local = await http((req, res) => {
+    modes.push(req.headers['x-tavily-access-mode'])
+    void transport.handleRequest(req, res).catch(error => { res.writeHead(500); res.end(String(error)) })
+  })
+  cleanups.push(() => server.close())
+  const original = globalThis.fetch
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (url.origin !== 'https://mcp.tavily.com') throw new Error('Unexpected fixture destination')
+    const target = local + url.pathname
+    return original(input instanceof Request ? new Request(target, input) : target, init)
+  })
+  cleanups.push(async () => { fetch.mockRestore() })
+  const f = await fixture()
+  const source = await f.save({ ...base, type: 'mcp', mcp: { transport: 'http', url: 'https://mcp.tavily.com/mcp/', authType: 'none' } })
+  const ref = f.service.summaries([source.id])[0], mutating: boolean[] = []
+  await expect(f.service.use(ref, 'quota', signal(), { sourceId: source.id, tool: 'tavily_search', arguments: { query: 'public documentation' } }, async value => { mutating.push(value) })).rejects.toThrow('monthly_cap_reached_bonus_eligible')
+  expect(calls).toBe(1); expect(mutating).toEqual([false]); expect(modes.every(mode => mode === 'keyless')).toBe(true)
+  await f.service.closeRun('quota'); expect(f.service.busy).toBe(false)
+})
+
+
+it('allows verified search and extraction in web chat without exposing crawl, local files or stdio', async () => {
+  const server = await webSearchServer(); cleanups.push(() => server.close())
+  const f = await fixture(), source = await f.save(webSourceConfig), ref = f.service.summaries([source.id])[0]
+  expect(ref.webSearchProvider).toBe('tavily')
+  const inspect = await f.service.use(ref, 'web-chat', signal(), undefined, undefined, 'web-read') as { tools: { name: string }[] }
+  expect(inspect.tools.map(tool => tool.name).sort()).toEqual(['tavily_extract', 'tavily_search'])
+  const before = vi.fn(async (_mutating: boolean) => {})
+  for (const tool of ['tavily_crawl', 'tavily_research', 'unknown']) await expect(f.service.use(ref, 'web-chat', signal(), { sourceId: source.id, tool, arguments: {} }, before, 'web-read')).rejects.toThrow()
+  expect(before).not.toHaveBeenCalled(); expect(server.calls).toEqual([])
+  for (const tool of ['tavily_search', 'tavily_extract']) {
+    const result = await f.service.use(ref, 'web-chat', signal(), { sourceId: source.id, tool, arguments: tool === 'tavily_search' ? { query: 'Orion' } : { urls: [resultUrl] } }, before, 'web-read')
+    expect(JSON.stringify(result)).toContain(tool === 'tavily_search' ? resultUrl : pageText)
+  }
+  expect(before.mock.calls.map(([mutating]) => mutating)).toEqual([false, false])
+  for (const config of [
+    { ...base, type: 'local' as const, local: { path: f.root } },
+    { ...base, type: 'mcp' as const, mcp: { transport: 'stdio' as const, command: '/nonexistent-must-not-start', args: [] } },
+    { ...base, type: 'api' as const, api: { baseUrl: 'http://127.0.0.1:1', authType: 'none' as const, testPath: '/' } },
+  ]) {
+    const other = await f.save(config)
+    await expect(f.service.use(f.service.summaries([other.id])[0], 'web-chat', signal(), undefined, undefined, 'web-read')).rejects.toThrow('普通问答仅可')
+  }
+  expect(server.inspections).toBe(1); expect(server.calls).toHaveLength(2)
+  await f.service.closeRun('web-chat'); expect(f.service.busy).toBe(false)
+})
+
+it('invalidates the inspected catalog and an in-flight result after an actual MCP change notification', async () => {
+  let finish!: () => void
+  const pending = new Promise<void>(resolve => { finish = resolve })
+  const server = await webSearchServer(async name => { await pending; return webResult(name) }); cleanups.push(() => server.close())
+  const session = await openSourceSession(dto(webSourceConfig), '', await folder(), signal()); cleanups.push(() => session.close())
+  const result = session.call('tavily_search', { query: 'Orion' }, signal()).catch(error => error)
+  await vi.waitFor(() => expect(server.calls).toHaveLength(1))
+  await server.changed()
+  try { await vi.waitFor(() => expect(() => session.tools).toThrow('目录已变化')) }
+  finally { finish() }
+  expect(await result).toMatchObject({ message: 'MCP 工具目录已变化，请重新发起查询' })
+  await expect(session.call('tavily_search', {}, signal())).rejects.toThrow('目录已变化')
+  expect(server.calls).toHaveLength(1); expect(server.inspections).toBe(1)
+})
+
+it('rejects duplicate MCP tool identities before any tool call', async () => {
+  const server = await webSearchServer(); cleanups.push(() => server.close())
+  server.catalog.catalog.tools.push(server.catalog.catalog.tools[0])
+  await expect(openSourceSession(dto(webSourceConfig), '', await folder(), signal())).rejects.toThrow('重复名称')
+  expect(server.calls).toEqual([])
+})
 
 it('creates all source kinds with durable receipts, preserving credentials and rejecting changed, removed or revoked requests', async () => {
   const f = await fixture(), origin = { conversationId: 'source-chat', messageId: 'source-message', agentId: 'bobo' }

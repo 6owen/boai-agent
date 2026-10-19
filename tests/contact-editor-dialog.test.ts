@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 数据源目录夹具符合完整DataSource合同（含MCP transport）；知识入口核对当前员工文件区，原菜单/草稿/关闭顺序和零写断言保持。
  * [OUTPUT]: 员工组编辑共用员工左右布局与贴边渐隐滚动；基础配置/自动化切换保护草稿，群版本化保存期间关闭和菜单禁用，新建群布局保持。
  * [OUTPUT]: 渠道编辑独立Dialog保留原列表；局部取消/退出、保存禁关及原版本请求保持，未知保存仅核对冻结回执，不重复提交。
  * [OUTPUT]: 技能添加入口位于分区标题且空态无Card；数据源普通绑定行纯文字菜单、Popover取消/确认、重新添加及版本化保存，不删除全局资源。
@@ -22,6 +23,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { AgentFileContent, AgentHome, AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '../src/shared/domain'
 import type { ChannelBindingInput, ChannelBindingState } from '../src/shared/domain/channels'
 import type { BindLocalSkillInput, LocalSkill, SkillBindingPlan } from '../src/shared/domain/skills'
+import type { DataSource } from '../src/shared/domain/sources'
 import type { DesktopApi } from '../src/shared/ipc'
 import { ContactEditorDialog } from '../src/renderer/pages/contacts/contact-editor-layout'
 import { CreateAgentDialog, CreateGroupDialog } from '../src/renderer/components/employee/creation-dialogs'
@@ -295,7 +297,13 @@ const resources: Resource[] = [
   { id: 'skill-resource', kind: 'skill', name: '资料检索', description: '检索说明', path: '/fixture/skill', createdAt: '2026-10-17' },
   { id: 'knowledge-resource', kind: 'knowledge', name: '知识库', description: '知识说明', path: '/fixture/knowledge', createdAt: '2026-10-17' },
 ]
-function sourceCatalog(method: string) { return method === 'listDataSources' ? [{ id: 'source', name: '本地文件夹', type: 'local', enabled: true, description: '资料目录' }, { id: 'second-source', name: 'MCP资料', type: 'mcp', enabled: true, description: '检索服务' }] : undefined }
+function sourceCatalog(method: string): DataSource[] | undefined {
+  const common = { enabled: true, guide: '', revision: 1, createdAt: '2026-10-18T00:00:00Z', updatedAt: '2026-10-18T00:00:00Z', hasCredential: false }
+  return method === 'listDataSources' ? [
+    { ...common, id: 'source', name: '本地文件夹', type: 'local', description: '资料目录', local: { path: '/fixture/materials' } },
+    { ...common, id: 'second-source', name: 'MCP资料', type: 'mcp', description: '检索服务', mcp: { transport: 'http', authType: 'none', url: 'https://mcp.example.test/mcp' } },
+  ] : undefined
+}
 async function sourceAction(name: string, action: string) {
   await act(async () => document.querySelector<HTMLButtonElement>(`[aria-label="数据源操作 ${name}"]`)!.click())
   const item = [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(item => item.textContent === action)!
@@ -721,18 +729,18 @@ test('bound skill menus protect unsaved details navigation and remove only the e
 
 test.each([
   ['技能操作 资料检索', 'resource', 'skill-resource'],
-  ['查看知识资料 知识库', 'resource', 'knowledge-resource'],
+  ['知识资料 · 1 份', 'knowledge-files', agent.id],
   ['数据源操作 本地文件夹', 'source', 'source'],
-])('%s closes the employee dialog before opening the original resource details without changing bindings', async (label, kind, id) => {
+])('%s closes the employee dialog before opening its existing resource or knowledge-files destination without changing bindings', async (label, kind, id) => {
   const original = request.getMockImplementation()!
   request.mockImplementation(async (method, input) => sourceCatalog(method) ?? original(method, input))
-  const f = await fixture('employee', { ...snapshot, agents: [{ ...agent, skillIds: [resources[0].id] }], resources })
+  const f = await fixture('employee', { ...snapshot, agents: [{ ...agent, skillIds: [resources[0].id], knowledgeIds: [resources[1].id] }], resources })
   if (kind === 'source') await openSourceDetails('本地文件夹')
   else if (id === 'skill-resource') {
     await act(async () => document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click())
     await act(async () => [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(item => item.textContent === '打开详情')!.click())
   }
-  else await act(async () => document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click())
+  else await act(async () => button(label).click())
   expect(f.closed).toHaveBeenCalledOnce()
   expect(f.openResource).toHaveBeenCalledWith(expect.objectContaining({ kind, id }))
   expect(f.closed.mock.invocationCallOrder[0]).toBeLessThan(f.openResource.mock.invocationCallOrder[0]!)

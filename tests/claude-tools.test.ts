@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生运行取消时不提前返回普通工具错误，等待进程退出/桥关闭后释放被取消回传；真实已执行操作仍排空。
  * [OUTPUT]: 实际MCP客户端收到原生image部件及同tool-use回执，图片不退化为JSON文本。
  * [OUTPUT]: 只读计数/固定状态区分公告、接收、执行、回执及退出未知；重复请求不重放、失败/取消后仍可核对且无私有载荷。
  * [INPUT]: 真实MCP客户端/回环连接、明确工具调用身份与取消屏障。
@@ -17,11 +18,11 @@ import { createClaudeToolBridge } from '../src/runtime/adapters/claude/tools'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const operation of cleanup.splice(0).reverse()) await operation() })
-async function setup(execute: (args: unknown, id: string) => Promise<unknown> = async (args, id) => ({ args, id }), toModelContent?: NativeTool['toModelContent']) {
+async function setup(execute: (args: unknown, id: string) => Promise<unknown> = async (args, id) => ({ args, id }), toModelContent?: NativeTool['toModelContent'], native = false) {
   const root = await mkdtemp(join(tmpdir(), 'boai-claude-mcp-test-'))
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   const controller = new AbortController(), failures: Error[] = []
-  const bridge = await createClaudeToolBridge({configDirectory:root,signal:controller.signal,
+  const bridge = await createClaudeToolBridge({native,configDirectory:root,signal:controller.signal,
     tools:[{name:'echo',description:'Return the received payload',inputSchema:{type:'object',properties:{text:{type:'string'}}},execute,toModelContent}],
     onFailure: error => {failures.push(error);controller.abort(error)}})
   let closed = false
@@ -49,6 +50,23 @@ it('does not execute until the native announcement matches, and reuses the same 
   expect(calls).toEqual([{args:{text:'value'},id:'tool_a'}]);fixture.bridge.assertComplete()
   expect((await stat(fixture.bridge.configPath)).mode & 0o777).toBe(0o600)
   await fixture.close();await expect(stat(fixture.bridge.configPath)).rejects.toMatchObject({code:'ENOENT'})
+})
+
+it('withholds a cancelled native tool error until the process owner closes the bridge', async () => {
+  let release!: () => void, received = false
+  const held = new Promise<void>(resolve => { release = resolve })
+  const fixture = await setup(async () => { await held; return { effect: 'already finished' } }, undefined, true)
+  fixture.bridge.announce('cancelled-tool', 'mcp__boai__echo', { text: 'value' })
+  const pending = fixture.call('cancelled-tool').then(() => { received = true }, () => { received = true })
+  try {
+    await expect.poll(() => fixture.bridge.callState('cancelled-tool')).toBe('executing')
+    fixture.controller.abort(new Error('owner stopped the native process')); release()
+    await expect.poll(() => fixture.bridge.diagnostic().executionExits).toBe(1)
+    await new Promise(resolve => setTimeout(resolve, 30))
+    expect(received).toBe(false)
+    expect(fixture.bridge.diagnostic().completionConfirmations).toBe(0)
+  } finally { release(); await fixture.close(); await pending }
+  expect(received).toBe(true)
 })
 
 it.each(['arguments','name','identity'] as const)('rejects changed or missing %s before another side effect',async mode=>{

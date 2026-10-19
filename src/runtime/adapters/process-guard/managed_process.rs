@@ -1,10 +1,10 @@
 /*
 [INPUT]: Rovai identity-bound ProcessTree modules, actual CLI and private owner ledger.
-[OUTPUT]: Transparent native stdio, captured descendant cleanup before exit, recovery without replay.
+[OUTPUT]: Native stdio/cleanup plus private desktop lifetime observation; only a confirmed dead root permits descendant cleanup.
 [POS]: Minimal native supervisor; no model, product data or second employee/task authority.
 [PROTOCOL]: Update .folder.md, build integration and migration manifest when changed.
 */
-use std::{env, io, path::Path, process::{Command, Stdio}, sync::atomic::{AtomicBool, Ordering}, thread, time::Duration};
+use std::{env, io::{self, Read, Write}, path::Path, process::{Command, Stdio}, sync::atomic::{AtomicBool, Ordering}, thread, time::Duration};
 use std::os::unix::process::CommandExt;
 #[cfg(target_os="macos")]
 #[path="macos.rs"] mod process_tree;
@@ -14,6 +14,10 @@ static STOP: AtomicBool = AtomicBool::new(false);
 extern "C" fn stopping(_: i32) { STOP.store(true, Ordering::SeqCst); }
 pub(crate) fn run() -> io::Result<i32> {
     let args: Vec<_> = env::args().skip(1).collect();
+    if args.len() == 2 && args[0] == "--watch-desktop" {
+        let pid = args[1].parse::<i32>().map_err(|_| io::Error::other("invalid desktop PID"))?;
+        return watch_desktop(pid);
+    }
     if args.len() == 2 && args[0] == "--recover" {
         #[cfg(target_os="macos")] process_tree::recover(Path::new(&args[1]))?;
         return Ok(0);
@@ -55,4 +59,29 @@ pub(crate) fn run() -> io::Result<i32> {
     #[cfg(target_os="macos")] tree.retire()?;
     if let Some(error) = fault { return Err(error); }
     Ok(status.unwrap_or(exit).code().unwrap_or(130))
+}
+
+fn watch_desktop(pid: i32) -> io::Result<i32> {
+    let mut tree = process_tree::ProcessTree::observe(pid)?;
+    tree.capture()?;
+    // Closing the service's pipe stops observation only; never kill a live desktop.
+    thread::spawn(|| { let mut bytes = [0_u8; 1]; let _ = io::stdin().read(&mut bytes); STOP.store(true, Ordering::SeqCst); });
+    println!("{{\"type\":\"ready\",\"pid\":{pid}}}"); io::stdout().flush()?;
+    loop {
+        if STOP.load(Ordering::SeqCst) { return Ok(0); }
+        tree.capture()?;
+        if !tree.root_alive()? { break; }
+        thread::sleep(Duration::from_millis(100));
+    }
+    // Root lifetime ended. Reuse audited signals/pidfds for captured Chromium
+    // descendants, never a recycled PID, and retain observation until actual exit.
+    loop {
+        if STOP.load(Ordering::SeqCst) { return Ok(0); }
+        tree.capture()?;
+        tree.signal(libc::SIGKILL)?;
+        if tree.is_empty()? { break; }
+        thread::sleep(Duration::from_millis(20));
+    }
+    println!("{{\"type\":\"exited\",\"pid\":{pid}}}"); io::stdout().flush()?;
+    Ok(0)
 }

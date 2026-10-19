@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 桌面和CLI共用原问题查询/回答schema，保持严格版本与请求身份。
  * [INPUT]: 已发布补充问题、实时命令审批、失败来源与显式成果验收资格。
  * [OUTPUT]: 已提交原Message/Run/Work问题链的共享纯核验，不授予接续权限；权威来源的稳定游标/精确导航、原成果文件名与固定版、普通问题及明确自动化问题补充的本人消息回执关系，保留所见版本与原问题消息；无独立待办完成状态。
  * [POS]: D5 跨聊天待处理领域合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { z } from 'zod'
 import type { WorkItem } from './work'
 import type { AgentRun, Message } from './index'
 
@@ -20,6 +22,9 @@ export function publishedWorkQuestionMatches(work: WorkItem | undefined, run: Ag
   return run.status === 'completed' && run.responseKind !== 'chat' && run.workId === work.id && run.conversationId === work.conversationId && run.agentId === work.ownerAgentId && run.messageId === message.id && message.status === 'completed' && message.conversationId === run.conversationId && Boolean(message.turnId) && message.turnId === run.turnId && message.runId === run.id && message.senderType === 'agent' && message.senderId === run.agentId && question.id === `work:${work.id}:${work.resultVersion}` && question.revision === work.version && question.messageId === message.id && work.resultMessageIds.includes(message.id) && Boolean(question.content.trim()) && message.content.includes(question.content)
 }
 export interface InboxQuestionReply { questionId: string; expectedRevision: number; content: string; requestId: string }
+const id = z.string().min(1).max(600)
+export const inboxQuerySchema = z.object({ kind: z.enum(['question', 'approval', 'failure', 'acceptance']).optional(), search: z.string().trim().max(1000).optional(), before: z.object({ time: z.string().datetime(), id }).strict().optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
+export const inboxReplySchema = z.object({ questionId: id, expectedRevision: z.number().int().positive(), content: z.string().trim().min(1).max(100000), requestId: z.string().trim().min(1).max(200) }).strict()
 /** Stored by the host on the committed reply; occurrence questions also retain the viewed version and message. */
 export interface InboxReplyRelation { questionId: string; questionRevision: number; questionMessageId: string; workId?: string }
 export interface InboxItem {

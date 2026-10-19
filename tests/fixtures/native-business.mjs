@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: NATIVE_CWD回报实际子进程cwd，供同目录续用/不同目录新会话验证。
+ * [OUTPUT]: 原生子进程使用实际CLI查询原消息、发布及重复核对，身份/owner拒绝和工具回执均不保存token。
+ * [OUTPUT]: 知识查询经实际动态工具/MCP读取与引用，无文件Work；模型正文为确定性协议夹具。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
  * [OUTPUT]: 原生计划工具通过真实动态工具/MCP桥保存、同key核对和重启查询，不建立文件Work。
  * [OUTPUT]: 实际核读交付材料路径与字节/hash，显式原生路径不走产品材料工具；是离线协议动作，不冒充模型输出。
@@ -10,6 +13,8 @@
 import { writeFile, realpath, symlink, readFile, appendFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 /** Read the delivered bytes independently of host projection/receipt assertions. */
 export async function consumeNativeMaterials(content) {
  const reads=[]
@@ -25,7 +30,55 @@ export async function consumeNativeMaterials(content) {
  return reads
 }
 export async function business(prompt,tool){
+ if(prompt.messages.at(-1)?.content==='NATIVE_CWD') return 'NATIVE_CWD_RESULT '+JSON.stringify({cwd:process.cwd()})
  const work=prompt.currentWork,text=prompt.messages.map(m=>m.content).join('\n')+'\n'+(work?.scope??'')
+ const cliOrganization=prompt.messages.at(-1)?.content.match(/^NATIVE_CLI_ORGANIZATION (.+)$/m)
+ if(cliOrganization){
+  const {entry}=JSON.parse(cliOrganization[1]),run=promisify(execFile)
+  return business({...prompt,messages:[...prompt.messages.slice(0,-1),{...prompt.messages.at(-1),content:'NATIVE_ORG_ONLY'}]},async(name,input)=>{
+   const args=[entry,'invoke','employee:invoke',JSON.stringify({tool:name,input,callId:'organization-'+name}),'--json']
+   const result=JSON.parse((await run(process.execPath,args,{env:process.env,timeout:10000,maxBuffer:65536})).stdout)
+   if(name==='organize_collaboration'){
+    const repeated=JSON.parse((await run(process.execPath,args,{env:process.env,timeout:10000,maxBuffer:65536})).stdout)
+    if(result.id!==repeated.id)throw Error('organization was replayed')
+   }
+   return result
+  })
+ }
+ const cliRequest=prompt.messages.at(-1)?.content.match(/^NATIVE_CLI_SCOPE (.+)$/m)
+ if(cliRequest){
+  const {entry}=JSON.parse(cliRequest[1]),run=promisify(execFile)
+  const call=async (channel,input)=>JSON.parse((await run(process.execPath,[entry,'invoke',channel,...(input===undefined?[]:[JSON.stringify(input)]),'--json'],{env:process.env,timeout:10000,maxBuffer:65536})).stdout)
+  const context=await call('employee:context'),tools=await call('employee:tools')
+  let denied
+  try{await call('employees')}catch(error){denied=JSON.parse(error.stderr).code}
+  const messages=await call('employee:invoke',{tool:'read_messages',input:{limit:10}})
+  const input={tool:'send_message',input:{content:'CLI_ORIGINAL_MESSAGE'},callId:'native-progress'}
+  const published=await call('employee:invoke',input),repeated=await call('employee:invoke',input)
+  return 'CLI_SCOPE_RESULT '+JSON.stringify({context,tools:tools.map(tool=>tool.name),denied,readOriginal:messages.messages.some(message=>message.content.includes('NATIVE_CLI_SCOPE')),publishedSame:published.messageId===repeated.messageId,environment:{run:process.env.BOAI_CLI_EMPLOYEE_RUN,hasToken:!!process.env.BOAI_SERVER_TOKEN,owner:process.env.BOAI_SERVER_TOKEN==='host-owner-token-must-not-be-inherited',hostSecret:!!process.env.BOAI_SECRET_INTERNAL}})
+ }
+ const cliFile=prompt.messages.at(-1)?.content.match(/^NATIVE_CLI_FILE (.+)$/m)
+ if(cliFile){
+  const {entry}=JSON.parse(cliFile[1]),run=promisify(execFile)
+  await writeFile('cli-delivered.md','# CLI原文件交付\n')
+  const input={tool:'publish_artifact',input:{path:'cli-delivered.md'},callId:'native-file-publication'}
+  const call=async()=>JSON.parse((await run(process.execPath,[entry,'invoke','employee:invoke',JSON.stringify(input),'--json'],{env:process.env,timeout:10000,maxBuffer:65536})).stdout)
+  const first=await call(),second=await call()
+  if(!first.artifact?.id||first.artifact.id!==second.artifact?.id)throw Error('CLI publication was replayed or not confirmed')
+  return 'CLI文件已交付 '+first.artifact.id
+ }
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_KNOWLEDGE')){
+  const directory=await tool('inspect_knowledge',{})
+  const file=directory.files.find(file=>file.readable)
+  if(!file)throw Error('no authorized knowledge file')
+  const found=await tool('search_knowledge',{query:'品牌规范'})
+  if(!found.results.some(hit=>hit.resourceId===file.resourceId&&hit.contentHash===file.contentHash))throw Error('search identity differs from original')
+  const input={resourceId:file.resourceId,path:file.path,contentHash:file.contentHash,limit:8}
+  let read=await tool('read_knowledge',input),content=read.content,citation=read.citation
+  while(read.nextOffset!==null){read=await tool('read_knowledge',{...input,offset:read.nextOffset});content+=read.content}
+  await appendFile('native-knowledge-reads.jsonl',JSON.stringify({resourceId:file.resourceId,contentHash:file.contentHash,content,citation})+'\n')
+  return content+'\n'+citation
+ }
  if(prompt.messages.at(-1)?.content.includes('NATIVE_BROWSER_')){
   await tool('browser_tool',{command:'snapshot'})
   const image=await tool('browser_tool',{command:'screenshot --png'})

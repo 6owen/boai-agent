@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新知识读取来源纳入发布身份hash，旧无引用记录的完成身份保持。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 2026-10-14现行分离合同：只读批量完成/可见状态投影用于渠道新回复提示，不创建历史完成或伪造阅读。
  * [INPUT]: ProductStore 的真实发布事务、已提交消息、同事务来源验证 hook 及本人可见的固定完成快照。
@@ -17,7 +18,7 @@ type SavedState = Omit<ConversationReadingState, 'completionCount' | 'unreadCoun
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const integer = (value: number, min = 0) => Number.isSafeInteger(value) && value >= min
 export function readingIdentifier(value: string): string { if (!/^[a-zA-Z0-9_-]{1,200}$/.test(value)) throw new Error('无效阅读对象标识'); return value }
-export function completionHash(message: Message): string { return createHash('sha256').update(JSON.stringify({ id: message.id, conversationId: message.conversationId, senderId: message.senderId, content: message.content, materialIds: message.materialIds ?? [], materialSources: message.materialSources ?? [] })).digest('hex') }
+export function completionHash(message: Message): string { return createHash('sha256').update(JSON.stringify({ id: message.id, conversationId: message.conversationId, senderId: message.senderId, content: message.content, materialIds: message.materialIds ?? [], materialSources: message.materialSources ?? [], ...(message.knowledgeSources?.length ? { knowledgeSources: message.knowledgeSources } : {}) })).digest('hex') }
 
 export class ConversationReadingRepository {
   constructor(private store: ProductStore, private hooks: ConversationReadingHooks = {}) {}

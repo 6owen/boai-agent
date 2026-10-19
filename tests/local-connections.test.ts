@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通连接也提升revision；编辑使用expectedRevision，旧版本拒绝且导入去重保持。
  * [INPUT]: 本地配置导入用例、实际 AppService/SQLite、Mastra 和隔离的本地协议端点。
  * [OUTPUT]: 二级详情测试读取当前源密钥且不保存连接；显式扫描/源变更校验、密钥隔离、重复导入与重启持久化、Responses 请求和旧 Chat 默认值回归。
  * [POS]: tests/local-connections.test.ts；不读取真实用户配置或访问付费模型。
@@ -84,13 +85,14 @@ describe('local model connection import', () => {
     expect(repeated).toEqual([saved, saved])
     expect(saved.api).toBe('responses')
     expect(keys.get(saved.id)).toBe('private-key')
-    const { hasApiKey: _, localConfigId: __, api: ___, ...edited } = saved
-    await service.handle('saveConnection', { ...edited, name: 'My renamed connection' })
+    const { hasApiKey: _, localConfigId: __, api: ___, revision, ...edited } = saved
+    await service.handle('saveConnection', { ...edited, expectedRevision: revision, name: 'My renamed connection' })
+    await expect(service.handle('saveConnection', { ...edited, expectedRevision: revision, name: 'Stale draft' })).rejects.toThrow('连接已被修改')
     await service.close()
     service = new AppService(options)
     await service.init()
     const snapshot = await service.handle('snapshot', undefined) as Snapshot
-    expect(snapshot.connections).toEqual([{ ...saved, name: 'My renamed connection' }])
+    expect(snapshot.connections).toEqual([{ ...saved, revision: revision! + 1, name: 'My renamed connection' }])
     expect(JSON.stringify(snapshot)).not.toContain('private-key')
     expect(await service.handle('saveConnection', input)).toEqual(snapshot.connections[0])
     expect(modelConfig({ ...saved, api: undefined }, 'private-key')).toMatchObject({ api: 'chat' })

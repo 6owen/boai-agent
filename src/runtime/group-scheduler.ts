@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原轮次支持员工定向取消、独立信号及禁止本轮重新邀请；同事继续，实际退出仍归原运行。
  * [OUTPUT]: 2026-10-14 安装已提交的空闲房间历史迁移，仅更新原缓存，不重新调度或运行启动恢复。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 调度轮次只累计API用量；本机不受API16000输出、调用或时长截断，API预算取消与本机执行信号分离。
@@ -32,10 +33,10 @@ export const decisionSchema = z.object({
   dependsOnContributions: z.array(z.object({ agentId: identifier, key: z.literal('main') }).strict()).max(12).optional(), observedThroughSequence: z.number().int().nonnegative(),
 }).strict()
 type EventRecord = ConversationEvent & { generation: number; sequence: number }
-type TurnRecord = DiscussionTurn & { epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
+type TurnRecord = DiscussionTurn & { cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
 type DeliveryRecord = AgentDelivery & { failurePhase?: 'decision' | 'execution' }
 type Grant = { id: string; turnId: string; agentId: string; decisionId: string; contextVersion: number; status: 'active' | 'done' | 'expired' }
-type Active = { turn: TurnRecord; controller: AbortController; apiController: AbortController; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; timer: ReturnType<typeof setTimeout>; done: boolean }
+type Active = { turn: TurnRecord; controller: AbortController; apiController: AbortController; employeeControllers: Map<string, AbortController>; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; timer: ReturnType<typeof setTimeout>; done: boolean }
 export type PublishReply = (message: Message, records: StoredRecord[], commit?: (records: StoredRecord[]) => Promise<void>) => Promise<void>
 export interface SchedulerHooks {
   interpretGroup?(turn: DiscussionTurn, signal: AbortSignal): Promise<DiscussionTurn['coordination']>
@@ -166,7 +167,7 @@ export class GroupScheduler {
     this.kick(prepared.turn.conversationId)
   }
   hasActiveTurn(turnId: string) { return [...this.active.values()].some(active => active.turn.id === turnId) }
-  canStartWork(turnId: string) { return [...this.active.values()].some(active => active.turn.id === turnId && this.alive(active) && !active.yielded) }
+  canStartWork(turnId: string, agentId?: string) { return [...this.active.values()].some(active => active.turn.id === turnId && this.alive(active, agentId) && !active.yielded) }
   executionStarted(turnId: string, agentId: string) {
     const turn = this.turns.get(turnId), active = this.active.get(turnId)
     if (active?.turn.id === turnId) { active.awaitingExecution.delete(agentId); active.wake() }
@@ -257,7 +258,7 @@ export class GroupScheduler {
     const turn = userTurn ?? queued.find(turn => (!runningOpening || (turn.wakeId && turn.collaborationRequestId === runningOpening.turn.collaborationRequestId)) && (!running.length || turn.wakeId) && !occupied.has(this.workOwner(turn)) && !this.hooks.executionBusy?.(conversationId, this.workOwner(turn) ?? ''))
     if (!turn) return
     const event = [...this.events.values()].find(event => event.turnId === turn.id && ['user_message', 'work_ready', 'collaboration_start'].includes(event.type))!
-    const active = { turn, controller: new AbortController(), apiController: new AbortController(), pending: new Map([...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id).map(delivery => [delivery.agentId, delivery])), inflight: new Map(), chats: new Map(), tasks: new Map(), deferredWork: new Set(), awaitingExecution: new Set(), ready: new Map(), waiting: new Map(), handled: new Set(), contributions: new Map(), retriedDependencies: new Set(), invited: new Set(event.recipientAgentIds ?? []), wake: () => {}, wakePromise: Promise.resolve(), promise: Promise.resolve(), yielded: false, asked: false, latestEvent: event, timer: setTimeout(() => {}, 0), done: false } as Active
+    const active = { turn, controller: new AbortController(), apiController: new AbortController(), employeeControllers: new Map(), pending: new Map([...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id).map(delivery => [delivery.agentId, delivery])), inflight: new Map(), chats: new Map(), tasks: new Map(), deferredWork: new Set(), awaitingExecution: new Set(), ready: new Map(), waiting: new Map(), handled: new Set(), contributions: new Map(), retriedDependencies: new Set(), invited: new Set(event.recipientAgentIds ?? []), wake: () => {}, wakePromise: Promise.resolve(), promise: Promise.resolve(), yielded: false, asked: false, latestEvent: event, timer: setTimeout(() => {}, 0), done: false } as Active
     clearTimeout(active.timer)
     if (this.hooks.conversation(conversationId).agentIds.some(id => !isNativeBackend(this.hooks.agent(id).executionBackend))) active.timer = setTimeout(() => { void this.hooks.critical(() => this.stop(active, 'budget_exhausted', '达到本轮时间上限')).catch(error => this.hooks.error(error)) }, 5 * 60_000)
     active.timer.unref()
@@ -362,7 +363,7 @@ export class GroupScheduler {
         }
         if (!refreshed && !active.ready.size && !active.waiting.size) {
           const failed = this.unresolvedFailures(active.turn.id)
-          active.turn.status = active.budgetLimited ? 'budget_exhausted' : failed.length ? 'failed' : active.asked ? 'waiting_user' : 'completed'; active.turn.finishedAt = now(); active.done = true
+          active.turn.status = active.budgetLimited ? 'budget_exhausted' : failed.length ? 'failed' : active.turn.cancelledAgentIds?.length ? 'cancelled' : active.asked ? 'waiting_user' : 'completed'; active.turn.finishedAt = now(); active.done = true
           active.turn.deliveryFailure = failed.length > 0
           if (active.budgetLimited) active.turn.reason ??= '达到本轮判断调用上限'
           else if (failed.length) active.turn.reason = `${new Set(failed.map(delivery => delivery.agentId)).size} 名员工未完成本轮判断或执行；已收到的回复会保留`
@@ -371,14 +372,14 @@ export class GroupScheduler {
           const superseded = [...this.deliveries.values()].filter(item => item.turnId === active.turn.id && ['pending', 'ready', 'waiting'].includes(item.status))
           for (const item of superseded) { item.status = 'skipped'; item.error ??= '本轮已结束，该判断已被后续事件接替' }
           await this.store.write([row('turns', active.turn), ...unfinished.map(item => row('contributions', item)), ...superseded.map(item => row('deliveries', item))]); this.hooks.changed(active.turn.conversationId)
-          await this.hooks.settled(active.turn, [...active.contributions.keys()], active.controller.signal)
+          await this.hooks.settled(active.turn, [...active.contributions.keys()].filter(id => !active.turn.cancelledAgentIds?.includes(id)), active.controller.signal)
           break
         }
       }
       if (!active.done) await active.wakePromise
     }
   }
-  private alive(active: Active) { return !active.done && !active.controller.signal.aborted && !this.closing }
+  private alive(active: Active, agentId?: string) { return !active.done && !active.controller.signal.aborted && !this.closing && (!agentId || !active.turn.cancelledAgentIds?.includes(agentId)) }
   private async evaluate(active: Active, delivery: AgentDelivery) {
     const event = this.events.get(delivery.eventId)!
     if (event.type !== 'user_message') { delivery.observedThroughSequence = active.latestEvent.sequence; delivery.observedEventId = active.latestEvent.id }
@@ -393,7 +394,7 @@ export class GroupScheduler {
         : active.turn.coordination?.mode === 'ordered'
           ? { action: 'reply', responseKind: 'chat', purpose: active.turn.coordination.instruction, observedThroughSequence: delivery.observedThroughSequence }
           : await abortable(this.hooks.decide(active.turn, event, delivery, signal), signal)
-      if (!this.alive(active) || active.yielded) return
+      if (!this.alive(active, delivery.agentId) || active.yielded) return
       signal.throwIfAborted()
       const { sourceDecisionRunId, ...intent } = result
       const parsed = decisionSchema.parse(intent)
@@ -427,7 +428,7 @@ export class GroupScheduler {
       else { delivery.status = 'ready'; active.ready.set(delivery.agentId, decision); active.waiting.delete(delivery.agentId) }
       delivery.updatedAt = now(); changes.push(row('deliveries', delivery)); await this.store.write(changes); this.hooks.changed(delivery.conversationId)
     } catch (error) {
-      if (!this.alive(active)) return
+      if (!this.alive(active, delivery.agentId)) return
       active.handled.add(delivery.agentId); delivery.status = 'failed'; delivery.updatedAt = now(); delivery.error = error instanceof Error ? error.message : String(error)
       ;(delivery as DeliveryRecord).failurePhase = 'decision'
       if (this.stale(active, delivery)) await this.queue(active, active.latestEvent, delivery.agentId)
@@ -453,7 +454,7 @@ export class GroupScheduler {
     return statuses.every(status => status === 'completed') ? 'ready' : 'pending'
   }
   private async queue(active: Active, event: EventRecord, agentId: string) {
-    if (!this.alive(active) || active.yielded || (active.contributions.get(agentId) ?? 0) >= 2) return
+    if (!this.alive(active, agentId) || active.yielded || (active.contributions.get(agentId) ?? 0) >= 2) return
     const delivery = this.delivery(event, agentId)
     if (this.deliveries.has(delivery.id)) return
     const previous = active.pending.get(agentId)
@@ -484,6 +485,7 @@ export class GroupScheduler {
     }
   }
   private async respond(active: Active, decision: DecisionRecord) {
+    if (!this.alive(active, decision.agentId)) return
     const delivery = this.deliveries.get(decision.deliveryId)!
     const event = this.events.get(delivery.eventId)!
     if (this.stale(active, delivery) && !this.independentChat(decision)) { delivery.status = 'skipped'; await this.store.write([row('deliveries', delivery)]); await this.queue(active, active.latestEvent, decision.agentId); return }
@@ -495,7 +497,7 @@ export class GroupScheduler {
       await this.store.write([row('grants', grant), row('deliveries', delivery), row('turns', active.turn), ...(contribution ? [row('contributions', contribution)] : [])]); this.hooks.changed(delivery.conversationId)
       let published = false
       const result = await this.hooks.speak(active.turn, event, decision, this.employeeSignal(active, decision.agentId), async (message, records, commit = records => this.hooks.commitReply ? this.hooks.commitReply(message, records) : this.store.write(records)) => {
-        if (!this.alive(active) || this.employeeSignal(active, decision.agentId).aborted || grant.status !== 'active') throw new Error('发言权已经失效')
+        if (!this.alive(active, decision.agentId) || this.employeeSignal(active, decision.agentId).aborted || grant.status !== 'active') throw new Error('发言权已经失效')
         this.assertOrderedParticipant(active, decision.agentId)
         const ordered = active.turn.coordination?.mode === 'ordered' ? active.turn.coordination : undefined
         const nextGrant = { ...grant, status: 'done' as const }
@@ -504,10 +506,10 @@ export class GroupScheduler {
         const nextContribution = contribution ? { ...contribution, status: 'completed' as const, resultMessageIds: [...contribution.resultMessageIds, message.id], artifactIds: [...contribution.artifactIds, ...records.filter(record => record.collection === 'artifacts').map(record => record.id)] } : undefined
         const next: EventRecord = { id: randomUUID(), turnId: active.turn.id, conversationId: active.turn.conversationId, ...(active.turn.collaborationRequestId ? { collaborationRequestId: active.turn.collaborationRequestId } : {}), type: decision.action === 'request_handoff' ? 'handoff' : 'agent_message', agentId: decision.agentId, messageId: message.id, recipientAgentIds: decision.recipientAgentIds, sequence: Math.max(active.latestEvent.sequence, message.sequence), generation: previousContributions === 0 ? 1 : event.generation + 1, createdAt: now() }
         const shouldDispatch = !ordered && !active.turn.wakeId && !active.yielded && next.generation < 3 && this.hooks.conversation(active.turn.conversationId).kind === 'group'
-        const candidates = shouldDispatch ? this.hooks.conversation(active.turn.conversationId).agentIds.filter(agentId => agentId !== decision.agentId && active.handled.has(agentId) && (!active.ready.has(agentId) || !this.independentChat(active.ready.get(agentId)!)) && (active.contributions.get(agentId) ?? 0) < 2).map(agentId => this.delivery(next, agentId)) : []
+        const candidates = shouldDispatch ? this.hooks.conversation(active.turn.conversationId).agentIds.filter(agentId => !active.turn.cancelledAgentIds?.includes(agentId) && agentId !== decision.agentId && active.handled.has(agentId) && (!active.ready.has(agentId) || !this.independentChat(active.ready.get(agentId)!)) && (active.contributions.get(agentId) ?? 0) < 2).map(agentId => this.delivery(next, agentId)) : []
         const nextCoordination = ordered ? { ...ordered, revision: ordered.revision + 1, completed: [...ordered.completed, { agentId: decision.agentId, messageId: message.id, eventId: next.id, contentHash: createHash('sha256').update(message.content).digest('hex') }] } : undefined
         const nextAgentId = nextCoordination?.agentIds[nextCoordination.completed.length]
-        if (nextAgentId && !active.yielded) {
+        if (nextAgentId && !active.yielded && !active.turn.cancelledAgentIds?.includes(nextAgentId)) {
           const waiting = [...this.deliveries.values()].find(item => item.turnId === active.turn.id && item.agentId === nextAgentId && item.status === 'waiting')
           if (!waiting) throw new Error('群接续缺少原投递身份')
           candidates.push({ ...waiting, status: 'pending', eventId: next.id, eventIds: [...new Set([...(waiting.eventIds ?? [waiting.eventId]), next.id])], observedEventId: next.id, observedThroughSequence: next.sequence, updatedAt: now() })
@@ -539,6 +541,7 @@ export class GroupScheduler {
         published = true; this.hooks.changed(delivery.conversationId); active.wake()
         if ((!ordered && next.generation >= 3) || (active.turn.apiTokenEstimate ?? active.turn.tokenEstimate ?? 0) > 16000) await this.stop(active, 'budget_exhausted', next.generation >= 3 ? '达到本轮自动接续代数上限' : '达到本轮输出长度上限')
       })
+      if (!this.alive(active, decision.agentId)) return
       if (result === 'deferred') {
         active.deferredWork.add(`${decision.agentId}:${decision.work?.workId ?? decision.work?.key ?? 'main'}`)
         delivery.status = 'skipped'; delivery.error = '共享工作未获得执行权或任务草稿已暂缓，请查看运行和工作记录'; grant.status = 'expired'
@@ -546,9 +549,9 @@ export class GroupScheduler {
         await this.store.write([row('deliveries', delivery), row('grants', grant), ...(contribution ? [row('contributions', contribution)] : [])])
         return
       }
-      if (!published && this.alive(active)) throw new Error('员工没有提交公开回复')
+      if (!published && this.alive(active, decision.agentId)) throw new Error('员工没有提交公开回复')
     } catch (error) {
-      if (this.alive(active)) {
+      if (this.alive(active, decision.agentId)) {
         delivery.status = 'failed'; delivery.error = error instanceof Error ? error.message : String(error); grant.status = 'expired'
         delivery.failurePhase = 'execution'; delivery.updatedAt = now()
         if (contribution) { contribution.status = 'failed'; contribution.error = delivery.error }
@@ -557,7 +560,10 @@ export class GroupScheduler {
     }
   }
   private employeeSignal(active: Active, agentId: string) {
-    return isNativeBackend(this.hooks.agent(agentId).executionBackend) ? active.controller.signal : AbortSignal.any([active.controller.signal, active.apiController.signal])
+    let controller = active.employeeControllers.get(agentId)
+    if (!controller) { controller = new AbortController(); active.employeeControllers.set(agentId, controller) }
+    if (active.turn.cancelledAgentIds?.includes(agentId)) controller.abort(new Error('用户停止此员工本轮执行'))
+    return AbortSignal.any([active.controller.signal, controller.signal, ...(isNativeBackend(this.hooks.agent(agentId).executionBackend) ? [] : [active.apiController.signal])])
   }
   private async stop(active: Active, status: DiscussionTurn['status'], reason: string) {
     // API budget exhaustion must not cancel another employee's native process.
@@ -581,6 +587,24 @@ export class GroupScheduler {
     for (const grant of this.grants.values()) if (grant.turnId === active.turn.id && grant.status === 'active') { grant.status = 'expired'; rows.push(row('grants', grant)) }
     for (const contribution of this.contributions.values()) if (contribution.turnId === active.turn.id && ['proposed', 'accepted', 'running'].includes(contribution.status)) { contribution.status = 'cancelled'; rows.push(row('contributions', contribution)) }
     await this.store.write(rows); this.hooks.changed(active.turn.conversationId)
+  }
+  /** Revoke only this participant's remaining speaking/execution rights in the original turn. */
+  async cancelParticipant(turnId: string, agentId: string) {
+    const turn = this.turns.get(turnId), active = this.active.get(turnId)
+    if (!turn || ended.has(turn.status)) return
+    turn.cancelledAgentIds = [...new Set([...(turn.cancelledAgentIds ?? []), agentId])]
+    turn.reason = '用户停止部分员工本轮执行；其他员工的回复保留'
+    if (active) {
+      active.pending.delete(agentId); active.ready.delete(agentId); active.waiting.delete(agentId)
+      active.employeeControllers.get(agentId)?.abort(new Error('用户停止此员工本轮执行'))
+    }
+    const rows = [row('turns', turn)]
+    for (const delivery of this.deliveries.values()) if (delivery.turnId === turnId && delivery.agentId === agentId && ['pending', 'evaluating', 'ready', 'waiting', 'responding'].includes(delivery.status)) {
+      delivery.status = 'cancelled'; delivery.updatedAt = now(); rows.push(row('deliveries', delivery))
+    }
+    for (const grant of this.grants.values()) if (grant.turnId === turnId && grant.agentId === agentId && grant.status === 'active') { grant.status = 'expired'; rows.push(row('grants', grant)) }
+    for (const item of this.contributions.values()) if (item.turnId === turnId && item.agentId === agentId && ['proposed', 'accepted', 'running'].includes(item.status)) { item.status = 'cancelled'; rows.push(row('contributions', item)) }
+    await this.store.write(rows); active?.wake(); this.hooks.changed(turn.conversationId)
   }
   async cancelTurns(turnIds: Set<string>, reason: string, endWaiting = false) {
     for (const active of this.active.values()) if (turnIds.has(active.turn.id)) await this.stop(active, 'cancelled', reason)

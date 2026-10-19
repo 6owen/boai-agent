@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 新会话在私有准备阶段使用宿主提供的会话身份，发布后仍沿原材料关联/授权及恢复清理。
+ * [OUTPUT]: 明确材料授权变化可组合知识资料失效事务，保留时返回实际材料来源身份；历史清理不触发该撤权。
+ * [OUTPUT]: 明确知识保留沿当前员工/材料版本与原件hash返回字节，不推导源目录权限。
+ * [OUTPUT]: 原生材料核读同时返回已验证当前员工输入副本路径，供目录策略精确开放读取。
  * [OUTPUT]: 原生消息按用户选定的材料引用核对原件并复用原导出/撤权流程。
  * [OUTPUT]: 插件私有材料目录使用有界provider命名空间，原来源/hash/清理权限保持。
  * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
@@ -54,8 +58,10 @@ export class MaterialRepository {
   constructor(private readonly store: ProductStore, private readonly dataPath: string, private readonly options: { checkpoint?: MaterialCheckpoint } = {}) {}
   get busy() { return this.active.size > 0 || this.accepting > 0 || this.backingUp }
 
-  private async conversation(tx: RecordTransaction, conversationId: string) {
-    const conversation = await tx.get<Conversation>('conversations', conversationId)
+  private async conversation(tx: RecordTransaction, conversationId: string, prospective?: Conversation) {
+    const stored = await tx.get<Conversation>('conversations', conversationId)
+    if (prospective && (prospective.id !== conversationId || stored)) throw new Error('新会话材料准备身份已改变')
+    const conversation = stored ?? prospective
     if (!conversation) throw new Error('材料所属聊天已不存在')
     if (await tx.get('conversationCleanup', conversationId)) throw new Error('聊天材料正在清理，不能读取或提交')
     return conversation
@@ -69,8 +75,8 @@ export class MaterialRepository {
     }
     return conversation
   }
-  private async deliveryScope(tx: RecordTransaction, material: ConversationMaterial) {
-    return material.deliveryScope === 'conversation' ? this.conversation(tx, material.conversationId) : this.scope(tx, material.conversationId, material.authorizedAgentIds)
+  private async deliveryScope(tx: RecordTransaction, material: ConversationMaterial, prospective?: Conversation) {
+    return material.deliveryScope === 'conversation' ? this.conversation(tx, material.conversationId, prospective) : this.scope(tx, material.conversationId, material.authorizedAgentIds)
   }
   private async readScope(tx: RecordTransaction, material: ConversationMaterial, agentId: string, conversationId: string) {
     const conversation = await this.conversation(tx, conversationId)
@@ -111,16 +117,17 @@ export class MaterialRepository {
     })
   }
 
-  async prepare(input: PrepareMaterialInput): Promise<ConversationMaterial> {
+  async prepare(input: PrepareMaterialInput, prospective?: Conversation): Promise<ConversationMaterial> {
     if (this.closing || this.backingUp) throw new Error('材料服务正在退出或备份')
     this.accepting++
-    try { return await this.prepareInput(input) } finally { this.accepting-- }
+    try { return await this.prepareInput(input, prospective) } finally { this.accepting-- }
   }
-  private async prepareInput(input: PrepareMaterialInput): Promise<ConversationMaterial> {
+  private async prepareInput(input: PrepareMaterialInput, prospective?: Conversation): Promise<ConversationMaterial> {
     if (this.closing) throw new Error('材料服务正在退出')
     id(input.conversationId); id(input.requestId)
     if (input.deliveryScope !== undefined && input.deliveryScope !== 'conversation') throw new Error('无效附件投递范围')
     if (input.deliveryScope === 'conversation' && input.authorizedAgentIds !== undefined) throw new Error('聊天附件不接受指定共享员工')
+    if (prospective && (input.deliveryScope !== 'conversation' || prospective.id !== input.conversationId)) throw new Error('新会话材料必须沿原会话投递范围')
     const authorizedAgentIds = input.deliveryScope === 'conversation' ? [] : agents(input.authorizedAgentIds ?? [])
     if (input.deliveryScope !== 'conversation' && !authorizedAgentIds.length) throw new Error('请明确选择材料共享员工')
     if (typeof input.path !== 'string' || input.path.length > 8000) throw new Error('无效材料选择')
@@ -133,7 +140,7 @@ export class MaterialRepository {
         if (previous.fingerprint !== fingerprint) throw new Error('准备 requestId 已用于不同材料请求')
         return { fresh: false, material: await this.material(tx, previous.materialId) }
       }
-      const conversation = input.deliveryScope === 'conversation' ? await this.conversation(tx, input.conversationId) : await this.scope(tx, input.conversationId, authorizedAgentIds)
+      const conversation = input.deliveryScope === 'conversation' ? await this.conversation(tx, input.conversationId, prospective) : await this.scope(tx, input.conversationId, authorizedAgentIds)
       const originalName = basename(input.name ?? input.path), name = originalName.slice(0, 200) || '未命名材料', format = namedFormat(originalName)
       const material: ConversationMaterial = { id: randomUUID(), conversationId: input.conversationId, name, format, size: 0, status: 'preparing', ...(input.deliveryScope === 'conversation' ? { deliveryScope: input.deliveryScope } : {}), authorizedAgentIds: input.deliveryScope === 'conversation' ? [...conversation.agentIds].sort() : authorizedAgentIds, revision: 1, parseVersion: parseVersion(format), createdAt: new Date().toISOString() }
       const receipt: Preparation = { id: input.requestId, conversationId: input.conversationId, materialId: material.id, fingerprint }
@@ -142,12 +149,12 @@ export class MaterialRepository {
     })
     if (!prepared.fresh) return this.active.get(prepared.material.id)?.result ?? clone(prepared.material)
     const controller = new AbortController()
-    const result = this.executePreparation(prepared.material, input.path, AbortSignal.any([controller.signal, AbortSignal.timeout(MATERIAL_LIMITS.preparationMs)]))
+    const result = this.executePreparation(prepared.material, input.path, AbortSignal.any([controller.signal, AbortSignal.timeout(MATERIAL_LIMITS.preparationMs)]), prospective)
     this.active.set(prepared.material.id, { controller, result })
     try { return await result } finally { this.active.delete(prepared.material.id) }
   }
 
-  private async executePreparation(material: ConversationMaterial, source: string, signal: AbortSignal): Promise<ConversationMaterial> {
+  private async executePreparation(material: ConversationMaterial, source: string, signal: AbortSignal, prospective?: Conversation): Promise<ConversationMaterial> {
     let cancellation: Promise<void> | undefined
     const cancelled = () => {
       cancellation = this.store.transaction(async tx => {
@@ -169,7 +176,7 @@ export class MaterialRepository {
         signal.throwIfAborted()
         const current = await this.material(tx, material.id)
         if (current.status !== 'preparing') throw new Error('材料准备已取消或失效')
-        await this.deliveryScope(tx, current)
+        await this.deliveryScope(tx, current, prospective)
         Object.assign(current, { size: parsed.size, contentHash: parsed.contentHash, format, parseVersion: parseVersion(format), mimeType: imageMimeType ?? (format === 'markdown' ? 'text/markdown' : format === 'txt' ? 'text/plain' : 'application/octet-stream'), ...(text ? { characterCount: text.characterCount, lineCount: text.lineCount } : {}), revision: current.revision + 1 })
         await tx.put(record('materials', current)); return current
       })
@@ -180,7 +187,7 @@ export class MaterialRepository {
         signal.throwIfAborted()
         const current = await this.material(tx, staged.id)
         if (current.status !== 'preparing' || current.revision !== staged.revision || current.contentHash !== staged.contentHash) throw new Error('材料准备已取消或版本已变化')
-        await this.deliveryScope(tx, current)
+        await this.deliveryScope(tx, current, prospective)
         signal.throwIfAborted()
         current.status = 'ready'; current.revision++; delete current.error
         await tx.put(record('materials', current)); return clone(current)
@@ -266,7 +273,7 @@ export class MaterialRepository {
     }
   }
 
-  async authorize(materialId: string, expectedRevision: number, authorizedAgentIds: string[]): Promise<ConversationMaterial> {
+  async authorize(materialId: string, expectedRevision: number, authorizedAgentIds: string[], changed?: (tx: RecordTransaction, material: ConversationMaterial) => Promise<void>): Promise<ConversationMaterial> {
     if (this.closing || this.backingUp) throw new Error('材料服务正在退出或备份')
     id(materialId); revision(expectedRevision); const selected = agents(authorizedAgentIds)
     return this.store.transaction(async tx => {
@@ -275,7 +282,7 @@ export class MaterialRepository {
       await this.scope(tx, material.conversationId, selected)
       if (JSON.stringify(material.authorizedAgentIds) === JSON.stringify(selected)) return clone(material)
       material.authorizedAgentIds = selected; material.revision++; delete material.readableRevisionFrom
-      await tx.put(record('materials', material)); return clone(material)
+      await tx.put(record('materials', material)); await changed?.(tx, material); return clone(material)
     })
   }
 
@@ -302,6 +309,15 @@ export class MaterialRepository {
     }
   }
 
+  /** Explicit user retention keeps verified bytes; it never infers access from a file path. */
+  async retainSource(tx: RecordTransaction, input: { id: string; conversationId: string; contentHash?: string; revision?: number }, agentId: string) {
+    const material = await this.material(tx, input.id)
+    this.ready(material, input.revision)
+    if (material.conversationId !== input.conversationId || material.contentHash !== input.contentHash || !material.messageId) throw new Error('所见材料来源已变化')
+    await this.readScope(tx, material, agentId, material.conversationId)
+    const materialSources: MaterialReadRef[] = [{ id: material.id, conversationId: material.conversationId, revision: material.revision, contentHash: material.contentHash!, parseVersion: material.parseVersion }]
+    return { ...await readMaterialOriginal(this.dataPath, material.conversationId, material.id, input.contentHash!), name: material.name, materialSources }
+  }
   async read(materialId: string, agentId: string, conversationId: string): Promise<MaterialPreview & { ref: MaterialReadRef }> {
     id(materialId); id(agentId); id(conversationId)
     const material = await this.store.transaction(async tx => {
@@ -365,9 +381,14 @@ export class MaterialRepository {
 
   /** Verify only BOAI input copies actually supplied to this employee. */
   async validateNativeCopies(refs: MaterialReadRef[], agentId: string, runtime: string) {
+    const paths: string[] = []
     for (const copy of await this.store.load<NativeCopy>('materialNativeCopies')) {
-      if (copy.agentId === agentId && copy.relativePath.includes(`/.${runtime}-private/`) && refs.some(ref => ref.id === copy.materialId && ref.conversationId === copy.conversationId && ref.contentHash === copy.contentHash)) await readNativeMaterialCopy(this.dataPath, copy.relativePath, copy.contentHash)
+      if (copy.agentId === agentId && copy.relativePath.includes(`/.${runtime}-private/`) && refs.some(ref => ref.id === copy.materialId && ref.conversationId === copy.conversationId && ref.contentHash === copy.contentHash)) {
+        await readNativeMaterialCopy(this.dataPath, copy.relativePath, copy.contentHash)
+        paths.push(join(this.dataPath, copy.relativePath))
+      }
     }
+    return paths
   }
   /** Revoke only tracked, unchanged copies. Native operations elsewhere are not intercepted. */
   async cleanupNativeCopies(materialId?: string) {

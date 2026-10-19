@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行选项增加CLI安装管理Card，复用全局组件及Sonner。
  * [INPUT]: 类型化桌面设置 IPC、变化订阅与共用 Card/Switch。
  * [OUTPUT]: 后台常驻、实际登录项状态与隐藏启动设置；共用有界文档容器，即时保存。
  * [POS]: 设置中的运行选项；保持 BOAI 原组件和样式。
@@ -10,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Banner } from '@/components/common'
 import type { DesktopApi } from '@shared/ipc'
 import type { DesktopPatch, DesktopSettings } from '@shared/ipc/desktop'
+import { CliInstallationCard } from './cli-installation'
 
 const loginHints: Record<DesktopSettings['login']['status'], string> = {
   enabled: '已启用系统登录启动。', disabled: '系统登录启动未启用。',
@@ -46,5 +48,6 @@ export function DesktopSettingsPage({ api, active }: { api: DesktopApi; active: 
     <p className="field-hint">{settings ? loginHints[settings.login.status] : '正在读取运行设置…'}</p>
     {settings && !settings.trayAvailable && <p className="field-hint">系统托盘不可用，关闭窗口将按系统默认行为处理。</p>}
     <p className="field-hint">通过系统托盘或菜单栏重新打开窗口；选择「退出 BoAI Agent」会停止运行。电脑需保持开机、联网，休眠期间无法接收消息。</p>
+    <CliInstallationCard api={api} active={active} />
   </section>
 }

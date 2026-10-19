@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 实际原生子进程在明确业务cwd执行，不同cwd不续用旧会话。
  * [INPUT]: Production AppService, isolated Pi/ACP processes and real product tool bridge.
- * [OUTPUT]: Continuous employee chat, files, approvals, unknown/restart and disable/stop integration.
+ * [OUTPUT]: Continuous employee chat, automatic CLI leases, files, approvals, unknown/restart and disable/stop integration.
  * [POS]: Offline native protocol tests; do not certify live provider/model quality.
  * [PROTOCOL]: Update tests/.folder.md and fixture map with changes.
  */
@@ -11,6 +12,7 @@ import { tmpdir } from 'node:os'
 import { AppService } from '../src/runtime/service'
 import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
 import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { verifyCliEnvironment, verifyWorkingDirectory } from './fixtures/cli-environment'
 const cleanup: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close()})
 async function setup(provider: 'pi'|'opencode', independentModule = false) {
@@ -37,6 +39,12 @@ test('a separately built module package with a new plugin ID can chat and publis
  expect(result.runs.at(-1)?.status,result.runs.at(-1)?.error).toBe('completed');expect(result.artifacts.some(a=>a.name==='plugin.md')).toBe(true)
 },60000)
 describe.each(['pi','opencode'] as const)('%s runtime plugin',provider=>{
+ test('uses the explicit working directory and renews its session when it changes',async()=>{
+  await verifyWorkingDirectory(await setup(provider),cleanup)
+ },60000)
+ test('automatically passes its run CLI lease through the plugin runner and revokes it after exit',async()=>{
+  await verifyCliEnvironment(await setup(provider),cleanup)
+ },60000)
  test('continuous chat shares only its own native session and restart does not replay; real product file publication works',async()=>{
   const f=await setup(provider),first=await f.wait(await f.send('第一轮'))
   expect(first.runs.at(-1)?.status,first.runs.at(-1)?.error).toBe('completed')

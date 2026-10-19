@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同一旧知识资源按员工隔离预览标签，避免授权身份串用。
  * [OUTPUT]: 同一会话不同Run分别打开过程标签，重复点击同Run去重，普通会话历史保持独立。
  * [OUTPUT]: 删除某次执行关闭所有页面的同源过程标签，其他标签及所选项保持。
  * [OUTPUT]: 数据源固定ID复用/显隐/重开请求与跨页面标签隔离回归。
@@ -17,6 +18,13 @@ import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artif
 import type { Connection, DigitalAgent } from '../src/shared/domain'
 
 describe('detail workspace tabs', () => {
+  it('keeps shared legacy knowledge preview scoped to the selected employee', () => {
+    let state = emptyDetailTabs
+    for (const agentId of ['a', 'b', 'a']) state = reduce(state, { type: 'open', target: { type: 'resource', id: 'shared', agentId } })
+    expect(state.tabs.map(tab => tab.key)).toEqual(['resource:shared:a', 'resource:shared:b'])
+    expect(state.tabs[0].target).toMatchObject({ agentId: 'a' }); expect(state.tabs[1].target).toMatchObject({ agentId: 'b' })
+    expect(state.activeKey).toBe('resource:shared:a')
+  })
   it('keeps exact execution tabs distinct from other runs and the full conversation history', () => {
     let state = reduce(emptyDetailTabs, { type: 'open', target: { type: 'trace', id: 'chat' } })
     for (const runId of ['one', 'two', 'one']) state = reduce(state, { type: 'open', target: { type: 'trace', id: 'chat', agentId: 'agent', runId } })

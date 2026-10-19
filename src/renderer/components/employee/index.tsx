@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
+ * [OUTPUT]: 工作区增加原配置表单的授权目录Card，业务目录与受管员工/会话存储分别展示。
  * [OUTPUT]: 通讯录高级配置省略基础配置与身份表单，默认系统文件；工作区配置入口可返回资料页，其他宿主保留完整编辑器。
  * [OUTPUT]: 系统文件列表点击后在添加技能同款独立Dialog编辑，局部未保存守卫与保存期间关闭锁保留；工作区各分区共用资料Card。
  * [OUTPUT]: 分栏配置右侧ScrollArea视口复用会话页scroll-fade的顶部渐隐，滚动条保持贴边。
@@ -93,7 +95,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     <TabsContent value="files"><fieldset className="contents" disabled={configurationDirty}><div className="detail-section"><p className="field-hint">工作规则与风格是可编辑源文件。身份和记忆文件是生成视图，不会自动反向导入。</p>{!home ? !error && <Loading /> : <>{home.files.map(file => <Button variant="surface" size="content" className="file-row" key={file.name} onClick={() => setFileName(file.name)}><FileText size={19} /><span><strong>{file.name}</strong><small>{file.purpose}</small><em>{file.kind === 'source' ? '可编辑源文件' : '生成视图'} · {{ current: '已验证', modified: '已被修改', missing: '文件缺失', invalid: '校验失败' }[file.status]}</em></span></Button>)}<div className="scope-note">{contextId ? `当前会话：${currentConversation?.title}。记忆视图仅对应该会话范围。` : '记忆由同一员工持有。这里的文件是来源范围投影，统一记录可在记忆页管理。'}</div></>}</div></fieldset>
       {active && tab === 'files' && fileName && <SystemFileEditor key={`${agent.id}-${fileName}-${contextId}`} api={api} agent={agent} home={home} name={fileName} conversationId={contextId} onBack={() => setFileName(null)} onUpdated={async result => { setHome(result); await refresh() }} onMemory={() => { setFileName(null); selectTab('memory') }} />}
     </TabsContent>
-    <TabsContent value="workspace"><fieldset className="contents" disabled={configurationDirty}><WorkspaceView api={api} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => configurationAvailable ? selectTab('profile') : guard.navigate(() => { onClose(); onConfigure?.() }, { resetOnDiscard: false })} onRefresh={async () => { await refresh(); await loadHome() }} /></fieldset></TabsContent>
+    <TabsContent value="workspace"><fieldset className="contents" disabled={configurationDirty}><WorkspaceView api={api} snapshot={snapshot} onBusyChange={onBusyChange} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => configurationAvailable ? selectTab('profile') : guard.navigate(() => { onClose(); onConfigure?.() }, { resetOnDiscard: false })} onRefresh={async () => { await refresh(); await loadHome() }} /></fieldset></TabsContent>
     <TabsContent value="memory"><fieldset className="contents" disabled={configurationDirty}><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} /></fieldset></TabsContent>
     <TabsContent value="execution"><EmployeeExecutionPane key={`${agent.id}:${contextId ?? 'all'}`} api={api} agent={agent} snapshot={snapshot} conversationId={contextId} active={active && tab === 'execution'} /></TabsContent>
     <TabsContent value="channels"><fieldset className="contents" disabled={configurationDirty}><EmployeeChannelPane key={agent.id} api={api} agent={agent} active={active && tab === 'channels'} /></fieldset></TabsContent>
@@ -106,10 +108,11 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
   </Tabs>
 }
 
-function WorkspaceView({ api, agent, home, active, conversation, onConfigure, onRefresh }: { api: DesktopApi; agent: DigitalAgent; home: AgentHome | null; active: boolean; conversation?: Conversation; onConfigure(): void; onRefresh: () => Promise<void> }) {
+function WorkspaceView({ api, snapshot, agent, home, active, conversation, onConfigure, onRefresh, onBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; home: AgentHome | null; active: boolean; conversation?: Conversation; onConfigure(): void; onRefresh: () => Promise<void>; onBusyChange?(busy: boolean): void }) {
   const { busy, error, run } = useMutation()
   const [notice, setNotice] = useState('')
   const [skillId, setSkillId] = useState<string>()
+  const [directoryEpoch, setDirectoryEpoch] = useState(0)
   useEffect(() => { if (!active) setSkillId(undefined) }, [active])
   const selectedSkill = home?.environment?.skills.find(skill => skill.resourceId === skillId)
   const unsharedKnowledge = conversation?.kind === 'group' ? agent.knowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id)) : []
@@ -117,8 +120,9 @@ function WorkspaceView({ api, agent, home, active, conversation, onConfigure, on
   return <div className="detail-section"><div className="employee-form-sections">
     {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}
     <ContactProfileSection title="独立工作区"><ContactProfileCard label="独立工作区" fields={false}>
-      <div className="space-y-3"><p className="field-hint">这里属于 {agent.name}。群任务只会获得当前会话授权的目录，不会自动访问全部私有文件。</p><p className="resource-path">{home.workspacePath}</p><Button variant="secondary" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen />打开员工工作区</Button></div>
+      <div className="space-y-3"><p className="field-hint">这里属于 {agent.name}。系统文件和会话内容在这里保存。{(agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? '业务目录另行授权，群聊中沿用这位员工自己的许可。' : '本机 Agent 按自身配置访问业务目录，保留原生能力。'}</p><p className="resource-path">{home.workspacePath}</p><Button variant="secondary" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen />打开员工工作区</Button></div>
     </ContactProfileCard></ContactProfileSection>
+    {(agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <AgentEditor key={`${agent.id}:directories:${directoryEpoch}`} api={api} snapshot={snapshot} agent={agent} section="directories" active={active} onBusyChange={onBusyChange} scope={`workspace:${agent.id}`} onSaved={onRefresh} onClose={() => setDirectoryEpoch(value => value + 1)} /> : <ContactProfileSection title="目录访问"><ContactProfileCard label="本机目录配置" fields={false}><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></ContactProfileCard></ContactProfileSection>}
     {home.sessionPath && <ContactProfileSection title="当前会话空间"><ContactProfileCard label="当前会话空间" fields={false}>
       <div className="space-y-3"><p className="resource-path">{home.sessionPath}</p><Button variant="secondary" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.sessionPath! }) }) }}><FolderOpen />打开会话空间</Button></div>
     </ContactProfileCard></ContactProfileSection>}

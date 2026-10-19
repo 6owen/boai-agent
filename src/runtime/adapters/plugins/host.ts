@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 显式业务cwd只核对原目录，不因进程准备而创建或授予写入。
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Pinned plugin/profile, native conversation projections and original product callbacks.
@@ -6,6 +8,7 @@
  * [POS]: Runtime API to existing employee engine bridge; no parent model or business retry.
  * [PROTOCOL]: Update Header and plugins/.folder.md when changing lifecycle or receipt semantics.
  */
+import { workingDirectoryTarget } from '../../modules/workspaces/working-directory'
 import { join } from 'node:path'
 import { mkdir } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
@@ -37,6 +40,7 @@ export async function runPlugin(plugins: RuntimePlugins, profile: LaunchProfile,
   let write!: (line: string) => void, result: { text: string; verified: NonNullable<LaunchProfile['verified']>; sourceFingerprint?: string } | undefined, operation: Promise<void> | undefined, fault: Error | undefined
   let sessionId = '', requestId = '', accepted = false, idle = false
   let modelSource: RuntimeModelSource | undefined, privateKey = ''
+  let cli: import('../../../shared/cli/run-access').RunCliEnvironmentLease | undefined
   const redact = (value: string) => privateKey ? value.replaceAll(privateKey, '[redacted]') : value
   const publicValue = (value: unknown): unknown => typeof value === 'string' ? redact(value) : Array.isArray(value) ? value.map(publicValue) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [redact(key), publicValue(item)])) : value
   const tools = new Map(input?.tools.map(tool => [tool.name, tool]) ?? [])
@@ -82,13 +86,14 @@ export async function runPlugin(plugins: RuntimePlugins, profile: LaunchProfile,
       }
       modelSource = { ...resolved, apiKey, ...(entry ? { model: { name: entry.name, reasoning: entry.reasoning, contextWindow: entry.contextWindow, maxOutputTokens: entry.maxOutputTokens, input: entry.modalities?.input } } : {}) }
     }
-    await mkdir(directory.cwd, { recursive: true }); await mkdir(directory.privateHome, { recursive: true, mode: 0o700 })
+    if (context?.workingDirectory) await workingDirectoryTarget(directory.cwd); else await mkdir(directory.cwd, { recursive: true }); await mkdir(directory.privateHome, { recursive: true, mode: 0o700 })
+    if (context && input && !inspectSourceOnly) cli = await context.acquireCliEnvironment?.()
     const env: NodeJS.ProcessEnv = { ...process.env, PATH: process.env.PATH, LANG: process.env.LANG ?? 'en_US.UTF-8', TMPDIR: process.env.TMPDIR, HOME: profile.useExistingLogin ? process.env.HOME : directory.privateHome, USERPROFILE: profile.useExistingLogin ? process.env.USERPROFILE : directory.privateHome }
     for (const key of ['HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','http_proxy','https_proxy','all_proxy','no_proxy','NODE_EXTRA_CA_CERTS','SSL_CERT_FILE','SSL_CERT_DIR']) if (process.env[key]) env[key] = process.env[key]
     env.NO_PROXY = env.no_proxy = [...new Set([...(env.NO_PROXY ?? '').split(','),...(env.no_proxy ?? '').split(','),'127.0.0.1','localhost','::1'])].filter(Boolean).join(',')
     signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort()
     let eventQueue = Promise.resolve()
-    await runClaudeProcess({ executable: join(runtimeBundleRoot(), 'runner.mjs'), runtime: 'node', args: [], cwd: directory.cwd, privateHome: directory.privateHome, env, signal: control.signal, native: true, ...(!context ? { timeoutMs: 60000 } : {}),
+    await runClaudeProcess({ executable: join(runtimeBundleRoot(), 'runner.mjs'), runtime: 'node', args: [], cwd: directory.cwd, privateHome: directory.privateHome, env, cliEnvironment: cli?.env, signal: control.signal, native: true, ...(!context ? { timeoutMs: 60000 } : {}),
       onReady: (sendLine, end) => {
         write = sendLine
         operation = (async () => {
@@ -148,6 +153,7 @@ export async function runPlugin(plugins: RuntimePlugins, profile: LaunchProfile,
     if (!result) throw new Error('插件退出但没有完成回执')
     return result
   } catch (error) { stop(error instanceof Error && error.message.startsWith('Claude') ? new Error(error.message.replaceAll('Claude', '运行时插件')) : error); throw fault } finally {
+    cli?.release()
     signal.removeEventListener('abort', abort); control.abort(); for (const item of pending.values()) { clearTimeout(item.timer); item.reject(fault ?? new Error('插件已退出')) }; pending.clear()
     await operation; await Promise.allSettled(callbacks); lease.release(); modelSource = undefined; privateKey = ''
   }

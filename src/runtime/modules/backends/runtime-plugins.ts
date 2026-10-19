@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Trusted prebuilt local packages, explicit CAS changes and runtime leases.
- * [OUTPUT]: Atomic content-addressed installs, immutable active versions, fail-closed corruption and draining disable.
+ * [OUTPUT]: Atomic installs, active-version leases and shared read-only package integrity checks without launching drivers.
  * [POS]: Runtime plugin package owner; never runs install scripts or copies CLI credentials.
  * [PROTOCOL]: Update Header and backends/.folder.md when changing package lifecycle.
  */
@@ -58,19 +58,30 @@ export class RuntimePlugins {
     return { revision: this.state.revision, plugins: [...this.packages.values()].map(item => ({ manifest: structuredClone(item.manifest), packageHash: item.hash, bundled: item.bundled, enabled: !this.diagnostic && this.enabled(item.manifest.id), inUse: this.leases.get(item.manifest.id) ?? 0 })), ...(this.diagnostic ? { readOnly: true, diagnostic: this.diagnostic } : {}) }
   }
   private enabled(id: string) { return this.state.packages[id]?.enabled ?? !this.state.disabled.includes(id) }
-  resolve(ref: Pick<RuntimePluginRef, 'pluginId' | 'providerId'> & Partial<RuntimePluginRef>, allowDisabled = false) {
+  private resolvePackage(ref: Pick<RuntimePluginRef, 'pluginId' | 'providerId'> & Partial<RuntimePluginRef>, allowDisabled = false) {
     if (this.diagnostic) throw new Error(this.diagnostic)
     if (this.changing.has(ref.pluginId)) throw new Error('运行时插件正在更新，请稍后核对连接')
     const item = this.packages.get(ref.pluginId)
     if (!item || !allowDisabled && !this.enabled(ref.pluginId)) throw new Error('运行时插件未安装或已停用，请在设置的插件中核对')
     const contribution = runtimeContribution(item.manifest, ref)
     if (ref.packageHash && ref.packageHash !== item.hash) throw new Error('运行时插件版本已变化，请重新测试并保存连接')
-    return { ...item, contribution, config: validateRuntimeConfig(contribution, ref.config) }
+    return { ...item, contribution }
+  }
+  resolve(ref: Pick<RuntimePluginRef, 'pluginId' | 'providerId'> & Partial<RuntimePluginRef>, allowDisabled = false) {
+    const item = this.resolvePackage(ref, allowDisabled)
+    return { ...item, config: validateRuntimeConfig(item.contribution, ref.config) }
+  }
+  async verifyPackage(ref: Pick<RuntimePluginRef, 'pluginId' | 'providerId'> & Partial<RuntimePluginRef>, allowDisabled = false) {
+    const item = this.resolvePackage(ref, allowDisabled)
+    const current = item.bundled ? hash(Buffer.concat([Buffer.from(JSON.stringify(item.manifest)), await readFile(join(item.root, item.contribution.driver.kind === 'module' ? item.contribution.driver.entry : 'acp.mjs'))])) : (await this.readPackage(item.root)).hash
+    if (current !== item.hash) throw new Error('运行时插件文件已变化，请重新安装核对')
+    const latest = this.resolvePackage(ref, allowDisabled)
+    if (latest.hash !== item.hash) throw new Error('运行时插件版本已变化，请重新测试并保存连接')
+    return latest
   }
   async acquire(ref: RuntimePluginRef) {
     const item = this.resolve(ref)
-    const current = item.bundled ? hash(Buffer.concat([Buffer.from(JSON.stringify(item.manifest)), await readFile(join(item.root, item.contribution.driver.kind === 'module' ? item.contribution.driver.entry : 'acp.mjs'))])) : (await this.readPackage(item.root)).hash
-    if (current !== item.hash) throw new Error('运行时插件文件已变化，请重新安装核对')
+    await this.verifyPackage(ref)
     this.resolve(ref)
     this.leases.set(ref.pluginId, (this.leases.get(ref.pluginId) ?? 0) + 1)
     let released = false

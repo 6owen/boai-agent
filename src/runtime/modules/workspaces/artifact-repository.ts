@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 知识保留返回已核验成果的材料来源，支持后续明确材料撤权向独立知识副本传播。
+ * [OUTPUT]: 明确知识保留只读取已发布且当前员工获准的成果原件，不复制可变工作文件。
  * [OUTPUT]: 插件与Codex成果修订事务核对明确网关连接，来源丢失在创建修订请求前拒绝。
  * [OUTPUT]: 运行时插件成果修订复用原profile与固定来源核验。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -284,6 +286,13 @@ export class ArtifactRepository {
     await tx.put(record('artifacts', artifact)); return clone(artifact)
   }
 
+  /** Explicit retention copies the checked published original, never the employee's mutable working file. */
+  async retainSource(tx: RecordTransaction, artifactId: string, contentHash: string, agentId: string) {
+    const { artifact } = await this.checked(tx, await this.version(tx, artifactId), contentHash, agentId, false)
+    const bytes = await this.bytes(await this.storageRoom(tx, artifact), artifact.id, undefined, artifact.managedRelativePath)
+    if (bytes.contentHash !== contentHash) throw new Error('成果在保留时已变化')
+    return { ...bytes, name: artifact.name, materialSources: clone(artifact.materialSources ?? []) }
+  }
   async preview(artifactId: string, expectedHash?: string, agentId?: string): Promise<ArtifactPreview> {
     try { return await this.store.transaction(async tx => this.previewState(tx, await this.checked(tx, await this.version(tx, artifactId), expectedHash, agentId, true, false, true))) }
     catch (error) { if (error instanceof ContentError) await this.unavailable(artifactId, error); throw error }

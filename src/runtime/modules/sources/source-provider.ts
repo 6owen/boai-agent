@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: API本地源逐操作申请/复核目录；托管stdio MCP从启动起使用员工目录策略，原生及本人配置测试保持原路径。
+ * [OUTPUT]: DeepSeek专用工具之外保留原通用API request；普通web-read仅暴露两个核准只读工具。
+ * [OUTPUT]: DeepSeek官方API复用Craft传输与vault，固定搜索/读取POST为只读，通用API保持原门禁。
+ * [OUTPUT]: MCP目录变更通知使旧工具与进行中结果失效，重复工具名拒绝；不自动重连或重放。
+ * [OUTPUT]: 官方Tavily免密模式及版本/schema分类；额度假成功/无正文显式失败，未知MCP提示不授予只读权限。
  * [INPUT]: Frozen source definition, vault-only credentials and an owned abort signal.
  * [OUTPUT]: Craft API requests, MCP sessions and contained local reads/writes; employee authorization is checked by the host.
  * [POS]: Source transport adapter; no employee or configuration authority.
@@ -8,18 +13,25 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
+import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { opendir, lstat, realpath, mkdir } from 'node:fs/promises'
-import { join, resolve, isAbsolute } from 'node:path'
+import { opendir, lstat, realpath, mkdir, access } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { join, resolve, isAbsolute, delimiter } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
-import { apiSourceRequestSchema, localSourceRequestSchema, type DataSource, type SourceTool } from '../../../shared/domain/sources'
+import { apiSourceRequestSchema, localSourceRequestSchema, webSearchProvider, type DataSource, type SourceTool } from '../../../shared/domain/sources'
 import { apiAuthSpecFromConfig, parseStoredApiCredential } from './craft/api-auth'
 import { executeApiRequest } from './craft/api-request'
-import { boundedRead, restrictedPath, writeWorkspaceFile } from '../workspaces/file-access'
+import { boundedRead, restrictedPath, writeWorkspaceFile, workspaceRelative } from '../workspaces/file-access'
+import type { RunDirectoryAccess } from '../workspaces/directory-run'
+import { directoryProcessBoundary, employeeCommandScope } from '../workspaces/directory-command'
 import { fileContentHash, readFilePage } from '../workspaces/file-editing'
 import { assertNativeProcessGuard } from '../../adapters/native-process-guard'
+import { assertWebSearchResult, isTavilySearchEndpoint, verifiedWebCapability } from './web-search-profile'
+
+import { openDeepSeekSearchSession } from './deepseek-search'
 
 const execute = promisify(execFile)
 export const SOURCE_TIMEOUT = 30_000
@@ -54,9 +66,10 @@ function apiPath(source: Extract<DataSource, { type: 'api' }>, path: string) {
   const target = new URL(path.replace(/^\//, ''), base)
   if (target.origin !== base.origin || !target.pathname.startsWith(base.pathname)) throw new Error('API 端点超出了配置的 Base URL')
 }
-export async function openSourceSession(source: DataSource, credential: string, dataPath: string, signal: AbortSignal): Promise<SourceSession> {
+export async function openSourceSession(source: DataSource, credential: string, dataPath: string, signal: AbortSignal, directories?: RunDirectoryAccess): Promise<SourceSession> {
   signal.throwIfAborted()
-  if (source.type === 'api') return {
+  if (source.type === 'api') {
+    const generic: SourceSession = {
     tools: [{ name: 'request', description: 'Request a relative endpoint using the employee-authorized operation. The remote service enforces its credential permissions.', inputSchema: z.toJSONSchema(apiSourceRequestSchema, { io: 'input' }) }],
     async call(name, args, signal) {
       if (name !== 'request') throw new Error('未知 API 工具')
@@ -69,6 +82,10 @@ export async function openSourceSession(source: DataSource, credential: string, 
       if (text.includes('\0')) throw new Error('此端点返回二进制，请使用提供文本或 JSON 的端点')
       return redactSourceValue({ status: result.status, contentType: result.contentType, ...readFilePage(text, 0, 48000) }, credential)
     }, close: async () => {},
+    }
+    if (webSearchProvider(source) !== 'deepseek') return generic
+    const search = openDeepSeekSearchSession(credential)
+    return { tools: [...search.tools, ...generic.tools], call: (name, args, signal) => name === 'request' ? generic.call(name, args, signal) : search.call(name, args, signal), close: async () => { await search.close(); await generic.close() } }
   }
   if (source.type === 'local') {
     const root = await sourceFolder(source.local.path)
@@ -80,13 +97,25 @@ export async function openSourceSession(source: DataSource, credential: string, 
         const request = localSourceRequestSchema.parse(args)
         signal.throwIfAborted()
         if (isAbsolute(request.path)) throw new Error('请使用数据源内的相对路径')
+        const path = resolve(root, workspaceRelative(request.path))
+        const targetGrant = await directories?.authorize(path, request.operation === 'write' ? 'write' : 'read', `访问数据源 ${source.name}`, signal)
+        const verify = async () => {
+          signal.throwIfAborted()
+          if (await sourceFolder(root) !== root) throw new Error('数据源目录来源已变化，请重新配置')
+          if (targetGrant) await directories!.verifyTarget(targetGrant, signal)
+        }
+        await verify()
         if (request.operation === 'write') {
           if (request.content === undefined || request.expectedHash === undefined) throw new Error('写入需要正文及原文件 hash；新文件使用 null')
-          await writeWorkspaceFile(root, request.path, request.content, request.expectedHash, signal)
+          await writeWorkspaceFile(root, request.path, request.content, request.expectedHash, signal, verify)
           return { written: true, path: request.path, contentHash: fileContentHash(request.content) }
         }
         const target = await restrictedPath([root], resolve(root, request.path))
-        if (request.operation === 'read') return { path: request.path, ...readFilePage(await boundedRead(target, { strictUtf8: true }), request.offset, request.limit) }
+        if (request.operation === 'read') {
+          const content = await boundedRead(target, { strictUtf8: true })
+          await verify()
+          return { path: request.path, ...readFilePage(content, request.offset, request.limit) }
+        }
         const entries: { name: string; type: string }[] = []
         let count = 0, truncated = false
         for await (const entry of await opendir(target)) {
@@ -96,13 +125,14 @@ export async function openSourceSession(source: DataSource, credential: string, 
           if (entries.length === 200) { truncated = true; break }
           entries.push({ name: entry.name, type: entry.isDirectory() ? 'directory' : 'file' })
         }
+        await verify()
         return { entries, nextOffset: truncated ? request.offset + entries.length : null }
       }, close: async () => {},
     }
   }
   // Transport mapping follows Craft server-builder.ts. SDK/session ownership is BOAI's.
   const config = source.mcp
-  const headers = config.transport !== 'stdio' && config.authType === 'bearer' ? { Authorization: `Bearer ${credential}` } : undefined
+  const headers: Record<string, string> | undefined = config.transport !== 'stdio' && config.authType === 'bearer' ? { Authorization: `Bearer ${credential}` } : isTavilySearchEndpoint(source) ? { 'X-Tavily-Access-Mode': 'keyless' } : undefined
   if (config.transport !== 'stdio' && config.authType === 'bearer' && !credential) throw new Error('MCP 尚未配置访问令牌')
   const scopedFetch: typeof fetch = (input, init) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
@@ -113,13 +143,32 @@ export async function openSourceSession(source: DataSource, credential: string, 
   let env: Record<string, string> = {}
   if (config.transport === 'stdio' && credential) env = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).parse(JSON.parse(credential))
   if (['NODE_OPTIONS', 'NODE_CHANNEL_FD', 'NODE_CHANNEL_SERIALIZATION_MODE', 'ELECTRON_RUN_AS_NODE'].some(key => key in env)) throw new Error('MCP 环境变量包含保留的宿主变量')
+  const processEnvironment = { ...getDefaultEnvironment(), ...env }
+  let processCommand = config.transport === 'stdio' ? { command: config.command, args: config.args } : undefined
+  if (processCommand && directories && directories.agent.directoryGrants !== undefined && directories.agent.executionPermission !== 'full-access') {
+    // Only the configured executable is an implicit program input. Scripts,
+    // dependencies and cache folders still need explicit employee/run grants.
+    let executable: string | undefined
+    const candidates = isAbsolute(processCommand.command) ? [processCommand.command]
+      : (processEnvironment.PATH ?? '').split(delimiter).filter(isAbsolute).map(root => join(root, processCommand!.command))
+    for (const candidate of candidates) {
+      try { await access(candidate, constants.X_OK); if ((await lstat(await realpath(candidate))).isFile()) { executable = await realpath(candidate); break } }
+      catch (error) { if (!['ENOENT', 'EACCES', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error }
+    }
+    if (!executable) throw new Error('MCP 配置的可执行程序不可用')
+    const scope = await employeeCommandScope(directories.agent, { readOnly: [], readWrite: [], executables: [executable] }, directories.temporaryGrants, directories.protectedRoots)
+    processCommand = await directoryProcessBoundary(executable, processCommand.args, scope!)
+  }
   if (config.transport === 'stdio') await mkdir(ledger, { recursive: true, mode: 0o700 })
   const transport = config.transport === 'stdio'
-    ? new StdioClientTransport({ command: await assertNativeProcessGuard(), args: ['--ledger', ledger, config.command, ...config.args], env: { ...getDefaultEnvironment(), ...env }, stderr: 'ignore', maxBufferSize: 4 * 1024 * 1024 })
+    ? new StdioClientTransport({ command: await assertNativeProcessGuard(), args: ['--ledger', ledger, processCommand!.command, ...processCommand!.args], env: processEnvironment, cwd: directories ? '/' : undefined, stderr: 'ignore', maxBufferSize: 4 * 1024 * 1024 })
     : config.transport === 'sse'
       ? new SSEClientTransport(new URL(config.url), { requestInit: { headers }, fetch: scopedFetch, eventSourceInit: { fetch: scopedFetch } })
       : new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers }, fetch: scopedFetch, reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } })
   const client = new Client({ name: 'boai-sources', version: '1.0.0' })
+  let catalogChanged = false
+  client.setNotificationHandler(ToolListChangedNotificationSchema, () => { catalogChanged = true })
+  const assertCatalog = () => { if (catalogChanged) throw new Error('MCP 工具目录已变化，请重新发起查询') }
   let closing: Promise<void> | undefined
   const close = () => closing ??= (async () => {
     const pid = transport instanceof StdioClientTransport ? transport.pid : null
@@ -137,18 +186,25 @@ export async function openSourceSession(source: DataSource, credential: string, 
     const tools: SourceTool[] = [], cursors = new Set<string>(); let cursor: string | undefined
     do {
       const result = await client.listTools(cursor ? { cursor } : {}, { signal, timeout: SOURCE_TIMEOUT })
-      for (const tool of result.tools) tools.push({ name: tool.name, description: tool.description?.slice(0, 4000), inputSchema: tool.inputSchema, readOnly: tool.annotations?.readOnlyHint === true })
+      for (const tool of result.tools) {
+        if (tools.some(existing => existing.name === tool.name)) throw new Error('MCP 工具目录存在重复名称')
+        const webCapability = verifiedWebCapability(source, client.getServerVersion(), tool)
+        tools.push({ name: tool.name, description: tool.description?.slice(0, 4000), inputSchema: tool.inputSchema, readOnly: !!webCapability, ...(webCapability ? { webCapability } : {}) })
+      }
       if (tools.length > 200) throw new Error('MCP 工具目录超过 200 项，请在服务端缩小范围')
       cursor = result.nextCursor
       if (cursor && (cursors.has(cursor) || cursors.size >= 20)) throw new Error('MCP 工具目录分页异常')
       if (cursor) cursors.add(cursor)
     } while (cursor)
-    signal.throwIfAborted()
+    signal.throwIfAborted(); assertCatalog()
     const publicTools = redactSourceValue(tools, credential)
     if (!Array.isArray(publicTools)) throw new Error('MCP 工具目录过大，请在服务端缩小范围')
-    return { tools: publicTools as SourceTool[], async call(name, args, signal) {
+    return { get tools() { assertCatalog(); return publicTools as SourceTool[] }, async call(name, args, signal) {
+      assertCatalog()
       if (!tools.some(tool => tool.name === name)) throw new Error('MCP 工具不在当前目录中')
       const result = await client.callTool({ name, arguments: args }, undefined, { signal, timeout: SOURCE_TIMEOUT, maxTotalTimeout: SOURCE_TIMEOUT })
+      assertCatalog()
+      assertWebSearchResult(tools.find(tool => tool.name === name)?.webCapability, result)
       return redactSourceValue(result, credential)
     }, close: async () => { signal.removeEventListener('abort', abort); await close() } }
   } catch (error) { signal.removeEventListener('abort', abort); await close(); throw error }

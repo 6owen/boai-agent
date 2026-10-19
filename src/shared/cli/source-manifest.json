@@ -1,0 +1,61 @@
+{
+  "repository": "https://github.com/craft-ai-agents/craft-agents-oss",
+  "commit": "22c9f0414ab63e0a22814c9a2ada740206e09091",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "upstream": "apps/cli/src/client.ts",
+      "upstreamSha256": "f75330eb929e0c043ed0a0e799ba595956441254f3143469acb3412790613a5a",
+      "destination": "src/cli/client.ts",
+      "changes": "Adapt request map/handshake/event lifecycle to Node ws, TLS CA, bounded frames and BOAI identity; no automatic replay."
+    },
+    {
+      "upstream": "packages/shared/src/protocol/types.ts",
+      "upstreamSha256": "2ceeef8617c86bb59eb78908095cf9101a6a1900968f2e6388f6da0a1f4dd4ba",
+      "destination": "src/shared/cli/protocol.ts",
+      "changes": "Preserve envelope/correlation/handshake shape; only implemented BOAI fields and codes."
+    },
+    {
+      "upstream": "packages/server-core/src/transport/codec.ts",
+      "upstreamSha256": "7c01525366e5cbedcd073d294649da813262a41500a1e78de522de40f3a6c942",
+      "destination": "src/shared/cli/codec.ts",
+      "changes": "BOAI byte tag/import, own-property assignment, no unimplemented sequence_ack."
+    },
+    {
+      "upstream": "apps/cli/src/index.ts",
+      "upstreamSha256": "7049957916b146a80ea2b41c935cadc48df5910b9f98ee029697c528e8eccc92",
+      "destination": "src/cli/execution.ts",
+      "changes": "Adapt prompt/stdin and subscribe-before-send flow to Node UTF-8 bounded input, BOAI request identities, original execution window, actual exit and distinct pending/unknown/detach outcomes."
+    },
+    {
+      "upstream": "packages/server-core/src/bootstrap/headless-start.ts",
+      "upstreamSha256": "0601267e62e71bbe66a5d5fe92bc35a7211f1378cf95fe9e0056b9a8eb7848ec",
+      "destination": "src/runtime/headless.ts",
+      "changes": "Adapt standalone assembly/lifecycle to original AppService, existing SQLite exclusive owner, explicit environment-reference secrets, no token in ready output; browser bridge remains a separate pending integration."
+    },
+    {
+      "upstream": "packages/server/src/index.ts",
+      "upstreamSha256": "9c81e9fc26b0517446a5b146ba81c7b75f275223d0b0d2b1933f7238d534d8b5",
+      "destination": "src/runtime/serve.ts",
+      "changes": "Adapt foreground host/port/TLS environment and shutdown entry to Node; secret variables are captured privately and removed from inherited environment; no Electron import."
+    },
+    {
+      "upstream": "apps/cli/src/server-spawner.ts",
+      "upstreamSha256": "c216fbdb40caab0d15ec480008f00532f73a4c104301f4d8b42681faf5811382",
+      "destination": "src/cli/server-spawner.ts",
+      "changes": "Adapt Craft child spawn/readiness/stop to Node IPC, existing-owner reuse, private file logs, atomic idle release and authenticated background handoff; no forced kill or business replay. Explicit local serve module; remove only own successful stopped-child diagnostic log unless no-cleanup, keeping failure/background/unknown or replaced files. Abort-aware startup/connection wait retains child identity without submission or forced termination."
+    },
+    {
+      "upstream": "apps/cli/src/index.ts",
+      "upstreamSha256": "7049957916b146a80ea2b41c935cadc48df5910b9f98ee029697c528e8eccc92",
+      "destination": "src/cli/presentation.ts",
+      "changes": "Migrate ten-frame 80ms spinner to interactive stderr; suppress for machine output and explicit flags; whitelist lifecycle diagnostics without payloads."
+    },
+    {
+      "upstream": "apps/cli/src/index.ts",
+      "upstreamSha256": "7049957916b146a80ea2b41c935cadc48df5910b9f98ee029697c528e8eccc92",
+      "destination": "src/cli/validation.ts",
+      "changes": "Adapt named step/elapsed/result loop to read-only existing BOAI services or exclusively new validation profiles, original message/tool/session receipts, explicit incomplete steps, retained evidence and authenticated own-service exit; no deletion of existing profiles."
+    }
+  ]
+}

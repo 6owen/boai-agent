@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
  * [OUTPUT]: 原生会话支持双向stdio交互、按选择的原生权限批准；不以累计输出大小或隐式期限截断长任务。
  * [OUTPUT]: 每次传输独立记录实际stdout/stderr Buffer字节数（不含stdin），超限及退出后的已收数据仍在原finally回执保留；旧回执缺省未知，原合计门禁不变。
@@ -16,6 +17,8 @@ import { StringDecoder } from 'node:string_decoder'
 import { waitForProcessGroupExit } from '../mastra/host-command'
 import { CLAUDE_INPUT_LIMIT } from './policy'
 import { CLAUDE_SUPERVISOR } from './supervisor'
+import { employeeEnvironment } from '../../../shared/cli/employee-environment'
+import type { RunCliEnvironment } from '../../../shared/cli/run-access'
 
 const OUTPUT_LIMIT = 8 * 1024 * 1024
 const LINE_LIMIT = 2 * 1024 * 1024
@@ -30,6 +33,7 @@ export interface ClaudeProcessReceipt {
 export async function runClaudeProcess(input: {
   executable: string; runtime?: 'node'; args: string[]; env: NodeJS.ProcessEnv; cwd: string
   signal: AbortSignal; privateHome?: string; timeoutMs?: number; stdin?: string; native?: boolean;
+  cliEnvironment?: RunCliEnvironment
   onReady?(write: (line: string) => void, end: () => void): void; onLine(line: string): Promise<void> | void
   onReceipt?(value: ClaudeProcessReceipt): void
 }) {
@@ -40,7 +44,7 @@ export async function runClaudeProcess(input: {
   if (input.timeoutMs !== undefined && (!Number.isFinite(input.timeoutMs) || input.timeoutMs <= 0)) throw new Error('Claude缺少有效执行期限')
   if (Buffer.byteLength(input.stdin ?? '') > CLAUDE_INPUT_LIMIT) throw new Error('Claude输入超过受管传输限制')
   const child = spawn(process.execPath, ['--input-type=commonjs', '-e', CLAUDE_SUPERVISOR],
-    { cwd: input.cwd, env: { ...input.env, ELECTRON_RUN_AS_NODE: '1' },
+    { cwd: input.cwd, env: { ...employeeEnvironment(input.env, input.cliEnvironment), ELECTRON_RUN_AS_NODE: '1' },
       shell: false, detached: true, stdio: ['pipe', 'pipe', 'pipe', 'ipc'] })
   let cliExitReceived = false
   let fault: Error | undefined, bytes = 0, buffer = '', callbacks = Promise.resolve()

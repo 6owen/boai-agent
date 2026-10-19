@@ -1,6 +1,6 @@
 /*
 [INPUT]: Rovai managed_process/macos.rs @ f9acc2395283d49f0ce247dc0af2207c155f6eb6 (MIT).
-[OUTPUT]: Directly imported identity-bound native descendant supervision; upstream body unchanged.
+[OUTPUT]: Identity-bound native supervision; BOAI adds same-UID desktop observation and root-exit checks without persistent recovery ledgers.
 [POS]: Platform module for BOAI process guard; license is in this directory.
 [PROTOCOL]: Preserve provenance and update .folder.md if changed.
 */
@@ -194,11 +194,21 @@ pub(super) struct ProcessTree {
 
 impl ProcessTree {
     pub(super) fn new(pid: i32) -> io::Result<Self> {
+        Self::capture_root(pid, true)
+    }
+
+    // Only the trusted local desktop bridge supplies this PID. Observation never
+    // grants permission to signal a live root, and it must not use restart ledgers.
+    pub(super) fn observe(pid: i32) -> io::Result<Self> {
+        Self::capture_root(pid, false)
+    }
+
+    fn capture_root(pid: i32, owned_child: bool) -> io::Result<Self> {
         let root =
             identity(pid)?.ok_or_else(|| io::Error::other("managed root exited before capture"))?;
         let owner = identity(std::process::id() as i32)?
             .ok_or_else(|| io::Error::other("Core identity unavailable"))?;
-        if root.parent != owner.unique || root.uid != owner.uid {
+        if pid <= 1 || root.unique == owner.unique || root.uid != owner.uid || (owned_child && root.parent != owner.unique) {
             return Err(io::Error::other("managed root is not owned by this Core"));
         }
         Ok(Self {
@@ -211,6 +221,11 @@ impl ProcessTree {
             },
             path: None,
         })
+    }
+
+    pub(super) fn root_alive(&self) -> io::Result<bool> {
+        self.ledger.processes.get(&self.ledger.root)
+            .ok_or_else(|| io::Error::other("observed root identity missing"))?.alive()
     }
 
     pub(super) fn track(&mut self, directory: &Path) -> io::Result<()> {
@@ -250,6 +265,8 @@ impl ProcessTree {
         loop {
             let count = self.ledger.processes.len();
             for row in rows.iter() {
+                // The observer can be a child of the watched process in local tests.
+                if row.unique == self.ledger.owner.unique { continue; }
                 if let Some(owned) = self.ledger.processes.get_mut(&row.unique) {
                     // exec may advance PID version without changing the process's
                     // unique identity. Refresh only that already-owned identity.

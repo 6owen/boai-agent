@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo模型发起的数据源测试传递当前API目录许可，本人设置页测试仍沿原连接管理权限。
  * [OUTPUT]: bobo具有全部启用数据源读写权，无需自绑定；源配置仅连接信息，普通员工按绑定及执行权限访问。
  * [OUTPUT]: manage_data_sources增加guide动作，直接返回固定Craft对话设置流程的BOAI适配；创建/修改先读指南并测试真实保存结果。
  * [INPUT]: 普通bobo会话的本人消息授权、既有技能/数据源服务和有限IPC映射。
@@ -13,6 +14,7 @@ import type { Method } from '../../../shared/ipc'
 import { dataSourceConfigSchema, dataSourceIdentitySchema, dataSourceBindingsSchema } from '../../../shared/domain/sources'
 import { sourceCreationCommands, sourceCreationSchema } from '../sources/source-commands'
 import type { SourceService } from '../sources/source-service'
+import type { RunDirectoryAccess } from '../workspaces/directory-run'
 import { sourceSetupGuide } from '../sources/craft/source-setup'
 import { saveLocalSkillSchema, removeLocalSkillSchema, type LocalSkillEditing } from './local-skill-editing'
 import { scanSkillSchema, installSkillsSchema, prepareLocalSkillBindingSchema, bindLocalSkillSchema } from './skill-management'
@@ -49,6 +51,7 @@ interface Options {
   sources: SourceService; files: LocalSkillEditing
   source: { conversationId: string; messageId: string; agentId: string }
   validate(): Promise<void>; signal: AbortSignal
+  directories?: RunDirectoryAccess
   invoke(method: Method, input: unknown): Promise<unknown>
   critical<T>(action: () => Promise<T>): Promise<T>
   employees(): DigitalAgent[]
@@ -70,7 +73,7 @@ export function catalogCommands(options: Options) {
         case 'create': return create(command.input)
         case 'update': return sources.save(command.input, undefined, validate)
         case 'delete': { const name = sources.get(command.input.id).name; await sources.remove(command.input, validate); return { removed: true, id: command.input.id, name } }
-        case 'test': return sources.test(command.input, { validate, signal })
+        case 'test': return sources.test(command.input, { validate, signal, directories: options.directories })
         case 'bindings': return sources.bind(command.input, validate)
       }
     },

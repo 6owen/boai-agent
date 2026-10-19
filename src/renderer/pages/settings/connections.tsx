@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 全部模型连接草稿/保存携带revision，避免CLI和桌面并发覆盖旧配置。
  * [OUTPUT]: Magpie连接入口与列表共用官网下载的本地SVG，单色mask沿主题着色。
  * [OUTPUT]: 测试与保存共用草稿必填/URL校验，缺少模型等错误统一Sonner反馈，不触发浏览器原生校验气泡。
  * [OUTPUT]: 本机Magpie发现仅填充已识别地址的草稿，明确保存前不修改连接或密钥。
@@ -111,7 +112,7 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
 
 function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved, onCancel, finalFocus }: { connections: Connection[]; connection?: Connection; initialApiKey: string; api: DesktopApi; onSaved: () => Promise<void>; onCancel: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
   const [draft, setDraft] = useState(() => {
-    const initial: ConnectionInput = { id: connection?.id, ...(connection?.gateway ? { gateway: connection.gateway, expectedRevision: connection.revision ?? 1 } : {}), name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey, api: connection?.api ?? 'chat' }
+    const initial: ConnectionInput = { id: connection?.id, ...(connection ? { expectedRevision: connection.revision ?? 1 } : {}), ...(connection?.gateway ? { gateway: connection.gateway } : {}), name: connection?.name ?? '', provider: connection?.provider ?? 'openai', baseUrl: connection?.baseUrl ?? '', defaultModel: connection?.defaultModel ?? '', apiKey: initialApiKey, api: connection?.api ?? 'chat' }
     return { form: initial, baseline: initial }
   })
   const { form, baseline } = draft
@@ -195,7 +196,7 @@ function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved
           const input = { ...form, name: form.name.trim(), baseUrl: form.baseUrl.trim(), defaultModel: form.defaultModel.trim(), apiKey: form.apiKey?.trim() }
           const saved = await api.request('saveConnection', input)
           await onSaved()
-          const baseline = { ...input, id: saved.id, ...(saved.gateway ? { expectedRevision: saved.revision } : {}) }
+          const baseline = { ...input, id: saved.id, expectedRevision: saved.revision }
           setDraft({ form: baseline, baseline })
           guard.saved(onCancel)
         })
