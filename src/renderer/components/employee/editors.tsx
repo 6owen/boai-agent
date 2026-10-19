@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 网页检索作为独立分区保存偏好与可用服务；数据源分区只编辑业务绑定。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 检索偏好沿员工草稿保存；主动解绑同次重置，旧缺省不因身份编辑补写。
  * [OUTPUT]: 知识资料配置收敛为数量/文件区入口；导航走原草稿守卫，独立知识绑定回填版本时保留其他未保存字段。
@@ -40,6 +41,7 @@
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { EmployeeWebSearchFields } from './web-search'
 import { SourcePicker } from '@/pages/sources/source-picker'
 import { ConnectionSettingRow } from '@/pages/settings/connection-layout'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
@@ -77,7 +79,7 @@ export const templates = [
   { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
 ]
 function savedAgentForm(agent: DigitalAgent): AgentInput { return { webSearch: agent.webSearch, directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision, executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
-export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge' | 'directories'
+export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge' | 'directories' | 'web-search'
 export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
@@ -251,7 +253,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
         </div>}
       </EmployeeFormSection>}
       <fieldset className="contents" disabled={locked}>
-      {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} searchPreference={form.webSearch ?? { mode: 'auto' }} onSearchPreferenceChange={value => set('webSearch', value)} onChange={ids => { if (!locked) setForm(current => ({ ...current, sourceIds: ids, ...(current.webSearch?.mode === 'source' && (current.sourceIds ?? []).includes(current.webSearch.sourceId) && !ids.includes(current.webSearch.sourceId) ? { webSearch: { mode: 'auto' } } : {}) })) }} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
+      {visible('web-search') && <EmployeeFormSection title="网页检索" actions={inlineActions}><EmployeeWebSearchFields api={api} value={form.webSearch} onChange={value => set('webSearch', value)} disabled={locked} active={active && configurationVisible} /></EmployeeFormSection>}
+      {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
       {visible('knowledge') && <EmployeeFormSection title="知识资料">{agent ? <Button type="button" variant="ghost" size="sm" disabled={locked || !openResource} onClick={() => openResource?.({ kind: 'knowledge-files', id: agent.id, name: agent.name })}>知识资料 · {agent.knowledgeIds.length} 份</Button> : <p className="field-hint">保存员工后，在文件区域管理知识资料。</p>}</EmployeeFormSection>}
       </fieldset>
       </>}

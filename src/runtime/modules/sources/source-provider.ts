@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 Jina 固定搜索/Reader HTTP 适配接入共用传输，密钥仍在宿主。
  * [OUTPUT]: API本地源逐操作申请/复核目录；托管stdio MCP从启动起使用员工目录策略，原生及本人配置测试保持原路径。
  * [OUTPUT]: DeepSeek专用工具之外保留原通用API request；普通web-read仅暴露两个核准只读工具。
  * [OUTPUT]: DeepSeek官方API复用Craft传输与vault，固定搜索/读取POST为只读，通用API保持原门禁。
@@ -31,6 +32,7 @@ import { fileContentHash, readFilePage } from '../workspaces/file-editing'
 import { assertNativeProcessGuard } from '../../adapters/native-process-guard'
 import { assertWebSearchResult, isTavilySearchEndpoint, verifiedWebCapability } from './web-search-profile'
 
+import { openJinaSearchSession } from './jina-search'
 import { openDeepSeekSearchSession } from './deepseek-search'
 
 const execute = promisify(execFile)
@@ -83,6 +85,7 @@ export async function openSourceSession(source: DataSource, credential: string, 
       return redactSourceValue({ status: result.status, contentType: result.contentType, ...readFilePage(text, 0, 48000) }, credential)
     }, close: async () => {},
     }
+    if (webSearchProvider(source) === 'jina') return openJinaSearchSession(credential)
     if (webSearchProvider(source) !== 'deepseek') return generic
     const search = openDeepSeekSearchSession(credential)
     return { tools: [...search.tools, ...generic.tools], call: (name, args, signal) => name === 'request' ? generic.call(name, args, signal) : search.call(name, args, signal), close: async () => { await search.close(); await generic.close() } }

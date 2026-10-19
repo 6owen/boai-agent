@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 数据源选择仅负责 MCP/API/本地文件夹业务绑定，网页检索迁至独立能力分区。
  * [OUTPUT]: 首选检索方式与绑定共用员工草稿；核心可选全局搜索候选，失效首选明确显示，不连接服务。
  * [OUTPUT]: 已绑定数据源以普通行展示，纯文字更多菜单支持详情和经Popover确认的移除；标题添加菜单支持重新绑定，只修改员工草稿。
  * [OUTPUT]: 核心员工显示全部启用源读写且不请求绑定目录；普通员工保留明确选择。
@@ -10,18 +11,17 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { DesktopApi } from '@shared/ipc'
-import { DATA_SOURCE_LABELS, webSearchProvider, webSearchPreferenceLabel, type WebSearchPreference, type DataSource } from '@shared/domain/sources'
+import { DATA_SOURCE_LABELS, type DataSource } from '@shared/domain/sources'
 import { Banner, errorText, Field } from '@/components/common'
 import { SelectField } from '@/components/ui/select-field'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover'
 import { MoreHorizontal } from '@/components/icons'
-export function SourcePicker({ api, ids, onChange, disabled, active, allSources = false, showLabel = true, onOpen, renderSection, searchPreference, onSearchPreferenceChange }: { api: DesktopApi; ids: string[]; onChange(ids: string[]): void; disabled: boolean; active: boolean; allSources?: boolean; showLabel?: boolean; onOpen?(source: DataSource): void; renderSection?(content: ReactNode, actions?: ReactNode): ReactNode; searchPreference?: WebSearchPreference; onSearchPreferenceChange?(value: WebSearchPreference): void }) {
+export function SourcePicker({ api, ids, onChange, disabled, active, allSources = false, showLabel = true, onOpen, renderSection }: { api: DesktopApi; ids: string[]; onChange(ids: string[]): void; disabled: boolean; active: boolean; allSources?: boolean; showLabel?: boolean; onOpen?(source: DataSource): void; renderSection?(content: ReactNode, actions?: ReactNode): ReactNode }) {
   const [sources, setSources] = useState<DataSource[]>([]), [error, setError] = useState('')
-  const showPreference = !!onSearchPreferenceChange
   useEffect(() => {
-    if (!active || allSources && !showPreference) return
+    if (!active || allSources) return
     let live = true, request = 0, timer: ReturnType<typeof setTimeout> | undefined
     const load = async () => {
       const token = ++request
@@ -33,15 +33,10 @@ export function SourcePicker({ api, ids, onChange, disabled, active, allSources 
     })
     void load()
     return () => { live = false; request++; clearTimeout(timer); unsubscribe() }
-  }, [api, active, allSources, showPreference])
-  const candidates = sources.filter(source => source.enabled && webSearchProvider(source) && (allSources || ids.includes(source.id)))
-  const preference = searchPreference ?? { mode: 'auto' }
-  const preferenceValue = preference.mode === 'source' ? preference.sourceId : preference.mode
-  const options = [{ value: 'auto', label: '自动' }, { value: 'browser', label: 'BOAI 浏览器' }, ...candidates.map(source => ({ value: source.id, label: source.name })), ...(preference.mode === 'source' && !candidates.some(source => source.id === preference.sourceId) ? [{ value: preference.sourceId, label: webSearchPreferenceLabel(preference, sources), disabled: true }] : [])]
-  const preferenceField = showPreference && <Field label="首选检索方式" full hint="本轮指定的来源优先；搜索源将在使用时核验连接与工具。"><SelectField value={preferenceValue} disabled={disabled || !active} options={options} onValueChange={value => onSearchPreferenceChange?.(value === 'auto' || value === 'browser' ? { mode: value } : { mode: 'source', sourceId: value })} /></Field>
+  }, [api, active, allSources])
   const label = <span className={showLabel ? 'field-label' : 'sr-only'}>可访问的数据源</span>
   if (allSources) {
-    const content = <><div className="field full">{label}{error && <Banner>{error}</Banner>}<p className="field-hint">可读写全部已启用的数据源，无需单独绑定。</p></div>{preferenceField}</>
+    const content = <><div className="field full">{label}{error && <Banner>{error}</Banner>}<p className="field-hint">可读写全部已启用的数据源，无需单独绑定。</p></div></>
     return renderSection ? renderSection(content) : content
   }
   const availableSources = sources.filter(source => !ids.includes(source.id))
@@ -54,7 +49,7 @@ export function SourcePicker({ api, ids, onChange, disabled, active, allSources 
     <div className="resource-picker">{boundSources.map(source => <SourceRow key={source.id} source={source} disabled={disabled || !active} active={active} onOpen={onOpen} onRemove={() => onChange(ids.filter(id => id !== source.id))} />)}</div>
     {!sources.length && !error && <p className="field-hint">在“资源库 → 数据源”中添加 API、MCP 或本地文件夹。</p>}
   </div> : null
-  return renderSection ? renderSection(<>{content}{preferenceField}</>, actions) : <>{actions}{content}{preferenceField}</>
+  return renderSection ? renderSection(<>{content}</>, actions) : <>{actions}{content}</>
 }
 
 function SourceRow({ source, disabled, active, onOpen, onRemove }: {

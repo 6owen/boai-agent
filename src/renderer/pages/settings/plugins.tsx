@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 原插件目录增加网页检索分类；启停仍由原宿主配置负责。
  * [OUTPUT]: 运行时插件安装/更新/启停/卸载与当前租约状态；本机扫描及动态配置/测试/保存接入。
  * [INPUT]: 内置清单、主进程配置和当前renderer实际插件使用状态。
  * [OUTPUT]: 同行搜索/分类与持久启停，区分可用/使用中/等待关闭和故障；共用BOAI控件。
@@ -23,11 +24,11 @@ export function PluginSettingsPage() {
   const plugins = applicationPlugins.filter(plugin => (kind === 'all' || plugin.contributions.some(item => item.type === kind)) && `${plugin.name} ${plugin.description} ${plugin.id}`.toLowerCase().includes(query.trim().toLowerCase()))
   return <section className="settings-document" aria-label="内置插件">
     <header className="settings-document-heading"><h2>插件</h2></header>
-    <p className="field-hint mb-4">管理文件预览、主题与本机 Agent 运行时。停用后阻止新调用，当前使用保持至结束。</p>
+    <p className="field-hint mb-4">管理网页检索、文件预览、主题与本机 Agent 运行时。停用后对应能力将不可用，已有预览在关闭后生效。</p>
     {(error || settings.diagnostic) && <Banner>{error || settings.diagnostic}</Banner>}
     <div className="mb-4 flex gap-2" data-plugin-filters>
       <Input className="min-w-0 flex-1" aria-label="搜索插件" placeholder="搜索插件" value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="w-32 shrink-0"><SelectField aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
+      <div className="w-32 shrink-0"><SelectField aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
     </div>
     <Card className="gap-0 p-0"><CardContent className="soft-divide-y px-4 py-0">
       {plugins.map(plugin => {

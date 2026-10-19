@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 资源 Card 移除搜索首选，技能/知识/业务数据源保持原归属。
  * [OUTPUT]: 数据源Card展示已保存的首选检索方式和失效状态，沿原公共目录读取。
  * [OUTPUT]: 知识资料仅显示数量入口，经原草稿守卫进入员工文件区管理。
  * [OUTPUT]: 技能/数据源/知识标题右侧支持分区就地编辑，未绑定知识也显示入口；只读列表保持原能力与来源核对。
@@ -10,12 +11,12 @@
 import { Fragment, useContext, useEffect, useState } from 'react'
 import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { isCoreAgent } from '@shared/domain/core-agent'
-import { DATA_SOURCE_LABELS, webSearchPreferenceLabel, type DataSource } from '@shared/domain/sources'
+import { DATA_SOURCE_LABELS, type DataSource } from '@shared/domain/sources'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, errorText, GuardContext, Loading } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { BookOpen, Database, Zap, Search } from '@/components/icons'
+import { BookOpen, Database, Zap } from '@/components/icons'
 import { ContactProfileCard, ContactProfileRow, ContactProfileSection, EmployeeSectionEdit, type EmployeeSectionEditing } from './profile-card'
 import type { EmployeeCapabilityFact } from './overview-state'
 import { EmployeeResourceNavigation } from './resource-navigation'
@@ -53,8 +54,7 @@ export function EmployeeResourceCards({ api, agent, snapshot, active, revision, 
         {!sources ? !error && <Loading /> : !visibleSources.length ? <p className="contact-card-empty">{core ? '暂无已启用的数据源' : '未绑定数据源'}</p> : <div className="soft-divide-y">{visibleSources.map((source, index) => <div className="contact-resource-row" key={source?.id ?? agent.sourceIds?.[index]}>
           <Database /><span className="contact-resource-copy"><span className="contact-value-status"><strong>{source?.name ?? '数据源已移除'}</strong><small className="contact-inline-status" data-positive={Boolean(source?.enabled)}>{!source ? '不可用' : source.enabled ? '已启用' : '已停用'}</small></span>{source && <span className="contact-resource-description">{DATA_SOURCE_LABELS[source.type]}{source.description ? ` · ${source.description}` : ''}</span>}</span>
         </div>)}</div>}
-        <Separator />
-        <dl className="automation-detail-fields"><ContactProfileRow icon={<Search />} title="首选检索方式">{!sources && agent.webSearch?.mode === 'source' ? '读取中' : webSearchPreferenceLabel(agent.webSearch, sources ?? [])}</ContactProfileRow></dl>
+
       </ContactProfileCard>
     </ContactProfileSection>}
     <ContactProfileSection title="知识资料"><Button variant="ghost" size="sm" disabled={!active || !navigation} onClick={() => guard.navigate(() => navigation?.({ kind: 'knowledge-files', id: agent.id, name: agent.name }))}><BookOpen data-icon="inline-start" />知识资料 · {agent.knowledgeIds.length} 份</Button></ContactProfileSection>

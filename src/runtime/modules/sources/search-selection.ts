@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 优先使用独立检索目录和全局解析偏好；关闭/失效与本轮明确选择分别核验。
  * [INPUT]: Current employee preference, authorized source summaries and current user source references.
  * [OUTPUT]: Current-message text choices and Composer references precede preference; exact source revisions and run-local choices cannot silently substitute.
  * [POS]: Shared API/native search selection, with authority still enforced by AppService/SourceService.
@@ -32,13 +33,18 @@ export function validateWebSearchChoice(context: EngineContext, input: SelectWeb
 }
 
 export function searchSelection(context: EngineContext) {
-  const candidates = context.dataSources?.filter(source => source.webSearchProvider) ?? []
+  const candidates = context.webSearchServices ?? context.dataSources?.filter(source => source.webSearchProvider) ?? []
   const refs = currentSourceReferences(context.messages, context.triggerMessageId, context.agent.id)
   const explicit = candidates.filter(source => refs.some(ref => ref.id === source.id && ref.revision === source.revision))
   if (explicit.length) return { mode: 'source' as const, sourceIds: explicit.map(source => source.id), explicit: true }
   const choice = context.webSearchSelection?.choice
   if (choice) return { mode: choice.mode, sourceIds: choice.mode === 'source' ? [choice.sourceId!] : [], explicit: true, messageId: choice.messageId, revision: choice.revision }
-  const preference = context.agent.webSearch
+  const preference = context.webSearchPreference ?? context.agent.webSearch
+  if (preference?.mode === 'disabled') return { mode: 'disabled' as const, sourceIds: [], explicit: false }
+  if (preference?.mode === 'service') {
+    if (candidates.some(service => service.id === preference.serviceId)) return { mode: 'source' as const, sourceIds: [preference.serviceId], explicit: false }
+    return { mode: 'browser' as const, sourceIds: [], explicit: false, unavailablePreferredSource: preference.serviceId }
+  }
   if (preference?.mode === 'browser') return { mode: 'browser' as const, sourceIds: [], explicit: false }
   if (preference?.mode === 'source') {
     if (candidates.some(source => source.id === preference.sourceId)) return { mode: 'source' as const, sourceIds: [preference.sourceId], explicit: false }
@@ -48,6 +54,7 @@ export function searchSelection(context: EngineContext) {
 }
 export function assertSearchSelection(context: EngineContext, source: SourceSummary) {
   const selection = searchSelection(context)
+  if (selection.mode === 'disabled') throw new Error('员工已关闭 BOAI 网页检索')
   if (selection.mode === 'browser') throw new Error('本轮首选 BOAI 浏览器，不能自动改用搜索数据源')
   if (selection.mode === 'source' && !selection.sourceIds.includes(source.id)) throw new Error(selection.explicit ? '本轮已明确指定其他搜索源，不能静默替换' : '请先使用员工首选搜索源，不能静默替换')
 }

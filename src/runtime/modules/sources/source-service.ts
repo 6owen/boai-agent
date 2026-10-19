@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 支持独立连接集合，检索实例不修改业务源员工绑定；Jina 测试一次实际查询。
  * [OUTPUT]: 员工目录上下文传给本地源/MCP；stdio许可改变先排空旧进程再为新调用建会话，不重放旧工具。
  * [OUTPUT]: DeepSeek自定义GET测试端点保持原语义；默认测试才执行一次明确查询。
  * [OUTPUT]: DeepSeek核准POST走只读搜索授权；明确测试执行一次真实查询，不以静态目录宣称连接成功。
@@ -39,17 +40,17 @@ export class SourceService {
   private pendingMutations = 0
   get busy() { return this.pendingMutations > 0 || this.leases.size > 0 }
   private blocked = new Set<string>()
-  constructor(private store: ProductStore, private secrets: SecretStore, private dataPath: string, private hooks: Hooks) {}
+  constructor(private store: ProductStore, private secrets: SecretStore, private dataPath: string, private hooks: Hooks, private collection = 'dataSources') {}
   async init() {
-    await recoverSourceProcesses(this.dataPath)
-    for (const source of await this.store.load<StoredSource>('dataSources')) {
+    if (this.collection === 'dataSources') await recoverSourceProcesses(this.dataPath)
+    for (const source of await this.store.load<StoredSource>(this.collection)) {
       // Old releases stored employee access policy on the shared connection.
       // Remove only those retired keys; keep identity, revisions, secrets and receipts.
       const connection = source.type === 'api' ? source.api : source.type === 'local' ? source.local : undefined
       if (connection && ('allowWrites' in connection || 'accessMode' in connection)) {
         Reflect.deleteProperty(connection, 'allowWrites'); Reflect.deleteProperty(connection, 'accessMode')
         dataSourceConfigSchema.parse(this.config(source))
-        await this.store.write([{ collection: 'dataSources', id: source.id, value: source }])
+        await this.store.write([{ collection: this.collection, id: source.id, value: source }])
       }
       dataSourceConfigSchema.parse(this.config(source)); this.sources.set(source.id, source)
     }
@@ -102,6 +103,7 @@ export class SourceService {
   }
   private async changedAgents(tx: RecordTransaction, sourceId: string, selected?: Set<string>, resetPreference = false) {
     const agents: DigitalAgent[] = []
+    if (this.collection !== 'dataSources') return agents
     for (const agent of await tx.list<DigitalAgent>('agents')) {
       const bound = (agent.sourceIds ?? []).includes(sourceId), shouldBind = selected ? selected.has(agent.id) : bound
       if (!bound && !shouldBind) continue
@@ -150,12 +152,12 @@ export class SourceService {
         await this.hooks.critical(async () => {
           await validate?.()
           this.checkRevision(value.id, value.expectedRevision)
-          agents = await this.store.transaction(async tx => { if (creation) await tx.put({ collection: 'sourceCreations', id: creation.requestId, value: { sourceId: source.id, fingerprint: creation.fingerprint, ...creation.source } }); await tx.put({ collection: 'dataSources', id: source.id, value: source }); return this.changedAgents(tx, source.id) })
+          agents = await this.store.transaction(async tx => { if (creation) await tx.put({ collection: 'sourceCreations', id: creation.requestId, value: { sourceId: source.id, fingerprint: creation.fingerprint, ...creation.source } }); await tx.put({ collection: this.collection, id: source.id, value: source }); return this.changedAgents(tx, source.id) })
           this.sources.set(source.id, source); this.hooks.install(agents)
         })
       } catch (error) {
         // Only remove an unreferenced newly staged credential after a reliable read.
-        const committed = await this.store.get<StoredSource>('dataSources', source.id)
+        const committed = await this.store.get<StoredSource>(this.collection, source.id)
         if (credentialId && credentialId !== previous?.credentialId && committed?.credentialId !== credentialId) await this.secrets.delete(credentialId)
         throw error
       }
@@ -181,7 +183,7 @@ export class SourceService {
             if (!agent || agent.configVersion !== binding.expectedConfigVersion) throw new Error('员工配置已变化，请刷新后绑定')
             this.validateBindings([value.id], agent.executionBackend?.kind)
           }
-          await tx.put({ collection: 'dataSources', id: next.id, value: next })
+          await tx.put({ collection: this.collection, id: next.id, value: next })
           return this.changedAgents(tx, next.id, new Set(value.agents.map(agent => agent.id)), true)
         })
         this.sources.set(next.id, next); this.hooks.install(agents); return next
@@ -196,7 +198,7 @@ export class SourceService {
       let agents: DigitalAgent[] = []
       await this.hooks.critical(async () => {
         await validate?.()
-        agents = await this.store.transaction(async tx => { await tx.remove('dataSources', value.id); return this.changedAgents(tx, value.id, new Set()) })
+        agents = await this.store.transaction(async tx => { await tx.remove(this.collection, value.id); return this.changedAgents(tx, value.id, new Set()) })
         this.sources.delete(value.id); this.hooks.install(agents)
       })
       if (previous.credentialId) await this.secrets.delete(previous.credentialId)
@@ -265,9 +267,11 @@ export class SourceService {
     try {
       const output = await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), undefined, undefined, 'all', authority?.directories) as { tools: SourceTool[] }
       const deepseek = source.type === 'api' && source.api.testPath === '/' && webSearchProvider(this.public(source)) === 'deepseek'
-      if (deepseek) await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'deepseek_search', arguments: { query: 'DeepSeek', count: 1 } })
+      const jina = webSearchProvider(this.public(source)) === 'jina'
+      if (jina) await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(90000), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'jina_search', arguments: { query: 'Jina AI' } })
+      else if (deepseek) await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'deepseek_search', arguments: { query: 'DeepSeek', count: 1 } })
       else if (source.type === 'api') await this.use(ref, runId, AbortSignal.any([AbortSignal.timeout(SOURCE_TIMEOUT), ...(authority ? [authority.signal] : [])]), { sourceId: source.id, tool: 'request', arguments: { path: source.api.testPath, method: 'GET' } })
-      result = { status: 'success', checkedAt: new Date().toISOString(), message: deepseek ? 'DeepSeek 搜索请求成功（已执行一次测试查询）' : source.type === 'mcp' ? `已读取 ${output.tools.length} 个工具` : source.type === 'local' ? '文件夹可以访问' : '测试端点请求成功', tools: output.tools.map(({ name, description }) => ({ name, description })) }
+      result = { status: 'success', checkedAt: new Date().toISOString(), message: jina ? 'Jina 搜索请求成功（已执行一次测试查询）' : deepseek ? 'DeepSeek 搜索请求成功（已执行一次测试查询）' : source.type === 'mcp' ? `已读取 ${output.tools.length} 个工具` : source.type === 'local' ? '文件夹可以访问' : '测试端点请求成功', tools: output.tools.map(({ name, description }) => ({ name, description })) }
     } catch (error) {
       const credential = source.credentialId ? await this.secrets.get(source.credentialId) ?? '' : ''
       result = { status: 'failed', checkedAt: new Date().toISOString(), message: String(redactSourceValue(error instanceof Error ? error.message : '连接失败', credential)).slice(0, 1000) }
@@ -276,7 +280,7 @@ export class SourceService {
       await authority?.validate()
       const latest = this.checkRevision(source.id, source.revision)!
       const next = { ...latest, test: result }
-      await this.store.write([{ collection: 'dataSources', id: next.id, value: next }]); this.sources.set(next.id, next)
+      await this.store.write([{ collection: this.collection, id: next.id, value: next }]); this.sources.set(next.id, next)
       return this.public(next)
     })
   }

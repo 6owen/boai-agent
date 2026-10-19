@@ -26,3 +26,5 @@ source-setup.ts: adapted from apps/electron/resources/docs/sources.md (Source Se
 2026-10-17 BOAI permission adaptation: removed Craft-derived default read-only policy from source setup. Connections carry no API/local access flags; the core employee can read/write all enabled sources, while ordinary employee grants remain host-controlled.
 
 2026-10-18 BOAI adapter guidance: adds official DeepSeek Search/Fetch API configuration and the explicit one-query test behavior; fixed tool implementation is BOAI-owned.
+
+2026-10-19 BOAI adaptation: source-setup routes web retrieval to independent settings and employee capabilities; removes the prior DeepSeek business-source setup instruction. Upstream request/auth code is unchanged.

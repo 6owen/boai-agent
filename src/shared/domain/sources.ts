@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 检索偏好合同转至独立领域并保留历史读取；提供方识别增加官方 Jina。
  * [OUTPUT]: 官方DeepSeek API Bearer配置可发现搜索/读取候选；固定POST工具由宿主独立核准。
  * [OUTPUT]: Tavily/Exa官方固定端点可作为搜索候选，真实工具身份仍由宿主版本/schema核准。
  * [OUTPUT]: 员工检索偏好为自动/浏览器/固定源；候选端点识别共用纯函数，不宣称连接成功。
@@ -35,17 +36,15 @@ export const dataSourceBindingsSchema = dataSourceIdentitySchema.extend({ agents
 export type DataSourceBindingsInput = z.infer<typeof dataSourceBindingsSchema>
 export const sourceCallSchema = z.object({ sourceId: z.string().uuid(), tool: text(200), arguments: z.record(z.string(), z.unknown()).default({}) }).strict()
 export type SourceCall = z.infer<typeof sourceCallSchema>
-export type SourceSummary = Pick<DataSource, 'id' | 'name' | 'description' | 'type' | 'revision'> & { webSearchProvider?: 'tavily' | 'exa' | 'deepseek' }
-export const webSearchPreferenceSchema = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('auto') }).strict(),
-  z.object({ mode: z.literal('browser') }).strict(),
-  z.object({ mode: z.literal('source'), sourceId: z.string().uuid() }).strict(),
-])
-export type WebSearchPreference = z.infer<typeof webSearchPreferenceSchema>
+export type SourceSummary = Pick<DataSource, 'id' | 'name' | 'description' | 'type' | 'revision'> & { webSearchProvider?: 'tavily' | 'exa' | 'deepseek' | 'jina' }
+export { webSearchPreferenceSchema } from './web-search'
+export type { WebSearchPreference } from './web-search'
+import type { WebSearchPreference } from './web-search'
 export function webSearchProvider(source: DataSourceConfig): SourceSummary['webSearchProvider'] {
   if (source.type === 'api') {
     try {
       const url = new URL(source.api.baseUrl)
+      if (url.origin === 'https://s.jina.ai' && url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password && source.api.authType === 'bearer') return 'jina'
       if (url.origin === 'https://api.deepseek.com' && ['/', '/v1', '/v1/', '/v1/tools', '/v1/tools/'].includes(url.pathname) && !url.search && !url.hash && !url.username && !url.password && source.api.authType === 'bearer' && (!source.api.authScheme || source.api.authScheme === 'Bearer')) return 'deepseek'
     } catch { /* Invalid legacy configuration is not a candidate. */ }
     return undefined
@@ -61,7 +60,8 @@ export function webSearchProvider(source: DataSourceConfig): SourceSummary['webS
 export function webSearchPreferenceLabel(preference: WebSearchPreference | undefined, sources: DataSource[]) {
   if (!preference || preference.mode === 'auto') return '自动'
   if (preference.mode === 'browser') return 'BOAI 浏览器'
-  const source = sources.find(source => source.id === preference.sourceId)
+  if (preference.mode === 'disabled') return '关闭网页检索'
+  const source = sources.find(source => source.id === (preference.mode === 'service' ? preference.serviceId : preference.sourceId))
   return source ? `${source.name}${!source.enabled ? '（已停用）' : !webSearchProvider(source) ? '（搜索不可用）' : ''}` : '原搜索源已不可用'
 }
 export type SourceTool = { name: string; description?: string; inputSchema: Record<string, unknown>; readOnly?: boolean; webCapability?: { provider: NonNullable<SourceSummary['webSearchProvider']>; kind: 'search' | 'read-url'; serverVersion: string; schemaHash: string } }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 独立网页检索设置、默认、凭据编辑、测试与移除接入原公共 IPC 准入。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: CLI安装/状态/卸载仅主窗口IPC准入，不进入WS公共channel。
  * [OUTPUT]: 有界客户端附件字节上传复用原材料选择/准备与会话授权，不接收服务器源路径。
@@ -157,6 +158,12 @@ const methods = {
   probeModelGateway: true,
   discoverModelGateway: true,
   listConversationMessages: true,
+  getWebSearchSettings: true,
+  saveWebSearchService: true,
+  saveWebSearchDefault: true,
+  getWebSearchCredential: true,
+  testWebSearchService: true,
+  removeWebSearchService: true,
   listDataSources: true,
   listEmployeeExecutions: true,
   listExecutionEvidence: true,

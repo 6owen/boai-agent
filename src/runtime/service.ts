@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 独立检索设置/调用/版本失效、迁移与备份接线；员工 sourceIds 只管业务数据源。
  * [OUTPUT]: API本地源/MCP调用及模型测试复用当前目录许可；本机原生路径保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 明确渠道发布与CLI共享原输入schema，业务来源/授权/回执事务保持。
@@ -229,6 +230,7 @@ import { sourceCreationCommands } from './modules/sources/source-commands'
 import { mergeCatalogResults, type CatalogActivity, type CatalogResult } from '../shared/domain/catalog-management'
 import { catalogCommands } from './modules/resources/catalog-commands'
 import { LocalSkillEditing } from './modules/resources/local-skill-editing'
+import { WebSearchService } from './modules/sources/web-search-service'
 import { SourceService } from './modules/sources/source-service'
 import { assertSearchSelection, searchSelection, selectWebSearchSchema, validateWebSearchChoice, type SelectWebSearch } from './modules/sources/search-selection'
 import { sourceCallSchema, type SourceSummary } from '../shared/domain/sources'
@@ -322,7 +324,7 @@ const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
 type RequestRecord = { id: string; fingerprint: string; messageId?: string }
 type CoreConversationStart = { id: string; fingerprint: string; conversationId: string; messageId?: string; teamName?: string; cleared?: true }
-type RunSnapshot = { dataSourceRefs?: SourceSummary[]; id: string; agent: DigitalAgent; connection?: Connection; runtimeProfile?: import('../shared/domain/backends').LaunchProfile; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
+type RunSnapshot = { webSearchRefs?: SourceSummary[]; dataSourceRefs?: SourceSummary[]; id: string; agent: DigitalAgent; connection?: Connection; runtimeProfile?: import('../shared/domain/backends').LaunchProfile; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const now = () => new Date().toISOString()
 const clone = <T>(value: T): T => structuredClone(value)
@@ -332,6 +334,7 @@ const fail = (message: string): never => { throw new Error(message) }
 export class AppService {
   private readonly cliRunAccess = new RunCliAccess()
   runCliAccess(input: RunCliAccessRequest) { return this.cliRunAccess.request(input) }
+  private readonly webSearch: WebSearchService
   private readonly dataSources: SourceService
   private readonly materialUploads: MaterialUploads
   private readonly materials: MaterialRepository
@@ -415,6 +418,10 @@ export class AppService {
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.gatewayCatalogs = new GatewayCatalogStore(this.store)
     this.commandPermissions = new CommandPermissions(this.store)
+    this.webSearch = new WebSearchService(this.store, options.secrets, this.dataPath, {
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
+      changed: (id, defaultsChanged) => this.webSearchChanged(id, defaultsChanged),
+    })
     this.dataSources = new SourceService(this.store, options.secrets, this.dataPath, {
       critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
       install: agents => this.employees.installBatch(agents),
@@ -654,6 +661,7 @@ export class AppService {
         }
       }
     })
+    await this.webSearch.init()
     await this.dataSources.init()
     await this.executions.recover()
     await this.codexEngine.recover(this.dataPath)
@@ -896,6 +904,12 @@ export class AppService {
       }
       return mergeCatalogResults(result)
     }
+    if (method === 'getWebSearchSettings') { z.undefined().parse(input); return this.webSearch.settings() }
+    if (method === 'saveWebSearchService') return this.webSearch.save(input)
+    if (method === 'saveWebSearchDefault') return this.webSearch.saveDefault(input)
+    if (method === 'getWebSearchCredential') return this.webSearch.connections.getCredential(input)
+    if (method === 'testWebSearchService') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return this.webSearch.test(input) }
+    if (method === 'removeWebSearchService') return this.webSearch.connections.remove(input)
     if (method === 'listDataSources') { z.undefined().parse(input); return this.dataSources.list() }
     if (method === 'getDataSource') return this.dataSources.get(lookupSchema.parse(input).id)
     if (method === 'getDataSourceCredential') return this.dataSources.getCredential(input)
@@ -1106,7 +1120,7 @@ export class AppService {
           const value = agentSchema.parse(input), previous = value.id ? this.getAgent(value.id) : undefined
           const backend = value.executionBackend ?? previous?.executionBackend ?? { kind: 'mastra-model' as const }
           this.dataSources.validateBindings(value.sourceIds ?? previous?.sourceIds ?? [], backend.kind)
-          value.webSearch = this.dataSources.normalizeSearchPreference(value.webSearch, previous, value.sourceIds ?? previous?.sourceIds ?? [])
+          value.webSearch = this.webSearch.normalizePreference(value.webSearch, previous)
           if (backend.kind !== 'mastra-model') {
             const profile = this.profiles.get(backend.profileId)
             if (backendProtocol(backend.kind) !== (profile.protocol ?? 'acp')) fail('员工运行方式与本机连接协议不一致')
@@ -2818,7 +2832,8 @@ export class AppService {
   private dataSourceSnapshotValid(snapshot: RunSnapshot) {
     const refs = snapshot.dataSourceRefs ?? [], owner = this.employees.find(snapshot.agent.id)
     if (!isCoreAgent(owner) && refs.some(ref => !owner?.sourceIds?.includes(ref.id))) return false
-    try { this.dataSources.assertCurrent(refs); return true } catch { return false }
+    if (snapshot.webSearchRefs?.some(ref => !owner || !this.webSearch.authorized(owner, ref.id))) return false
+    try { this.dataSources.assertCurrent(refs); this.webSearch.connections.assertCurrent(snapshot.webSearchRefs ?? []); return true } catch { return false }
   }
   private async contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Promise<Message[]> {
     const triggerSequence = this.messages.get(triggerMessageId)?.sequence ?? fail('触发消息不存在')
@@ -3099,6 +3114,35 @@ export class AppService {
     }
     await this.cancelWhere(run => stale.has(run.id) && !terminal.has(run.status), '记忆来源或使用范围已失效')
   }
+  private async webSearchChanged(serviceId?: string, _defaultsChanged = false) {
+    // Default changes apply to new executions; unrelated in-flight work keeps its frozen route.
+    if (!serviceId) { this.changed(); return }
+    await this.serialize(async () => {
+      const invalid = new Set<string>(), updates: StoredRecord[] = []
+      for (const snapshot of this.snapshots.values()) if (snapshot.webSearchRefs?.some(ref => ref.id === serviceId)) {
+        snapshot.invalidated = true; invalid.add(snapshot.id); updates.push(record('snapshots', snapshot))
+      }
+      if (updates.length) await this.store.write(updates)
+      await this.cancelWhere(run => invalid.has(run.id), '网页检索配置已变更')
+      this.changed()
+    })
+  }
+  private async useWebSearch(context: EngineContext, serviceId: string, request?: import('../shared/domain/sources').SourceCall) {
+    const validate = () => this.serialize(async () => {
+      const { current } = await this.assertExecutionAccess(context)
+      if (context.work?.organization || !this.webSearch.authorized(current, serviceId)) fail('当前员工未启用此网页检索服务')
+      const ref = context.webSearchServices?.find(service => service.id === serviceId) ?? fail('网页检索服务不可用')
+      this.webSearch.connections.assertCurrent([ref]); assertSearchSelection(context, ref)
+      const snapshot = this.snapshots.get(context.runId)!
+      if (!snapshot.webSearchRefs?.some(service => service.id === ref.id)) {
+        snapshot.webSearchRefs = [...(snapshot.webSearchRefs ?? []), ref]
+        await this.store.write([record('snapshots', snapshot)])
+      }
+      return ref
+    })
+    const ref = await validate()
+    return this.webSearch.use(ref, context.runId, context.signal, request, async () => { await validate() })
+  }
   private async dataSourcesChanged(sourceId: string, agents: DigitalAgent[]) {
     await this.serialize(async () => {
       const invalid = new Set<string>(), updates: StoredRecord[] = []
@@ -3144,12 +3188,12 @@ export class AppService {
       if (context.work?.organization) fail('当前执行没有检索选择权限')
       validateWebSearchChoice(context, input)
       if (input.mode === 'source') {
-        const ref = context.dataSources?.find(source => source.id === input.sourceId && source.revision === input.revision && source.webSearchProvider)
-        if (!ref || (!isCoreAgent(current) && !current.sourceIds?.includes(ref.id))) fail('搜索数据源不可用、未授权或版本已变更')
-        this.dataSources.assertCurrent([ref!])
+        const ref = context.webSearchServices?.find(source => source.id === input.sourceId && source.revision === input.revision)
+        if (!ref || !this.webSearch.authorized(current, ref.id)) fail('网页检索服务不可用、未授权或版本已变更')
+        this.webSearch.connections.assertCurrent([ref!])
         const snapshot = this.snapshots.get(context.runId)!
-        if (!snapshot.dataSourceRefs?.some(source => source.id === ref!.id)) {
-          snapshot.dataSourceRefs = [...(snapshot.dataSourceRefs ?? []), ref!]
+        if (!snapshot.webSearchRefs?.some(source => source.id === ref!.id)) {
+          snapshot.webSearchRefs = [...(snapshot.webSearchRefs ?? []), ref!]
           await this.store.write([record('snapshots', snapshot)])
         }
       } else if (!this.options.browserHost || this.options.browserHost.available === false || !isBrowserCapableAgent(current)) fail('当前员工的BOAI浏览器不可用，不能静默替换检索路径')
@@ -3174,11 +3218,11 @@ export class AppService {
     const ref = await validate()
     const selected = currentSourceReferences(context.messages, context.triggerMessageId, context.agent.id).some(value => value.id === ref.id && value.revision === ref.revision)
     const webReadOnly = !isNativeBackend(context.agent.executionBackend) && this.runs.get(context.runId)?.responseKind === 'chat' && !context.manageDataSources && (!!ref.webSearchProvider || !selected)
-    if (webReadOnly && ref.webSearchProvider) assertSearchSelection(context, ref)
+    if (webReadOnly && ref.webSearchProvider && context.webSearchServices === undefined) assertSearchSelection(context, ref)
     let effectStarted = false
     const result = await this.dataSources.use(ref, context.runId, context.signal, request, async (mutating, tool) => {
       await validate()
-      if (tool.webCapability) assertSearchSelection(context, ref)
+      if (tool.webCapability && context.webSearchServices === undefined) assertSearchSelection(context, ref)
       if (mutating) {
         await authorizeExecution(context, { kind: 'source', description: `写入数据源 ${ref.name}` })
         await validate()
@@ -3305,10 +3349,13 @@ export class AppService {
       externalInvocations: 0, options: clone(agent.nativeOptions), ...(backend.kind === 'claude-local' ? { modelId: agent.modelId || connection?.defaultModel } : {}), sessionPolicy: 'scoped', toolControl: 'external' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
     const context: EngineContext = { permissionExpectation, modelSource, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+      webSearchServices: await this.webSearch.summaries(agent), webSearchPreference: this.webSearch.effectivePreference(agent),
+      inspectWebSearch: serviceId => this.useWebSearch(context, serviceId),
+      callWebSearch: input => this.useWebSearch(context, input.sourceId, sourceCallSchema.parse(input)),
       webSearchSelection: {}, selectWebSearch: input => this.selectWebSearch(context, input),
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
-      closeDataSources: () => this.dataSources.closeRun(run.id), groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       assertKnowledgeAccess: ids => this.assertKnowledgeAccess(context, ids),
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
       readTaskFile: path => this.serialize(async () => {
@@ -4151,7 +4198,7 @@ export class AppService {
       if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
-      try { await this.dataSources.closeRun(run.id) } finally {
+      try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) } finally {
         try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)
         }
@@ -4673,7 +4720,7 @@ export class AppService {
       await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup()
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
-      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
       await this.preserveLegacyRuntimeFacts()
@@ -4688,7 +4735,7 @@ export class AppService {
       const backupClient = createClient({ url: pathToFileURL(databaseFile).href })
       try {
         // Browser profiles and private page receipts are not part of a portable business backup.
-        await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection='dataSources'")
+        await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection IN ('dataSources','webSearchServices')")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false')) WHERE collection='channelBindings'")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.status','unknown','$.detail','备份恢复后仅核对历史发送，未自动重发。') WHERE collection='channelDeliveries' AND json_extract(value,'$.status')='sending'")
         await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
@@ -4717,7 +4764,7 @@ export class AppService {
   claimIdleShutdown(canClaim: () => boolean): Promise<boolean> {
     return this.serialize(async () => {
       if (!this.initialized || this.closing || this.backingUp) return false
-      const busy = () => this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy
+      const busy = () => this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy
       if (busy()) return false
       try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { return false }
       const works = await this.store.load<WorkItem>('workItems')
@@ -4737,6 +4784,7 @@ export class AppService {
     this.workTimers.clear()
     await this.boboCollaboration.close()
     await this.teamCreation.close()
+    await this.webSearch.connections.close()
     await this.dataSources.close()
     await this.teamGeneration.close()
     await this.materials.close()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网页检索指向独立设置及员工能力，退役原 DeepSeek 数据源创建建议。
  * [OUTPUT]: DeepSeek官方API配置自动提供搜索/正文工具，测试执行一次明确的公开搜索。
  * [OUTPUT]: BOAI适配按员工授权设置访问，删除上游API/local默认只读建议；bobo无需绑定。
  * [INPUT]: Craft 22c9f041 sources.md Source Setup Process and EditPopover add-source context.
@@ -9,7 +10,8 @@
 // Adapted from Craft Agents, Copyright 2026 Craft Docs Ltd. Apache-2.0.
 export const sourceSetupGuide = `# Conversational Source Setup
 
-Sources can be MCP servers (HTTP/SSE or stdio), REST APIs, or local filesystems.
+Business data sources can be MCP servers (HTTP/SSE or stdio), REST APIs, or local filesystems.
+Web retrieval is a separate capability: configure DeepSeek, Jina, Tavily or Exa in 设置 → 配置 → 网页检索, then select it in the employee’s 网页检索 section. Do not create or bind a business data source just to enable web search. API/MCP are transports, not the product category.
 Use manage_data_sources for BOAI configuration; never write Craft config files or run the Craft CLI.
 
 ## 0. Check existing sources and service documentation
@@ -30,7 +32,6 @@ Do not guess a token, account, project, URL or folder. Do not test credentials a
 Map the user's description, endpoint, OpenAPI text or JSON into the provided BOAI config schema.
 All types require name, description, guide and enabled. Use one stable key per source intent with create, and reuse it for an unknown creation result.
 - API: api.baseUrl and authType (none/bearer/header/query/basic); use headerName/queryParam when applicable. Choose a documented harmless GET testPath. Do not set an API access policy on the connection.
-- DeepSeek Search/Fetch: use type api, baseUrl https://api.deepseek.com, authType bearer and the user-provided DeepSeek API key. BOAI exposes fixed deepseek_search/deepseek_fetch tools. With default testPath / an explicit test performs one public query (DeepSeek, count 1), potentially billed by the provider; no request is made merely by saving or inspecting. A custom GET testPath preserves the original endpoint test. Generic API request remains available under normal employee operation permissions; only the fixed search/fetch tools qualify for read-only web chat. This source is independent of the employee model connection.
 - Remote MCP: mcp.transport is http (Streamable HTTP) or sse, with url and authType (none/bearer).
 - Local MCP: mcp.transport is stdio, with command and args preserved separately. A standard mcpServers JSON object may contain several named servers: configure each requested entry separately. Map type "streamable-http" to transport "http"; preserve an explicit SSE type. Never silently discard unsupported headers, cwd or other meaningful options: explain the missing capability before choosing an alternative.
 - For stdio env, submit the exact user-provided environment object as credential JSON; never put values in description/guide or echo them. A remote Authorization: Bearer header maps to the write-only credential and authType bearer.

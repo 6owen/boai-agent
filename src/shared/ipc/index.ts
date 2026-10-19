@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 独立网页检索设置/服务/默认/凭据/测试/移除的类型化桌面合同。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: CLI安装管理为桌面专用IPC，版本核对且不接受renderer指定程序路径。
  * [OUTPUT]: session create显式模式核对保存权限并进入稳定请求身份，旧回执不受后来改权影响。
@@ -102,6 +103,13 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }
+  saveWebSearchService: { input: import('../domain/web-search').SaveWebSearchService; output: import('../domain/web-search').WebSearchServiceConfig }
+  saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
+  getWebSearchCredential: { input: import('../domain/sources').DataSourceIdentity; output: string }
+  testWebSearchService: { input: import('../domain/sources').DataSourceIdentity; output: import('../domain/web-search').WebSearchServiceConfig }
+  removeWebSearchService: { input: import('../domain/sources').DataSourceIdentity; output: void }
+
   listGatewayImports: { input: undefined; output: import('../domain/gateway-import').GatewayImportView[] }
   cancelGatewayImport: { input: { draftId: string }; output: void }
   confirmGatewayImport: { input: import('../domain/gateway-import').GatewayImportConfirmation; output: import('../domain/gateway-import').GatewayImportReceipt }

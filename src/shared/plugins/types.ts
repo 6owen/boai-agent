@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 原应用贡献联合增加 web-search，复用插件兼容和启停合同。
  * [OUTPUT]: v1预览/主题兼容v2运行时清单；独立API候选、配置schema和声明式发现。
  * [INPUT]: 内置预览和数据型主题声明、主进程启停配置。
  * [OUTPUT]: v1预览/主题与v2运行时贡献兼容；清单不授予业务或凭据访问权。
@@ -12,6 +13,7 @@ import type { BinaryFilePreview, FilePreview } from '../domain/file-preview'
 export const APPLICATION_PLUGIN_API = 1
 export type PreviewKind = Exclude<FilePreview['kind'], 'unsupported'> | BinaryFilePreview['kind'] | 'image'
 export type PluginContribution =
+  | { readonly type: 'web-search'; readonly provider: import('../domain/web-search').SearchProviderId }
   | RuntimeContribution
   | { readonly type: 'preview'; readonly kinds: readonly PreviewKind[]; readonly extensions?: readonly string[] }
   | { readonly type: 'theme'; readonly themes: readonly Readonly<Theme>[] }

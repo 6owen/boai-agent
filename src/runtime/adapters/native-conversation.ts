@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立网页检索工具在 CLI 桥标记只读，实际执行仍核验员工和服务权限。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 明确cwd沿员工目录授权或既有原生权限进入进程，改变cwd使旧会话不可续用；未配置BOAI目录策略不虚称隔离。
  * [OUTPUT]: CLI直接使用本轮原生产品工具实例；关闭时中止/排空原调用，不另建Work或执行器。
@@ -63,7 +64,7 @@ export abstract class NativeConversationEngine {
       const published = await context.publishNativeMessage!(content, callId); publicReplies.push(published); return published
     } : undefined }
     const products = createNativeProducts(nativeContext)
-    const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
+    const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))

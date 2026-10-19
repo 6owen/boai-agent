@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 DeepSeek 显式真实验收准备改写独立检索集合，凭据仍仅经原 vault 桥。
  * [OUTPUT]: 显式DeepSeek搜索沿同一vault桥准备独立API源；不修改原连接或传出明文。
  * [INPUT]: 显式真实 API 开关、连接 ID/产品数据目录和已关闭的隔离 Desktop。
  * [OUTPUT]: 只读一个已保存连接，凭据在独立Electron内经原加密仓库保存；真实源码启动和重启复用同一隔离入口，保持系统加密；只返回非秘密元信息，零模型请求。
@@ -11,7 +12,7 @@ import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { build } from 'esbuild'
 import electronPath from 'electron'
-import type { DataSource } from '../../../src/shared/domain/sources'
+import type { WebSearchServiceConfig } from '../../../src/shared/domain/web-search'
 import type { Connection } from '../../../src/shared/domain'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import type { Desktop } from './desktop'
@@ -64,7 +65,7 @@ async function copySavedCredential(runtime: Desktop, from: string, target: strin
 
 /** The explicit DeepSeek search choice uses the same selected saved credential,
  * copied only through the product vault, never through renderer IPC or logs. */
-export async function prepareDeepSeekSearchSource(runtime: Desktop): Promise<DataSource> {
+export async function prepareDeepSeekSearchSource(runtime: Desktop): Promise<WebSearchServiceConfig> {
   const source = process.env.BOAI_TEST_API_DATA_DIR, connectionId = process.env.BOAI_TEST_API_CONNECTION_ID
   if (process.env.BOAI_TEST_REAL_API !== '1' || !source || !connectionId) throw new Error('DeepSeek真实搜索必须明确指定已保存凭据来源')
   const from = await realpath(source), target = await realpath(join(runtime.root, 'v2'))
@@ -78,6 +79,6 @@ export async function prepareDeepSeekSearchSource(runtime: Desktop): Promise<Dat
   await copySavedCredential(runtime, from, target, connectionId, credentialId)
   const value = { id, revision: 1, name: 'DeepSeek公开搜索', description: '官方网页搜索与正文读取', guide: '', enabled: true, type: 'api' as const, api: { baseUrl: 'https://api.deepseek.com', authType: 'bearer' as const, testPath: '/' }, createdAt: now, updatedAt: now }
   const store = new ProductStore(join(target, 'boai.sqlite')); await store.init()
-  try { await store.write([{ collection: 'dataSources', id, value: { ...value, credentialId } }]) } finally { await store.close() }
-  return { ...value, hasCredential: true }
+  try { await store.write([{ collection: 'webSearchServices', id, value: { ...value, credentialId } }]) } finally { await store.close() }
+  return { id, revision: 1, provider: 'deepseek', name: value.name, enabled: true, pluginEnabled: true, hasCredential: true }
 }

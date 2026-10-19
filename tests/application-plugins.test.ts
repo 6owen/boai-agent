@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 插件目录仅发布 DeepSeek 网页检索贡献，原预览/主题持久启停合同保持。
  * [OUTPUT]: 运行时包生命周期/线协议、Pi与ACP连续会话/真实工具副作用及独立模块安装；真实Pi探针显式选择。
  * [INPUT]: 生产插件目录/配置存储/生命周期与真实临时文件、外观配置。
  * [OUTPUT]: 声明边界、持久/CAS/坏配置/写失败及显式深色图片的主题停用恢复合同回归。
@@ -26,7 +27,8 @@ async function setup() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
-  expect(applicationPlugins).toHaveLength(6)
+  expect(applicationPlugins).toHaveLength(7)
+  expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])
   expect(themePluginId('nord')).toBe(themeId)
   expect(themePluginId('boai-dark')).toBeUndefined()
   const input = structuredClone(applicationPlugins), catalog = definePluginCatalog(input)

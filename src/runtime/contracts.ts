@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19 检索服务目录、已解析偏好和 inspect/call 回调独立于 dataSources。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: 本轮文字检索选择共用宿主门禁和run局部状态，浅复制上下文仍保留同一选择，不持久修改员工偏好。
@@ -64,6 +65,10 @@ export interface EngineContext {
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('../shared/domain/model-gateway').ModelCatalog
+  webSearchServices?: import('../shared/domain/sources').SourceSummary[]
+  webSearchPreference?: import('../shared/domain/web-search').WebSearchPreference
+  inspectWebSearch?(serviceId: string): Promise<unknown>
+  callWebSearch?(input: import('../shared/domain/sources').SourceCall): Promise<unknown>
   dataSources?: import('../shared/domain/sources').SourceSummary[]
   webSearchSelection?: import('./modules/sources/search-selection').WebSearchSelectionState
   selectWebSearch?(input: import('./modules/sources/search-selection').SelectWebSearch): Promise<ReturnType<typeof import('./modules/sources/search-selection').searchSelection>>
