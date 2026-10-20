@@ -180,6 +180,6 @@ on:
 
 ## 9. 当前只读发布前检入口
 
-`pnpm release:check --version X.Y.Z --sha 完整SHA`先核对本地干净源码、package.version及buildVersion，再只读查询6owen/boai-agent的远程main和相同SHA的最新main推送验证，要求固定Offline tests及唯一成功Required checks。候选采集或PR绿不能代替main验证；读完再次核对main、最新run/attempt和原package字节，变化即拒绝。成功记录只保存在.local/release-checks，不是可长期复用的发布许可；后续写入入口须在副作用前重新核验。
+`pnpm release:check --version X.Y.Z --sha 完整SHA`先核对本地干净源码、package.version及buildVersion，再只读查询6owen/boai-agent的远程main和相同SHA的最新main推送验证，要求固定Offline tests及唯一成功Required checks。候选采集或PR绿不能代替main验证；读完同时核对run详情和最后一次最新列表的id/SHA/attempt/成功终态，再核对main和原package字节，变化即拒绝。成功记录只保存在.local/release-checks，不是可长期复用的发布许可；后续写入入口须在副作用前重新核验。
 
 当前版本0.2.2/buildVersion0.2.3不一致，完整main验证也未通过，前检应拒绝。该入口不改版本、不创建Tag、不构建/上传/安装。自动Tag接续、ad-hoc产物/冒烟、安装事务和回滚仍按上文继续实现，实际验证唯一归03。

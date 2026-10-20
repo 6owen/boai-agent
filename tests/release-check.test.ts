@@ -1,10 +1,14 @@
 /*
  * [INPUT]: 明确标为协议fixture的版本、主分支、GitHub验证及必需汇总身份。
- * [OUTPUT]: 跨SHA/脏树/版本分歧、候选/PR成功冒充发布、完整数组中的重复/缺失必需汇总均拒绝。
+ * [OUTPUT]: 身份负例及真实CLI有序查询竞态；最后读取同run新attempt时拒绝成功记录。
  * [POS]: 发布前检确定性负例；不调用GitHub、不创建Tag或运行安装包。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { expect, it } from 'vitest'
+import { mkdtemp, readFile, writeFile, mkdir, readdir, chmod, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { execFileSync, spawnSync } from 'node:child_process'
 // @ts-expect-error Plain Node release CLI has no declaration file.
 import { verifyReleaseIdentity } from '../scripts/release-check.mjs'
 const sha = 'a'.repeat(40), repo = '6owen/boai-agent'
@@ -19,3 +23,33 @@ it.each([
   { event: 'pull_request' }, { path: '.github/workflows/ui-baseline-candidate.yml' }, { head_branch: 'feature' }, { head_sha: 'b'.repeat(40) }, { repository: { full_name: 'fork/boai-agent' } }, { head_repository: { full_name: 'fork/boai-agent' } }, { status: 'in_progress' }, { conclusion: 'cancelled' }, { run_attempt: 0 },
 ])('拒绝其他运行或未完成/失败验证：%j', patch => expect(() => verifyReleaseIdentity({ ...proof, run: { ...proof.run, ...patch } })).toThrow())
 it.each([[], [...proof.jobs, ...proof.jobs], [{ ...proof.jobs[0], id: undefined }], [{ ...proof.jobs[0], conclusion: 'failure' }], [{ ...proof.jobs[0], completed_at: undefined }]].map(jobs => ({ jobs })))('缺失/重复/未成功的Required checks不能发布：%j', ({ jobs }) => expect(() => verifyReleaseIdentity({ ...proof, jobs })).toThrow('必需汇总缺失、重复或未通过'))
+
+it.each(['unchanged', 'rerun-started', 'rerun-already-completed'])('真实CLI最后一次列表查询：%s', async mode => {
+  const directory = await mkdtemp(join(tmpdir(), 'boai-release-check-')), root = join(directory, 'repo'), bin = join(directory, 'bin')
+  try {
+    await mkdir(join(root, 'scripts'), { recursive: true }); await mkdir(join(root, '.local')); await mkdir(bin)
+    await writeFile(join(root, '.gitignore'), '.local/\n')
+    await writeFile(join(root, 'package.json'), JSON.stringify(proof.metadata))
+    await writeFile(join(root, 'scripts/release-check.mjs'), await readFile(new URL('../scripts/release-check.mjs', import.meta.url)))
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+    git('init', '-b', 'main'); git('add', '.'); git('-c', 'user.name=Release protocol fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'release identity fixture')
+    const head = git('rev-parse', 'HEAD'), run = { ...proof.run, head_sha: head }
+    const latest = mode === 'unchanged' ? run : { ...run, run_attempt: run.run_attempt + 1, status: mode === 'rerun-started' ? 'in_progress' : 'completed', conclusion: mode === 'rerun-started' ? null : 'success' }
+    const replies = [{ object: { sha: head } }, { workflow_runs: [run] }, run, { total_count: 1, jobs: proof.jobs }, run, { workflow_runs: [latest] }, { object: { sha: head } }]
+    await writeFile(join(root, '.local/replies.json'), JSON.stringify(replies))
+    await writeFile(join(bin, 'gh'), `#!${process.execPath}\nconst fs=require('node:fs');const path=require('node:path');const root=process.cwd();const file=path.join(root,'.local/api-count');let count=fs.existsSync(file)?Number(fs.readFileSync(file,'utf8')):0;const replies=JSON.parse(fs.readFileSync(path.join(root,'.local/replies.json'),'utf8'));fs.writeFileSync(file,String(count+1));if(process.argv[2]!=='api'||!process.argv[3].startsWith('repos/6owen/boai-agent/')||count>=replies.length)process.exit(91);process.stdout.write(JSON.stringify(replies[count]));\n`)
+    await chmod(join(bin, 'gh'), 0o700)
+    const result = spawnSync(process.execPath, ['scripts/release-check.mjs', '--version', '0.2.4', '--sha', head], { cwd: root, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CI: '' }, encoding: 'utf8', timeout: 15_000 })
+    expect(result.error).toBeUndefined()
+    if (mode === 'unchanged') {
+      expect(result.status, result.stderr).toBe(0)
+      const entries = await readdir(join(root, '.local/release-checks'))
+      expect(entries).toHaveLength(1)
+      expect(JSON.parse(await readFile(join(root, '.local/release-checks', entries[0]!, 'identity.json'), 'utf8'))).toMatchObject({ sha: head, validation: { runId: run.id, attempt: run.run_attempt, requiredJobId: 3 } })
+    } else {
+      expect(result.status, result.stdout).toBe(1)
+      expect(result.stderr).toContain('前检期间版本、main或测试尝试已变化')
+      await expect(readdir(join(root, '.local/release-checks'))).rejects.toMatchObject({ code: 'ENOENT' })
+    }
+  } finally { await rm(directory, { recursive: true, force: true }) }
+})

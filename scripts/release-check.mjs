@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确稳定版本/提交、当前干净源码及同仓库main推送的完整必需检查。
- * [OUTPUT]: 只读发布前检；版本/buildVersion/主分支/SHA/最新测试尝试任一不符即拒绝，不创建Tag或资产。
+ * [OUTPUT]: 只读发布前检；版本/主分支/SHA或最后列表的测试尝试变化即拒绝，不创建Tag或资产。
  * [POS]: 第22组个人发布身份门槛；不执行安装、签名或替换应用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -49,7 +49,8 @@ async function main() {
   // repeat this check immediately before a later write, not treat this as a lease.
   const finalRun = api(`actions/runs/${run.id}`)
   const finalLatest = api(`actions/workflows/tests.yml/runs?event=push&branch=main&head_sha=${sha}&per_page=100`).workflow_runs.filter(value => value.head_sha === sha).sort((a, b) => b.id - a.id)[0]
-  if (api('git/ref/heads/main').object.sha !== sha || finalLatest?.id !== run.id || finalRun.run_attempt !== run.run_attempt || finalRun.status !== 'completed' || finalRun.conclusion !== 'success' || git('rev-parse', 'HEAD') !== sha || git('status', '--porcelain') || !bytes.equals(await readFile(join(root, 'package.json')))) throw new Error('前检期间版本、main或测试尝试已变化，请重新核对')
+  const sameSuccessfulAttempt = value => value?.id === run.id && value.head_sha === sha && value.run_attempt === run.run_attempt && value.status === 'completed' && value.conclusion === 'success'
+  if (api('git/ref/heads/main').object.sha !== sha || !sameSuccessfulAttempt(finalLatest) || !sameSuccessfulAttempt(finalRun) || git('rev-parse', 'HEAD') !== sha || git('status', '--porcelain') || !bytes.equals(await readFile(join(root, 'package.json')))) throw new Error('前检期间版本、main或测试尝试已变化，请重新核对')
   const directory = join(root, '.local/release-checks', randomUUID()); await mkdir(directory, { recursive: true })
   await writeFile(join(directory, 'identity.json'), JSON.stringify({ ...identity, repository: releaseRepository, packageSha256: createHash('sha256').update(bytes).digest('hex'), checkedAt: new Date().toISOString(), authority: 'read-only check; no tag, build, publish or install qualification by itself' }, null, 2) + '\n', { flag: 'wx' })
   console.log(`只读发布前检通过：${identity.tag} / ${sha}；原件 ${directory}。尚未创建Tag、构建或发布。`)
