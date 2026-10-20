@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结快捷键合同、原Desktop/群聊夹具和真实键盘/导航控件。
- * [OUTPUT]: 四动作与原状态等价、输入/IME/重复按键/弹层边界，固定零模型断言。
+ * [OUTPUT]: 精确四组合、三页实际显隐/阅读位置/焦点、非编辑弹层及已消费事件边界，固定零模型断言。
  * [POS]: 第22组真实新功能验收；开发任务不可改本文件或期望截图。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,7 +10,7 @@ import { test as base } from '../support/test'
 import { prepareGroupChat } from '../support/group-chat'
 import { messageDraft } from '../support/editor-controls'
 
-type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>> }
+type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; reading?: { top: number; id: string; offset: number } }
 export const test = base.extend<{ shortcuts: State }>({ shortcuts: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 const primary = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -31,28 +31,64 @@ Then('设置列出搜索侧边栏后退和前进的实际组合', async ({ runti
   for (const [label, key] of pairs) {
     const row = runtime.page.locator('.appearance-row').filter({ hasText: label })
     await expect(row).toHaveCount(1)
-    await expect(row.locator('kbd')).toContainText(process.platform === 'darwin' ? '⌘' : 'Ctrl')
-    await expect(row.locator('kbd')).toContainText(key!)
+    await expect.poll(async () => (await row.locator('kbd').innerText()).replace(/\s/g, '')).toBe(`${process.platform === 'darwin' ? '⌘' : 'Ctrl'}${key}`)
   }
   expect(shortcuts.fixture!.state.calls).toBe(0)
 })
-When('用户通过快捷键打开原搜索并切换当前侧边栏', async ({ runtime }) => {
+When('用户通过快捷键打开原搜索并切换当前侧边栏', async ({ runtime, shortcuts }) => {
   const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容', exact: true })
+  await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^与研究员对话/ }).click()
   await input.fill(draft)
-  await page.getByRole('button', { name: '搜索会话内容', exact: true }).focus()
+  const messages = page.locator('.messages'), search = page.getByRole('button', { name: '搜索会话内容', exact: true })
+  await messages.hover(); await page.mouse.wheel(0, 100_000)
+  await expect.poll(() => messages.evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThanOrEqual(1)
+  await page.mouse.wheel(0, -500)
+  await expect.poll(() => messages.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+  await expect.poll(() => messages.evaluate(element => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeGreaterThan(100)
+  shortcuts.reading = await messages.evaluate(element => {
+    const rect = element.getBoundingClientRect(), anchor = [...element.querySelectorAll<HTMLElement>('[data-reading-message-id]')].find(item => item.getBoundingClientRect().bottom > rect.top + 20)!
+    return { top: element.scrollTop, id: anchor.dataset.readingMessageId!, offset: anchor.getBoundingClientRect().top - rect.top }
+  })
+  await search.focus()
   await page.keyboard.press(`${primary}+k`)
   await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()
   await page.getByRole('button', { name: '关闭搜索', exact: true }).click()
+  await expect(search).toBeFocused()
   const toggle = page.getByRole('button', { name: '显示或隐藏会话列表', exact: true })
   await toggle.focus(); await page.keyboard.press(`${primary}+b`)
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  const list = page.locator('.conversation-layout .panel-resize[data-side=left]')
+  await expect.poll(() => list.evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(1)
+  await expect(list.locator('.panel-resize-content')).toBeHidden()
   await toggle.click(); await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => list.evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(200)
+  await expect(page.getByRole('navigation', { name: '会话列表', exact: true })).toBeVisible()
 })
 Then('搜索列表和原会话草稿保持一致且没有模型请求', async ({ runtime, shortcuts }) => {
   await expect(runtime.page.locator('.app-shell')).toHaveAttribute('data-page', 'conversations')
   await expect(runtime.page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toHaveCount(0)
   await expect.poll(() => messageDraft(runtime.page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe(draft)
+  const page = runtime.page, reading = shortcuts.reading!
+  const preserved = async () => {
+    await expect(page.locator('.chat-panel:visible')).toHaveAttribute('data-conversation-id', shortcuts.fixture!.direct.id)
+    await expect.poll(async () => Math.abs(await page.locator('.messages').evaluate(element => element.scrollTop) - reading.top)).toBeLessThanOrEqual(2)
+    await expect.poll(async () => Math.abs(await page.locator(`[data-reading-message-id="${reading.id}"]`).evaluate(element => element.getBoundingClientRect().top - element.closest('.messages')!.getBoundingClientRect().top) - reading.offset)).toBeLessThanOrEqual(2)
+  }
+  await preserved()
+  for (const [name, label, listSelector] of [['通讯录', '显示或隐藏通讯录列表', '.contacts-list'], ['定时任务', '显示或隐藏任务列表', '.schedule-list']]) {
+    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: name!, exact: true }).click()
+    const toggle = page.getByRole('button', { name: label!, exact: true }), list = page.locator(listSelector!), panel = list.locator('xpath=ancestor::div[contains(@class,"panel-resize")][1]')
+    await expect(list).toBeVisible()
+    await toggle.focus(); await page.keyboard.press(`${primary}+b`)
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await expect.poll(() => panel.evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(1)
+    await expect(list).toBeHidden()
+    await toggle.click(); await expect(toggle).toHaveAttribute('aria-pressed', 'true'); await expect(list).toBeVisible()
+  }
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
+  await preserved()
+  await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe(draft)
   expect(shortcuts.fixture!.state.calls).toBe(0)
 })
 When('用户从群聊切到通讯录再按后退和前进', async ({ runtime }) => {
@@ -77,7 +113,7 @@ Then('按键与原导航按钮使用同一历史且没有越过边界', async ({
   await expect(page.locator('.app-shell')).toHaveAttribute('data-page', before!)
   expect(shortcuts.fixture!.state.calls).toBe(0)
 })
-When('用户在编辑器组合输入或弹层内按应用组合键', async ({ runtime }) => {
+When('用户在编辑器组合输入或弹层内按应用组合键', async ({ runtime, shortcuts }) => {
   const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容', exact: true }), toggle = page.getByRole('button', { name: '显示或隐藏会话列表', exact: true, includeHidden: true })
   await input.fill(draft)
   for (const key of ['k', 'b', '[', ']']) await input.press(`${primary}+${key}`)
@@ -90,11 +126,31 @@ When('用户在编辑器组合输入或弹层内按应用组合键', async ({ ru
     expect(unconsumed).toBe(true)
     await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toHaveCount(0)
   }
+  await search.evaluate((element, modifier) => {
+    const event = new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', bubbles: true, cancelable: true, [modifier]: true })
+    event.preventDefault(); element.dispatchEvent(event)
+  }, process.platform === 'darwin' ? 'metaKey' : 'ctrlKey')
+  await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toHaveCount(0)
+  const unchanged = async () => {
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'conversations')
+    await expect(page.locator('.chat-panel:visible')).toHaveAttribute('data-conversation-id', shortcuts.fixture!.group.id)
+  }
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  const menu = page.getByRole('menu')
+  await menu.getByRole('menuitem', { name: '设置', exact: true }).focus()
+  for (const key of ['k', 'b', '[', ']']) { await page.keyboard.press(`${primary}+${key}`); await expect(menu).toBeVisible(); await unchanged() }
+  await page.keyboard.press('Escape'); await expect(menu).toBeHidden()
+  await page.locator('.chat-header').getByRole('button', { name: '查看 研究员 的资料', exact: true }).click()
+  const popover = page.locator('.agent-info-popover')
+  await popover.getByRole('button', { name: '配置 Agent', exact: true }).focus()
+  for (const key of ['k', 'b', '[', ']']) { await page.keyboard.press(`${primary}+${key}`); await expect(popover).toBeVisible(); await unchanged() }
+  await page.keyboard.press('Escape'); await expect(popover).toBeHidden()
   await search.click()
   const dialog = page.getByRole('dialog', { name: '搜索会话内容', exact: true })
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('textbox', { name: '搜索关键词', exact: true }).press(`${primary}+b`)
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await dialog.getByRole('button', { name: '关闭搜索', exact: true }).focus()
+  for (const key of ['k', 'b', '[', ']']) { await page.keyboard.press(`${primary}+${key}`); await expect(dialog).toBeVisible(); await unchanged() }
   await page.getByRole('button', { name: '关闭搜索', exact: true }).click()
 })
 Then('输入未被消费且搜索侧边栏和导航没有误触发', async ({ runtime, shortcuts }) => {
