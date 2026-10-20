@@ -106,6 +106,18 @@
       "scene": "preview",
       "mode": "dark",
       "width": 1280
+    },
+    {
+      "id": "shortcuts-light",
+      "scene": "shortcuts",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "shortcuts-dark",
+      "scene": "shortcuts",
+      "mode": "dark",
+      "width": 1280
     }
   ]
 }

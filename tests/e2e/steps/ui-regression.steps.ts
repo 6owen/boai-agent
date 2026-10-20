@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
- * [OUTPUT]: 每员工唯一主单聊、明暗/窄窗页面、真实保存/文件筛选及只读截图断言。
+ * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；新增只读快捷键页与真实原搜索，既有16场保持。
  * [POS]: UI回归BDD步骤；沿原Desktop生命周期，不修改产品DOM/CSS。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -54,10 +54,10 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
   if (scene === 'employee') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
     await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '研究员', exact: true }).click()
-  } else if (scene === 'settings') {
+  } else if (scene === 'settings' || scene === 'shortcuts') {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
     await page.getByRole('menuitem', { name: '设置', exact: true }).click()
-    await page.getByRole('button', { name: '外观', exact: true }).click()
+    await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : '外观', exact: true }).click()
   } else if (scene === 'resources') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
     await page.getByRole('complementary', { name: '资源库导航', exact: true }).getByRole('button', { name: '技能', exact: true }).click()
@@ -115,6 +115,21 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
       await expect.poll(async () => (await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.mode).toBe(mode)
       await expect(page.locator('html')).toHaveAttribute('data-theme', mode)
     }
+  } else if (selected.scene === 'shortcuts') {
+    const content = page.locator('.settings-content')
+    await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
+    await expect(content.locator('.appearance-row')).toHaveCount(4)
+    for (const [label, key] of [['Open Search / 全局搜索', 'K'], ['切换侧边栏', 'B'], ['后退', '['], ['前进', ']']]) {
+      const row = content.locator('.appearance-row').filter({ hasText: label })
+      await expect(row).toBeInViewport()
+      await expect(row.locator('kbd')).toHaveText(`${process.platform === 'darwin' ? '⌘' : 'Ctrl'} ${key}`)
+    }
+    await expect(content.locator('input, textarea, [contenteditable=true]')).toHaveCount(0)
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
+    await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: '关闭搜索', exact: true }).click()
+    await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
   } else if (selected.scene === 'resources') {
     await page.getByRole('button', { name: '搜索本机技能', exact: true }).click()
     const search = page.getByRole('textbox', { name: '搜索本机技能', exact: true })

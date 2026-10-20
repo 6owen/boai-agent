@@ -1,5 +1,5 @@
 # [INPUT]: 固定历史/本机技能、原生Electron与版本化UI场景清单。
-# [OUTPUT]: 核心页面明暗/窄窗的真实行为、布局及截图比较。
+# [OUTPUT]: 原16项与新增快捷键明暗两项的真实行为、布局及截图比较。
 # [POS]: UI回归BDD入口；不建立平行spec入口。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 # language: zh-CN
@@ -29,3 +29,5 @@
       | detail-dark |
       | preview-light |
       | preview-dark |
+      | shortcuts-light |
+      | shortcuts-dark |
