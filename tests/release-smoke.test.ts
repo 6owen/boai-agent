@@ -34,13 +34,18 @@ const launch = () => {
   const profileRoot = '/private/protocol-tmp/boai-bdd-profile1', expected = { executable: launchOptions.binary, dataDir: profileRoot }
   return { profileRoot, expected, actual: { ...expected }, observed: { executable: expected.executable, applicationPath: '/fixture/BoAI Agent.app/Contents/Resources/app.asar', dataDir: profileRoot, packaged: true, pid: 1234, version: launchOptions.version } }
 }
-it('完整实际启动字段绑定本场临时profile、实际程序/asar及版本', () => expect(assertSmokeLaunch(launch(), launchOptions)).toBe(launch().profileRoot))
+it('完整实际启动字段绑定本场临时profile、实际程序/asar及版本', () => expect(assertSmokeLaunch(launch(), launchOptions)).toEqual({ profileRoot: launch().profileRoot, dataDir: launch().profileRoot }))
+it('本场profile内的原目录授权product子目录合法且保留实际dataDir身份', () => {
+  const value = launch(); value.expected.dataDir = value.actual.dataDir = value.observed.dataDir = value.profileRoot + '/product'
+  expect(assertSmokeLaunch(value, launchOptions)).toEqual({ profileRoot: value.profileRoot, dataDir: value.profileRoot + '/product' })
+})
 it.each([
   { name: 'missing-both-dataDir', change: value => { Reflect.deleteProperty(value.expected, 'dataDir'); Reflect.deleteProperty(value.actual, 'dataDir') } },
   { name: 'wrong-observed-dataDir', change: value => { value.observed.dataDir = '/personal/boai' } },
   { name: 'outside-profile', change: value => { value.profileRoot = value.expected.dataDir = value.actual.dataDir = value.observed.dataDir = '/personal/boai' } },
   { name: 'nonstring-dataDir', change: value => { Reflect.set(value.expected, 'dataDir', 123); Reflect.set(value.actual, 'dataDir', 123) } },
   { name: 'wrong-actual-dataDir', change: value => { value.actual.dataDir = '/personal/boai' } },
+  { name: 'neighbor-profile-dataDir', change: value => { value.expected.dataDir = value.actual.dataDir = value.observed.dataDir = '/private/protocol-tmp/boai-bdd-neighbor/product' } },
   { name: 'wrong-asar', change: value => { value.observed.applicationPath = '/other/app.asar' } },
   { name: 'not-packaged', change: value => { value.observed.packaged = false } },
   { name: 'wrong-version', change: value => { value.observed.version = '0.2.3' } },
@@ -112,8 +117,12 @@ it.each(['controller', 'zip'])('真实CLI在旧%s监督器仍活跃时零worker/
     await copyFile(resolve('dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
     await writeFile(join(old, 'intent.json'), JSON.stringify({ version: 1, directory: old, guard: await releaseFile(guard) }))
     const ledger = join(old, location, 'processes')
-    child = spawn(guard, ['--ledger', ledger, process.execPath, '-e', 'setInterval(()=>{},1000)'], { stdio: ['pipe', 'pipe', 'pipe'] }); ended = once(child, 'close')
-    await expect.poll(async () => (await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
+    const readyScript = `const fs=require('node:fs'),directory=${JSON.stringify(ledger)};let ready=false;const check=()=>{if(!ready&&fs.readdirSync(directory).some(name=>name.endsWith('.json'))){ready=true;process.stdout.write('ledger-ready');watcher.close()}};const watcher=fs.watch(directory,check);check();setInterval(()=>{},1000)`
+    child = spawn(guard, ['--ledger', ledger, process.execPath, '-e', readyScript], { stdio: ['pipe', 'pipe', 'pipe'] }); ended = once(child, 'close')
+    let guardError = ''; child.stderr!.on('data', bytes => { guardError += bytes })
+    const ready = await Promise.race([once(child.stdout!, 'data').then(([bytes]) => bytes.toString()), ended.then(() => { throw Error('guard在就绪前退出：' + guardError) })])
+    expect(ready).toBe('ledger-ready')
+    expect((await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
     const cli = spawn(process.execPath, ['scripts/release-smoke.mjs', '--candidate', candidate], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
     let output = ''; cli.stdout.on('data', bytes => { output += bytes }); cli.stderr.on('data', bytes => { output += bytes })
     const timer = setTimeout(() => cli.kill('SIGKILL'), 15_000)

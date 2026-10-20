@@ -39,10 +39,10 @@ export function assertSmokeLaunch(value, { binary, version, cli, temporaryRoot }
     const alias = resolve(tmpdir())
     return value.startsWith(alias + '/') ? temporaryRoot + value.slice(alias.length) : value
   }
-  if (!path(profileRoot) || dirname(profileRoot) !== temporaryRoot || !/^boai-bdd-[a-zA-Z0-9]+$/.test(basename(profileRoot)) || !path(expected?.dataDir) || expected.dataDir !== profileRoot || !path(expected.executable) || !equal(expected, actual) || canonical(observed?.dataDir) !== profileRoot || canonical(observed?.executable) !== expected.executable || canonical(observed?.applicationPath) !== join(dirname(dirname(expected.executable)), 'Resources/app.asar')) throw Error('逐启动profile或实际程序字段缺失、越界或不对应')
+  if (!path(profileRoot) || dirname(profileRoot) !== temporaryRoot || !/^boai-bdd-[a-zA-Z0-9]+$/.test(basename(profileRoot)) || !path(expected?.dataDir) || expected.dataDir !== profileRoot && !expected.dataDir.startsWith(profileRoot + '/') || !path(expected.executable) || !equal(expected, actual) || canonical(observed?.dataDir) !== expected.dataDir || canonical(observed?.executable) !== expected.executable || canonical(observed?.applicationPath) !== join(dirname(dirname(expected.executable)), 'Resources/app.asar')) throw Error('逐启动profile或实际程序字段缺失、越界或不对应')
   const relocated = cli && expected.executable === join(profileRoot, "Moved ' BoAI Agent.app/Contents/MacOS/BoAI Agent")
   if ((expected.executable !== binary && !relocated) || observed.packaged !== true || observed.version !== version || !Number.isInteger(observed.pid) || observed.pid < 1) throw Error('逐启动程序、版本或packaged身份不对应')
-  return profileRoot
+  return { profileRoot, dataDir: expected.dataDir }
 }
 export async function verifySmokeBundle(app, expected) {
   const actual = await bundleInventory(app)
@@ -124,12 +124,12 @@ async function smokeEvidence(stage, selected, candidate, binary) {
     for (const fact of facts) {
       const value = await json(resolve(dirname(manifestPath), fact.path)), { launch } = value
       const current = assertSmokeLaunch(value, { binary, version: candidate.identity.version, cli: row.id === 'packaged-cli-installation', temporaryRoot })
-      if (profile && current !== profile || !Number.isInteger(launch) || launch < 1 || launch > manifest.launchCount || seen.has(launch) || fact.launch !== launch) throw Error('实际启动profile或次数不对应')
+      if (profile && !equal(current, profile) || !Number.isInteger(launch) || launch < 1 || launch > manifest.launchCount || seen.has(launch) || fact.launch !== launch) throw Error('实际启动profile或次数不对应')
       profile = current
       seen.add(launch)
     }
-    if (!profile || profiles.has(profile)) throw Error('实际场景profile缺失或与其他场景共用')
-    profiles.add(profile)
+    if (!profile || profiles.has(profile.profileRoot)) throw Error('实际场景profile缺失或与其他场景共用')
+    profiles.add(profile.profileRoot)
     launches += facts.length
   }
   return { proof, launches }
