@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
- * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；新增只读快捷键页与真实原搜索，既有16场保持。
+ * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页排除输入/按钮/选择等编辑入口并核对原搜索，既有16场保持。
  * [POS]: UI回归BDD步骤；沿原Desktop生命周期，不修改产品DOM/CSS。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -124,7 +124,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
       await expect(row).toBeInViewport()
       await expect(row.locator('kbd')).toHaveText(`${process.platform === 'darwin' ? '⌘' : 'Ctrl'} ${key}`)
     }
-    await expect(content.locator('input, textarea, [contenteditable=true]')).toHaveCount(0)
+    await expect(content.locator('input, textarea, select, button, [role=button], [role=combobox], [role=switch], [role=checkbox], [role=radio], [role=spinbutton], [contenteditable]:not([contenteditable=false])')).toHaveCount(0)
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
     await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toBeVisible()
     await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()
