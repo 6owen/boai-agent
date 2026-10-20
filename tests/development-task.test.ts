@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 互斥/路径/新增文件/返工及PR；完成步骤/部分补丁接续、外改与未知回执拒绝，调用计数和原件保持。
+ * [OUTPUT]: 互斥/路径/返工/PR及真实SIGKILL；检查点自身/历史证据、预算资格与工作树/索引外改拒绝，未知不重放。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -307,6 +307,9 @@ it('兼容控制器迁移必须明确原hash并核对原字节，保留迁移记
     expect(claim.state.controllerHash).toBe(after)
     expect(claim.state.controllerHistory).toEqual([{ from: before, to: after, at: expect.any(String) }])
     expect(await readFile(join(claim.directory, `controller-${before}.mjs`), 'utf8')).toBe('original controller')
+    await writeFile(claim.state.controllerArtifact!, 'tampered old artifact')
+    await expect(acceptController(claim, before, first, after)).rejects.toThrow('完整原件')
+    expect(claim.state.controllerHistory).toHaveLength(1)
   } finally { claim.release() }
 })
 it('补丁中断后执行位外改不能随恢复提交', async () => {
@@ -333,4 +336,75 @@ it('完整回执可只读恢复，但已过最初绝对期限不能继续请求�
     expect(await readFile(join(first.state.worktree, 'answer.txt'), 'utf8')).toBe('old')
     expect(git(first.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
   } finally { now.mockRestore() }
+})
+it.each(['next', 'stateHash'])('完成检查点自身的%s被改写不能取得新资格', async field => {
+  const input = task('checkpoint-bytes-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt saved') } })
+  const path = join(first.state.pending!.directory, 'checkpoint.json'), receipt = JSON.parse(await readFile(path, 'utf8'))
+  receipt[field] = field === 'next' ? 'done' : 'f'.repeat(64); await writeFile(path, JSON.stringify(receipt))
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('检查点自身hash不匹配'); expect(calls).toBe(1)
+  expect(result.state.deadline).toBe(first.state.deadline); expect(result.state.codexCalls).toBe(1); expect(result.state.knownTokens).toBe(10)
+})
+it.each(['deadline', 'codexCalls', 'knownTokens', 'checks', 'review'])('恢复原状态的%s与完成回执不一致时拒绝继续', async field => {
+  const input = task('checkpoint-state-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt saved') } })
+  const claim = claimTask(repository, input)
+  try {
+    if (field === 'deadline') claim.state.deadline! += 100000
+    else if (field === 'codexCalls') claim.state.codexCalls = 0
+    else if (field === 'knownTokens') claim.state.knownTokens = 0
+    else if (field === 'checks') claim.state.checks = { passed: true, head: claim.state.head }
+    else claim.state.review = { approved: true, head: claim.state.head }
+    claim.save()
+  } finally { claim.release() }
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('期限、预算或资格已变化'); expect(calls).toBe(1)
+})
+it.each(['inside', 'outside'])('恢复拒绝%s的纯暂存外改，工作树还原不能掩盖或清掉索引', async scope => {
+  const input = task('index-edit-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }, { path: 'feature.txt', beforeSha256: null, content: 'new feature' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (_kind, point) => { if (point === 'file') throw new Error('partial patch') } })
+  const path = scope === 'inside' ? 'answer.txt' : '.gitignore', original = await readFile(join(first.state.worktree, path))
+  await writeFile(join(first.state.worktree, path), 'staged external edit'); git(first.state.worktree, 'add', '--', path)
+  await writeFile(join(first.state.worktree, path), original)
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toMatch(/未知暂存内容|范围外修改或暂存改动/)
+  expect(git(first.state.worktree, 'show', `:${path}`)).toBe('staged external edit'); expect(calls).toBe(1)
+  await expect(readFile(join(first.state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+it.each(['resume', 'deliver'])('已完成检查的原始日志被改写后%s不能继续使用旧通过', async operation => {
+  const input = task('historical-evidence-fixture'); let calls = 0
+  const agent = async (kind: 'develop' | 'review') => { calls++; return { value: kind === 'develop' ? { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] } : { approved: true, findings: [], summary: 'review' }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent })
+  expect(first.state.phase).toBe('reviewed')
+  await writeFile(join(first.directory, 'attempt-1-checks/actual-value.stdout.log'), 'changed original log')
+  if (operation === 'resume') {
+    const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+    expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('原始文件/日志已变化')
+  } else {
+    let remoteCalls = 0
+    const result = await deliverDevelopmentTask(repository, input, async () => { remoteCalls++; return '' })
+    expect(result.state.phase).toBe('reviewed'); expect(result.state.reason).toContain('原始文件/日志已变化'); expect(remoteCalls).toBe(0)
+  }
+  expect(calls).toBe(2)
+})
+it.each(['resume', 'deliver'])('不兼容旧恢复格式不能通过%s沿用旧资格或发起新请求', async operation => {
+  const { WORKFLOW_VERSION } = await import('../scripts/development/recovery')
+  const input = task('incompatible-workflow-fixture'); let calls = 0
+  const agent = async (kind: 'develop' | 'review') => { calls++; return { value: kind === 'develop' ? { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] } : { approved: true, findings: [], summary: 'review' }, usage: { totalTokens: 10 } } }
+  await runDevelopmentTask(repository, input, undefined, { guard, agent })
+  const claim = claimTask(repository, input)
+  try { claim.state.workflowVersion = WORKFLOW_VERSION - 1; claim.save() } finally { claim.release() }
+  if (operation === 'resume') {
+    const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+    expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('没有兼容恢复检查点')
+  } else {
+    let remoteCalls = 0
+    const result = await deliverDevelopmentTask(repository, input, async () => { remoteCalls++; return '' })
+    expect(result.state.reason).toContain('旧恢复流程格式不兼容'); expect(remoteCalls).toBe(0)
+  }
+  expect(calls).toBe(2)
 })

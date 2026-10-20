@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已独立审查的固定候选、真实远程base/head及GitHub PR查询回执。
- * [OUTPUT]: 同一分支的可审查draft PR；未知写入先查找，不自动合并或覆盖远程变更。
+ * [OUTPUT]: 固定提交draft PR；当前流程重核所有历史回执/原件，不兼容旧恢复格式拒绝交付，未知写入先查询。
  * [POS]: 开发侧PR适配；首版只运行本地用户登记的受信任务，不提供外部PR执行入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -9,6 +9,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { claimTask, git, digest } from './task'
+import { verifyCheckpointReceipts, WORKFLOW_VERSION } from './recovery'
 
 type Command = (command: string, args: string[], cwd: string, signal?: AbortSignal) => Promise<string>
 const execute: Command = async (command, args, cwd, signal) => (await promisify(execFile)(command, args, { cwd, encoding: 'utf8', signal, timeout: 60_000, maxBuffer: 8 * 1024 * 1024 })).stdout.trim()
@@ -19,6 +20,8 @@ export async function deliverDevelopmentTask(repository: string, raw: unknown, c
   try {
     signal.throwIfAborted()
     if (!['reviewed', 'pr-pending', 'delivered'].includes(state.phase) || state.pending) throw new Error('任务尚未完成实际检查/独立审查，不能交付')
+    if (state.workflowVersion !== undefined && state.workflowVersion !== WORKFLOW_VERSION) throw new Error('旧恢复流程格式不兼容，不能沿用旧资格交付')
+    if (state.workflowVersion === WORKFLOW_VERSION) await verifyCheckpointReceipts(claim)
     const checks = state.checks as { passed?: boolean; head?: string; checks?: { id: string; report?: { file: string; sha256: string } }[] }, review = state.review as { approved?: boolean; head?: string; base?: string; checksHash?: string }
     if (!state.head || !checks?.passed || checks.head !== state.head || !review?.approved || review.head !== state.head || review.base !== task.base || !state.usageComplete) throw new Error('检查/审查/用量未绑定同一完整候选')
     if (git(state.worktree, 'rev-parse', 'HEAD') !== state.head || git(state.worktree, 'status', '--porcelain')) throw new Error('候选提交/工作树变化，必须重新检查/审查')

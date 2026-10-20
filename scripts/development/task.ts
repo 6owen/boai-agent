@@ -32,13 +32,14 @@ export type Task = z.infer<typeof taskSchema>
 export interface TaskState {
   version: 1; taskHash: string; phase: string; base: string; worktree: string; branch: string;
   attempt: number; codexCalls: number; knownTokens: number; usageComplete: boolean;
-  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean; journalHash?: string }; reason?: string;
+  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean; journalHash?: string; checkpointHash?: string }; reason?: string;
   lease?: { owner: string; pid: number; hostname: string; expiresAt: string };
   baseline?: unknown; checks?: unknown; review?: unknown;
   delivery?: { head: string; base: string; url?: string; number?: number };
   controllerHash?: string; controllerArtifact?: string; environment?: { node: string; platform: string; arch: string; codex?: string };
   workflowVersion?: number; cursor?: string; deadline?: number; proposal?: { path: string; sha256: string };
   controllerHistory?: { from: string; to: string; at: string }[];
+  checkpoints?: { id: string; kind: string; sha256: string }[];
 }
 export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim()
 export function taskDirectory(repository: string, taskId: string) {

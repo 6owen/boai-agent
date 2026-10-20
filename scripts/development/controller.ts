@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
- * [OUTPUT]: 固定检查/独立审查/返工；显式恢复完成检查点和部分补丁，绝对期限与未知不重放保持。
+ * [OUTPUT]: 固定检查/独立审查/返工；状态锚定回执与历史原件、工作树/索引核验，恢复不续期或重放未知操作。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,7 +10,7 @@ import { mkdir, readFile, writeFile, rm, lstat, readdir, rmdir, realpath } from 
 import { dirname, join, resolve } from 'node:path'
 import { repairProcess, saveProcess, type ProcessReceipt } from '../../tests/evaluation/repair-process'
 import { claimTask, digest, git, relativePath, type Task, type TaskState } from './task'
-import { acceptController, applyJournal, checkpoint, drainPendingProcesses, recoverCheckpoint, WORKFLOW_VERSION, writeEvidence, type Cursor, type FileChange } from './recovery'
+import { acceptController, applyJournal, checkpoint, drainPendingProcesses, recoverCheckpoint, verifyCheckpointReceipts, WORKFLOW_VERSION, writeEvidence, type Cursor, type FileChange } from './recovery'
 
 export const editsSchema = z.object({ summary: z.string().min(1), edits: z.array(z.object({ path: relativePath, beforeSha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), content: z.string().max(512_000).nullable(), replacements: z.array(z.object({ oldText: z.string().min(1), newText: z.string().max(256_000) }).strict()).min(1).max(30).nullable().default(null) }).strict()).min(1).max(40) }).strict()
 export const reviewSchema = z.object({ approved: z.boolean(), findings: z.array(z.string().min(1)), summary: z.string().min(1) }).strict().refine(value => !value.approved || !value.findings.length, '有待处理问题不能批准')
@@ -70,7 +70,13 @@ async function prepareDevelopmentEdits(worktree: string, task: Pick<Task, 'paths
 }
 export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, 'paths'>, raw: unknown, signal = new AbortController().signal) {
   const { proposal, changes } = await prepareDevelopmentEdits(worktree, task, raw, signal)
-  await applyJournal(worktree, git(worktree, 'rev-parse', 'HEAD'), changes, signal)
+  // 独立文件补丁工具不操作Git索引；受控任务的应用/提交才走完整日记及索引核验。
+  for (const change of changes) {
+    signal.throwIfAborted()
+    const path = join(worktree, change.path)
+    if (change.after === null) await rm(path)
+    else { await mkdir(dirname(path), { recursive: true }); signal.throwIfAborted(); await writeFile(path, Buffer.from(change.after, 'base64')) }
+  }
   return proposal
 }
 
@@ -147,6 +153,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
     }
     if (state.workflowVersion !== WORKFLOW_VERSION || !state.cursor || !state.deadline) throw new Error('旧任务没有兼容恢复检查点；保留原件并建立明确任务修订')
     await acceptController(claim, process.env.BOAI_DEV_CONTROLLER_HASH, process.env.BOAI_DEV_CONTROLLER_FILE, dependencies.resume ? dependencies.previousController : undefined)
+    if (dependencies.resume) await verifyCheckpointReceipts(claim)
     state.environment ??= { node: process.version, platform: process.platform, arch: process.arch }; claim.save()
     git(repository, 'check-ref-format', '--branch', task.targetBranch)
     if (git(repository, 'rev-parse', `${task.base}^{commit}`) !== task.base || git(repository, 'rev-parse', task.targetBranch) !== task.base) throw new Error('目标基础分支已变化，请建立任务修订；不能沿用旧检查')
@@ -166,8 +173,6 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
         if (!['worktree', 'apply'].includes(state.pending.kind)) throw new Error(`上次${state.pending.kind}缺少完整恢复回执；不重放未知模型或检查`)
       }
     }
-    // 检查点保留生成它的原控制器身份；恢复之后再登记本次明确兼容迁移。
-    await acceptController(claim, process.env.BOAI_DEV_CONTROLLER_HASH, process.env.BOAI_DEV_CONTROLLER_FILE, dependencies.resume ? dependencies.previousController : undefined)
     if (!dependencies.agent) {
       if (!task.model) throw new Error('实际Codex任务必须明确冻结model，不能依赖变化的CLI默认值')
       state.environment!.codex = execFileSync('codex', ['--version'], { encoding: 'utf8', timeout: 10_000 }).trim(); claim.save()
@@ -259,6 +264,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
           await finish('decide'); break
         }
         case 'decide': {
+          await verifyCheckpointReceipts(claim)
           if (git(repository, 'rev-parse', task.targetBranch) !== task.base) throw new Error('目标基础分支已变化，旧检查和审查不能交付')
           const checks = state.checks as { passed: boolean; head: string }, review = state.review as { approved: boolean; head: string; checksHash: string } | undefined
           if (checks.passed && review?.approved && review.head === state.head && review.checksHash === digest(JSON.stringify(state.checks)) && state.usageComplete && state.knownTokens <= task.maxTokens) {
