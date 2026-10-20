@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 第22组08第4节冻结的四种默认组合与设置文档/Card/appearance-row样式。
- * [OUTPUT]: 按当前平台只读展示搜索、侧边栏、后退和前进快捷键；不保存或编辑绑定。
+ * [OUTPUT]: 按当前平台以设置文档标题及行样式只读展示四组快捷键；不保存或编辑绑定。
  * [POS]: 设置分类中的快捷键页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -16,7 +16,7 @@ const shortcuts = [
 export function ShortcutSettings() {
   const modifier = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'
   return <section className="settings-document">
-    <div className="page-heading"><div><h2>快捷键</h2></div></div>
+    <header className="settings-document-heading"><h2>快捷键</h2></header>
     <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
       {shortcuts.map(shortcut => <div className="appearance-row" key={shortcut.label}>
         <span>{shortcut.label}</span>
