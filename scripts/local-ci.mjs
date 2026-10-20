@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前干净提交、锁定依赖、固定工程/T1/全部本机UI合同。
- * [OUTPUT]: 不调用Actions的完整本地CI、受管串行执行与逐原件hash封存；verify拒绝旧提交或改动结果。
+ * [OUTPUT]: 本机完整CI、受管串行及原件封存；manifest原字节锚定，核验后变化拒绝，不接云端旁路。
  * [POS]: 本机CI唯一入口；真实供应商/基线接受/发布及安装不在此执行。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -37,14 +37,22 @@ export async function localCiFiles(directory, current = directory) {
   }
   return result
 }
-export async function verifyLocalCi(directory) {
+export async function verifyLocalCiSeal(directory, validate) {
   directory = resolve(directory)
   if ((await lstat(directory)).isSymbolicLink()) throw new Error('本地CI目录不能是符号链接')
-  const result = await json(join(directory, 'result.json')), manifest = await json(join(directory, 'manifest.json'))
+  const manifestPath = join(directory, 'manifest.json'), info = await lstat(manifestPath)
+  if (!info.isFile() || info.isSymbolicLink()) throw new Error('本地CI清单须为普通文件')
+  const manifestBytes = await readFile(manifestPath), manifest = JSON.parse(manifestBytes.toString()), result = await json(join(directory, 'result.json'))
   if (manifest.version !== 1 || !manifest.files?.length || JSON.stringify(manifest.files) !== JSON.stringify(await localCiFiles(directory))) throw new Error('本地CI原件缺失、增加或hash变化')
-  const qualification = await verifyLocalCiReports(directory, result)
-  if (JSON.stringify(manifest.files) !== JSON.stringify(await localCiFiles(directory)) || JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(result.source)) throw new Error('核验期间本地CI原件或源码变化')
-  return { ...qualification, manifestSha256: createHash('sha256').update(await readFile(join(directory, 'manifest.json'))).digest('hex') }
+  const qualification = await validate(directory, result)
+  if (JSON.stringify(manifest.files) !== JSON.stringify(await localCiFiles(directory))) throw new Error('核验期间本地CI原件变化')
+  if (!(await readFile(manifestPath)).equals(manifestBytes)) throw new Error('核验期间原件清单字节变化')
+  return { ...qualification, manifestSha256: createHash('sha256').update(manifestBytes).digest('hex') }
+}
+export async function verifyLocalCi(directory) {
+  const qualification = await verifyLocalCiSeal(directory, verifyLocalCiReports), source = await sourceIdentity(root)
+  if (source.dirty || source.commit !== qualification.sha || source.sourceHash !== qualification.sourceHash) throw new Error('核验期间源码变化')
+  return qualification
 }
 async function verifyLocalCiReports(directory, result) {
   const source = await sourceIdentity(root)
@@ -61,6 +69,7 @@ async function verifyLocalCiReports(directory, result) {
 }
 async function run(branch) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw new Error('本地CI须使用已登记的macOS arm64/Node24.16.0')
+  if (process.env.GITHUB_ACTIONS || process.env.GITHUB_REPOSITORY || process.env.GITHUB_RUN_ID) throw new Error('本地CI入口不能作为GitHub云端档案旁路')
   const release = acquireResourceLock(join(tmpdir(), 'boai-local-ci.sqlite'))
   const controller = new AbortController(), cancel = () => controller.abort()
   process.once('SIGTERM', cancel); process.once('SIGINT', cancel)
@@ -91,7 +100,7 @@ async function run(branch) {
       ['types', 'pnpm', ['typecheck'], 5], ['lint', 'pnpm', ['lint:ui'], 5], ['build', 'pnpm', ['build'], 10],
       ['unit', 'pnpm', ['test', '--maxWorkers=2'], 30], ['dataset', 'pnpm', ['eval:dataset'], 5],
       ['bdd', 'node', ['scripts/test-desktop.mjs', 't1', '--output', join(directory, 't1')], 46],
-      ['ui', 'node', ['scripts/ui-regression.mjs', 'check', '--profile', 'local-macos-arm64', '--output', join(directory, 'ui')], 20],
+      ['ui', '/usr/bin/env', ['BOAI_UI_EXECUTION=local-ci', 'node', 'scripts/ui-regression.mjs', 'check', '--profile', 'local-macos-arm64', '--output', join(directory, 'ui')], 20],
     ]
     for (const [id, command, args, limit] of definitions) {
       const passed = await step(id, command, args, limit)

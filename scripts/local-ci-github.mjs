@@ -1,12 +1,14 @@
 /*
  * [INPUT]: 明确同仓库分支、干净提交与完整本地CI核验；当前本人gh授权。
- * [OUTPUT]: 仅向该SHA登记pending/成功或失败；新提交/更新尝试不覆盖，未知写入留待核对。
+ * [OUTPUT]: 当前Mac独占回传，持锁到最终完成；新提交/已结束闭包拒绝，未知写入待核对，不支持跨主机并发。
  * [POS]: 本地CI可选GitHub状态回传；不启动Actions、不发评论或合并PR。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
 import { execFileSync } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { tmpdir, userInfo } from 'node:os'
+import { acquireResourceLock } from './resource-lock.mjs'
 
 export const localCiRepository = '6owen/boai-agent'
 export const localCiContext = 'BOAI local CI'
@@ -17,6 +19,12 @@ export function assertLocalCiAttempt({ sha, remoteSha, creator, status, pendingI
 }
 export async function beginLocalCiPublication({ branch, sha, runId, journal }) {
   if (!branch || branch.startsWith('-') || branch.includes('..') || !/^[a-zA-Z0-9_./-]+$/.test(branch) || !/^[a-f0-9]{40}$/.test(sha ?? '') || !/^[a-f0-9-]{36}$/.test(runId)) throw new Error('回传须为明确分支/完整SHA/运行ID')
+  // All supported publishers run on this one Mac. Ownership covers the entire
+  // pending -> final interval, including the last read/POST window.
+  const release = acquireResourceLock(join(tmpdir(), `boai-ci-publish-${userInfo().uid}.sqlite`))
+  let owned = true
+  const close = () => { if (owned) { owned = false; release() } }
+  try {
   const ref = `git/ref/heads/${branch}`, remote = api(ref)
   if (remote.ref !== `refs/heads/${branch}` || remote.object?.sha !== sha) throw new Error('本地CI提交尚未位于指定远程分支')
   await mkdir(journal, { recursive: true })
@@ -33,6 +41,8 @@ export async function beginLocalCiPublication({ branch, sha, runId, journal }) {
   }
   const pending = await post('pending', { state: 'pending', context: localCiContext, description: pendingDescription })
   return async ({ passed, manifestSha256 }) => {
+    if (!owned) throw new Error('本次回传所有权已结束，旧闭包不能发布')
+    try {
     if (passed && !/^[a-f0-9]{64}$/.test(manifestSha256 ?? '')) throw new Error('成功状态缺少已核验原件hash')
     const combined = api(`commits/${sha}/status?per_page=100`)
     if (combined.sha !== sha) throw new Error('GitHub提交状态身份不匹配')
@@ -40,6 +50,8 @@ export async function beginLocalCiPublication({ branch, sha, runId, journal }) {
     const status = api(`commits/${sha}/statuses?per_page=100`).find(status => status.context === localCiContext)
     if (combined.statuses?.find(item => item.context === localCiContext)?.id !== status?.id) throw new Error('状态查询期间尝试变化，不写最终状态')
     assertLocalCiAttempt({ sha, remoteSha: api(ref).object?.sha, creator: pending.creator?.id, status, pendingId: pending.id, pendingDescription })
-    return post('final', { state: passed ? 'success' : 'failure', context: localCiContext, description: passed ? `local-ci ${runId} ${manifestSha256}` : `local-ci ${runId} failed` })
+    return await post('final', { state: passed ? 'success' : 'failure', context: localCiContext, description: passed ? `local-ci ${runId} ${manifestSha256}` : `local-ci ${runId} failed` })
+    } finally { close() }
   }
+  } catch (error) { close(); throw error }
 }

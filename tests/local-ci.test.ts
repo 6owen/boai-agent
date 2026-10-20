@@ -9,7 +9,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // @ts-expect-error Node CLI helper has no declarations.
-import { localCiFiles } from '../scripts/local-ci.mjs'
+import { localCiFiles, verifyLocalCiSeal } from '../scripts/local-ci.mjs'
 // @ts-expect-error Node CLI helper has no declarations.
 import { beginLocalCiPublication } from '../scripts/local-ci-github.mjs'
 
@@ -22,6 +22,15 @@ it('本批全部原件参与封存，变动/额外文件/符号链接不能隐�
   await writeFile(join(root, 'nested/original'), 'other'); expect(await localCiFiles(root)).not.toEqual(first)
   await writeFile(join(root, 'extra'), 'extra'); expect(await localCiFiles(root)).toHaveLength(2)
   await symlink(join(root, 'extra'), join(root, 'linked')); await expect(localCiFiles(root)).rejects.toThrow('链接')
+})
+it('公开摘要锚定已核验的原清单字节，核验期间只改清单也必须拒绝', async () => {
+  const root = await directory(); await writeFile(join(root, 'result.json'), '{}')
+  const manifest = join(root, 'manifest.json'), bytes = Buffer.from(JSON.stringify({ version: 1, files: await localCiFiles(root) }))
+  await writeFile(manifest, bytes)
+  const checked = await verifyLocalCiSeal(root, async () => ({ checked: true }))
+  const { createHash } = await import('node:crypto')
+  expect(checked.manifestSha256).toBe(createHash('sha256').update(bytes).digest('hex'))
+  await expect(verifyLocalCiSeal(root, async () => { await writeFile(manifest, Buffer.concat([bytes, Buffer.from('\n')])); return { checked: true } })).rejects.toThrow('清单字节变化')
 })
 const sha = 'a'.repeat(40), runId = '11111111-1111-1111-1111-111111111111'
 async function fakeGithub(mode: string) {
@@ -52,6 +61,18 @@ it('真实gh子进程协议按pending→同SHA核对→成功回传原件hash，
   const status = await finish({ passed: true, manifestSha256: 'c'.repeat(64) })
   expect(status.state).toBe('success'); expect(status.description).toContain('c'.repeat(64))
   expect((await f.state()).calls.filter((call: { post: boolean }) => call.post)).toHaveLength(2)
+})
+it('本机发布所有权覆盖读/POST窗口，新尝试零API拒绝且旧闭包不能覆盖后来pending', async () => {
+  const f = await fakeGithub('success'), finish = await beginLocalCiPublication({ branch: 'infra/test', sha, runId, journal: f.journal })
+  const before = (await f.state()).calls.length
+  await expect(beginLocalCiPublication({ branch: 'infra/test', sha, runId: '22222222-2222-2222-2222-222222222222', journal: join(f.root, 'blocked') })).rejects.toThrow('资源锁')
+  expect((await f.state()).calls).toHaveLength(before)
+  await finish({ passed: false })
+  const newer = await beginLocalCiPublication({ branch: 'infra/test', sha, runId: '22222222-2222-2222-2222-222222222222', journal: join(f.root, 'newer') })
+  const pending = (await f.state()).calls.length
+  await expect(finish({ passed: true, manifestSha256: 'c'.repeat(64) })).rejects.toThrow('所有权已结束')
+  expect((await f.state()).calls).toHaveLength(pending)
+  await newer({ passed: false })
 })
 it.each(['new-head', 'new-attempt', 'wrong-sha'])('%s发生后不能覆盖或回传成功', async mode => {
   const f = await fakeGithub(mode)

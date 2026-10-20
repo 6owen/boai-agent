@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机CI须显式本机只读标记；GitHub上下文仍拒绝本机档案，采集/接受继续禁止。
  * [INPUT]: 实际独立目录/冻结PNG字节及GitHub运行上下文负例。
  * [OUTPUT]: 本地CLI不能写CI档案；逐case/旧整体官方来源绑定和字节核验，普通CI或PR不能生成候选。
  * [POS]: 环境档案门槛验收；不启动GUI、不证明实际像素通过。
@@ -20,6 +21,14 @@ const manual = { CI: 'true', GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflo
 it('CI必须显式指定独立档案，未知名称/本机默认不能回退', () => {
   for (const id of [undefined, LOCAL_PROFILE, '../local', 'unknown']) expect(() => uiProfile(root, id, { CI: 'true' })).toThrow()
   expect(uiProfile(root, CI_PROFILE, { CI: 'true' }).directory).toBe(join(root, 'tests/e2e/baselines', CI_PROFILE))
+})
+it('本机CI明确档案只读，不能作为GitHub或基线写入旁路', () => {
+  const local = { CI: '1', BOAI_UI_EXECUTION: 'local-ci' }
+  expect(uiProfile(root, LOCAL_PROFILE, local).id).toBe(LOCAL_PROFILE)
+  for (const id of [undefined, CI_PROFILE]) expect(() => uiProfile(root, id, local)).toThrow()
+  for (const patch of [{ GITHUB_ACTIONS: 'true' }, { GITHUB_REPOSITORY: '6owen/boai-agent' }, { GITHUB_RUN_ID: '1' }]) expect(() => uiProfile(root, LOCAL_PROFILE, { ...local, ...patch })).toThrow()
+  for (const command of ['candidate', 'accept', 'candidate-ci']) expect(() => assertCaptureMode(command, local)).toThrow()
+  expect(() => assertCaptureMode('check', { ...local, BOAI_UI_CANDIDATE_DIR: '/tmp/candidate' })).toThrow()
 })
 it('独立手动采集可以写隔离候选，普通CI和PR均拒绝', () => {
   expect(manualCiCapture(manual)).toBe(true); expect(() => assertCaptureMode('candidate-ci', manual)).not.toThrow()

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确UI环境档案、GitHub运行上下文和本地命令。
- * [OUTPUT]: 限定采集/接受入口；CI逐case绑定官方来源并兼容旧整体来源，无本地旁路或跨环境回退。
+ * [OUTPUT]: 限定采集/接受与明确本机CI只读入口；GitHub仍逐case官方来源，无跨档案回退。
  * [POS]: 开发侧UI环境合同；不改产品字体或比较阈值。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -15,7 +15,10 @@ export function assertProfileCommand(command, profile) {
   if (command === 'candidate-ci' && profile !== CI_PROFILE) throw new Error('远程采集只能使用CI档案')
 }
 export function uiProfile(root, requested, env = process.env) {
-  if (env.CI && requested !== CI_PROFILE) throw new Error('CI必须明确使用github-macos15-arm64档案，不回退到本机截图')
+  const github = env.GITHUB_ACTIONS || env.GITHUB_REPOSITORY || env.GITHUB_RUN_ID || env.GITHUB_WORKFLOW_REF
+  const localCi = env.CI && env.BOAI_UI_EXECUTION === 'local-ci' && !github
+  if (localCi && requested !== LOCAL_PROFILE) throw new Error('本机CI必须明确使用本机档案')
+  if (env.CI && !localCi && requested !== CI_PROFILE) throw new Error('CI必须明确使用github-macos15-arm64档案，不回退到本机截图')
   const id = requested ?? LOCAL_PROFILE
   if (![LOCAL_PROFILE, CI_PROFILE].includes(id)) throw new Error('未登记的UI环境档案')
   return { id, directory: join(root, 'tests/e2e/baselines', ...(id === CI_PROFILE ? [CI_PROFILE] : [])) }
