@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
- * [OUTPUT]: 明确本机/CI环境档案的只读比较、独立手动候选；无跨环境回退，不放宽原像素条件。
+ * [OUTPUT]: 本地候选只写本机档案；CI候选仅独立通道，明确环境只读比较不回退或放宽像素条件。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -14,7 +14,7 @@ import { createRequire } from 'node:module'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
-import { uiProfile, assertCaptureMode } from './ui-profiles.mjs'
+import { uiProfile, assertCaptureMode, assertProfileCommand } from './ui-profiles.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -110,6 +110,7 @@ async function main() {
   if (!['check', 'candidate', 'candidate-ci', 'accept'].includes(command)) throw new Error('用法：ui-regression.mjs check|candidate|candidate-ci|accept [--profile ID] [--cases id,id] [--candidate DIR] [--reason TEXT]')
   assertCaptureMode(command)
   const profile = uiProfile(root, options.profile)
+  assertProfileCommand(command, profile.id)
   const selectedBaseline = profile.directory
   assertUiExecutionMode(process.env)
   if (options.fault && (process.env.CI || command !== 'check' || !['layout', 'behavior', 'environment'].includes(options.fault))) throw new Error('故障演练仅支持本地check --fault layout|behavior|environment')

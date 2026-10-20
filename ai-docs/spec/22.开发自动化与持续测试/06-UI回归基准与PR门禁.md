@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 本地candidate/accept仅操作本机档案；CI读取需绑定来源，官方进口接受与原检查共用基线锁。
 [OUTPUT]: 本机/CI分别固定环境档案；独立受信采集只产候选，官方run/artifact核验后显式接受，普通CI仍只读。
 [INPUT]: 用户明确参考Magpie建立UI基线，后续PR合并持续比较，新增功能扩充基准，破坏原有UI时报错。
 [OUTPUT]: 行为/布局/视觉与受控晋升；Public后main强制Required checks及最新base，完整CI/发布仍待验，进度归03 §5.1。
@@ -146,3 +147,5 @@ node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已
 进口只接受同仓库/同干净源码SHA的成功独立采集，核对官方artifact唯一身份、来源、未过期状态及SHA256。实际archive先验路径/重复/链接/体积，再解压，核对全部case合同/PNG/hash、实际一次通过报告和构建输入。接受时重新向GitHub核对并下载同一原artifact，与已审阅目录全部字节对照，检查现有CI基线未移动后才复制CI档案；不以本机构建产物冒充CI产物，也不改本机PNG。审阅笔记应放候选目录之外，保持原件。接受、提交后还需再次只读CI比较，完整Required checks及合并SHA验证独立成立；任何候选成功不提供发布资格。
 
 上述入口代码正在独立分支验证；实际下载、逐图接受、重复比较和main合并尚未完成，以03为准。
+
+本地`candidate/accept`入口只允许本机档案；明确传CI档案也会在采集前拒绝，CI晋升统一经官方进口。CI读取还要求完整provenance且各case源码commit与其一致。CI进口接受与原UI检查/本地接受持同一路径锁，覆盖重新下载、旧基线核验、PNG及manifest写入，避免一轮检查读到旧hash却比较新PNG，或多个接受交错。

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确GitHub手动采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
- * [OUTPUT]: 下载核验的隔离候选；接受时重新下载比对全部原件，再只写CI档案，不替换本机截图。
+ * [OUTPUT]: 官方原件重新下载核验；接受与UI比较共锁，再只写CI档案，不替换本机截图。
  * [POS]: 开发侧CI基线进口；无远程写入、无自动晋升或Required checks资格。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -14,6 +14,7 @@ import { sourceIdentity, baselineContractHash, validateReport } from './ui-regre
 import { buildInputHash } from './build-identity.mjs'
 import { verifyBaselineReview } from './ui-baseline-review.mjs'
 import { CI_PROFILE, uiProfile } from './ui-profiles.mjs'
+import { acquireResourceLock } from './resource-lock.mjs'
 
 const repository = '6owen/boai-agent'
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
@@ -86,6 +87,9 @@ async function main() {
   if (!['import', 'accept'].includes(command) || !/^\d+$/.test(options['--run'] ?? '')) throw new Error('用法：ui-ci-baseline.mjs import --run ID --output 新目录 | accept --run ID --candidate 已审阅目录 --cases 全部ID --reason 原因')
   if (command === 'import') { if (!options['--output']) throw new Error('缺少output'); const result = await download(root, options['--run'], resolve(options['--output'])); console.log(JSON.stringify(result.provenance)); return }
   if (!options['--candidate'] || !options['--cases'] || !options['--reason']) throw new Error('接受需明确已审阅候选、逐项ID及原因')
+  await mkdir(join(root, '.local'), { recursive: true })
+  const release = acquireResourceLock(join(root, '.local/ui-regression-lock.sqlite'))
+  try {
   const reviewed = resolve(options['--candidate'])
   if (!(await lstat(reviewed)).isDirectory() || (await lstat(reviewed)).isSymbolicLink()) throw new Error('候选须为普通目录')
   const fresh = join(root, '.local', `ui-ci-verify-${randomUUID()}`)
@@ -101,5 +105,6 @@ async function main() {
   for (const id of ids) { await copyFile(join(fresh, 'snapshots', `${id}.png`), join(baseline, `${id}.png`)); manifest.cases[id] = { ...candidate.cases[id], source: candidate.source, built: candidate.built, reason: options['--reason'], candidate: candidate.id, acceptedAt: new Date().toISOString() } }
   await writeFile(join(baseline, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
   console.log('已接受明确审阅的CI候选；仍需提交后再次只读比较，Required checks未由此通过。')
+  } finally { release() }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(error => { console.error(String(error)); process.exitCode = 1 })

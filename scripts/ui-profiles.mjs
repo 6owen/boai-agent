@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确UI环境档案、GitHub运行上下文和本地命令。
- * [OUTPUT]: 固定基线路径及独立手动采集资格；普通CI始终只读、无跨环境回退。
+ * [OUTPUT]: 限定采集/接受入口与CI来源记录；固定档案只读，无本地候选旁路或跨环境回退。
  * [POS]: 开发侧UI环境合同；不改产品字体或比较阈值。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,6 +10,10 @@ import { createHash } from 'node:crypto'
 
 export const LOCAL_PROFILE = 'local-macos-arm64'
 export const CI_PROFILE = 'github-macos15-arm64'
+export function assertProfileCommand(command, profile) {
+  if (['candidate', 'accept'].includes(command) && profile !== LOCAL_PROFILE) throw new Error('本地候选/接受只能使用本机档案；CI档案必须核验官方artifact')
+  if (command === 'candidate-ci' && profile !== CI_PROFILE) throw new Error('远程采集只能使用CI档案')
+}
 export function uiProfile(root, requested, env = process.env) {
   if (env.CI && requested !== CI_PROFILE) throw new Error('CI必须明确使用github-macos15-arm64档案，不回退到本机截图')
   const id = requested ?? LOCAL_PROFILE
@@ -29,6 +33,10 @@ export async function readUiBaseline(profile, environment, caseId, contractHash)
   if (!/^[a-z0-9-]+$/.test(caseId)) throw new Error('非法UI场景名称')
   const manifest = JSON.parse(await readFile(join(profile.directory, 'manifest.json'), 'utf8'))
   if (manifest.profile !== profile.id) throw new Error('UI基线档案不匹配')
+  if (profile.id === CI_PROFILE) {
+    const p = manifest.provenance
+    if (p?.version !== 1 || !/^\d+$/.test(p.runId ?? '') || !Number.isInteger(p.attempt) || p.attempt < 1 || !Number.isInteger(p.artifactId) || p.artifactId < 1 || !/^sha256:[a-f0-9]{64}$/.test(p.digest ?? '') || !/^[a-f0-9]{40}$/.test(p.commit ?? '') || manifest.cases?.[caseId]?.source?.commit !== p.commit) throw new Error('CI基线缺少绑定来源的官方artifact记录')
+  }
   if (JSON.stringify(manifest.environment) !== JSON.stringify(environment)) throw new Error('UI基线环境不匹配；需独立审阅环境迁移')
   const expected = manifest.cases?.[caseId]
   if (!expected) throw new Error(`缺少已接受UI基线：${caseId}`)

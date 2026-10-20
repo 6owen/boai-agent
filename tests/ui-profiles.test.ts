@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际独立目录/冻结PNG字节及GitHub运行上下文负例。
- * [OUTPUT]: 无跨环境回退、缺档案/场景/字节拒绝，PR或普通CI不能生成候选。
+ * [OUTPUT]: 本地CLI不能写CI档案；缺来源记录/场景/字节拒绝，普通CI或PR不能生成候选。
  * [POS]: 环境档案门槛验收；不启动GUI、不证明实际像素通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -9,6 +9,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 // @ts-expect-error Plain Node policy has no declaration file.
 import { uiProfile, assertCaptureMode, readUiBaseline, manualCiCapture, LOCAL_PROFILE, CI_PROFILE } from '../scripts/ui-profiles.mjs'
 let root: string
@@ -30,10 +31,14 @@ it('独立手动采集可以写隔离候选，普通CI和PR均拒绝', () => {
   expect(() => assertCaptureMode('candidate-ci', { ...manual, GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/infra/ui-environment-profiles' })).not.toThrow()
   expect(() => assertCaptureMode('candidate-ci', { ...manual, GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/heads/main' })).toThrow()
 })
+it.each(['candidate', 'accept'])('本地%s不能旁路官方artifact向CI档案写基线', command => {
+  const child = spawnSync(process.execPath, ['scripts/ui-regression.mjs', command, '--profile', CI_PROFILE], { encoding: 'utf8', env: { ...process.env, CI: '' } })
+  expect(child.status).toBe(1); expect(child.stderr).toContain('本地候选/接受只能使用本机档案')
+})
 async function baseline(id = LOCAL_PROFILE, patch = {}) {
   const profile = uiProfile(root, id, {}); await mkdir(profile.directory, { recursive: true })
   await writeFile(join(profile.directory, 'case.png'), bytes)
-  await writeFile(join(profile.directory, 'manifest.json'), JSON.stringify({ profile: id, environment, cases: { case: { sha256, contract: 'fixed-contract' } }, ...patch }))
+  await writeFile(join(profile.directory, 'manifest.json'), JSON.stringify({ profile: id, environment, provenance: { version: 1, runId: '1', attempt: 1, artifactId: 2, commit: 'a'.repeat(40), digest: 'sha256:' + 'b'.repeat(64) }, cases: { case: { sha256, contract: 'fixed-contract', source: { commit: 'a'.repeat(40) } } }, ...patch }))
   return profile
 }
 it('即使本机基线存在，缺失CI档案仍失败', async () => {
@@ -46,4 +51,8 @@ it.each(['profile', 'environment', 'case', 'contract', 'bytes'])('%s错误不能
 })
 it('只返回本档案的已核验字节', async () => {
   const profile = await baseline(CI_PROFILE); expect(await readUiBaseline(profile, environment, 'case', 'fixed-contract')).toEqual(bytes)
+})
+it.each([undefined, { version: 1 }, { version: 1, runId: '1', attempt: 1, artifactId: 2, commit: 'f'.repeat(40), digest: 'sha256:' + 'b'.repeat(64) }])('CI档案缺失/不完整/错来源的provenance不能作为期望图', async provenance => {
+  const profile = await baseline(CI_PROFILE, { provenance })
+  await expect(readUiBaseline(profile, environment, 'case', 'fixed-contract')).rejects.toThrow('官方artifact记录')
 })
