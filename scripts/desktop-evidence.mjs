@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本批原始报告/冻结选择、完整留证目录及原执行目录身份。
- * [OUTPUT]: 唯一清单/零缺口/逐启动trace字节核验；报告起点与worker计时槽分开，原件限本次串行时段。
+ * [OUTPUT]: 唯一清单/零缺口/逐启动trace字节核验；原件绑定本次串行墙钟时段，不混比分段累计时长。
  * [POS]: 桌面runner及本地/远程CI汇总共用原件门槛，不启动GUI。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -42,12 +42,12 @@ export async function verifyDesktopEvidence(directory, report, selected, origina
     if (matches.length !== 1) throw new Error(`缺少唯一对应原件清单：${expected.id}`)
     const { path, bytes, value: manifest } = matches[0], row = rows.find(row => row.playwrightId === expected.playwrightId), test = row.tests[0], result = test.results[0]
     const started = Date.parse(manifest.startedAt), completed = Date.parse(manifest.completedAt), actualStart = Date.parse(result.startTime)
-    // Reported startTime is TestInfo's early wall-clock start; result.duration
-    // sums timeout slots, excluding separate preparation slots. The fixture's own
-    // interval must fit the elapsed duration and end before the next serial case
-    // (or this report's actual end), without admitting another run's originals.
+    // startTime, manifest timestamps and the next case are wall-clock times.
+    // result.duration sums active monotonic timeout slots; it excludes gaps
+    // between slots and cannot bound the fixture's whole wall-clock interval.
+    // Bind originals to this case's actual serial slot and the enclosing run.
     const next = timeline[timeline.findIndex(row => row.id === expected.playwrightId) + 1]?.start ?? runEnd
-    if (manifest.schemaVersion !== 1 || manifest.project !== test.projectName || manifest.title !== expected.titles.at(-1) || JSON.stringify(manifest.titlePath) !== JSON.stringify([expected.file + '.spec.js', ...expected.titles]) || basename(manifest.location?.file ?? '') !== expected.file + '.spec.js' || manifest.location.line !== expected.line || manifest.retry !== 0 || manifest.repeatEachIndex !== 0 || manifest.status !== 'passed' || manifest.expectedStatus !== 'passed' || manifest.modelMode !== 'offline-protocol-or-fixture' || ![started, completed, actualStart].every(Number.isFinite) || started < actualStart || completed < started || completed - started > result.duration + 1 || completed > Math.min(next, runEnd) + 1) throw new Error(`原件清单身份、时间或来源不对应：${expected.id}`)
+    if (manifest.schemaVersion !== 1 || manifest.project !== test.projectName || manifest.title !== expected.titles.at(-1) || JSON.stringify(manifest.titlePath) !== JSON.stringify([expected.file + '.spec.js', ...expected.titles]) || basename(manifest.location?.file ?? '') !== expected.file + '.spec.js' || manifest.location.line !== expected.line || manifest.retry !== 0 || manifest.repeatEachIndex !== 0 || manifest.status !== 'passed' || manifest.expectedStatus !== 'passed' || manifest.modelMode !== 'offline-protocol-or-fixture' || ![started, completed, actualStart].every(Number.isFinite) || started < actualStart || completed < started || completed > Math.min(next, runEnd) + 1) throw new Error(`原件清单身份、时间或来源不对应：${expected.id}`)
     if (!['gaps', 'cleanupErrors', 'testErrors'].every(key => Array.isArray(manifest[key]) && !manifest[key].length) || !Number.isInteger(manifest.launchCount) || manifest.launchCount < 1 || !Array.isArray(manifest.evidence) || !manifest.evidence.some(item => item.kind === 'screenshot') || !Array.isArray(manifest.traces) || manifest.traces.length !== manifest.launchCount || new Set(manifest.traces.map(item => item.launch)).size !== manifest.launchCount || manifest.traces.some(item => !Number.isInteger(item.launch) || item.launch < 1 || item.launch > manifest.launchCount)) throw new Error(`原件有缺口、清理错误或缺少启动回放：${expected.id}`)
     const resources = []
     for (const item of [...manifest.evidence, ...manifest.traces]) {

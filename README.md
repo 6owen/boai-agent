@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 候选版本统一0.2.4、旧进程和链式链接边界已补；09f完整CI因原件时钟误拒failed，修复待复验，未发布或安装。
 [OUTPUT]: 个人候选release:build已接隔离ad-hoc arm64 DMG/ZIP及身份/hash；实际打包和升级仍待验，当前CI由本机执行。
 [OUTPUT]: 789已自动PR完整通过3935模块/T128/UI18并回传；本机发布前检改main原件/最新状态候选，Tag/安装待实施，详22组03。
 [OUTPUT]: 7257本地工程/3917模块/T128/UI18完整成功且GitHub确认；main门禁改BOAI local CI，其余保护保持；自动轮询候选与四目标剩余归22组03。

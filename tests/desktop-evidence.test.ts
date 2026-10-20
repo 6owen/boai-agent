@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 临时原件/Playwright报告；覆盖调度/worker时钟、过期/越时段、缺失、改字节、越界和伪造清单。
+ * [INPUT]: 临时原件/Playwright报告；覆盖调度/分段时钟、过期/跨串行时段、缺失、改字节及伪造清单。
  * [OUTPUT]: 执行后及CI汇总同一核验入口拒绝不完整原件；完整搬移保持可核对，不是GUI成功。
  * [POS]: T1截图/trace交付门槛的文件系统合同测试。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
@@ -49,11 +49,17 @@ it('调度到worker启动有延迟仍核对本次真实时段，不混用两个�
   await f.save()
   await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
 })
-it.each(['missing-run-time', 'outside-run', 'longer-than-worker', 'overlaps-next-case'] as const)('%s原件不能取得资格', async kind => {
+it('原件墙钟跨度包含worker分段计时之间的间隙，仍必须在本场串行时段内', async () => {
+  const f = await fixture()
+  f.manifest.completedAt = '2026-10-21T00:00:00.015Z'
+  expect(Date.parse(f.manifest.completedAt) - Date.parse(f.manifest.startedAt)).toBeGreaterThan(f.report.suites[0]!.suites[0]!.specs[0]!.tests[0]!.results[0]!.duration + 1)
+  await f.save()
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
+})
+it.each(['missing-run-time', 'outside-run', 'overlaps-next-case'] as const)('%s原件不能取得资格', async kind => {
   const f = await fixture()
   if (kind === 'missing-run-time') f.report.stats.startTime = ''
   if (kind === 'outside-run') { f.manifest.startedAt = '2026-10-21T00:00:00.021Z'; f.manifest.completedAt = '2026-10-21T00:00:00.022Z' }
-  if (kind === 'longer-than-worker') f.manifest.completedAt = '2026-10-21T00:00:00.015Z'
   if (kind === 'overlaps-next-case') {
     const next = structuredClone(f.report.suites[0]!.suites[0]!.specs[0]!)
     next.id = 'pw-next'; next.title = 'Next'; next.line = 7

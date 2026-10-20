@@ -1,13 +1,13 @@
 /*
  * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64。
- * [OUTPUT]: 隔离ad-hoc DMG/ZIP候选、原始进程及身份/签名/hash；仅built，不授发布或安装资格。
+ * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与身份/签名/hash；仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { mkdir, readFile, writeFile, copyFile, chmod, lstat, readdir, readlink } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, copyFile, chmod, lstat, readdir, readlink, realpath } from 'node:fs/promises'
 import { join, resolve, dirname, isAbsolute } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -35,22 +35,38 @@ export async function releaseFile(path) {
   const hash = createHash('sha256'); for await (const bytes of createReadStream(path)) hash.update(bytes)
   return { bytes: info.size, sha256: hash.digest('hex') }
 }
-export async function bundleInventory(directory, base = directory) {
+export async function bundleInventory(directory) {
   const rootInfo = await lstat(directory)
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('候选bundle根目录须为真实目录')
-  const files = []
-  for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-    const path = join(directory, entry.name), key = path.slice(base.length + 1), info = await lstat(path)
-    if (info.isSymbolicLink()) {
-      const target = await readlink(path), destination = resolve(dirname(path), target)
-      if (isAbsolute(target) || (destination !== base && !destination.startsWith(base + '/'))) throw new Error('候选bundle链接越出应用目录')
-      files.push({ path: key, type: 'link', target, mode: info.mode & 0o777 })
+  const base = directory, canonical = await realpath(directory), files = []
+  const walk = async directory => {
+    for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+      const path = join(directory, entry.name), key = path.slice(base.length + 1), info = await lstat(path)
+      if (info.isSymbolicLink()) {
+        const target = await readlink(path), destination = resolve(dirname(path), target)
+        if (isAbsolute(target) || (destination !== base && !destination.startsWith(base + '/'))) throw new Error('候选bundle链接越出应用目录')
+        const actual = await realpath(path)
+        if (actual !== canonical && !actual.startsWith(canonical + '/')) throw new Error('候选bundle链接越出应用目录')
+        files.push({ path: key, type: 'link', target, mode: info.mode & 0o777 })
+      }
+      else if (info.isDirectory()) await walk(path)
+      else if (info.isFile()) files.push({ path: key, type: 'file', mode: info.mode & 0o777, ...await releaseFile(path) })
+      else throw new Error('候选bundle含特殊文件')
     }
-    else if (info.isDirectory()) files.push(...await bundleInventory(path, base))
-    else if (info.isFile()) files.push({ path: key, type: 'file', mode: info.mode & 0o777, ...await releaseFile(path) })
-    else throw new Error('候选bundle含特殊文件')
   }
+  await walk(directory)
   return files
+}
+export async function drainReleaseCandidates(directory, helpers) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error('候选原件目录不是普通目录')
+    const previous = join(directory, entry.name), ledger = await lstat(join(previous, 'processes')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+    if (!ledger) continue
+    if (!ledger.isDirectory() || ledger.isSymbolicLink()) throw new Error('候选进程账本不是普通目录')
+    const guard = join(previous, 'process-guard'), info = await lstat(guard)
+    if (!info.isFile() || info.isSymbolicLink() || !(info.mode & 0o111)) throw new Error('旧候选缺少实际进程监督器，不能重建')
+    await helpers.drainPendingProcesses(previous, guard)
+  }
 }
 export function assertPersonalBundle({ plist, architectures, signature, version }) {
   if (plist?.CFBundleIdentifier !== 'com.boai.agent' || plist.CFBundleShortVersionString !== version || plist.CFBundleVersion !== version || !plist.CFBundleExecutable || /[/\\]/.test(plist.CFBundleExecutable)) throw new Error('候选bundle身份或版本不匹配')
@@ -70,11 +86,13 @@ async function run(version, sha) {
     releases.push(acquireResourceLock(join(tmpdir(), 'boai-local-ci.sqlite')))
     controller.signal.throwIfAborted()
     if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(source)) throw new Error('领取构建锁期间源码变化')
-    await mkdir(directory, { recursive: true }); await buildProcessGuard()
+    await mkdir(directory, { recursive: true })
+    await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, outfile: join(directory, 'process.mjs'), bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
+    const helpers = await import(pathToFileURL(join(directory, 'process.mjs')).href)
+    await drainReleaseCandidates(dirname(directory), helpers)
+    controller.signal.throwIfAborted(); await buildProcessGuard()
     // Keep an immutable supervisor outside dist before pnpm build replaces dist.
     const guard = join(directory, 'process-guard'); await copyFile(join(root, 'dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
-    await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts'", resolveDir: root }, outfile: join(directory, 'process.mjs'), bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
-    const helpers = await import(pathToFileURL(join(directory, 'process.mjs')).href)
     const step = async (id, command, args, timeoutMs) => {
       console.log(`个人候选 ${id}`)
       const receipt = await helpers.repairProcess({ command, args, cwd: root, timeoutMs, signal: controller.signal, managed: { guard, ledger: join(directory, 'processes') }, capture: { directory, prefix: id } })

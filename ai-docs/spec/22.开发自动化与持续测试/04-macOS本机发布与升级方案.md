@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: release:build接保留原配置的隔离ad-hoc arm64候选；身份/签名/hash合同已验，尚未实际打包或授发布资格。
+[OUTPUT]: release:build候选先排空旧账本、核实际链接路径；59合同/类型通过，实际打包与发布资格待验。
 [OUTPUT]: 跨次重建仍须相同input/output/Node身份，createdAt只作记录；原CI子报告保持同一原构建，真实重建复验待跑。
 [OUTPUT]: 发布前检迁本机main触发原件/最新状态双读；Tag/打包/升级仍待实施，Actions不提供当前发布资格。
 [OUTPUT]: release:check只读核对稳定版本/buildVersion、同SHA main及最新完整验证；只提供前检，Tag/打包/发布/安装仍未实施。
@@ -47,7 +47,7 @@ flowchart LR
 | 构建器 | `electron-builder`、`app-builder-lib`均为`26.15.3`；Electron为`39.2.7` |
 | 架构 | 本次本机Node进程为`arm64`；原生助手与依赖仍需随目标包验证，不由此推断支持x64/universal |
 | 标识与名称 | `build.appId=com.boai.agent`，productName与Main的app名称为`BoAI Agent` |
-| 版本 | `package.json.version=0.2.2`，`build.buildVersion=0.2.3`；正式发布前建立明确规则，不能直接按现有字段各自推断同一版本 |
+| 版本 | 候选源码已统一`package.json.version=build.buildVersion=0.2.4`；原0.2.2/0.2.3不一致保留在历史，尚无该候选Tag/Release |
 | 打包命令 | `dist:mac`是`pnpm build && electron-builder --mac dmg`，CLI明确只选择DMG |
 | 产物目录 | `build.directories.output=release`；保留现有files、asarUnpack、原生文件及协议配置 |
 | 更新器 | package依赖未接`electron-updater`，Main未发现`autoUpdater/checkForUpdates/quitAndInstall`接线 |
@@ -180,12 +180,12 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 
 跨次构建资格比较version/inputHash/outputHash/Node，createdAt只作记录，不将重新登记时间误作字节变化；verifyBuildIdentity仍重新哈希当前完整dist并核对源码输入。原封存CI中的T1/UI/总结果仍须共同指向同一个原始built对象，不把不同测试构建拼起来。相同源码但实际输出、输入或Node不一致仍拒绝；该能力的当前证据为真实文件正反例，真实完整CI后的同SHA重建复验另记03。
 
-当前版本0.2.2/buildVersion0.2.3不一致，完整main验证也未通过，前检应拒绝。该入口不改版本、不创建Tag、不构建/上传/安装。自动Tag接续、ad-hoc产物/冒烟、安装事务和回滚仍按上文继续实现，实际验证唯一归03。
+初次真实前检因版本0.2.2/buildVersion0.2.3不一致拒绝；后续候选源码统一为0.2.4，但完整main资格仍未通过，不能发布。该只读入口本身不改版本、不创建Tag、不构建/上传/安装。自动Tag接续、ad-hoc产物/冒烟、安装事务和回滚仍按上文继续实现，实际验证唯一归03。
 
 ## 10. 个人候选构建入口
 
-`pnpm release:build --version X.Y.Z --sha 完整SHA`要求macOS arm64/Node24.16.0、当前干净的明确提交以及一致的version/buildVersion；不要求候选已合入main，候选成功不能代替main发布资格。先取得本机CI/轮询排他锁并重核源码，再在`.local/release-candidates/<id>`保存独立配置与进程记录。复制原生进程监督器后执行构建，避免dist重建移走当前监督器。
+`pnpm release:build --version X.Y.Z --sha 完整SHA`要求macOS arm64/Node24.16.0、当前干净的明确提交以及一致的version/buildVersion；不要求候选已合入main，候选成功不能代替main发布资格。先取得本机CI/轮询排他锁并重核源码，在任何dist写入前逐旧候选恢复原guard账本，活跃、未知或缺失监督器则拒绝，不能仅凭SQLite锁释放就重建。随后在`.local/release-candidates/<id>`保存独立配置与进程记录，复制不可变监督器后构建，避免dist重建移走当前监督器。
 
-配置完整保留原files、asarUnpack、原生助手、协议、图标与现有extraMetadata，只覆盖输出、DMG/ZIP目标、ad-hoc签名、关闭hardened runtime/公证及嵌入明确源码SHA；固定`--publish never`。构建后核对bundle版本/appId、arm64、实际深层签名验证及ad-hoc身份，记录两资产大小/hash和bundle字节/执行模式/内部链接清单，拒绝外逃链接、特殊文件或源码/dist变化。
+配置完整保留原files、asarUnpack、原生助手、协议、图标与现有extraMetadata，只覆盖输出、DMG/ZIP目标、ad-hoc签名、关闭hardened runtime/公证及嵌入明确源码SHA；固定`--publish never`。构建后核对bundle版本/appId、arm64、实际深层签名验证及ad-hoc身份，记录两资产大小/hash和bundle字节/执行模式/内部链接清单；同时核词法与实际realpath，拒绝链接链外逃、特殊文件或源码/dist变化。
 
-终态`built`只表示候选构建，不签发Tag、Release、安装、main CI或产物冒烟资格；当前56项合同/类型检查通过，但还没有实际候选包。后续对同一份DMG/ZIP分别解包并启动、原生助手和CLI、退出、隔离升级/回滚后，才能继续发布。失败/取消保留日志和回执，不覆盖既有应用或个人数据。
+终态`built`只表示候选构建，不签发Tag、Release、安装、main CI或产物冒烟资格；当前59项合同/类型检查通过，但还没有实际候选包。后续对同一份DMG/ZIP分别解包并启动、原生助手和CLI、退出、隔离升级/回滚后，才能继续发布。失败/取消保留日志和回执，不覆盖既有应用或个人数据。
