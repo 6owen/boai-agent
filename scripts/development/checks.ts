@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结必需测试名称及Vitest/Playwright原始JSON。
- * [OUTPUT]: 区分实际失败与未完整执行；缺失、跳过、重复、重试和全局错误不能用于开发基线。
+ * [OUTPUT]: 区分实际失败与未完整执行；文件加载/框架错误、缺失、跳过与重复不能用于开发基线。
  * [POS]: 开发控制器报告核验，不执行测试或修改验收合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -13,6 +13,8 @@ export function inspectRequiredTests(report: unknown, required: string[], format
       if (!Array.isArray(report.testResults) || report.numRuntimeErrorTestSuites !== undefined && report.numRuntimeErrorTestSuites !== 0) throw new Error('Vitest报告不完整')
       for (const file of report.testResults) {
         if (!object(file) || !Array.isArray(file.assertionResults)) throw new Error('缺少断言结果')
+        // Vitest JSON没有numRuntimeErrorTestSuites；文件级错误独立于断言failureMessages。
+        if (file.message !== undefined && (typeof file.message !== 'string' || file.message.length > 0) || file.status === 'failed' && file.assertionResults.length === 0) throw new Error('Vitest文件加载或框架错误')
         for (const item of file.assertionResults) {
           if (!object(item) || typeof item.fullName !== 'string' || typeof item.status !== 'string') throw new Error('断言格式不完整')
           tests.push({ name: item.fullName, available: ['passed', 'failed'].includes(item.status), passed: item.status === 'passed' })

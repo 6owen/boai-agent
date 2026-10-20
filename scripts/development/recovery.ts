@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 任务独占锁内的阶段、原始文件/日志与精确补丁，以及原生进程监督账本。
- * [OUTPUT]: 状态锚定的回执字节/历史原件、断点补写与重命名双方范围核对；未知模型不重放。
+ * [OUTPUT]: 状态锚定的回执字节/历史原件、断点补写及失败终态恢复；范围/索引核对且未知模型不重放。
  * [POS]: 开发控制器本地恢复，不改变BOAI运行时或远程交付规则。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -13,6 +13,12 @@ export const WORKFLOW_VERSION = 3
 export const cursors = ['prepare', 'setup', 'baseline', 'develop', 'apply', 'checks', 'candidate-checks', 'review', 'decide', 'done'] as const
 export type Cursor = typeof cursors[number]
 type Claim = { state: TaskState; directory: string; save(): void }
+type Terminal = { phase: 'stopped'; reason: string }
+const advance = (state: TaskState, next: Cursor, terminal?: Terminal) => {
+  state.cursor = next; delete state.pending
+  if (terminal) { state.phase = terminal.phase; state.reason = terminal.reason }
+  else delete state.reason
+}
 export const writeEvidence = (path: string, value: unknown) => writeFile(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
 export async function evidenceFiles(directory: string, base = directory): Promise<{ path: string; sha256: string }[]> {
   const files = []
@@ -40,23 +46,24 @@ async function verifyReceipt(claim: Claim, id: string, kind: string, sha256: str
   if (digest(bytes) !== sha256) throw new Error('完成检查点自身hash不匹配，拒绝旧结论')
   const receipt = JSON.parse(bytes.toString('utf8'))
   if (receipt.version !== WORKFLOW_VERSION || receipt.id !== id || receipt.kind !== kind || receipt.taskHash !== claim.state.taskHash || receipt.base !== claim.state.base || !cursors.includes(receipt.next)) throw new Error('恢复检查点身份或格式不匹配')
+  if (receipt.terminal !== undefined && (receipt.next !== 'done' || receipt.terminal?.phase !== 'stopped' || typeof receipt.terminal.reason !== 'string' || !receipt.terminal.reason)) throw new Error('恢复终态格式不匹配')
   if (JSON.stringify(receipt.files) !== JSON.stringify(await evidenceFiles(directory))) throw new Error('恢复原始文件/日志已变化，不能使用旧结论')
   return receipt
 }
 export async function verifyCheckpointReceipts(claim: Claim) {
   for (const receipt of claim.state.checkpoints ?? []) await verifyReceipt(claim, receipt.id, receipt.kind, receipt.sha256)
 }
-export async function checkpoint(claim: Claim, next: Cursor, beforeSave?: () => Promise<void>, afterAnchor?: () => Promise<void>) {
+export async function checkpoint(claim: Claim, next: Cursor, beforeSave?: () => Promise<void>, afterAnchor?: () => Promise<void>, terminal?: Terminal) {
   const { state } = claim
   if (!state.pending) throw new Error('缺少当前恢复步骤')
-  const receipt = { version: WORKFLOW_VERSION, id: state.pending.id, kind: state.pending.kind, taskHash: state.taskHash, base: state.base, stateHash: digest(projection(state)), next, executor: { node: process.version, platform: process.platform, arch: process.arch, codex: state.environment?.codex, controllerHash: state.controllerHash }, files: await evidenceFiles(state.pending.directory) }
+  const receipt = { version: WORKFLOW_VERSION, id: state.pending.id, kind: state.pending.kind, taskHash: state.taskHash, base: state.base, stateHash: digest(projection(state)), next, terminal, executor: { node: process.version, platform: process.platform, arch: process.arch, codex: state.environment?.codex, controllerHash: state.controllerHash }, files: await evidenceFiles(state.pending.directory) }
   const bytes = JSON.stringify(receipt, null, 2) + '\n'
   state.pending.checkpointHash = digest(bytes); state.pending.checkpointBytes = bytes; claim.save() // 原字节同状态锚定，完成标记未写也能只读核验后补写。
   await afterAnchor?.()
   await writeFile(join(state.pending.directory, 'checkpoint.json'), bytes, { flag: 'wx', mode: 0o600 })
   await beforeSave?.()
   appendCheckpoint(state, state.pending.id, state.pending.kind, state.pending.checkpointHash)
-  state.cursor = next; delete state.pending; delete state.reason; claim.save()
+  advance(state, next, terminal); claim.save()
 }
 export async function recoverCheckpoint(claim: Claim) {
   const { state } = claim, pending = state.pending
@@ -74,7 +81,7 @@ export async function recoverCheckpoint(claim: Claim) {
   if (receipt.stateHash !== digest(projection(state))) throw new Error('恢复状态的期限、预算或资格已变化，拒绝接续')
   if (missing) await writeFile(join(pending.directory, 'checkpoint.json'), bytes, { flag: 'wx', mode: 0o600 })
   appendCheckpoint(state, pending.id, pending.kind, pending.checkpointHash)
-  state.cursor = receipt.next; delete state.pending; delete state.reason; claim.save()
+  advance(state, receipt.next, receipt.terminal); claim.save()
   return true
 }
 export async function drainPendingProcesses(directory: string, guard: string) {

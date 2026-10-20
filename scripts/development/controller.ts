@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
- * [OUTPUT]: 补丁预检失败有界返工、未完整执行的报告停止；回执/历史/索引核验，不续期或重放未知操作。
+ * [OUTPUT]: 全批边界先验后文字错误有界返工；未知退出/不完整报告持久停止，回执恢复终态且不重放。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -37,7 +37,10 @@ async function prepareDevelopmentEdits(worktree: string, task: Pick<Task, 'paths
   const prepared = new Map<string, string | null>()
   const before = new Map<string, string | null>()
   const executable = new Map<string, boolean>()
+  const originals = new Map<string, Buffer | null>()
+  // 所有硬边界先核验，不能让前项文字错误遮住后项范围/hash/链接或编码错误。
   for (const edit of proposal.edits) {
+    signal?.throwIfAborted()
     if (paths.has(edit.path) || !allowedPath(task, edit.path)) throw new Error(`越出冻结范围、重复路径或修改UI期望基线：${edit.path}`)
     paths.add(edit.path)
     const parts = edit.path.split('/')
@@ -49,17 +52,21 @@ async function prepareDevelopmentEdits(worktree: string, task: Pick<Task, 'paths
     before.set(edit.path, bytes?.toString('base64') ?? null)
     executable.set(edit.path, bytes ? Boolean((await lstat(join(worktree, edit.path))).mode & 0o111) : false)
     if ((bytes ? digest(bytes) : null) !== edit.beforeSha256) throw new Error(`文件已变化，拒绝过期修改：${edit.path}`)
+    if (edit.replacements && bytes && !Buffer.from(bytes.toString('utf8')).equals(bytes)) throw new Error(`局部替换只处理UTF-8文本：${edit.path}`)
+    if (!edit.replacements && !bytes && edit.content === null) throw new Error(`不能删除不存在的文件：${edit.path}`)
+    originals.set(edit.path, bytes)
+  }
+  for (const edit of proposal.edits) {
+    const bytes = originals.get(edit.path)!
     if (edit.replacements) {
       if (!bytes || edit.content !== null) throw new ProposalError(`局部替换仅适用于现有文件，content必须为null：${edit.path}`)
       let text = bytes.toString('utf8')
-      if (!Buffer.from(text).equals(bytes)) throw new Error(`局部替换只处理UTF-8文本：${edit.path}`)
       for (const replacement of edit.replacements) {
         if (replacement.oldText === replacement.newText || text.indexOf(replacement.oldText) < 0 || text.indexOf(replacement.oldText) !== text.lastIndexOf(replacement.oldText)) throw new ProposalError(`替换必须唯一且有实际变化：${edit.path}`)
         text = text.replace(replacement.oldText, () => replacement.newText)
       }
       prepared.set(edit.path, text)
     } else {
-      if (!bytes && edit.content === null) throw new Error(`不能删除不存在的文件：${edit.path}`)
       prepared.set(edit.path, edit.content)
     }
   }
@@ -89,7 +96,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
     state.pending = { id: name, kind, directory: output, started: false }; claim.save()
     await mkdir(output); return output
   }
-  const finish = (next: Cursor) => checkpoint(claim, next, () => dependencies.checkpointFault?.(state.pending!.kind, 'receipt') ?? Promise.resolve(), () => dependencies.checkpointFault?.(state.pending!.kind, 'anchor') ?? Promise.resolve())
+  const finish = (next: Cursor, terminal?: { phase: 'stopped'; reason: string }) => checkpoint(claim, next, () => dependencies.checkpointFault?.(state.pending!.kind, 'receipt') ?? Promise.resolve(), () => dependencies.checkpointFault?.(state.pending!.kind, 'anchor') ?? Promise.resolve(), terminal)
   const executeChecks = async (name: string, checks = task.checks) => {
     const output = await begin('checks', name), results = []
     const head = git(state.worktree, 'rev-parse', 'HEAD')
@@ -102,7 +109,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const receipt = await repairProcess({ ...check, cwd: state.worktree, signal, timeoutMs: Math.min(check.timeoutMs, remaining()), managed: { guard, ledger: join(output, `${check.id}-processes`) }, capture: { directory: output, prefix: check.id } })
       await saveProcess(output, check.id, receipt)
       let error = receipt.failure ?? (receipt.exitCode === 0 ? undefined : `退出${receipt.exitCode}`)
-      let reportEvidence: { file: string; sha256: string } | undefined, available = !receipt.failure
+      let reportEvidence: { file: string; sha256: string } | undefined, available = !receipt.failure && receipt.exitCode !== null
       if (check.report) {
         try {
           const bytes = await readFile(join(state.worktree, check.report.path)), file = join(output, `${check.id}.report.json`)
@@ -204,8 +211,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
         }
         case 'baseline': {
           update('baseline'); const result = await executeChecks('baseline'); state.baseline = result; state.attempt = 1
-          await finish(result.available ? 'develop' : 'done')
-          if (!result.available) update('stopped', '基线必需测试未完整执行或报告不可用；保留环境失败，未调用模型')
+          await finish(result.available ? 'develop' : 'done', result.available ? undefined : { phase: 'stopped', reason: '基线必需测试未完整执行或报告不可用；保留环境失败，未调用模型' })
           break
         }
         case 'develop': {
@@ -263,8 +269,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
         }
         case 'candidate-checks': {
           update('checking'); const result = await executeChecks(`attempt-${state.attempt}-checks`); state.checks = result
-          await finish(!result.available ? 'done' : result.passed ? 'review' : 'decide')
-          if (!result.available) update('stopped', '候选必需测试未完整执行或报告不可用；不启动审查或模型返工')
+          await finish(!result.available ? 'done' : result.passed ? 'review' : 'decide', result.available ? undefined : { phase: 'stopped', reason: '候选必需测试未完整执行或报告不可用；不启动审查或模型返工' })
           break
         }
         case 'review': {

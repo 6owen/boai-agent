@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 补丁预检拒绝后的有界返工及不完整报告零模型；互斥/返工/PR/SIGKILL与回执/历史/预算/索引边界。
+ * [OUTPUT]: 混合错误整批硬边界、Vitest加载错误/真实SIGKILL零模型、不可用检查终态中断接续及原预算/索引边界。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -37,6 +37,27 @@ it('Playwright全局错误、缺失、重复与重试不成为可用基线', () 
   for (const report of [null, {}, { suites: [], errors: [{ message: 'UI resource locked' }] }, { suites: [{ specs: [item, item] }] }, { suites: [{ specs: [{ ...item, tests: [{ ...item.tests[0], results: [{ status: 'failed' }, { status: 'passed' }] }] }] }] }]) {
     expect(inspectRequiredTests(report, ['required'], 'playwright')).toEqual({ available: false, passed: false })
   }
+})
+it('Vitest必需断言失败不能掩盖其他文件加载错误，普通断言失败仍可用', () => {
+  const failed = { status: 'failed', message: '', assertionResults: [{ fullName: 'required', status: 'failed', failureMessages: ['expected fixed'] }] }
+  expect(inspectRequiredTests({ testResults: [failed] }, ['required'])).toEqual({ available: true, passed: false })
+  expect(inspectRequiredTests({ testResults: [failed, { status: 'failed', message: 'Cannot find package missing', assertionResults: [] }] }, ['required'])).toEqual({ available: false, passed: false })
+})
+it('Vitest真实文件加载错误与必需断言失败并存时不启动开发', async () => {
+  const report = { testResults: [{ status: 'failed', message: '', assertionResults: [{ fullName: 'required', status: 'failed', failureMessages: ['expected fixed'] }] }, { status: 'failed', message: 'Cannot find package missing', assertionResults: [] }] }
+  const input = { ...task('vitest-loading-error'), checks: [{ id: 'unit', command: process.execPath, args: ['-e', `const fs=require('node:fs');fs.mkdirSync('test-results');fs.writeFileSync('test-results/report.json',${JSON.stringify(JSON.stringify(report))});process.exit(1)`], timeoutMs: 5000, report: { path: 'test-results/report.json', requiredTests: ['required'] } }] }; let calls = 0
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; throw new Error('must not run') } })
+  expect(result.state.phase).toBe('stopped'); expect(calls).toBe(0)
+  expect(result.state.baseline).toMatchObject({ available: false, passed: false })
+})
+it('完整失败报告后监督进程遭SIGKILL，未知退出不能触发开发', async () => {
+  const report = { testResults: [{ assertionResults: [{ fullName: 'required', status: 'failed' }] }] }
+  const input = { ...task('killed-check-report'), checks: [{ id: 'unit', command: process.execPath, args: ['-e', `const fs=require('node:fs');fs.mkdirSync('test-results');fs.writeFileSync('test-results/report.json',${JSON.stringify(JSON.stringify(report))});process.kill(process.ppid,'SIGKILL');process.exit(1)`], timeoutMs: 5000, report: { path: 'test-results/report.json', requiredTests: ['required'] } }] }; let calls = 0
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; throw new Error('must not run') } })
+  const receipt = JSON.parse(await readFile(join(result.directory, 'baseline/unit.process.json'), 'utf8'))
+  expect(receipt.exitCode).toBeNull(); expect(receipt.failure).toBeUndefined()
+  expect(result.state.phase).toBe('stopped'); expect(calls).toBe(0)
+  expect(result.state.baseline).toMatchObject({ available: false, passed: false })
 })
 it.each([false, true])('缺失旧片段整批拒绝后返工（拒绝回执中断=%s），不重复调用或误当成已写入', async interrupted => {
   const input = task('invalid-patch-rework'), calls: string[] = []
@@ -76,6 +97,16 @@ it.each(['scope', 'hash'])('补丁%s边界失败仍停止核对，不当成文�
   expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toMatch(/冻结范围|过期修改/); expect(calls).toBe(1)
   expect(git(result.state.worktree, 'status', '--porcelain')).toBe(''); expect(git(result.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
 })
+it.each(['scope', 'hash', 'symlink', 'utf8'])('首项文字错误不能遮住后项%s边界，整批停止且零写入', async fault => {
+  if (fault === 'symlink') await symlink(join(repository, 'answer.txt'), join(repository, 'feature.txt'))
+  if (fault === 'utf8') await writeFile(join(repository, 'feature.txt'), Buffer.from([255]))
+  if (['symlink', 'utf8'].includes(fault)) { git(repository, 'add', '.'); git(repository, 'commit', '-qm', 'boundary fixture'); base = git(repository, 'rev-parse', 'HEAD') }
+  let calls = 0
+  const result = await runDevelopmentTask(repository, task('mixed-patch-boundary'), undefined, { guard, agent: async () => { calls++; return { value: { summary: 'mixed invalid batch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: null, replacements: [{ oldText: 'absent', newText: 'fixed' }] }, { path: fault === 'scope' ? '.gitignore' : 'feature.txt', beforeSha256: fault === 'utf8' ? digest(Buffer.from([255])) : 'f'.repeat(64), content: null, replacements: [{ oldText: 'absent', newText: 'fixed' }] }] }, usage: { totalTokens: 10 } } } })
+  expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toMatch(/冻结范围|过期修改|符号链接|UTF-8/); expect(calls).toBe(1)
+  expect(git(result.state.worktree, 'status', '--porcelain')).toBe(''); expect(git(result.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+  expect(await readFile(join(result.state.worktree, 'answer.txt'), 'utf8')).toBe('old')
+})
 it('无效补丁到尝试上限后保留原提案及已知用量，不再请求或写文件', async () => {
   const input = { ...task('invalid-patch-limit'), maxAttempts: 1 }; let calls = 0
   const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; return { value: { summary: 'invalid replacement', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: null, replacements: [{ oldText: 'absent', newText: 'fixed' }] }] }, usage: { totalTokens: 10 } } } })
@@ -90,6 +121,19 @@ it.each(['baseline', 'candidate'])('%s的零场景/资源错误停止，不用�
   expect(result.state.phase, result.state.reason).toBe('stopped'); expect(result.state.reason).toContain('未完整执行')
   expect(calls).toBe(stage === 'baseline' ? 0 : 1)
   expect((stage === 'baseline' ? result.state.baseline : result.state.checks) as { available: boolean }).toMatchObject({ available: false, passed: false })
+})
+it.each([['baseline', 'anchor'], ['baseline', 'receipt'], ['candidate', 'anchor'], ['candidate', 'receipt']] as const)('%s不可用的%s窗口中断后只接续终态，不重跑检查或请求', async (stage, point) => {
+  const report = { suites: [], errors: [{ message: 'UI resource locked' }] }
+  const failed = { suites: [{ specs: [{ title: 'required', tests: [{ expectedStatus: 'passed', status: 'unexpected', results: [{ status: 'failed' }] }] }] }], errors: [] }
+  const input = { ...task('terminal-checkpoint'), checks: [{ id: 'bdd', command: process.execPath, args: ['-e', `const fs=require('node:fs'),candidate=fs.readFileSync('answer.txt','utf8')==='fixed';fs.mkdirSync('test-results',{recursive:true});fs.writeFileSync('test-results/report.json',JSON.stringify(${JSON.stringify(stage)}===(candidate?'candidate':'baseline')?${JSON.stringify(report)}:${JSON.stringify(failed)}));process.exit(1)`], timeoutMs: 5000, report: { path: 'test-results/report.json', requiredTests: ['required'], format: 'playwright' } }] }; let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'valid patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, current) => { if (kind === 'checks' && current === point && calls === (stage === 'baseline' ? 0 : 1)) throw new Error('terminal window interruption') } })
+  expect(first.state.phase).toBe('needs-reconciliation')
+  const completed = JSON.parse(await readFile(join(first.state.pending!.directory, 'result.json'), 'utf8')); expect(completed.available).toBe(false)
+  const deadline = first.state.deadline, count = calls
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('未完整执行'); expect(result.state.cursor).toBe('done')
+  expect(result.state.pending).toBeUndefined(); expect(calls).toBe(count); expect(result.state.deadline).toBe(deadline)
 })
 it('两个关联worktree不能同时领取同一个任务，另一任务不共用状态', async () => {
   const alternate = join(root, 'alternate'); git(repository, 'worktree', 'add', '--detach', alternate, base)
