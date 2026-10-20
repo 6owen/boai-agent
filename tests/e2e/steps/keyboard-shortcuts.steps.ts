@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第五场聚焦真实外观Select的关闭触发器，四组合不能误开搜索或改变原导航；原四场保持。
  * [OUTPUT]: 切换到长单聊后先等待原消息控件可编辑，再核对非零阅读位置，避免把加载占位当富文本。
  * [INPUT]: 冻结快捷键合同、原Desktop/群聊夹具和真实键盘/导航控件。
  * [OUTPUT]: 精确四组合、三页实际显隐/阅读位置/焦点、非编辑弹层及已消费事件边界，固定零模型断言。
@@ -159,5 +160,28 @@ Then('输入未被消费且搜索侧边栏和导航没有误触发', async ({ ru
   await expect(runtime.page.locator('.app-shell')).toHaveAttribute('data-page', 'conversations')
   await expect.poll(() => messageDraft(runtime.page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe(draft)
   await expect(runtime.page.getByRole('button', { name: '显示或隐藏会话列表', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  expect(shortcuts.fixture!.state.calls).toBe(0)
+})
+When('用户聚焦关闭的外观选择框再按应用组合键', async ({ runtime }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '外观', exact: true }).click()
+  const trigger = page.locator('.settings-content [data-slot="select-trigger"]').first()
+  await expect(trigger).toBeVisible()
+  for (const key of ['k', 'b', '[', ']']) {
+    await trigger.focus(); await expect(trigger).toBeFocused()
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByRole('listbox')).toBeHidden()
+    await page.keyboard.press(`${primary}+${key}`)
+    await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toHaveCount(0)
+    await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'settings')
+    await expect(page.getByRole('heading', { name: '外观', exact: true })).toBeVisible()
+  }
+})
+Then('选择框保留当前设置页面且没有触发应用导航或搜索', async ({ runtime, shortcuts }) => {
+  await expect(runtime.page.locator('.app-shell')).toHaveAttribute('data-page', 'settings')
+  await expect(runtime.page.getByRole('heading', { name: '外观', exact: true })).toBeVisible()
+  await expect(runtime.page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toHaveCount(0)
   expect(shortcuts.fixture!.state.calls).toBe(0)
 })
