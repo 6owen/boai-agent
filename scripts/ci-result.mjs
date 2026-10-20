@@ -8,7 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const selected = ['install', 'types', 'lint', 'unit', 'dataset', 'bdd']
+const selected = ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd']
 const sameSet = (a, b) => Array.isArray(a) && a.length === b.length && new Set(a).size === b.length && b.every(value => a.includes(value))
 export function validateGate(jobs, engineering, ui, caseIds, sha) {
   if (typeof sha !== 'string' || !sha.trim() || !caseIds.length || new Set(caseIds).size !== caseIds.length) throw new Error('缺少确切提交或完整场景合同')

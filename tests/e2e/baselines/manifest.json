@@ -8,7 +8,7 @@
     "playwright": "1.63.0",
     "geist": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
     "pingFang": [
-      "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
     ],
     "timezone": "Asia/Singapore",
     "locale": "zh-CN",
@@ -16,196 +16,196 @@
   },
   "cases": {
     "chat-light": {
-      "sha256": "cc3edfe057f8b7a062aa4d05857841f29cf51dd46a5b9fc0e43cad0393df5109",
+      "sha256": "cc0dba0e1a1c1d4b02eed9c0205616d7cf994fdaffdce284f392de356c4a9103",
       "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.501Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.194Z"
     },
     "chat-dark": {
-      "sha256": "c976d7396403fcd075d581b44dcaf5f6414484399394b7554b531e9037d70ea8",
+      "sha256": "c14b9f43bd27492662a60b96f6344ffd4a3e9d925b309d60511c68c2042fc82e",
       "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.502Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.194Z"
     },
     "chat-narrow-light": {
-      "sha256": "edb0f9d6a7a4f11ac7b9199e2d2db140ab811f0d44a839388c7d56d11431bd58",
+      "sha256": "7ccc0dc6823b329c8c72d9bfa4c4078ed2c4f13987b3984aa1b87c4c2973f49d",
       "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "11afd0c7010b6a944d36d806a424dfbe00fa55799b199a1f5235869a0c958022",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始基线稳定化：真实键盘清空并等待发送禁用，等待字体和有限动画完成；仅更新这五项，保留旧/新/差异报告，独立审阅仍待完成。",
-      "candidate": "4bb39fe3-5a9d-4ff2-bb03-f82344cffbe4",
-      "acceptedAt": "2026-10-20T08:53:02.553Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.195Z"
     },
     "chat-narrow-dark": {
-      "sha256": "607b629be58c94392aa074bf2cd114ec51071dbf4487bc83c4d5fd07d494da39",
+      "sha256": "353c3982707005b6ff53a458275c81d776184dbdcc8f30e1b54635470e9632d0",
       "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "11afd0c7010b6a944d36d806a424dfbe00fa55799b199a1f5235869a0c958022",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始基线稳定化：真实键盘清空并等待发送禁用，等待字体和有限动画完成；仅更新这五项，保留旧/新/差异报告，独立审阅仍待完成。",
-      "candidate": "4bb39fe3-5a9d-4ff2-bb03-f82344cffbe4",
-      "acceptedAt": "2026-10-20T08:53:02.553Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.195Z"
     },
     "empty-chat-light": {
-      "sha256": "aa19af0876f4ac813e602cc77a3cc1fb030fa3a499ba851646a2acfa677d69bc",
+      "sha256": "204c20cb4a0e79679fe785504fbdcd4633e1c4310d6ec2c100e43d838559ccea",
       "contract": "f67798d98d951bdd62d80d92b3dc15a990979d199ae7d9dc12fb23b96e6aa8b1",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.503Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.196Z"
     },
     "empty-chat-dark": {
-      "sha256": "cc34ce542081e1e10c7f776dbb7bbf5e864f009b87f07d43484189a3563763ab",
+      "sha256": "98accd2d10a99bc25028338b0048b39a15137b9bf421e08d2626c2339e60c730",
       "contract": "1e107ae51b50bcc971e6a819554efb7d2a16d556d4acd98f39b181915dcec271",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "11afd0c7010b6a944d36d806a424dfbe00fa55799b199a1f5235869a0c958022",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始基线稳定化：真实键盘清空并等待发送禁用，等待字体和有限动画完成；仅更新这五项，保留旧/新/差异报告，独立审阅仍待完成。",
-      "candidate": "4bb39fe3-5a9d-4ff2-bb03-f82344cffbe4",
-      "acceptedAt": "2026-10-20T08:53:02.554Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.196Z"
     },
     "employee-light": {
-      "sha256": "6559464b20d933471c3a934a52efb5988435b87dc694af643da66b597953559f",
+      "sha256": "c0b78f10388a7dc5a32e06990427756754a75c200f607a654480d1d5c53375c7",
       "contract": "9286a4ad99bd5f3fe889741a179bbf448ad462ccbd09835fcc687d45c5398c50",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.503Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.196Z"
     },
     "employee-dark": {
-      "sha256": "0dba0d0b5567614f7bea5ff416fed0b771db4d9cf833ec25d164ec563d3d18b4",
+      "sha256": "c70ab96a35868ef68fc38acd445625d1d963d3e224bd9a6ba5cd563b3ba38554",
       "contract": "73c07b7518d80b70b225322c29dffb5f353d119f6e651eff4ed83b1e3b5837b2",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.503Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.196Z"
     },
     "settings-light": {
-      "sha256": "ddd38af95a8f2222754024aa54393006c64880e0de306137a617a9b7555dbe5c",
+      "sha256": "b57a139a94b1a9aaec8742a3ff6b32c2d7de9a9ef00ea08c16eddd5cd6fdab7f",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "dd8d24ecd8fc909e81ec7293439c9be4f10678c4e23b085f08ffbd7cc0118359",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始噪声校准：两轮同处五像素仅1/255通道差，颜色阈值0.005、最大异常像素0；仅此case，独立PR审阅待完成。",
-      "candidate": "f9ae975f-d27c-4b79-8b57-71c2898e94aa",
-      "acceptedAt": "2026-10-20T08:56:49.758Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.197Z"
     },
     "settings-dark": {
-      "sha256": "3e2423154d7b0743655ab41cf7843fe9619b90ff45ee40c6e079dfaf5159647b",
+      "sha256": "6f13ce0572f92ffbea9174f20bc290bb260126f24ca05f02824659268f1dddec",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "2bec1bc66b6d1ef1e16992795c4a45aa69df01fb",
-        "sourceHash": "95032f1b004ea9395f817a80b98bb36b45867a08b474d3b0be28410de0dc2a16",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始渲染校准：同版本外观缩略图8原始像素且最大通道差1/255；逐case阈值0.005、异常像素数0、无mask；旧新原始diff已保留，独立PR审阅待完成",
-      "candidate": "e37a96c5-f84e-4142-9fed-15a48ea59d4e",
-      "acceptedAt": "2026-10-20T09:41:52.766Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.197Z"
     },
     "resources-light": {
-      "sha256": "221a115cda9a39643459e923a06197611b90ff28fa5a9227ae134435157b7807",
+      "sha256": "9fd394fd971ba096cb61ee597f4723f6d49980290e5ad4ca9594a01f7441e3eb",
       "contract": "3d946d63c31869b0926c06ba06ba98cffca6117bae1ad9fadbafc8d76c32872e",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.504Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.197Z"
     },
     "resources-dark": {
-      "sha256": "c595ffc677ca0e14604f678aa9b048301d0482477f946cf1be23a54d64201b17",
+      "sha256": "f27af385db646178d4091836ca0bfe38e599fe50acdc22ecdb7b0e113e067897",
       "contract": "656be966f0e8297a7856528efd12bbb84e6d0f31146ba0bef049b147ca8cedc7",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "4b974944755f227b627a7a481cadeec927717ceedfffcc0a55a7618a3f023ef9",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始校准：等待动画后仅搜索框渐变出现1/255通道舍入差，颜色阈值0.005、最大异常像素0；只此case，保留原失败与独立审阅待完成状态。",
-      "candidate": "1f8fad37-f77a-407c-939a-b3355cc5b7a3",
-      "acceptedAt": "2026-10-20T09:02:29.149Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.197Z"
     },
     "detail-light": {
-      "sha256": "4059388b752ac5094ff8eabfcfe2f9cdf419b1f0a994e0e0d01984d1a5938412",
+      "sha256": "a5510cabfd44707defad98bb554836fc51d4fe6b5d6dd158ca541e4a3c27f3ea",
       "contract": "6be6641275a5227b7ed45e5216e887a80e49414ef933c97c8fccf47e41540478",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.505Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.198Z"
     },
     "detail-dark": {
-      "sha256": "907ec8efb59590fd86a86dd680e5955cac37b8f48414b837c396aa6238c5b615",
+      "sha256": "a0020e4ad0d431e81125668436b39d9e3a5f9912c19c5d5e41914a5410e244dc",
       "contract": "b94c00c459787ce967bdb732c72dab242f86b0a461685263e0993bae83a1825f",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.505Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.198Z"
     },
     "preview-light": {
-      "sha256": "f127859e8c4cfb9da1eca0500dede6e97cec08e111005c4b6340834a0d77e477",
+      "sha256": "c6c8a1c0a61d946f5d196c4dcf3a4f6560a2297dd2e713df4fde91cb4667468d",
       "contract": "92cf7c356cf53ace610af0abe3983a01955331e076593c2a9c4454df51e6d55c",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.505Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.199Z"
     },
     "preview-dark": {
-      "sha256": "5fb57eba88f6e3aa6e0d25175e03842549ab25aa5154fdb82d93aebcd858ecfc",
+      "sha256": "2754bc58243fe04314aa7a5b9f4ceb5d46169b302d2861290c9663ec74b8334c",
       "contract": "fb5b0028ec61dcce694beff6122b0e86a1153edd9259064b1b151d874dfdc6eb",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
+        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.505Z"
+      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
+      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
+      "acceptedAt": "2026-10-20T10:36:54.199Z"
     }
   }
 }

@@ -5,12 +5,13 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { z } from 'zod'
+import { execFileSync } from 'node:child_process'
 import { mkdir, readFile, writeFile, rm, lstat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { repairProcess, saveProcess, type ProcessReceipt } from '../../tests/evaluation/repair-process'
 import { claimTask, digest, git, relativePath, type Task, type TaskState } from './task'
 
-export const editsSchema = z.object({ summary: z.string().min(1), edits: z.array(z.object({ path: relativePath, beforeSha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), content: z.string().max(512_000).nullable() }).strict()).min(1).max(40) }).strict()
+export const editsSchema = z.object({ summary: z.string().min(1), edits: z.array(z.object({ path: relativePath, beforeSha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), content: z.string().max(512_000).nullable(), replacements: z.array(z.object({ oldText: z.string().min(1), newText: z.string().max(256_000) }).strict()).min(1).max(30).nullable().default(null) }).strict()).min(1).max(40) }).strict()
 export const reviewSchema = z.object({ approved: z.boolean(), findings: z.array(z.string().min(1)), summary: z.string().min(1) }).strict().refine(value => !value.approved || !value.findings.length, '有待处理问题不能批准')
 type AgentOutput = { value: unknown; usage: { totalTokens: number } | null }
 interface Dependencies {
@@ -29,6 +30,7 @@ export function allowedPath(task: Pick<Task, 'paths'>, path: string) {
 }
 export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, 'paths'>, raw: unknown) {
   const proposal = editsSchema.parse(raw), paths = new Set<string>()
+  const prepared = new Map<string, string | null>()
   for (const edit of proposal.edits) {
     if (paths.has(edit.path) || !allowedPath(task, edit.path)) throw new Error(`越出冻结范围、重复路径或修改UI期望基线：${edit.path}`)
     paths.add(edit.path)
@@ -39,14 +41,26 @@ export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, '
     }
     const bytes = await optional(join(worktree, edit.path))
     if ((bytes ? digest(bytes) : null) !== edit.beforeSha256) throw new Error(`文件已变化，拒绝过期修改：${edit.path}`)
-    if (!bytes && edit.content === null) throw new Error(`不能删除不存在的文件：${edit.path}`)
+    if (edit.replacements) {
+      if (!bytes || edit.content !== null) throw new Error(`局部替换仅适用于现有文件，content必须为null：${edit.path}`)
+      let text = bytes.toString('utf8')
+      if (!Buffer.from(text).equals(bytes)) throw new Error(`局部替换只处理UTF-8文本：${edit.path}`)
+      for (const replacement of edit.replacements) {
+        if (replacement.oldText === replacement.newText || text.indexOf(replacement.oldText) < 0 || text.indexOf(replacement.oldText) !== text.lastIndexOf(replacement.oldText)) throw new Error(`替换必须唯一且有实际变化：${edit.path}`)
+        text = text.replace(replacement.oldText, () => replacement.newText)
+      }
+      prepared.set(edit.path, text)
+    } else {
+      if (!bytes && edit.content === null) throw new Error(`不能删除不存在的文件：${edit.path}`)
+      prepared.set(edit.path, edit.content)
+    }
   }
   // All inputs are checked before the first write. A crash partway through an
   // apply remains pending and requires reconciliation; it is never replayed.
-  for (const edit of proposal.edits) {
-    const path = join(worktree, edit.path)
-    if (edit.content === null) await rm(path)
-    else { await mkdir(dirname(path), { recursive: true }); await writeFile(path, edit.content) }
+  for (const [name, content] of prepared) {
+    const path = join(worktree, name)
+    if (content === null) await rm(path)
+    else { await mkdir(dirname(path), { recursive: true }); await writeFile(path, content) }
   }
   return proposal
 }
@@ -71,15 +85,18 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
         git(state.worktree, 'check-ignore', check.report.path)
         await rm(join(state.worktree, check.report.path), { force: true })
       }
-      const receipt = await repairProcess({ ...check, cwd: state.worktree, signal, timeoutMs: Math.min(check.timeoutMs, remaining()), managed: { guard, ledger: join(output, `${check.id}-processes`) } })
+      const receipt = await repairProcess({ ...check, cwd: state.worktree, signal, timeoutMs: Math.min(check.timeoutMs, remaining()), managed: { guard, ledger: join(output, `${check.id}-processes`) }, capture: { directory: output, prefix: check.id } })
       await saveProcess(output, check.id, receipt)
       let error = receipt.failure ?? (receipt.exitCode === 0 ? undefined : `退出${receipt.exitCode}`)
-      if (!error && check.report) {
+      let reportEvidence: { file: string; sha256: string } | undefined
+      if (check.report) {
         try {
-          if (!validateRequiredTests(await json(join(state.worktree, check.report.path)), check.report.requiredTests)) error = '必需测试缺失、跳过、重复或未通过'
-        } catch (failure) { error = `缺少完整原始报告：${failure}` }
+          const bytes = await readFile(join(state.worktree, check.report.path)), file = join(output, `${check.id}.report.json`)
+          await writeFile(file, bytes, { flag: 'wx' }); reportEvidence = { file, sha256: digest(bytes) }
+          if (!validateRequiredTests(JSON.parse(bytes.toString('utf8')), check.report.requiredTests)) error = [error, '必需测试缺失、跳过、重复或未通过'].filter(Boolean).join('；')
+        } catch (failure) { error = [error, `缺少完整原始报告：${failure}`].filter(Boolean).join('；') }
       }
-      results.push({ id: check.id, passed: !error, error, exitCode: receipt.exitCode })
+      results.push({ id: check.id, passed: !error, error, exitCode: receipt.exitCode, report: reportEvidence })
     }
     if (git(state.worktree, 'rev-parse', 'HEAD') !== head || git(state.worktree, 'status', '--porcelain')) throw new Error('检查期间提交或源码变化，结论无效')
     const result = { head, passed: results.every(check => check.passed), checks: results }
@@ -88,7 +105,8 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
   const agent = async (kind: 'develop' | 'review', output: string, prompt: string): Promise<AgentOutput> => {
     remaining()
     if (state.codexCalls >= task.maxCodexCalls || state.knownTokens >= task.maxTokens || !state.usageComplete) throw new Error('模型调用/已知token到限或用量未知，停止继续请求')
-    state.codexCalls++; claim.save() // Reserve before invoking. Failed requests are never refunded.
+    const previousUsageComplete = state.usageComplete
+    state.codexCalls++; state.usageComplete = false; claim.save() // Reserve before invoking. Failed requests are never refunded.
     state.pending!.started = true; claim.save()
     let result: AgentOutput
     if (dependencies.agent) result = await dependencies.agent(kind, { task, state, directory: output, prompt, signal, timeoutMs: remaining() })
@@ -96,17 +114,17 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const schema = kind === 'develop' ? editsSchema : reviewSchema
       const schemaFile = join(output, 'schema.json'), answer = join(output, 'answer.json')
       await save(schemaFile, z.toJSONSchema(schema)); await writeFile(join(output, 'prompt.txt'), prompt, { flag: 'wx' })
-      const args = ['exec', '--ignore-user-config', '--ephemeral', '--sandbox', 'read-only', '-c', 'approval_policy="never"', '--json', '--color', 'never', '--cd', state.worktree, '--output-schema', schemaFile, '--output-last-message', answer]
+      const args = ['exec', '--ignore-user-config', '--ephemeral', '--sandbox', 'read-only', '-c', 'approval_policy="never"', '--disable', 'multi_agent', '--disable', 'hooks', '--disable', 'plugins', '--disable', 'apps', '--disable', 'memories', '--disable', 'unbounded_connection_retries', '--json', '--color', 'never', '--cd', state.worktree, '--output-schema', schemaFile, '--output-last-message', answer]
       if (task.model) args.push('--model', task.model)
       args.push('-')
-      const receipt: ProcessReceipt = await repairProcess({ command: 'codex', args, cwd: state.worktree, codex: true, stdin: prompt, signal, timeoutMs: remaining(), managed: { guard, ledger: join(output, 'processes') } })
+      const receipt: ProcessReceipt = await repairProcess({ command: 'codex', args, cwd: state.worktree, codex: true, stdin: prompt, signal, timeoutMs: remaining(), managed: { guard, ledger: join(output, 'processes') }, capture: { directory: output, prefix: 'codex' } })
       await saveProcess(output, 'codex', receipt)
       if (receipt.failure || receipt.exitCode !== 0) throw new Error(`Codex会话失败/未知：${receipt.failure ?? receipt.exitCode}`)
       const turns = receipt.stdout.split('\n').flatMap(line => { try { const value = JSON.parse(line); return value.type === 'turn.completed' ? [value] : [] } catch { return [] } })
       const usage = turns.length === 1 ? turns[0].usage : null
       result = { value: schema.parse(await json(answer)), usage: usage && ['input_tokens', 'output_tokens', 'cached_input_tokens'].every(key => Number.isInteger(usage[key]) && usage[key] >= 0) ? { totalTokens: usage.input_tokens + usage.output_tokens } : null }
     }
-    state.usageComplete &&= result.usage !== null; state.knownTokens += result.usage?.totalTokens ?? 0; claim.save()
+    state.usageComplete = previousUsageComplete && result.usage !== null; state.knownTokens += result.usage?.totalTokens ?? 0; claim.save()
     await save(join(output, 'result.json'), result); return result
   }
   try {
@@ -114,8 +132,20 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
     if (state.controllerHash && controllerHash !== state.controllerHash) throw new Error('控制器身份已变化，需要独立核对旧任务')
     if (controllerHash) state.controllerHash = controllerHash
     state.environment ??= { node: process.version, platform: process.platform, arch: process.arch }; claim.save()
+    if (process.env.BOAI_DEV_CONTROLLER_FILE && controllerHash) {
+      const bytes = await readFile(process.env.BOAI_DEV_CONTROLLER_FILE)
+      if (digest(bytes) !== controllerHash) throw new Error('控制器原字节身份不匹配')
+      const file = join(directory, `controller-${controllerHash}.mjs`), previous = await optional(file)
+      if (previous && digest(previous) !== controllerHash) throw new Error('控制器原件被改写')
+      if (!previous) await writeFile(file, bytes, { flag: 'wx' })
+      state.controllerArtifact = file; claim.save()
+    }
     if (state.pending) { update('needs-reconciliation', `上次${state.pending.kind}结果待核对，不自动重放`); return { directory, state } }
     if (state.phase !== 'registered') return { directory, state }
+    if (!dependencies.agent) {
+      if (!task.model) throw new Error('实际Codex任务必须明确冻结model，不能依赖变化的CLI默认值')
+      state.environment.codex = execFileSync('codex', ['--version'], { encoding: 'utf8', timeout: 10_000 }).trim(); claim.save()
+    }
     git(repository, 'check-ref-format', '--branch', task.targetBranch)
     if (git(repository, 'rev-parse', `${task.base}^{commit}`) !== task.base) throw new Error('基础提交不匹配')
     if (git(repository, 'rev-parse', task.targetBranch) !== task.base) throw new Error('目标基础分支已变化，请建立任务修订')
@@ -130,7 +160,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
     for (let attempt = 1; attempt <= task.maxAttempts; attempt++) {
       remaining(); state.attempt = attempt; update('developing')
       const output = await begin('develop', `attempt-${attempt}-develop`)
-      const prompt = `你是BOAI开发者。在当前专属worktree只读检查真实代码，返回结构化完整文件补丁。可新增/删除任务文件，不能提交、写文件或更改验收/基线。beforeSha256为当前原字节hash；新文件为null。遵守AGENTS及目录地图。\n冻结任务：${JSON.stringify(task)}\n上轮真实结果：${JSON.stringify({ baseline: state.baseline, checks: state.checks, review: state.review })}\n完整检查原件在${directory}，自行读取，不仅依赖摘要。`
+      const prompt = `你是BOAI开发者。在当前专属worktree只读核对代码，返回小而精确的结构化补丁。现有文件优先content=null及replacements中的唯一oldText/newText，避免输出整个大文件；新文件使用content与replacements=null，删除使用二者null。beforeSha256是当前原字节hash，新文件为null。可新增/删除范围内文件，不得提交、写文件或改验收/基线。遵守AGENTS及目录地图。不要分派子代理或自行执行独立审查，控制器会另开独立审查会话。\n冻结任务：${JSON.stringify(task)}\n上轮真实结果：${JSON.stringify({ baseline: state.baseline, checks: state.checks, review: state.review })}\n完整检查原件在${directory}，自行读取，不仅依赖摘要。`
       const proposal = await agent('develop', output, prompt)
       if (git(state.worktree, 'rev-parse', 'HEAD') !== state.head || git(state.worktree, 'status', '--porcelain')) throw new Error('开发会话改写了受控worktree，需核对')
       await applyDevelopmentEdits(state.worktree, task, proposal.value)
@@ -145,7 +175,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const reviewOutput = await begin('review', `attempt-${attempt}-review`)
       const reviewedHead = state.head
       const review = await agent('review', reviewOutput, `你是独立审查者，新的无历史会话。读取完整diff、源码、任务和实际检查原件；按仓库标准/需求给出是否批准及可定位问题，不因开发者摘要批准。禁止改写任何文件或执行合并。\n任务：${JSON.stringify(task)}\n固定base ${task.base}，head ${reviewedHead}；完整原件${directory}。\n必须实际读取git diff ${task.base}...${reviewedHead}，检查变更范围、测试强度、目录地图及UI基线保护。`)
-      state.review = { ...reviewSchema.parse(review.value), head: reviewedHead, base: task.base, directory: reviewOutput, model: task.model ?? 'codex-default' }
+      state.review = { ...reviewSchema.parse(review.value), head: reviewedHead, base: task.base, directory: reviewOutput, model: task.model ?? 'codex-default', checksHash: digest(JSON.stringify(state.checks)) }
       if (git(state.worktree, 'rev-parse', 'HEAD') !== reviewedHead || git(state.worktree, 'status', '--porcelain')) throw new Error('审查期间提交或文件变化，结论失效')
       finish()
       if (git(repository, 'rev-parse', task.targetBranch) !== task.base) throw new Error('目标基础分支已变化，旧检查和审查不能交付')

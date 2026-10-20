@@ -31,8 +31,10 @@ jobs:
         run: pnpm typecheck
       - id: lint
         run: pnpm lint:ui
+      - id: build
+        run: pnpm build
       - id: unit
-        run: pnpm test
+        run: pnpm test --maxWorkers=2
       - id: dataset
         run: pnpm eval:dataset
       - id: bdd

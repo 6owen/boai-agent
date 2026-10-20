@@ -6,7 +6,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { execFileSync, spawn } from 'node:child_process'
-import { readFile, writeFile, mkdir, readdir, copyFile, stat } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, copyFile, stat } from 'node:fs/promises'
 import { arch, platform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +23,7 @@ const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const save = (path, value) => writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).trim()
 let cancelled = false
+let activeRun
 
 export const baselineContractHash = (contract, id) => hash(JSON.stringify({ case: contract.cases.find(item => item.id === id), height: contract.height, threshold: contract.threshold, maxDiffPixels: contract.maxDiffPixels, masks: contract.masks, version: contract.version }))
 
@@ -59,13 +60,10 @@ export async function sourceIdentity(workspace = root) {
 
 export async function renderEnvironment() {
   if (platform() !== 'darwin') throw new Error('当前UI基线仅适用于macOS；其他平台需独立采集')
-  const fontRoot = '/System/Library/AssetsV2/com_apple_MobileAsset_Font7'
-  const fonts = []
-  for (const name of (await readdir(fontRoot, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort()) {
-    const file = join(fontRoot, name, 'AssetData/PingFang.ttc')
-    try { fonts.push(hash(await readFile(file))) } catch (error) { if (error.code !== 'ENOENT') throw error }
-  }
-  if (!fonts.length) throw new Error('缺少固定中文字体PingFang，不能比较UI基线')
+  const query = 'import Foundation; import CoreText; let f = CTFontCreateWithName("PingFang SC" as CFString, 14, nil); let u = CTFontCopyAttribute(f, kCTFontURLAttribute) as? URL; let d: [String: String] = ["postscript": CTFontCopyPostScriptName(f) as String, "path": u?.path ?? ""]; let b = try JSONSerialization.data(withJSONObject: d); print(String(data: b, encoding: .utf8)!)'
+  const chinese = JSON.parse(execFileSync('swift', ['-e', query], { encoding: 'utf8', timeout: 60_000 }))
+  if (!chinese.postscript.startsWith('PingFangSC-') || !chinese.path) throw new Error('CoreText未解析到固定中文字体PingFang SC，不能比较UI基线')
+  const fonts = [hash(await readFile(chinese.path))]
   const bundled = await readFile(join(root, 'src/renderer/assets/fonts/Geist.woff2')).catch(async () => {
     const files = git('ls-files', '-z', '*Geist*.woff2').split('\0').filter(Boolean)
     if (files.length !== 1) throw new Error('无法唯一核对Geist字体')
@@ -112,6 +110,8 @@ async function main() {
   if (process.env.CI && options.cases) throw new Error('CI必须运行全部登记UI场景')
   const ids = options.cases ? options.cases.split(',') : contract.cases.map(item => item.id)
   if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !contract.cases.some(item => item.id === id))) throw new Error('场景列表为空、重复或未登记')
+  const directory = command === 'accept' ? null : resolve(options.output ?? join(root, '.local/ui-runs', randomUUID()))
+  if (directory) { await mkdir(dirname(directory), { recursive: true }); await mkdir(directory); activeRun = directory }
   const environment = await renderEnvironment(), source = await sourceIdentity()
   delete process.env.BOAI_UI_FAULT
   if (options.fault) process.env.BOAI_UI_FAULT = options.fault
@@ -143,9 +143,6 @@ async function main() {
       console.log(`已接受${ids.length}项本地候选；提交PR后仍需独立审阅。`)
       return
     }
-    const directory = resolve(options.output ?? join(root, '.local/ui-runs', randomUUID()))
-    await mkdir(dirname(directory), { recursive: true })
-    await mkdir(directory)
     const built = await verifyBuildIdentity(root)
     const identity = { id: randomUUID(), source, built, environment, osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
     await save(join(directory, 'run.json'), identity)
@@ -183,4 +180,10 @@ async function main() {
   } finally { releaseLock() }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(error => { console.error(String(error)); process.exitCode = cancelled ? 130 : 1 })
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(async error => {
+  if (activeRun) {
+    const identity = await json(join(activeRun, 'run.json')).catch(() => ({}))
+    await save(join(activeRun, 'summary.json'), { ...identity, status: 'failed', cases: identity.selected ?? [], errors: [String(error)] })
+  }
+  console.error(String(error)); process.exitCode = cancelled ? 130 : 1
+})

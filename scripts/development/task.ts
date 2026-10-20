@@ -33,7 +33,7 @@ export interface TaskState {
   lease?: { owner: string; pid: number; hostname: string; expiresAt: string };
   baseline?: unknown; checks?: unknown; review?: unknown;
   delivery?: { head: string; base: string; url?: string; number?: number };
-  controllerHash?: string; environment?: { node: string; platform: string; arch: string };
+  controllerHash?: string; controllerArtifact?: string; environment?: { node: string; platform: string; arch: string; codex?: string };
 }
 export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim()
 export function taskDirectory(repository: string, taskId: string) {
@@ -50,7 +50,13 @@ export function claimTask(repository: string, raw: unknown) {
     try { state = JSON.parse(readFileSync(join(directory, 'state.json'), 'utf8')); if (state.taskHash !== taskHash) throw new Error('同一taskId的冻结输入已变化，请建立新任务修订') }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      writeFileSync(join(directory, 'task.json'), JSON.stringify(task, null, 2) + '\n', { flag: 'wx' })
+      try {
+        const registered = taskSchema.parse(JSON.parse(readFileSync(join(directory, 'task.json'), 'utf8')))
+        if (digest(JSON.stringify(registered)) !== taskHash) throw new Error('登记中断后的冻结任务不匹配，拒绝覆盖')
+      } catch (registrationError) {
+        if ((registrationError as NodeJS.ErrnoException).code !== 'ENOENT') throw registrationError
+        writeFileSync(join(directory, 'task.json'), JSON.stringify(task, null, 2) + '\n', { flag: 'wx' })
+      }
       state = { version: 1, taskHash, phase: 'registered', base: task.base, worktree: '', branch: `dev/${task.taskId}`, attempt: 0, codexCalls: 0, knownTokens: 0, usageComplete: true }
     }
     const heartbeat = () => { state.lease = { owner, pid: process.pid, hostname: hostname(), expiresAt: new Date(Date.now() + 15_000).toISOString() }; save() }
@@ -61,5 +67,10 @@ export function claimTask(repository: string, raw: unknown) {
 }
 export function taskStatus(repository: string, id: string) {
   const directory = taskDirectory(repository, id)
-  return { directory, task: JSON.parse(readFileSync(join(directory, 'task.json'), 'utf8')), state: JSON.parse(readFileSync(join(directory, 'state.json'), 'utf8')) }
+  const task = taskSchema.parse(JSON.parse(readFileSync(join(directory, 'task.json'), 'utf8')))
+  let state: TaskState | { phase: string; reason: string }
+  try { state = JSON.parse(readFileSync(join(directory, 'state.json'), 'utf8')) }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; state = { phase: 'registration-interrupted', reason: '冻结任务已保存，状态登记中断；重新领取时只补注册态' } }
+  if ('pending' in state && state.pending?.started && ['develop', 'review'].includes(state.pending.kind)) state.usageComplete = false
+  return { directory, task, state }
 }

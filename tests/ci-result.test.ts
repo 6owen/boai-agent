@@ -9,7 +9,7 @@ import { expect, it } from 'vitest'
 import { validateGate } from '../scripts/ci-result.mjs'
 
 const jobs = { desktop: { result: 'success' }, ui: { result: 'success' } }
-const selected = ['install', 'types', 'lint', 'unit', 'dataset', 'bdd']
+const selected = ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd']
 const engineering = { sha: 'current', status: 'passed', selected, outcomes: Object.fromEntries(selected.map(id => [id, 'success'])) }
 const ui = { status: 'passed', source: { commit: 'current', dirty: false }, cases: ['a', 'b'], errors: [] }
 it('仅放行同SHA的完整必需检查', () => expect(() => validateGate(jobs, engineering, ui, ['a', 'b'], 'current')).not.toThrow())
