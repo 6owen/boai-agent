@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 明确版本/SHA/本地原件，当前干净源码及main触发的完整本地CI。
- * [OUTPUT]: 原件重核和最新GitHub状态双读；旧绿/新pending/分支或hash变化拒绝，不创建Tag。
- * [POS]: 第22组个人发布身份门槛；不执行安装、签名或替换应用。
+ * [OUTPUT]: 共享干净源码/版本身份检查；发布入口另加原件重核和最新GitHub状态双读，拒绝旧绿。
+ * [POS]: 第22组个人候选与发布身份门槛；只读前检不执行Tag、签名或替换应用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { execFileSync } from 'node:child_process'
@@ -13,14 +13,19 @@ import { verifyLocalCi } from './local-ci.mjs'
 import { localCiContext, localCiRepository } from './local-ci-github.mjs'
 
 export const releaseRepository = localCiRepository
-export function verifyReleaseIdentity({ version, sha, current, metadata, mainSha, qualification, status }) {
+export function verifyReleaseSource({ version, sha, current, metadata }) {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version ?? '') || !version.split('.').every(part => Number.isSafeInteger(Number(part))) || !/^[a-f0-9]{40}$/.test(sha ?? '')) throw new Error('版本须为稳定X.Y.Z，提交须为完整SHA')
-  if (current?.sha !== sha || current.dirty !== false || mainSha !== sha) throw new Error('发布必须是当前干净源码及远程main的同一提交')
+  if (current?.sha !== sha || current.dirty !== false) throw new Error('必须是当前干净源码的同一提交')
   if (metadata?.version !== version || metadata?.build?.buildVersion !== version || metadata?.build?.appId !== 'com.boai.agent' || metadata?.build?.productName !== 'BoAI Agent') throw new Error('package版本/buildVersion或应用身份不匹配')
+  return { version, tag: `v${version}`, sha, appId: metadata.build.appId, buildVersion: metadata.build.buildVersion }
+}
+export function verifyReleaseIdentity({ version, sha, current, metadata, mainSha, qualification, status }) {
+  const source = verifyReleaseSource({ version, sha, current, metadata })
+  if (mainSha !== sha) throw new Error('发布必须是当前干净源码及远程main的同一提交')
   const trigger = qualification?.trigger
   if (qualification?.sha !== sha || !/^[a-f0-9]{64}$/.test(qualification?.manifestSha256 ?? '') || !/^[a-f0-9]{64}$/.test(qualification?.sourceHash ?? '') || !Number.isSafeInteger(qualification?.t1) || qualification.t1 < 1 || !Number.isSafeInteger(qualification?.ui) || qualification.ui < 1 || trigger?.repository !== releaseRepository || trigger?.branch !== 'main' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(trigger?.runId ?? '')) throw new Error('没有同SHA的main完整本地原件；PR、旧档案或缺触发身份不能用于发布')
   if (status?.context !== localCiContext || status?.state !== 'success' || !Number.isSafeInteger(status?.id) || status.id < 1 || !Number.isSafeInteger(status?.creator?.id) || status.creator.id < 1 || status.creator.login !== '6owen' || status.description !== `local-ci ${trigger.runId} ${qualification.manifestSha256}`) throw new Error('最新本地CI状态不是该main原件的成功回传，不能用旧绿发布')
-  return { version, tag: `v${version}`, sha, appId: metadata.build.appId, buildVersion: metadata.build.buildVersion, validation: { source: 'local-ci', runId: trigger.runId, statusId: status.id, manifestSha256: qualification.manifestSha256, t1: qualification.t1, ui: qualification.ui } }
+  return { ...source, validation: { source: 'local-ci', runId: trigger.runId, statusId: status.id, manifestSha256: qualification.manifestSha256, t1: qualification.t1, ui: qualification.ui } }
 }
 
 async function main() {

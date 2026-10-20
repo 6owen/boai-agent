@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 个人候选release:build已接隔离ad-hoc arm64 DMG/ZIP及身份/hash；实际打包和升级仍待验，当前CI由本机执行。
 [OUTPUT]: 789已自动PR完整通过3935模块/T128/UI18并回传；本机发布前检改main原件/最新状态候选，Tag/安装待实施，详22组03。
 [OUTPUT]: 7257本地工程/3917模块/T128/UI18完整成功且GitHub确认；main门禁改BOAI local CI，其余保护保持；自动轮询候选与四目标剩余归22组03。
 [OUTPUT]: 本地CI 6a原始T128/UI18全过，但自测锁/时钟核验导致完整failed且已真实回传failure；修复候选待新完整复验，最新22组03。
@@ -453,11 +454,13 @@ pnpm package
 
 `pnpm package` 在 `release/` 生成当前平台的应用目录；`pnpm dist:mac` 生成 macOS DMG。打包使用本项目安装的 Electron。正式分发还需要应用图标、签名、公证及目标系统验收。
 
+本机个人候选使用 `pnpm release:build --version X.Y.Z --sha 完整SHA`，要求干净源码及一致的version/buildVersion，保留原构建资源并显式使用ad-hoc arm64配置，输出独立DMG/ZIP和签名、架构、字节清单；`built`尚不具备发布或安装资格。发布前另用 `pnpm release:check --version X.Y.Z --sha 完整SHA --local-ci 原件目录`核对同SHA的main完整测试。实际进度与安装边界见[第22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md)。
+
 引擎测试使用真实 Mastra SDK 和本地模型协议服务，覆盖 OpenAI 兼容与 Anthropic 请求、流式输出、技能、知识、产物、命令审批和取消；服务测试使用实际 SQLite。桌面测试启动真实 Electron，验证跨进程调用、群聊、隔离、取消和重启。测试服务只用于自动化测试，应用没有模拟回复模式。
 
 桌面验收使用 `playwright-bdd`：`tests/e2e/features` 保存中文业务场景，`steps` 保存类型化操作与断言，`support` 管理独立数据、Electron 重启和资源清理。原有 13 组桌面流程全部由 BDD 执行，另有五人并行流式、慢判断隔离、委派/定向接续和停止工作树等场景；`tests/*.test.ts` 继续由 Vitest 执行。生成的 `.features-gen` 不提交、不手工编辑。Playwright 报告位于 `playwright-report/index.html`，按业务步骤展示的 Cucumber 报告位于 `cucumber-report/index.html`；二者分目录，避免报告器清理目录时互相覆盖。真实供应商评估单独使用 `pnpm eval:collaboration`，不在默认测试中调用付费模型；场景、预算和门槛见[评估协议](ai-docs/spec/6.Cumora协作重构/06-真实模型评估协议.md)。
 
-评估体系现有38题（10回归、12业务开发、16冻结留出），32项覆盖映射。`pnpm eval:dataset`检查清单与冻结合同，`pnpm eval:score --input 原始目录 --output 新目录`离线生成HTML/JSON报告；不重复调用模型。真实评估支持途中事件、完整产物hash、单人对照和跨批次共享预算；运行结束、任务通过与待评审分别显示。人工校准和正式留出实验尚未完成，见[测试体系实施状态](ai-docs/spec/6.Cumora协作重构/09-多Agent测试体系与评估集方案.md)。`.github/workflows/tests.yml`提供离线类型、UI规则、模块、冻结合同与Electron BDD工作流，真实模型仍手动执行。
+评估体系现有38题（10回归、12业务开发、16冻结留出），32项覆盖映射。`pnpm eval:dataset`检查清单与冻结合同，`pnpm eval:score --input 原始目录 --output 新目录`离线生成HTML/JSON报告；不重复调用模型。真实评估支持途中事件、完整产物hash、单人对照和跨批次共享预算；运行结束、任务通过与待评审分别显示。人工校准和正式留出实验尚未完成，见[测试体系实施状态](ai-docs/spec/6.Cumora协作重构/09-多Agent测试体系与评估集方案.md)。当前Actions已停用，`pnpm ci:local`执行工程、固定T1和全部UI；`pnpm ci:watch install`安装本机PR/main轮询，回传`BOAI local CI`状态，真实模型仍手动执行。云端工作流只保留手动备用配置。
 
 协作重构当前能力：连接共享模型容量，同轮事件合并保留来源；任务已有版本化工作记录、事务认领和跨运行预算。业务结果通过独立声明和证据记录，运行成功不自动等于工作完成。员工可同时判断、流式回复与整理各自记忆；普通同伴消息不作废对原始请求的独立聊天意图。默认同连接六项模型调用、六项独立工作区任务并行；任务结果先保存为草稿，过期时仅重新汇报，命令任务和相同员工会话文件保持互斥。新增父子工作、显式结果版本依赖和负责人定向接续；子工作共享原始预算，依赖失败阻塞，支持单独停止工作树。重启中断且不重放；此前固定验收版本的真实模型样本为 44/45，达到预登记门槛，仍存在内容质量限制且整体 token 开销增加；详见[实施记录](ai-docs/spec/2.已实现功能与代码现状/20-Electron-BDD与协作重构.md)。
 
