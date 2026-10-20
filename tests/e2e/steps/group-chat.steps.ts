@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 命令完成不冒充交付同时核对原Work状态及该真实完成Run Card，旧任务卡不计当前覆盖。
  * [OUTPUT]: 共用定位辅助核对固定身份/焦点；运行定位限定右侧真实Card，避免虚拟容器同run属性重复；窄窗保持原严格不重叠关系，等待实际布局完成。
  * [OUTPUT]: 定位前消息未获焦点，点击后固定message-target/实际焦点与原审批身份均须成立；关闭预览回原文件标签。
  * [OUTPUT]: 前两核心场景迁到现行文件标签/执行过程与原审批；父子Work/文件/单次授权核验保持，旧任务看板不计覆盖。
@@ -22,7 +23,7 @@ import { prepareGroupChat, resizeGroupWindow } from '../support/group-chat'
 
 const inputText = (input: Locator) => input.evaluate(element => element instanceof HTMLTextAreaElement ? element.value : Array.from(element.querySelector('p')?.childNodes ?? []).map(node => node instanceof HTMLBRElement ? node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n' : node instanceof HTMLElement && node.matches('[data-mention-id]') ? node.querySelector('.composer-mention-tag')?.textContent ?? '' : node.textContent ?? '').join(''))
 const openFiles = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '文件', exact: true }).click(); await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible() }
-const openExecution = async (page: Page, runId: string) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`.detail-panel [data-slot="card"][data-execution-run-id="${runId}"]`); const heading = run.getByRole('button', { name: /^(展开|收起)执行：/ }); await expect(heading).toBeVisible(); if (await heading.getAttribute('aria-expanded') === 'false') await heading.click(); await expect(run).toContainText('等待批准'); return run }
+const openExecution = async (page: Page, runId: string, status = '等待批准') => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`.detail-panel [data-slot="card"][data-execution-run-id="${runId}"]`); const heading = run.getByRole('button', { name: /^(展开|收起)执行：/ }); await expect(heading).toBeVisible(); if (await heading.getAttribute('aria-expanded') === 'false') await heading.click(); await expect(run).toContainText(status); return run }
 const openWorkRecords = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click() }
 
 async function locateApproval(page: Page, execution: Locator, expected: { conversationId: string; runId: string; approvalId: string }) {
@@ -227,7 +228,8 @@ Then('命令只执行一次且已结束运行不冒充已交付', async ({ runti
   expect(executed.length).toBeGreaterThan(0)
   const work = detail.workItems!.find(work => work.activeRunId === execution.id) ?? detail.workItems!.find(work => work.id === execution.workId)!
   expect(work.status).not.toBe('delivered')
-  await expect(page.locator(`[data-work-id="${work.id}"]`)).not.toContainText('已交付')
+  const record = await openExecution(page, execution.id, '已完成')
+  await expect(record).not.toContainText('已交付')
   await runtime.reviewFile('实际命令结果 · approval-marker.txt', join(groupDesign.approvalCwd!, 'approval-marker.txt'))
   await runtime.reviewData('双击批准仍只执行一次', { commandEvents: execution.toolEvents.filter(event => event.name === 'execute_command'), workId: work.id, workStatus: work.status, result: await readFile(join(groupDesign.approvalCwd!, 'approval-marker.txt'), 'utf8') })
   await runtime.reviewCheckpoint('实际命令执行一次，运行结束不冒充交付')

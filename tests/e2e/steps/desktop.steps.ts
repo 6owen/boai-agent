@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 定时任务标题明确属于原列表侧栏，创建仍核对独立Dialog与会话草稿。
+ * [OUTPUT]: bobo固定顶部分组保持；排序断言限定真实普通会话行，仍要求最近群在普通会话首位。
  * [OUTPUT]: 慢回复按当前ExecutionFeed实际流式正文及运行状态核验取消；不再要求过渡正文提前写成持久聊天消息。
  * [OUTPUT]: 私有判断禁工具而普通API聊天沿当前目录，实际零工具/零Work保持；现行定时Dialog/通讯录分区及记忆Dialog替代旧右侧整页。
  * [OUTPUT]: 离线群模型提供当前无工具群语义解释，保持原独立参与/格式修复/取消重启断言。
@@ -247,7 +249,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
     (agentIds) => window.boai.request('createConversation', { kind: 'group', title: '尚未发消息的群', agentIds }),
     initial.agents.filter(agent => !isCoreAgent(agent)).map((a) => a.id),
   )
-  await expect(page.locator('.conversation-item').first()).toContainText('方案讨论群')
+  await expect(page.getByRole('navigation', { name: '会话列表', exact: true }).locator('.conversation-row .conversation-item:not(.conversation-core-item)').first()).toContainText('方案讨论群')
   await expect.poll(() => page.locator('.app-icon').count()).toBeGreaterThan(10)
   const icons = await page.locator('.app-icon').evaluateAll((nodes) =>
     nodes
@@ -265,7 +267,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容' }).fill('保留在这里的草稿')
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await expect(page.getByRole('main').getByRole('heading', { name: '定时任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: '定时任务列表', exact: true }).getByRole('heading', { name: '定时任务', exact: true })).toBeVisible()
   await page.getByRole('complementary', { name: '定时任务列表', exact: true }).getByRole('button', { name: '新建定时任务', exact: true }).click()
   await page.getByRole('menuitem', { name: '手动创建', exact: true }).click()
   const schedule = page.getByRole('dialog', { name: '新建定时任务', exact: true })
