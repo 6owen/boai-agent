@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 2026-10-19 独立检索工具与业务数据源工具分别装配；无 sourceIds 仍可用获准检索。
  * [OUTPUT]: 已配置API目录权限时说明本地源/MCP不因绑定扩权，程序依赖目录须先申请，新增许可仅用于后续新调用。
  * [OUTPUT]: API/本机共用本轮检索选择工具；候选始终可见，调用仍受选择/原权限约束。
@@ -8,6 +9,7 @@
  * [POS]: Mastra and native product bridge share the same tool contract.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { mcpModelOutput } from '../../modules/sources/mcp-media'
 import { createWebSearchOperations, hasWebSearchTools, webSearchToolNames } from './web-search-tools'
 import { z } from 'zod'
 import { createTool } from '@mastra/core/tools'
@@ -47,7 +49,7 @@ export function createSourceTools(context: EngineContext, webReadOnly = false) {
   const tools = {
     ...(selection ? { select_web_search: createTool({ id: selection.name, description: selection.description, inputSchema: selection.schema, execute: input => selection.execute(input) }) } : {}),
     inspect_data_source: createTool({ id: 'inspect_data_source', description: sourceInspectDescription(context, webReadOnly), inputSchema: sourceInspectSchema, execute: input => context.inspectDataSource!(input.sourceId) }),
-    call_data_source: createTool({ id: 'call_data_source', description: sourceCallDescription + (webReadOnly ? ' Web candidates accept only verified read-only search/URL tools; other explicitly selected sources retain original employee permissions.' : ''), inputSchema: sourceCallSchema, execute: input => context.callDataSource!(sourceCallSchema.parse(input)) }),
+    call_data_source: createTool({ id: 'call_data_source', toModelOutput: mcpModelOutput, description: sourceCallDescription + (webReadOnly ? ' Web candidates accept only verified read-only search/URL tools; other explicitly selected sources retain original employee permissions.' : ''), inputSchema: sourceCallSchema, execute: input => context.callDataSource!(sourceCallSchema.parse(input)) }),
   }
   const searchTools = Object.fromEntries(createWebSearchOperations(context).map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })]))
   return { ...(available ? tools : {}), ...searchTools, ...(selection && (available || hasWebSearchTools(context)) ? { select_web_search: tools.select_web_search } : {}) } as typeof tools & typeof searchTools

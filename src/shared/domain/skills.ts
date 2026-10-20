@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 只读 builtin 来源与共享/插件来源分开，员工绑定仍使用原 local 身份。
  * [INPUT]: 受管技能、用户收藏、扫描计划、已保存员工和管理操作。
  * [OUTPUT]: 本机来源/hash 与员工版本冻结的单技能绑定计划，原子绑定结果和只读请求回执；本机来源身份与运行副本独立。
  * [OUTPUT]: 冻结 ZIP 的实际相对文件路径/类型/大小清单供二级导出预览；外部 CLI 来源的未知内容基线标识； 本地安装目标与员工资源隔离；本机身份与受管 ID 共用原版技能库导出预览；本机技能发现与详情、独立收藏标识、前后排序与原子跨组移动；多来源安装/更新、便携库/收藏恢复及持久操作合同。
@@ -145,7 +146,7 @@ export interface LocalSkill {
   name: string
   description: string
   path: string
-  source: 'global' | 'agent' | 'plugin'
+  source: 'global' | 'agent' | 'plugin' | 'builtin'
   sourceLabel: string
   pluginName?: string
 }

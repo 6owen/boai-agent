@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19应用业务协议：增加app catalog/describe/call/receipt/receipt-id，写操作显式稳定请求ID及真实结果退出状态。
  * [OUTPUT]: run监听覆盖服务启动至原执行结束；ready前中断保留恢复身份，退出130且不提交业务。
  * [OUTPUT]: 完整validate-server区分现有服务只读诊断与新隔离profile业务验证，输出步骤/耗时/错误和实际退出。
  * [OUTPUT]: CLI诊断/TTY动画开关、本机自定义服务入口及本次诊断日志保留，业务数据沿原生命周期。
@@ -61,6 +62,10 @@ Usage: boai <command> [options]
   cancel SESSION_ID [--run RUN_ID | --request-id MESSAGE_REQUEST_ID]
   serve --data-dir PATH [--host ADDRESS] [--port NUMBER]
   validate | --validate-server   Existing target: read-only; no target: isolated integration
+  app catalog [DOMAIN]
+  app describe OPERATION
+  app call OPERATION [JSON] --request-id ID
+  app receipt REQUEST_ID | app receipt-id RECEIPT_ID
   invoke CHANNEL [JSON]
   listen app|session:event [--session ID]
 
@@ -163,6 +168,17 @@ async function main() {
   else if (command === 'send' && args.length >= 1) { channel = 'sendMessage'; input = undefined }
   else if (command === 'run') { channel = 'sendEmployeeMessage'; input = undefined }
   else if (command === 'cancel' && args.length === 1) { channel = values['request-id'] ? 'cancelMessageExecution' : 'cancelRunExecution'; input = undefined }
+  else if (command === 'app' && args[0] === 'catalog' && args.length <= 2) { channel = 'application:catalog'; input = args[1] ? { domain: args[1] } : {} }
+  else if (command === 'app' && args[0] === 'describe' && args.length === 2) { channel = 'application:catalog'; input = { operation: args[1] } }
+  else if (command === 'app' && args[0] === 'receipt-id' && args.length === 2) { channel = 'application:receipt'; input = { receiptId: args[1] } }
+  else if (command === 'app' && args[0] === 'receipt' && args.length === 2) { channel = 'application:receipt'; input = { requestId: args[1] } }
+  else if (command === 'app' && args[0] === 'call' && args.length >= 2 && args.length <= 3) {
+    channel = 'application:call'
+    let payload: unknown
+    try { payload = args.length === 3 ? JSON.parse(args[2]) : {} } catch { throw new CliError('INVALID_REQUEST', 'app call 参数不是有效 JSON') }
+    // Writes require a caller-chosen stable ID. Never silently generate one on retry.
+    input = { operation: args[1], input: payload, ...(values['request-id'] ? { requestId: values['request-id'] } : {}) }
+  }
   else if (command === 'invoke' && args.length >= 1 && args.length <= 2) { channel = args[0]; try { input = args.length === 2 ? JSON.parse(args[1]) : undefined } catch { throw new CliError('INVALID_REQUEST', 'invoke 参数不是有效 JSON') } }
   else if (command === 'listen' && args.length === 1 && eventChannelSchema.safeParse(args[0]).success) { channel = 'events:subscribe'; input = { channel: args[0], conversationId: values.session } }
   else throw new CliError('INVALID_REQUEST', '命令或参数无效，请使用 --help 查看当前可用命令')
@@ -182,7 +198,7 @@ async function main() {
   if (values.cwd !== undefined && values['workspace-dir'] !== undefined && values.cwd !== values['workspace-dir']) throw new CliError('INVALID_REQUEST', '--cwd与--workspace-dir不能指定不同目录')
   const executing = ['send', 'run', 'cancel'].includes(command) || following
   if (following && values['request-id'] !== undefined) throw new CliError('INVALID_REQUEST', 'receipt使用原位置参数的requestId')
-  if ((!executing && !sessionMutation && values['request-id'] !== undefined) || (!executing && (values['output-format'] !== undefined || values['send-timeout'] !== undefined)) || (!['send', 'run'].includes(command) && values.stdin !== undefined) || (command !== 'send' && (values.mention !== undefined || values['reply-to'] !== undefined))) throw new CliError('INVALID_REQUEST', '该执行选项不适用于当前命令')
+  if ((!executing && !sessionMutation && !(command === 'app' && args[0] === 'call') && values['request-id'] !== undefined) || (!executing && (values['output-format'] !== undefined || values['send-timeout'] !== undefined)) || (!['send', 'run'].includes(command) && values.stdin !== undefined) || (command !== 'send' && (values.mention !== undefined || values['reply-to'] !== undefined))) throw new CliError('INVALID_REQUEST', '该执行选项不适用于当前命令')
   if (values['output-format'] && !['text', 'stream-json'].includes(values['output-format']) || values.json && values['output-format'] === 'text') throw new CliError('INVALID_REQUEST', '输出格式无效或与 --json 冲突')
   if (values['request-id'] !== undefined && (!values['request-id'].length || values['request-id'].length > 200)) throw new CliError('INVALID_REQUEST', 'request-id 长度必须为 1–200')
   const waitTimeout = values['send-timeout'] === '0' ? undefined : values['send-timeout'] ? integer(values['send-timeout'], 2_147_483_647) : 300_000
@@ -276,6 +292,7 @@ async function main() {
       finally { unsubscribe(); removeDisconnect(); process.off('SIGINT', interrupt); process.off('SIGTERM', interrupt) }
     } else {
       const response = await client.invoke(channel, ...(input === undefined ? [] : [input]))
+      if (command === 'app' && response && typeof response === 'object' && 'status' in response) process.exitCode = response.status === 'succeeded' ? 0 : response.status === 'rejected' ? 1 : 3
       const result = command === 'versions' ? { ...(response as object), cli: version } : response
       process.stdout.write(`${JSON.stringify(result ?? null, null, values.json ? undefined : 2)}\n`)
     }

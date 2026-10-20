@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 手动触发真实自动化来源沿员工搜索绑定，私有判断零源调用，查询/正文与重复触发/重启不重放。
+ * [OUTPUT]: 配置变更后的任务经明确编辑保存恢复执行；更换执行员工仅作用后续运行，历史归属/旧触发回执保持。
+ * [OUTPUT]: 手动触发真实自动化来源沿员工数据源绑定，不再填退役的source检索偏好；私有判断零源调用，查询/正文与重复触发/重启不重放。
  * [OUTPUT]: 执行历史删除核对真实目录/日志释放、主聊和其他记录保留、过期/运行门禁、重启续清与旧触发不重放。
  * [OUTPUT]: IM聊天在无公开正文时投影同一次任务执行，读取原思考证据；清空后撤去镜像，不复制或重跑Run。
  * [OUTPUT]: 任务浏览器经过真实宿主上下文/工具/SQLite动作回执；普通与任务消息定位、清空后拒绝均回归。
@@ -90,7 +91,7 @@ it('retrieves public web facts in an automation with the executing employee bind
     source = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: webSourceConfig }) as DataSource
     other = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...webSourceConfig, name: 'Unbound search' } }) as DataSource
     const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, directoryRevision, systemRole: _s, creationSource: _c, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
-    await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [source.id], webSearch: { mode: 'source', sourceId: source.id } })
+    await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [source.id] })
     const plan = await f.service.handle('saveAutomation', { ...f.input, prompt: '通过本人搜索源查证公开资料', notify: false }) as AutomationDefinition
     const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence
     await vi.waitFor(async () => { if (error) throw error; expect((await f.view()).occurrences.find(row => row.id === occurrence.id)?.status).toBe('completed') }, { timeout: 10000 })
@@ -525,6 +526,38 @@ it.each(['address-changed', 'removed'] as const)('does not reuse saved automatio
   expect(await restarted.handle('runAutomation', request)).toMatchObject({ id: skipped.id, status: 'skipped', attentionReason: 'authorization' })
   expect((await restarted.handle('snapshot', undefined) as Snapshot).conversations).toEqual(before.conversations)
   expect(f.contexts).toEqual([])
+})
+
+it('reauthorizes an existing task by explicitly saving it after its employee configuration changes without replaying the skipped request', async () => {
+  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(a => a.id === 'researcher')!
+  await f.service.handle('saveAgent', { ...agent, role: `${agent.role}（已调整）` })
+  const request = { id: plan.id, requestId: 'old-authority' }
+  const skipped = await f.service.handle('runAutomation', request) as AutomationOccurrence
+  expect(skipped).toMatchObject({ status: 'skipped', attentionReason: 'authorization', runIds: [] })
+  const saved = await f.service.handle('saveAutomation', { ...f.input, id: plan.id, expectedRevision: plan.revision }) as AutomationDefinition
+  expect(saved.authorizedFingerprint).not.toBe(plan.authorizedFingerprint)
+  const executed = await f.service.handle('runAutomation', { id: plan.id, requestId: 'explicit-new-run' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences.find(o => o.id === executed.id)?.status === 'completed')
+  expect(f.contexts).toHaveLength(1)
+  expect(await f.service.handle('runAutomation', request)).toMatchObject({ id: skipped.id, status: 'skipped' })
+  expect(f.contexts).toHaveLength(1)
+})
+
+it('changes an existing task employee for future runs while preserving the previous execution assignment', async () => {
+  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'original-employee' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  const before = await f.service.handle('snapshot', undefined) as Snapshot
+  const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...writer } = before.agents.find(a => a.id === 'writer')!
+  await f.service.handle('saveAgent', { ...writer, connectionId: before.agents.find(a => a.id === 'researcher')!.connectionId })
+  const saved = await f.service.handle('saveAutomation', { ...f.input, id: plan.id, expectedRevision: plan.revision, owner: { kind: 'employee', employeeId: 'writer' }, employeeIds: ['writer'] }) as AutomationDefinition
+  expect(saved.executionRevision).toBe(plan.executionRevision + 1)
+  const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'replacement-employee' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  expect(f.contexts.map(ctx => ctx.agent.id)).toEqual(['researcher', 'writer'])
+  expect(await f.service.handle('getAutomationOccurrence', { id: first.id })).toMatchObject({ plan: { owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'] } })
+  expect(await f.service.handle('getAutomationOccurrence', { id: second.id })).toMatchObject({ plan: { owner: { kind: 'employee', employeeId: 'writer' }, employeeIds: ['writer'] } })
 })
 
 it('previews workdays and multiple weekdays using the same calendar rule without creating a plan or workspace', async () => {

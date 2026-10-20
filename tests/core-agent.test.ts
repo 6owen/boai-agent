@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19核心默认完全访问及可显式限制取代旧强制禁命令；固定身份/后端限制保持。
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: 核心员工身份、真实 SQLite/工作区与已安装 Mastra 工具和阶段工厂。
  * [OUTPUT]: 新旧库唯一核心身份、改名/省略标识重启保留、权限伪造拒绝及核心工具的调用身份/副作用门禁与真实 Mastra SDK 任务/普通阶段工具隔离回归。
@@ -47,7 +48,7 @@ test('new and existing databases have one stable core; renaming and an older cli
   const { employees, reopen } = await registry()
   const core = employees.get(CORE_AGENT_ID)
   expect(employees.values().filter(isCoreAgent)).toHaveLength(1)
-  expect(core).toMatchObject({ name: 'bobo', systemRole: 'core', connectionId: '', active: true, allowCommands: false, memoryNamespace: 'employee:bobo', executionBackend: { kind: 'mastra-model' } })
+  expect(core).toMatchObject({ name: 'bobo', systemRole: 'core', connectionId: '', active: true, allowCommands: true, executionPermission: 'full-access', memoryNamespace: 'employee:bobo', executionBackend: { kind: 'mastra-model' } })
   expect(employees.values().filter(agent => !isCoreAgent(agent)).map(agent => agent.id)).toEqual(['researcher', 'writer', 'reviewer'])
   await employees.save({ ...editable(core), name: '波波', connectionId: 'chosen', modelId: 'chosen-model' })
   let reopened = await reopen()
@@ -64,11 +65,14 @@ test('a legacy database retains its employees while core authority cannot be sup
   expect(employees.get('legacy')).toMatchObject({ ...legacy, executionBackend: { kind: 'mastra-model' }, configVersion: 2 })
   expect(employees.values()).toHaveLength(2)
   await expect(employees.save({ ...editable(legacy), systemRole: 'core' })).rejects.toThrow('只能由应用预置')
-  for (const patch of [{ active: false }, { allowCommands: true }, { executionBackend: { kind: 'acp-local' as const, profileId: 'external' } }]) {
+  for (const patch of [{ active: false }, { executionBackend: { kind: 'acp-local' as const, profileId: 'external' } }]) {
     await expect(employees.save({ ...editable(core), ...patch })).rejects.toThrow('系统核心 Agent')
   }
   expect(employees.get(CORE_AGENT_ID)).toEqual(core)
   expect((await store.load<DigitalAgent>('agents')).find(agent => agent.id === CORE_AGENT_ID)).toEqual(core)
+  const limited = await employees.save({ ...editable(core), executionPermission: 'read-only', allowCommands: false })
+  expect(limited.allowCommands).toBe(false)
+  expect((await employees.save({ ...editable(limited), executionPermission: 'full-access', allowCommands: true })).allowCommands).toBe(true)
 })
 
 async function context(): Promise<EngineContext> {

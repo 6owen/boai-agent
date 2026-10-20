@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 工作区目录添加/按需申请与载入操作放在分区标题右侧，目录分区取消/保存使用ghost/sm；原草稿和版本检查保持。
+ * [OUTPUT]: 网页检索分区仅选择员工检索方式，标题说明指向全局检索设置，不显示服务配置或授权列表。
+ * [OUTPUT]: 核心员工可通过共用执行权限字段保存命令能力，不再强制关闭。
  * [OUTPUT]: 2026-10-19 网页检索作为独立分区保存偏好与可用服务；数据源分区只编辑业务绑定。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 检索偏好沿员工草稿保存；主动解绑同次重置，旧缺省不因身份编辑补写。
@@ -33,6 +36,7 @@
  * [OUTPUT]: API与原生Codex共用技能/知识和命令配置，切至Codex保留资源绑定；旧ACP继续受限。
  * [OUTPUT]: 本机Codex员工复用材料技能与逐次命令审批；普通群协作已接，组织群/自动化另行验收。
  * [OUTPUT]: 配置选择原生Codex或旧ACP，启动项按协议过滤且不混用API连接。
+ * [OUTPUT]: Core command availability follows the same saved execution permission as other employees.
  * [INPUT]: 员工与群领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 已发布 bobo 协作群编辑保留现有核心成员，普通手动建群不能新添 bobo。
  * [OUTPUT]: Mastra 员工/bobo 默认浏览器可用，表单不展示开关或要求先保存再启用；ACP支持边界由共享能力判断；已保存员工的明确本机技能绑定、草稿先保存、未决请求门禁及真实回执配置/版本同步；员工配置固定启用且不展示开关；核心助手可改名及设置默认模型，提供API/本机Codex后端且隐藏命令开关，并排除群候选；既有群配置可确认解散及清理记录/群空间，刷新后丢弃编辑草稿并关闭；新交流记忆范围和可选事项关联；既有团队群的目的/建议编辑、删除和版本保存；下拉字段统一使用 shadcn Select；独立表单 ID 支持多个详情标签同时挂载。
@@ -41,7 +45,7 @@
  * [POS]: src/renderer/components/employee/editors.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { EmployeeWebSearchFields } from './web-search'
+import { EmployeeWebSearchFields, employeeWebSearchHint } from './web-search'
 import { SourcePicker } from '@/pages/sources/source-picker'
 import { ConnectionSettingRow } from '@/pages/settings/connection-layout'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
@@ -181,7 +185,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     if (identityOnly) setIdentitySaving(true)
     await run(async () => {
       let committed: DigitalAgent
-      try { committed = await api.request('saveAgent', { ...submitted, expectedConfigVersion: initialVersion.current, name: submitted.name.trim(), role: submitted.role.trim(), ...(identityOnly || section && section !== 'model' ? {} : { executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: !core && form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }) }
+      try { committed = await api.request('saveAgent', { ...submitted, expectedConfigVersion: initialVersion.current, name: submitted.name.trim(), role: submitted.role.trim(), ...(identityOnly || section && section !== 'model' ? {} : { executionPermission: (form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only') : ['codex-local', 'claude-local'].includes(form.executionBackend!.kind) ? form.executionPermission : undefined, allowCommands: form.executionBackend?.kind !== 'acp-local' && form.allowCommands }) }) }
       catch (reason) { setIdentityPending(false); if (agent) { setSaveUnconfirmed(true); await readCommittedConfiguration() }; throw reason }
       const updated = savedAgentForm(committed)
       // Identity saves must not submit or erase another section's draft, including new typing during the request.
@@ -225,8 +229,8 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     </div>
   </div>
   const commandPermission = snapshot.commandPermissions?.find(permission => permission.agentId === agent?.id)
-  const saveAction = <Button type="submit" size={section ? 'sm' : 'default'} form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{section || actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
-  const actions = actionsTarget === undefined ? <><Button type="button" size={section ? 'sm' : 'default'} variant="secondary" disabled={busy || uploading || choosingDirectory || Boolean(section && bindingLocked)} onClick={() => guard.navigate(onClose, section ? { resetOnDiscard: false } : undefined)}>取消</Button>{saveAction}</> : undefined
+  const saveAction = <Button type="submit" variant={section === 'directories' ? 'ghost' : 'default'} size={section ? 'sm' : 'default'} form={formId} disabled={locked || identityDisabled || !form.name.trim() || !modelReady}>{busy && <LoaderCircle size={15} className="spinner" />}{section || actionsTarget !== undefined ? '保存' : agent ? '保存修改' : '创建员工'}</Button>
+  const actions = actionsTarget === undefined ? <><Button type="button" size={section ? 'sm' : 'default'} variant={section === 'directories' ? 'ghost' : 'secondary'} disabled={busy || uploading || choosingDirectory || Boolean(section && bindingLocked)} onClick={() => guard.navigate(onClose, section ? { resetOnDiscard: false } : undefined)}>取消</Button>{saveAction}</> : undefined
   const inlineActions = section ? <div className="flex items-center gap-2">{actions}</div> : undefined
   const visible = (key: AgentConfigurationSection) => !section || section === key
   const content = <form data-edit-form={dirty || configurationVisible && (!inlineIdentity || section !== 'identity') ? true : undefined} id={formId} onSubmit={submit} className="form-grid employee-form-sections">
@@ -235,16 +239,14 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       <fieldset className="contents" disabled={locked}>
       {visible('model') && <EmployeeFormSection title="模型与权限" actions={inlineActions}>
       <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
-      {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: !core && executionPermission !== 'read-only' })) }} disabled={locked} full />}
+      {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' })) }} disabled={locked} full />}
       </EmployeeFormSection>}
-      {visible('directories') && <EmployeeFormSection title={(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? '授权目录' : '目录访问'} actions={(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? inlineActions : undefined}>
-        {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <DirectoryGrantFields api={api} value={form.directoryGrants} fullAccess={form.executionPermission === 'full-access'} disabled={locked} onBusyChange={setChoosingDirectory} onChange={directoryGrants => setForm(current => ({ ...current, directoryGrants }))} /> : <p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p>}
-        {agent && (agent.directoryRevision ?? 0) > (form.expectedDirectoryRevision ?? 0) && <Button type="button" variant="secondary" size="sm" disabled={locked} onClick={() => {
+      {visible('directories') && ((form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <DirectoryGrantFields api={api} value={form.directoryGrants} fullAccess={form.executionPermission === 'full-access'} disabled={locked} onBusyChange={setChoosingDirectory} onChange={directoryGrants => setForm(current => ({ ...current, directoryGrants }))} renderSection={(content, directoryActions) => <EmployeeFormSection title="授权目录" actions={<div className="flex flex-wrap items-center gap-2">{directoryActions}
+        {agent && (agent.directoryRevision ?? 0) > (form.expectedDirectoryRevision ?? 0) && <Button type="button" variant="ghost" size="sm" disabled={locked} onClick={() => {
           const authorization = { directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision }
           baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), ...authorization })
           setForm(current => ({ ...current, ...authorization }))
-        }}>载入已批准目录，保留其他草稿</Button>}
-      </EmployeeFormSection>}
+        }}>载入已批准目录，保留其他草稿</Button>}{inlineActions}</div>}>{content}</EmployeeFormSection>} /> : <EmployeeFormSection title="目录访问"><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></EmployeeFormSection>)}
       {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
       </fieldset>
       {(form.executionBackend?.kind!=='acp-local')&&<>{visible('skills') && <EmployeeFormSection title="技能" actions={<div className="flex flex-wrap items-center gap-2">{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} resources={availableResources} skillIds={form.skillIds} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} onChange={ids => set('skillIds', ids)} /> : <Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button>}{inlineActions}</div>}>
@@ -253,7 +255,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
         </div>}
       </EmployeeFormSection>}
       <fieldset className="contents" disabled={locked}>
-      {visible('web-search') && <EmployeeFormSection title="网页检索" actions={inlineActions}><EmployeeWebSearchFields api={api} value={form.webSearch} onChange={value => set('webSearch', value)} disabled={locked} active={active && configurationVisible} /></EmployeeFormSection>}
+      {visible('web-search') && <EmployeeFormSection title="网页检索" hint={employeeWebSearchHint} actions={inlineActions}><EmployeeWebSearchFields api={api} value={form.webSearch} onChange={value => set('webSearch', value)} disabled={locked} active={active && configurationVisible} /></EmployeeFormSection>}
       {visible('sources') && <SourcePicker api={api} ids={form.sourceIds ?? []} onChange={ids => set('sourceIds', ids)} onOpen={openResource && (source => openResource({ kind: 'source', id: source.id, name: source.name }))} disabled={locked} active={active && configurationVisible} allSources={core} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={<div className="flex flex-wrap items-center gap-2">{actions}{inlineActions}</div>}>{content}</EmployeeFormSection>} />}
       {visible('knowledge') && <EmployeeFormSection title="知识资料">{agent ? <Button type="button" variant="ghost" size="sm" disabled={locked || !openResource} onClick={() => openResource?.({ kind: 'knowledge-files', id: agent.id, name: agent.name })}>知识资料 · {agent.knowledgeIds.length} 份</Button> : <p className="field-hint">保存员工后，在文件区域管理知识资料。</p>}</EmployeeFormSection>}
       </fieldset>

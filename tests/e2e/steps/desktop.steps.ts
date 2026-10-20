@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 人格与行为直接展示配置源文件，文件编辑保持独立Dialog及局部草稿守卫；本批仅维护源码，不运行E2E。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
@@ -291,13 +292,14 @@ async function editEmployeeResources(previous: Awaited<ReturnType<typeof exercis
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await page.getByRole('button', { name: '查看 研究员', exact: true }).click()
-  await panel.getByRole('tab', { name: '系统文件', exact: true }).click()
+  await panel.getByRole('tab', { name: '人格与行为', exact: true }).click()
   await panel.getByRole('button', { name: /SOUL.md/ }).click()
-  await panel.getByRole('textbox', { name: 'SOUL.md 内容', exact: true }).fill('STYLE_MARKER_2026。由界面保存的新风格。')
-  await panel.getByRole('button', { name: '保存文件', exact: true }).click()
+  await page.getByRole('dialog', { name: 'SOUL.md', exact: true }).getByRole('textbox', { name: 'SOUL.md 内容', exact: true }).fill('STYLE_MARKER_2026。由界面保存的新风格。')
+  await page.getByRole('dialog', { name: 'SOUL.md', exact: true }).getByRole('button', { name: '保存文件', exact: true }).click()
   await expect
     .poll(async () => (await page.evaluate(() => window.boai.request('readAgentFile', { agentId: 'researcher', name: 'SOUL.md' }))).content)
     .toContain('由界面保存')
+  await page.getByRole('button', { name: '关闭配置源文件 SOUL.md', exact: true }).click()
   await panel.getByRole('tab', { name: '记忆', exact: true }).click()
   await panel.getByRole('button', { name: '添加', exact: true }).click()
   await panel.getByRole('textbox', { name: '新增记忆', exact: true }).fill('群内专属约定：所有结论需注明来源。')

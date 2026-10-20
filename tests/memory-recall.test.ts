@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户/模型/导入记忆展示不伪造事件时间或亲历身份，素材日期与保存时间分开；原正文/引用和预算保持。
  * [INPUT]: 统一记忆策略、获知回执和合成来源/中文请求。
  * [OUTPUT]: 员工隔离与有界证据预算、实际获知授权指纹/父条目版本；硬范围、期限与来源撤权不能从raw证据逃逸。
  * [POS]: T2.3 纯召回合同；实际 AppService 装配由 unified-memory.test.ts 验证。
@@ -69,4 +70,23 @@ test('observation fingerprint preserves authority independent of property order 
   const observation = raw().observations[0]
   expect(observationAuthorityFingerprint(Object.fromEntries(Object.entries(observation).reverse()) as unknown as MemoryObservation)).toBe(observationAuthorityFingerprint(observation))
   for (const change of [{ useScope: 'conversation' as const }, { ownerAgentId: 'b' }, { sourceResourceIds: ['new'] }, { contextRef: { kind: 'work' as const, id: 'new-work' } }]) expect(observationAuthorityFingerprint({ ...observation, ...change })).not.toBe(observationAuthorityFingerprint(observation))
+})
+
+test('memory provenance labels never turn save times or record ownership into event facts', () => {
+  const content = '去年朋友推荐了一本书，我只记下书名，还没有读。'
+  const saved = '2026-10-20T09:00:00Z', updated = '2026-10-21T10:00:00Z'
+  for (const origin of ['user', 'model', 'import'] as const) {
+    const value = entry('saved', { origin, content, createdAt: saved, updatedAt: updated, sourceMessageIds: [], ...(origin === 'model' ? { sourceMemoryIds: ['original-note'], diary: { date: '2026-10-19', behaviorRunId: 'r' } } : {}), attribution: '原作者' })
+    const before = structuredClone(value), text = memoryText(value)
+    expect(text).toContain(`保存于 ${saved}`); expect(text).toContain(`记录更新于 ${updated}`)
+    expect(text).not.toContain('发生于'); expect(text).not.toContain('用户设置')
+    expect(text).toContain(origin === 'user' ? '用户提供' : origin === 'model' ? '模型提取或整理（不证明员工亲历）' : '导入记录（原作者按来源）')
+    expect(text.endsWith('\n' + content)).toBe(true); expect(value).toEqual(before)
+    if (origin === 'model') { expect(text).toContain('父记忆 original-note'); expect(text).toContain('反思素材日期 2026-10-19') }
+    else expect(text).toContain('无关联消息或父记忆')
+    expect(text).toContain('原归属 原作者')
+  }
+  const linked = memoryText(entry('quoted', { attribution: '实际发言者', sourceMessageIds: ['real-message'], sourceMemoryIds: ['derived-parent'] }))
+  expect(linked).toContain('引用消息 real-message；父记忆 derived-parent')
+  expect(memoryText(entry('legacy', { origin: undefined as unknown as MemoryEntry['origin'] }))).toContain('记录方式未知')
 })

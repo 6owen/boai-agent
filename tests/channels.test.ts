@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 回应来源、未知不重试、旧回执不覆盖新状态与BOAI续聊不外发。
  * [OUTPUT]: 渠道私聊/群沿当前API员工目录批准，另一员工授权不外借，临时许可不跨来源续聊。
  * [OUTPUT]: CLI公开RPC/独立产物沿原渠道事务续聊与明确发送；旧hash/撤权拒绝、未知结果与重启不重放。
  * [OUTPUT]: 渠道私聊/群搜索沿本人源绑定与原首选，平台来信仅原渠道回发、BOAI续聊不回发、重复/重启零重放。
@@ -67,12 +68,13 @@ async function fixture(connectFailure?: unknown, groupName?: (chatId: string) =>
   const incoming = new Map<string, (event: ChannelInbound) => Promise<void>>()
   const observed = new Map<string, () => void>()
   const sent: { bindingId: string; text: string; files: string[]; externalThreadId: string }[] = []
-  const failSend = new Set<string>()
+  const failSend = new Set<string>(), reactionCalls: unknown[] = []
+  let failReaction = false
   const factory: ChannelTransportFactory = async (binding, _credential, receive, _failed, received) => {
     let connected = false
     incoming.set(binding.id, receive)
     if (received) observed.set(binding.id, received)
-    return { groupName, start: async () => { if (connectFailure !== undefined) throw connectFailure; connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
+    return { react: async (source, emoji, active) => { reactionCalls.push({ source, emoji, active }); if (failReaction) throw new Error('reaction response lost') }, groupName, start: async () => { if (connectFailure !== undefined) throw connectFailure; connected = true; return { botUserId: `bot-${binding.appId}` } }, stop: async () => { connected = false }, connected: () => connected, send: async (target, text, files) => { sent.push({ bindingId: binding.id, text, files: files.map(file => file.name), externalThreadId: target.externalThreadId }); if (failSend.has(binding.id)) throw new Error('response lost'); return ['external-reply'] } }
   }
   const create = async () => { const service = new AppService({ dataPath: root, secrets, engine, channelTransport: factory, emit: () => {} }); services.push(service); await service.init(); return service }
   const service = await create()
@@ -83,7 +85,7 @@ async function fixture(connectFailure?: unknown, groupName?: (chatId: string) =>
   }
   const save = (agentId = 'writer', platform: ChannelBindingInput['platform'] = 'feishu', appId = platform + '-' + agentId, extra: Partial<ChannelBindingInput> = {}) => service.handle('saveChannelBinding', { agentId, platform, appId, name: `${platform}-${agentId}`, credential: 'fixture-secret', allowedUserIds: ['owner'], allowedChatIds: ['group'], requestId: `${platform}-${appId}`, ...extra }) as Promise<ChannelBindingState>
   const connect = async (binding: ChannelBindingState) => { await service.handle('connectChannelBinding', { id: binding.id, expectedRevision: binding.revision }); return (await service.handle('listChannelBindings', { agentId: binding.agentId }) as ChannelBindingState[]).find(value => value.id === binding.id)! }
-  return { root, secrets, engine, incoming, observed, sent, failSend, service, create, save, connect }
+  return { root, secrets, engine, incoming, observed, sent, failSend, service, create, save, connect, reactionCalls, failReaction: () => { failReaction = true } }
 }
 const event = (overrides: Partial<ChannelInbound> = {}): ChannelInbound => ({ eventId: 'event-1', tenantId: 'tenant', chatId: 'private', externalThreadId: 'lark:private:event-1', kind: 'direct', userId: 'owner', userName: '外部用户', text: '你好', isBot: false, mentioned: true, mentionedUserIds: [], attachments: [], ...overrides })
 async function until(predicate: () => Promise<boolean> | boolean) { for (let i = 0; i < 400; i++) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 10)) }; throw new Error('Channel fixture timeout') }
@@ -937,4 +939,77 @@ for (const transport of ['rpc', 'standalone'] as const) it.skipIf(transport === 
       try { db.exec(`VACUUM INTO '${join(directory, 'boai.sqlite').replaceAll("'", "''")}'`) } finally { db.close() }
     }
   } finally { for (const close of cleanup.reverse()) await close() }
+})
+
+it('channel reactions bind actual origin, share receipts and stay local on BOAI continuation', async () => {
+  const f = await fixture(), results: unknown[] = []
+  let complete = false
+  f.engine.handler = async ctx => {
+    const target = (await ctx.reactions!.list()).find(item => item.messageId === ctx.triggerMessageId)!
+    expect(target.destination).toBe(ctx.messages.find(m => m.id === ctx.triggerMessageId)?.channel ? 'channel' : 'boai')
+    const input = { messageId: target.messageId, emoji: '👍', active: true }
+    results.push(await ctx.reactions!.set(input))
+    results.push(await ctx.reactions!.set(input))
+    // Replaying the earlier add after removal must not reapply its local projection.
+    await ctx.reactions!.set({ ...input, active: false })
+    if (target.destination === 'channel') await ctx.reactions!.set(input)
+    await ctx.onDelta('收到。'); complete = true
+  }
+  const binding = await f.connect(await f.save())
+  await f.incoming.get(binding.id)!(event())
+  await until(() => complete && f.sent.length === 1)
+  const room = (await channels(f.service))[0]
+  await until(async () => (await detail(f.service, room.id)).runs.every(run => run.status === 'completed'))
+  expect(f.reactionCalls).toHaveLength(2)
+  expect(f.reactionCalls[0]).toMatchObject({ source: { eventId: 'event-1', bindingId: binding.id, replyThreadId: 'lark:private:event-1' }, emoji: '👍', active: true })
+  const source = (await detail(f.service, room.id)).messages.find(message => message.channel)!
+  expect(source.reactions).toEqual([])
+  expect(results.slice(0, 2)).toEqual([expect.objectContaining({ status: 'sent', destination: 'channel' }), expect.objectContaining({ status: 'sent', destination: 'channel' })])
+  complete = false
+  await f.service.handle('sendMessage', { conversationId: room.id, requestId: 'local-react', content: '在BOAI继续聊', mentionIds: [] })
+  await until(() => complete)
+  await until(async () => (await detail(f.service, room.id)).runs.every(run => run.status === 'completed'))
+  expect(f.reactionCalls).toHaveLength(2); expect(f.sent).toHaveLength(1)
+  const db = await ProductStore.openReadOnly(join(f.root, 'boai.sqlite'))
+  try { expect((await db.load<ChannelDelivery>('channelDeliveries')).filter(item => item.reaction)).toHaveLength(2); expect(await db.load('workItems')).toHaveLength(0) } finally { await db.close() }
+  await f.service.close(); f.service = await f.create()
+  expect(f.reactionCalls).toHaveLength(2)
+})
+it('uncertain channel reactions retain one receipt and never project success or replay after restart', async () => {
+  const f = await fixture(); f.failReaction()
+  let complete = false, results: unknown[] = []
+  f.engine.handler = async ctx => {
+    const input = { messageId: ctx.triggerMessageId!, emoji: '👍', active: true }
+    results = [await ctx.reactions!.set(input), await ctx.reactions!.set(input)]
+    await ctx.onDelta('回应未确认。'); complete = true
+  }
+  const binding = await f.connect(await f.save())
+  await f.incoming.get(binding.id)!(event())
+  await until(() => complete && f.sent.length === 1)
+  const room = (await channels(f.service))[0]
+  expect(results).toEqual([expect.objectContaining({ status: 'unknown' }), expect.objectContaining({ status: 'unknown' })])
+  expect(f.reactionCalls).toHaveLength(1)
+  expect((await detail(f.service, room.id)).messages.find(message => message.channel)?.reactions).toBeUndefined()
+  await f.service.close(); f.service = await f.create()
+  expect(f.reactionCalls).toHaveLength(1)
+})
+
+it('Telegram employee reactions replace only their own mark and revoke access after the run', async () => {
+  const f = await fixture(); let ctx: EngineContext | undefined, complete = false
+  f.engine.handler = async context => {
+    ctx = context
+    const input = { messageId: context.triggerMessageId!, emoji: '👍', active: true }
+    await f.service.handle('setMessageReaction', { conversationId: context.conversation.id, ...input })
+    await context.reactions!.set(input)
+    await context.reactions!.set({ ...input, emoji: '🎉' })
+    await context.onDelta('收到。'); complete = true
+  }
+  const binding = await f.connect(await f.save('writer', 'telegram', '42', { credential: '42:fixture-token' }))
+  await f.incoming.get(binding.id)!(event({ eventId: '100:1', tenantId: 'telegram', chatId: '100', externalThreadId: 'telegram:100' }))
+  await until(() => complete && f.sent.length === 1)
+  const room = (await channels(f.service))[0]
+  await until(async () => (await detail(f.service, room.id)).runs.every(run => run.status === 'completed'))
+  expect((await detail(f.service, room.id)).messages.find(message => message.id === ctx!.triggerMessageId)?.reactions).toEqual([{ emoji: '👍', senderId: 'user', senderName: '我' }, { emoji: '🎉', senderId: 'writer', senderName: ctx!.agent.name }])
+  await expect(ctx!.reactions!.set({ messageId: ctx!.triggerMessageId!, emoji: '👍', active: true })).rejects.toThrow()
+  expect(f.reactionCalls).toHaveLength(2)
 })

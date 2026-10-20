@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: @按钮仅提及会话员工，$按钮引用技能/文件/提示词，两类候选与显隐状态独立。
  * [INPUT]: 当前员工、连接、运行状态和原消息/配置回调。
  * [OUTPUT]: 附件、数据源指定、命令、技能/文件提及及当前连接内模型选择；数据源选择不改变绑定；暂时隐藏权限菜单，原权限值保持。
  * [POS]: 会话与核心首发共用的轻量工具栏；连接管理归员工设置。
@@ -22,6 +23,7 @@ interface Props {
   conversationReady?: boolean; replyMode?: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
   commandsVisible: boolean; onCommands(): void
+  referencesVisible: boolean; onReferences(): void
   onOpenWorkspace(): void; onMentions(): void; onSettings(agent?: DigitalAgent): void; onConfigureAgent(agent: DigitalAgent): void
   onReferenceBrowser?(): void; browserReferenceBusy?: boolean
   onAddMaterial?(): void; materialsDisabled?: boolean
@@ -44,7 +46,8 @@ export function ComposerToolbar(props: Props) {
       </DropdownMenu>}
       {!group && !external && primary && supportsDataSources(primary.executionBackend?.kind) && props.onSelectSource && <ComposerSourcePicker key={primary.id} api={props.api} agent={primary} active={props.pageActive} disabled={busy || props.sourcesDisabled || props.replyMode} onSelect={props.onSelectSource} />}
       <Button variant="ghost" size="icon-sm" round aria-label="快捷命令" aria-expanded={props.commandsVisible} onClick={props.onCommands}><span aria-hidden="true">/</span></Button>
-      {!external && <Button variant="ghost" size="icon-sm" round aria-label={group ? '提及群聊成员' : '提及技能和文件'} aria-expanded={props.mentionsVisible} disabled={props.replyMode} onClick={props.onMentions}><AtSign /></Button>}
+      {!external && <Button variant="ghost" size="icon-sm" round aria-label="引用技能、文件和提示词" aria-expanded={props.referencesVisible} disabled={props.replyMode} onClick={props.onReferences}><span aria-hidden="true">$</span></Button>}
+      {!external && group && <Button variant="ghost" size="icon-sm" round aria-label="提及群聊成员" aria-expanded={props.mentionsVisible} disabled={props.replyMode} onClick={props.onMentions}><AtSign /></Button>}
       {/* 权限模式暂不展示；不修改员工已保存的权限，真实审批仍由原执行入口办理。 */}
     </ChatComposerActions>
     <ChatComposerActions align="end">

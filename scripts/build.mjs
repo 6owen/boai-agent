@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 分发可选本地Qwen语音安装器/固定清单；模型与venv不随包分发。
+ * [OUTPUT]: 清单中的完整技能源随 dist 分发供桌面/独立服务首次绑定，排除开发目录地图。
+ * [OUTPUT]: 分发员工脚本工具库，复用原CLI客户端；不包含owner发现或独立执行服务。
  * [OUTPUT]: 同时构建独立Node serve装配，原worker共用owner；CLI客户端仍单文件且不内联服务依赖。
  * [OUTPUT]: 构建无Electron依赖的BOAI CLI客户端，并分发固定Craft CLI/协议来源许可。
  * [OUTPUT]: 运行时插件独立构建/SDK与清单产物随应用分发；新增桌面场景纳入F11审阅。
@@ -12,7 +15,8 @@
  */
 import { buildRuntimePlugins } from './build-runtime-plugins.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
-import { copyFile } from 'node:fs/promises'
+import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
+import { basename } from 'node:path'
 import { build } from 'esbuild'
 import { build as buildRenderer } from 'vite'
 
@@ -20,6 +24,7 @@ export async function buildHost() {
   await buildProcessGuard()
   await Promise.all([
     buildRuntimePlugins(),
+    build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, sourcemap: true }),
     build({ entryPoints: ['src/cli/index.ts'], outfile: 'dist/cli/index.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" }, sourcemap: true }),
     build({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
     build({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
@@ -27,6 +32,13 @@ export async function buildHost() {
     build({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
     build({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  const skillManifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
+  await Promise.all(skillManifest.skills.map(name => readFile(`resources/agent-skills/${name}/SKILL.md`, 'utf8')))
+  await rm('dist/agent-skills', { recursive: true, force: true })
+  await mkdir('dist/agent-skills', { recursive: true })
+  for (const name of skillManifest.skills) await cp(`resources/agent-skills/${name}`, `dist/agent-skills/${name}`, { recursive: true, filter: path => basename(path) !== '.folder.md' })
+  await copyFile('resources/agent-skills/manifest.json', 'dist/agent-skills/manifest.json')
+  await cp('resources/capabilities/voice', 'dist/capabilities/voice', { recursive: true, filter: path => !['.folder.md', '__pycache__'].includes(basename(path)) })
   for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/shared/cli/${name}`, `dist/cli/${name}`)
   await copyFile('src/runtime/adapters/channels/rovai/LICENSE.txt', 'dist/runtime/rovai-channels-LICENSE.txt')
   await copyFile('src/runtime/adapters/channels/rovai/source-manifest.json', 'dist/runtime/rovai-channels-source-manifest.json')

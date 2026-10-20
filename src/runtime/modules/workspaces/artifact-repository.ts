@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型图片读取复用原成果核源/hash及同次字节快照，不增加路径或预览权限。
  * [OUTPUT]: 知识保留返回已核验成果的材料来源，支持后续明确材料撤权向独立知识副本传播。
  * [OUTPUT]: 明确知识保留只读取已发布且当前员工获准的成果原件，不复制可变工作文件。
  * [OUTPUT]: 插件与Codex成果修订事务核对明确网关连接，来源丢失在创建修订请求前拒绝。
@@ -162,22 +163,23 @@ export class ArtifactRepository {
     } catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
     finally { await handle.close() }
   }
-  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readText: boolean | 'search' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'>> {
+  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readContent: boolean | 'search' | 'bytes' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'> & { bytes?: Buffer }> {
+    const readText = readContent === true || readContent === 'search'
     await this.conversation(tx, artifact.conversationId)
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
     if (artifact.contentStatus === 'removed' || !artifact.contentHash) throw new Error(artifact.contentError ?? '成果尚无可信内容身份')
     await this.sourceRefs(tx, artifact, artifact.conversationId, agentId)
-    const actual = await this.bytes(await this.storageRoom(tx, artifact), artifact.id, undefined, artifact.managedRelativePath, readText === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
+    const actual = await this.bytes(await this.storageRoom(tx, artifact), artifact.id, undefined, artifact.managedRelativePath, readContent === 'search' ? ARTIFACT_LIMITS.previewBytes : ARTIFACT_LIMITS.publicationBytes)
     if (actual.contentHash !== artifact.contentHash) throw new ContentError('成果已被外部修改，原文件已保留')
     const filePreview = requirePreview ? previewFile(artifact.name, actual.bytes) : undefined
     if (filePreview?.kind === 'unsupported' && !allowUnsupported) throw new Error(filePreview.reason)
     if (readText && actual.size > MAX_FILE_BYTES) throw new ContentError('文本文件最多 1 MiB')
-    const text = filePreview?.text ?? (readText === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : ''), verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(filePreview ? { contentStatus: filePreview.kind === 'unsupported' ? 'unsupported' as const : 'ready' as const } : {}) }
+    const text = filePreview?.text ?? (readContent === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : ''), verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(filePreview ? { contentStatus: filePreview.kind === 'unsupported' ? 'unsupported' as const : 'ready' as const } : {}) }
     if (filePreview?.kind === 'unsupported') verified.contentError = filePreview.reason
     else if (filePreview) delete verified.contentError
     if (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError) await tx.put(record('artifacts', verified))
     const binaryPreview = requirePreview && allowUnsupported ? previewBinaryFile(artifact.name, actual.bytes) : undefined
-    return { artifact: verified, text, ...(filePreview ? { filePreview } : {}), ...(binaryPreview ? { binaryPreview } : {}) }
+    return { artifact: verified, text, ...(filePreview ? { filePreview } : {}), ...(binaryPreview ? { binaryPreview } : {}), ...(readContent === 'bytes' ? { bytes: actual.bytes } : {}) }
   }
   private async unavailable(artifactId: string, error: unknown) {
     await this.store.transaction(async tx => {
@@ -516,6 +518,10 @@ export class ArtifactRepository {
   }
   async validateCurrentArtifact(tx: RecordTransaction, artifactId: string, contentHash: string, agentId?: string, readText = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
     return this.checked(tx, await this.version(tx, artifactId), contentHash, agentId, false, readText)
+  }
+  async readCurrentArtifactBytes(tx: RecordTransaction, artifactId: string, contentHash: string, agentId: string) {
+    const result = await this.checked(tx, await this.version(tx, artifactId), contentHash, agentId, false, 'bytes')
+    return { bytes: result.bytes!, contentHash: result.artifact.contentHash! }
   }
   /** Search consumes the already checked bytes, never rereads a mutable path or a loose file. */
   async readSearchText(tx: RecordTransaction, artifactId: string, contentHash: string): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {

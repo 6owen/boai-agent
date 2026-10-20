@@ -1,0 +1,298 @@
+{
+  "section": "11.42",
+  "status": "partial-adaptation-bound; real image provider unconfigured; full goal active",
+  "plan": ".local/image-evaluation-plan.json",
+  "before": ".local/image-live-before.json",
+  "bindingReceipt": ".local/personality-evaluation/skill-install-1792453438586.json",
+  "updateReceipt": ".local/personality-evaluation/skill-update-1792453610066.json",
+  "currentBobo": {
+    "agentVersion": 66,
+    "profileRevision": 16,
+    "skills": [
+      {
+        "name": "boai-travel",
+        "resourceId": "c40a45a7-210b-4ae0-b5cb-3efa1b2f61d5",
+        "sha256": "ca2f3f3172fee3ede6f1fa670c1dc90f725226a2ff6328306ee75f691f4b5792"
+      },
+      {
+        "name": "boai-self-management",
+        "resourceId": "9d864628-ba09-4abc-ad55-dc720a67c8bb",
+        "sha256": "1358001f8a427c35d9db1f41f1db8f6b7736f94ea424121a83fc40dbb22e2920"
+      },
+      {
+        "name": "boai-web-search",
+        "resourceId": "fd14ab72-39ff-46b0-954a-be187f3d385e",
+        "sha256": "247901018fc4a6005a5c68d61da986b9ee27a42ad91efda6e35cf7408ecceb1f"
+      },
+      {
+        "name": "boai-web-fetch",
+        "resourceId": "e55accbf-a02b-4aca-a45a-90800cc330a5",
+        "sha256": "aff66a77bfef7cb6d12c928749ff859b96a494ffccfb21d54bfee1fdfc7e0b79"
+      },
+      {
+        "name": "boai-browser",
+        "resourceId": "cb02fa6e-bf48-47c0-9529-cb60d242f044",
+        "sha256": "621ad9b6ccc0fa9451b57ee3cf593c3d81cfa2ddc85026b23fe6254784a2608d"
+      },
+      {
+        "name": "boai-scheduler",
+        "resourceId": "fb1b7dbb-1c09-4468-8030-8bd3f72039bc",
+        "sha256": "28bb7a066c5d054a0b1ed9b35156baaa8f6814ebe56731c4491b0dfea81d6204"
+      },
+      {
+        "name": "boai-memory-management",
+        "resourceId": "7ffb8bc1-9e3c-4e6d-80d2-fbff951a6e01",
+        "sha256": "a9b9c210e30d805a1e6eb5c0d3241a15a7199bfb3c789d9d88b12035c5133f24"
+      },
+      {
+        "name": "boai-computer-use",
+        "resourceId": "557132d7-e4c4-4655-88a8-cb7867110455",
+        "sha256": "8efeba34db5c76bd541f9c7f45ea3c5e417bb7d33dedbaec3bb7360cf5405f8e"
+      },
+      {
+        "name": "boai-tasks",
+        "resourceId": "6e9aa3c9-41c9-4baf-a757-e56de741789a",
+        "sha256": "5ee259f3fda637d86e4c0935e9b388cb18230bbf63089d8109337313f1a81cb1"
+      },
+      {
+        "name": "boai-self-reflection",
+        "resourceId": "d84e3f99-33c7-4723-bf7f-80dc3dbb75b1",
+        "sha256": "03bb1efac8c057ba31e26614147349118e2dea406ee6cfaa19ff1b6831afbb7e"
+      },
+      {
+        "name": "boai-skill-search",
+        "resourceId": "5c16e275-1509-472f-8303-18dbb45ca6b9",
+        "sha256": "171ac79ff3146a43255d082421cf8a7c5ef44e98f061aaabef94be5d284bfc6a"
+      },
+      {
+        "name": "boai-skill-hub",
+        "resourceId": "5f62a7cb-9b63-469a-8582-a3aa44118f46",
+        "sha256": "a7501be43c50b55be0924d757ba333fc49175f006b4cd2c9e8e1f478792d34a6"
+      },
+      {
+        "name": "boai-thread-management",
+        "resourceId": "d45de93d-5f4f-48e2-8b7d-87a5c01b010b",
+        "sha256": "e91def9ba80562e67cf3137ad479780e9b5704411a1141a15564845529e116d8"
+      },
+      {
+        "name": "boai-file-manager",
+        "resourceId": "845909c9-5e59-4397-908f-defad979af97",
+        "sha256": "50a66e6d71df2b0d4a511f3b39070d033e100bfb4520e5ac92aeb51bb756aa18"
+      },
+      {
+        "name": "boai-send-file",
+        "resourceId": "5e336903-4a05-45da-bc65-abee24087fcb",
+        "sha256": "022cbfeffeca3e39091ea6397499fcb99bb17bf19d4ede6e40542594a58e5dd5"
+      },
+      {
+        "name": "boai-system-info",
+        "resourceId": "eca592d5-ede4-422b-b966-a03d4e5ddbe7",
+        "sha256": "0ade29341707369dbf940112ab911e9542348e599c2a6099328e347240abdc8b"
+      },
+      {
+        "name": "boai-notebook",
+        "resourceId": "2bbacf79-68cb-48f2-bd83-c38cbcd3c406",
+        "sha256": "692f994c0d737a5e284aef9a4995864cd063be00956a0d9c4eb65b6aec3bc396"
+      },
+      {
+        "name": "boai-plan-mode",
+        "resourceId": "4cb1cde7-35b8-4621-b006-a726c7bb7a27",
+        "sha256": "ce6fabd1671e5ab06e1ecdc11a8a1251c99cedcb06e2b087691dda7db113ad33"
+      },
+      {
+        "name": "boai-todo",
+        "resourceId": "51501c2b-b119-495b-b072-7bd5a24e3a6b",
+        "sha256": "0e0013ddd6517fb8cb578afbf6f9e2d14392d44fa28629e37463cebcde4c708e"
+      },
+      {
+        "name": "boai-reactions",
+        "resourceId": "6a93ef89-cd36-4c5c-9dcc-906efc922bc9",
+        "sha256": "70326b60e1818357c646f7d1065d151391f3d10c842daa8611e9754458e43545"
+      },
+      {
+        "name": "boai-screenshot",
+        "resourceId": "5a3d2abc-53dd-4591-a400-c83b3b93d45a",
+        "sha256": "00ffac2b5a5ed4afaa7ca8e41d4f96f9d2b35b63d26a5b02d95efdfef8877cab"
+      },
+      {
+        "name": "boai-music-listener",
+        "resourceId": "196ec330-4f54-41bb-ba08-8e0a6e4676e4",
+        "sha256": "10b2bed9c5fc7c3bc1836f73a68579bf47e6c964c8a4d55e377818aa01438114"
+      },
+      {
+        "name": "boai-video-reader",
+        "resourceId": "8d4f72e6-2de6-41f2-9f2f-4bfa1b82ec7f",
+        "sha256": "74ff7ceb1de045cc9611cbfc71c1d77645c587f0697b7c5c95c2722ba0487a03"
+      },
+      {
+        "name": "boai-programmatic-tools",
+        "resourceId": "fb9a1a26-1217-4939-ba2d-efaf8a499406",
+        "sha256": "e4f95db7122b30b340c30a547565c651a34b5da7befef974ef07cfd4036ec869"
+      },
+      {
+        "name": "boai-alchemy",
+        "resourceId": "ccd50268-ce85-4d0f-842d-8ad1dc491385",
+        "sha256": "3f34edabbb33563d6beec0b04373c02e85dec20a8a7a505ece14d7d3fb960ce5"
+      },
+      {
+        "name": "boai-plan-weave",
+        "resourceId": "665e138f-c7d5-406a-87e3-294dcbf36c29",
+        "sha256": "bccd64a08ae97abcc304c7e89ce5f6ea7597d5e9a9f99bb18cc608a856195945"
+      },
+      {
+        "name": "boai-references",
+        "resourceId": "f15e860a-d007-4d2b-b401-86b024c705e3",
+        "sha256": "6a8e318f2b8f1ac6a9fc6e58026e0d226063d0f86f5e5fab775e6702b47eaff2"
+      },
+      {
+        "name": "boai-voice",
+        "resourceId": "f786ef4f-92dd-4040-9a5f-ad7590300e1d",
+        "sha256": "086235992fd932187bab1bf12582c754f5e73794b212506899cdc162a34d8b65"
+      },
+      {
+        "name": "boai-image-gen",
+        "resourceId": "f9a25f89-2830-4fb9-8b35-5b641037fb31",
+        "sha256": "e61cbddfbd53076ecd0b7096b7246b79adfd564fe7ee1ad21f5c84b68df19fcb"
+      }
+    ],
+    "prior28IdsOrderUnchanged": true,
+    "profileUnchanged": true,
+    "researchOriginalsUnchanged": 40,
+    "health": {
+      "service": "ready",
+      "storage": "ready",
+      "browserAvailable": true,
+      "credentialProvider": "desktop-vault"
+    }
+  },
+  "modelRequests": {
+    "previous": 1004,
+    "thisBatch": 5,
+    "cumulative": 1009
+  },
+  "previousRetrievalRequests": 3,
+  "externalImageRequests": 0,
+  "actualBobo": {
+    "root": ".local/personality-evaluation/skill-image-unconfigured-1792453462333",
+    "case": "skill-image-unconfigured:1",
+    "quality": "needs_review",
+    "requests": 5,
+    "runs": [
+      {
+        "phase": "decision",
+        "status": "completed",
+        "usage": {
+          "inputTokens": 7851,
+          "outputTokens": 285,
+          "totalTokens": 8136
+        }
+      },
+      {
+        "phase": "execution",
+        "status": "completed",
+        "usage": {
+          "inputTokens": 86220,
+          "outputTokens": 597,
+          "totalTokens": 86817
+        }
+      },
+      {
+        "phase": "memory",
+        "status": "completed",
+        "usage": {
+          "inputTokens": 6599,
+          "outputTokens": 221,
+          "totalTokens": 6820
+        }
+      }
+    ],
+    "publicReply": "技能我读完了，也去查了真实的生图能力——结论是画不了。\n\n现在一个生图模型都没选（图像设置是空的，ready 状态是 false），系统提示写得很直白：得先配置生图模型，聊天模型不会自动拿来生图。\n\n所以缺的就这一样：一个已保存的图片连接 + 指定好的生图模型。光有 API key 的连接不够，还得在里面明确选中具体模型，才算 ready。\n\n按你说的，我没动配置，也没拿聊天模型瞎试。等你在图像设置里选好模型，跟我说一声，我马上给你画那只小橘猫——窗边、午后那种偏暖的光，想想还挺好看的。",
+    "tools": [
+      "read_skill",
+      "inspect_image_generation",
+      "report_work"
+    ],
+    "collections": {
+      "workItems": 1,
+      "artifacts": 0,
+      "imageSettings": 0,
+      "automations": 0,
+      "agentTasks": 0,
+      "agentBehaviorRuns": 0
+    },
+    "result": "Correctly checked missing image configuration and performed no image/config side effects; one Work delivered an explanatory answer, not an image."
+  },
+  "engineering": {
+    "finalFiveFileLog": ".local/image-tests-complete.log",
+    "nativeRegressionLog": ".local/image-tests-native.log",
+    "nativeCleanupFixLog": ".local/image-tests-native-fix.log",
+    "typecheck": ".local/image-typecheck-complete.log",
+    "build": ".local/image-build-complete.log",
+    "failures": [
+      "Initial domain-count expectation still 19; actual now 20. Fixed assertion, original log image-tests-initial.log retained.",
+      "Initial test TypeScript missing required fixture fields and close callback type; corrected, logs retained.",
+      "Native integration cleanup called close instead of dispose; original six-file run 329 passed/1 failed/2 skipped retained; separate fix passed 12.",
+      "Final catalog probe first used unsupported --domain flag, and parser saw empty output. Corrected to app catalog images; read-only, no mutation or model request."
+    ],
+    "deduplication": "Earlier 238/240/12 are subsets, not additional independent checks.",
+    "finalFiveFilePassed": 242,
+    "nativeRegressionPassed": 89,
+    "nativeRegressionSkipped": 2,
+    "distinctPassed": 331,
+    "distinctSkipped": 2,
+    "distinctFiles": 6,
+    "finalImageTests": 13,
+    "typecheckPassed": true,
+    "buildPassed": true,
+    "diffCheckPassed": true
+  },
+  "limitations": [
+    "Only OpenAI Images-compatible base64 generation/editing; no Gemini, automatic model or URL downloads.",
+    "Actual image provider, picture quality and paid generation not verified; success-path pixels come from controlled HTTP fixtures.",
+    "No standalone image settings UI; images.settings/configure are the original business protocol.",
+    "Real Bobo reply remains long and referred to a nonexistent settings page; skill text corrected afterward, no second model sampling.",
+    "Native common product-tool integration tested with controlled host, not a new real Codex/Claude model batch.",
+    "Selfie persistent album/appearance-reference service, remaining skills and full personality effect unfinished."
+  ],
+  "sourceDocs": [
+    "https://developers.openai.com/api/reference/resources/images/methods/generate",
+    "https://developers.openai.com/api/reference/resources/images/methods/edit"
+  ],
+  "finalHost": {
+    "restart": {
+      "previousExited": [
+        68582,
+        68584,
+        68592
+      ],
+      "launcherPid": 69562,
+      "idleSessions": 12,
+      "activeBehaviors": 0,
+      "log": ".local/image-dev-complete.log"
+    },
+    "health": {
+      "service": "ready",
+      "storage": "ready",
+      "browserAvailable": true,
+      "credentialProvider": "desktop-vault"
+    },
+    "imageSettings": {
+      "revision": 0,
+      "selection": null,
+      "ready": false,
+      "reason": "尚未选择生图模型；请先配置 images.configure，聊天模型不会自动用于生图"
+    },
+    "catalog": ".local/image-live-catalog.json"
+  },
+  "verificationLog": ".local/image-verification-final.log",
+  "finalSourceHashes": {
+    "src/runtime/modules/media/image-service.ts": "f8cfff902e41896a98442a074babcf829ad1596cb4b3fe9897114f96a631484c",
+    "src/runtime/adapters/mastra/task-runtime.ts": "a0814ba293b90baf5c19cd3c0dddb43a21c72042197bed44fab44c77ad96bfd1",
+    "src/runtime/adapters/native-products.ts": "7b2932f5e8bc50976a453658845bdbdc27c06bdfe56ea23f9b9a9d4756259a64",
+    "src/runtime/adapters/mastra/cli-tools.ts": "cf04698081e9031fd678895f0e2d5906e26db2f4d8faff3b19b95a076ff73b04",
+    "src/runtime/modules/workspaces/file-access.ts": "c90a2f1a879f549f411c61d2b04d61711f40e7d44b36f7a537d2a99a5768814b",
+    "src/runtime/service.ts": "6704cf8ae0eb287391672c13be8d7bb4f0ba41c30e8666c3d787a9bdf0774eeb",
+    "src/runtime/contracts.ts": "d9db2fa83f4b5213d0e49ea7c58bb1cc3530a17f84dbc5adcb56b0c45481c59f",
+    "resources/agent-skills/boai-image-gen/SKILL.md": "e61cbddfbd53076ecd0b7096b7246b79adfd564fe7ee1ad21f5c84b68df19fcb"
+  }
+}

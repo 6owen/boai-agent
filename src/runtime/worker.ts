@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 桌面宿主提供同包只读技能源路径，新 Bobo 沿原服务初始化默认绑定。
+ * [OUTPUT]: 当前包的员工脚本工具库位置交给原AppService租约，不依赖全局boai安装或PATH。
+ * [OUTPUT]: 2026-10-19应用业务协议：worker反向请求实际桌面外观/插件服务，沿原宿主边界。
  * [OUTPUT]: 仅启动竞争失败时发owner-busy，主进程等本worker实际退出再认证附着原服务；不受理业务。
  * [OUTPUT]: 原父端口与附着桌面复用显式dispatchRuntime，内部方法不开放给普通CLI。
  * [OUTPUT]: 与独立服务共用owner装配；原服务/适配器实际排空后才释放配置锁。
@@ -18,6 +21,8 @@ import { MastraEngine } from './adapters/mastra/engine'
 import { dispatchRuntime } from './dispatch'
 import type { RpcRequest } from '../shared/ipc'
 import type { BrowserHostBridge, BrowserHostMethods } from '../shared/ipc/browser'
+import type { ApplicationHostPort, ApplicationHostMethod } from '../shared/ipc/application-host'
+import type { Methods } from '../shared/ipc'
 import type { SecretStore } from './contracts'
 
 const port = process.parentPort
@@ -47,11 +52,21 @@ const browserHost:BrowserHostBridge = {
     port.postMessage({type:'browser-host',id,method,input})
   }),
 }
+const pendingApplication = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>()
+const applicationHost: ApplicationHostPort = {
+  available: true,
+  request: <K extends ApplicationHostMethod>(method: K, input: Methods[K]['input']) => new Promise<Methods[K]['output']>((resolve, reject) => {
+    const id = randomUUID()
+    pendingApplication.set(id, { resolve: value => resolve(value as Methods[K]['output']), reject })
+    port.postMessage({ type: 'application-host', id, method, input })
+  }),
+}
 process.env.BOAI_RUNTIME_PLUGIN_BUNDLE ??= fileURLToPath(new URL('./plugins/', import.meta.url)).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')
 let starting: ReturnType<typeof startOwnedRuntime>
 let service: Awaited<ReturnType<typeof startOwnedRuntime>>['service']
 let shuttingDown = false
 port.on('message', async ({ data }) => {
+  if (data?.type === 'application-host-result') { const pending = pendingApplication.get(data.id); pendingApplication.delete(data.id); if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result); return }
   if (data?.type === 'browser-host-result') {
     const pending=pendingBrowser.get(data.id); pendingBrowser.delete(data.id)
     if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result)
@@ -80,7 +95,7 @@ port.on('message', async ({ data }) => {
     port.postMessage({ type: 'response', response: { id: request.id, error: error instanceof Error ? error.message : '操作失败' } })
   }
 })
-starting = startOwnedRuntime({ dataPath, secrets, browserHost, engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
+starting = startOwnedRuntime({ dataPath, skillDiscovery: { bundledRoot: fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, secrets, browserHost, applicationHost, toolClientPath: fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
 try {
   const owned = await starting; service = owned.service
   if (!shuttingDown) port.postMessage({ type: 'ready', owner: owned.owner })

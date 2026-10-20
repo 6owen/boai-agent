@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 内置技能源允许查看位置，拒绝通过系统编辑器改写随包默认文件。
+ * [OUTPUT]: 2026-10-19应用业务协议：应用外观/插件协议复用原桌面设置服务，经私有宿主白名单转发。
  * [OUTPUT]: 同时启动丢失owner时先等自己的worker退出，再有界认证附着胜出服务；原业务请求只在ready后提交。
  * [OUTPUT]: CLI安装状态等待原运行服务就绪再认证连接，启动失败仍如实不可用。
  * [OUTPUT]: CLI安装由原生目录选择和当前应用路径派生，退出等待安装写入。
@@ -78,6 +80,8 @@ import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
 import { isPublicMethod } from './public-methods'
+import { isApplicationHostMethod, type ApplicationHostMethod } from '../shared/ipc/application-host'
+import { appearancePatchSchema } from '../shared/appearance/schema'
 import { openDesktopCli, desktopCliConnection } from './cli-service'
 import { CliInstaller } from './cli-installation'
 import { CliError, type ErrorCode } from '../shared/cli/protocol'
@@ -103,6 +107,17 @@ const desktopHostId = randomUUID()
 let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['output'] = null
 let ready: Promise<void> | null = null
 let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
+async function applicationHostRequest(method: ApplicationHostMethod, input: unknown): Promise<unknown> {
+  if (quitting) throw new Error('应用正在退出')
+  if (method === 'getAppearance') { z.undefined().parse(input); return appearance.snapshot() }
+  if (method === 'updateAppearance') { const value = z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict().parse(input); return appearance.update(value.patch, value.expectedRevision) }
+  if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
+  if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
+  z.undefined().parse(input)
+  if (method === 'removeAppearanceBackground') return appearance.remove()
+  if (method === 'resetAppearance') return appearance.reset()
+}
+
 let cliStarting: Promise<void> | undefined
 let quitting = false
 let quitApproved = false
@@ -238,6 +253,13 @@ function connectRuntime(attached: AttachedRuntime | null) {
         else request.resolve(response.result)
       } else if (message?.type === 'event') { if (message.event?.type === 'automation:notice') flushAutomationNotifications(); else sendEvent(message.event) }
 
+      else if (message?.type === 'application-host') {
+        try {
+          if (!isApplicationHostMethod(message.method)) throw new Error('未公开的桌面设置方法')
+          const result = await applicationHostRequest(message.method, message.input)
+          if (runtime === child) child.postMessage({ type: 'application-host-result', id: message.id, result })
+        } catch (error) { if (runtime === child) child.postMessage({ type: 'application-host-result', id: message.id, error: error instanceof Error ? error.message : '桌面设置结果未知' }) }
+      }
       else if (message?.type === 'browser-host') {
         try {
           if (quitting && (message.method === 'acquire' || message.method === 'executeSingle')) throw new Error('应用正在退出，浏览器不再受理新动作。')
@@ -383,8 +405,7 @@ function registerIpc() {
     if (method === 'listGatewayImports') { importWindowReady = true; for (const error of importErrors.splice(0)) sendEvent({ type: 'runtime-error', error }) }
     if (method === 'discoverModelGateway') { z.undefined().parse(input); return discoverLocalMagpie(baseUrl => requestRuntime('probeModelGateway', { baseUrl }) as Promise<Methods['probeModelGateway']['output']>) }
     if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
-    if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
-    if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
+    if (isApplicationHostMethod(method)) return applicationHostRequest(method, input)
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
     if (method === 'getCliInstallation') { z.undefined().parse(input); return cliInstallationStatus() }
     if (method === 'installCli' || method === 'uninstallCli') {
@@ -467,10 +488,6 @@ function registerIpc() {
       const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), hostAccessAcknowledged: z.literal(true) }).strict().parse(input)
       return requestRuntime('saveLaunchProfile', localConfigs.launchProfile(selected.configId))
     }
-    if (method === 'getAppearance') return appearance.snapshot()
-    if (method === 'updateAppearance') { const value=input as Methods['updateAppearance']['input']; if(!Number.isSafeInteger(value?.expectedRevision))throw new Error('无效外观版本'); return appearance.update(value.patch,value.expectedRevision) }
-    if (method === 'removeAppearanceBackground') return appearance.remove()
-    if (method === 'resetAppearance') return appearance.reset()
     if (method === 'importAppearanceBackground') { const result=await dialog.showOpenDialog(window,{title:'选择背景图片',properties:['openFile'],filters:[{name:'图片',extensions:['png','jpg','jpeg','webp']}]}); return result.canceled||!result.filePaths[0]?null:appearance.import(result.filePaths[0]) }
     if (method === 'setUnsavedChanges') {
       if (typeof (input as { dirty?: unknown })?.dirty !== 'boolean') throw new Error('无效编辑状态')
@@ -480,6 +497,7 @@ function registerIpc() {
     if (method === 'openLocalSkill') {
       const value = z.object({ id: z.string().min(1).max(200), action: z.enum(['edit', 'reveal']) }).strict().parse(input)
       const detail = await requestRuntime('getLocalSkillDetail', { id: value.id }) as Methods['getLocalSkillDetail']['output']
+      if (value.action === 'edit' && detail.skill.source === 'builtin') throw new Error('内置技能源只读；请复制为自定义技能后编辑')
       const file = detail.filePath
       if (value.action === 'reveal') shell.showItemInFolder(file)
       else { const error = await shell.openPath(file); if (error) throw new Error(error) }

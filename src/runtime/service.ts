@@ -1,4 +1,27 @@
 /*
+ * [OUTPUT]: 员工持久形象相册接原身份/私聊管理与任务生图；原图不进入群/渠道工具结果，删除员工沿原根目录清理。
+ * [OUTPUT]: 独立生图配置接统一应用协议；员工实际生成沿原执行权限/取消和文件交付，不回退聊天模型。
+ * [OUTPUT]: refs接原消息/材料/记忆/绑定技能授权与源正文；当前轮引用仅短卡片，按需解析且不扩权。
+ * [OUTPUT]: plans依赖/审核返工协议与当前会话恢复摘要接原API/native/CLI；不自动派发工作。
+ * [OUTPUT]: 独立追加技能仅推进活动上下文的配置校验版本，保留原技能/资源快照并记录版本链；下一轮才加载新增技能，撤权仍取消。
+ * [OUTPUT]: 普通API聊天保留已绑定技能源，按需读取与当前授权核验生效；文件/命令执行仍由原task工具入口控制。
+ * [OUTPUT]: 原技能恢复后完成新 Bobo 首次默认绑定，已有配置/删除选择不重放；错误沿 runtime-error。
+ * [OUTPUT]: 员工命令租约携带当前宿主提供的脚本工具库/Node位置，复用原run身份及实际退出撤回。
+ * [OUTPUT]: 任务图片读取沿原成果/材料来源校验返回同次字节快照；不将图片写入业务记录。
+ * [OUTPUT]: 员工表情回应复用原消息与渠道回执；API/native同端口，BOAI触发不外发。
+ * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
+ * [OUTPUT]: 会话独立规划状态接公共协议及实际上下文，不创建执行或修改权限。
+ * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
+ * [OUTPUT]: 公共会话搜索复用原searchSchema与原来源核验，改名沿原列表服务。
+ * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 后台旅行接已选检索服务、核对返回URL/状态/来源并清理连接；末日游记与返程同次保存，状态工具回执按原会话投影。
+ * [OUTPUT]: 全局提示词目录沿原SQLite/串行修改与changed事件，不创建工作或执行请求。
+ * [OUTPUT]: 日终反思汇集员工当天获准的私聊/群聊全文；宿主保存来源日期，复用原记忆核权与完整来源失效。
+ * [OUTPUT]: 人格成长绑定反思记忆的真实来源/版本，跨聊天沿统一召回与失效；活动历史清理保留去重身份。
+ * [OUTPUT]: 2026-10-19人格后台按功能触发，旅行状态提交/主动交流免打扰与备份停用接线。
+ * [OUTPUT]: 2026-10-19独立员工人格/状态/行为接线：原身份、记忆、业务协议和时钟复用；API/本机共享装配，后台调用不伪造用户消息。
+ * [OUTPUT]: 2026-10-19应用业务协议：应用公共协议接原领域服务、核心用户来源核权、设置宿主和原管理回执；活动操作纳入排空/备份门禁。
  * [OUTPUT]: 2026-10-19 独立检索设置/调用/版本失效、迁移与备份接线；员工 sourceIds 只管业务数据源。
  * [OUTPUT]: API本地源/MCP调用及模型测试复用当前目录许可；本机原生路径保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -120,6 +143,7 @@
  * [OUTPUT]: ACP受理回执/精准停止沿原请求和实际退出；补充强制固定问题版本；协作重试判断沿原预算；核心默认连接用于全部合法执行入口；浏览器下载隔离暂存并按受管数据根核验目标目录；材料/成果按原ID/hash返回独立有界代码/文本预览，模型材料正文仍沿原解析。
  * [OUTPUT]: 新聊天附件按当前会话成员投影和核读，无独立共享操作；历史显式名单兼容，准备不制造消息或工作。
  * [OUTPUT]: 图片/通用文件附件沿原授权与hash回执提交；图片仅以内存原生媒体供模型回答，通用文件不虚构文本，前端不依赖视觉能力。
+ * [OUTPUT]: Independent employee profile/state and shared scene compilation; bobo management follows authenticated source beyond private chat.
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
  * [OUTPUT]: 启用的内置模型员工（含 bobo）默认具备浏览器工具调用资格，旧 false/缺字段不再门禁；ACP/停用拒绝，组织阶段及原工作/范围/代际边界保留，定时任务沿原occurrence授权。
  * [OUTPUT]: 内置浏览器窗口/登录由应用统一管理，人工开窗零业务记录；工具调用按run独立审计，业务清理不关窗口或清登录；当前浏览器可用性随判断投影。召回按实际版本/获知/输入来源校验，无关历史清空不取消工作，相关失效沿真实运行来源传播；依赖文件只传宿主即时核验的原成果路径。
@@ -134,8 +158,29 @@
  * [POS]: src/runtime/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { initializeBundledSkills } from './modules/resources/bundled-skills'
+import { availableReactionEmojis, reactionInputSchema, type ReactionInput, type ReactionResult } from './modules/conversations/reaction-tools'
+import { AgentBehaviorService } from './modules/automations/agent-behaviors'
+import { quietTime, reflectionRooms, personalityDate } from './modules/automations/personality-policy'
+import { reflectionContext } from './modules/agent-state/reflection-context'
+import { defaultAgentProfile, normalizeAgentProfile, agentBehaviorResultSchema, type AgentBehaviorDefinition, type AgentBehaviorRun } from '../shared/domain/agent-profile'
+import { AgentProfileService } from './modules/employees/agent-profile-service'
+import { AgentStateService } from './modules/agent-state/state-service'
+import { agentSourceNameSchema } from '../shared/domain/agent-profile'
 import { authorizeExecution } from './modules/employees/execution-permissions'
 import { GatewayImports } from './modules/backends/gateway-imports'
+import { isApplicationHostMethod, type ApplicationHostPort } from '../shared/ipc/application-host'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { ApplicationService } from './modules/application/application-service'
+import { rememberMemorySchema } from './modules/memory/memory-tools'
+import { taskOperations } from './modules/application/task-operations'
+import { planningOperations, readPlanningState, planningInstructions } from './modules/application/planning-operations'
+import { planOperations, activePlanInstructions } from './modules/application/plan-operations'
+import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
+import { collectReferenceSources } from './modules/application/reference-sources'
+import { applicationOperations } from './modules/application/operations'
+import { ImageService } from './modules/media/image-service'
+import { SelfieService } from './modules/media/selfie-service'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { composerReferencesSchema, currentSourceReferences, type ComposerReference } from '../shared/domain/composer-references'
 import { RuntimePlugins } from './modules/backends/runtime-plugins'
@@ -221,6 +266,7 @@ import { assertDirectoryTargetCurrent } from './modules/workspaces/directory-acc
 import type { DirectoryApprovalReceipt } from '../shared/domain/directory-access'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
+import { listPromptTemplates, savePromptTemplate, removePromptTemplate } from './modules/resources/prompt-templates'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, WorkBudget, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
 import { isBrowserCapableAgent } from '../shared/domain'
 import type { AppEvent, Method, Methods } from '../shared/ipc'
@@ -268,7 +314,7 @@ import { ContactListRepository, contactListChangeSchema } from './modules/employ
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
 import { recallMemory } from './modules/memory/memory-recall'
-import { memoryUseScope } from './modules/memory/memory-policy'
+import { memoryAllowed, memoryUseScope, type MemoryAccess } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '../shared/domain/memory'
 import { ModelCapacity } from './modules/collaboration/model-capacity'
 import { APPLICATION_BROWSER_SCOPE } from '../shared/ipc/browser'
@@ -324,7 +370,7 @@ const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
 type RequestRecord = { id: string; fingerprint: string; messageId?: string }
 type CoreConversationStart = { id: string; fingerprint: string; conversationId: string; messageId?: string; teamName?: string; cleared?: true }
-type RunSnapshot = { webSearchRefs?: SourceSummary[]; dataSourceRefs?: SourceSummary[]; id: string; agent: DigitalAgent; connection?: Connection; runtimeProfile?: import('../shared/domain/backends').LaunchProfile; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
+type RunSnapshot = { skillBindingVersions?: { from: number; to: number; addedSkillIds: string[] }[]; webSearchRefs?: SourceSummary[]; dataSourceRefs?: SourceSummary[]; id: string; agent: DigitalAgent; connection?: Connection; runtimeProfile?: import('../shared/domain/backends').LaunchProfile; resources: Resource[]; conversation: Conversation; artifactRevisionRequestId?: string; materialRefs?: MaterialReadRef[]; memoryEntryIds?: string[]; memoryRecall?: Pick<MemoryView, 'namespace' | 'epoch' | 'invalidationEpoch' | 'recall'>; invalidated?: boolean }
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted'])
 const now = () => new Date().toISOString()
 const clone = <T>(value: T): T => structuredClone(value)
@@ -360,6 +406,13 @@ export class AppService {
   private readonly knowledge: KnowledgeManagement
   private readonly resourceCleanups: ResourceCleanups
   private readonly skillCollections: SkillCollectionRepository
+  private readonly agentBehaviors: AgentBehaviorService
+  private readonly agentProfiles: AgentProfileService
+  private readonly agentStates: AgentStateService
+  private readonly applicationAuthority = new AsyncLocalStorage<{ validate(): Promise<void>; signal: AbortSignal; directories?: EngineContext['directoryAccess'] }>()
+  private readonly application: ApplicationService
+  private readonly images: ImageService
+  private readonly selfies: SelfieService
   private readonly automations: AutomationService
   readonly runtimePlugins: RuntimePlugins
   private readonly pluginEngines = new Map<string, PluginEmployeeEngine>()
@@ -386,6 +439,7 @@ export class AppService {
   private runs = new Map<string, AgentRun>()
   private requests = new Map<string, RequestRecord>()
   private snapshots = new Map<string, RunSnapshot>()
+  private activeEngineContexts = new Map<string, { context: EngineContext; definition: DigitalAgent }>()
   private approvals = new Map<string, Approval>()
   private pendingApprovals = new Map<string, (approved: boolean) => void>()
   private directoryRuns = new Map<string, { access: import('./modules/workspaces/directory-run').RunDirectoryAccess; context: EngineContext }>()
@@ -413,9 +467,36 @@ export class AppService {
   private adapterExits = new Set<Promise<unknown>>()
   readonly dataPath: string
 
-  constructor(private readonly options: { channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
+  constructor(private readonly options: { toolClientPath?: string; applicationHost?: ApplicationHostPort; channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.images = new ImageService(this.store, {
+      connection: async id => this.connections.get(id),
+      credential: connection => this.serialize(async () => {
+        if (this.closing || this.backingUp || this.connections.get(connection.id)?.revision !== connection.revision) fail('生图连接已改变或服务正在退出')
+        return this.apiKey(connection)
+      }),
+      critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
+      changed: () => this.changed(),
+    })
+    this.selfies = new SelfieService(this.store, this.dataPath, this.images, {
+      critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
+      changed: () => this.changed(),
+    })
+    this.agentProfiles = new AgentProfileService(this.store)
+    this.agentStates = new AgentStateService(this.store)
+    this.agentBehaviors = new AgentBehaviorService(this.store, { available: (agentId, conversationId) => !this.closing && !this.backingUp && this.initialized && !!this.employees.find(agentId)?.active && !!this.conversations.get(conversationId)?.agentIds.includes(agentId) && !this.conversationBusy(conversationId), execute: (run, behavior, signal) => this.runAgentBehavior(run, behavior, signal), changed: () => this.changed(), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }) })
+    this.application = new ApplicationService(this.store, [...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+      if (actor.kind === 'owner') return
+      if (actor.kind === 'behavior') {
+        const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
+        if (operation?.effect === 'write' && this.getAgent(actor.employeeId).executionPermission !== 'full-access') fail('后台应用写入需要员工完全访问权限')
+        if (run.agentId !== actor.employeeId || run.conversationId !== actor.conversationId || !isCoreAgent(this.getAgent(actor.employeeId)) || behavior.applicationAccess !== 'manage') fail('行为没有应用管理授权')
+        return
+      }
+      const agent = this.getAgent(actor.employeeId), room = this.getConversation(actor.conversationId), source = this.messages.get(actor.messageId)
+      if (!isCoreAgent(agent) || room.channel || !room.agentIds.includes(agent.id) || source?.conversationId !== room.id || source.senderType !== 'user' || source.senderId !== 'user' || source.channel || source.origin) fail('此应用管理操作需要本人或当前核心员工的真实会话授权')
+    })
     this.gatewayCatalogs = new GatewayCatalogStore(this.store)
     this.commandPermissions = new CommandPermissions(this.store)
     this.webSearch = new WebSearchService(this.store, options.secrets, this.dataPath, {
@@ -556,6 +637,7 @@ export class AppService {
       modelCatalog: connection => this.gatewayCatalogs.get(connection),
       connection: id => this.getConnection(id), resource: id => { this.skillUpdates.assertAvailable(id); return this.resources.get(id) },
       cancel: (id, reason) => this.cancelEmployee(id, reason),
+      skillsAdded: (previous, current) => this.advanceSkillBinding(previous, current),
       invalidateMemory: (id, matches) => this.invalidateEmployeeMemory(id, matches), changed: () => this.changed(),
     })
     this.boboCollaboration = new BoboCollaborationService(this.store, this.dataPath, this.homes, {
@@ -594,6 +676,7 @@ export class AppService {
       idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
+      behaviors: this.agentBehaviors,
       critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
       prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
       readMonitor: async (definition, signal) => {
@@ -651,6 +734,7 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await this.selfies.recover()
     // These operations have no Run to recover. Retain their request identity and
     // observed route; a process exit cannot establish the model's final result.
     await this.store.transaction(async tx => {
@@ -737,6 +821,7 @@ export class AppService {
     if (provenance.length) await this.store.write(provenance)
     await Promise.all(['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces', 'materials'].map(folder => mkdir(join(this.dataPath, folder), { recursive: true })))
     await this.knowledge.init(); await this.resourceCleanups.init(); await this.skillUpdates.init(); await this.skillLibrary.init(); await this.skills.init()
+    if (this.options.skillDiscovery?.bundledRoot) await initializeBundledSkills({ store: this.store, catalog: this.localSkills, skills: this.skills, employee: () => this.employees.get(CORE_AGENT_ID), resources: () => [...this.resources.values()], failed: error => this.emit({ type: 'runtime-error', error }) })
     // Discover historical directory-only files before any new execution can copy an unpublished original.
     for (const conversation of this.conversations.values()) if (!conversation.mergedInto && !this.clearingConversations.has(conversation.id)) await this.conversationArtifacts(conversation, true)
     this.store.onMessageCommit(async (tx, messages) => {
@@ -744,6 +829,7 @@ export class AppService {
       return () => this.installMessageReception(received)
     })
     this.initialized = true
+    await this.agentBehaviors.init()
     await this.automations.init()
     for (const pending of await this.store.load<AutomationHistoryDeletion>('automationHistoryCleanups')) {
       try { await this.serialize(() => this.deleteAutomationOccurrence(pending.id, 0)) }
@@ -791,6 +877,14 @@ export class AppService {
   async handle(method: Method, input: unknown): Promise<unknown> {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
+    await this.applicationAuthority.getStore()?.validate()
+    if (isApplicationHostMethod(method)) {
+      if (!this.options.applicationHost?.available) throw new Error('当前服务没有连接桌面设置宿主')
+      return this.options.applicationHost.request(method, input as never)
+    }
+    if (method === 'getApplicationCatalog') return this.application.catalog(input as Methods['getApplicationCatalog']['input'])
+    if (method === 'executeApplicationOperation') return this.application.call(input as Methods['executeApplicationOperation']['input'])
+    if (method === 'getApplicationReceipt') return this.application.receipt(input as Methods['getApplicationReceipt']['input'])
     if (input && typeof input === 'object' && (method.startsWith('get') || method.startsWith('list') || method.startsWith('query') || method === 'searchConversations' || method === 'resolveConversationSearchTarget')) {
       const value = input as { id?: string; conversationId?: string }
       const field = ['getConversation', 'getConversationMetadata'].includes(method) ? 'id' : 'conversationId'
@@ -911,12 +1005,18 @@ export class AppService {
     if (method === 'testWebSearchService') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return this.webSearch.test(input) }
     if (method === 'removeWebSearchService') return this.webSearch.connections.remove(input)
     if (method === 'listDataSources') { z.undefined().parse(input); return this.dataSources.list() }
+    if (method === 'listPromptTemplates') { z.undefined().parse(input); return listPromptTemplates(this.store) }
+    if (method === 'savePromptTemplate' || method === 'removePromptTemplate') return this.serialize(async () => {
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      const value = method === 'savePromptTemplate' ? await savePromptTemplate(this.store, input) : await removePromptTemplate(this.store, input)
+      this.changed(); return value
+    })
     if (method === 'getDataSource') return this.dataSources.get(lookupSchema.parse(input).id)
     if (method === 'getDataSourceCredential') return this.dataSources.getCredential(input)
-    if (method === 'saveDataSource') return this.dataSources.save(input)
-    if (method === 'testDataSource') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); const value = await this.dataSources.test(input); this.changed(); return value }
-    if (method === 'removeDataSource') return this.dataSources.remove(input)
-    if (method === 'setDataSourceBindings') return this.dataSources.bind(input)
+    if (method === 'saveDataSource') return this.dataSources.save(input, undefined, this.applicationAuthority.getStore()?.validate)
+    if (method === 'testDataSource') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); const value = await this.dataSources.test(input, this.applicationAuthority.getStore()); this.changed(); return value }
+    if (method === 'removeDataSource') return this.dataSources.remove(input, this.applicationAuthority.getStore()?.validate)
+    if (method === 'setDataSourceBindings') return this.dataSources.bind(input, this.applicationAuthority.getStore()?.validate)
     if (method === 'listLocalSkills') { const value = z.object({ refresh: z.boolean().optional() }).strict().optional().parse(input); return this.localSkills.list(value?.refresh) }
     if (method === 'saveLocalSkill') return this.serialize(() => this.localSkillEditing.save(input))
     if (method === 'removeLocalSkill') return this.serialize(() => this.localSkillEditing.remove(input))
@@ -1100,6 +1200,7 @@ export class AppService {
     }
     return this.serialize(async () => {
       if (this.closing) fail('运行服务正在退出')
+      await this.applicationAuthority.getStore()?.validate()
       switch (method) {
         case 'listExternalFiles': {const value=z.object({runId:id}).strict().parse(input);return this.externalFiles(value.runId)}
         case 'publishExternalArtifact': {const value=z.object({runId:id,relativePath:text(8000)}).strict().parse(input);return this.publishExternal(value.runId,value.relativePath)}
@@ -1582,6 +1683,7 @@ export class AppService {
   private async memoryChanged(agentIds: string[], committedRunId?: string) {
     await this.invalidateMemoryRuns(committedRunId)
     for (const agentId of new Set(agentIds)) {
+      await this.agentBehaviors.cancelScope({ agentId })
       await this.store.write([{ collection: 'memoryCleanup', id: agentId, value: { id: agentId } }])
       try {
         const conflicts = await this.homes.invalidateMemoryViews(agentId)
@@ -1591,9 +1693,212 @@ export class AppService {
     }
     this.changed()
   }
+  private async runAgentBehavior(run: AgentBehaviorRun, behavior: AgentBehaviorDefinition, signal: AbortSignal): Promise<string> {
+    let key = ''
+    let travelSnapshot = '', searchRevision = -1
+    const searchRefs = new Map<string, import('../shared/domain/sources').SourceSummary>(), researchUrls = new Set<string>()
+    let reflection: Awaited<ReturnType<AppService['reflectionInput']>> | undefined
+    try {
+      const context = await this.serialize(async () => {
+        signal.throwIfAborted()
+        const agent = await this.employees.reconcile(run.agentId), conversation = this.getConversation(run.conversationId)
+        const profile = await this.agentProfiles.get(agent.id)
+        if (!agent.active || profile.revision !== run.profileRevision || !conversation.agentIds.includes(agent.id) || conversation.channel || conversation.list?.hidden || this.clearingConversations.has(conversation.id)) fail('员工行为来源已失效')
+        const backend = agent.executionBackend, runtimeProfile = isNativeBackend(backend) ? this.profiles.get(backend.profileId) : undefined
+        const connection = runtimeProfile && (!agent.connectionId && backend?.kind !== 'claude-local' || runtimeProfile.useExistingLogin) ? undefined : this.getConnection(agent.connectionId || (isCoreAgent(agent) ? [...this.connections.values()].find(item => item.defaultModel)?.id ?? '' : ''))
+        if (backend?.kind === 'codex-local') await resolveCodexRuntime(agent, runtimeProfile, connection)
+        if (backend?.kind === 'claude-local') resolveClaudeRuntime(agent, runtimeProfile, connection)
+        if (backend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, runtimeProfile, connection); this.runtimePlugins.resolve(runtimeProfile!.runtimePlugin!) }
+        if (backend?.kind === 'acp-local') fail('此运行方式不支持员工行为')
+        const apiKey = connection ? await this.apiKey(connection) : ''; key = apiKey
+        const lastMessage = this.conversationMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
+        if (behavior.kind === 'reflection') reflection = await this.reflectionInput(agent, conversation, run.reflectionDay ?? personalityDate(Date.parse(run.sourceMessageId ? this.messages.get(run.sourceMessageId)?.createdAt ?? run.startedAt : run.startedAt)))
+        const material = reflection ? { messages: reflection.messages, refs: reflection.messages.flatMap(message => message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []) } : lastMessage ? await this.materialMessages(conversation, lastMessage.id, agent.id) : { messages: [], refs: [] }
+        const messages = reflection ? material.messages : material.messages.filter(message => message.status === 'completed').slice(-30)
+        if (reflection && !messages.length && !reflection.notes.length) return undefined
+        const memory = await this.recallEmployeeMemory(agent, conversation, behavior.instruction)
+        memory.recall!.inputMessageIds = [...new Set([...messages.map(message => message.id), ...Object.values(reflection?.messageSourceIds ?? {}).flat(), ...reflection?.supportMessageIds ?? []])]
+        if (reflection) memory.recall!.versions = [...new Map([...memory.recall!.versions, ...reflection.versions].map(version => [version.id, version])).values()]
+        const state = await this.agentStates.view(agent.id, conversation.id, Date.now(), memory)
+        travelSnapshot = JSON.stringify(state.base.travel ?? null)
+        if (behavior.kind === 'greeting' && (quietTime(profile, Date.now()) || profile.features.fatigue && (state.effective.sleeping || state.effective.fatigue >= 70))) return undefined
+        const loaded = await this.homes.load(agent, conversation, memory, 'behavior-' + run.id, { profile, state, scene: behavior.kind === 'follow-up' ? 'greeting' : behavior.kind })
+        const context: EngineContext = { agent, conversation, connection, runtimeProfile, apiKey, modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, resources: this.authorizedResources(agent, conversation), messages, memory, materialRefs: material.refs,
+          ...(reflection ? { personalityReflection: { date: reflection.day, conversations: reflection.rooms.map(room => ({ id: room.id, title: room.title, kind: room.kind })),
+            emotions: reflection.emotions.map(({ id, conversationId, emotion, sourceMessageIds }) => ({ id, conversationId, emotion, sourceMessageIds })),
+            emotionGuidance: 'These are actual source-backed state updates at their recorded timestamps, not a continuous mood timeline. Conversation-scoped updates describe that conversation. Missing periods are unknown; current decay is not a past measurement. Reasons are the agent’s interpretations, not verified facts about the user.',
+            notes: reflection.notes.map(({ id, version, content, createdAt, updatedAt, kind, evidence, origin, attribution, sourceMessageIds }) => ({ id, version, content, createdAt, updatedAt, kind, evidence, origin, attribution, sourceMessageIds })),
+            noteGuidance: 'These are the authorized notes actually saved on the reflection date. Their timestamps are save times, not proof that the described events happened that day. origin=user means a user-provided note, not your autobiography; origin=model means an extracted/derived note, not proof that you lived its events. Preserve the actual attribution. A user-provided first-person experience belongs to the user unless its content explicitly attributes it to someone else. When no author or subject is established, leave it as a note rather than assigning it to yourself. Preserve attribution and distinguish claims, plans and inferences from completed events. Incorporate relevant notes alongside the supplied conversations; the host preserves the original notes when adding the diary. Missing details, mood history or bodily experiences are unknown, not gaps to fill with invented facts. If no conversations are supplied, reflect on these notes alone and return sourceMessageIds: []; never manufacture a message ID or a conversation. The host preserves each note ID and version as the diary source.',
+          } } : {}),
+          runId: 'behavior-' + run.id, signal, ...loaded, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+          ...(runtimeProfile ? { runtimeDirectory: { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, `.${nativeRuntimeNamespace(backend)}-private`) } } : {}),
+        }
+        if (behavior.kind === 'travel') {
+          searchRevision = (await this.webSearch.settings()).revision
+          context.webSearchPreference = this.webSearch.effectivePreference(agent)
+          context.webSearchServices = await this.webSearch.summaries(agent)
+          context.webSearchServices = context.webSearchServices.filter(ref => {
+            try { assertSearchSelection(context, ref); return true } catch { return false }
+          })
+        }
+        return context
+      })
+      if (!context) return 'skip'
+      const validate = async () => {
+        signal.throwIfAborted()
+        await this.agentBehaviors.assertActive(run.id)
+        const employee = this.getAgent(run.agentId), room = this.getConversation(run.conversationId)
+        if (this.closing || this.backingUp || this.clearingConversations.has(room.id) || !employee.active || employee.configVersion !== context.agent.configVersion || room.configVersion !== context.conversation.configVersion || !room.agentIds.includes(employee.id) || room.list?.hidden) fail('员工行为当前授权已失效')
+        if (behavior.kind === 'travel') {
+          if ((await this.webSearch.settings()).revision !== searchRevision) fail('旅行使用的网页检索设置已变化')
+          const available = await this.webSearch.summaries(employee)
+          for (const ref of searchRefs.values()) {
+            this.webSearch.connections.assertCurrent([ref])
+            if (!available.some(item => item.id === ref.id && item.revision === ref.revision)) fail('旅行使用的网页检索服务已失效')
+          }
+        }
+        await this.materials.validateRefs(context.materialRefs ?? [], employee.id, room.id)
+        if (!await this.memory.recallValid(context.memory!)) fail('行为使用的记忆已失效')
+        const forgotten = await this.memory.forgottenMessageIds(employee.id)
+        if (context.messages.some(message => !this.messages.has(message.id) || forgotten.has(message.id))) fail('行为使用的消息已失效')
+        if (reflection) {
+          const current = await this.reflectionInput(employee, room, reflection.day)
+          if (context.messages.some(message => !current.messages.some(candidate => candidate.id === message.id && candidate.content === message.content))) fail('反思来源范围或内容已变化')
+          if (reflection.notes.some(note => !current.notes.some(candidate => candidate.id === note.id && candidate.version === note.version && candidate.content === note.content))) fail('反思笔记来源范围或内容已变化')
+          if (reflection.emotions.some(event => !current.emotions.some(candidate => candidate.id === event.id && JSON.stringify(candidate) === JSON.stringify(event)))) fail('反思情绪记录来源范围或内容已变化')
+        }
+      }
+      if (behavior.kind === 'travel' && context.webSearchServices?.length) {
+        const search = async (serviceId: string, request?: import('../shared/domain/sources').SourceCall) => {
+          const ref = context.webSearchServices!.find(item => item.id === serviceId) ?? fail('旅行检索服务未获授权')
+          searchRefs.set(serviceId, ref)
+          await this.serialize(validate)
+          const result = await this.webSearch.use(ref, context.runId, signal, request, () => this.serialize(validate))
+          if (request) {
+            const collect = (value: unknown) => {
+              if (typeof value === 'string') for (const url of value.match(/https?:\/\/[^\s<>"\\)\]}]+/g) ?? []) researchUrls.add(url.replace(/[.,;。；]+$/, ''))
+              else if (Array.isArray(value)) value.forEach(collect)
+              else if (value && typeof value === 'object') Object.values(value).forEach(collect)
+            }
+            collect(result)
+          }
+          return result
+        }
+        context.inspectWebSearch = serviceId => search(serviceId)
+        context.callWebSearch = input => search(input.sourceId, sourceCallSchema.parse(input))
+      }
+      if (isCoreAgent(context.agent) && behavior.applicationAccess === 'manage') {
+        const actor = { kind: 'behavior' as const, employeeId: run.agentId, conversationId: run.conversationId, behaviorRunId: run.id }
+        context.application = {
+          catalog: async query => { await validate(); return this.application.catalog(query, actor) },
+          receipt: async query => { await validate(); return this.application.receipt(query, actor) },
+          call: async input => { await validate(); if (input.operation === 'employees.stopBehavior' && input.input?.runId === run.id) throw new Error('结束当前行为请返回结构化结果；不能等待自身停止'); return this.applicationAuthority.run({ validate, signal }, () => this.application.call(input, actor)) },
+        }
+      }
+      await this.agentBehaviors.observe(run.id, { promptEvidence: context.bootstrap?.promptEvidence, sourceConversationIds: [...new Set([...context.messages.map(message => message.conversationId), ...reflection?.supportConversationIds ?? []])] })
+      context.onModelCallStarted = async () => { await this.agentBehaviors.countModelCall(run.id) }
+      context.onUsage = async usage => { await this.agentBehaviors.observe(run.id, { usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 } }) }
+      const engine = this.engineFor(context)
+      if (!engine.runBehavior) fail('当前模型适配器未提供员工行为调用')
+      const result = await this.modelCapacity.run(context.connection?.id ?? `native:${context.runtimeProfile!.id}`, signal, async () => {
+        await validate()
+        return agentBehaviorResultSchema.parse(await engine.runBehavior!(context, { instruction: behavior.instruction, maxModelCalls: behavior.maxModelCalls }))
+      })
+      const applied = await this.serialize(async () => {
+        await validate()
+        if (result.decision === 'skip') return false
+        const validIds = new Set(context.messages.map(message => message.id))
+        if (result.sourceMessageIds.some(id => !validIds.has(id))) fail('行为结果引用了未授权的消息')
+        if ((result.reflection || result.trait) && !result.sourceMessageIds.length && !reflection?.notes.length) fail('反思和成长需要明确的真实来源')
+        if (key && JSON.stringify(result).includes(key)) fail('行为结果包含凭据，不能保存')
+        const profile = await this.agentProfiles.get(run.agentId)
+        if (result.emotion && profile.features.emotions) {
+          const state = await this.agentStates.view(run.agentId, run.conversationId)
+          const global = behavior.kind === 'reflection'
+          await this.agentStates.update({ agentId: run.agentId, ...(global ? {} : { conversationId: run.conversationId }), expectedRevision: global ? state.base.revision : state.context!.revision, change: { action: 'emotion', emotion: result.emotion } }, Date.now(), run.conversationId, {
+            sourceMessageIds: [...new Set([...context.messages.map(message => message.id), ...Object.values(reflection?.messageSourceIds ?? {}).flat(), ...reflection?.supportMessageIds ?? []])],
+            sourceMemories: context.memory?.recall?.versions.filter(item => !item.id.startsWith('observation:')),
+          })
+        }
+        if ((result.reflection || result.trait) && behavior.kind === 'reflection' && profile.features.growth) {
+          const content = result.reflection?.trim() || `人格变化：${result.trait!.trim()}`
+          const materialBound = context.materialRefs?.length || context.messages.some(message => message.materialIds?.length)
+          const useScope = materialBound ? 'conversation' : context.conversation.memoryScope ?? 'employee'
+          const remembered = await this.memory.extract({ agentId: run.agentId, scope: 'employee' }, [{ content, sourceMessageIds: result.sourceMessageIds, sourceResourceIds: this.inheritedResources(reflection ? context.messages.map(message => message.id) : result.sourceMessageIds, []), kind: 'experience', evidence: 'inference', ...(context.conversation.memoryContextRef && !materialBound ? { contextRef: context.conversation.memoryContextRef } : {}) }], context.memory!.epoch, validIds, context.resources.map(resource => resource.id), {
+            conversationId: run.conversationId, useScope, disclosure: context.conversation.kind === 'direct' ? 'private' : 'public', requestId: 'behavior:' + run.id, expectedInvalidationEpoch: context.memory!.invalidationEpoch ?? 0, userMessageIds: [],
+            authorizedContexts: this.memoryContexts(context.conversation),
+            ...(result.reflection && reflection ? { diary: { date: reflection.day, behaviorRunId: run.id } } : {}),
+            ...(reflection?.notes.length ? { reflectionSources: reflection.notes.map(note => ({ id: note.id, version: note.version })) } : {}),
+            ...(reflection ? { messageMemoryIds: reflection.messageMemoryIds,
+              messageSourceIds: Object.fromEntries(result.sourceMessageIds.map(id => [id, [...new Set([...context.messages.map(message => message.id), ...Object.values(reflection!.messageSourceIds).flat(), ...reflection!.supportMessageIds])]])),
+              messageConversationIds: Object.fromEntries(result.sourceMessageIds.map(id => [id, [...new Set([...reflection!.rooms.map(room => room.id), ...Object.values(reflection!.messageConversationIds).flat(), ...reflection!.supportConversationIds])]])) } : {}),
+            sourceMemoryIds: context.memory?.recall?.versions.map(item => item.id).filter(id => !id.startsWith('observation:')) ?? [],
+          })
+          let source = remembered.entries.find(entry => entry.content === content && entry.conversationId === run.conversationId && result.sourceMessageIds.every(id => entry.sourceMessageIds.includes(id)))
+          if (result.trait && result.reflection && source) {
+            // A long diary must not consume the entire recall budget just to carry one small trait.
+            // The compact child keeps the diary's full provenance and invalidates with that parent.
+            const traitContent = `人格变化：${result.trait.trim()}`, diaryId = source.id
+            const compact = await this.memory.extract({ agentId: run.agentId, scope: 'employee' }, [{ content: traitContent, sourceMessageIds: result.sourceMessageIds, sourceResourceIds: [], kind: 'experience', evidence: 'inference' }], remembered.epoch, validIds, [], {
+              conversationId: run.conversationId, useScope, disclosure: context.conversation.kind === 'direct' ? 'private' : 'public', requestId: 'behavior:' + run.id + ':trait', expectedInvalidationEpoch: remembered.invalidationEpoch ?? 0, userMessageIds: [], sourceMemoryIds: [source.id], reflectionSources: [{ id: source.id, version: source.version }],
+            })
+            source = compact.entries.find(entry => entry.content === traitContent && entry.sourceMemoryIds?.includes(diaryId))
+          }
+          if (result.trait && source) await this.agentStates.addTrait(run.agentId, run.conversationId, result.sourceMessageIds, result.trait, Date.now(), context.memory?.recall?.versions ?? [], { id: source.id, version: source.version })
+        }
+        if (profile.features.travel && behavior.kind === 'travel') {
+          const state = await this.agentStates.view(run.agentId, run.conversationId)
+          if (JSON.stringify(state.base.travel ?? null) !== travelSnapshot) fail('旅行状态已在本次活动期间改变，未覆盖当前旅程')
+          if (result.travelJournal?.sources.some(url => !researchUrls.has(url))) fail('游记引用了本次检索未返回的来源')
+          const change = state.base.travel?.active
+            ? result.travelEvent ? { action: 'travel-advance', text: result.travelEvent, spend: result.travelSpend, mood: result.travelMood, journal: result.travelJournal, returnHome: result.travelReturn }
+              : result.travelReturn || state.base.travel.day >= 7 || (state.base.travel.budget ?? 1000) < 100 ? { action: 'travel-return' } : undefined
+            : result.travelDestination ? { action: 'travel-start', destination: result.travelDestination, mood: result.travelMood } : undefined
+          if (change) await this.agentStates.update({ agentId: run.agentId, expectedRevision: state.base.revision, change }, Date.now(), run.conversationId, { sourceMessageIds: context.messages.map(message => message.id), sourceMemories: context.memory?.recall?.versions.filter(item => !item.id.startsWith('observation:')) })
+        }
+        if (result.message?.trim() && behavior.kind === 'greeting') {
+          const state = await this.agentStates.view(run.agentId, run.conversationId)
+          const latest = this.conversationMessages(run.conversationId).filter(message => message.status === 'completed').at(-1)
+          if (quietTime(profile, Date.now()) || profile.features.fatigue && (state.effective.sleeping || state.effective.fatigue >= 70) || latest?.id !== context.messages.at(-1)?.id) return false
+          const message = this.nextMessage(run.conversationId, { id: 'behavior-' + run.id, senderType: 'agent', senderId: run.agentId, senderName: context.agent.name, content: result.message.trim(), status: 'completed' })
+          await this.store.transaction(async tx => {
+            if (await tx.get('messages', message.id)) return
+            await tx.put(record('messages', message)); await this.reading.recordCompletion(tx, message)
+          })
+          this.messages.set(message.id, message); this.emit({ type: 'message', message }); this.changed(run.conversationId)
+        }
+        return true
+      })
+      return applied ? result.reason || '后台活动已完成' : 'skip'
+    } catch (error) { throw new Error(this.redact(error instanceof Error ? error.message : '行为执行失败', key), { cause: error }) }
+    finally { await this.webSearch.connections.closeRun('behavior-' + run.id) }
+  }
+  private async agentPersonality(action: string, input: any): Promise<unknown> {
+    if (this.closing || this.backingUp) fail('服务正在退出或备份')
+    await this.applicationAuthority.getStore()?.validate()
+    if (action === 'profile') return this.agentProfiles.get(input.agentId)
+    if (action === 'state') return this.agentStates.view(input.agentId, input.conversationId)
+    if (action === 'configure') {
+      const profile = await this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return this.agentProfiles.save(input) })
+      await this.automations.synchronizeBehaviors()
+      this.changed()
+      return profile
+    }
+    if (action === 'updateState') return this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); const state = await this.agentStates.update(input); this.changed(); return state })
+    if (action === 'behaviorHistory') return this.agentBehaviors.list(input.agentId)
+    if (action === 'validateHistoryDeletion') return this.agentBehaviors.validateHistoryDeletion(input)
+    if (action === 'deleteBehaviorHistory' || action === 'clearBehaviorHistory') return this.serialize(async () => {
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      await this.applicationAuthority.getStore()?.validate()
+      return action === 'deleteBehaviorHistory' ? this.agentBehaviors.deleteHistory(input) : this.agentBehaviors.clearHistory(input)
+    })
+    if (action === 'runBehavior') return this.serialize(async () => await this.agentBehaviors.run(input.agentId, input.behaviorId, 'manual:' + input.requestId) ?? null)
+    if (action === 'stopBehavior') return this.agentBehaviors.stop(input.runId)
+    throw new Error('未知员工配置操作')
+  }
   private async agentFiles(method: Method, input: unknown) {
     if (method === 'saveAgentFile') {
-      const value = z.object({ agentId: id, name: z.enum(['AGENTS.md', 'SOUL.md']), content: z.string().max(64000), expectedHash: z.string().max(128), expectedConfigVersion: z.number().int().positive() }).strict().parse(input)
+      const value = z.object({ agentId: id, name: agentSourceNameSchema, content: z.string().max(64000), expectedHash: z.string().max(128), expectedConfigVersion: z.number().int().positive() }).strict().parse(input)
       return this.employees.saveFile(value)
     }
     const value = z.object({ agentId: id, conversationId: id.optional(), ...(method === 'readAgentFile' ? { name: text(200) } : {}) }).strict().parse(input)
@@ -1725,7 +2030,7 @@ export class AppService {
 
   private assertConversationIdle(id: string) {
     const running = [...this.runs.values()].some(run => run.conversationId === id && (this.runControllers.has(run.id) || this.activeAdapters.has(run.id)))
-    if ((!this.clearingConversations.has(id) && this.conversationBusy(id)) || running || this.automations.hasActiveConversation(id)) fail('会话仍有任务执行或收尾，请先停止并等待结束后再清空')
+    if (this.agentBehaviors.hasActive({ conversationId: id }) || (!this.clearingConversations.has(id) && this.conversationBusy(id)) || running || this.automations.hasActiveConversation(id)) fail('会话仍有任务执行或收尾，请先停止并等待结束后再清空')
   }
 
   private async deleteGroup(id: string) {
@@ -1774,6 +2079,7 @@ export class AppService {
   }
 
   private async clearConversationHistory(id: string, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord) {
+    await this.agentBehaviors.cancelScope({ conversationId: id })
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
     this.assertConversationIdle(id)
     const discussions = [...this.conversations.values()].filter(room => room.channelDiscussion?.conversationId === id)
@@ -2611,6 +2917,7 @@ export class AppService {
     controller.signal.throwIfAborted()
   }
   private async cancelConnectionCalls(connectionId: string) {
+    this.images.cancelConnection(connectionId)
     const calls = [...this.connectionCalls].filter(([, call]) => call.connectionId === connectionId)
     for (const [controller] of calls) controller.abort(new Error('模型连接已变更或删除，请重新核对'))
     await this.teamGeneration.cancelConnection(connectionId)
@@ -3078,7 +3385,52 @@ export class AppService {
   }
   private async recallEmployeeMemory(agent: DigitalAgent, conversation: Conversation, request: string, workId?: string): Promise<MemoryView> {
     const view = await this.memory.get({ agentId: agent.id, scope: 'employee' })
+    const profile = await this.agentProfiles.get(agent.id)
+    return recallMemory({ view, observations: await this.memory.observations(agent.id), messages: this.messages, request,
+      preferredIds: profile.features.growth ? await this.agentStates.growthMemoryIds(agent.id) : [],
+      access: await this.employeeMemoryAccess(agent, conversation, workId),
+    })
+  }
+  private referenceObjects: LoadReferences = async (input, actor, kinds) => {
+    const scope = await this.store.transaction(tx => referenceScope(tx, input, actor))
+    const agent = this.getAgent(scope.agentId), conversation = this.getConversation(scope.conversationId)
+    if (this.clearingConversations.has(conversation.id)) fail('会话正在清理')
+    const trigger = actor.kind === 'employee' ? this.messages.get(actor.messageId) : this.conversationMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
+    return collectReferenceSources(this.store, {
+      agent, conversation,
+      messages: async () => {
+        if (!trigger || trigger.conversationId !== conversation.id) return []
+        const forgotten = await this.memory.forgottenMessageIds(agent.id), allowed: Message[] = []
+        for (const message of await this.contextMessages(conversation, trigger.id)) {
+          if (forgotten.has(message.id)) continue
+          try {
+            if (message.channelReference) await this.store.transaction(tx => channelReferenceMessage(tx, conversation.id, message.channelReference!))
+            if (message.composerReferences?.length) await this.store.transaction(tx => this.validateComposerReferences(tx, conversation, message.composerReferences!, false))
+            const refs = message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []
+            await this.materials.validateRefs(refs, agent.id, conversation.id)
+            for (const materialId of message.materialIds ?? []) await this.materials.read(materialId, agent.id, conversation.id)
+            allowed.push(message)
+          } catch { /* Unavailable sources never contribute a title, excerpt or edge. */ }
+        }
+        return allowed
+      },
+      memories: async () => {
+        const access = await this.employeeMemoryAccess(agent, conversation), view = await this.memory.get({ agentId: agent.id, scope: 'employee' })
+        return view.entries.filter(entry => memoryAllowed(entry, access))
+      },
+      skills: async () => {
+        const items: { id: string; name: string; content: string; revision: string }[] = []; let unavailable = 0
+        for (const resource of this.authorizedResources(agent, conversation).filter(value => value.kind === 'skill')) {
+          try { const skill = await this.skills.detail(resource.id); items.push({ id: resource.id, name: resource.name, content: skill.content, revision: skill.contentHash }) }
+          catch { unavailable++ }
+        }
+        return { items, unavailable }
+      },
+    }, kinds)
+  }
+  private async employeeMemoryAccess(agent: DigitalAgent, conversation: Conversation, workId?: string): Promise<MemoryAccess> {
     const works = await this.store.load<import('../shared/domain').WorkItem>('workItems')
+    const blocked = await this.memory.recallBlockedIds(agent.id)
     const contextRefs = this.memoryContexts(conversation, workId).filter(ref => ref.kind === 'conversation' ? !!this.conversations.get(ref.id)?.agentIds.includes(agent.id) : works.some(work => work.id === ref.id && !['delivered', 'failed', 'cancelled', 'interrupted'].includes(work.status)))
     const allowedResources = new Set(this.authorizedResources(agent, conversation).map(resource => resource.id))
     const forbiddenMaterials = new Set<string>()
@@ -3091,15 +3443,32 @@ export class AppService {
         for (const materialId of message.materialIds ?? []) await this.materials.read(materialId, agent.id, conversation.id)
       } catch { forbiddenMaterials.add(message.id) }
     }
-    return recallMemory({ view, observations: await this.memory.observations(agent.id), messages: this.messages, request,
-      access: { agentId: agent.id, conversationId: conversation.id, contextRefs,
+    return { agentId: agent.id, conversationId: conversation.id, contextRefs,
         conversationRestricted: id => this.conversations.get(id)?.memoryScope === 'conversation',
-        sourceAllowed: entry => entry.sourceResourceIds.every(id => allowedResources.has(id)) && (entry.sourceConversationIds ?? (entry.conversationId ? [entry.conversationId] : [])).every(id => this.conversations.get(id)?.agentIds.includes(agent.id)) && entry.sourceMessageIds.every(id => {
+        sourceAllowed: entry => !blocked.has(entry.id) && entry.sourceResourceIds.every(id => allowedResources.has(id)) && (entry.sourceConversationIds ?? (entry.conversationId ? [entry.conversationId] : [])).every(id => this.conversations.get(id)?.agentIds.includes(agent.id)) && entry.sourceMessageIds.every(id => {
           const message = this.messages.get(id), origin = message && this.conversations.get(message.conversationId)
           return !!message && !forbiddenMaterials.has(id) && message.status === 'completed' && !!origin?.agentIds.includes(agent.id) && (!message.runId || (() => { const snapshot = this.snapshots.get(message.runId); return !!snapshot && !snapshot.invalidated && this.dataSourceSnapshotValid(snapshot) })())
         }),
-      },
+    }
+  }
+  private async reflectionInput(agent: DigitalAgent, conversation: Conversation, day: string) {
+    const rooms = reflectionRooms(agent.id, conversation, [...this.conversations.values()]).filter(room => !this.clearingConversations.has(room.id))
+    const messages: Message[] = []
+    for (const room of rooms) {
+      const last = this.conversationMessages(room.id).filter(message => message.status === 'completed').at(-1)
+      if (!last) continue
+      for (const message of await this.contextMessages(room, last.id)) {
+        if (personalityDate(Date.parse(message.createdAt)) !== day) continue
+        const recalled = this.snapshots.get(message.runId ?? '')?.memoryRecall
+        if (recalled && !await this.memory.recallValid({ ...recalled, entries: [] })) continue
+        messages.push(message)
+      }
+    }
+    const selected = reflectionContext({ day, rooms, messages, emotions: await this.agentStates.emotionHistory(agent.id), entries: (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries,
+      access: await this.employeeMemoryAccess(agent, conversation), forgotten: await this.memory.forgottenMessageIds(agent.id),
+      provenance: message => { const snapshot = this.snapshots.get(message.runId ?? ''), messageIds = snapshot?.memoryRecall?.recall?.inputMessageIds ?? []; return { memories: snapshot?.memoryRecall?.recall?.versions ?? [], messageIds, resourceIds: snapshot?.resources.map(resource => resource.id) ?? [], conversationIds: [...new Set(messageIds.flatMap(id => { const origin = this.messages.get(id)?.conversationId; return origin ? [origin] : [] }))] } },
     })
+    return { ...selected, day, rooms: rooms.filter(room => selected.messages.some(message => message.conversationId === room.id) || selected.supportConversationIds.includes(room.id)) }
   }
   private async invalidateMemoryRuns(committedRunId?: string) {
     const stale = new Set<string>()
@@ -3159,6 +3528,45 @@ export class AppService {
     })
   }
   // Caller holds the original service serialization boundary.
+  private async reactionMessages(context: EngineContext) {
+    const { current, conversation } = await this.assertExecutionAccess(context)
+    const origin = await this.channelExecutionSource(this.runs.get(context.runId) ?? { conversationId: conversation.id, triggerMessageId: context.triggerMessageId })
+    if (origin) this.channels.executionBinding(origin, current.id)
+    return context.messages.flatMap(frozen => {
+      const message = this.messages.get(frozen.id)
+      if (!message || message.conversationId !== conversation.id || message.status !== 'completed' || message.senderId === current.id || JSON.stringify(message.channel) !== JSON.stringify(frozen.channel)) return []
+      if (origin && (!message.channel || message.channel.bindingId !== origin.bindingId || message.channel.tenantId !== origin.tenantId || message.channel.chatId !== origin.chatId || message.channel.threadId !== origin.threadId || !message.channel.replyThreadId)) return []
+      const emojis = availableReactionEmojis(origin?.platform)
+      return emojis.length ? [{ message, emojis, destination: origin ? 'channel' as const : 'boai' as const }] : []
+    }).slice(-30)
+  }
+  private async setEmployeeReaction(context: EngineContext, input: ReactionInput): Promise<ReactionResult> {
+    const value = reactionInputSchema.parse(input)
+    const target = await this.serialize(async () => {
+      const target = (await this.reactionMessages(context)).find(item => item.message.id === value.messageId)
+      if (!target || !target.emojis.includes(value.emoji)) throw new Error('消息不在当前可回应范围内，或此渠道不支持该表情。')
+      if (target.destination === 'boai') await this.saveEmployeeReaction(context, target.message.id, value, false)
+      return target
+    })
+    if (target.destination === 'boai') return { ...value, destination: 'boai', status: 'applied' }
+    // Network I/O runs outside the service critical section, with its original delivery queue.
+    const requestId = createHash('sha256').update(JSON.stringify([context.runId, value])).digest('hex')
+    const receipt = await this.channels.react(context.agent.id, target.message, value.emoji, value.active, requestId, context.signal)
+    if (receipt.status === 'sent' && !receipt.replayed) await this.serialize(async () => {
+      // A confirmed external effect remains true after cancellation; don't resurrect cleared messages.
+      if (this.messages.has(value.messageId) && !this.clearingConversations.has(context.conversation.id)) await this.saveEmployeeReaction(context, value.messageId, value, target.message.channel?.platform === 'telegram')
+    })
+    return { ...value, destination: 'channel', status: receipt.status === 'sending' ? 'unknown' : receipt.status, ...(receipt.detail ? { detail: receipt.detail } : {}) }
+  }
+  private async saveEmployeeReaction(context: EngineContext, messageId: string, input: ReactionInput, replaceAll: boolean) {
+    const message = this.messages.get(messageId)
+    if (!message || message.conversationId !== context.conversation.id) throw new Error('原消息已清理。')
+    const reactions = (message.reactions ?? []).filter(item => item.senderId !== context.agent.id || !replaceAll && item.emoji !== input.emoji)
+    if (input.active) reactions.push({ emoji: input.emoji as ReactionEmoji, senderId: context.agent.id, senderName: context.agent.name })
+    const updated = { ...message, reactions }
+    await this.store.write([record('messages', updated)])
+    this.messages.set(messageId, updated); this.changed(message.conversationId)
+  }
   private async assertExecutionAccess(context: EngineContext) {
     context.signal.throwIfAborted()
     const current = this.getAgent(context.agent.id), conversation = this.getConversation(context.conversation.id)
@@ -3168,6 +3576,24 @@ export class AppService {
     if (context.memory && !await this.memory.recallValid(context.memory)) fail('材料或记忆来源已失效，不能继续访问')
     if (run!.origin) await this.automations.assertExecutable(run!.origin, conversation.id)
     return { current, conversation }
+  }
+  /** Called under the original binding critical section, only for a strict additive change. */
+  private async advanceSkillBinding(previous: DigitalAgent, current: DigitalAgent) {
+    const updates: RunSnapshot[] = []
+    for (const [id, { context }] of this.activeEngineContexts) {
+      const snapshot = this.snapshots.get(id), run = this.runs.get(id)
+      if (!run || terminal.has(run.status) || context.signal.aborted || !snapshot || snapshot.invalidated || snapshot.agent.id !== current.id || snapshot.agent.configVersion !== previous.configVersion || context.agent.configVersion !== previous.configVersion) continue
+      updates.push({ ...snapshot, agent: { ...snapshot.agent, configVersion: current.configVersion }, skillBindingVersions: [...(snapshot.skillBindingVersions ?? []), { from: previous.configVersion, to: current.configVersion, addedSkillIds: current.skillIds.filter(id => !previous.skillIds.includes(id)) }] })
+    }
+    if (!updates.length) return
+    await this.store.write(updates.map(snapshot => record('snapshots', snapshot)))
+    for (const updated of updates) {
+      const active = this.activeEngineContexts.get(updated.id)!
+      Object.assign(this.snapshots.get(updated.id)!, updated)
+      active.context.agent.configVersion = current.configVersion
+      active.definition.configVersion = current.configVersion
+      // The supplied skill IDs/resources/prompt stay frozen. No new tool or skill is loaded mid-run.
+    }
   }
   private async assertKnowledgeAccess(context: EngineContext, ids: string[]) {
     await this.serialize(async () => {
@@ -3327,7 +3753,18 @@ export class AppService {
     }
     materialContext.refs = [...refs.values()]
     await this.materials.validateRefs(materialContext.refs, agent.id, conversation.id)
-    const loaded = await this.homes.load(agent, conversation, combined, run.id)
+    const personaProfile = await this.agentProfiles.get(agent.id)
+    if (personaProfile.features.fatigue) await this.agentStates.recordMessage(agent.id, conversation.id, turn.triggerMessageId)
+    const personaState = await this.agentStates.view(agent.id, conversation.id, Date.now(), combined)
+    const loaded = await this.homes.load(agent, conversation, combined, run.id, { profile: personaProfile, state: personaState, scene: run.responseKind === 'task' ? 'task' : conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct' })
+    const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
+    if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
+    if (isCoreAgent(agent) && !conversation.channel) {
+      const references = await referenceInstructions(this.referenceObjects, this.messages.get(turn.triggerMessageId)?.content ?? '', { kind: 'employee', employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId })
+      if (references) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, references].filter(Boolean).join('\n\n')
+    }
+    const planState = await activePlanInstructions(this.store, agent.id, conversation.id)
+    if (planState) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planState].filter(Boolean).join('\n\n')
     for (const message of messages) {
       for (const ref of message.composerReferences ?? []) {
         if (ref.kind !== 'artifact' || ref.agentId !== agent.id) continue
@@ -3348,7 +3785,22 @@ export class AppService {
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
       externalInvocations: 0, options: clone(agent.nativeOptions), ...(backend.kind === 'claude-local' ? { modelId: agent.modelId || connection?.defaultModel } : {}), sessionPolicy: 'scoped', toolControl: 'external' }
     await this.store.write([record('snapshots', snapshot), record('runs', run)])
-    const context: EngineContext = { permissionExpectation, modelSource, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+    const selfieActor = { kind: 'employee' as const, employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId }
+    // Validation called inside a media critical section must not recursively acquire serialize().
+    const validateSelfie = async () => { await this.assertExecutionAccess(context) }
+    const context: EngineContext = { permissionExpectation, modelSource,
+      selfies: {
+        list: async () => { await validateSelfie(); const value = await this.selfies.list(agent.id, selfieActor); await validateSelfie(); return value },
+        save: (image, label) => this.selfies.save(agent.id, selfieActor, image, label, signal, validateSelfie),
+        remove: input => this.selfies.remove(agent.id, selfieActor, input, validateSelfie),
+        export: id => this.selfies.export(agent.id, selfieActor, id, signal, validateSelfie),
+        generate: (input, outputFormat) => this.selfies.generate(agent.id, selfieActor, input, outputFormat, signal, validateSelfie),
+      },
+      images: {
+        settings: () => this.images.settings(),
+        generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
+        verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
+      }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
       webSearchServices: await this.webSearch.summaries(agent), webSearchPreference: this.webSearch.effectivePreference(agent),
       inspectWebSearch: serviceId => this.useWebSearch(context, serviceId),
       callWebSearch: input => this.useWebSearch(context, input.sourceId, sourceCallSchema.parse(input)),
@@ -3356,6 +3808,51 @@ export class AppService {
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
       closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      assertSkillAccess: ids => this.serialize(async () => {
+        const { current, conversation } = await this.assertExecutionAccess(context)
+        const allowed = this.authorizedResources(current, conversation)
+        for (const id of ids) {
+          const saved = allowed.find(item => item.id === id && item.kind === 'skill')
+          const frozen = context.resources.find(item => item.id === id && item.kind === 'skill')
+          if (!saved || !frozen || saved.path !== frozen.path) fail('技能已移除、撤权或更新')
+          this.skillUpdates.assertAvailable(id)
+        }
+      }),
+      reactions: {
+        list: () => this.serialize(async () => (await this.reactionMessages(context)).map(({ message, emojis, destination }) => ({ messageId: message.id, sender: message.senderName, text: message.content.slice(0, 500), destination, emojis, reactions: clone(message.reactions ?? []) }))),
+        set: input => this.setEmployeeReaction(context, input),
+      },
+      rememberMemory: input => this.serialize(async () => {
+        const { current, conversation } = await this.assertExecutionAccess(context)
+        const value = rememberMemorySchema.parse(input), source = this.messages.get(value.sourceMessageId)
+        if (!source || source.id !== turn.triggerMessageId || source.senderType !== 'user' || source.senderId !== 'user' || source.channel || source.origin || source.conversationId !== conversation.id || !source.content.includes(value.quote)) fail('只能记录当前本人消息中的原文，不能补造或引用其他来源')
+        const userSource = source!
+        const materialMessages = await this.materialSourceMessageIds(context)
+        const sourceMessageIds = [...new Set([userSource.id, ...materialMessages])]
+        const result = await this.memory.extract({ agentId: current.id, scope: 'employee' }, [{ content: value.quote, sourceMessageIds, sourceResourceIds: this.inheritedResources(sourceMessageIds, []), kind: 'long_term', evidence: 'claim' }], context.memory!.epoch, sourceMessageIds, this.authorizedResources(current, conversation).map(item => item.id), {
+          conversationId: conversation.id, useScope: context.materialRefs?.length ? 'conversation' : conversation.memoryScope ?? 'employee', disclosure: conversation.kind === 'direct' ? 'private' : 'public',
+          requestId: `remember:${userSource.id}:${createHash('sha256').update(value.quote).digest('hex')}`, expectedInvalidationEpoch: context.memory!.invalidationEpoch ?? 0,
+          userMessageIds: [userSource.id], attribution: userSource.senderName,
+        })
+        const saved = result.entries.find(item => item.content === value.quote && item.status === 'active')
+        await this.memoryChanged([current.id], run.id)
+        return { retained: !!saved, ...(saved ? { id: saved.id, version: saved.version } : {}) }
+      }),
+      recallMemory: query => this.serialize(async () => {
+        const { current, conversation } = await this.assertExecutionAccess(context)
+        const found = await this.recallEmployeeMemory(current, conversation, query, run.workId)
+        const recall = context.memory!.recall!, incoming = found.recall!
+        recall.versions = [...new Map([...recall.versions, ...incoming.versions].map(item => [item.id, item])).values()]
+        recall.observationVersions = [...new Map([...(recall.observationVersions ?? []), ...(incoming.observationVersions ?? [])].map(item => [item.id, item])).values()]
+        recall.observationIds = [...new Set([...recall.observationIds, ...incoming.observationIds])]
+        recall.inputMessageIds = [...new Set([...(recall.inputMessageIds ?? []), ...found.entries.flatMap(item => item.sourceMessageIds)])]
+        context.memory!.entries = [...new Map([...context.memory!.entries, ...found.entries].map(item => [item.id, item])).values()]
+        if (!await this.memory.recallValid(context.memory!)) fail('检索记忆的来源已失效')
+        snapshot.memoryEntryIds = recall.versions.map(item => item.id)
+        snapshot.memoryRecall = clone({ namespace: context.memory!.namespace, epoch: context.memory!.epoch, invalidationEpoch: context.memory!.invalidationEpoch, recall })
+        await this.store.write([record('snapshots', snapshot)])
+        return found
+      }),
       assertKnowledgeAccess: ids => this.assertKnowledgeAccess(context, ids),
       canAccessTaskPath: (path, operation) => this.serialize(() => this.taskMaterialAccess(context, path, operation)),
       readTaskFile: path => this.serialize(async () => {
@@ -3367,6 +3864,16 @@ export class AppService {
         const verified = await this.store.transaction(tx => this.artifactRepository.validateCurrentArtifact(tx, artifact.id, artifact.contentHash!, agent.id, true))
         signal.throwIfAborted()
         return { content: verified.text }
+      }),
+      readTaskBytes: path => this.serialize(async () => {
+        signal.throwIfAborted()
+        if (!await this.taskMaterialAccess(context, path, 'read')) fail('Task file read access is not authorized')
+        const location = relative(context.workspace!.sharedPath, resolve(path)).split(/[\\/]/).join('/')
+        const artifact = [...this.artifacts.values()].find(value => value.conversationId === conversation.id && value.managedRelativePath === location)
+        if (!artifact) return null
+        const verified = await this.store.transaction(tx => this.artifactRepository.readCurrentArtifactBytes(tx, artifact.id, artifact.contentHash!, agent.id))
+        signal.throwIfAborted()
+        return verified
       }),
       onProgress: async event => {
         // Observation has no effect authority and must never replay or fail business work.
@@ -3552,6 +4059,7 @@ export class AppService {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
     }
+    this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
     })
   }
@@ -3703,6 +4211,27 @@ export class AppService {
       const context = await this.engineContext(run, turn, effective, run.responseKind === 'chat' ? undefined : decision.observedThroughSequence); key = context.apiKey
       context.approveOperation = operation => this.requestApproval(run, controller, operation.description, this.runDirectories.get(run.id) ?? '', true, operation.kind)
       const source = this.messages.get(turn.triggerMessageId)
+      const stateProfile = await this.agentProfiles.get(context.agent.id)
+      if (Object.values(stateProfile.features).some(Boolean)) {
+        const validateState = async () => {
+          effective.throwIfAborted()
+          if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || !this.getAgent(run.agentId).active || this.getAgent(run.agentId).configVersion !== context.agent.configVersion || !this.getConversation(conversation.id).agentIds.includes(run.agentId)) fail('员工状态来源已失效')
+          await this.assertMaterialRefs(context)
+        }
+        context.personality = {
+          read: async () => { await validateState(); const view = await this.agentStates.view(run.agentId, conversation.id); if (view.base.emotion) view.base.emotion.reason = ''; return view },
+          update: async input => {
+            await validateState()
+            const profile = await this.agentProfiles.get(run.agentId), action = input.change.action
+            if (action === 'emotion' && !profile.features.emotions || ['sleep','wake','rest'].includes(action) && !profile.features.fatigue || action.startsWith('travel-') && !profile.features.travel) fail('此员工尚未启用对应状态功能')
+            if (context.memory && !await this.memory.recallValid(context.memory)) fail('员工状态使用的记忆已失效')
+            await this.agentStates.update({ agentId: run.agentId, ...(input.scope === 'context' ? { conversationId: conversation.id } : {}), expectedRevision: input.expectedRevision, change: input.change }, Date.now(), conversation.id, { sourceMessageIds: context.messages.filter(message => message.status === 'completed').map(message => message.id), sourceMemories: context.memory?.recall?.versions.filter(item => !item.id.startsWith('observation:')) })
+            const view = await this.agentStates.view(run.agentId, conversation.id)
+            if (view.base.emotion) view.base.emotion.reason = ''
+            this.changed(); return input.scope === 'context' ? view.context! : view.base
+          },
+        }
+      }
       if (source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel && conversation.purpose !== 'automation' && (conversation.purpose !== 'core' || conversation.automationCreation && isCoreAgent(context.agent)) && conversation.purpose !== 'channel-internal') {
         const owner = conversation.automationCreation ? undefined : conversation.kind === 'group' ? { kind: 'group' as const, conversationId: conversation.id } : { kind: 'employee' as const, employeeId: run.agentId }
         context.automationOwner = owner
@@ -3726,12 +4255,32 @@ export class AppService {
         } })
         context.createDataSource = async input => { await authorizeExecution(context, { kind: 'configuration', description: '创建数据源' }); return createDataSource(input) }
       }
-      if (conversation.purpose === 'core' && !conversation.automationCreation && isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && !turn.workId && !turn.wakeId && event.type === 'user_message' && decision.action === 'reply' && !conversation.channel && run.responseKind === 'chat') {
+      if (isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && decision.action === 'reply' && !conversation.channel) {
         const validate = async () => {
           effective.throwIfAborted()
           const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)
-          if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || current.purpose !== 'core' || current.channel || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !isCoreAgent(employee) || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin || original.status !== 'completed' || (await this.memory.forgottenMessageIds(run.agentId)).has(source.id)) fail('当前用户消息或bobo授权已失效，不能管理技能和数据源')
+          if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || current.channel || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !isCoreAgent(employee) || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin || original.status !== 'completed' || (await this.memory.forgottenMessageIds(run.agentId)).has(source.id)) fail('当前用户消息或bobo授权已失效，不能管理技能和数据源')
           await this.assertMaterialRefs(context)
+        }
+        const actor = { kind: 'employee' as const, employeeId: run.agentId, conversationId: conversation.id, messageId: source.id }
+        context.application = {
+          catalog: async query => { await validate(); return this.application.catalog(query, actor) },
+          receipt: async query => { await validate(); return this.application.receipt(query, actor) },
+          call: async input => {
+            await validate()
+            const catalog = await this.application.catalog({ operation: input.operation }, actor)
+            if (catalog.operations[0]?.effect === 'write') await authorizeExecution(context, { kind: 'configuration', description: `BOAI：${input.operation}` })
+            await validate()
+            const result = await this.applicationAuthority.run({ validate, signal: effective, directories: context.directoryAccess }, () => this.application.call(input, actor))
+            if (result.status === 'succeeded') {
+              const [domain, action] = input.operation.split('.')
+              if (domain === 'sources' || domain === 'skills') {
+                const output = result.data ?? (action === 'delete' ? { id: input.input?.id, removed: true } : undefined)
+                if (output && typeof output === 'object') await recordResult(domain === 'sources' ? 'source' : 'skill', { action, input: input.input }, output)
+              }
+            }
+            return result
+          },
         }
         const commands = catalogCommands({ sources: this.dataSources, files: this.localSkillEditing, source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, signal: effective, validate,
           directories: context.agent.directoryGrants !== undefined || context.agent.executionPermission === 'full-access' ? context.directoryAccess : undefined,
@@ -3956,7 +4505,6 @@ export class AppService {
       this.changed(conversation.id)
       const alive = () => !effective.aborted && !this.closing && !terminal.has(run.status)
       context.responseKind = run.responseKind; context.decision = decision
-      if (run.responseKind === 'chat' && !native) context.resources = context.resources.filter(resource => resource.kind === 'knowledge')
       if (run.responseKind !== 'chat' || native || context.resources.length) {
         context.environment = await this.homes.prepareEnvironment(context)
         effective.throwIfAborted()
@@ -4053,7 +4601,11 @@ export class AppService {
         context.approveCommand = async () => false
       }
       const releaseCliAccess = this.cliRunAccess.register(context, () => this.serialize(async () => { await this.assertExecutionAccess(context) }))
-      context.acquireCliEnvironment = () => this.cliRunAccess.environment(run.id)
+      context.acquireCliEnvironment = async () => {
+        const lease = await this.cliRunAccess.environment(run.id)
+        if (this.options.toolClientPath) Object.assign(lease.env, { BOAI_CLI_NODE: process.execPath, BOAI_CLI_TOOL_CLIENT: this.options.toolClientPath })
+        return lease
+      }
       context.registerCliTools = tools => this.cliRunAccess.registerTools(run.id, tools)
       try { await this.invokeModel(run, context, async ctx => {
         if (run.responseKind === 'task' && !this.scheduler.canStartWork(turn.id, run.agentId)) throw new WorkUnavailableError('已有用户新消息，尚未启动的旧任务已暂缓')
@@ -4297,7 +4849,7 @@ export class AppService {
   private engineFor(context: EngineContext): AgentEngine {
     const backend = context.agent.executionBackend
     const engine = backend?.kind === 'runtime-plugin' ? this.pluginEngine(backend) : backend?.kind === 'claude-local' ? this.claudeEngine : this.codexEngine
-    return context.runtimeProfile ? { run: c => engine.run(c), test: async () => { throw new Error('请通过本机连接测试') } } : this.options.engine
+    return context.runtimeProfile ? { runBehavior: (c, input) => engine.runBehavior(c, input), run: c => engine.run(c), test: async () => { throw new Error('请通过本机连接测试') } } : this.options.engine
   }
 
   private invokeModel<T>(run: AgentRun, context: EngineContext, operation: (context: EngineContext) => Promise<T>, timeoutMs?: number): Promise<T> {
@@ -4365,6 +4917,7 @@ export class AppService {
   }
 
   private async finishRun(run: AgentRun, status: 'completed' | 'failed' | 'cancelled' | 'interrupted', error?: string) {
+    this.activeEngineContexts.delete(run.id)
     if (run.workId && status !== 'completed') await this.works.release(run.id, status)
     run.status = status; run.finishedAt = now(); if (error) run.error = error
     if (run.draft && status !== 'completed') { run.draft.status = 'withheld'; run.draft.reason = error ?? '运行已停止，草稿未发布' }
@@ -4573,6 +5126,7 @@ export class AppService {
     if (cancelConversationTurns) for (const conversationId of affected) await this.scheduler.cancel(conversationId, reason, this.closing)
   }
   private async cancelEmployee(agentId: string, reason: string, conversationId?: string) {
+    await this.agentBehaviors.cancelScope({ agentId, conversationId })
     await this.cancelWhere(run => run.agentId === agentId && (!conversationId || run.conversationId === conversationId), reason)
     for (const conversation of this.conversations.values()) if (!conversationId || conversation.id === conversationId) {
       for (const work of (await this.works.view(conversation.id)).workItems.filter(work => work.ownerAgentId === agentId)) await this.works.cancelTree(work.id, reason)
@@ -4714,6 +5268,7 @@ export class AppService {
     if (!isAbsolute(destination)) fail('备份目录必须为绝对路径')
     if (isWithin(this.dataPath, destination) || isWithin(destination, this.dataPath)) fail('备份目录不能与应用数据目录相互包含')
     if (this.closing || this.backingUp) fail('服务正在退出或备份')
+    if (this.application.busy || this.agentBehaviors.busy) fail('应用业务操作或员工行为仍在进行，请完成后备份')
     this.backingUp = true
     try {
       await this.mutations
@@ -4737,6 +5292,16 @@ export class AppService {
         // Browser profiles and private page receipts are not part of a portable business backup.
         await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection IN ('dataSources','webSearchServices')")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false')) WHERE collection='channelBindings'")
+        const profiles = await backupClient.execute("SELECT id,value FROM records WHERE collection='agentProfiles'")
+        const backupAgents = await backupClient.execute("SELECT id,value FROM records WHERE collection='agents'")
+        for (const row of backupAgents.rows) {
+          const agent = JSON.parse(String(row.value)) as DigitalAgent, saved = profiles.rows.find(item => item.id === row.id)
+          const profile = normalizeAgentProfile(saved ? JSON.parse(String(saved.value)) : defaultAgentProfile(agent.id, isCoreAgent(agent)))
+          profile.revision++; profile.proactive.enabled = false
+          profile.features = { ...profile.features, emotions: false, growth: false, travel: false }
+          profile.behaviors = profile.behaviors.map(item => ({ ...item, enabled: false }))
+          await backupClient.execute({ sql: "INSERT INTO records(collection,id,value) VALUES('agentProfiles',?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value", args: [agent.id, JSON.stringify(profile)] })
+        }
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.status','unknown','$.detail','备份恢复后仅核对历史发送，未自动重发。') WHERE collection='channelDeliveries' AND json_extract(value,'$.status')='sending'")
         await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
         await backupClient.execute("UPDATE records SET value=json_object('id',id,'argumentHash',json_extract(value,'$.argumentHash'),'conversationId',coalesce(json_extract(value,'$.lease.conversationId'),json_extract(value,'$.conversationId')),'status','cleared') WHERE collection='browserActions'")
@@ -4764,7 +5329,7 @@ export class AppService {
   claimIdleShutdown(canClaim: () => boolean): Promise<boolean> {
     return this.serialize(async () => {
       if (!this.initialized || this.closing || this.backingUp) return false
-      const busy = () => this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy
+      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy
       if (busy()) return false
       try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { return false }
       const works = await this.store.load<WorkItem>('workItems')
@@ -4778,6 +5343,7 @@ export class AppService {
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
+    await this.agentBehaviors.close()
     await this.channels.close()
     if (this.memoryTimer) clearInterval(this.memoryTimer)
     for (const timer of this.workTimers.values()) clearTimeout(timer)
@@ -4802,6 +5368,7 @@ export class AppService {
     await Promise.all([...this.browserSessions.values()].map(({session})=>session.drain()))
     await this.options.browserHost?.request('disconnect',{})
     this.requestModelSecrets.clear()
+    await this.application.drain()
     await this.store.close()
   }
 }

@@ -1,4 +1,15 @@
 /*
+ * [OUTPUT]: 员工形象相册端口固定本人身份/私聊管理，群内新肖像可用私有参考但不导出原图。
+ * [OUTPUT]: 员工生图端口沿独立已选连接和原任务字节权限；配置与模型凭据不进入工具参数。
+ * [OUTPUT]: 任务图片可读取宿主同次核源的成果字节快照，沿原来源权限，不重开松散路径。
+ * [OUTPUT]: 执行上下文提供当前员工消息回应端口，身份/可见范围/渠道来源由宿主固定。
+ * [OUTPUT]: 反思笔记显式携带原 origin；保存者/提取者不等于事件主体。
+ * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
+ * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 人格反思上下文携带真实日期/来源会话，API与本机共享。
+ * [OUTPUT]: 员工上下文增加固定身份状态回调及结构化行为阶段，API预算与本机原生权限保持独立。
+ * [OUTPUT]: 2026-10-19应用业务协议：引擎上下文可选宿主授权的应用目录/调用/回执端口。
  * [OUTPUT]: 2026-10-19 检索服务目录、已解析偏好和 inspect/call 回调独立于 dataSources。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
@@ -41,7 +52,7 @@
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
 import type { TeamPlannerOutput } from '../shared/domain/team-creation'
 import type { TraceSpan } from '../shared/domain/traces'
-import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait, WorkBudget } from '../shared/domain'
+import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryEntry, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait, WorkBudget } from '../shared/domain'
 
 // The host and adapter share one phase budget, including the bounded JSON repair.
 export const PARTICIPATION_TIMEOUT_MS = 30_000
@@ -56,6 +67,21 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  images?: import('./modules/media/image-service').ImageCapability
+  selfies?: import('./modules/media/selfie-service').SelfieCapability
+  /** Self-identity only; host fixes visible messages and external destination from the current trigger. */
+  reactions?: { list(): Promise<import('./modules/conversations/reaction-tools').ReactionMessage[]>; set(input: import('./modules/conversations/reaction-tools').ReactionInput): Promise<import('./modules/conversations/reaction-tools').ReactionResult> }
+  /** Host-authorized full-day reflection metadata; messages keep their original room and date identities. */
+  personalityReflection?: { date: string; conversations: { id: string; title: string; kind: Conversation['kind'] }[];
+    notes?: Pick<MemoryEntry, 'id' | 'version' | 'content' | 'createdAt' | 'updatedAt' | 'kind' | 'evidence' | 'origin' | 'attribution' | 'sourceMessageIds'>[];
+    emotions?: { id: string; conversationId?: string; emotion: import('../shared/domain/agent-profile').AgentEmotion; sourceMessageIds: string[] }[];
+    emotionGuidance?: string;
+    noteGuidance?: string }
+  /** Self-only persisted role state. Identity and chat scope are fixed by the host. */
+  personality?: {
+    read(): Promise<import('../shared/domain/agent-profile').AgentStateView>
+    update(input: { scope: 'base' | 'context'; expectedRevision: number; change: import('zod').infer<typeof import('../shared/domain/agent-profile').agentStateActionSchema> }): Promise<import('../shared/domain/agent-profile').AgentPersonalityState>
+  }
   /** Acquired only at actual process launch; release after the original process/group has exited. Never serialize credentials. */
   acquireCliEnvironment?(): Promise<import('../shared/cli/run-access').RunCliEnvironmentLease>
   registerCliTools?(tools: import('../shared/cli/run-access').RunCliTool[]): () => Promise<void>
@@ -75,6 +101,11 @@ export interface EngineContext {
   inspectDataSource?(sourceId: string): Promise<unknown>
   callDataSource?(input: import('../shared/domain/sources').SourceCall): Promise<unknown>
   closeDataSources?(): Promise<void>
+  application?: {
+    catalog(query: import('../shared/domain/application-protocol').ApplicationCatalogQuery): Promise<import('../shared/domain/application-protocol').ApplicationCatalog>
+    call(input: import('../shared/domain/application-protocol').ApplicationRequest): Promise<import('../shared/domain/application-protocol').ApplicationResult>
+    receipt(query: import('../shared/domain/application-protocol').ApplicationReceiptQuery): Promise<import('../shared/domain/application-protocol').ApplicationResult | null>
+  }
   manageSkills?(input: import('./modules/resources/catalog-commands').ManageSkillsCommand): Promise<unknown>
   manageDataSources?(input: import('./modules/resources/catalog-commands').ManageSourcesCommand): Promise<unknown>
   createDataSource?(input: import('./modules/sources/source-commands').SourceCreationCommand): Promise<import('../shared/domain/sources').DataSource>
@@ -98,7 +129,12 @@ export interface EngineContext {
   canAccessTaskPath?(path: string, operation: 'read' | 'list' | 'write' | 'publish'): Promise<boolean>
   /** Registered shared artifacts return the same bytes that the host validated, with no second filesystem read. */
   readTaskFile?(path: string): Promise<{ content: string } | null>
+  /** Binary counterpart for current authorized artifacts; bytes are transient model input only. */
+  readTaskBytes?(path: string): Promise<{ bytes: Uint8Array; contentHash: string } | null>
   /** Revalidate live employee/conversation/resource permission before and after knowledge reads. */
+  assertSkillAccess?(resourceIds: string[]): Promise<void>
+  recallMemory?(query: string): Promise<MemoryView>
+  rememberMemory?(input: { sourceMessageId: string; quote: string }): Promise<{ retained: boolean; id?: string; version?: number }>
   assertKnowledgeAccess?(resourceIds: string[]): Promise<void>
   recordKnowledgeRead?(reference: import('../shared/domain/knowledge').KnowledgeReadRef): void
   agent: DigitalAgent
@@ -196,6 +232,8 @@ export interface AutomationDraftContext extends ModelCallObservation {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
+  /** Explicit employee behavior invocation, separate from a user message or a Work declaration. */
+  runBehavior?(context: EngineContext, input: { instruction: string; maxModelCalls: number }): Promise<import('../shared/domain/agent-profile').AgentBehaviorResult>
   interpretGroup?(context: EngineContext): Promise<import('../shared/domain/group-coordination').GroupInterpretation>
   draftAutomation?(context: AutomationDraftContext): Promise<unknown>
   run(context: EngineContext): Promise<void>

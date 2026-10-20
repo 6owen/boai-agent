@@ -1,13 +1,13 @@
 /*
  * [INPUT]: Independent retrieval settings, current provider presets and versioned desktop API.
- * [OUTPUT]: Browser/DeepSeek label-and-card settings, model-connection rows/menu and shared illustrated configuration dialog.
+ * [OUTPUT]: Compact default retrieval selector with persisted browser fallback for unavailable services, wider single-line browser open menu and service enable switch; shared model-connection key input and save-only dialog footer.
  * [POS]: Settings / configuration / web retrieval; no business data-source forms or bindings.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
-import { useContext, useId, useRef, useState } from 'react'
+import { useContext, useEffect, useId, useRef, useState } from 'react'
 import deepseekIcon from '@lobehub/icons-static-svg/icons/deepseek.svg'
 import type { DesktopApi } from '@shared/ipc'
-import { isSearchProviderPreset, searchProviderPresets, type SearchProviderId, type WebSearchServiceConfig } from '@shared/domain/web-search'
+import { searchProviderPresets, type SearchProviderId, type WebSearchServiceConfig } from '@shared/domain/web-search'
 import { useWebSearchSettings } from '@/hooks/use-web-search'
 import { ErrorToast, GuardContext, showErrorToast, useDirty, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -29,9 +29,21 @@ type SearchPreset = typeof searchProviderPresets[number]
 export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active: boolean }) {
   const { settings, failed, refresh } = useWebSearchSettings(api, active)
   const mutation = useMutation(), [editing, setEditing] = useState<EditTarget>()
-  const defaultValue = settings?.default.mode === 'service' ? settings.default.serviceId : 'browser'
-  const options = [{ value: 'browser', label: 'BOAI 浏览器' }, ...(settings?.services.filter(service => isSearchProviderPreset(service.provider) && service.enabled && service.pluginEnabled).map(service => ({ value: service.id, label: service.name })) ?? [])]
-  if (!options.some(option => option.value === defaultValue)) options.push({ value: defaultValue, label: '原默认检索服务不可用' })
+  const fallbackRevision = useRef<number | undefined>(undefined)
+  const services = settings?.services.filter(service => service.enabled && service.pluginEnabled && searchProviderPresets.some(provider => provider.id === service.provider && (!provider.requiresKey || service.hasCredential))) ?? []
+  const preferredServiceId = settings?.default.mode === 'service' ? settings.default.serviceId : undefined
+  const unavailableDefault = !!preferredServiceId && !services.some(service => service.id === preferredServiceId)
+  const defaultValue = preferredServiceId && !unavailableDefault ? preferredServiceId : 'browser'
+  const options = [{ value: 'browser', label: 'BOAI 浏览器' }, ...services.map(service => ({ value: service.id, label: service.name }))]
+  useEffect(() => {
+    if (!unavailableDefault) { fallbackRevision.current = undefined; return }
+    if (!active || !settings || mutation.busy || fallbackRevision.current === settings.revision) return
+    fallbackRevision.current = settings.revision
+    void mutation.run(async () => {
+      await api.request('saveWebSearchDefault', { expectedRevision: settings.revision, default: { mode: 'browser' } })
+      await refresh()
+    })
+  }, [active, api, settings, unavailableDefault, mutation.busy, mutation.run, refresh])
   const configure = (provider: SearchProviderId, service?: WebSearchServiceConfig) => void mutation.run(async () => {
     const credential = service ? await api.request('getWebSearchCredential', { id: service.id, expectedRevision: service.revision }) : ''
     setEditing({ provider, service, credential })
@@ -41,7 +53,7 @@ export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active
     <ErrorToast>{mutation.error}</ErrorToast>
     <div className="connection-section-heading"><h3 className="settings-section-title">默认检索</h3></div>
     <Card className="gap-0 px-5 py-0"><div className="connection-fields">
-      <ConnectionSettingRow label="默认检索方式" icon={<Search />}><SelectField aria-label="默认检索方式" value={defaultValue} disabled={!settings || mutation.busy || !active} options={options} onValueChange={value => { void mutation.run(async () => { await api.request('saveWebSearchDefault', { expectedRevision: settings!.revision, default: value === 'browser' ? { mode: 'browser' } : { mode: 'service', serviceId: value } }); await refresh() }) }} /></ConnectionSettingRow>
+      <ConnectionSettingRow label="默认检索方式" icon={<Search />}><SelectField className="w-56 max-w-full justify-self-end" aria-label="默认检索方式" value={defaultValue} disabled={!settings || mutation.busy || !active} options={options} onValueChange={value => { void mutation.run(async () => { await api.request('saveWebSearchDefault', { expectedRevision: settings!.revision, default: value === 'browser' ? { mode: 'browser' } : { mode: 'service', serviceId: value } }); await refresh() }) }} /></ConnectionSettingRow>
     </div></Card>
     <div className="connection-agent-settings">
       <div className="connection-section-heading"><h3 className="settings-section-title">检索服务</h3></div>
@@ -52,6 +64,9 @@ export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active
             <div className="connection-row-title"><strong>BOAI 浏览器</strong><span className="connection-state" data-ready="true">内置可用</span></div>
             <p className="connection-row-description">使用应用浏览器检索、访问网页，沿用已有登录状态。</p>
           </div>
+          <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon" disabled={mutation.busy || !active} aria-label="管理 BOAI 浏览器" />}><MoreHorizontal /></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56"><DropdownMenuItem className="whitespace-nowrap" onClick={() => { void mutation.run(async () => { await api.request('openBrowser', {}) }) }}><i aria-hidden="true" className="app-icon i-carbon-earth" />打开 BOAI 浏览器</DropdownMenuItem></DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {searchProviderPresets.flatMap(provider => {
           const services = settings?.services.filter(service => service.provider === provider.id) ?? []
@@ -94,6 +109,7 @@ function SearchServiceRow({ provider, service, api, disabled, onConfigure, onCha
       <p className="connection-row-description">{provider.description}</p>
     </div>
     {service ? <>
+      <Switch aria-label={`启用 ${name} 服务`} checked={service.enabled} disabled={working} onCheckedChange={enabled => { void mutation.run(async () => { await api.request('saveWebSearchService', { id: service.id, expectedRevision: service.revision, provider: service.provider, name: service.name, enabled }); await onChanged() }) }} />
       <DropdownMenu><DropdownMenuTrigger render={<Button ref={menuAnchor} variant="ghost" size="icon" disabled={working} aria-label={`管理 ${name}`} />}><MoreHorizontal /></DropdownMenuTrigger>
         <DropdownMenuContent align="end" finalFocus={removing ? false : undefined}>
           <DropdownMenuItem onClick={() => requestAnimationFrame(onConfigure)}><Pencil />编辑配置</DropdownMenuItem>
@@ -127,9 +143,9 @@ function SearchServiceEditor({ api, target, onClose, onSaved }: { api: DesktopAp
         await api.request('saveWebSearchService', { id, expectedRevision: target.service?.revision ?? 0, provider: provider.id, name: name.trim(), enabled, credential: credential.trim() })
         resetDirty(); await onSaved(); guard.saved(onClose)
       })
-    }} footer={<><Button type="button" variant="ghost" disabled={mutation.busy} onClick={close}>取消</Button><div className="connection-editor-actions"><Button type="submit" disabled={mutation.busy}>{mutation.busy && <LoaderCircle size={14} className="spinner" />}{mutation.busy ? '正在保存…' : '保存连接'}</Button></div></>}>
+    }} footer={<div className="connection-editor-actions"><Button type="submit" disabled={mutation.busy}>{mutation.busy && <LoaderCircle size={14} className="spinner" />}{mutation.busy ? '正在保存…' : '保存连接'}</Button></div>}>
       <ConnectionSettingRow label="连接名称" htmlFor={`${fieldId}-name`} icon={<Pencil />}><Input id={`${fieldId}-name`} ref={nameInput} required maxLength={100} value={name} onChange={event => setName(event.target.value)} placeholder="为这个连接起个名字" /></ConnectionSettingRow>
-      <ConnectionSettingRow label="API Key" icon={<Key />} htmlFor={`${fieldId}-key`} hint="由网页检索服务独立保存。"><InputGroup><InputGroupInput id={`${fieldId}-key`} aria-label={`${provider.name} API Key`} type={visible ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={credential} onChange={event => setCredential(event.target.value)} /><InputGroupAddon align="inline-end"><InputGroupButton type="button" size="icon-xs" aria-label={visible ? '隐藏密钥' : '显示密钥'} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</InputGroupButton></InputGroupAddon></InputGroup></ConnectionSettingRow>
+      <ConnectionSettingRow label="API Key" icon={<Key />} htmlFor={`${fieldId}-key`} hint="由网页检索服务独立保存。"><div className="connection-setting-control"><InputGroup><InputGroupInput id={`${fieldId}-key`} aria-label={`${provider.name} API Key`} type={visible ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={credential} onChange={event => setCredential(event.target.value)} placeholder="输入 API Key" /><InputGroupAddon align="inline-end" className="pr-2.5 has-[>button]:mr-0"><InputGroupButton size="icon-xs" className="connection-key-visibility" aria-label={visible ? '隐藏 API Key' : '显示 API Key'} aria-pressed={visible} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</InputGroupButton></InputGroupAddon></InputGroup></div></ConnectionSettingRow>
       <ConnectionSettingRow label="启用服务" icon={<Search />}><Switch checked={enabled} onCheckedChange={setEnabled} /></ConnectionSettingRow>
     </ConnectionForm>
   </ConnectionDialogLayout></Dialog>

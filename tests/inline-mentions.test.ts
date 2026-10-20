@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: $资源/提示词与@员工身份隔离，提示词正文快照发送展开，混排/原子删除/撤销及旧@资源草稿保持。
  * [OUTPUT]: 资源标签保留固定身份及可见名称，原子删除/撤销不产生群成员路由。
  * [INPUT]: composer 草稿/发送投影及实际 ProseMirror 编辑模型。
  * [OUTPUT]: 标签身份隔离、真实节点的光标前后位置/原子删除/替换/撤销/重做，Unicode 和正文保护回归。
@@ -16,6 +17,28 @@ import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDoc
 
 const draft = (text = ''): ChatDraft => ({ text, mentionIds: [] })
 const writer = { id: 'writer', name: '写手' }
+
+it('expands a selected prompt snapshot while routing only employee mentions and retaining fixed resource references', () => {
+  const prompt = { id: 'saved-prompt', revision: 3, name: '总结', content: '先给结论。\n再列证据。' }
+  const resource = { kind: 'skill' as const, id: 'skill-a', name: 'research', agentId: 'writer', configVersion: 3 }
+  const value: ChatDraft = { text: '@写手 $总结 $research 请开始', mentionIds: ['writer'], mentions: [
+    { id: 'writer', label: '写手', start: 0, end: 3 },
+    { id: 'prompt:saved-prompt', label: '总结', start: 4, end: 7, prompt },
+    { id: 'skill:skill-a', label: 'research', start: 8, end: 17, resource },
+  ] }
+  const schema = getSchema(mentionExtensions('tag'))
+  let state = EditorState.create({ schema, doc: schema.nodeFromJSON(mentionDocument(value)), plugins: [history()] })
+  expect(documentDraft(state.doc, value)).toEqual(value)
+  expect(draftContent(value)).toBe('先给结论。\n再列证据。 $research 请开始')
+  expect(draftResourceReferences(value)).toEqual([resource])
+  state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, documentPosition(state.doc, 7))))
+  deleteMention('backward')(state, transaction => { state = state.apply(transaction) })
+  expect(draftContent(documentDraft(state.doc, value))).not.toContain(prompt.content)
+  undo(state, transaction => { state = state.apply(transaction) })
+  expect(draftContent(documentDraft(state.doc, value))).toContain(prompt.content)
+  expect(documentDraft(state.doc, value).mentionIds).toEqual(['writer'])
+  expect(draftContent({ text: '$总结', mentionIds: [] })).toBe('$总结')
+})
 
 describe('inline composer mentions', () => {
   it('replaces only the selected trigger, preserving surrounding text and member identity', () => {

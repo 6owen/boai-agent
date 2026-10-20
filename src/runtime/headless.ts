@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 独立服务与桌面共用随包技能源及首次绑定；可显式注入受信分发根。
+ * [OUTPUT]: 独立服务提供同包员工脚本工具库，身份/生命周期沿原run租约。
+ * [OUTPUT]: 2026-10-19应用业务协议：独立服务使用同profile实际桌面设置宿主，可用状态动态核对。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: Public server verifies run credentials with the original live AppService; owner-only methods remain isolated.
  * [OUTPUT]: CLI消息游标复用原历史双向分页；app/session:event沿公共发布器隔离会话，订阅确认及中断/断开退出可核对。
@@ -11,6 +14,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import { basename } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import type { ServerOptions } from 'node:https'
 import { startOwnedRuntime } from './bootstrap'
@@ -29,7 +33,7 @@ import { dispatchRuntime } from './dispatch'
 import { publishAppEvent } from '../cli/events'
 import type { RunCliAccessRequest, RunCliPrincipal } from '../shared/cli/run-access'
 
-export interface HeadlessOptions { dataPath: string; version: string; host?: string; port?: number; token?: string; tls?: ServerOptions; secretEnvironment?: Record<string, string | undefined>; engine?: AgentEngine; skillHome?: string }
+export interface HeadlessOptions { bundledSkillRoot?: string; toolClientPath?: string; dataPath: string; version: string; host?: string; port?: number; token?: string; tls?: ServerOptions; secretEnvironment?: Record<string, string | undefined>; engine?: AgentEngine; skillHome?: string }
 export async function startHeadlessServer(options: HeadlessOptions) {
   const host = options.host ?? '127.0.0.1', loopback = ['127.0.0.1', '::1'].includes(host)
   if (!loopback && (!options.tls || !options.token)) throw new CliError('INVALID_REQUEST', '非回环服务需要明确的 TLS 和 BOAI_SERVER_TOKEN')
@@ -50,7 +54,7 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   let state: 'ready' | 'stopping' | 'stopped' = 'ready'
   let stopped!: () => void
   const finished = new Promise<void>(resolve => { stopped = resolve })
-  const owned = await startOwnedRuntime({ dataPath: options.dataPath, secrets, browserHost: desktop, engine: options.engine ?? new MastraEngine(), ...(options.skillHome ? { skillDiscovery: { homeDir: options.skillHome } } : {}), emit(event) {
+  const owned = await startOwnedRuntime({ dataPath: options.dataPath, toolClientPath: options.toolClientPath ?? fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), secrets, browserHost: desktop, applicationHost: { get available() { return desktop.available }, request: async (method, input) => await desktop.application(method, input) as never }, engine: options.engine ?? new MastraEngine(), skillDiscovery: { homeDir: options.skillHome, bundledRoot: options.bundledSkillRoot ?? fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, emit(event) {
     if (server) publishAppEvent(server, event)
     desktop.publish(event)
   } }, () => secrets.init()).catch(error => { if (error instanceof RuntimeOwnedError) throw new CliError('SERVER_BUSY', error.message); throw error })

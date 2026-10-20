@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 记忆新增/编辑独立Dialog保留原列表，取消确认仅丢弃局部草稿；保存禁关、原epoch提交一次及冲突草稿保持。
+ * [OUTPUT]: 新建员工完整展开模型/工作方式，无高级折叠或人格输入，模型由用户明确选择；原公共创建回执及会话接续保持。
  * [OUTPUT]: 数据源目录夹具符合完整DataSource合同（含MCP transport）；知识入口核对当前员工文件区，原菜单/草稿/关闭顺序和零写断言保持。
  * [OUTPUT]: 员工组编辑共用员工左右布局与贴边渐隐滚动；基础配置/自动化切换保护草稿，群版本化保存期间关闭和菜单禁用，新建群布局保持。
  * [OUTPUT]: 渠道编辑独立Dialog保留原列表；局部取消/退出、保存禁关及原版本请求保持，未知保存仅核对冻结回执，不重复提交。
  * [OUTPUT]: 技能添加入口位于分区标题且空态无Card；数据源普通绑定行纯文字菜单、Popover取消/确认、重新添加及版本化保存，不删除全局资源。
- * [OUTPUT]: 系统文件在独立Dialog编辑，取消关闭保留草稿、保存期间禁关，按原hash/配置版本提交；关闭后原文件列表及员工配置保持。
+ * [OUTPUT]: 人格页直接展示配置源文件，通过行右侧编辑/查看按钮打开原Dialog；取消草稿、保存禁关及hash/版本校验保持。
  * [OUTPUT]: 技能双栏多选/移除与本地/收藏搜索不提交绑定；统一添加逐项更新版本并保留草稿，未知停队列且仅核对原请求。
  * [OUTPUT]: 已选技能为群聊普通行和独立关闭按钮，已有项移除/重选仅改草稿；更多菜单红色移除经Popover取消/确认，保存才提交配置，无重复绑定。
  * [OUTPUT]: 数据源通过更多操作菜单打开详情，菜单展开不导航或改变绑定，原未保存确认保持。
@@ -20,11 +22,12 @@
 import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { AgentFileContent, AgentHome, AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '../src/shared/domain'
+import type { AgentFileContent, AgentHome, AgentInput, Conversation, DigitalAgent, MemoryEntry, MemoryView, Resource, Snapshot } from '../src/shared/domain'
 import type { ChannelBindingInput, ChannelBindingState } from '../src/shared/domain/channels'
 import type { BindLocalSkillInput, LocalSkill, SkillBindingPlan } from '../src/shared/domain/skills'
 import type { DataSource } from '../src/shared/domain/sources'
 import type { DesktopApi } from '../src/shared/ipc'
+import { defaultAgentProfile } from '../src/shared/domain/agent-profile'
 import { ContactEditorDialog } from '../src/renderer/pages/contacts/contact-editor-layout'
 import { CreateAgentDialog, CreateGroupDialog } from '../src/renderer/components/employee/creation-dialogs'
 import { EmployeeExecutionNavigation } from '../src/renderer/components/employee/execution-pane'
@@ -41,9 +44,14 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   Element.prototype.getAnimations = () => []
   localStorage.clear()
-  request = vi.fn<(method: string, input?: unknown) => Promise<unknown>>(async method => {
+  request = vi.fn<(method: string, input?: unknown) => Promise<unknown>>(async (method, input) => {
     if (method === 'listLaunchProfiles' || method === 'listDataSources' || method === 'listSkillInstallations') return []
     if (method === 'getSkillCollections') return { revision: 1, favoriteResourceIds: [], groups: [], groupByResourceId: {} }
+    if (method === 'executeApplicationOperation') {
+      const operation = (input as { operation: string }).operation
+      const data = operation === 'employees.profile' ? defaultAgentProfile(agent.id, false) : operation === 'employees.behaviorHistory' ? [] : { base: { revision: 0 }, effective: { mood: 'neutral', valence: 5, energy: 5, fatigue: 0, sleeping: false } }
+      return { status: 'succeeded', data }
+    }
     if (method === 'getAgentHome') return { files: [], configVersion: 3 }
     throw new Error(`Unexpected request: ${method}`)
   })
@@ -203,6 +211,10 @@ test.each(['employee', 'group'] as const)('%s creation preserves its layout with
   if (kind === 'employee') {
     expect(dialog.classList.contains('connection-dialog')).toBe(true)
     expect(dialog.querySelector('form.employee-form-layout .employee-form-footer')).not.toBeNull()
+    expect(dialog.querySelector('textarea[aria-label="工作方式"]')).not.toBeNull()
+    expect(dialog.querySelector('button[aria-label="模型连接"]')).not.toBeNull()
+    expect(dialog.querySelector('textarea[aria-label="人格与表达"]')).toBeNull()
+    expect([...dialog.querySelectorAll('button')].some(button => button.textContent === '高级配置')).toBe(false)
   } else {
     expect(dialog.classList.contains('connection-dialog')).toBe(false)
     expect(dialog.querySelector('#create-group-form [aria-label="搜索群成员"]')).not.toBeNull()
@@ -248,12 +260,20 @@ test.each(['codex-local', 'claude-local'] as const)('%s editing has a single who
   await selectOption('执行权限', '请求审批')
   await selectOption('执行权限', '完全访问（跳过审批）')
   await act(async () => button('保存修改').click())
-  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ executionPermission: 'full-access', nativeOptions: kind === 'codex-local' ? { effort: 'high', codexSandbox: 'danger-full-access', codexApprovalPolicy: 'never' } : { effort: 'high', claudePermissionMode: 'bypassPermissions' } }))
+  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ executionPermission: 'full-access', nativeOptions: kind === 'codex-local' ? { useNativePermissions: false, effort: 'high', codexSandbox: 'danger-full-access', codexApprovalPolicy: 'never' } : { useNativePermissions: false, effort: 'high', claudePermissionMode: 'bypassPermissions' } }))
 })
 
 test('creation inherits the connection default and can clear a model override before saving', async () => {
   const original = request.getMockImplementation()!
-  request.mockImplementation(async (method, input) => method === 'saveAgent' ? { ...agent, ...(input as object) } : method === 'createConversation' ? group : original(method, input))
+  request.mockImplementation(async (method, input) => {
+    if (method === 'getApplicationReceipt') return null
+    if (method === 'executeApplicationOperation') {
+      const operation = input as { operation: string; input: object }
+      return { status: 'succeeded', data: operation.operation === 'employees.create' ? { ...agent, ...operation.input } : { conversationId: group.id } }
+    }
+    if (method === 'getConversation') return { conversation: group }
+    return original(method, input)
+  })
   const onCreated = vi.fn(async () => {})
   await act(async () => root.render(h(CreateAgentDialog, { api, snapshot, onClose: vi.fn(), onCreated })))
   await change(document.querySelector<HTMLInputElement>('input[aria-label="名称"]')!, '继承默认模型')
@@ -265,7 +285,7 @@ test('creation inherits the connection default and can clear a model override be
   await change(model, 'custom-model')
   await change(model, '')
   await act(async () => button('创建员工').click())
-  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ connectionId: 'connection', modelId: '', executionPermission: 'ask' }))
+  expect(request).toHaveBeenCalledWith('executeApplicationOperation', expect.objectContaining({ operation: 'employees.create', input: expect.objectContaining({ connectionId: 'connection', modelId: '', executionPermission: 'ask' }) }))
   expect(onCreated).toHaveBeenCalledOnce()
 })
 
@@ -273,15 +293,15 @@ test('creation inherits the connection default and can clear a model override be
 test('sidebar navigation preserves the draft on cancel and discards only after explicit exit', async () => {
   await fixture('employee')
   await change(document.querySelector<HTMLInputElement>('input[aria-label="员工名称"]')!, '未保存姓名')
-  await act(async () => button('系统文件').click())
+  await act(async () => button('人格与行为').click())
   expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('有未保存的修改')
   await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog] [data-slot=alert-dialog-cancel]')!.click())
   expect(document.querySelector<HTMLInputElement>('input[aria-label="员工名称"]')!.value).toBe('未保存姓名')
   expect(document.querySelector('[role=tab][aria-label="基础配置"]')?.getAttribute('aria-selected')).toBe('true')
-  await act(async () => button('系统文件').click())
+  await act(async () => button('人格与行为').click())
   await act(async () => button('退出').click())
-  expect(document.querySelector('[role=tab][aria-label="系统文件"]')?.getAttribute('aria-selected')).toBe('true')
-  expect(document.querySelector('[role=dialog]')?.textContent).toContain('工作规则与风格是可编辑源文件')
+  expect(document.querySelector('[role=tab][aria-label="人格与行为"]')?.getAttribute('aria-selected')).toBe('true')
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('人格与工作规则')
   const identityInput = document.querySelector<HTMLInputElement>('input[aria-label="员工名称"]')!
   expect(identityInput.value).toBe(agent.name)
   expect(identityInput.closest<HTMLElement>('[role=tabpanel]')?.hasAttribute('inert')).toBe(true)
@@ -396,26 +416,26 @@ test('system files edit in a separate dialog with local draft protection and a b
     return original(method, input)
   })
   const f = await fixture('employee')
-  await act(async () => button('系统文件').click())
-  const fileRow = document.querySelector<HTMLButtonElement>('.file-row')!
+  await act(async () => button('人格与行为').click())
+  const fileRow = document.querySelector<HTMLButtonElement>('[aria-label="编辑 SOUL.md"]')!
   await act(async () => fileRow.click())
   const editor = document.querySelector<HTMLTextAreaElement>('[aria-label="SOUL.md 内容"]')!
   const popup = editor.closest<HTMLElement>('[role=dialog]')!
   expect(popup).not.toBe(document.querySelector('[aria-label="员工名称"]')!.closest('[role=dialog]'))
   expect(fileRow.isConnected).toBe(true)
-  expect(document.querySelector('[role=tab][aria-label="系统文件"]')?.getAttribute('aria-selected')).toBe('true')
+  expect(document.querySelector('[role=tab][aria-label="人格与行为"]')?.getAttribute('aria-selected')).toBe('true')
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(editor, '新的风格'); editor.dispatchEvent(new Event('input', { bubbles: true })) })
-  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭系统文件 SOUL.md"]')!.click())
+  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭配置源文件 SOUL.md"]')!.click())
   expect(document.querySelector('[role=alertdialog][data-open]')).not.toBeNull()
   await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog][data-open] [data-slot=alert-dialog-cancel]')!.click())
   expect(editor.value).toBe('新的风格')
   expect(f.closed).not.toHaveBeenCalled()
   await act(async () => popup.querySelector<HTMLFormElement>('form')!.requestSubmit())
   expect(request).toHaveBeenCalledWith('saveAgentFile', { agentId: agent.id, name: file.name, content: '新的风格', expectedHash: file.hash, expectedConfigVersion: 3 })
-  expect(popup.querySelector<HTMLButtonElement>('[aria-label="关闭系统文件 SOUL.md"]')!.disabled).toBe(true)
+  expect(popup.querySelector<HTMLButtonElement>('[aria-label="关闭配置源文件 SOUL.md"]')!.disabled).toBe(true)
   expect(editor.disabled).toBe(true)
   await act(async () => finishSave({ ...home, configVersion: 4 }))
-  const closeFile = document.querySelector<HTMLButtonElement>('[aria-label="关闭系统文件 SOUL.md"]')!
+  const closeFile = document.querySelector<HTMLButtonElement>('[aria-label="关闭配置源文件 SOUL.md"]')!
   expect(closeFile.disabled).toBe(false)
   await act(async () => closeFile.click())
   expect(document.querySelector('[aria-label="SOUL.md 内容"]')).toBeNull()
@@ -430,16 +450,97 @@ test('generated system files remain read-only in the separate dialog', async () 
   const original = request.getMockImplementation()!
   request.mockImplementation(async (method, input) => method === 'getAgentHome' ? { agentId: agent.id, workspacePath: '/fixture/workspace', memoryNamespace: 'employee:ds', configVersion: 3, files: [file] } : method === 'readAgentFile' ? file : original(method, input))
   await fixture('employee')
-  await act(async () => button('系统文件').click())
-  await act(async () => document.querySelector<HTMLButtonElement>('.file-row')!.click())
+  await act(async () => button('人格与行为').click())
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="查看 MEMORY.md"]')!.click())
   const editor = document.querySelector<HTMLTextAreaElement>('[aria-label="MEMORY.md 内容"]')!
   expect(editor.readOnly).toBe(true)
   const popup = editor.closest<HTMLElement>('[role=dialog]')!
   expect([...popup.querySelectorAll('button')].map(item => item.textContent)).toEqual(expect.arrayContaining(['查看记忆', '导入为记忆', '重新生成视图']))
   expect(popup.textContent).not.toContain('保存文件')
-  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭系统文件 MEMORY.md"]')!.click())
+  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭配置源文件 MEMORY.md"]')!.click())
   expect(document.querySelector('[aria-label="MEMORY.md 内容"]')).toBeNull()
   expect(request.mock.calls.some(([method]) => method === 'saveAgentFile' || method === 'regenerateAgentViews' || method === 'saveMemory')).toBe(false)
+})
+
+const memoryEntry: MemoryEntry = { id: 'memory:fixture', ownerAgentId: agent.id, scope: 'employee', content: '保留在原列表的记忆', sourceMessageIds: [], sourceResourceIds: [], origin: 'user', version: 2, schemaVersion: 2, kind: 'long_term', useScope: 'employee', status: 'active', createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-20T00:00:00Z' }
+async function memoryFixture(view: () => MemoryView = () => ({ entries: [memoryEntry], epoch: 7, namespace: 'employee:ds', total: 1 })) {
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'getMemory' ? view() : original(method, input))
+  const f = await fixture('employee')
+  await act(async () => button('记忆').click())
+  return f
+}
+async function changeMemory(textarea: HTMLTextAreaElement, value: string) {
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(textarea, value); textarea.dispatchEvent(new Event('input', { bubbles: true })) })
+}
+async function openMemoryEditor() {
+  await act(async () => button('添加记忆').click())
+  return document.querySelector<HTMLTextAreaElement>('[aria-label="新增记忆"]')!.closest<HTMLElement>('[role=dialog]')!
+}
+
+test('adding memory opens a separate dialog and discards only its own draft after confirmation', async () => {
+  const f = await memoryFixture()
+  const list = document.querySelector('[aria-label="记忆记录"]')!, parent = list.closest('[role=dialog]')
+  const popup = await openMemoryEditor()
+  expect(popup).not.toBe(parent)
+  expect(list.isConnected).toBe(true)
+  expect(list.textContent).toContain(memoryEntry.content)
+  const content = popup.querySelector<HTMLTextAreaElement>('[aria-label="新增记忆"]')!
+  await changeMemory(content, '尚未保存的记忆草稿')
+  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭记忆编辑"]')!.click())
+  expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('有未保存的修改')
+  await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog] [data-slot=alert-dialog-cancel]')!.click())
+  expect(content.value).toBe('尚未保存的记忆草稿')
+  await act(async () => popup.querySelector<HTMLButtonElement>('[aria-label="关闭记忆编辑"]')!.click())
+  await act(async () => button('退出').click())
+  expect(content.isConnected).toBe(false)
+  expect(parent?.isConnected).toBe(true)
+  expect(list.isConnected).toBe(true)
+  expect(f.closed).not.toHaveBeenCalled()
+  expect(request.mock.calls.some(([method]) => method === 'saveMemory' || method === 'saveAgent')).toBe(false)
+})
+
+test('memory save locks the local dialog and preserves its original epoch while refreshing the retained list', async () => {
+  let view: MemoryView = { entries: [memoryEntry], epoch: 7, namespace: 'employee:ds', total: 1 }
+  let finish!: () => void
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'saveMemory' ? new Promise<MemoryView>(resolve => { finish = () => { view = { ...view, epoch: 8, total: 2, entries: [memoryEntry, { ...memoryEntry, id: 'memory:new', content: '新保存的记忆' }] }; resolve(view) } }) : original(method, input))
+  const f = await memoryFixture(() => view)
+  const list = document.querySelector('[aria-label="记忆记录"]')!
+  const popup = await openMemoryEditor()
+  const content = popup.querySelector<HTMLTextAreaElement>('[aria-label="新增记忆"]')!
+  await changeMemory(content, '新保存的记忆')
+  await act(async () => popup.querySelector<HTMLFormElement>('form')!.requestSubmit())
+  expect(request).toHaveBeenCalledWith('saveMemory', expect.objectContaining({ agentId: agent.id, scope: 'employee', content: '新保存的记忆', expectedEpoch: 7, kind: 'long_term', useScope: 'employee', requestId: expect.any(String) }))
+  expect(content.closest('fieldset')?.disabled).toBe(true)
+  expect(popup.querySelector<HTMLButtonElement>('[aria-label="关闭记忆编辑"]')!.disabled).toBe(true)
+  await act(async () => popup.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  await act(async () => popup.querySelector<HTMLFormElement>('form')!.requestSubmit())
+  expect(content.isConnected).toBe(true)
+  expect(request.mock.calls.filter(([method]) => method === 'saveMemory')).toHaveLength(1)
+  await act(async () => finish())
+  expect(content.isConnected).toBe(false)
+  expect(list.isConnected).toBe(true)
+  expect(list.textContent).toContain('新保存的记忆')
+  expect(f.closed).not.toHaveBeenCalled()
+  expect(f.backgroundSubmit).not.toHaveBeenCalled()
+})
+
+test('a conflicting memory edit keeps the dialog and draft without retrying or changing its version', async () => {
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => { if (method === 'saveMemory') throw new Error('记忆已变更，请刷新后核对'); return original(method, input) })
+  const f = await memoryFixture()
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="记忆记录"] button')!.click())
+  const content = document.querySelector<HTMLTextAreaElement>('[aria-label="编辑记忆内容"]')!, popup = content.closest('[role=dialog]')!
+  expect(content.value).toBe(memoryEntry.content)
+  await changeMemory(content, '版本冲突也保留的修改')
+  await act(async () => popup.querySelector<HTMLFormElement>('form')!.requestSubmit())
+  expect(content.isConnected).toBe(true)
+  expect(content.value).toBe('版本冲突也保留的修改')
+  expect(content.closest('fieldset')?.disabled).toBe(false)
+  expect(request).toHaveBeenCalledWith('saveMemory', expect.objectContaining({ id: memoryEntry.id, expectedEpoch: 7, content: '版本冲突也保留的修改' }))
+  expect(request.mock.calls.filter(([method]) => method === 'saveMemory')).toHaveLength(1)
+  expect(f.closed).not.toHaveBeenCalled()
 })
 
 const channelBinding: ChannelBindingState = {

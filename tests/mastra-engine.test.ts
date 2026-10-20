@@ -1,4 +1,12 @@
 /*
+ * [OUTPUT]: 实际SDK判断携带第31项技能及命令权限，私有阶段零工具且其他员工/未绑定技能不泄入。
+ * [OUTPUT]: 反思真实SDK两阶段/原预算/原来源与复核失败不返回草稿；行为普通路径保持。
+ * [OUTPUT]: 批量图片真实SDK顺序/摘要、总大小与返回前撤权检查，保持单图兼容。
+ * [OUTPUT]: read_image实际SDK图片部件/无媒体Trace，以及文件来源、链接、格式、容量与同次核源字节回归。
+ * [OUTPUT]: 无效记忆候选校验前可留证；观察器修改副本不能绕过来源拒绝。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 真实SDK受控HTTP验证旅行先检索后游记，无公开中间草稿。
+ * [OUTPUT]: 独立行为真实SDK/本地HTTP工具接续及格式失败零重试；夹具不认证真实人格质量。
  * [OUTPUT]: Actual SDK/MCP text-choice loop preserves original chat budget, selection events and no file Work.
  * [OUTPUT]: 普通搜索问答实际SDK/MCP两协议接续、来源引用/预算、工具失败和澄清无工具。
  * [OUTPUT]: 普通知识问答经实际Mastra/HTTP协议检索与分页读取，记录原预算与引用；无Work或写入工具。
@@ -137,6 +145,67 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('runs a configured behavior through the real SDK tool loop with bounded calls and no public deltas', async () => {
+    const result = { decision: 'apply', reason: '已核对真实回执', message: '计划已保存。', sourceMessageIds: ['message-1'] }
+    const server = await endpoint([{ name: 'boai_call', args: { operation: 'automations.create', input: {}, requestId: 'schedule' } }, JSON.stringify(result)])
+    const started: string[] = [], requests: unknown[] = []
+    const f = await context(server.url, { onModelCallStarted: async id => { started.push(id) }, application: { catalog: async () => ({ protocolVersion: 'boai.application.v1', operations: [] }), receipt: async () => null, call: async input => { requests.push(input); return { protocolVersion: 'boai.application.v1', operation: input.operation, status: 'succeeded', data: { id: 'real-plan-receipt' } } } } })
+    expect(await new MastraEngine().runBehavior(f.ctx, { instruction: '按已配置约定创建计划并跟进', maxModelCalls: 2 })).toEqual(result)
+    expect(server.requests).toHaveLength(2)
+    expect(started).toHaveLength(2)
+    expect(requests).toHaveLength(1)
+    expect(toolResultText(server.requests[1])).toContain('real-plan-receipt')
+    expect(allMessageText(server.requests[0])).toContain('host-behavior-context')
+    expect(f.deltas).toEqual([])
+  })
+  it('reviews a reflection with its original sources before returning it and accounts for both calls', async () => {
+    const draft = { decision: 'apply', reason: 'draft', reflection: '我刚走过海边。', sourceMessageIds: ['message-1'] }
+    const final = { decision: 'apply', reason: 'reviewed', reflection: '用户计划去海边，还没有出发。我对这个主意有点期待。', sourceMessageIds: ['message-1'] }
+    const server = await endpoint((_body, response, index) => send(response, JSON.stringify(index ? final : draft), index, { prompt_tokens: index ? 7 : 11, completion_tokens: index ? 4 : 3, total_tokens: index ? 11 : 14 })), calls: string[] = [], usages: ModelUsage[] = [], callUsage: [string, ModelUsage][] = []
+    const f = await context(server.url, { messages: [message('我准备去海边，还没有出发。')], personalityReflection: { date: '2026-10-20', conversations: [], notes: [], noteGuidance: 'Keep the source narrator.' }, onModelCallStarted: async id => { calls.push(id) }, onUsage: async usage => { usages.push(usage) }, onModelCallUsage: async (id, usage) => { callUsage.push([id, usage]) } })
+    expect(await new MastraEngine().runBehavior(f.ctx, { instruction: '写私人日记', maxModelCalls: 2 })).toEqual(final)
+    expect(calls).toEqual(['behavior:1', 'behavior:2'])
+    expect(usages.at(-1)).toEqual({ inputTokens: 18, outputTokens: 7, totalTokens: 25 })
+    expect(callUsage).toEqual([['behavior:1', { inputTokens: 11, outputTokens: 3, totalTokens: 14 }], ['behavior:2', { inputTokens: 7, outputTokens: 4, totalTokens: 11 }]])
+    expect(server.requests).toHaveLength(2)
+    const body = JSON.parse(server.requests[1].messages.filter(item => item.role === 'user').at(-1)!.content as string)
+    expect(body.unsavedDraft).toEqual(draft)
+    expect(body.sources.messages[0]).toMatchObject({ senderId: 'human', relativeRole: 'user', text: '我准备去海边，还没有出发。' })
+    expect(server.requests[1].tools ?? []).toEqual([])
+    expect(f.deltas).toEqual([])
+  })
+  it('refuses insufficient reflection call budget before requesting a draft', async () => {
+    const server = await endpoint([]), f = await context(server.url, { personalityReflection: { date: '2026-10-20', conversations: [] } })
+    await expect(new MastraEngine().runBehavior(f.ctx, { instruction: '反思', maxModelCalls: 1 })).rejects.toThrow('调用上限不足')
+    expect(server.requests).toEqual([])
+  })
+  it('does not return a valid draft when the reflection review is malformed', async () => {
+    const server = await endpoint([JSON.stringify({ decision: 'apply', reason: 'draft', reflection: '不应保存的草稿', sourceMessageIds: [] }), 'bad review'])
+    const f = await context(server.url, { personalityReflection: { date: '2026-10-20', conversations: [] } })
+    await expect(new MastraEngine().runBehavior(f.ctx, { instruction: '反思', maxModelCalls: 2 })).rejects.toThrow()
+    expect(server.requests).toHaveLength(2)
+    expect(f.deltas).toEqual([])
+  })
+  it('rejects malformed behavior output without repair calls or publishing a draft', async () => {
+    const server = await endpoint(['I think this happened.'])
+    const f = await context(server.url)
+    await expect(new MastraEngine().runBehavior(f.ctx, { instruction: '反思本次交流', maxModelCalls: 1 })).rejects.toThrow()
+    expect(server.requests).toHaveLength(1)
+    expect(f.deltas).toEqual([])
+  })
+  it('lets travel inspect and call the supplied read-only search capability before returning its diary', async () => {
+    const serviceId = '12345678-1234-4234-8234-123456789abc'
+    const result = { decision: 'apply', reason: '检索后写虚拟游记', travelEvent: '虚拟游览', travelJournal: { text: '虚拟游记', sources: ['https://example.com/place'] }, sourceMessageIds: ['message-1'] }
+    const server = await endpoint([{ name: 'inspect_web_search', args: { serviceId } }, { name: 'call_web_search', args: { serviceId, tool: 'search', arguments: { query: 'destination' } } }, JSON.stringify(result)])
+    const used: unknown[] = []
+    const f = await context(server.url, { webSearchServices: [{ id: serviceId, name: 'search', description: 'search', type: 'api', revision: 1 }], webSearchPreference: { mode: 'service', serviceId },
+      inspectWebSearch: async () => ({ tools: [{ name: 'search', inputSchema: { type: 'object', properties: { query: { type: 'string' } } } }] }),
+      callWebSearch: async input => { used.push(input); return { url: 'https://example.com/place', text: 'Actual returned place information' } } })
+    expect(await new MastraEngine().runBehavior(f.ctx, { instruction: '按真实检索资料写虚拟游记', maxModelCalls: 3 })).toEqual(result)
+    expect(used).toEqual([{ sourceId: serviceId, tool: 'search', arguments: { query: 'destination' } }])
+    expect(toolResultText(server.requests[2])).toContain('https://example.com/place')
+    expect(f.deltas).toEqual([])
+  })
   it('keeps oversized ordered chat private and budgets one rewrite before publishing its complete meaning', async () => {
     const draft = '作为写手：第二版保留了周六开头和三条清单。仍需遵守：练习安排不是效果保证。'
     const final = '第二版已定；练习不保证效果。'
@@ -208,14 +277,35 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const run = await context(server.url, { agent: employee({ allowBrowser: true }), browserAvailable: true, triggerMessageId: 'message-3', turnId: 'retry-turn', messages: [message('请实际使用浏览器打开 https://www.iana.org/help/example-domains'), message('我现在没有浏览器能力。', 2, { senderType: 'agent', senderId: 'agent-a' }), message('再试一下', 3, { turnId: 'retry-turn' })] })
     await new MastraEngine().decide(run.ctx)
     const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
-    expect(payload.data.currentTaskCapabilities).toEqual({ browser: true })
+    expect(payload.data.currentTaskCapabilities).toMatchObject({ browser: true })
     expect(payload.data.historicalBackground).toHaveLength(2)
     expect(payload.data.currentTurnMessages[0].content).toBe('再试一下')
     expect(server.requests[0]!.tools).toBeUndefined()
     expect(allMessageText(server.requests[0]!)).toContain('currentTaskCapabilities')
     await new MastraEngine().decide({ ...run.ctx, agent: { ...run.ctx.agent, allowBrowser: false } })
     const legacy = JSON.parse(server.requests[1]!.messages.find(message => message.role === 'user')!.content as string)
-    expect(legacy.data.currentTaskCapabilities).toEqual({ browser: true })
+    expect(legacy.data.currentTaskCapabilities).toMatchObject({ browser: true })
+  })
+
+  it.each([
+    { allowCommands: true, executionPermission: 'full-access' as const, commands: true },
+    { allowCommands: true, executionPermission: 'ask' as const, commands: true },
+    { allowCommands: false, executionPermission: 'full-access' as const, commands: false },
+    { allowCommands: true, executionPermission: 'read-only' as const, commands: false },
+  ])('private routing retains all current bound skills and actual command capability: %j', async permission => {
+    const server = await endpoint([JSON.stringify({ action: 'reply', responseKind: 'chat' })])
+    const skills = Array.from({ length: 31 }, (_, n) => ({ id: `skill-${n}`, name: `Skill ${n}`, kind: 'skill' as const, description: `Workflow ${n}`, path: `/unused/${n}`, createdAt: '' }))
+    const run = await context(server.url, { agent: employee({ skillIds: skills.map(s => s.id), allowCommands: permission.allowCommands, executionPermission: permission.executionPermission }), resources: [...skills, { ...skills[0], id: 'unbound', name: 'Private unrelated skill' }] })
+    await new MastraEngine().decide(run.ctx)
+    const payload = JSON.parse(server.requests[0]!.messages.find(m => m.role === 'user')!.content as string)
+    const own = payload.data.members.find((m: any) => m.id === run.ctx.agent.id)
+    expect(own.skills).toHaveLength(31)
+    expect(own.skills.at(-1)).toEqual({ name: 'Skill 30', description: 'Workflow 30' })
+    expect(payload.data.members.filter((m: any) => m.id !== run.ctx.agent.id).every((m: any) => m.skills.length === 0)).toBe(true)
+    expect(JSON.stringify(payload.data.members)).not.toContain('Private unrelated skill')
+    expect(payload.data.currentTaskCapabilities).toMatchObject({ files: true, commands: permission.commands, executionPermission: permission.executionPermission })
+    expect(server.requests[0]!.tools).toBeUndefined()
+    expect(allMessageText(server.requests[0]!)).toContain('USING A SKILL IS NOT MERELY READING ITS INSTRUCTIONS')
   })
 
   it('advertises the available browser for scheduled work during participation', async () => {
@@ -243,7 +333,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const run = await context(server.url, { agent: employee({ allowBrowser: true, active: kind !== 'inactive' }), browserAvailable: kind !== 'disconnected', ...(kind === 'acp' ? { agent: employee({ allowBrowser: true, executionBackend: { kind: 'acp-local', profileId: 'external' } }) } : {}), ...(kind === 'organization' ? { work: { organization: { mode: 'organize_only' } } as WorkItem } : {}) })
     await new MastraEngine().decide(run.ctx)
     const payload = JSON.parse(server.requests[0]!.messages.find(message => message.role === 'user')!.content as string)
-    expect(payload.data.currentTaskCapabilities).toEqual({ browser: false })
+    expect(payload.data.currentTaskCapabilities).toMatchObject({ browser: false })
     expect(server.requests[0]!.tools).toBeUndefined()
   })
 
@@ -670,7 +760,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(mock.requests[0].tools ?? []).toHaveLength(0)
   })
 
-  it('keeps chat tool-free without touching resources and uses the host bootstrap exactly once', async () => {
+  it('offers lazy bound-skill readers in chat without executing resources and uses the host bootstrap exactly once', async () => {
     const mock = await endpoint(['Hello!'])
     const { ctx, approvals, tools } = await context(mock.url, { responseKind: 'chat' })
     ctx.agent.allowCommands = true
@@ -679,13 +769,25 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     ctx.resources = [{ id: 'missing-skill', kind: 'skill', name: 'Unavailable resource', description: '', path: '/no-such-skill', createdAt: '' }]
     ctx.bootstrap = { instructions: 'HOST_SYSTEM_FILE_RULE', hashes: {}, configVersion: 1, memoryVersion: 0, policyVersion: 1, sources: [] }
     await new MastraEngine().run(ctx)
-    expect(mock.requests[0].tools ?? []).toHaveLength(0)
+    expect(mock.requests[0].tools?.map((tool: any) => tool.function.name).sort()).toEqual(['list_skills', 'read_skill'])
     expect(allMessageText(mock.requests[0]).match(/HOST_SYSTEM_FILE_RULE/g)).toHaveLength(1)
     expect(allMessageText(mock.requests[0])).not.toContain('LEGACY_INSTRUCTIONS_MUST_NOT_REPEAT')
     expect(allMessageText(mock.requests[0])).not.toContain('Unavailable resource')
     expect(approvals).toHaveLength(0)
     expect(tools).toHaveLength(0)
     await expect(readdir(ctx.workspace!.root)).rejects.toThrow()
+  })
+
+  it('runs memory tools in ordinary chat through the actual SDK and keeps tool prefaces out of the final reply', async () => {
+    const mock = await endpoint([{ name: 'remember_memory', args: { sourceMessageId: 'message-1', quote: '示例项目叫雾岛' }, preface: '准备保存' }, { name: 'search_memory', args: { query: '雾岛' } }, '已经记录，项目叫雾岛。'])
+    const { ctx, deltas, tools } = await context(mock.url, { responseKind: 'chat' })
+    ctx.rememberMemory = vi.fn(async () => ({ retained: true, id: 'memory-1', version: 1 }))
+    ctx.recallMemory = vi.fn(async () => ({ entries: [], epoch: 1, namespace: 'employee:bobo' }))
+    await new MastraEngine().run(ctx)
+    expect(ctx.rememberMemory).toHaveBeenCalledOnce()
+    expect(ctx.recallMemory).toHaveBeenCalledWith('雾岛')
+    expect(deltas.join('')).toBe('已经记录，项目叫雾岛。')
+    expect(tools.filter(item => item.status === 'completed' && item.name !== 'task_step').map(item => item.name)).toEqual(['remember_memory', 'search_memory'])
   })
 
   it('bounds complete history messages while retaining the root request and exact newest sequence', async () => {
@@ -893,7 +995,12 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     ] }
     ctx.bootstrap = { instructions: 'HOST_RULES\nExisting authorized memory: FULL_EXISTING_FACT_IN_BOOTSTRAP', hashes: {}, configVersion: 1, memoryVersion: 4, policyVersion: 2, sources: [] }
     const memoryBefore = structuredClone(ctx.memory)
-    const engine = new MastraEngine()
+    const observed: unknown[] = []
+    const engine = new MastraEngine({ observeMemoryCandidates: async value => {
+      observed.push(structuredClone(value))
+      // Diagnostic consumers cannot rewrite candidate evidence to bypass validation.
+      value.candidates.forEach(candidate => { candidate.sourceMessageIds = ['message-3'] })
+    } })
     expect(await engine.extractMemory(ctx)).toEqual([{ content: 'Prefers Chinese reports.', sourceMessageIds: ['message-3'], sourceResourceIds: [] }])
     const payload = JSON.parse(mock.requests[0].messages.find(message => message.role === 'user')!.content as string)
     expect(payload.protocol).toBe('private-memory-delta-v1')
@@ -904,6 +1011,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(allMessageText(mock.requests[0])).not.toMatch(/OLD_USER_GREETING|OLD_SELF_INTRODUCTION|LATE_REPLY_FROM_OLD_TURN|OTHER_EMPLOYEE_PRIVATE_FACT|OTHER_CONVERSATION_PRIVATE_FACT/)
     expect(mock.requests[0].tools ?? []).toHaveLength(0)
     await expect(engine.extractMemory(ctx)).rejects.toThrow('未授权或不存在的来源')
+    expect(observed).toHaveLength(2)
+    expect(observed[1]).toMatchObject({ input: { currentTurnMessages: [{ id: 'message-3' }, { id: 'message-4' }] }, candidates: [{ sourceMessageIds: ['message-2'] }] })
     expect(additionalCalls).toHaveLength(0)
     expect(ctx.memory).toEqual(memoryBefore)
   })
@@ -2112,5 +2221,92 @@ describe.each(['mastra-model', 'codex-local', 'claude-local'] as const)('%s empl
     expect(await readFile(path.join(f.ctx.workspace!.runPath, 'command-proof.txt'), 'utf8')).toBe('command access')
     expect(approveOperation).not.toHaveBeenCalled()
     expect(f.approvals).toEqual([])
+  })
+})
+
+const workspaceImageBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64')
+describe('workspace image reading', () => {
+  it('sends an ordered batch in one SDK tool step and redacts every stored image', async () => {
+    const paths = ['self:/work/second.png', 'self:/work/first.png']
+    const mock = await endpoint([{ name: 'read_image', args: { path: paths } }, '看到了两张图片。'])
+    const { ctx, tools } = await context(mock.url)
+    await mkdir(ctx.workspace!.workPath, { recursive: true })
+    const bytes = [workspaceImageBytes, Buffer.concat([workspaceImageBytes, Buffer.from('different snapshot')])]
+    await writeFile(path.join(ctx.workspace!.workPath, 'second.png'), bytes[0])
+    await writeFile(path.join(ctx.workspace!.workPath, 'first.png'), bytes[1])
+    await new MastraEngine().run(ctx)
+    expect(mock.requests).toHaveLength(2)
+    const images = mock.requests[1].messages.flatMap(m => Array.isArray(m.content) ? m.content.filter(p => p.type === 'image_url').map(p => p.image_url?.url) : [])
+    expect(images).toEqual(bytes.map(value => `data:image/png;base64,${value.toString('base64')}`))
+    expect(tools.filter(t => t.status === 'completed').map(t => t.name)).toEqual(['read_image'])
+    for (const value of bytes) {
+      expect(JSON.stringify(tools)).not.toContain(value.toString('base64'))
+      expect(JSON.stringify(tools)).toContain(createHash('sha256').update(value).digest('hex'))
+    }
+  })
+  it('refuses a partial batch when a source is denied, earlier access is revoked, or the total is oversized', async () => {
+    const f = await nativeTask()
+    for (const name of ['first.png', 'second.png']) await writeFile(path.join(f.ctx.workspace!.workPath, name), workspaceImageBytes)
+    const paths = ['self:/work/first.png', 'self:/work/second.png']
+    f.ctx.canAccessTaskPath = async target => !target.endsWith('second.png')
+    await expect(f.runtime.tools.read_image.execute!({ path: paths }, f.invocation)).rejects.toThrow('not authorized')
+    let seenSecond = false
+    f.ctx.canAccessTaskPath = async target => {
+      if (target.endsWith('second.png')) seenSecond = true
+      return !(seenSecond && target.endsWith('first.png'))
+    }
+    await expect(f.runtime.tools.read_image.execute!({ path: paths }, f.invocation)).rejects.toThrow('not authorized')
+    f.ctx.canAccessTaskPath = async () => true
+    for (const name of ['first.png', 'second.png']) await writeFile(path.join(f.ctx.workspace!.workPath, name), Buffer.concat([workspaceImageBytes, Buffer.alloc(5 * 1024 * 1024)]))
+    await expect(f.runtime.tools.read_image.execute!({ path: paths }, f.invocation)).rejects.toThrow('合计最多 8 MiB')
+  })
+  it('sends actual file bytes as native image input through the SDK and retains only summaries in observations', async () => {
+    const mock = await endpoint([{ name: 'read_image', args: { path: 'self:/work/sample.bin' } }, '已读取实际图片。'])
+    const spans: TraceSpan[] = []
+    const { ctx, tools, deltas } = await context(mock.url, { onTrace: async span => { spans.push(span) } })
+    await mkdir(ctx.workspace!.workPath, { recursive: true })
+    await writeFile(path.join(ctx.workspace!.workPath, 'sample.bin'), workspaceImageBytes)
+    await new MastraEngine().run(ctx)
+    expect(mock.requests).toHaveLength(2)
+    const imageUrl = `data:image/png;base64,${workspaceImageBytes.toString('base64')}`
+    expect(mock.requests[1].messages.some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image_url' && p.image_url?.url === imageUrl))).toBe(true)
+    expect(toolResultText(mock.requests[1])).not.toContain(workspaceImageBytes.toString('base64'))
+    expect(toolResultText(mock.requests[1])).toContain('sample.bin')
+    const observations = JSON.stringify({ spans, tools })
+    expect(observations).not.toContain(imageUrl)
+    expect(observations).not.toContain(workspaceImageBytes.toString('base64'))
+    expect(observations).toContain(createHash('sha256').update(workspaceImageBytes).digest('hex'))
+    expect(deltas.join('')).toBe('已读取实际图片。')
+    expect(ctx.messages).toHaveLength(1)
+  })
+  it('checks source permission, format, size and link boundaries instead of trusting the filename', async () => {
+    const f = await nativeTask()
+    const tool = f.runtime.tools.read_image, run = f.ctx.workspace!.runPath
+    await writeFile(path.join(run, 'valid.bin'), workspaceImageBytes)
+    expect(await tool.execute!({ path: 'self:/runs/run-1/valid.bin' }, f.invocation)).toMatchObject({ image: { mimeType: 'image/png', data: workspaceImageBytes.toString('base64') } })
+    await writeFile(path.join(run, 'fake.png'), '<svg xmlns="http://www.w3.org/2000/svg"><script>secret()</script></svg>')
+    await expect(tool.execute!({ path: 'self:/runs/run-1/fake.png' }, f.invocation)).rejects.toThrow('栅格图片')
+    await writeFile(path.join(run, 'huge.png'), Buffer.concat([workspaceImageBytes, Buffer.alloc(8 * 1024 * 1024)]))
+    await expect(tool.execute!({ path: 'self:/runs/run-1/huge.png' }, f.invocation)).rejects.toThrow('8 MiB')
+    await symlink(path.join(run, 'valid.bin'), path.join(run, 'link.png'))
+    await expect(tool.execute!({ path: 'self:/runs/run-1/link.png' }, f.invocation)).rejects.toThrow('Symbolic links')
+    await expect(tool.execute!({ path: 'self:/SOUL.md' }, f.invocation)).rejects.toThrow()
+    f.ctx.canAccessTaskPath = async () => false
+    await expect(tool.execute!({ path: 'self:/runs/run-1/valid.bin' }, f.invocation)).rejects.toThrow('not authorized')
+  })
+  it('returns the host-verified artifact snapshot without reopening its mutable path', async () => {
+    const f = await nativeTask({ canAccessTaskPath: async () => true })
+    f.ctx.readTaskBytes = async () => ({ bytes: workspaceImageBytes, contentHash: createHash('sha256').update(workspaceImageBytes).digest('hex') })
+    // The real host has already read and validated these bytes. There is intentionally no second path to open.
+    expect(await f.runtime.tools.read_image.execute!({ path: 'shared:/artifacts/verified.png' }, f.invocation)).toMatchObject({ image: { data: workspaceImageBytes.toString('base64') } })
+    f.ctx.readTaskBytes = async () => { throw new Error('成果来源已经失效') }
+    await expect(f.runtime.tools.read_image.execute!({ path: 'shared:/artifacts/verified.png' }, f.invocation)).rejects.toThrow('来源已经失效')
+  })
+  it('rechecks live authorization after reading an ordinary image', async () => {
+    let reads = 0
+    const f = await nativeTask({ canAccessTaskPath: async () => ++reads === 1 })
+    await writeFile(path.join(f.ctx.workspace!.runPath, 'preview.png'), workspaceImageBytes)
+    await expect(f.runtime.tools.read_image.execute!({ path: 'self:/runs/run-1/preview.png' }, f.invocation)).rejects.toThrow('not authorized')
+    expect(reads).toBe(2)
   })
 })

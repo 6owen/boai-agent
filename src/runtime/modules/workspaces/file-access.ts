@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 受管图片字节写入复用同一目录/链接/不存在基线与锁，不增加任意文件权限。
  * [OUTPUT]: 写文件与双路径移动共用原子预留的文件锁，避免并发覆盖与锁顺序死锁；发布合同保持。
  * [OUTPUT]: 文件写入在创建父目录、写锁内及截断前复核可选业务目录目标/授权；原材料hash和逻辑路径保持。
  * [OUTPUT]: 员工文本工具可要求严格 UTF-8 解码，技能预览保留原二进制识别；可选 hash/不存在基线在同路径写入锁内、截断前核对。
@@ -108,7 +109,7 @@ export async function withFileMutationLocks<T>(paths: string[], operation: () =>
   try { return await operation() }
   finally { release(); for (const key of keys) if (workspaceWrites.get(key) === reservation) workspaceWrites.delete(key) }
 }
-export async function writeWorkspaceFile(root: string, relative: string, content: string, expectedHash?: string | null, signal?: AbortSignal, verify?: () => Promise<void>) {
+export async function writeWorkspaceFile(root: string, relative: string, content: string | Uint8Array, expectedHash?: string | null, signal?: AbortSignal, verify?: () => Promise<void>) {
   signal?.throwIfAborted()
   await verify?.()
   const target = await workspaceTarget(root, relative, true)
@@ -134,7 +135,7 @@ export async function writeWorkspaceFile(root: string, relative: string, content
         const entry = await lstat(target)
         if (entry.ino !== stat.ino || entry.dev !== stat.dev || entry.nlink > 1 || entry.size !== bytesRead || entry.mtimeMs !== stat.mtimeMs || entry.ctimeMs !== stat.ctimeMs || bytesRead > MAX_FILE_BYTES || fileContentHash(current.subarray(0, bytesRead)) !== expectedHash) throw new Error('File changed before writing. Re-read it; the file was not modified.')
       }
-      const bytes = Buffer.from(content, 'utf8')
+      const bytes = typeof content === 'string' ? Buffer.from(content, 'utf8') : Buffer.from(content)
       // Explicit positions preserve the same write behavior with or without the guarded read.
       signal?.throwIfAborted()
       await verify?.()

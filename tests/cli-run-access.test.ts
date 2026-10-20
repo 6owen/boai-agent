@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际Node脚本通过原员工RPC循环读写/聚合；原目录隔离、执行记录、禁止终态内嵌和作用域排空验证。
  * [OUTPUT]: 渠道明确发送/发送回执的owner公开项不出现在员工运行凭据目录，调用拒绝。
  * [OUTPUT]: 员工运行凭据不能使用本人附件上传/准备/全局准备回执。
  * [INPUT]: Original AppService contexts, actual knowledge files and desktop/headless WebSocket transports.
@@ -27,10 +28,98 @@ import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { createStageAgent } from '../src/runtime/adapters/mastra/agent-factory'
 import { employeeEnvironment } from '../src/shared/cli/employee-environment'
+import { withEmployeeTools, type EmployeeTools } from '../src/cli/employee-tools'
+import { build } from 'esbuild'
 
 const cleanups: (() => Promise<unknown> | void)[] = []
+async function scriptLibrary() {
+  const root = await mkdtemp(join(tmpdir(), 'boai-script-library-')); cleanups.push(() => rm(root, { recursive: true, force: true }))
+  const path = join(root, 'employee-tools.mjs')
+  await build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: path, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })
+  return path
+}
+
+it.each(['desktop', 'headless'] as const)('%s runs an actual script through scoped tools, aggregates results and retains original tool receipts', async mode => {
+  const f = await fixture(mode, true, await scriptLibrary()), active = await f.start()
+  const runtime = await createTaskRuntime(active.ctx); cleanups.push(runtime.dispose)
+  const stage = await createStageAgent('task', active.ctx); cleanups.push(stage.dispose)
+  const acquire = active.ctx.acquireCliEnvironment!, leases: Awaited<ReturnType<typeof acquire>>[] = []
+  active.ctx.acquireCliEnvironment = async () => { const lease = await acquire(); leases.push(lease); return lease }
+  const command = `ELECTRON_RUN_AS_NODE=1 "$BOAI_CLI_NODE" --input-type=module <<'BOAI_SCRIPT'
+import { pathToFileURL } from 'node:url'
+const { withEmployeeTools } = await import(pathToFileURL(process.env.BOAI_CLI_TOOL_CLIENT).href)
+await withEmployeeTools(async ({ listTools, boaiTool }) => {
+  const catalog = await listTools()
+  if (catalog.some(t => ['report_work', 'delegate_work'].includes(t.name))) throw new Error('direct-only tool leaked')
+  if (catalog.find(t => t.name === 'read_file')?.effect !== 'read') throw new Error('file reading effect incorrect')
+  const values = [3, 8, 5]
+  let total = 0
+  for (const [index, value] of values.entries()) {
+    const path = 'self:/runs/' + process.env.BOAI_CLI_EMPLOYEE_RUN + '/row-' + index + '.json'
+    const write = { path, content: JSON.stringify({ value, privateDetail: 'intermediate-content' }) }
+    await boaiTool('write_file', write, 'script-write-' + index)
+    await boaiTool('write_file', write, 'script-write-' + index)
+    const file = await boaiTool('read_file', { path }, 'script-read-' + index)
+    total += JSON.parse(file.content).value
+  }
+  try { await boaiTool('report_work', {}, 'script-final'); throw new Error('accepted hidden completion') }
+  catch (error) { if (error.code !== 'CAPABILITY_UNAVAILABLE') throw error }
+  console.log(JSON.stringify({ count: values.length, total }))
+})
+BOAI_SCRIPT`
+  const result = await runtime.tools.execute_command!.execute!({ command }, { requestContext: new RequestContext(), observe: noopObserve }) as { exitCode: number; stdout: string; stderr: string }
+  expect(result).toMatchObject({ exitCode: 0, stderr: '' }); expect(JSON.parse(result.stdout)).toEqual({ count: 3, total: 16 })
+  expect(result.stdout).not.toContain('intermediate-content')
+  for (const [i, value] of [3, 8, 5].entries()) expect(JSON.parse(await readFile(join(active.ctx.workspace!.root, 'runs', active.ctx.runId, `row-${i}.json`), 'utf8'))).toEqual({ value, privateDetail: 'intermediate-content' })
+  const detail = await f.owner.invoke('getConversation', { id: f.room.id }) as ConversationDetail
+  const events = detail.runs.find(run => run.id === active.ctx.runId)!.toolEvents
+  expect(events.filter(event => event.name === 'write_file' && event.status === 'completed')).toHaveLength(3)
+  expect(events.filter(event => event.name === 'read_file' && event.status === 'completed')).toHaveLength(3)
+  expect(events.some(event => event.name === 'report_work')).toBe(false)
+  expect(leases).toHaveLength(1)
+  await expect(f.connect(leases[0].env.BOAI_SERVER_TOKEN!)).rejects.toMatchObject({ code: 'AUTH_FAILED' })
+})
+
+it('drains submitted script tools before closing and rejects new calls after callback completion', async () => {
+  const f = await fixture('desktop'), active = await f.start()
+  let release!: () => void
+  const hold = new Promise<void>(resolve => { release = resolve })
+  const unregister = active.ctx.registerCliTools!([{ name: 'held_read', description: 'held actual RPC', inputSchema: { type: 'object' }, effect: 'read', execute: async () => { await hold; return { complete: true } } }]); cleanups.push(unregister)
+  const lease = await active.ctx.acquireCliEnvironment!(); cleanups.push(lease.release)
+  for (const [key, value] of Object.entries(lease.env)) vi.stubEnv(key, value)
+  let tools!: EmployeeTools, result!: Promise<unknown>, finished = false
+  const run = withEmployeeTools(async supplied => { tools = supplied; result = tools.boaiTool('held_read', {}, 'held-call') }).then(() => { finished = true })
+  await vi.waitFor(() => expect(result).toBeDefined())
+  expect(finished).toBe(false)
+  await expect(tools.listTools()).rejects.toMatchObject({ code: 'CLIENT_DISCONNECTED' })
+  release(); await run; expect(await result).toEqual({ complete: true }); expect(finished).toBe(true)
+})
+
+it('does not discover owner credentials when an employee script has no usable lease', async () => {
+  vi.stubEnv('BOAI_CLI_EMPLOYEE_RUN', 'unavailable')
+  const callback = vi.fn()
+  await expect(withEmployeeTools(callback)).rejects.toMatchObject({ code: 'AUTH_FAILED' })
+  expect(callback).not.toHaveBeenCalled()
+})
+
+it.skipIf(process.platform !== 'darwin')('loads only the host script library under the original approved command directory policy', async () => {
+  const f = await fixture('desktop', 'ask', await scriptLibrary()), active = await f.start()
+  expect(active.ctx.agent.directoryGrants).toEqual([])
+  const runtime = await createTaskRuntime(active.ctx); cleanups.push(runtime.dispose)
+  const stage = await createStageAgent('task', active.ctx); cleanups.push(stage.dispose)
+  const command = `ELECTRON_RUN_AS_NODE=1 "$BOAI_CLI_NODE" --input-type=module <<'BOAI_SCRIPT'
+import { pathToFileURL } from 'node:url'
+const { withEmployeeTools } = await import(pathToFileURL(process.env.BOAI_CLI_TOOL_CLIENT).href)
+await withEmployeeTools(async ({ listTools }) => { console.log((await listTools()).some(tool => tool.name === 'read_file')) })
+BOAI_SCRIPT`
+  const pending = runtime.tools.execute_command!.execute!({ command }, { requestContext: new RequestContext(), observe: noopObserve }) as Promise<{ exitCode: number; stdout: string }>
+  let snapshot!: Snapshot
+  await vi.waitFor(async () => { snapshot = await f.app.handle('snapshot', undefined) as Snapshot; expect(snapshot.approvals).toHaveLength(1) })
+  await f.owner.invoke('approve', { id: snapshot.approvals[0].id, approved: true })
+  expect(await pending).toMatchObject({ exitCode: 0, stdout: 'true\n' })
+})
 afterEach(async () => { vi.unstubAllEnvs(); for (const close of cleanups.splice(0).reverse()) await close() })
-async function fixture(mode: 'desktop' | 'headless', task: boolean | 'ask' = false) {
+async function fixture(mode: 'desktop' | 'headless', task: boolean | 'ask' = false, toolClientPath?: string) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-cli-grant-'))); cleanups.push(() => rm(root, { recursive: true, force: true }))
   const contexts: EngineContext[] = [], releases: (() => void)[] = []
   const engine: AgentEngine = { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: task ? 'task' : 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence, ...(task ? { work: { key: 'cli-command', scope: '验证原命令环境', deliverable: '真实命令回执' } } : {}) }), run: async ctx => {
@@ -38,18 +127,18 @@ async function fixture(mode: 'desktop' | 'headless', task: boolean | 'ask' = fal
     await new Promise<void>(resolve => { releases.push(resolve); ctx.signal.addEventListener('abort', () => resolve(), { once: true }) })
     if (!ctx.signal.aborted) await ctx.onDelta('受限CLI原任务完成')
   } }
-  const owned = await startOwnedRuntime({ dataPath: root, engine, skillDiscovery: { homeDir: root }, secrets: { get: async () => 'private-fixture-key', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  const owned = await startOwnedRuntime({ dataPath: root, engine, toolClientPath, skillDiscovery: { homeDir: root }, secrets: { get: async () => 'private-fixture-key', set: async () => {}, delete: async () => {} }, emit: () => {} })
   const app = owned.service
   const connection = await app.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' }) as Connection
   const path = join(root, 'knowledge.md'); await writeFile(path, '品牌规范：海蓝色，引用知识原件🙂。')
   const resource = await app.handle('importResource', { kind: 'knowledge', path }) as Resource
   const agent = (await app.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
   const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, systemRole: _s, creationSource: _c, ...definition } = agent
-  await app.handle('saveAgent', { ...definition, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, connectionId: connection.id, modelId: 'fixture', knowledgeIds: [resource.id], ...(task ? { allowCommands: true, executionPermission: task === 'ask' ? 'ask' : 'full-access' } : {}) })
+  await app.handle('saveAgent', { ...definition, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, connectionId: connection.id, modelId: 'fixture', knowledgeIds: [resource.id], ...(toolClientPath ? { directoryGrants: [] } : {}), ...(task ? { allowCommands: true, executionPermission: task === 'ask' ? 'ask' : 'full-access' } : {}) })
   const room = await app.handle('createConversation', { kind: 'direct', title: 'run scope', agentIds: [agent.id] }) as Conversation
   if (mode === 'headless') {
     await owned.close()
-    const server = await startHeadlessServer({ dataPath: root, version: 'test', engine, skillHome: root }); cleanups.push(server.close)
+    const server = await startHeadlessServer({ dataPath: root, version: 'test', engine, skillHome: root, toolClientPath }); cleanups.push(server.close)
   } else {
     cleanups.push(owned.close)
     const server = await openDesktopCli(root, 'test', { request: async (method, input) => app.handle(method, input) as never, runAccess: async input => {

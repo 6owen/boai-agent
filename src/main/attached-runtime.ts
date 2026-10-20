@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19应用业务协议：同配置目录桌面附着支持私有application-host请求回执。
  * [OUTPUT]: Bounded discovery after an observed ownership loss authenticates the winning service; quit/version/auth failures never retry business.
  * [INPUT]: Private same-profile desktop discovery and a ready, independently owned BOAI service.
  * [OUTPUT]: Original worker-shaped requests/events and reverse calls; trusted desktop PID enables identity-bound exit observation.
@@ -26,7 +27,7 @@ export class AttachedRuntime extends EventEmitter {
   }
   postMessage(message: unknown) {
     const value = message as { type: string; id: string; result?: unknown; value?: unknown; error?: string; waitForCompletion?: boolean; request: { id: string; method: string; input?: unknown } }
-    if (value.type === 'browser-host-result' || value.type === 'secret-result') {
+    if (value.type === 'application-host-result' || value.type === 'browser-host-result' || value.type === 'secret-result') {
       void this.client.invoke('host:result', { id: value.id, ...(value.error ? { error: value.error } : { result: value.type === 'secret-result' ? value.value : value.result }) }).catch(() => {})
     } else if (value.type === 'request') {
       const { id, method, input } = value.request

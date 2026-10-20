@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 无远程来源但持有localSkillId的受管员工副本沿原更新事务同步本机源，冲突/失效/独立绑定保持。
+ * [OUTPUT]: 文件已与源相同但安装基线陈旧时仍给显式更新计划，同事务刷新版本/清理证据，不静默认领外改。
  * [INPUT]: 已安装来源、同一技能扫描管道、SQLite、宿主使用状态与受管目录。
  * [OUTPUT]: 显式更新 D4 新副本时仅在原最终事务同步其 hash/文件清单，UUID/所有权不变，失败保留旧清理证据。
  * [OUTPUT]: 本机技能和受管副本共用检查/更新；读取旧 CLI 来源、未知安装基线须确认替换、本地同盘恢复且不创建员工资源； 只读单项/批量检查、文件差异/本地修改确认、固定预览提交及保留真实旧内容的交换/回滚/恢复。
@@ -25,7 +27,7 @@ const time = () => new Date().toISOString()
 type UpdateTarget = Pick<Resource, 'id' | 'name' | 'description' | 'path' | 'ownerAgentId'> & { managed?: Resource }
 type Journal = { localName?: string; directory: string; target: string; oldHash: string; installedHash?: string; newHash: string; oldRevision: number; phase: 'prepared' | 'files-swapped' | 'committed' | 'cleaned' | 'rolled-back' | 'repair-required'; error?: string }
 type UpdateOperation = SkillOperation & { kind: 'update'; resourceId: string; fingerprint: string; journal: Journal }
-type Plan = { check: SkillUpdateCheck; sourceIdentity: string; installedHash: string }
+type Plan = { check: SkillUpdateCheck; sourceIdentity: string; installedHash: string; localSkillId?: string }
 type Hooks = {
   resource: (id: string) => Resource
   critical: <T>(action: () => Promise<T>) => Promise<T>
@@ -100,7 +102,7 @@ export class SkillUpdates {
       if (this.batch) return structuredClone(this.batch.value)
       const items: SkillUpdateBatch['items'] = []
       const localNames = new Map((await this.local?.entries() ?? []).map(skill => [skill.id, skill.name]))
-      const ids = new Set((await this.store.load<SkillInstallation>('skillInstallations')).filter(installed => !['local', 'snapshot'].includes(installed.source.kind) && (scope !== 'local' || installed.resourceId.startsWith('local:')) && (!installed.resourceId.startsWith('local:') || localNames.has(installed.resourceId))).map(installed => installed.resourceId))
+      const ids = new Set((await this.store.load<SkillInstallation>('skillInstallations')).filter(installed => (!['local', 'snapshot'].includes(installed.source.kind) || !!installed.localSkillId && !installed.resourceId.startsWith('local:')) && (scope !== 'local' || installed.resourceId.startsWith('local:')) && (!installed.resourceId.startsWith('local:') || localNames.has(installed.resourceId))).map(installed => installed.resourceId))
       for (const id of (await this.local?.sources())?.keys() ?? []) ids.add(id)
       for (const id of ids) {
         try { const resource = await this.target(id); items.push({ resourceId: id, name: resource.name, status: 'pending' }) }
@@ -147,16 +149,24 @@ export class SkillUpdates {
       const resource = await this.target(resourceId)
       localExists = !resource.managed
       const installed = await this.findInstallation(resource), source = installed?.source
-      if (!installed || !source || source.kind === 'local' || source.kind === 'snapshot') {
+      const localBinding = !!resource.managed && !!installed?.localSkillId && !!source && ['local', 'snapshot'].includes(source.kind)
+      if (!installed || !source || !localBinding && (source.kind === 'local' || source.kind === 'snapshot')) {
         check.status = 'unsupported'; check.error = source && 'reason' in source ? source.reason ?? '本地来源需重新导入以更新' : '本地来源需重新导入以更新'
       } else {
         const current = await inspectResourceTree(resource.path)
         check.localModified = current.hash !== installed.contentHash
         check.baselineUnknown = installed.baselineUnknown
-        const input: ScanSkillSourceInput = source.kind === 'git' ? { kind: 'github', source: source.repository, ref: source.ref, ...(source.skillPath !== '.' ? { subpath: source.skillPath } : {}) } : source.kind === 'url' ? { kind: 'url', source: source.url } : { kind: 'marketplace', source: source.providerItemId, provider: source.provider }
         if (this.closing) throw new Error('应用退出，更新检查中断')
         const requestId = randomUUID(); this.scanRequests.add(requestId)
-        const scan = await this.skills.scan({ ...input, requestId, ...(resource.managed ? { ownerAgentId: resource.ownerAgentId } : { target: 'local' as const }) }).finally(() => this.scanRequests.delete(requestId))
+        const scan = await (async () => {
+          if (localBinding) return this.skills.scanLocalBindingUpdate(installed, requestId, resource.ownerAgentId)
+          let input: ScanSkillSourceInput
+          if (source.kind === 'git') input = { kind: 'github', source: source.repository, ref: source.ref, ...(source.skillPath !== '.' ? { subpath: source.skillPath } : {}) }
+          else if (source.kind === 'url') input = { kind: 'url', source: source.url }
+          else if (source.kind === 'marketplace') input = { kind: 'marketplace', source: source.providerItemId, provider: source.provider }
+          else throw new Error('此技能来源不可更新')
+          return this.skills.scan({ ...input, requestId, ...(resource.managed ? { ownerAgentId: resource.ownerAgentId } : { target: 'local' as const }) })
+        })().finally(() => this.scanRequests.delete(requestId))
         scanId = scan.id
         const candidates = source.kind === 'url' || source.kind === 'marketplace' ? scan.candidates.filter(candidate => candidate.relativePath === source.skillPath) : scan.candidates
         if (candidates.length !== 1 || candidates[0].error) throw new Error(candidates[0]?.error ?? '更新包的技能路径已变化，请重新导入并检查')
@@ -164,15 +174,16 @@ export class SkillUpdates {
         if (candidate.name !== resource.name) throw new Error('更新包的 name 已变化，不能原位替换，请作为新技能导入')
         if (candidate.source?.identity !== source.identity) throw new Error('更新来源身份已变化，请重新导入并检查')
         const preview = await this.skills.preview(scan.id, candidate.id)
-        if ((await this.installation(resourceId)).revision !== installed.revision || (await inspectResourceTree(resource.path)).hash !== current.hash) throw new Error('检查期间本地版本已变化，请重新检查')
+        const nextInstallation = await this.installation(resourceId)
+        if (nextInstallation.revision !== installed.revision || nextInstallation.localSkillId !== installed.localSkillId || nextInstallation.source.identity !== source.identity || (await inspectResourceTree(resource.path)).hash !== current.hash) throw new Error('检查期间本地版本已变化，请重新检查')
         const oldFiles = new Map(current.files.map(file => [file.path, file.hash])), newFiles = new Map(preview.files.map(file => [file.path, file.hash]))
-        Object.assign(check, { status: candidate.contentHash === current.hash ? 'current' : 'available', expectedHash: current.hash, expectedRevision: installed.revision, candidateHash: candidate.contentHash, source: candidate.source, currentSource: source, affectedEmployees: resource.managed ? this.hooks.affectedEmployees(resourceId) : [], fileChanges: {
+        Object.assign(check, { status: candidate.contentHash === current.hash && current.hash === installed.contentHash && !installed.baselineUnknown ? 'current' : 'available', expectedHash: current.hash, expectedRevision: installed.revision, candidateHash: candidate.contentHash, source: candidate.source, currentSource: source, affectedEmployees: resource.managed ? this.hooks.affectedEmployees(resourceId) : [], fileChanges: {
           added: [...newFiles.keys()].filter(path => !oldFiles.has(path)), removed: [...oldFiles.keys()].filter(path => !newFiles.has(path)), modified: [...newFiles].filter(([path, hash]) => oldFiles.has(path) && oldFiles.get(path) !== hash).map(([path]) => path), unchanged: [...newFiles].filter(([path, hash]) => oldFiles.get(path) === hash).length,
         } })
         if (check.status === 'available') {
           check.planId = scan.id; check.candidateId = candidate.id
           for (const [key, old] of this.plans) if (old.check.resourceId === resourceId || !this.skills.canPreview(key)) { this.plans.delete(key); await this.skills.discardScan(key) }
-          this.plans.set(scan.id, { check: structuredClone(check), sourceIdentity: source.identity, installedHash: installed.contentHash })
+          this.plans.set(scan.id, { check: structuredClone(check), sourceIdentity: source.identity, installedHash: installed.contentHash, ...(localBinding ? { localSkillId: installed.localSkillId } : {}) })
           scanId = undefined
         }
       }
@@ -197,7 +208,7 @@ export class SkillUpdates {
       this.assertAvailable(resource.id)
       if (resource.managed) await this.hooks.unused(resource.id)
       const installed = await this.installation(resource.id)
-      if (installed.revision !== input.expectedRevision || installed.contentHash !== plan.installedHash || installed.source.identity !== plan.sourceIdentity) throw new Error('已安装版本已变化，请重新检查')
+      if (installed.revision !== input.expectedRevision || installed.contentHash !== plan.installedHash || installed.source.identity !== plan.sourceIdentity || plan.localSkillId && installed.localSkillId !== plan.localSkillId) throw new Error('已安装版本已变化，请重新检查')
       const candidate = this.skills.acquireCandidate(input.planId, plan.check.candidateId!)
       this.locks.add(resource.id)
       const operation: UpdateOperation = { id: input.requestId, kind: 'update', scanId: input.planId, resourceId: resource.id, fingerprint, status: 'running', createdAt: time(), items: [{ candidateId: candidate.candidate.id, resourceId: resource.id, name: resource.name, status: 'pending' }], journal: { directory: randomUUID(), ...(resource.managed ? { target: relative(this.dataPath, resource.path).split(sep).join('/') } : { localName: basename(resource.path), target: resource.path }), oldHash: input.expectedHash, installedHash: installed.contentHash, newHash: candidate.candidate.contentHash!, oldRevision: installed.revision, phase: 'prepared' } }
@@ -257,7 +268,7 @@ export class SkillUpdates {
         let publish!: () => Promise<void>
         await this.store.transaction(async tx => {
           const current = await tx.get<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations', resource.id)
-          if (current?.revision !== installed.revision || current.contentHash !== installed.contentHash) throw new Error('提交时技能版本已变化')
+          if (current?.revision !== installed.revision || current.contentHash !== installed.contentHash || current.localSkillId !== installed.localSkillId || current.source.identity !== installed.source.identity) throw new Error('提交时技能版本已变化')
           if (current.bindingCopy && !currentTree) throw new Error('技能绑定清理证据已变化，请重新检查')
           if (resource.managed) {
             const updated = { ...resource.managed, description: candidate.candidate.description }

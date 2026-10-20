@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道回执可携带员工表情操作身份，不制造文字发送记录。
  * [OUTPUT]: 桌面与CLI明确渠道发布共用严格输入schema；绑定、来源、hash和去重仍由原服务核对。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 内部讨论固定原消息引用；用户明确外发固定原来源/文件hash与绑定版本，回执独立于执行完成。
@@ -77,6 +78,7 @@ export interface ChannelMessageSource extends ChannelConversationSource {
   userId: string
 }
 export interface ChannelDelivery {
+  reaction?: { emoji: string; active: boolean; agentId: string; requestId: string }
   id: string
   bindingId: string
   conversationId: string

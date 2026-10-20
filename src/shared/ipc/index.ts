@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 全局提示词目录列表与版本化保存/删除，沿现有桌面IPC。
+ * [OUTPUT]: 员工源文件保存扩展到已登记的八个场景模块，沿原hash及configVersion核验。
+ * [OUTPUT]: 2026-10-19应用业务协议：类型化应用目录/调用/回执接口，调用者身份由宿主构造。
  * [OUTPUT]: 2026-10-19 独立网页检索设置/服务/默认/凭据/测试/移除的类型化桌面合同。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: CLI安装管理为桌面专用IPC，版本核对且不接受renderer指定程序路径。
@@ -103,6 +106,9 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
+  executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
+  getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
   getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }
   saveWebSearchService: { input: import('../domain/web-search').SaveWebSearchService; output: import('../domain/web-search').WebSearchServiceConfig }
   saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
@@ -116,6 +122,9 @@ export interface Methods {
   getGatewayImportReceipt: { input: { requestId: string }; output: import('../domain/gateway-import').GatewayImportReceipt | null }
   listCatalogResults: { input: { conversationId: string }; output: import('../domain/catalog-management').CatalogResult[] }
   listDataSources: { input: undefined; output: import('../domain/sources').DataSource[] }
+  listPromptTemplates: { input: undefined; output: import('../domain/prompt-templates').PromptTemplate[] }
+  savePromptTemplate: { input: import('../domain/prompt-templates').SavePromptTemplateInput; output: import('../domain/prompt-templates').PromptTemplate }
+  removePromptTemplate: { input: { id: string; expectedRevision: number }; output: void }
   getDataSource: { input: { id: string }; output: import('../domain/sources').DataSource }
   getDataSourceCredential: { input: import('../domain/sources').DataSourceIdentity; output: string }
   saveDataSource: { input: import('../domain/sources').SaveDataSourceInput; output: import('../domain/sources').DataSource }
@@ -339,7 +348,7 @@ export interface Methods {
   retryRun: { input: { id: string; requestId: string }; output: void }
   getAgentHome: { input: { agentId: string; conversationId?: string }; output: AgentHome }
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
-  saveAgentFile: { input: { agentId: string; name: 'AGENTS.md' | 'SOUL.md'; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
+  saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
   regenerateAgentViews: { input: { agentId: string; conversationId?: string }; output: AgentHome }
   getMemory: { input: MemoryQuery; output: MemoryView }
   saveMemory: { input: MemoryInput; output: MemoryView }

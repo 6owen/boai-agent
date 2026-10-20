@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
+ * [OUTPUT]: 普通本机会话显式发现独立生图端口；检查零Work，生成沿原惰性认领和任务文件/交付。
+ * [OUTPUT]: 本机工具目录接入同一员工表情端口。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 自我状态和bobo应用管理共用宿主工具桥，固定员工/会话，不由prompt扩大身份权限。
+ * [OUTPUT]: 2026-10-19应用业务协议：boai工具在惰性Work前办理，业务写入留在原服务；观察不记录原始配置参数。
  * [OUTPUT]: 2026-10-19 本机公共产品桥增加独立 inspect/call_web_search，原生能力保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: select_web_search复用API本轮选择合同和宿主授权，惰性Work前处理，不新增模型阶段。
@@ -17,6 +23,13 @@
  * [POS]: BOAI业务边界与原生工具目录之间的薄桥。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { createSelfieOperations } from '../modules/media/selfie-tools'
+import { createReactionOperations } from '../modules/conversations/reaction-tools'
+import { mcpModelContent } from '../modules/sources/mcp-media'
+import { createBoundSkillOperations } from '../modules/resources/bound-skill-tools'
+import { createMemoryOperations } from '../modules/memory/memory-tools'
+import { createStateTools } from '../modules/agent-state/state-tools'
+import { createApplicationTools, applicationObservation } from '../modules/application/application-tools'
 import { createKnowledgeOperations } from '../modules/resources/knowledge-tools'
 import { createDirectoryRequestOperation } from '../modules/workspaces/directory-tool'
 import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogObservation } from '../modules/resources/catalog-commands'
@@ -36,6 +49,8 @@ import { isCoreAgent } from '../../shared/domain/core-agent'
 import { teamModelPlanSchema } from '../../shared/domain/team-creation'
 import { nativeActivity } from './native-events'
 import { contained } from '../modules/workspaces/file-access'
+import { imageToolRequestSchema } from '../modules/media/image-service'
+import { selfieRequestSchema } from '../modules/media/selfie-service'
 import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
 import { parseBrowserSingleCommand } from './mastra/browser-tool-runtime'
 import { summarizeMedia } from '../modules/browser/media'
@@ -58,7 +73,17 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
-  definitions.push(...knowledgeOperations, ...webSearchOperations)
+  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createMemoryOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
+  if (context.selfies) definitions.push(
+    { name: 'save_selfie', description: 'Save an actual owner-approved image as your private persistent appearance reference. Owner private chat only; never auto-save or invent approval. path is an existing self:/ or authorized shared:/ PNG/JPEG/WebP, max 8 MiB. The host records the current owner message; native external inputs must first be copied into this employee workspace.', schema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict() },
+    { name: 'export_selfie', description: 'Copy an actual album original into a NEW self:/runs/<actual-run-id>/ file. Only the owner private chat may export; group/channel requests are denied. Use list_selfies for ID/type; publish_artifact delivers the copied file.', schema: z.object({ id: z.string().regex(/^[a-f0-9]{64}$/), path: z.string().min(1) }).strict() },
+    { name: 'take_selfie', description: 'Generate a NEW digital portrait using a private, automatically selected appearance reference. Include established SOUL appearance details; with no album/appearance ask first. Respects explicit style. path is a NEW self:/runs/<actual-run-id>/ image file. No automatic save or claim of a real life event; publish_artifact delivers the result.', schema: selfieRequestSchema.extend({ path: z.string().min(1) }).strict() },
+  )
+  if (context.images) definitions.push(
+    { name: 'inspect_image_generation', description: 'Read the independently configured image provider/model and readiness without generating or creating Work. No credentials or chat-model fallback.', schema: z.object({}).strict() },
+    { name: 'generate_image', description: 'Generate one actual image, or edit up to four authorized PNG/JPEG/WebP references, using the configured image model. Uses the existing task runtime and lazily claims Work. path must be a NEW self:/runs/<actual-run-id>/image.png; references use self:/ or authorized shared:/ paths (copy external native files into the current workspace first). File output is not delivery: publish_artifact sends it to this conversation. No automatic retry or model fallback; inspect the original result if the outcome is unknown.', schema: imageToolRequestSchema },
+  )
+  definitions.push(...knowledgeOperations, ...webSearchOperations, ...applicationTools)
   if (searchChoice) definitions.push(searchChoice)
   if (directoryRequest) definitions.push(directoryRequest)
   if (hasSourceTools(context)) definitions.push(
@@ -79,6 +104,7 @@ export function createNativeProducts(context: EngineContext) {
   // Every product tool accepts an object. Discriminated unions emit only `oneOf`;
   // MCP requires an explicit root type or rejects the entire tools/list response.
   const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
+    ...(name==='call_data_source' ? {toModelContent:mcpModelContent} : {}),
     ...(name==='browser_tool' ? {toModelContent:(value:unknown)=>{
       const result=value as {output?:string;source?:unknown;image?:{data:string;mimeType:string}}
       return [{type:'text' as const,text:`${result.output ?? ''}\nSource: ${JSON.stringify(result.source)}`},...(result.image ? [{type:'image' as const,data:result.image.data,mimeType:result.image.mimeType}]:[])]
@@ -87,13 +113,16 @@ export function createNativeProducts(context: EngineContext) {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        const observedInput=['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
-        if(name==='browser_tool') result=summarizeMedia(result)
+        const observedInput=name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
+        if(name==='browser_tool' || name==='call_data_source') result=summarizeMedia(result)
         await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
         await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
       }
       await emit(false)
       try {
+        if (name === 'inspect_image_generation') { context.signal.throwIfAborted(); const result = await context.images!.settings(); await emit(true, result); return result }
+        const applicationTool = applicationTools.find(operation => operation.name === name)
+        if (applicationTool) { const result = await applicationTool.execute(parsed); await emit(true, result); return result }
         if (name === searchChoice?.name) { const result = await searchChoice.execute(parsed); await emit(true, result); return result }
         if (name === directoryRequest?.name) { const result = await directoryRequest.execute(parsed); await emit(true, result); return result }
         const search = webSearchOperations.find(operation => operation.name === name)

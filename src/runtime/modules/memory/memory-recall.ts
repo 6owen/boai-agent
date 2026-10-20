@@ -1,6 +1,6 @@
 /*
  * [INPUT]: SQLite 员工记忆/获知回执、宿主来源授权、已发布消息及当前请求。
- * [OUTPUT]: 有界召回携带实际条目/父条目版本及获知授权指纹；短期证据继承范围和期限，管理列表不进入模型。
+ * [OUTPUT]: 有界召回携带实际来源版本；成长依赖仅在原授权与预算内优先召回，管理列表不进入模型。
  * [POS]: runtime/modules/memory/memory-recall.ts；不调用模型或读取其他员工目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,6 +15,7 @@ export interface MemoryRecallInput {
   request: string
   messages: Map<string, Message>
   tokenBudget?: number
+  preferredIds?: string[]
 }
 /** Authorization identity excludes text and is independent of object property insertion order. */
 export function observationAuthorityFingerprint(observation: MemoryObservation) {
@@ -52,9 +53,10 @@ export function recallMemory(input: MemoryRecallInput): MemoryView {
       raw.push(entry); observationIds.set(entry.id, observation.id)
     }
   }
+  const preferred = new Set(input.preferredIds ?? [])
   const ranked = [...eligible, ...raw].map(entry => ({ entry, relevance: memoryRelevance(entry.content, input.request) }))
-    .filter(({ entry, relevance }) => relevance > 0 || entry.pinned || entry.kind === 'long_term' || entry.scope === 'profile' || entry.kind === 'temporary' && entry.contextRef?.id === access.conversationId)
-    .sort((a, b) => Number(!!b.entry.pinned) - Number(!!a.entry.pinned) || b.relevance - a.relevance || Number(b.entry.kind === 'long_term') - Number(a.entry.kind === 'long_term') || b.entry.createdAt.localeCompare(a.entry.createdAt) || b.entry.id.localeCompare(a.entry.id))
+    .filter(({ entry, relevance }) => preferred.has(entry.id) || relevance > 0 || entry.pinned || entry.kind === 'long_term' || entry.scope === 'profile' || entry.kind === 'temporary' && entry.contextRef?.id === access.conversationId)
+    .sort((a, b) => Number(!!b.entry.pinned) - Number(!!a.entry.pinned) || Number(preferred.has(b.entry.id)) - Number(preferred.has(a.entry.id)) || b.relevance - a.relevance || Number(b.entry.kind === 'long_term') - Number(a.entry.kind === 'long_term') || b.entry.createdAt.localeCompare(a.entry.createdAt) || b.entry.id.localeCompare(a.entry.id))
   const selected: MemoryEntry[] = [], seen = new Set<string>(), selectedObservations = new Set<string>()
   let tokenEstimate = 0
   for (const { entry } of ranked) {

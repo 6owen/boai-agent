@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 无远程来源的员工副本可按已记录localSkillId检查本机新版，沿原扫描/hash/取消，不接受调用者指定新来源。
  * [INPUT]: 用户选择的本地/远程来源、受管资源、SQLite 与宿主短临界区。
  * [OUTPUT]: 已保存员工的本机单技能来源/hash/版本冻结，副本、安装来源、员工授权与回执同事务；未知先只读核对，失败/重启 hash 安全清理。
  * [OUTPUT]: 本地文件发布后立即使目录缓存失效； 本地目标写入 ~/.agents/skills 并保存 local 身份/来源/收藏，不创建员工资源；兼容旧受管安装，保留预览复核、幂等操作与重启中断恢复。
@@ -167,10 +168,28 @@ export class SkillManagement {
   async scan(input: ScanSkillSourceInput): Promise<SkillScan> {
     if (input.target === 'local' && input.ownerAgentId) throw new Error('本地技能安装不指定员工')
     if (input.ownerAgentId) this.hooks.owner(input.ownerAgentId)
-    const requestId = input.requestId ?? randomUUID()
+    return this.prepareRequest(input.requestId ?? randomUUID(), signal => this.prepareScan(input, signal))
+  }
+  /** The caller supplies a stored binding, not a user-selected path or a replacement source identity. */
+  async scanLocalBindingUpdate(installed: SkillInstallation, requestId: string, ownerAgentId?: string): Promise<SkillScan> {
+    const localSkillId = installed.localSkillId
+    if (!localSkillId || !this.hooks.localSource || !['local', 'snapshot'].includes(installed.source.kind)) throw new Error('此副本没有可更新的本机绑定来源')
+    return this.prepareRequest(requestId, async signal => {
+      const sourcePath = await this.hooks.localSource!(localSkillId)
+      signal.throwIfAborted()
+      const scan = await this.scanPrepared({ root: sourcePath, warnings: [], source: () => structuredClone(installed.source) }, ownerAgentId, signal)
+      try {
+        if (await this.hooks.localSource!(localSkillId) !== sourcePath) throw new Error('本机来源身份已变化，请重新检查')
+        if (scan.candidates.length !== 1 || scan.candidates[0].relativePath !== '.') throw new Error('原本机来源不再是单个技能目录，请重新检查')
+        signal.throwIfAborted()
+        return scan
+      } catch (error) { await this.discardScan(scan.id); throw error }
+    })
+  }
+  private async prepareRequest(requestId: string, prepare: (signal: AbortSignal) => Promise<SkillScan>): Promise<SkillScan> {
     if (this.preparations.has(requestId)) throw new Error('此预览请求正在进行')
     const controller = new AbortController()
-    const task = this.prepareScan(input, controller.signal)
+    const task = prepare(controller.signal)
     this.preparations.set(requestId, { controller, task })
     try { return await task } finally { this.preparations.delete(requestId) }
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隐藏页面/详情的链接预览立即撤下Portal并重置展开状态，正常关闭沿原动画。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: hover-card 基础组件；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: components/ui 的 hover-card 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -8,9 +9,11 @@
 
 import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card"
 import { cn } from "cn"
+import { useFloatingLayerActions, useFloatingLayerActive } from './floating-layer-scope'
 
-function HoverCard({ ...props }: PreviewCardPrimitive.Root.Props) {
-  return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} />
+function HoverCard({ actionsRef, ...props }: PreviewCardPrimitive.Root.Props) {
+  const actions = useFloatingLayerActions(actionsRef)
+  return <PreviewCardPrimitive.Root data-slot="hover-card" {...props} actionsRef={actions} />
 }
 
 function HoverCardTrigger({ ...props }: PreviewCardPrimitive.Trigger.Props) {
@@ -31,6 +34,8 @@ function HoverCardContent({
     PreviewCardPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   >) {
+  const active = useFloatingLayerActive()
+  if (!active) return null
   return (
     <PreviewCardPrimitive.Portal data-slot="hover-card-portal">
       <PreviewCardPrimitive.Positioner

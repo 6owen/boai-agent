@@ -1,12 +1,14 @@
 /*
+ * [OUTPUT]: 仅保留规范boai://ref地址供受信渲染器解析；其他地址仍沿react-markdown默认过滤。
  * [INPUT]: Markdown 文本、可选元素渲染覆盖与全局 CodeBlock。
  * [OUTPUT]: 共享安全GFM渲染及MarkdownContent排版入口；Typeset统一正文/列表/表格，Shiki展示代码；禁用原始HTML、远程图片和隐式外链导航。
  * [POS]: 会话与技能说明共用的 Markdown 展示入口，不引入业务 store。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { ComponentProps } from 'react'
-import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform, type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { parseReferenceUri } from '@shared/domain/references'
 import { CodeBlock } from '@/components/ui/code-block'
 import { Typeset } from '@/components/ui/typeset'
 
@@ -26,7 +28,7 @@ const defaults: Components = {
 }
 
 export function Markdown({ children, components }: { children: string; components?: Components }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{ ...defaults, ...components }}>{children}</ReactMarkdown>
+  return <ReactMarkdown urlTransform={url => parseReferenceUri(url) ? url : defaultUrlTransform(url)} remarkPlugins={[remarkGfm]} skipHtml components={{ ...defaults, ...components }}>{children}</ReactMarkdown>
 }
 
 const typesetComponents: Components = {

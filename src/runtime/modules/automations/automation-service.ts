@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工人格行为复用原Mastra时钟与同一日程同步队列，原用户自动化定义和Work保持。
  * [OUTPUT]: 删除历史后移除内存/时限，旧手动请求明确拒绝、原周期触发只核对不重放。
  * [OUTPUT]: 恢复计划保留月日期/开始日期与描述，避免启停改写新日程。
  * [OUTPUT]: 六种创建频率共用保存协议；手动计划不注册周期时钟，旧时钟切手动时暂停。
@@ -45,6 +46,7 @@ export const automationSchema = automationInputSchema.transform(value => {
   } else if (value.owner?.kind === 'group' && value.conversationPolicy === 'new-conversation') ctx.addIssue({ code: 'custom', path: ['collaboration'], message: '请选择群内参与员工及汇总负责人，保存明确分工' })
 })
 interface Hooks {
+  behaviors?: Pick<import('./agent-behaviors').AgentBehaviorService, 'dispatch' | 'synchronize' | 'hasSchedules'>
   critical<T>(operation: () => Promise<T>): Promise<T>
   validate(target: string | AutomationInput): string | Promise<string>
   busy(conversationId: string): boolean
@@ -87,7 +89,7 @@ export class AutomationService {
   async init() {
     await this.repository.migrate(); await this.repository.migrateOwners(); await this.repository.recover(); await this.refresh()
     await this.hooks.critical(() => this.reconcile(true))
-    if (this.definitions.size) await this.synchronize()
+    if (this.definitions.size || await this.hooks.behaviors?.hasSchedules()) await this.synchronize()
   }
   async assertExecutable(origin: AutomationOrigin, conversationId: string) {
     if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
@@ -115,9 +117,10 @@ export class AutomationService {
     const o = await this.repository.resume(origin, conversationId, records)
     this.occurrences.set(o.id, o)
   }
+  async synchronizeBehaviors() { return this.serialize(async () => { if (this.closing || this.backingUp) throw new Error('时钟正在退出或备份'); await this.ensureNative(); await this.hooks.behaviors?.synchronize(this.native!) }) }
   private async ensureNative() {
     if (this.native) return
-    const native = new NativeSchedules(join(this.dataPath, 'automation-mastra.sqlite'), (id, revision, runId, time, version) => this.admit(id, revision, 'schedule', runId, time, version).then(() => {}))
+    const native = new NativeSchedules(join(this.dataPath, 'automation-mastra.sqlite'), (id, revision, runId, time, version) => this.admit(id, revision, 'schedule', runId, time, version).then(() => {}), (input, runId, time) => this.hooks.behaviors?.dispatch(input, runId, time) ?? Promise.reject(new Error('行为服务未注册')))
     try {
       await native.init(); this.native = native
       const schedules = await native.mastra.schedules.list({ workflowId: AUTOMATION_WORKFLOW })
@@ -136,6 +139,7 @@ export class AutomationService {
         }
       }
       for (const d of this.definitions.values()) await this.sync(d)
+      await this.hooks.behaviors?.synchronize(native)
       await this.refresh(); await native.start()
     } catch (error) { this.native = undefined; await native.close().catch(() => {}); throw error }
   }

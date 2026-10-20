@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按现行 Bobo 高权限预设区分核心明确权限与普通员工缺省，CLI 仅核对不改权。
  * [OUTPUT]: 实际owner RPC取消上传等待原准备，同时无关会话创建继续；零模型。
  * [OUTPUT]: CLI原问题回答必须保留问题版本和原Work/预算，查询与未知核对不重发。
  * [OUTPUT]: 显式权限核对三模式/三发送入口、异权群、旧回执及当前权限失效，不修改保存策略。
@@ -946,9 +947,9 @@ it.each((['read-only', 'ask', 'full-access'] as const).flatMap(permission => (['
   await expect((f.app as unknown as { assertMaterialRefs(context: EngineContext): Promise<void> }).assertMaterialRefs(observed!)).rejects.toThrow('CLI不会临时改权')
 })
 
-it('rejects undefined saved permissions before creating a core or ordinary employee session', async () => {
+it('rejects undefined saved permissions before creating an ordinary employee session', async () => {
   const f = await fixture()
-  for (const employeeId of ['bobo', 'writer']) {
+  for (const employeeId of ['researcher', 'writer']) {
     const before = (await f.app.handle('snapshot', undefined) as Snapshot).conversations
     const requestId = randomUUID()
     await expect(f.client.invoke('sendEmployeeMessage', { employeeId, expectedExecutionPermission: 'full-access', content: '不得代改权限', requestId })).rejects.toThrow('尚未明确配置')
@@ -956,6 +957,19 @@ it('rejects undefined saved permissions before creating a core or ordinary emplo
     expect(await f.client.invoke('getMessageReceipt', { requestId })).toBeNull()
   }
   expect(f.runs).toBe(0)
+})
+
+it('uses Bobo explicit default permission and rejects a different CLI expectation without changing it', async () => {
+  const f = await fixture()
+  const before = (await f.app.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'bobo')!
+  expect(before.executionPermission).toBe('full-access')
+  const wrong = randomUUID()
+  await expect(f.client.invoke('sendEmployeeMessage', { employeeId: 'bobo', expectedExecutionPermission: 'read-only', content: '错误模式不能发出', requestId: wrong })).rejects.toThrow('CLI不会临时改权')
+  expect(await f.client.invoke('getMessageReceipt', { requestId: wrong })).toBeNull()
+  const accepted = await f.client.invoke('sendEmployeeMessage', { employeeId: 'bobo', expectedExecutionPermission: 'full-access', content: '沿已保存权限', requestId: randomUUID() }) as Message
+  expect(accepted.permissionExpectation).toEqual({ permission: 'full-access', agentIds: ['bobo'] })
+  expect((await f.app.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'bobo')).toMatchObject({ executionPermission: before.executionPermission, allowCommands: before.allowCommands })
+  await vi.waitFor(() => expect(f.runs).toBe(1))
 })
 
 it('checks every addressed group employee but does not change or borrow a peer permission', async () => {

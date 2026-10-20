@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 提示词目录列表与版本化保存/删除进入原主窗口IPC准入。
+ * [OUTPUT]: 2026-10-19应用业务协议：公共准入增加应用目录、调用与回执三个入口，不开放任意内部方法。
  * [OUTPUT]: 2026-10-19 独立网页检索设置、默认、凭据编辑、测试与移除接入原公共 IPC 准入。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: CLI安装/状态/卸载仅主窗口IPC准入，不进入WS公共channel。
@@ -92,6 +94,9 @@ const methods = {
   generateTeamPlan: true,
   getAgentHome: true,
   getAppearance: true,
+  getApplicationCatalog: true,
+  executeApplicationOperation: true,
+  getApplicationReceipt: true,
   getArtifactAcceptanceReceipt: true,
   getArtifactAdoptionReceipt: true,
   getArtifactPreview: true,
@@ -165,6 +170,9 @@ const methods = {
   testWebSearchService: true,
   removeWebSearchService: true,
   listDataSources: true,
+  listPromptTemplates: true,
+  savePromptTemplate: true,
+  removePromptTemplate: true,
   listEmployeeExecutions: true,
   listExecutionEvidence: true,
   listExecutionHistory: true,

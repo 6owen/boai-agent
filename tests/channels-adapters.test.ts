@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原飞书与Telegram SDK回应参数用受控平台检查；非真实外部发送。
  * [INPUT]: 实际Mastra Channels/厂商适配器和受控平台边界夹具。
  * [OUTPUT]: 自定义handler不执行默认模型、转换后的官方域/独立会话、飞书附件补接和原会话回发；不代替真实平台联调。
  * [POS]: 第16组SDK接线验证。
@@ -13,11 +14,11 @@ import { channelTransportFactory, normalizeChatInbound } from '../src/runtime/ad
 import type { ChannelBinding } from '../src/shared/domain/channels'
 import type { ChannelInbound, ChannelTransport } from '../src/runtime/modules/channels/channel-service'
 
-const platform = vi.hoisted(() => ({ channels: [] as { appId: string; domain: string; handlers: Map<string, (value: unknown) => Promise<void>>; sends: unknown[]; disconnected: boolean; downloads: number }[] }))
+const platform = vi.hoisted(() => ({ channels: [] as { appId: string; domain: string; handlers: Map<string, (value: unknown) => Promise<void>>; sends: unknown[]; reactions: unknown[]; disconnected: boolean; downloads: number }[] }))
 vi.mock('@larksuite/channel', () => ({ createLarkChannel: (options: { appId: string; domain: string }) => {
-  const state = { appId: options.appId, domain: options.domain, handlers: new Map<string, (value: unknown) => Promise<void>>(), sends: [] as unknown[], disconnected: false, downloads: 0 }
+  const state = { appId: options.appId, domain: options.domain, handlers: new Map<string, (value: unknown) => Promise<void>>(), sends: [] as unknown[], reactions: [] as unknown[], disconnected: false, downloads: 0 }
   platform.channels.push(state)
-  return { botIdentity: { openId: `bot-${options.appId}`, name: 'Fixture' }, connect: async () => {}, disconnect: async () => { state.disconnected = true }, on: (name: string, handler: (value: unknown) => Promise<void>) => { state.handlers.set(name, handler); return () => state.handlers.delete(name) }, getChatInfo: async (id: string) => ({ chatId: id, chatType: 'p2p' }), send: async (chatId: string, input: unknown) => { state.sends.push({ chatId, input }); return { messageId: 'reply-id' } }, downloadResource: async () => { state.downloads++; return Buffer.from('material bytes') } }
+  return { addReaction: async (messageId: string, emoji: string) => { state.reactions.push({ messageId, emoji, active: true }); return {} }, removeReactionByEmoji: async (messageId: string, emoji: string) => { state.reactions.push({ messageId, emoji, active: false }); return true }, botIdentity: { openId: `bot-${options.appId}`, name: 'Fixture' }, connect: async () => {}, disconnect: async () => { state.disconnected = true }, on: (name: string, handler: (value: unknown) => Promise<void>) => { state.handlers.set(name, handler); return () => state.handlers.delete(name) }, getChatInfo: async (id: string) => ({ chatId: id, chatType: 'p2p' }), send: async (chatId: string, input: unknown) => { state.sends.push({ chatId, input }); return { messageId: 'reply-id' } }, downloadResource: async () => { state.downloads++; return Buffer.from('material bytes') } }
 } }))
 const roots: string[] = [], transports: ChannelTransport[] = []
 afterEach(async () => { await Promise.all(transports.splice(0).map(transport => transport.stop())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); platform.channels.length = 0; vi.unstubAllGlobals() })
@@ -33,6 +34,13 @@ describe('real channel SDK wiring with simulated platform', () => {
       const transport = await factory(value, 'secret', async event => { events.push(event) }, failures); transports.push(transport); await transport.start()
     }
     expect(platform.channels.map(channel => channel.domain)).toEqual(['https://open.feishu.cn', 'https://open.larksuite.com'])
+    for (const [i, transport] of transports.entries()) {
+      const source = { platform: i ? 'lark' as const : 'feishu' as const, tenantId: 'tenant', chatId: 'oc-same', kind: 'direct' as const, bindingId: 'binding', eventId: 'om-1', userId: 'owner', replyThreadId: 'lark:oc-same:om-1' }
+      await transport.react!(source, '👍', true); await transport.react!(source, '👍', false)
+      expect(platform.channels[i].reactions).toEqual([{ messageId: 'om-1', emoji: 'THUMBSUP', active: true }, { messageId: 'om-1', emoji: 'THUMBSUP', active: false }])
+      await expect(transport.react!(source, 'unmapped', true)).rejects.toThrow('unsupported')
+    }
+
     for (const channel of platform.channels) await channel.handlers.get('message')!({ messageId: 'om-1', chatId: 'oc-same', chatType: 'p2p', chatMode: 'p2p', senderId: 'owner', senderName: '用户', senderType: 'user', content: '正文', resources: [{ type: 'file', fileKey: 'resource', fileName: 'notes.txt' }], mentions: [], mentionedBot: false, createTime: Date.now(), raw: { sender: { tenant_key: 'tenant' } } })
     await until(() => events.length === 2)
     expect(events[0].threadId).toBeUndefined(); expect(events[0].tenantId).toBe('tenant'); expect(events[0].attachments).toHaveLength(1)
@@ -50,13 +58,14 @@ describe('real channel SDK wiring with simulated platform', () => {
   })
   it('connects the installed TelegramProvider in polling mode and routes a real SDK event only into the custom handler', async () => {
     const root = await mkdtemp(join(tmpdir(), 'boai-telegram-sdk-')); roots.push(root)
-    const events: ChannelInbound[] = [], methods: string[] = []
+    const events: ChannelInbound[] = [], methods: string[] = [], reactions: unknown[] = []
     let delivered = false
-    vi.stubGlobal('fetch', async (input: string | Request | URL) => {
+    vi.stubGlobal('fetch', async (input: string | Request | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       const method = url.split('/').at(-1)!; methods.push(method)
       let result: unknown
-      if (method === 'getMe') result = { id: 42, is_bot: true, first_name: 'Fixture', username: 'fixture_bot' }
+      if (method === 'setMessageReaction') { reactions.push(JSON.parse(String(init?.body))); result = true }
+      else if (method === 'getMe') result = { id: 42, is_bot: true, first_name: 'Fixture', username: 'fixture_bot' }
       else if (method === 'deleteWebhook' || method === 'setMyCommands') result = true
       else if (method === 'getUpdates') {
         await new Promise(resolve => setTimeout(resolve, 20))
@@ -75,5 +84,9 @@ describe('real channel SDK wiring with simulated platform', () => {
     expect(failures).not.toHaveBeenCalled()
     await transport.send({ id: 'target', bindingId: 'telegram-42', conversationId: 'conversation', chatId: '100', externalThreadId: events[0].externalThreadId, userId: '100', kind: 'direct' }, 'Reply', [])
     expect(methods.filter(method => method === 'sendMessage' || method === 'sendRichMessage')).toHaveLength(1)
+    const source = { platform: 'telegram' as const, tenantId: 'telegram', chatId: events[0].chatId, kind: 'direct' as const, bindingId: 'telegram-42', eventId: events[0].eventId, userId: events[0].userId, replyThreadId: events[0].externalThreadId }
+    await transport.react!(source, '👍', true); await transport.react!(source, '👍', false)
+    expect(reactions).toEqual([{ chat_id: '100', message_id: 1, reaction: [{ type: 'emoji', emoji: '👍' }] }, { chat_id: '100', message_id: 1, reaction: [] }])
+
   })
 })

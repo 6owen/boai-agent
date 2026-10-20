@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/minghinmatthewlam/computer-use-mcp.git",
+  "revision": "82dd8093e44819c51537f489059e172777d7f1d7",
+  "license": "MIT",
+  "integration": "Existing BOAI stdio MCP source transport; optional local installer",
+  "skills": [
+    "boai-computer-use"
+  ],
+  "install": "node scripts/install-computer-use.mjs /absolute/path/to/pinned-checkout"
+}

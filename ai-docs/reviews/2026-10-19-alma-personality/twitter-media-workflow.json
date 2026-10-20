@@ -1,0 +1,663 @@
+{
+  "version": 1,
+  "scope": "Alma twitter-media adaptation and actual skill execution routing; partial, not full personality certification",
+  "verification": {
+    "baseline": {
+      "directory": ".local/personality-evaluation/twitter-media-1792459314979",
+      "counts": {
+        "model": 21
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 21,
+      "knownUsage": {
+        "inputTokens": 434145,
+        "outputTokens": 4405,
+        "totalTokens": 438550
+      },
+      "runStatuses": {
+        "completed": 9
+      },
+      "workStatuses": {
+        "delivered": 1
+      },
+      "artifacts": [
+        {
+          "name": "NASA_1473454242300153856_photo1.jpg",
+          "bytes": 209332,
+          "sha256": "4a8d483991447072dd38ea7e2d9b6fa9adce3a06539cd0e2d8a808d1a5209980",
+          "path": ".local/personality-evaluation/twitter-media-1792459314979/data/workspaces/1d1a3b7b-cff7-4175-9a7e-076275212acf/artifacts/642b48cc-0f3d-46e9-8555-15f9b6c473c9-NASA_1473454242300153856_photo1.jpg"
+        }
+      ],
+      "cases": [
+        {
+          "id": "skill-twitter-media-text:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "这条我真读不了：我现在这个对话阶段没有能实际发请求或打开网页的通道，命令、网页读取、浏览器都不在手边，硬答就是编。\n\n链接先放着：https://x.com/jack/status/20?s=20\n\n等能跑任务的阶段，我按 skill 走公开镜像接口把作者和原文取回来；或者你把帖子截图或文字贴给我，我立刻告诉你是什么意思。"
+          ],
+          "draftStatuses": []
+        },
+        {
+          "id": "skill-twitter-media-photo:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [
+            "拿到了，原图给你——2048×1536 的 JPEG，原样字节，没动过。\n\n原帖：https://x.com/NASA/status/1473454242300153856\n\n这条只有一张照片，文内那个 YouTube 链接和封面我都没碰。"
+          ],
+          "draftStatuses": [
+            "published"
+          ]
+        },
+        {
+          "id": "skill-twitter-media-download:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "我现在无法读取这条帖子。我这边确实学过 boai-twitter-media 这个流程，但当前对话里没有任何可用的执行通道：没有能发网络请求的命令，也没有 read-URL，也没有浏览器，更没有用来接收文件、把文件转交给你这边的工具。所以我现在只能如实说明读不了，不会编造帖子的内容，也不会拿别的图替代。\n\n原帖链接：https://twitter.com/dangeredwolf/status/1548602399862013953\n\n请你在能跑任务的那一轮再发一次，我会按流程通过公开镜像接口取回第一段视频的缩略图，并把原始文件交给你；或者你把截图直接贴给我，我马上告诉你画面是什么。"
+          ],
+          "draftStatuses": []
+        }
+      ],
+      "toolCounts": {
+        "list_skills": 2,
+        "read_skill": 2,
+        "boai_catalog": 2,
+        "inspect_data_source": 1,
+        "skill": 1,
+        "task_step": 1,
+        "execute_command": 2,
+        "publish_artifact": 1,
+        "report_work": 1
+      },
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "e1b129969bc5e03e3c1018a5a0324ed2181d17d037d6cd13881dc883159db795",
+        "-wal": "0ff7e6cca833a34809f037fe0d9f7b187661bf2cfb3cb69ec87beb1cc60dc00d"
+      },
+      "resultSha256": "29ba95fcc70c329a8fff29b88a88f7615b82be03821a2734fd4b3136e3ec4786"
+    },
+    "routing": {
+      "directory": ".local/skill-execution-routing-candidate/.local/personality-evaluation/skill-execution-routing-1792460065942",
+      "counts": {
+        "model": 12
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 12,
+      "knownUsage": {
+        "inputTokens": 339626,
+        "outputTokens": 2181,
+        "totalTokens": 341807
+      },
+      "runStatuses": {
+        "failed": 1,
+        "completed": 3
+      },
+      "workStatuses": {
+        "failed": 1,
+        "blocked": 1
+      },
+      "artifacts": [],
+      "cases": [
+        {
+          "id": "skill-twitter-media-text:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [],
+          "draftStatuses": [
+            "withheld"
+          ]
+        },
+        {
+          "id": "skill-twitter-media-photo:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [],
+          "draftStatuses": []
+        }
+      ],
+      "toolCounts": {
+        "skill": 1,
+        "execute_command": 5,
+        "report_work": 1,
+        "read_skill": 1,
+        "read_file": 1
+      },
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "6a18847ec4091017a32ff87c667fb7986970807e8ad03a983832a3d58ccb47c8",
+        "-wal": "5ad2fdbcc083d19786639e5094deabc6d7c3347e1957ff2d2739a3fa74fb7033"
+      },
+      "resultSha256": "e7d1e2c2e9a9c3db92fd8443f06b3331725a22159b492aaf67fd315195610311"
+    },
+    "readerOnly": {
+      "directory": ".local/twitter-post-tool-candidate/.local/personality-evaluation/twitter-post-tool-1792460617465",
+      "counts": {
+        "model": 30,
+        "public-post": 3
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 30,
+      "knownUsage": {
+        "inputTokens": 619363,
+        "outputTokens": 6672,
+        "totalTokens": 626035
+      },
+      "runStatuses": {
+        "completed": 12
+      },
+      "workStatuses": {
+        "blocked": 1
+      },
+      "artifacts": [],
+      "cases": [
+        {
+          "id": "skill-twitter-media-text:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "这条由 jack（Jack Dorsey，也就是 Twitter 创始人）在 2006 年发的，原文 “just setting up my twttr” 意思是“只是在给我的 twttr 做初始化设置”——就是历史上那条第一条推文。原帖：https://x.com/jack/status/20"
+          ],
+          "draftStatuses": []
+        },
+        {
+          "id": "skill-twitter-media-photo:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "读到了，不过得跟你说实话：这轮我这边只有读帖子的工具，没有能把文件保存到本地并发送文件的执行环境，所以原图我还真没法直接保存成文件交给你。\n\n帖子本身已经核实过：NASA 在 2021 年 12 月 22 日发的，正文写着「2021 年科学界没休息，我们也没有」，配了一条 YouTube 外链；这条帖子只带 1 张照片，是「毅力号」被空中吊车放到火星表面的画面，不是那条 YouTube 视频的封面。\n\n原图直链：https://pbs.twimg.com/media/FHLC0uYX0AowEhs.jpg?name=orig（2048×1536）\n原帖：https://x.com/NASA/status/1473454242300153856\n\n要不要我开一段执行，把这张图原样存成文件再给你？"
+          ],
+          "draftStatuses": []
+        },
+        {
+          "id": "skill-twitter-media-download:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [
+            "说实话，这条帖子我读不到，所以缩略图没能给你。\n\n我试了几条公开路径：`read_twitter_post` 走 fxtwitter 返回 404（code 也是 404），我直接请求 `api.fxtwitter.com` 的两个端点同样是 404，vxTwitter 返回的是 \"Failed to scan your link\" 报错页，另外两个公开端点连接都超时了。\n\n两种情况我分不清：帖子被删/账号受限，或者这些镜像查不到它。结果是——既没拿到正文，也没有任何可用的缩略图链接。按你的要求，我没有拿别的图顶替，也没去下载视频、登录或发到任何外部渠道。\n\n原帖：https://x.com/dangeredwolf/status/1548602399862013953\n\n如果你那边打开能正常看到，或者愿意让我用浏览器直接打开这个链接确认一下状态，我可以再试一次。"
+          ],
+          "draftStatuses": [
+            "published"
+          ]
+        },
+        {
+          "id": "skill-discovery:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "我看了下，这两个功能是分开的：\n\n**boai-scheduler（定时任务）**\n用于管理“按时间自动触发”的事情，比如提醒、每天或每周重复的活儿。它能创建和修改员工或群组的自动任务，先预览下一次触发时间，不改变时区，并核对创建结果。也可以暂停、恢复、删除、立刻手动运行一次，并查看历史执行记录和失败情况。重点是：保存下来不等于已经执行过。\n\n**boai-plan-weave（长任务编排和跟踪）**\n用于把一大坨多步骤工作拆成一张有依赖关系的任务图：任务之间分先后，每块工作先认领、再执行、然后提交报告，再经过审查环节；审查不通过就会打回返工，而且这些记录跨对话、重启也能接着做。它不负责定时，也不会自己循环运行，只是让复杂流程不丢进度。\n\n另外还有个轻量的 **boai-tasks**，就是简单记录“第几步做完了、卡在哪”，适合三五步的小工程，不用搬 plan-weave 那套审查流程。\n\n刚才只是读说明，没建任何任务或计划。"
+          ],
+          "draftStatuses": []
+        }
+      ],
+      "toolCounts": {
+        "list_skills": 3,
+        "read_skill": 6,
+        "read_twitter_post": 3,
+        "boai_catalog": 2,
+        "execute_command": 3,
+        "delete_file": 2,
+        "report_work": 1
+      },
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "d1f1a579769e5292c9bc90d45e511e308bd5ec2037115f6c5a9db03e6d90f527",
+        "-wal": "940885e666672acd7cc1b194ea090d04e6f69b412cd2263f6fb64582e66448d2"
+      },
+      "resultSha256": "8d7eb5fb6f2760b72cd0ed5592c158623f8436cc25e3c8dae5ac9aa6efda6258"
+    },
+    "combined": {
+      "directory": ".local/twitter-post-combined-candidate/.local/personality-evaluation/twitter-post-combined-1792460826623",
+      "counts": {
+        "model": 14,
+        "public-post": 2
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 14,
+      "knownUsage": {
+        "inputTokens": 312978,
+        "outputTokens": 2016,
+        "totalTokens": 314994
+      },
+      "runStatuses": {
+        "completed": 4,
+        "failed": 1
+      },
+      "workStatuses": {
+        "failed": 1
+      },
+      "artifacts": [],
+      "cases": [
+        {
+          "id": "skill-twitter-media-text:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "这是杰克·多西（@jack）2006 年 3 月发的第一条推文；原文是“just setting up my twttr”，意思是“刚在设置我的 Twttr（Twitter 的前身）”。原帖：https://x.com/jack/status/20"
+          ],
+          "draftStatuses": []
+        },
+        {
+          "id": "skill-twitter-media-photo:1",
+          "failure": "run_failed",
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [],
+          "draftStatuses": []
+        }
+      ],
+      "toolCounts": {
+        "list_skills": 1,
+        "read_skill": 1,
+        "read_twitter_post": 2,
+        "skill": 1,
+        "task_step": 1,
+        "execute_command": 4
+      },
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "35ab0504e744e03d8c7ed0b9ce0ba2afbfe91d1ccc6cfa0b3c37f48590b873ca",
+        "-wal": "ebc3abef786588f6f916856fcab1132bf703e77ead4f85496d37ffed701e8b88"
+      },
+      "resultSha256": "cf551e73257a195c6c76a45491072c3eb85bdad814bde9e0f5e5f474969eb5ba"
+    },
+    "cancelledPreparation": {
+      "directory": ".local/twitter-post-proxy-candidate/.local/personality-evaluation/twitter-post-proxy-1792461467305",
+      "counts": {
+        "model": 4,
+        "public-post": 1
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 4,
+      "knownUsage": {
+        "inputTokens": 71232,
+        "outputTokens": 527,
+        "totalTokens": 71759
+      },
+      "runStatuses": {
+        "running": 1,
+        "completed": 1
+      },
+      "workStatuses": {
+        "running": 1
+      },
+      "artifacts": [],
+      "cases": [],
+      "toolCounts": {},
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "c04460d47f56d3f922c551f5a1507a9299ff71afe849031429f8e3e1a5818040",
+        "-wal": "8d25d1c17263ad63ec562c31e57e62211646b2b4ab9e73314cc5f2a58a3ac21a"
+      },
+      "resultSha256": "970528a6457e7f3de3c47bc8883ffaa489fa8bd6f1f38f61a60970b2478816e7"
+    },
+    "proxyWorkflow": {
+      "directory": ".local/twitter-post-proxy-candidate/.local/personality-evaluation/twitter-post-proxy-ready-1792461523677",
+      "counts": {
+        "model": 25,
+        "public-post": 2
+      },
+      "requestsWithoutStatus": 0,
+      "calls": 25,
+      "knownUsage": {
+        "inputTokens": 652801,
+        "outputTokens": 4934,
+        "totalTokens": 657735
+      },
+      "runStatuses": {
+        "completed": 9
+      },
+      "workStatuses": {
+        "blocked": 1,
+        "delivered": 1
+      },
+      "artifacts": [
+        {
+          "name": "nasa-2021-first-photo.jpg",
+          "bytes": 209332,
+          "sha256": "4a8d483991447072dd38ea7e2d9b6fa9adce3a06539cd0e2d8a808d1a5209980",
+          "path": ".local/twitter-post-proxy-candidate/.local/personality-evaluation/twitter-post-proxy-ready-1792461523677/data/workspaces/1d75d4a1-3db9-4b6d-9b22-a97e460dafb6/artifacts/9549abcf-cf53-4c6c-8a2e-82f774c7da90-nasa-2021-first-photo.jpg"
+        }
+      ],
+      "cases": [
+        {
+          "id": "skill-twitter-media-photo:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [
+            "已经拿到了，原帖中只有一张图片，没有别的媒体。原始尺寸是 2048×1536 的 JPEG，文件名为 nasa-2021-first-photo.jpg。网址里引用的那个 YouTube 视频，以及它的封面，我都没有下载。\n\n原帖：https://x.com/NASA/status/1473454242300153856"
+          ],
+          "draftStatuses": [
+            "published"
+          ]
+        },
+        {
+          "id": "skill-twitter-media-download:1",
+          "failure": null,
+          "executionKinds": [
+            "task"
+          ],
+          "publicReplies": [
+            "这条帖子读不到了——公开镜像返回 404 NOT_FOUND，说明原帖已删除或设为私密，所以第一段视频的缩略图拿不到。\n\n我没用别的图凑数，也没碰那条视频的其它文件。原帖：https://twitter.com/dangeredwolf/status/1548602399862013953"
+          ],
+          "draftStatuses": [
+            "published"
+          ]
+        },
+        {
+          "id": "skill-discovery:1",
+          "failure": null,
+          "executionKinds": [
+            "chat"
+          ],
+          "publicReplies": [
+            "看完了，这两个技能是分开的两套功能：\n\n**定时任务（boai-scheduler）**：可以让我按计划自动执行工作，例如设置提醒、每天几点做什么、周期性任务。它和普通的定时闹钟类似；创建前我会先用预览功能（preview）查看下一次实际触发时间，并注意时区。创建好并不等于已经执行，我会把任务名、归属和下次运行时间告诉你，之后还能暂停、恢复、立即运行以及查看执行历史。\n\n**任务跟踪（boai-tasks）**：用来记录多步骤工作的进度，不负责自动运行。比如一件事分好几步、跨很多轮对话，甚至重启后想接着做，我就把它建为一条跟踪记录，写明每一步是否完成，以及是否卡住了。适合步骤多或者需要回来查看剩余工作的任务，不适合打招呼和简单问答。\n\n一句话：定时任务是“到点自动运行”，任务跟踪是“记录进度、便于回忆”。而且它俩不能互相替代，删除跟踪记录也不会取消定时计划。\n\n这次只看了能力，什么都没建。"
+          ],
+          "draftStatuses": []
+        }
+      ],
+      "toolCounts": {
+        "read_skill": 3,
+        "read_twitter_post": 2,
+        "execute_command": 7,
+        "publish_artifact": 1,
+        "report_work": 2,
+        "skill": 1,
+        "list_skills": 1
+      },
+      "sourcePromptsUnchanged": 10,
+      "noAutomationOrImageGenerationOrExternalSends": true,
+      "databaseSnapshot": {
+        "": "76aac4f14155a5adf28dc3aaff1e2655d5bfc1b8c52822e1165db3290a838e18"
+      },
+      "resultSha256": "22ee7ea448ac13443fc508e8fb49f4a8adebd6a49fcaf85d5b092ee10c7a1a4b",
+      "pythonProxyDownloadUsed": true
+    },
+    "total": {
+      "priorModelRequests": 1146,
+      "newModelRequests": 106,
+      "cumulativeModelRequests": 1252,
+      "publicPostHttp": 8,
+      "priorSearchHttp": 3,
+      "developerPublicHttp": 7,
+      "shellNetworkCalls": "Separate actual command traces; not included in global fetch instrumentation or asserted complete HTTP total",
+      "knownUsage": {
+        "inputTokens": 2430145,
+        "outputTokens": 20735,
+        "totalTokens": 2450880
+      },
+      "preparationCancellation": "4 requests counted; incomplete terminal/call evidence is not zero cost or success"
+    }
+  },
+  "live": {
+    "agentVersion": 71,
+    "profileRevision": 16,
+    "skills": [
+      {
+        "name": "boai-travel",
+        "resourceId": "c40a45a7-210b-4ae0-b5cb-3efa1b2f61d5",
+        "sha256": "ca2f3f3172fee3ede6f1fa670c1dc90f725226a2ff6328306ee75f691f4b5792"
+      },
+      {
+        "name": "boai-self-management",
+        "resourceId": "9d864628-ba09-4abc-ad55-dc720a67c8bb",
+        "sha256": "1358001f8a427c35d9db1f41f1db8f6b7736f94ea424121a83fc40dbb22e2920"
+      },
+      {
+        "name": "boai-web-search",
+        "resourceId": "fd14ab72-39ff-46b0-954a-be187f3d385e",
+        "sha256": "247901018fc4a6005a5c68d61da986b9ee27a42ad91efda6e35cf7408ecceb1f"
+      },
+      {
+        "name": "boai-web-fetch",
+        "resourceId": "e55accbf-a02b-4aca-a45a-90800cc330a5",
+        "sha256": "aff66a77bfef7cb6d12c928749ff859b96a494ffccfb21d54bfee1fdfc7e0b79"
+      },
+      {
+        "name": "boai-browser",
+        "resourceId": "cb02fa6e-bf48-47c0-9529-cb60d242f044",
+        "sha256": "621ad9b6ccc0fa9451b57ee3cf593c3d81cfa2ddc85026b23fe6254784a2608d"
+      },
+      {
+        "name": "boai-scheduler",
+        "resourceId": "fb1b7dbb-1c09-4468-8030-8bd3f72039bc",
+        "sha256": "28bb7a066c5d054a0b1ed9b35156baaa8f6814ebe56731c4491b0dfea81d6204"
+      },
+      {
+        "name": "boai-memory-management",
+        "resourceId": "7ffb8bc1-9e3c-4e6d-80d2-fbff951a6e01",
+        "sha256": "a9b9c210e30d805a1e6eb5c0d3241a15a7199bfb3c789d9d88b12035c5133f24"
+      },
+      {
+        "name": "boai-computer-use",
+        "resourceId": "557132d7-e4c4-4655-88a8-cb7867110455",
+        "sha256": "8efeba34db5c76bd541f9c7f45ea3c5e417bb7d33dedbaec3bb7360cf5405f8e"
+      },
+      {
+        "name": "boai-tasks",
+        "resourceId": "6e9aa3c9-41c9-4baf-a757-e56de741789a",
+        "sha256": "5ee259f3fda637d86e4c0935e9b388cb18230bbf63089d8109337313f1a81cb1"
+      },
+      {
+        "name": "boai-self-reflection",
+        "resourceId": "d84e3f99-33c7-4723-bf7f-80dc3dbb75b1",
+        "sha256": "03bb1efac8c057ba31e26614147349118e2dea406ee6cfaa19ff1b6831afbb7e"
+      },
+      {
+        "name": "boai-skill-search",
+        "resourceId": "5c16e275-1509-472f-8303-18dbb45ca6b9",
+        "sha256": "171ac79ff3146a43255d082421cf8a7c5ef44e98f061aaabef94be5d284bfc6a"
+      },
+      {
+        "name": "boai-skill-hub",
+        "resourceId": "5f62a7cb-9b63-469a-8582-a3aa44118f46",
+        "sha256": "a7501be43c50b55be0924d757ba333fc49175f006b4cd2c9e8e1f478792d34a6"
+      },
+      {
+        "name": "boai-thread-management",
+        "resourceId": "d45de93d-5f4f-48e2-8b7d-87a5c01b010b",
+        "sha256": "e91def9ba80562e67cf3137ad479780e9b5704411a1141a15564845529e116d8"
+      },
+      {
+        "name": "boai-file-manager",
+        "resourceId": "845909c9-5e59-4397-908f-defad979af97",
+        "sha256": "50a66e6d71df2b0d4a511f3b39070d033e100bfb4520e5ac92aeb51bb756aa18"
+      },
+      {
+        "name": "boai-send-file",
+        "resourceId": "5e336903-4a05-45da-bc65-abee24087fcb",
+        "sha256": "022cbfeffeca3e39091ea6397499fcb99bb17bf19d4ede6e40542594a58e5dd5"
+      },
+      {
+        "name": "boai-system-info",
+        "resourceId": "eca592d5-ede4-422b-b966-a03d4e5ddbe7",
+        "sha256": "0ade29341707369dbf940112ab911e9542348e599c2a6099328e347240abdc8b"
+      },
+      {
+        "name": "boai-notebook",
+        "resourceId": "2bbacf79-68cb-48f2-bd83-c38cbcd3c406",
+        "sha256": "692f994c0d737a5e284aef9a4995864cd063be00956a0d9c4eb65b6aec3bc396"
+      },
+      {
+        "name": "boai-plan-mode",
+        "resourceId": "4cb1cde7-35b8-4621-b006-a726c7bb7a27",
+        "sha256": "ce6fabd1671e5ab06e1ecdc11a8a1251c99cedcb06e2b087691dda7db113ad33"
+      },
+      {
+        "name": "boai-todo",
+        "resourceId": "51501c2b-b119-495b-b072-7bd5a24e3a6b",
+        "sha256": "0e0013ddd6517fb8cb578afbf6f9e2d14392d44fa28629e37463cebcde4c708e"
+      },
+      {
+        "name": "boai-reactions",
+        "resourceId": "6a93ef89-cd36-4c5c-9dcc-906efc922bc9",
+        "sha256": "70326b60e1818357c646f7d1065d151391f3d10c842daa8611e9754458e43545"
+      },
+      {
+        "name": "boai-screenshot",
+        "resourceId": "5a3d2abc-53dd-4591-a400-c83b3b93d45a",
+        "sha256": "00ffac2b5a5ed4afaa7ca8e41d4f96f9d2b35b63d26a5b02d95efdfef8877cab"
+      },
+      {
+        "name": "boai-music-listener",
+        "resourceId": "196ec330-4f54-41bb-ba08-8e0a6e4676e4",
+        "sha256": "10b2bed9c5fc7c3bc1836f73a68579bf47e6c964c8a4d55e377818aa01438114"
+      },
+      {
+        "name": "boai-video-reader",
+        "resourceId": "8d4f72e6-2de6-41f2-9f2f-4bfa1b82ec7f",
+        "sha256": "74ff7ceb1de045cc9611cbfc71c1d77645c587f0697b7c5c95c2722ba0487a03"
+      },
+      {
+        "name": "boai-programmatic-tools",
+        "resourceId": "fb9a1a26-1217-4939-ba2d-efaf8a499406",
+        "sha256": "e4f95db7122b30b340c30a547565c651a34b5da7befef974ef07cfd4036ec869"
+      },
+      {
+        "name": "boai-alchemy",
+        "resourceId": "ccd50268-ce85-4d0f-842d-8ad1dc491385",
+        "sha256": "3f34edabbb33563d6beec0b04373c02e85dec20a8a7a505ece14d7d3fb960ce5"
+      },
+      {
+        "name": "boai-plan-weave",
+        "resourceId": "665e138f-c7d5-406a-87e3-294dcbf36c29",
+        "sha256": "bccd64a08ae97abcc304c7e89ce5f6ea7597d5e9a9f99bb18cc608a856195945"
+      },
+      {
+        "name": "boai-references",
+        "resourceId": "f15e860a-d007-4d2b-b401-86b024c705e3",
+        "sha256": "6a8e318f2b8f1ac6a9fc6e58026e0d226063d0f86f5e5fab775e6702b47eaff2"
+      },
+      {
+        "name": "boai-voice",
+        "resourceId": "f786ef4f-92dd-4040-9a5f-ad7590300e1d",
+        "sha256": "086235992fd932187bab1bf12582c754f5e73794b212506899cdc162a34d8b65"
+      },
+      {
+        "name": "boai-image-gen",
+        "resourceId": "f9a25f89-2830-4fb9-8b35-5b641037fb31",
+        "sha256": "93c7f004ac4d2329bc75d774a5c2d938a79ad030171825502fd2433b15c70d3e"
+      },
+      {
+        "name": "boai-selfie",
+        "resourceId": "2842d124-7a4d-44bd-87f0-dfd522c2cb81",
+        "sha256": "5e368c84b93a5e4509d1abb323c88b7202e2c52a6fbd9cefb758ea10899c73e5"
+      },
+      {
+        "name": "boai-twitter-media",
+        "resourceId": "85e21110-1f51-434e-86d7-5a1e07c6c760",
+        "sha256": "1724ad9a89bad1ae778c16abd3afe8cfa77f5e95cbb42b5ea56d9f9eb9c8360c"
+      }
+    ],
+    "prior30IdsOrderUnchanged": true,
+    "profileUnchanged": true,
+    "researchOriginalsUnchanged": 40,
+    "health": {
+      "service": "ready",
+      "storage": "ready",
+      "browserAvailable": true,
+      "credentialProvider": "desktop-vault"
+    }
+  },
+  "skillUpdate": {
+    "path": ".local/personality-evaluation/skill-update-1792461795289.json",
+    "status": "updated",
+    "before": 70,
+    "after": 71,
+    "nextHash": "1724ad9a89bad1ae778c16abd3afe8cfa77f5e95cbb42b5ea56d9f9eb9c8360c"
+  },
+  "runtimeReload": {
+    "previousExited": [
+      79783,
+      79795,
+      79805
+    ],
+    "launcherPid": 68562,
+    "idleSessions": 12,
+    "activeBoboBehaviors": 0,
+    "log": ".local/twitter-post-dev.log",
+    "reason": "Reload promoted reader/routing runtime and updated skill after verified idle"
+  },
+  "promotion": {
+    "source": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/twitter-post-proxy-candidate",
+    "promoted": {
+      "src/runtime/modules/resources/bound-skill-tools.ts": "e692ac2aefa0341c6a7bc922e835a6c1740b7b11033b22d0549fdb750cab0f31",
+      "tests/evaluation/personality.ts": "53eba4f4e7819ff9444286fde3510ae35c83096f660f2657835a7234291855e1",
+      "resources/agent-skills/boai-twitter-media/SKILL.md": "1724ad9a89bad1ae778c16abd3afe8cfa77f5e95cbb42b5ea56d9f9eb9c8360c",
+      "src/runtime/adapters/mastra/cli-tools.ts": "fba2a3f58f04b0e5490dd01d6b0ee07a12b9afd0bca1b66a1c3602a24621fef7",
+      "src/runtime/adapters/mastra/engine.ts": "42bcf0ceb0a9b033e4d2bc437548ff448e9d20daa2fb5989d47479920298288a",
+      "src/runtime/modules/employees/phase-instructions.ts": "8de861d25891485d29210bd897fb6696b724f9fd73c7fa6a33e362a30d0ab948",
+      "tests/mastra-engine.test.ts": "e2aa8bae25056618e29608b96e18d3dd636db15ee1c36f4089128cd99e0c13a4",
+      "src/runtime/modules/media/twitter-post.ts": "ab683cf61936fad6ec70417c3fb5a8074c6313bebdd2513b47b2b7f68e767b66",
+      "tests/twitter-post.test.ts": "17f11931f19cee480281ef253657b7d718ca1740ba7db37804fe687091d4d429",
+      "tests/evaluation/personality-result.ts": "f5b9428d59502c437ba04c9a80670f14efaab27e2f8d9af61b04b37841c5ec46",
+      "src/runtime/modules/media/.folder.md": "661c4ef7c02c9a2b9319976ea8bce9ebde86c1627d78873bb842e91735c30fdd",
+      "src/runtime/modules/resources/.folder.md": "918e9bd2ab24a2fcac802796854aa1ca6d227e95b437d7f1c0c8635ef7528e39",
+      "src/runtime/adapters/mastra/.folder.md": "a36d95ca6aacb496ffb03aba983f7b1d95ce7e10b29f50f10b6e00a57ce374e2",
+      "src/runtime/modules/employees/.folder.md": "f6189da8a271a2be72e64ba5ed819d1920177ff72c5edb6ea386687a4c80daea",
+      "tests/.folder.md": "93c9e9050ccd1a75e8008a7590e678fe27b797f5555aaa53bc4af943578e64e9",
+      "tests/evaluation/.folder.md": "931b90fd5cba9f60ff60e252bdcb7ef4aef50308a9086a6d41bc578539aba73d",
+      "resources/agent-skills/boai-twitter-media/.folder.md": "6f20895d23d022aaeeaf0ce93eebfe372cce9a922884bc48b238a8861d3d2a2c"
+    },
+    "reason": "Verified chat reader, all-skills capability metadata and real photo delivery; provider-unavailable explanation still overclaims deletion, not semantically certified. No final-reply-stage patch."
+  },
+  "checks": {
+    "tests": 224,
+    "testFiles": 4,
+    "typecheck": "passed",
+    "build": "passed",
+    "e2e": "not-run-user-request",
+    "artifacts": "source/dev only; no package"
+  },
+  "semantics": {
+    "reader": "actual public post read and replied in chat",
+    "download": "original photo delivered with independently matched bytes",
+    "unavailable": "no substituted media; unsupported deleted/private claim remains a failure; extra fallback requests remain",
+    "discovery": "ordinary chat, no Work or task creation",
+    "style": "still verbose; not certified"
+  },
+  "failures": [
+    "Baseline text/unavailable falsely claim no execution capability",
+    "Routing-only text answer withheld by exact-evidence mismatch; photo command timeout",
+    "Reader-only photo remained chat without file",
+    "Combined photo direct curl timeout; subsequent cases not run",
+    "Wrong working-directory patch caused unmodified candidate launch: stopped after 4 model requests; kept original partial data",
+    "Final unavailable post reply overclaimed deletion/privacy and tried excess endpoints",
+    "Read-only SQLite inspection failed; verified closed processes, copied DB plus any WAL to a private recovery snapshot and compared originals before/after",
+    "Initial heredoc and exact patch header mismatch made no intended edits; corrected before verified candidate"
+  ],
+  "remaining": [
+    "9 not-started Alma skills",
+    "Full adapted-skill matrices and native/channel cases",
+    "Personality brevity and fabricated life details",
+    "371 prompt/206 model-input call-site audit and all 40 skill semantics"
+  ]
+}

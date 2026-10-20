@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 保留挂载的主会话与渠道聊天各提供浮层可见作用域，切页/隐藏详情立即撤下Portal，不清理正文、草稿和阅读位置。
+ * [OUTPUT]: 会话消息与群标题头像的配置入口统一跳转通讯录并选中对应员工，bobo与创建的员工共用原导航守卫。
  * [OUTPUT]: 2026-10-19 员工配置检索服务入口导航到独立设置页，沿原未保存守卫。
  * [OUTPUT]: 已发布知识引用按宿主实际读取身份打开原全局预览；明确重开更新定位，失效不跳到新内容。
  * [OUTPUT]: 员工文件中的旧知识资料携带员工身份进入统一预览，保留全局资源管理入口。
@@ -70,6 +72,7 @@
 import { draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { FloatingLayerScope } from '@/components/ui/floating-layer-scope'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs } from '@/components/ui/tabs'
 import { useEditorGuard } from '@/components/common/use-editor-guard'
@@ -879,7 +882,7 @@ export function AppShell() {
     const id = room.id, channel = isChannelConversation(room), internal = room.purpose === 'channel-internal'
     const owner = room.kind === 'group' || !room.agentIds[0] ? 'conversation' as const : 'employee' as const
     const ownerId = owner === 'employee' ? room.agentIds[0]! : id
-    return <ChatView {...window} headerActions={headerActions} key={id} api={api!} snapshot={snapshot}
+    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} headerActions={headerActions} key={id} api={api!} snapshot={snapshot}
       onPublish={channel ? message => {
         if (!message) return
         void action(async () => {
@@ -898,7 +901,7 @@ export function AppShell() {
         openContact(room.kind === 'group' ? { kind: 'group', id } : { kind: 'agent', id: room.agentIds[0]! })
       }}
       onManageModels={agent => openContact(room.kind === 'group' && !channel ? { kind: 'group', id } : { kind: 'agent', id: agent.id })}
-      onConfigureAgent={agent => isCoreAgent(agent) ? openContact({ kind: 'agent', id: agent.id }) : showPanel({ type: 'agent', id: agent.id, conversationId: id, configurationRequest: crypto.randomUUID() })} onProfile={openUserProfile}
+      onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onProfile={openUserProfile}
       onEditTitle={setEditingTitle} onClear={clearConversationHistory}
       onTrace={message => showPanel(message?.automationPublication ? { type: 'automation-occurrence', id: message.automationPublication.occurrenceId } : { type: 'trace', requestId: crypto.randomUUID(), id, messageId: message?.id, turnId: message?.turnId, agentId: message?.senderType === 'agent' ? message.senderId : undefined })}
       onSettings={agent => { const originPanel = panelRef.current; openModelSettings(agent, () => !isChannelConversation(room) || panelRef.current === originPanel) }} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}
@@ -912,7 +915,7 @@ export function AppShell() {
         await refreshSnapshot(); if (selectedRef.current) await refreshDetail(selectedRef.current)
       }) }}
       onOpenPath={onOpenPath} onPreviewArtifact={artifact => previewArtifact(artifact, artifact.conversationId ?? id, scope, undefined, undefined, withinKey)} onAddMaterial={() => { void materialDrafts.choose(id) }} onDropMaterials={files => { void materialDrafts.drop(id, files) }} onPasteMaterials={files => { void materialDrafts.paste(id, files) }}
-      onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} />
+      onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} /></FloatingLayerScope>
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
   const headerActions = <><HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
@@ -941,13 +944,13 @@ export function AppShell() {
     </DropdownMenu></div></nav>
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{messageStorageError && <Banner>{messageStorageError}</Banner>}{artifactStorageError&&<Banner onClose={()=>setArtifactStorageError('')}>{artifactStorageError}</Banner>}
-      {<div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
+      {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
         <div className="conversation-stage">{route.coreDraft?<CoreChatStart api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:currentDetail?renderChat({ detail: currentDetail, pageActive: route.page === 'conversations' && !conversationSearchOpen,
           onReading: updateReading, onLocation: (messageId, following, offset) => { const id = currentDetail.conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
           onPage: direction => void loadMessagePage(direction), paging, pageEdges, restoreAnchor: viewLocations.current.get(currentDetail.conversation.id)?.messageId ? { messageId: viewLocations.current.get(currentDetail.conversation.id)!.messageId!, offset: viewLocations.current.get(currentDetail.conversation.id)?.offset } : undefined,
           focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(currentDetail.conversation.id), onScrollPosition: position => scrollPositions.current.set(currentDetail.conversation.id, position),
          }):loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" />}</div>
-      </div>}
+      </div></FloatingLayerScope>}
       <TasksPage active={route.page === 'tasks'} />
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}

@@ -1,8 +1,9 @@
 /*
+ * [OUTPUT]: 原子节点区分@员工与$资源/提示词，提示词正文快照保留于编辑/撤销/草稿往返，复制标签不伪造引用。
  * [OUTPUT]: 原子标签保存成员或资源身份，复制纯文字不伪造引用。
  * [INPUT]: Tiptap/ProseMirror 原子节点与 DOM NodeView、共享草稿及主题按钮 class。
  * [OUTPUT]: 文字/换行/成员标签编辑模型；标签外层提供字体高度的 DOM 光标边界，内层复用按钮皮肤；辅助字符不进入草稿或复制序列化，保留原子删除和编辑历史。
- * [POS]: 群聊 composer 的编辑模型，不改变消息/点名 IPC。
+ * [POS]: 单聊/群聊及核心首发共用的编辑模型，不改变消息/点名 IPC。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Extension, Node, type JSONContent } from '@tiptap/core'
@@ -30,16 +31,16 @@ export function mentionExtensions(tagClass: string) {
     Node.create({ name: 'hardBreak', inline: true, group: 'inline', selectable: false, parseHTML: () => [{ tag: 'br' }], renderHTML: () => ['br'] }),
     Node.create({
       name: 'mention', inline: true, group: 'inline', atom: true, selectable: true,
-      addAttributes: () => ({ id: { default: '' }, label: { default: '' }, resource: { default: null, rendered: false } }),
-      renderHTML: ({ node }) => ['span', { class: tagClass, 'data-mention-id': node.attrs.id, contenteditable: 'false' }, `@${node.attrs.label}`],
-      renderText: ({ node }) => `@${node.attrs.label}`,
+      addAttributes: () => ({ id: { default: '' }, label: { default: '' }, trigger: { default: '@', rendered: false }, resource: { default: null, rendered: false }, prompt: { default: null, rendered: false } }),
+      renderHTML: ({ node }) => ['span', { class: tagClass, 'data-mention-id': node.attrs.id, contenteditable: 'false' }, `${node.attrs.trigger}${node.attrs.label}`],
+      renderText: ({ node }) => `${node.attrs.trigger}${node.attrs.label}`,
       addNodeView: () => ({ node }) => {
         const dom = document.createElement('span'), label = document.createElement('span')
         dom.className = 'composer-mention-node'
         dom.dataset.mentionId = node.attrs.id
         dom.contentEditable = 'false'
         label.className = tagClass
-        label.textContent = `@${node.attrs.label}`
+        label.textContent = `${node.attrs.trigger}${node.attrs.label}`
         // View-only text boundaries give Chromium a font-sized caret outside the padding.
         // renderHTML/renderText above keep them out of both clipboard formats and the model.
         const boundary = () => {
@@ -78,24 +79,24 @@ export function mentionDocument(draft: ChatDraft): JSONContent {
   const content: JSONContent[] = []
   let offset = 0
   for (const mention of draftMentions(draft)) {
-    content.push(...textNodes(draft.text.slice(offset, mention.start)), { type: 'mention', attrs: { id: mention.id, label: mention.label, resource: mention.resource ?? null } })
+    content.push(...textNodes(draft.text.slice(offset, mention.start)), { type: 'mention', attrs: { id: mention.id, label: mention.label, trigger: draft.text[mention.start], resource: mention.resource ?? null, prompt: mention.prompt ?? null } })
     offset = mention.end
   }
   content.push(...textNodes(draft.text.slice(offset)))
   return { type: 'doc', content: [{ type: 'paragraph', content }] }
 }
 
-const nodeText = (node: DocumentNode) => node.type.name === 'mention' ? `@${node.attrs.label}` : node.type.name === 'hardBreak' ? '\n' : node.text ?? ''
+const nodeText = (node: DocumentNode) => node.type.name === 'mention' ? `${node.attrs.trigger}${node.attrs.label}` : node.type.name === 'hardBreak' ? '\n' : node.text ?? ''
 
 export function documentDraft(doc: DocumentNode, draft: ChatDraft): ChatDraft {
   let text = ''
   const mentions: DraftMention[] = []
   doc.firstChild?.forEach(node => {
     const value = nodeText(node)
-    if (node.type.name === 'mention') mentions.push({ id: node.attrs.id, label: node.attrs.label, ...(node.attrs.resource ? { resource: node.attrs.resource } : {}), start: text.length, end: text.length + value.length })
+    if (node.type.name === 'mention') mentions.push({ id: node.attrs.id, label: node.attrs.label, ...(node.attrs.resource ? { resource: node.attrs.resource } : {}), ...(node.attrs.prompt ? { prompt: node.attrs.prompt } : {}), start: text.length, end: text.length + value.length })
     text += value
   })
-  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.filter(mention => !mention.resource).map(mention => mention.id))] }
+  return { ...draft, text, mentions, mentionIds: [...new Set(mentions.filter(mention => !mention.resource && !mention.prompt).map(mention => mention.id))] }
 }
 
 /** Document atoms occupy one position; draft offsets retain the full visible label. */

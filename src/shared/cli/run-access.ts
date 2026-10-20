@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主可提供当前包Node程序/员工工具库的只读位置；它们不授予owner身份。
  * [INPUT]: Trusted service-issued credential identities; never caller-selected employee roles.
  * [OUTPUT]: Private run bridge, original tool catalog/call identities and process-lifetime credential leases.
  * [POS]: Shared CLI/run authentication types; tokens are never stored in product snapshots.
@@ -15,7 +16,7 @@ export type RunCliAccessRequest =
   | { kind: 'invoke'; principal: RunCliPrincipal; tool: string; input: unknown; callId?: string }
 export type RunCliAccessPort = (request: RunCliAccessRequest) => Promise<unknown>
 export interface RunCliGrant extends RunCliPrincipal { token: string; expiresAt: number }
-export interface RunCliEnvironment { BOAI_SERVER_URL?: string; BOAI_SERVER_TOKEN?: string; BOAI_CLI_EMPLOYEE_RUN: string }
+export interface RunCliEnvironment { BOAI_SERVER_URL?: string; BOAI_SERVER_TOKEN?: string; BOAI_CLI_EMPLOYEE_RUN: string; BOAI_CLI_NODE?: string; BOAI_CLI_TOOL_CLIENT?: string }
 export interface RunCliEnvironmentLease { env: RunCliEnvironment; release(): void }
 
 /** In-process callbacks only; public catalogs omit execute/observed. */

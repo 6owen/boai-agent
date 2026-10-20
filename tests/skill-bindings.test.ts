@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机源更新沿真实检查/原事务同步独立员工副本；冲突、源漂移、回滚、批量与重启覆盖。
  * [OUTPUT]: 备份忙时断言按现行公共资源错误文案，并核对未创建备份目录；原取消/退出/删除与副本断言保持。
  * [INPUT]: 真实 AppService/SQLite、本机发现目录、受管副本和不调用模型的隔离 fixture。
  * [OUTPUT]: D4 来源/hash/员工版本冻结、同事务授权/回执、幂等冲突和未知核对，配置竞争/原子回滚/重启零重放、hash 安全清理与外改保留、删除 tombstone 和备份迁移验收。
@@ -441,4 +442,132 @@ test.each([false, true])('an explicit remote update synchronizes only D4 copy ha
   await fixture.api('removeResource', { id: resource.id })
   expect(await readdir(join(fixture.dataPath, 'skills'))).toEqual([])
   expect(fixture.model).not.toHaveBeenCalled()
+})
+
+async function applyCheckedUpdate(fixture: Awaited<ReturnType<typeof setup>>, resourceId: string, replaceLocalChanges = false) {
+  const check = await fixture.api('checkSkillUpdate', { id: resourceId })
+  expect(check.status).toBe('available')
+  const input = { requestId: randomUUID(), planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash!, replaceLocalChanges }
+  const operation = await fixture.api('updateSkill', input)
+  await vi.waitFor(async () => expect((await fixture.api('getSkillOperation', { id: operation.id })).status).not.toBe('running'))
+  return { check, input, result: await fixture.api('getSkillOperation', { id: operation.id }) }
+}
+
+test('local binding update preserves identities, updates one employee only and survives restart with valid cleanup evidence', async () => {
+  const fixture = await setup(), first = await binding(fixture)
+  const secondPlan = await prepare(fixture, 'writer', first.path)
+  const second = await fixture.api('bindLocalSkill', secondPlan.input)
+  const oldInstallation = (await fixture.store.load<SkillInstallation & { bindingCopy: BindingFiles }>('skillInstallations')).find(value => value.resourceId === first.resource.id)!
+  const installations = await fixture.api('executeApplicationOperation', { operation: 'skills.installations', input: {} })
+  expect(installations).toMatchObject({ status: 'succeeded', data: expect.arrayContaining([expect.objectContaining({ resourceId: first.resource.id, localSkillId: first.plan.localSkillId })]) })
+  expect(JSON.stringify(installations)).not.toContain('ownership')
+  expect(await fixture.api('executeApplicationOperation', { operation: 'skills.boundDetail', input: { id: first.resource.id } })).toMatchObject({ status: 'succeeded', data: { resource: { id: first.resource.id }, contentHash: oldInstallation.contentHash, content: expect.stringContaining('Only use approved reports.') } })
+  expect((await fixture.api('checkSkillUpdate', { id: first.resource.id })).status).toBe('current')
+  const newBody = '---\nname: report-helper\ndescription: Updated report workflow\n---\nRead evidence, then answer.'
+  await writeFile(join(first.path, 'SKILL.md'), newBody)
+  await rm(join(first.path, 'references/guide.md'))
+  await writeFile(join(first.path, 'references/new.md'), 'new evidence guide')
+  const { check, input, result } = await applyCheckedUpdate(fixture, first.resource.id)
+  expect(check).toMatchObject({ localModified: false, source: oldInstallation.source, fileChanges: { added: ['references/new.md'], removed: ['references/guide.md'], modified: ['SKILL.md'] }, affectedEmployees: [{ id: 'researcher', name: first.agent.name }] })
+  expect(result.status).toBe('completed')
+  expect(await fixture.api('updateSkill', input)).toEqual(result)
+  const snapshot = await fixture.api('snapshot', undefined)
+  expect(snapshot.agents.find(agent => agent.id === 'researcher')).toMatchObject({ skillIds: [first.resource.id], configVersion: first.agent.configVersion + 1 })
+  expect(snapshot.agents.find(agent => agent.id === 'writer')).toEqual(second.agent)
+  expect(await readFile(join(first.resource.path, 'SKILL.md'), 'utf8')).toBe(newBody)
+  expect(await readFile(join(second.resource!.path, 'SKILL.md'), 'utf8')).not.toBe(newBody)
+  const installation = (await fixture.store.load<SkillInstallation & { bindingCopy: BindingFiles }>('skillInstallations')).find(value => value.resourceId === first.resource.id)!
+  expect(installation).toMatchObject({ localSkillId: oldInstallation.localSkillId, source: oldInstallation.source, revision: oldInstallation.revision + 1, bindingCopy: { resourceId: oldInstallation.bindingCopy.resourceId, ownership: oldInstallation.bindingCopy.ownership } })
+  expect(installation.contentHash).toBe((await inspectResourceTree(first.resource.path)).hash)
+  expect(installation.bindingCopy.files).toEqual((await inspectResourceTree(first.resource.path)).files)
+  await fixture.service.close()
+  const restarted = await fixture.start()
+  expect((await restarted.api('checkSkillUpdate', { id: first.resource.id })).status).toBe('current')
+  expect(await restarted.api('updateSkill', input)).toMatchObject({ status: 'completed' })
+  await restarted.api('removeResource', { id: first.resource.id })
+  await expect(readFile(join(first.resource.path, 'SKILL.md'))).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(join(first.path, 'SKILL.md'), 'utf8')).toBe(newBody)
+  expect(await readFile(join(second.resource!.path, 'SKILL.md'), 'utf8')).not.toBe(newBody)
+  expect(fixture.model).not.toHaveBeenCalled()
+})
+
+test('local binding update preserves custom employee content unless explicitly replaced', async () => {
+  const fixture = await setup(), bound = await binding(fixture)
+  const source = await readFile(join(bound.path, 'SKILL.md'), 'utf8')
+  await writeFile(join(bound.path, 'SKILL.md'), source + '\nSource v2')
+  await writeFile(join(bound.resource.path, 'SKILL.md'), source + '\nEmployee customization')
+  const check = await fixture.api('checkSkillUpdate', { id: bound.resource.id })
+  expect(check).toMatchObject({ status: 'available', localModified: true })
+  const input = { requestId: randomUUID(), planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash! }
+  await expect(fixture.api('updateSkill', input)).rejects.toThrow('本地修改')
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toContain('Employee customization')
+  const { result } = await applyCheckedUpdate(fixture, bound.resource.id, true)
+  expect(result.status).toBe('completed')
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toBe(source + '\nSource v2')
+  expect(fixture.model).not.toHaveBeenCalled()
+})
+
+test('changed local source after preview cannot install unreviewed bytes or increment the employee version', async () => {
+  const fixture = await setup(), bound = await binding(fixture)
+  const original = await readFile(join(bound.path, 'SKILL.md'), 'utf8')
+  await writeFile(join(bound.path, 'SKILL.md'), original + '\nReviewed v2')
+  const check = await fixture.api('checkSkillUpdate', { id: bound.resource.id })
+  expect(check.status).toBe('available')
+  await writeFile(join(bound.path, 'SKILL.md'), original + '\nUnreviewed v3')
+  const input = { requestId: randomUUID(), planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash! }
+  // The original update pipeline acquires the preview, copies it and verifies its frozen hash.
+  const operation = await fixture.api('updateSkill', input)
+  await vi.waitFor(async () => expect((await fixture.api('getSkillOperation', { id: operation.id })).status).not.toBe('running'))
+  expect((await fixture.api('getSkillOperation', { id: operation.id })).status).toBe('interrupted')
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toBe(original)
+  expect((await fixture.api('snapshot', undefined)).agents.find(agent => agent.id === bound.agent.id)?.configVersion).toBe(bound.agent.configVersion)
+})
+
+test.each(['missing', 'renamed'] as const)('local binding update refuses a %s source without changing the usable employee copy', async kind => {
+  const fixture = await setup(), bound = await binding(fixture)
+  const original = await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')
+  if (kind === 'missing') await rm(bound.path, { recursive: true })
+  else await writeFile(join(bound.path, 'SKILL.md'), '---\nname: different-skill\ndescription: Different identity\n---\nNew contents')
+  const check = await fixture.api('checkSkillUpdate', { id: bound.resource.id })
+  expect(check.status).toBe('failed')
+  expect(check.planId).toBeUndefined()
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toBe(original)
+  expect((await fixture.api('snapshot', undefined)).agents.find(agent => agent.id === bound.agent.id)?.configVersion).toBe(bound.agent.configVersion)
+})
+
+test('batch checks include local-bound employee copies but local-only scope never changes their files', async () => {
+  const fixture = await setup(), bound = await binding(fixture)
+  const original = await readFile(join(bound.path, 'SKILL.md'), 'utf8')
+  await writeFile(join(bound.path, 'SKILL.md'), original + '\nNew source')
+  const batch = await fixture.api('checkAllSkillUpdates', { requestId: 'check-bound-source' })
+  expect(batch.items).toContainEqual(expect.objectContaining({ resourceId: bound.resource.id }))
+  await vi.waitFor(async () => expect((await fixture.api('getSkillUpdateBatch', undefined))?.status).toBe('completed'))
+  expect((await fixture.api('getSkillUpdateBatch', undefined))?.items).toContainEqual(expect.objectContaining({ resourceId: bound.resource.id, status: 'available' }))
+  const local = await fixture.api('checkAllSkillUpdates', { requestId: 'check-local-only', scope: 'local' })
+  expect(local.items.some(item => item.resourceId === bound.resource.id)).toBe(false)
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toBe(original)
+  expect(fixture.model).not.toHaveBeenCalled()
+})
+
+test('matching upstream bytes with a stale installation baseline require explicit adoption and repair cleanup evidence without changing content', async () => {
+  const fixture = await setup(), bound = await binding(fixture)
+  const content = (await readFile(join(bound.path, 'SKILL.md'), 'utf8')) + '\nManually synchronized source'
+  await writeFile(join(bound.path, 'SKILL.md'), content)
+  await writeFile(join(bound.resource.path, 'SKILL.md'), content)
+  const check = await fixture.api('checkSkillUpdate', { id: bound.resource.id })
+  expect(check).toMatchObject({ status: 'available', localModified: true, fileChanges: { added: [], removed: [], modified: [] } })
+  expect(check.candidateHash).toBe(check.expectedHash)
+  const old = (await fixture.store.load<SkillInstallation>('skillInstallations')).find(item => item.resourceId === bound.resource.id)!
+  await expect(fixture.api('updateSkill', { requestId: 'no-adoption', planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash! })).rejects.toThrow('本地修改')
+  const { result } = await applyCheckedUpdate(fixture, bound.resource.id, true)
+  expect(result.status).toBe('completed')
+  expect(await readFile(join(bound.resource.path, 'SKILL.md'), 'utf8')).toBe(content)
+  const current = (await fixture.store.load<SkillInstallation & { bindingCopy: BindingFiles }>('skillInstallations')).find(item => item.resourceId === bound.resource.id)!
+  expect(current.revision).toBe(old.revision + 1)
+  expect(current.contentHash).toBe(check.candidateHash)
+  expect(current.bindingCopy.contentHash).toBe(current.contentHash)
+  expect((await fixture.api('checkSkillUpdate', { id: bound.resource.id })).status).toBe('current')
+  await fixture.api('removeResource', { id: bound.resource.id })
+  expect(await readdir(join(fixture.dataPath, 'skills'))).toEqual([])
+  expect(await readFile(join(bound.path, 'SKILL.md'), 'utf8')).toBe(content)
 })

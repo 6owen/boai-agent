@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 全局编辑允许更换单员工任务的执行员工，归属与名单同次保存，沿原版本核验更新授权。
  * [OUTPUT]: Dialog复用同一表单并由外层提供标题；保存忙态同步弹窗，关闭/取消沿当前局部草稿守卫。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 固定计划/创建身份、员工快照、日程预览与持久保存回执。
@@ -150,7 +151,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
           </div>
           {singleEmployeeTarget && <div className="schedule-employee-control">
             <span>执行员工</span>
-            <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner || !!definition?.owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.filter(a => !isCoreAgent(a)).map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
+            <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.filter(a => !isCoreAgent(a)).map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
           </div>}
         </div>
         {preview.error && <Banner>{preview.error}</Banner>}

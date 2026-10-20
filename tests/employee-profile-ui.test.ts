@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 高级配置默认人格与行为，配置源文件/后台记录直接展示，主动交流即时保存；自动化仅展示员工任务；基础配置排除/草稿保护保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 首选检索使用真实Select沿草稿保存；候选授权、失效来源、解绑重置与旧身份编辑保持。
  * [OUTPUT]: 知识配置使用数量入口；独立资料绑定回填新版本并保留未保存工作方式与目录草稿。
@@ -16,6 +17,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { AgentInput, DigitalAgent, Snapshot } from '../src/shared/domain'
 import type { AppEvent, DesktopApi } from '../src/shared/ipc'
+import { defaultAgentProfile } from '../src/shared/domain/agent-profile'
 import { GuardContext } from '../src/renderer/components/common'
 import { useEditorGuard } from '../src/renderer/components/common/use-editor-guard'
 import { AgentEditor } from '../src/renderer/components/employee/editors'
@@ -42,6 +44,11 @@ beforeEach(() => {
     if (method === 'getLaunchProfileStatus') return { status: 'available', profile: { id: 'native', name: '本机 Codex', protocol: 'codex-app-server', verified: { name: 'Codex', version: '1' } } }
     if (['listLaunchProfiles', 'listDataSources', 'listSkillInstallations'].includes(method)) return []
     if (method === 'getSkillCollections') return { revision: 1, favoriteResourceIds: [], groups: [], groupByResourceId: {} }
+    if (method === 'executeApplicationOperation') {
+      const operation = (input as { operation: string }).operation
+      const data = operation === 'employees.profile' ? defaultAgentProfile(agent.id, false) : operation === 'employees.behaviorHistory' ? [] : { base: { revision: 0 }, effective: { mood: 'neutral', valence: 5, energy: 5, fatigue: 0, sleeping: false } }
+      return { status: 'succeeded', data }
+    }
     if (method === 'getContactList') return { revision: 1, agentOrder: [agent.id], groupOrder: [], tags: [], agentTags: {}, groupTags: {} }
     if (method === 'snapshot') return snapshot()
     if (method === 'saveAgent') { const { expectedConfigVersion: _, ...value } = input as AgentInput; committed = { ...committed, ...value, configVersion: committed.configVersion + 1 }; return committed }
@@ -374,14 +381,41 @@ test('switching sections discards only after confirmation and advanced configura
   await act(async () => button('退出').click())
   const dialog = document.querySelector('[role=dialog]')!
   expect(dialog.querySelectorAll('[role=tab]')).toHaveLength(6)
+  expect(dialog.querySelector('[aria-label="人格与行为"]')).not.toBeNull()
   expect(dialog.querySelector('[aria-label="基础配置"]')).toBeNull()
-  expect(dialog.querySelector('[aria-label="系统文件"]')?.getAttribute('aria-selected')).toBe('true')
+  expect(dialog.querySelector('[aria-label="人格与行为"]')?.getAttribute('aria-selected')).toBe('true')
+  expect(dialog.querySelector('[role=tab][aria-label="系统文件"]')).toBeNull()
+  expect(button('编辑人格')).toBeTruthy()
+  expect(dialog.querySelector('button[aria-label="高级设置"]')).toBeNull()
+  expect(dialog.querySelector('section[aria-label="配置源文件"]')).not.toBeNull()
+  expect(dialog.querySelector('section[aria-label="后台活动记录"]')).not.toBeNull()
   expect(dialog.querySelector('input[aria-label="员工名称"]')).toBeNull()
   expect(host.querySelector('textarea')).toBeNull()
   await click('关闭高级配置')
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.textContent).toContain('原工作方式')
   expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
+})
+
+test('employee automation only shows employee tasks and never loads personality plans or history', async () => {
+  const original = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'listOwnerAutomations' ? { definitions: [] } : original(method, input))
+  await fixture(); await act(async () => button('高级配置').click())
+  const dialog = () => document.querySelector('[role=dialog]')!
+  expect(dialog().querySelector('section[aria-label="主动交流"]')).not.toBeNull()
+  expect(dialog().textContent).not.toContain('添加行为')
+  request.mockClear()
+  await act(async () => button('自动化').click())
+  expect(dialog().querySelector('[role=tab][aria-label="自动化"]')?.getAttribute('aria-selected')).toBe('true')
+  expect(dialog().querySelector('section[aria-label="员工定时任务"]')).not.toBeNull()
+  expect(dialog().querySelector('section[aria-label="主动交流"]')).toBeNull()
+  expect(dialog().querySelector('section[aria-label="后台活动记录"]')).toBeNull()
+  expect(dialog().querySelector('section[aria-label="状态与成长"]')).toBeNull()
+  expect(request).toHaveBeenCalledWith('listOwnerAutomations', { owner: { kind: 'employee', employeeId: agent.id }, limit: 30 })
+  expect(request.mock.calls.some(([method]) => method === 'executeApplicationOperation')).toBe(false)
+  await act(async () => button('人格与行为').click())
+  expect(dialog().querySelector('section[aria-label="状态与成长"]')).not.toBeNull()
+  expect(dialog().textContent).not.toContain('添加行为')
 })
 
 test('native instruction edits preserve native model options and inherited permissions', async () => {

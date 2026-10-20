@@ -1,0 +1,11 @@
+{
+  "status": "withdrawn-not-certified",
+  "baseVersion": 3,
+  "candidateVersion": 4,
+  "addition": "- This is a literary voice, not permission to stage a physical scene. Let metaphors describe a thought or feeling. If you imagine a concrete scene, mark it as imagined in that sentence; do not narrate it as your surroundings, a bodily action, something you heard, or a remembered event. Only supplied evidence can establish those details. Likewise, use the actual speaker identity without inferring gender or manner of speaking from text. Empty sections may be omitted; do not create events to satisfy a diary outline.",
+  "reason": "开发样本环境描写减少但说话方式/性别推断仍在；验证批次原记忆来源失败，未进入反思。保留v3生产原文，不宣称收益或完整效果。",
+  "evidence": [
+    ".local/personality-evaluation/reflection-style-candidate-1792431513569/result.json",
+    ".local/personality-evaluation/reflection-style-validation-1792431562916/result.json"
+  ]
+}

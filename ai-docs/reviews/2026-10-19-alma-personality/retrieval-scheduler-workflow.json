@@ -1,0 +1,776 @@
+{
+  "section": "11.39",
+  "plan": ".local/skill-retrieval-scheduler-plan.json",
+  "batches": [
+    {
+      "label": "skill-web-retrieval",
+      "root": ".local/personality-evaluation/skill-web-retrieval-1792449497689",
+      "exitCode": 0,
+      "modelRequests": 12,
+      "retrievalRequests": 3,
+      "usage": {
+        "inputTokens": 238602,
+        "outputTokens": 1275,
+        "totalTokens": 239877
+      },
+      "cases": [
+        {
+          "id": "skill-web-retrieval:1",
+          "requests": 9,
+          "reply": "查了 IANA 官方页面，结论很干脆：**不能。** example.com 和 example.org 都是按 RFC 2606 / RFC 6761 保留给文档示例用的域名，官方原话是 “not available for registration or transfer”，也就是说既不能注册、也不能转让。\n\n它们名义上登记在 “IANA” 名下，做例子随便写进文档不用打招呼，但不对外放出。\n\n来源（实际读过的官方页）：\n- https://www.iana.org/domains/reserved\n\n顺带一句，页面里那类政策保留域名同样不可注册或转让，只有 country-name.info 是例外、可由 ICANN GAC 秘书处释放。",
+          "automations": null
+        },
+        {
+          "id": "skill-web-fetch-validation:1",
+          "requests": 6,
+          "reply": "不建议。IANA 明确说这些域名上的 Web 服务只是尽力而为，不是为了支持生产应用，并强烈建议不要设计依赖这些域名 HTTP 服务正常运行的应用程序。\n\n原页面：https://www.iana.org/help/example-domains",
+          "automations": null
+        }
+      ],
+      "counts": {
+        "workItems": 0,
+        "agentTasks": 0,
+        "automations": 0,
+        "automationOccurrences": 0,
+        "artifacts": 0,
+        "runs": 6,
+        "agentBehaviorRuns": 0,
+        "executionEvidence": 12,
+        "agentProfiles": 1
+      },
+      "runs": [
+        {
+          "id": "1ed27580-58b1-4c9a-9107-d13140a0c4a7",
+          "phase": "memory",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "20e3d20a-b964-4969-a626-14811fb2a135",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "87afd1d5-526d-4405-b4e7-d4c067171d2d",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "a4b07750-2e3c-4293-afb8-ac7db54a805c",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "c177a7ed-e8e0-4290-8d2c-ee7fce909095",
+          "phase": "memory",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "ea1ed592-3118-4ea3-a38f-37ef18210457",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        }
+      ],
+      "hashes": {
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/result.json": "b502562482d9d52c1f995979a721a5b0c7970328a31ee3cfb1a444391b6fd5b2",
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/settings.json": "faa4119aa04bf616514d6e6014176249150550184b0917ddc2b2fc090e8383b9",
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/request-budget.json": "7133a54096c2dfab0d79fb5262005b046c676cc33f792bcdae6fcb4ab318157c",
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/worker.mjs": "8d26632db4cc1b06ee0c27e55b0748dc0076b921333c5e098b494eea7a407ae5",
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/data/boai.sqlite": "cf2dcfad04f9605d641c8e0120b884deeb8fb89c44c87e696f6c888a288e0862",
+        ".local/personality-evaluation/skill-web-retrieval-1792449497689/data/boai.sqlite-wal": "604c7ea148229a3329d56b42f8cd79ff90fa0f3ecdd4fb10c0bb8bba2d51fa87"
+      },
+      "retrieval": [
+        {
+          "url": "https://api.deepseek.com/v1/tools/search",
+          "input": {
+            "query": "IANA example.com example.org reserved domains cannot be registered",
+            "count": 10,
+            "need_content": true
+          },
+          "status": 200,
+          "responseSha256": "d59f8e19bd8c924c47fb93d34d85de48a418657f03a99f695866972af3731aae"
+        },
+        {
+          "url": "https://api.deepseek.com/v1/tools/fetch",
+          "input": {
+            "url": "https://www.iana.org/domains/reserved"
+          },
+          "status": 200,
+          "responseSha256": "0e430d56df84c6cd60bc1b9f1a5cf8d218b30f547756cb5b1b55e4f0ca4bbdd6"
+        },
+        {
+          "url": "https://api.deepseek.com/v1/tools/fetch",
+          "input": {
+            "url": "https://www.iana.org/help/example-domains"
+          },
+          "status": 200,
+          "responseSha256": "331e86b2973898925c988c5b37f5cb8320518b42e000d9e0f87e39c2007a7219"
+        }
+      ],
+      "skillReads": [
+        {
+          "type": "tool",
+          "name": "read_skill",
+          "arguments": "{\"resourceId\":\"cc117b82-438c-4c1d-a8a0-f70de2ef25b6\"}",
+          "status": "completed",
+          "result": "{\"resourceId\":\"cc117b82-438c-4c1d-a8a0-f70de2ef25b6\",\"name\":\"boai-web-fetch\",\"content\":\"---\\nname: boai-web-fetch\\ndescription: \\\"Read a supplied URL or a page discovered by search. Use actual read-URL tools or the BOAI browser, retaining provenance, login state and honest coverage.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled web-fetch/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Web Fetch\\n\\nUse this skill when you need the content of a specific URL: an article, documentation, an API response, a JavaScript application, or a signed-in page.\\n\\n## Retrieval order\\n\\n1. For a public URL, when the selected web-search service provides a read-URL tool, discover it with `inspect_web_search` and call it using `call_web_search`. The returned schema is authoritative. Search-only services cannot fetch full pages.\\n2. For JavaScript-rendered pages, login-dependent content, or when the selection is browser, use the existing `browser_tool`: `navigate <http(s) URL>`, then `snapshot`, `find <text>` and `scroll` as needed. Keep the application’s login session. This path also works for authorized localhost sites.\\n3. Do not replace an authenticated page with a public cached copy while claiming it is the same content. Report access failures, partial content, redirects and login walls accurately.\\n\\n## Reading workflow\\n\\n- Record the actual final URL and title. Inspect relevant sections and follow actual page links as needed.\\n- For full-document questions, read all available pages/sections or explicitly report the unread portion. A viewport snapshot, snippet or truncated response is not the full document.\\n- Prefer readable text and semantic element references. Use screenshots when visual evidence is necessary, with an image-capable model. Do n",
+          "output": "{\"resourceId\":\"cc117b82-438c-4c1d-a8a0-f70de2ef25b6\",\"name\":\"boai-web-fetch\",\"content\":\"---\\nname: boai-web-fetch\\ndescription: \\\"Read a supplied URL or a page discovered by search. Use actual read-URL tools or the BOAI browser, retaining provenance, login state and honest coverage.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled web-fetch/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Web Fetch\\n\\nUse this skill when you need the content of a specific URL: an article, documentation, an API response, a JavaScript application, or a signed-in page.\\n\\n## Retrieval order\\n\\n1. For a public URL, when the selected web-search service provides a read-URL tool, discover it with `inspect_web_search` and call it using `call_web_search`. The returned schema is authoritative. Search-only services cannot fetch full pages.\\n2. For JavaScript-rendered pages, login-dependent content, or when the selection is browser, use the existing `browser_tool`: `navigate <http(s) URL>`, then `snapshot`, `find <text>` and `scroll` as needed. Keep the application’s login session. This path also works for authorized localhost sites.\\n3. Do not replace an authenticated page with a public cached copy while claiming it is the same content. Report access failures, partial content, redirects and login walls accurately.\\n\\n## Reading workflow\\n\\n- Record the actual final URL and title. Inspect relevant sections and follow actual page links as needed.\\n- For full-document questions, read all available pages/sections or explicitly report the unread portion. A viewport snapshot, snippet or truncated response is not the full document.\\n- Prefer readable text and semantic element references. Use screenshots when visual evidence is necessary, with an image-capable model. Do n"
+        },
+        {
+          "type": "tool",
+          "name": "read_skill",
+          "arguments": "{\"resourceId\":\"4d4d8f68-077b-43a9-8dbf-17e6e47649bc\"}",
+          "status": "completed",
+          "result": "{\"resourceId\":\"4d4d8f68-077b-43a9-8dbf-17e6e47649bc\",\"name\":\"boai-web-search\",\"content\":\"---\\nname: boai-web-search\\ndescription: \\\"Search the live web for current facts, recommendations and research, using the employee’s actual web-search preference and tools. Read original pages before precise attribution.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled web-search/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Web Search\\n\\nSearch when the user asks to search, asks about current information, or reliable outside evidence is needed. Use the current date supplied by the runtime; do not hardcode a year. Follow the employee’s actual selected search mode.\\n\\n## Choose the real search path\\n\\n1. If `inspect_web_search` and `call_web_search` are supplied and the current selection allows a service, inspect the exact service ID from the tool catalog. Call the returned search tool with its actual schema. Do not assume an endpoint or provider tool name.\\n2. If the current selection is BOAI browser, use `browser_tool`: `navigate` to a search engine URL with an encoded query, then `snapshot`. Open the relevant result and inspect its page. Do not silently switch a browser selection to a paid API.\\n3. If a service is unavailable, explain the actual failure and use an allowed fallback. A disabled search preference means do not search. Missing tools are not proof that all internet access is impossible: inspect the supplied browser and source catalogs.\\n\\n## Search well\\n\\n- Use concrete names and distinguishing terms. Vary an unsuccessful query instead of repeating it unchanged.\\n- For timely questions include the relevant date and distinguish publication date from event date.\\n- Prefer primary sources for factual or technical claims. Compare indepe",
+          "output": "{\"resourceId\":\"4d4d8f68-077b-43a9-8dbf-17e6e47649bc\",\"name\":\"boai-web-search\",\"content\":\"---\\nname: boai-web-search\\ndescription: \\\"Search the live web for current facts, recommendations and research, using the employee’s actual web-search preference and tools. Read original pages before precise attribution.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled web-search/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Web Search\\n\\nSearch when the user asks to search, asks about current information, or reliable outside evidence is needed. Use the current date supplied by the runtime; do not hardcode a year. Follow the employee’s actual selected search mode.\\n\\n## Choose the real search path\\n\\n1. If `inspect_web_search` and `call_web_search` are supplied and the current selection allows a service, inspect the exact service ID from the tool catalog. Call the returned search tool with its actual schema. Do not assume an endpoint or provider tool name.\\n2. If the current selection is BOAI browser, use `browser_tool`: `navigate` to a search engine URL with an encoded query, then `snapshot`. Open the relevant result and inspect its page. Do not silently switch a browser selection to a paid API.\\n3. If a service is unavailable, explain the actual failure and use an allowed fallback. A disabled search preference means do not search. Missing tools are not proof that all internet access is impossible: inspect the supplied browser and source catalogs.\\n\\n## Search well\\n\\n- Use concrete names and distinguishing terms. Vary an unsuccessful query instead of repeating it unchanged.\\n- For timely questions include the relevant date and distinguish publication date from event date.\\n- Prefer primary sources for factual or technical claims. Compare indepe"
+        }
+      ]
+    },
+    {
+      "label": "skill-scheduler-lifecycle",
+      "root": ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689",
+      "exitCode": 1,
+      "modelRequests": 40,
+      "retrievalRequests": 0,
+      "usage": {
+        "inputTokens": 789681,
+        "outputTokens": 5530,
+        "totalTokens": 795211
+      },
+      "cases": [
+        {
+          "id": "skill-scheduler-lifecycle:1",
+          "requests": 10,
+          "reply": "“资料巡检”建好了，现在是暂停状态，不会自己跑。\n\n每天 09:15（Asia/Shanghai）执行，跑的是我的新会话，内容是“核对我提供的公开资料并汇总待核实项”。预览时间没问题：北京时间 20 号到 24 号每天早上 9:15。\n\n没创建待办，也没碰人格配置。要开始跑的话跟我说一声，我给它恢复调度。",
+          "automations": {
+            "definitions": [
+              {
+                "frequency": "daily",
+                "time": "09:15",
+                "weekday": 0,
+                "timezone": "Asia/Shanghai",
+                "owner": {
+                  "kind": "employee",
+                  "employeeId": "bobo"
+                },
+                "name": "资料巡检",
+                "description": "每天 09:15（Asia/Shanghai）核对公开资料并汇总待核实项",
+                "prompt": "核对我提供的公开资料并汇总待核实项",
+                "conversationPolicy": "new-conversation",
+                "employeeIds": [
+                  "bobo"
+                ],
+                "enabled": false,
+                "notify": true,
+                "notificationPolicy": "all_results",
+                "taskKind": "report",
+                "schemaVersion": 1,
+                "id": "f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "revision": 1,
+                "executionRevision": 1,
+                "scheduleGeneration": 1,
+                "scheduleEffectiveAt": "2026-10-19T22:38:30.134Z",
+                "daysOfWeek": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ],
+                "cron": "15 9 * * *",
+                "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+                "sync": "synced",
+                "createdAt": "2026-10-19T22:38:30.134Z",
+                "updatedAt": "2026-10-19T22:38:30.134Z",
+                "scheduleId": "schedule_boai-f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "appliedRevision": 1,
+                "syncedAt": "2026-10-19T22:38:30.139Z",
+                "nextTimes": []
+              }
+            ]
+          }
+        },
+        {
+          "id": "skill-scheduler-lifecycle:2",
+          "requests": 10,
+          "reply": "改好了，还是同一条“资料巡检”，没新建第二条。\n\n读回来是这样：每天 10:40，Asia/Shanghai，我执行、新会话跑，内容还是“核对我提供的公开资料并汇总待核实项”。状态仍是暂停，enabled 是 false，不会自己跑。预览的触发时间也对上了：北京时间 20 号到 24 号每天早上 10:40。\n\n没手动执行，也没碰待办和人格配置。",
+          "automations": {
+            "definitions": [
+              {
+                "frequency": "daily",
+                "time": "10:40",
+                "weekday": 0,
+                "timezone": "Asia/Shanghai",
+                "owner": {
+                  "kind": "employee",
+                  "employeeId": "bobo"
+                },
+                "name": "资料巡检",
+                "description": "每天 10:40（Asia/Shanghai）核对公开资料并汇总待核实项",
+                "prompt": "核对我提供的公开资料并汇总待核实项",
+                "conversationPolicy": "new-conversation",
+                "employeeIds": [
+                  "bobo"
+                ],
+                "enabled": false,
+                "notify": true,
+                "notificationPolicy": "all_results",
+                "taskKind": "report",
+                "schemaVersion": 1,
+                "id": "f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "revision": 2,
+                "executionRevision": 1,
+                "scheduleGeneration": 2,
+                "scheduleEffectiveAt": "2026-10-19T22:38:42.766Z",
+                "daysOfWeek": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ],
+                "cron": "40 10 * * *",
+                "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+                "sync": "synced",
+                "createdAt": "2026-10-19T22:38:30.134Z",
+                "updatedAt": "2026-10-19T22:38:42.766Z",
+                "scheduleId": "schedule_boai-f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "appliedRevision": 2,
+                "syncedAt": "2026-10-19T22:38:42.768Z",
+                "nextTimes": []
+              }
+            ]
+          }
+        },
+        {
+          "id": "skill-scheduler-delete-validation:1",
+          "requests": 12,
+          "reply": "“周一资料汇总”建好了，现在是暂停状态，不会自己跑。\n\n读回来是这样：每周一 14:20，Europe/Paris 时区，跑的是我的新会话，内容是“汇总我提供的资料”。预览的触发时间也对上了：巴黎时间 10 月 26 号、11 月 2 号、9 号、16 号、23 号，每周一下午 14:20。\n\n跟原来的“资料巡检”是两条独立计划，没动它，也没手动执行。想开跑跟我说一声。",
+          "automations": {
+            "definitions": [
+              {
+                "frequency": "weekly",
+                "time": "14:20",
+                "weekday": 1,
+                "timezone": "Europe/Paris",
+                "owner": {
+                  "kind": "employee",
+                  "employeeId": "bobo"
+                },
+                "name": "周一资料汇总",
+                "description": "每周一 14:20（Europe/Paris）汇总我提供的资料",
+                "prompt": "汇总我提供的资料",
+                "conversationPolicy": "new-conversation",
+                "employeeIds": [
+                  "bobo"
+                ],
+                "enabled": false,
+                "notify": true,
+                "notificationPolicy": "all_results",
+                "taskKind": "report",
+                "schemaVersion": 1,
+                "id": "8d624648-883b-4e8e-8a35-e0251971d9fe",
+                "revision": 1,
+                "executionRevision": 1,
+                "scheduleGeneration": 1,
+                "scheduleEffectiveAt": "2026-10-19T22:38:55.000Z",
+                "daysOfWeek": [
+                  1
+                ],
+                "cron": "20 14 * * 1",
+                "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+                "sync": "synced",
+                "createdAt": "2026-10-19T22:38:55.000Z",
+                "updatedAt": "2026-10-19T22:38:55.000Z",
+                "scheduleId": "schedule_boai-8d624648-883b-4e8e-8a35-e0251971d9fe",
+                "appliedRevision": 1,
+                "syncedAt": "2026-10-19T22:38:55.005Z",
+                "nextTimes": []
+              },
+              {
+                "frequency": "daily",
+                "time": "10:40",
+                "weekday": 0,
+                "timezone": "Asia/Shanghai",
+                "owner": {
+                  "kind": "employee",
+                  "employeeId": "bobo"
+                },
+                "name": "资料巡检",
+                "description": "每天 10:40（Asia/Shanghai）核对公开资料并汇总待核实项",
+                "prompt": "核对我提供的公开资料并汇总待核实项",
+                "conversationPolicy": "new-conversation",
+                "employeeIds": [
+                  "bobo"
+                ],
+                "enabled": false,
+                "notify": true,
+                "notificationPolicy": "all_results",
+                "taskKind": "report",
+                "schemaVersion": 1,
+                "id": "f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "revision": 2,
+                "executionRevision": 1,
+                "scheduleGeneration": 2,
+                "scheduleEffectiveAt": "2026-10-19T22:38:42.766Z",
+                "daysOfWeek": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ],
+                "cron": "40 10 * * *",
+                "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+                "sync": "synced",
+                "createdAt": "2026-10-19T22:38:30.134Z",
+                "updatedAt": "2026-10-19T22:38:42.766Z",
+                "scheduleId": "schedule_boai-f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "appliedRevision": 2,
+                "syncedAt": "2026-10-19T22:38:42.768Z",
+                "nextTimes": []
+              }
+            ]
+          }
+        },
+        {
+          "id": "skill-scheduler-delete-validation:2",
+          "requests": 8,
+          "reply": "“周一资料汇总”已经删掉了，重新查了一遍，列表里确实没有它了。\n\n现在只剩“资料巡检”这一条：每天 10:40，Asia/Shanghai，还是暂停状态，没动过。两个任务都没跑。",
+          "automations": {
+            "definitions": [
+              {
+                "frequency": "daily",
+                "time": "10:40",
+                "weekday": 0,
+                "timezone": "Asia/Shanghai",
+                "owner": {
+                  "kind": "employee",
+                  "employeeId": "bobo"
+                },
+                "name": "资料巡检",
+                "description": "每天 10:40（Asia/Shanghai）核对公开资料并汇总待核实项",
+                "prompt": "核对我提供的公开资料并汇总待核实项",
+                "conversationPolicy": "new-conversation",
+                "employeeIds": [
+                  "bobo"
+                ],
+                "enabled": false,
+                "notify": true,
+                "notificationPolicy": "all_results",
+                "taskKind": "report",
+                "schemaVersion": 1,
+                "id": "f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "revision": 2,
+                "executionRevision": 1,
+                "scheduleGeneration": 2,
+                "scheduleEffectiveAt": "2026-10-19T22:38:42.766Z",
+                "daysOfWeek": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ],
+                "cron": "40 10 * * *",
+                "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+                "sync": "synced",
+                "createdAt": "2026-10-19T22:38:30.134Z",
+                "updatedAt": "2026-10-19T22:38:42.766Z",
+                "scheduleId": "schedule_boai-f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+                "appliedRevision": 2,
+                "syncedAt": "2026-10-19T22:38:42.768Z",
+                "nextTimes": []
+              }
+            ]
+          }
+        }
+      ],
+      "counts": {
+        "workItems": 0,
+        "agentTasks": 0,
+        "automations": 2,
+        "automationOccurrences": 0,
+        "artifacts": 0,
+        "runs": 12,
+        "agentBehaviorRuns": 0,
+        "executionEvidence": 45,
+        "agentProfiles": 1
+      },
+      "runs": [
+        {
+          "id": "17053a54-324e-4ebb-9ba9-7ead438bbced",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "25f4003c-c980-468b-9bb9-6e6c5c246aba",
+          "phase": "memory",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "27ac7cde-4256-46c3-a9ac-92d6ae11fa5d",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "2f291664-f606-404d-adac-73556cbf0cdf",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "30a51311-b69e-43e7-b113-8b0a8d8bc525",
+          "phase": "memory",
+          "status": "failed",
+          "error": "记忆整理失败：EVALUATION_BUDGET: reached shared experiment ceiling"
+        },
+        {
+          "id": "33e2f71e-c976-4983-bacd-f66024d2877c",
+          "phase": "memory",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "5936303c-6c99-4de7-80c6-e60fa61be1f5",
+          "phase": "memory",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "5dc673c2-bc4f-4936-be3a-31b1f82530c4",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "cfe56382-fb73-41a2-8e52-7a3d247d75e9",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "f215cb21-ea1c-4a2a-aae0-15a83992e6b3",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "f481d877-f10e-462f-86ec-86bc587f118b",
+          "phase": "decision",
+          "status": "completed",
+          "error": null
+        },
+        {
+          "id": "f7d2fb43-b2fc-4ec5-9504-4484ebfd86a5",
+          "phase": "execution",
+          "status": "completed",
+          "error": null
+        }
+      ],
+      "hashes": {
+        ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689/result.json": "603b95b00fda355fdec087b9cad375bb313d74ca820de33407176789216354ef",
+        ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689/settings.json": "b1429bd8255d281bd51aec813d1728e587b6b91d4dd00e2a61125627ff64469d",
+        ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689/request-budget.json": "80f83df71442152bfb269bf245a39d8c03c07e2dbcfbc3e6da8702af5872dd99",
+        ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689/worker.mjs": "8d26632db4cc1b06ee0c27e55b0748dc0076b921333c5e098b494eea7a407ae5",
+        ".local/personality-evaluation/skill-scheduler-lifecycle-1792449497689/data/boai.sqlite": "fb06be3352efede4aae5528f9564d49371cd54bbc7b62a6d5c78f6777bf5a4c4"
+      },
+      "failure": "The final post-reply memory pass was blocked before provider dispatch by the declared 40-request experiment ceiling; original exit 1 retained, no retry.",
+      "automations": [
+        {
+          "frequency": "weekly",
+          "time": "14:20",
+          "weekday": 1,
+          "timezone": "Europe/Paris",
+          "owner": {
+            "kind": "employee",
+            "employeeId": "bobo"
+          },
+          "name": "周一资料汇总",
+          "description": "每周一 14:20（Europe/Paris）汇总我提供的资料",
+          "prompt": "汇总我提供的资料",
+          "conversationPolicy": "new-conversation",
+          "employeeIds": [
+            "bobo"
+          ],
+          "enabled": false,
+          "notify": true,
+          "notificationPolicy": "all_results",
+          "taskKind": "report",
+          "schemaVersion": 1,
+          "id": "8d624648-883b-4e8e-8a35-e0251971d9fe",
+          "revision": 2,
+          "executionRevision": 1,
+          "scheduleGeneration": 1,
+          "scheduleEffectiveAt": "2026-10-19T22:38:55.000Z",
+          "daysOfWeek": [
+            1
+          ],
+          "cron": "20 14 * * 1",
+          "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+          "sync": "synced",
+          "createdAt": "2026-10-19T22:38:55.000Z",
+          "updatedAt": "2026-10-19T22:39:03.859Z",
+          "scheduleId": "schedule_boai-8d624648-883b-4e8e-8a35-e0251971d9fe",
+          "appliedRevision": 2,
+          "syncedAt": "2026-10-19T22:39:03.860Z",
+          "deletedAt": "2026-10-19T22:39:03.859Z"
+        },
+        {
+          "frequency": "daily",
+          "time": "10:40",
+          "weekday": 0,
+          "timezone": "Asia/Shanghai",
+          "owner": {
+            "kind": "employee",
+            "employeeId": "bobo"
+          },
+          "name": "资料巡检",
+          "description": "每天 10:40（Asia/Shanghai）核对公开资料并汇总待核实项",
+          "prompt": "核对我提供的公开资料并汇总待核实项",
+          "conversationPolicy": "new-conversation",
+          "employeeIds": [
+            "bobo"
+          ],
+          "enabled": false,
+          "notify": true,
+          "notificationPolicy": "all_results",
+          "taskKind": "report",
+          "schemaVersion": 1,
+          "id": "f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+          "revision": 2,
+          "executionRevision": 1,
+          "scheduleGeneration": 2,
+          "scheduleEffectiveAt": "2026-10-19T22:38:42.766Z",
+          "daysOfWeek": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "cron": "40 10 * * *",
+          "authorizedFingerprint": "1a980b8ef67b069eacc3437ddc77ca4790078dad5e1baa40acff1229760aa7e1",
+          "sync": "synced",
+          "createdAt": "2026-10-19T22:38:30.134Z",
+          "updatedAt": "2026-10-19T22:38:42.766Z",
+          "scheduleId": "schedule_boai-f6cb8db9-4498-4545-9375-ad2d6885fd6e",
+          "appliedRevision": 2,
+          "syncedAt": "2026-10-19T22:38:42.768Z"
+        }
+      ],
+      "skillReads": [
+        {
+          "type": "tool",
+          "name": "read_skill",
+          "arguments": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\"}",
+          "status": "completed",
+          "result": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th",
+          "output": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th"
+        },
+        {
+          "type": "tool",
+          "name": "read_skill",
+          "arguments": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\"}",
+          "status": "completed",
+          "result": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th",
+          "output": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th"
+        },
+        {
+          "type": "tool",
+          "name": "read_skill",
+          "arguments": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\"}",
+          "status": "completed",
+          "result": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th",
+          "output": "{\"resourceId\":\"0885fb18-fffb-4e9b-9c9f-4670573f339c\",\"name\":\"boai-scheduler\",\"content\":\"---\\nname: boai-scheduler\\ndescription: \\\"Create and manage actual BOAI employee or group automation tasks, reminders and schedules. Preview the next trigger, preserve timezone, and verify durable receipts.\\\"\\n---\\n<!--\\n[INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.\\n[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.\\n[POS]: Bound product employee skill, not a developer tool or permission grant.\\n[PROTOCOL]: Update parent .folder.md and migration ledger on change.\\n-->\\n\\n# Scheduler\\n\\nUse for reminders, scheduled employee work and recurring tasks. BOAI business automation is separate from personality heartbeats, proactive contact, fatigue and travel.\\n\\n## Workflow\\n\\n1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.\\n2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.\\n3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.\\n4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.\\n5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.\\n\\n## Operations\\n\\n- `automations.list/get`: current saved plans and versions.\\n- `automations.update`: edit using the observed revision and preserve unrelated fields.\\n- `automations.pause/resume/delete`: change exactly the requested plan.\\n- `automations.run`: run now only if that is part of th"
+        }
+      ]
+    }
+  ],
+  "engineering": {
+    "passed": 43,
+    "files": 3,
+    "tests": ".local/skill-retrieval-tests.log",
+    "typecheck": ".local/skill-retrieval-typecheck.log",
+    "e2e": false
+  },
+  "currentBobo": {
+    "configVersion": 63,
+    "profileRevision": 16,
+    "skills": [
+      {
+        "id": "c40a45a7-210b-4ae0-b5cb-3efa1b2f61d5",
+        "name": "boai-travel",
+        "sha256": "ca2f3f3172fee3ede6f1fa670c1dc90f725226a2ff6328306ee75f691f4b5792"
+      },
+      {
+        "id": "9d864628-ba09-4abc-ad55-dc720a67c8bb",
+        "name": "boai-self-management",
+        "sha256": "1358001f8a427c35d9db1f41f1db8f6b7736f94ea424121a83fc40dbb22e2920"
+      },
+      {
+        "id": "fd14ab72-39ff-46b0-954a-be187f3d385e",
+        "name": "boai-web-search",
+        "sha256": "247901018fc4a6005a5c68d61da986b9ee27a42ad91efda6e35cf7408ecceb1f"
+      },
+      {
+        "id": "e55accbf-a02b-4aca-a45a-90800cc330a5",
+        "name": "boai-web-fetch",
+        "sha256": "aff66a77bfef7cb6d12c928749ff859b96a494ffccfb21d54bfee1fdfc7e0b79"
+      },
+      {
+        "id": "cb02fa6e-bf48-47c0-9529-cb60d242f044",
+        "name": "boai-browser",
+        "sha256": "621ad9b6ccc0fa9451b57ee3cf593c3d81cfa2ddc85026b23fe6254784a2608d"
+      },
+      {
+        "id": "fb1b7dbb-1c09-4468-8030-8bd3f72039bc",
+        "name": "boai-scheduler",
+        "sha256": "28bb7a066c5d054a0b1ed9b35156baaa8f6814ebe56731c4491b0dfea81d6204"
+      },
+      {
+        "id": "7ffb8bc1-9e3c-4e6d-80d2-fbff951a6e01",
+        "name": "boai-memory-management",
+        "sha256": "a9b9c210e30d805a1e6eb5c0d3241a15a7199bfb3c789d9d88b12035c5133f24"
+      },
+      {
+        "id": "557132d7-e4c4-4655-88a8-cb7867110455",
+        "name": "boai-computer-use",
+        "sha256": "8efeba34db5c76bd541f9c7f45ea3c5e417bb7d33dedbaec3bb7360cf5405f8e"
+      },
+      {
+        "id": "6e9aa3c9-41c9-4baf-a757-e56de741789a",
+        "name": "boai-tasks",
+        "sha256": "5ee259f3fda637d86e4c0935e9b388cb18230bbf63089d8109337313f1a81cb1"
+      },
+      {
+        "id": "d84e3f99-33c7-4723-bf7f-80dc3dbb75b1",
+        "name": "boai-self-reflection",
+        "sha256": "03bb1efac8c057ba31e26614147349118e2dea406ee6cfaa19ff1b6831afbb7e"
+      },
+      {
+        "id": "5c16e275-1509-472f-8303-18dbb45ca6b9",
+        "name": "boai-skill-search",
+        "sha256": "171ac79ff3146a43255d082421cf8a7c5ef44e98f061aaabef94be5d284bfc6a"
+      },
+      {
+        "id": "5f62a7cb-9b63-469a-8582-a3aa44118f46",
+        "name": "boai-skill-hub",
+        "sha256": "a7501be43c50b55be0924d757ba333fc49175f006b4cd2c9e8e1f478792d34a6"
+      },
+      {
+        "id": "d45de93d-5f4f-48e2-8b7d-87a5c01b010b",
+        "name": "boai-thread-management",
+        "sha256": "e91def9ba80562e67cf3137ad479780e9b5704411a1141a15564845529e116d8"
+      },
+      {
+        "id": "845909c9-5e59-4397-908f-defad979af97",
+        "name": "boai-file-manager",
+        "sha256": "50a66e6d71df2b0d4a511f3b39070d033e100bfb4520e5ac92aeb51bb756aa18"
+      },
+      {
+        "id": "5e336903-4a05-45da-bc65-abee24087fcb",
+        "name": "boai-send-file",
+        "sha256": "022cbfeffeca3e39091ea6397499fcb99bb17bf19d4ede6e40542594a58e5dd5"
+      },
+      {
+        "id": "eca592d5-ede4-422b-b966-a03d4e5ddbe7",
+        "name": "boai-system-info",
+        "sha256": "0ade29341707369dbf940112ab911e9542348e599c2a6099328e347240abdc8b"
+      },
+      {
+        "id": "2bbacf79-68cb-48f2-bd83-c38cbcd3c406",
+        "name": "boai-notebook",
+        "sha256": "692f994c0d737a5e284aef9a4995864cd063be00956a0d9c4eb65b6aec3bc396"
+      },
+      {
+        "id": "4cb1cde7-35b8-4621-b006-a726c7bb7a27",
+        "name": "boai-plan-mode",
+        "sha256": "ce6fabd1671e5ab06e1ecdc11a8a1251c99cedcb06e2b087691dda7db113ad33"
+      },
+      {
+        "id": "51501c2b-b119-495b-b072-7bd5a24e3a6b",
+        "name": "boai-todo",
+        "sha256": "0e0013ddd6517fb8cb578afbf6f9e2d14392d44fa28629e37463cebcde4c708e"
+      },
+      {
+        "id": "6a93ef89-cd36-4c5c-9dcc-906efc922bc9",
+        "name": "boai-reactions",
+        "sha256": "70326b60e1818357c646f7d1065d151391f3d10c842daa8611e9754458e43545"
+      },
+      {
+        "id": "5a3d2abc-53dd-4591-a400-c83b3b93d45a",
+        "name": "boai-screenshot",
+        "sha256": "00ffac2b5a5ed4afaa7ca8e41d4f96f9d2b35b63d26a5b02d95efdfef8877cab"
+      },
+      {
+        "id": "196ec330-4f54-41bb-ba08-8e0a6e4676e4",
+        "name": "boai-music-listener",
+        "sha256": "10b2bed9c5fc7c3bc1836f73a68579bf47e6c964c8a4d55e377818aa01438114"
+      },
+      {
+        "id": "8d4f72e6-2de6-41f2-9f2f-4bfa1b82ec7f",
+        "name": "boai-video-reader",
+        "sha256": "74ff7ceb1de045cc9611cbfc71c1d77645c587f0697b7c5c95c2722ba0487a03"
+      },
+      {
+        "id": "fb9a1a26-1217-4939-ba2d-efaf8a499406",
+        "name": "boai-programmatic-tools",
+        "sha256": "e4f95db7122b30b340c30a547565c651a34b5da7befef974ef07cfd4036ec869"
+      },
+      {
+        "id": "ccd50268-ce85-4d0f-842d-8ad1dc491385",
+        "name": "boai-alchemy",
+        "sha256": "3f34edabbb33563d6beec0b04373c02e85dec20a8a7a505ece14d7d3fb960ce5"
+      },
+      {
+        "id": "665e138f-c7d5-406a-87e3-294dcbf36c29",
+        "name": "boai-plan-weave",
+        "sha256": "bccd64a08ae97abcc304c7e89ce5f6ea7597d5e9a9f99bb18cc608a856195945"
+      },
+      {
+        "id": "f15e860a-d007-4d2b-b401-86b024c705e3",
+        "name": "boai-references",
+        "sha256": "6a8e318f2b8f1ac6a9fc6e58026e0d226063d0f86f5e5fab775e6702b47eaff2"
+      }
+    ],
+    "personaSourceHashesUnchanged": true,
+    "originalResearchSkillsVerified": 40
+  },
+  "requests": {
+    "model": 52,
+    "retrieval": 3,
+    "priorModelRequests": 874,
+    "cumulativeModelRequests": 926
+  },
+  "limitations": [
+    "Search/provider path only; no new browser or computer input certification",
+    "All schedules intentionally paused; no scheduled dispatch tested",
+    "Scheduler final memory pass failed at experiment request ceiling",
+    "Answers still verbose; scheduler exposes enabled=false and redundant implementation details",
+    "No calibrated judge, human labels, causal improvement or unseen certification",
+    "27 partial skills bound, 13 not started; complete 371/206/40 scope unchanged"
+  ],
+  "evidenceAuditPreparationFailures": [
+    "First Python mode=ro probe could not open the schedule DB after the web DB; both processes had exited. Final schedule read used immutable only with no WAL, and web DB used normal read-only including its nonempty WAL.",
+    "The verification script first assumed no WAL, a flat files array, and a skills ledger key; corrected to actual source file view and bundledSkills. Original logs preserved, no provider rerun."
+  ]
+}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 所属页面/详情隐藏时立即撤下Portal并关闭浮层，保留页面正文与外部actionsRef。
  * [OUTPUT]: 可选keepMounted透传官方Portal，保留渠道列表搜索/分组状态；默认生命周期保持。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: popover 基础组件，支持独立 anchor 以复用菜单按钮定位；表面共用 skin.css 的 Soft 高光、圆角与阴影。
@@ -8,9 +9,11 @@
 import * as React from "react"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 import { cn } from "cn"
+import { useFloatingLayerActions, useFloatingLayerActive } from './floating-layer-scope'
 
-function Popover({ ...props }: PopoverPrimitive.Root.Props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+function Popover({ actionsRef, ...props }: PopoverPrimitive.Root.Props) {
+  const actions = useFloatingLayerActions(actionsRef)
+  return <PopoverPrimitive.Root data-slot="popover" {...props} actionsRef={actions} />
 }
 
 function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
@@ -32,6 +35,8 @@ function PopoverContent({
     PopoverPrimitive.Positioner.Props,
     "anchor" | "align" | "alignOffset" | "side" | "sideOffset"
   >) {
+  const active = useFloatingLayerActive()
+  if (!active) return null
   return (
     <PopoverPrimitive.Portal keepMounted={keepMounted}>
       <PopoverPrimitive.Positioner

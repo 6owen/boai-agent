@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 聊天清理同步移除会话人格/成长/旅行来源与行为结果正文、暂停对应行为，保留最小去重。
+ * [OUTPUT]: 2026-10-19应用业务协议：来源聊天清理同事务清除应用回执正文，保留防重放身份。
  * [OUTPUT]: 会话删除操作与原清理屏障同事务登记pending，最终清理同事务完成回执；创建回执清理后失效，重复删除不清后续新消息。
  * [OUTPUT]: 清理会话同时移除原运行的目录审批回执，保留员工持久授权和业务目录原件。
  * [OUTPUT]: 共享会话的单次历史只清原Run过程/快照/观测，保留聊天、其他执行与共享文件。
@@ -12,6 +14,8 @@
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { clearApplicationReceipts } from '../application/application-service'
+import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
@@ -132,6 +136,8 @@ export class ConversationHistory {
       await this.materials?.invalidateConversation(tx, id)
       await this.artifacts?.invalidateConversation(tx, id)
       await this.reading?.resetConversation(tx, id)
+      await clearApplicationReceipts(tx, { conversationId: id })
+      await clearAgentPersonality(tx, { conversationId: id })
       const removals: { collection: string; id: string }[] = []
       const collect = async (collection: string, match: (item: HistoryRecord) => boolean) => {
         const items = (await tx.list<HistoryRecord>(collection)).filter(match)

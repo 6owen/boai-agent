@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
  * [OUTPUT]: 技能标题AI管理沿Shell进入普通bobo会话，目录/详情/原Tabs状态保持。
  * [OUTPUT]: 最右图标检索展开；本地/收藏/商城内容共用CatalogTransition，导航Tabs保持挂载。
  * [OUTPUT]: 本地/收藏/商城持续挂载同一Tabs滑动层，搜索图标展开，内容区复用transitions-dev Panel reveal；选中技能打开Shell右侧独立详情，主目录保持。
@@ -99,12 +100,12 @@ function LocalSkillInfo({ api, skill, favorite, collection, busy, assign, active
   if (error) return <div className="skill-info-page"><Banner>{error}</Banner><Button variant="secondary" onClick={() => setRevision(value => value + 1)}>重试</Button></div>
   if (!detail) return <Loading>正在读取技能…</Loading>
   const current = detail.skill
-  const edit = current.source !== 'plugin' && <Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => open('edit')}>编辑</Button>
+  const edit = current.source !== 'plugin' && current.source !== 'builtin' && <Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => open('edit')}>编辑</Button>
   return <SkillDetailBody name={current.name} description={current.description} content={detail.content} metadataActions={edit} contentActions={edit} notice={mutation.error && <Banner>{mutation.error}</Banner>} metadata={[
     { label: '标识符', value: current.slug }, { label: '名称', value: current.name }, { label: '描述', value: current.description || '未填写' }, { label: '数据源', value: current.sourceLabel },
     { label: '位置', value: <Button variant="ghost" size="content" className="skill-path-link" onClick={() => open('reveal')}>{current.path}</Button> },
   ]}>
-    {favorite && <><div className="skill-info-section-heading"><h3>分组</h3></div><SelectField aria-label={`${current.name} 的分组`} value={collection?.groupByResourceId[current.id] ?? ''} disabled={busy} onValueChange={selectedValue => assign(selectedValue || undefined)} options={[{ value: '', label: '未分组' }, ...(collection?.groups.map(group => ({ value: group.id, label: group.name })) ?? [])]} /></>}<p className="field-hint">编辑会用系统默认编辑器打开 SKILL.md，保存后返回即可查看。</p>
+    {favorite && <><div className="skill-info-section-heading"><h3>分组</h3></div><SelectField aria-label={`${current.name} 的分组`} value={collection?.groupByResourceId[current.id] ?? ''} disabled={busy} onValueChange={selectedValue => assign(selectedValue || undefined)} options={[{ value: '', label: '未分组' }, ...(collection?.groups.map(group => ({ value: group.id, label: group.name })) ?? [])]} /></>}{current.source !== 'builtin' && <p className="field-hint">编辑会用系统默认编辑器打开 SKILL.md，保存后返回即可查看。</p>}
   </SkillDetailBody>
 }
 

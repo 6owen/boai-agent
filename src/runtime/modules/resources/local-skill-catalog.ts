@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 程序内置技能源只读发现，稳定命名空间独立于安装路径和用户同名技能。
  * [INPUT]: 本机 Agent 技能根、共享 ~/.agents/skills、启用插件配置与 SKILL.md。
  * [OUTPUT]: 进程内目录缓存/扫描去重、显式刷新与安装后失效；稳定收藏身份、来源与可见诊断；详情始终复核文件和路径，不创建执行资源。
  * [POS]: resources 的本机技能发现；沿用 boai-app 来源优先级和插件命名空间。
@@ -13,7 +14,7 @@ import type { LocalSkill, LocalSkillCatalog, LocalSkillDetail } from '../../../s
 import { boundedRead, restrictedPath } from '../workspaces/file-access'
 import { parseSkillDocument } from './local-resources'
 
-export interface SkillDiscoveryOptions { homeDir?: string; codexHome?: string }
+export interface SkillDiscoveryOptions { homeDir?: string; codexHome?: string; bundledRoot?: string }
 type Root = { path: string; source: LocalSkill['source']; label: string; pluginName?: string; namespace?: string }
 const MAX_ENTRIES = 5000
 const agentPaths = ['.claude/skills', '.cursor/skills', '.gemini/skills', '.gemini/antigravity/skills', '.gemini/antigravity-cli/skills', '.openclaw/skills', '.clawdbot/skills', '.moltbot/skills', '.copilot/skills', '.factory/skills', '.continue/skills', '.codeium/windsurf/skills', '.aider-desk/skills', '.astrbot/data/skills', '.autohand/skills', '.augment/skills', '.bob/skills', '.codeartsdoer/skills', '.codebuddy/skills', '.codemaker/skills', '.codestudio/skills', '.commandcode/skills', '.snowflake/cortex/skills', '.deepagents/agent/skills', '.firebender/skills', '.forge/skills', '.grok/skills', '.hermes/skills', '.inferencesh/skills', '.jazz/skills', '.junie/skills', '.iflow/skills', '.kilocode/skills', '.kiro/skills', '.kode/skills', '.lingma/skills', '.mcpjam/skills', '.minimax/skills', '.vibe/skills', '.moxby/skills', '.mux/skills', '.openhands/skills', '.ona/skills', '.pi/agent/skills', '.qoder/skills', '.qoder-cn/skills', '.qwen/skills', '.reasonix/skills', '.rovodev/skills', '.roo/skills', '.tabnine/agent/skills', '.terramind/skills', '.tinycloud/skills', '.trae/skills', '.zcode/skills', '.zencoder/skills', '.neovate/skills', '.pochi/skills', '.adal/skills']
@@ -29,7 +30,7 @@ export class LocalSkillCatalogService {
   private revision = 0
   private readonly home: string
   private readonly codex: string
-  constructor(options: SkillDiscoveryOptions = {}) {
+  constructor(private readonly options: SkillDiscoveryOptions = {}) {
     this.home = options.homeDir ?? homedir()
     this.codex = options.codexHome ?? (options.homeDir ? join(this.home, '.codex') : process.env.CODEX_HOME?.trim() || join(this.home, '.codex'))
   }
@@ -53,6 +54,7 @@ export class LocalSkillCatalogService {
     }
     const configRoot = this.home === homedir() ? process.env.XDG_CONFIG_HOME || join(this.home, '.config') : join(this.home, '.config')
     const roots: Root[] = [...agentPaths.map(path => ({ path: join(this.home, path), source: 'agent' as const, label: path.split('/')[0].slice(1) })), ...configPaths.map(path => ({ path: join(configRoot, path), source: 'agent' as const, label: path.split('/')[0] })), { path: join(this.codex, 'skills'), source: 'agent', label: 'Codex' }, { path: join(this.home, '.agents/skills'), source: 'global', label: '全局 (~/.agents/skills/)' }]
+    if (this.options.bundledRoot) roots.push({ path: this.options.bundledRoot, source: 'builtin', label: 'BOAI 内置', namespace: 'boai-bundled' })
     // Read only the plugin switches; config values (including credentials) never enter a DTO or diagnostic.
     let plugins: Record<string, unknown> = {}
     try { plugins = object(parseToml(await boundedRead(join(this.codex, 'config.toml'))).plugins) }
@@ -94,6 +96,7 @@ export class LocalSkillCatalogService {
     const load = async (root: Root, directory: string, slug: string) => {
       let resolved = false
       try {
+        if (root.source === 'builtin') await restrictedPath([root.path], directory)
         const canonical = await realpath(directory); resolved = true
         const identity = root.namespace ? `${root.namespace}:${slug}` : canonical
         if (seen.has(identity)) return
@@ -103,13 +106,13 @@ export class LocalSkillCatalogService {
         await restrictedPath([canonical], file)
         const document = await boundedRead(file)
         const metadata = parseSkillDocument(document, { strictName: false })
-        const qualified = root.pluginName ? `${root.pluginName}:${slug}` : slug
+        const qualified = root.source === 'builtin' ? `boai-bundled:${slug}` : root.pluginName ? `${root.pluginName}:${slug}` : slug
         const id = localSkillId(root.namespace ? `${root.namespace}:${slug}` : canonical)
         const skill: LocalSkill = { id, slug: qualified, name: metadata.name, description: metadata.description, path: directory, source: root.source, sourceLabel: root.source === 'agent' ? `Agent (${root.label})` : root.label, ...(root.pluginName ? { pluginName: root.pluginName } : {}) }
         if (root.source !== 'agent' || !bySlug.has(qualified)) bySlug.set(qualified, { skill, canonical })
       } catch (error) { if (!missing(error) || !resolved) issue(directory, error instanceof Error && !directory.endsWith('config.toml') ? error.message : '无法读取技能') }
     }
-    const priority = { global: 0, plugin: 1, agent: 2 }
+    const priority = { global: 0, plugin: 1, agent: 2, builtin: 3 }
     roots.sort((a, b) => priority[a.source] - priority[b.source])
     for (const root of roots) {
       // Plugin manifests may point directly at a single skill.

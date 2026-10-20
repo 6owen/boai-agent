@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 员工删除移除独立相册元信息；原agents根目录清理包含其私有形象文件，不清空其他员工相册。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 员工删除同事务移除独立人格配置、状态事件和行为记录。
+ * [OUTPUT]: 2026-10-19应用业务协议：员工删除同事务清除关联应用回执正文，已删除员工不因旧请求复活。
  * [OUTPUT]: 删除员工同时转移知识副本/未提交准备的清理身份，并清除回执中的文件来源。
  * [OUTPUT]: 删除员工同时清理独立永久命令授权。
  * [INPUT]: 宿主已检查空闲的整批员工身份、可选偏好/标签版本、SQLite 和应用数据目录。
@@ -7,6 +11,9 @@
  * [POS]: employees 的删除一致性边界；宿主先处理单聊/空群，并保留其他群聊历史。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { clearApplicationReceipts } from '../application/application-service'
+import { clearAgentPersonality } from '../agent-state/lifecycle'
+import { clearSelfieAlbums } from '../media/selfie-service'
 import { randomUUID } from 'node:crypto'
 import { lstat, rm } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
@@ -66,6 +73,9 @@ export class ContactDeletionService {
     const cleanup: Cleanup = { id: randomUUID(), agentIds: [...input.agentIds], status: 'pending' }
     const result = await this.store.transaction(async tx => {
       const preferences = await this.validate(tx, input), ids = new Set(input.agentIds)
+      await clearApplicationReceipts(tx, { employeeIds: ids })
+      await clearAgentPersonality(tx, { agentIds: ids })
+      await clearSelfieAlbums(tx, ids)
       const removals: { collection: string; id: string }[] = []
       const remove = async (collection: string, id: string) => { await tx.remove(collection, id); removals.push({ collection, id }) }
       for (const collection of ['employeeCommandPermissions', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
@@ -74,6 +84,7 @@ export class ContactDeletionService {
       for (const collection of ['memoryEpochs', 'memoryReceipts']) {
         for (const item of await tx.list<OwnedRecord>(collection)) if (input.agentIds.some(id => collection === 'memoryEpochs' ? item.id === `employee:${id}` || item.id.startsWith(`employee:${id}:`) : item.id.startsWith(`${id}:`))) await remove(collection, item.id)
       }
+      for (const task of await tx.list<{ id: string; agentId: string }>('agentTasks')) if (ids.has(task.agentId)) await remove('agentTasks', task.id)
       const resources = (await tx.list<Resource>('resources')).filter(resource => resource.ownerAgentId && ids.has(resource.ownerAgentId)), resourceIds = new Set(resources.map(resource => resource.id))
       for (const resource of resources) {
         const installation = await tx.get<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations', resource.id)

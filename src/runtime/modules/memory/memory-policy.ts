@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 记忆创建/更新时间只标为保存时间，区分用户提供/模型整理/导入及消息/父记忆来源，不能冒充发生时间或员工亲历。
  * [INPUT]: 有来源的员工记忆、当前会话/事项、宿主获准来源和时间。
  * [OUTPUT]: 单一范围/有效期过滤、中文相关性排序与保守 token 预算；管理视图不冒充召回。
  * [POS]: runtime/modules/memory 的纯策略，无模型和存储副作用。
@@ -54,5 +55,10 @@ export function memoryRelevance(content: string, request: string) {
 /** UTF-8 bytes are a conservative upper bound for byte-based model tokenizers. */
 export function memoryTokenEstimate(text: string) { return Buffer.byteLength(text, 'utf8') }
 export function memoryText(entry: MemoryEntry) {
-  return `[记忆 ${entry.id} v${entry.version}；${entry.kind ?? '旧记录'}；${entry.evidence ?? '有来源的陈述'}；${entry.disclosure === 'private' ? '私人来源：不要主动公开私人原文或细节' : '来源记录'}；发生于 ${entry.createdAt}；来源 ${entry.sourceMessageIds.join(', ') || '用户设置'}${entry.attribution ? `；发言者 ${entry.attribution}` : ''}]\n${entry.content}`
+  const origin = entry.origin === 'user' ? '用户提供' : entry.origin === 'model' ? '模型提取或整理（不证明员工亲历）' : entry.origin === 'import' ? '导入记录（原作者按来源）' : '旧记录，记录方式未知'
+  const sources = [
+    entry.sourceMessageIds.length ? `引用消息 ${entry.sourceMessageIds.join(', ')}` : '',
+    entry.sourceMemoryIds?.length ? `父记忆 ${entry.sourceMemoryIds.join(', ')}` : '',
+  ].filter(Boolean).join('；') || '无关联消息或父记忆'
+  return `[记忆 ${entry.id} v${entry.version}；${entry.kind ?? '旧记录'}；${entry.evidence ?? '有来源的陈述'}；${entry.disclosure === 'private' ? '私人来源：不要主动公开私人原文或细节' : '来源记录'}；${origin}；保存于 ${entry.createdAt}${entry.updatedAt !== entry.createdAt ? `；记录更新于 ${entry.updatedAt}` : ''}${entry.diary ? `；反思素材日期 ${entry.diary.date}` : ''}；${sources}${entry.attribution ? `；原归属 ${entry.attribution}` : ''}]\n${entry.content}`
 }

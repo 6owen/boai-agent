@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 发起群聊恢复纯成员选择，不展示群名称输入；群名由已选成员姓名生成，原公共创建回执保持。
+ * [OUTPUT]: 新建员工恢复原头像/姓名/职责、常显模型与权限和工作方式；不添加高级折叠或人格输入，模型由用户明确选择，公共创建回执保持。
  * [OUTPUT]: 群创建与成员编辑复用双栏GroupMemberSelection，原创建回执和草稿守卫保持。
  * [OUTPUT]: API/Codex/Claude创建保留同一个整体执行权限，原生参数随同选择提交，不再丢弃本机权限。
  * [OUTPUT]: 新建工作方式输入缩为12px/18px行高，沿共用员工表单紧凑密度。
@@ -18,6 +20,7 @@
  */
 import { useContext, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Conversation, DigitalAgent, Snapshot, LaunchProfile, ExecutionBackend } from '@shared/domain'
+import type { ApplicationRequest, ApplicationResult } from '@shared/domain/application-protocol'
 import { isCoreAgent } from '@shared/domain/core-agent'
 import type { DesktopApi } from '@shared/ipc'
 import { Banner, colors, GuardContext, useDirty, useMutation } from '@/components/common'
@@ -44,6 +47,9 @@ const returnFocus = () => document.querySelector<HTMLElement>('.list-heading [ar
 export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated }: Props & { template?: number }) {
   const preset = template === undefined ? undefined : templates[template]
   const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', connectionId: '', modelId: '', executionPermission: 'ask' as ExecutionPermission, allowCommands: true, executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
+  const [unresolved, setUnresolved] = useState(false)
+  const pending = useRef<ApplicationRequest | null>(null)
+  const sessionRequest = useRef(crypto.randomUUID())
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
   const [profileError, setProfileError] = useState('')
   useEffect(() => { let active = true; void api.request('listLaunchProfiles', undefined).then(value => { if (active) setProfiles(value) }, () => { if (active) setProfileError('本机连接读取失败，请重新打开员工创建窗口。') }); return () => { active = false } }, [api])
@@ -59,8 +65,18 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
     if (!form.name.trim() || uploading || (!created.current && !modelReady)) return
     void run(async () => {
       // Keep the saved employee if opening the conversation needs to be retried.
-      created.current ??= await api.request('saveAgent', { ...form, executionPermission: ['mastra-model', 'codex-local', 'claude-local'].includes(form.executionBackend.kind) ? form.executionPermission : undefined, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], skillIds: [], knowledgeIds: [], allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands, active: true })
-      const conversation = await api.request('createConversation', { kind: 'direct', title: created.current.name, agentIds: [created.current.id] })
+      if (!created.current) {
+        pending.current ??= { operation: 'employees.create', requestId: crypto.randomUUID(), input: { ...form, executionPermission: ['mastra-model', 'codex-local', 'claude-local'].includes(form.executionBackend.kind) ? form.executionPermission : undefined, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands } }
+        setUnresolved(true)
+        const result = await submitCreation(api, pending.current)
+        if (result.status === 'rejected') { pending.current = null; setUnresolved(false) }
+        if (result.status !== 'succeeded') throw new Error(result.error?.message ?? '创建结果尚未确认，请核对原请求。')
+        created.current = result.data as DigitalAgent
+        setUnresolved(false)
+      }
+      const receipt = await submitCreation(api, { operation: 'sessions.create', input: { employeeId: created.current.id }, requestId: sessionRequest.current })
+      if (receipt.status !== 'succeeded') throw new Error(receipt.error?.message ?? '员工已创建，打开会话的结果待核对。')
+      const conversation = (await api.request('getConversation', { id: (receipt.data as { conversationId: string }).conversationId })).conversation
       await onCreated(conversation)
     })
   }
@@ -68,7 +84,7 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
     <ConnectionDialogLayout choosing={false} scrollBody showIntro={false} label="新建员工" title="新建数字员工" closeLabel="关闭新建员工" working={busy || uploading} onClose={close} initialFocus={nameInput} finalFocus={returnFocus} illustration={null}>
       <form data-edit-form id="create-agent-form" className="employee-form-layout" onSubmit={submit}>
         {error && <Banner>{error}</Banner>}
-        <fieldset className="employee-form-sections" disabled={busy || uploading || Boolean(created.current)}>
+        <fieldset className="employee-form-sections" disabled={busy || uploading || unresolved || Boolean(created.current)}>
           <div className="employee-identity-editor">
             <AvatarPicker name={form.name.trim() || '新同事'} value={form.avatar} disabled={busy || Boolean(created.current)} onChange={avatar => setForm(current => ({ ...current, avatar }))} onBusyChange={setUploading} />
             <div className="employee-identity-fields">
@@ -77,12 +93,12 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
             </div>
           </div>
           <EmployeeFormSection title="模型与权限">
-            <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
-            {form.executionBackend.kind === 'mastra-model' && <AgentPermissionField value={form.executionPermission} onChange={executionPermission => setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' }))} disabled={busy || uploading || Boolean(created.current)} />}
+            <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || unresolved || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
+            {form.executionBackend.kind === 'mastra-model' && <AgentPermissionField value={form.executionPermission} onChange={executionPermission => setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' }))} disabled={busy || uploading || unresolved || Boolean(created.current)} />}
           </EmployeeFormSection>
           <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" id="create-agent-instructions" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
         </fieldset>
-        <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}创建员工</Button></footer>
+        <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}{unresolved ? '核对创建结果' : '创建员工'}</Button></footer>
       </form>
     </ConnectionDialogLayout>
   </Dialog>
@@ -90,18 +106,28 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
 
 export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) {
   const [ids, setIds] = useState<string[]>([])
+  const pending = useRef<ApplicationRequest | null>(null)
+  const [unresolved, setUnresolved] = useState(false)
   const created = useRef<Conversation | null>(null)
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
   useDirty(ids)
   const available = snapshot.agents.filter(agent => !isCoreAgent(agent) && agent.active && agent.executionBackend?.kind !== 'acp-local')
   const selected = ids.map(id => available.find(a => a.id === id)).filter((a): a is DigitalAgent => Boolean(a))
-  const locked = busy || Boolean(created.current)
+  const locked = busy || unresolved || Boolean(created.current)
   const close = () => { if (!busy) guard.navigate(onClose) }
   const submit = (event?: FormEvent) => {
     event?.preventDefault()
     if (!selected.length || selected.length > 12) return
     void run(async () => {
-      created.current ??= await api.request('createConversation', { kind: 'group', title: selected.map(a => a.name).join('、').slice(0, 200), agentIds: selected.map(a => a.id), mode: 'natural', sharedKnowledgeIds: [] })
+      if (!created.current) {
+        pending.current ??= { operation: 'groups.create', requestId: crypto.randomUUID(), input: { title: selected.map(a => a.name).join('、').slice(0, 200), agentIds: selected.map(a => a.id), mode: 'natural', sharedKnowledgeIds: [] } }
+        setUnresolved(true)
+        const result = await submitCreation(api, pending.current)
+        if (result.status === 'rejected') { pending.current = null; setUnresolved(false) }
+        if (result.status !== 'succeeded') throw new Error(result.error?.message ?? '群聊创建结果待核对，请保留原请求。')
+        created.current = result.data as Conversation
+        setUnresolved(false)
+      }
       await onCreated(created.current)
     })
   }
@@ -113,4 +139,16 @@ export function CreateGroupDialog({ api, snapshot, onClose, onCreated }: Props) 
       </form>
     </DialogContent>
   </Dialog>
+}
+
+/** Read an existing receipt before sending; transport failure never becomes another create intent. */
+async function submitCreation(api: DesktopApi, request: ApplicationRequest): Promise<ApplicationResult> {
+  const previous = await api.request('getApplicationReceipt', { requestId: request.requestId! })
+  if (previous) return previous
+  try { return await api.request('executeApplicationOperation', request) }
+  catch (failure) {
+    const result = await api.request('getApplicationReceipt', { requestId: request.requestId! })
+    if (result) return result
+    throw failure
+  }
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 配置文件入口沿人格与行为页内源文件，文件编辑保持独立Dialog及局部草稿守卫。
  * [OUTPUT]: 渠道编辑定位独立Dialog，局部关闭确认后再切换员工分类；原绑定及保存断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 渠道与执行统一经会话操作菜单进入，保留原面板/来源/草稿业务断言。
@@ -564,8 +565,8 @@ Then('员工已有绑定时不能新增渠道且编辑草稿受原未保存守�
   await editor.getByRole('button', { name: '关闭渠道绑定编辑', exact: true }).click()
   await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(editor).toHaveCount(0)
-  await page.getByRole('tab', { name: '系统文件', exact: true }).click()
-  await expect(page.getByRole('tabpanel', { name: '系统文件', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '人格与行为', exact: true }).click()
+  await expect(page.getByRole('tabpanel', { name: '人格与行为', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: '渠道', exact: true }).click()
   await expect(pane.getByRole('textbox', { name: '绑定名称', exact: true })).toHaveCount(0)
   await pane.getByRole('button', { name: '编辑绑定', exact: true }).click()

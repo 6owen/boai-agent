@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 自动化头像沿真实默认个人资料夹具，原任务执行镜像与定时角标共存。
  * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
  * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
  * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文仍可见，Run到达后由单一执行卡接管。
@@ -15,6 +16,7 @@ import { beforeEach, afterEach, expect, test, vi } from 'vitest'
 import { ChatView } from '../src/renderer/pages/conversations/-components/chat-view'
 import type { ExecutionEvidence } from '../src/shared/domain/execution'
 import type { AgentRun } from '../src/shared/domain'
+import { defaultUserProfile } from '../src/shared/domain/profile'
 import { nativeActivity } from '../src/runtime/adapters/native-events'
 
 vi.mock('../src/renderer/pages/conversations/-components/prompt-bar', () => ({ PromptBar: () => null }))
@@ -36,7 +38,7 @@ beforeEach(() => {
   props = {
     api: { request: async () => [], subscribe: () => () => {} }, pageActive: true,
     detail: { conversation: { id: 'chat', kind: 'direct', title: '员工', agentIds: ['employee'] }, messages: [], messagePage: { items: [] }, runs: [run], turns: [], workItems: [], artifacts: [], materials: [] },
-    snapshot: { conversations: [], resources: [], agents: [{ id: 'employee', name: '员工', skillIds: [], knowledgeIds: [] }], approvals: [], connections: [], userProfile: { displayName: '我' } },
+    snapshot: { conversations: [], resources: [], agents: [{ id: 'employee', name: '员工', skillIds: [], knowledgeIds: [] }], approvals: [], connections: [], userProfile: defaultUserProfile },
     draft: { text: '', mentionIds: [] }, questionReplies: { values: {} }, artifactActions: { values: {} },
     pageEdges: { before: true, after: true }, onReading: noop, onLocation: noop, onScrollPosition: noop,
   } as unknown as ComponentProps<typeof ChatView>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际AppService记忆装配保持用户原文与保存时间/内容主体边界，不虚构事件时间。
  * [INPUT]: 真实 AppService/SQLite/工作区和无工具可控模型，独立持久目录。
  * [OUTPUT]: 双向即时接续、员工隔离/范围收紧、忘记发布门禁/清理冲突、纠正/临时失效与重启/备份回归；真实运行只随实际使用来源清理失效，无关清空继续交付且派生回复保持可用。
  * [OUTPUT]: 真实AppService持有重新汇报时新增派生回复的相关/无关清理门禁、持久获知来源与后续传播；可控时钟超过30秒仍沿原Work绝对期限，不续期、不增加额度或重放执行。
@@ -270,4 +271,18 @@ test('UM15 management receipt survives restart and backup restores its historica
   expect((await memories(restored)).entries[0].content).toBe('备份时的用户偏好')
   expect(restoredEngine.contexts).toHaveLength(0)
   await restored.handle('saveMemory', input); expect((await memories(restored)).entries).toHaveLength(1)
+})
+
+test('stored user notes reach the actual employee context as source text, not new autobiography or event time', async () => {
+  const { service, engine, direct } = await setup()
+  const content = '去年我报名了陶艺课，但没有去上；下个月可能重新报名，目前还没决定。'
+  const before = await memories(service)
+  await service.handle('saveMemory', { ...query, expectedEpoch: before.epoch, content, kind: 'experience', evidence: 'claim', useScope: 'employee', requestId: 'source-time-note' })
+  const saved = (await memories(service)).entries.find(entry => entry.content === content)!
+  await send(service, direct, '陶艺课那条笔记到底说了什么？请区分报名、上课和计划。')
+  const context = engine.contexts.at(-1)!, rendered = context.bootstrap!.instructions
+  expect(rendered).toContain(content); expect(rendered).toContain(`保存于 ${saved.createdAt}`)
+  expect(rendered).toContain('用户提供'); expect(rendered).toContain('存入你的记忆不代表内容是你的经历')
+  expect(rendered).not.toContain(`发生于 ${saved.createdAt}`)
+  expect(context.memory!.entries.find(entry => entry.id === saved.id)).toEqual(saved)
 })

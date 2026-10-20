@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本人聊天消息头像及资料入口使用md圆角，与员工消息头像一致。
  * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
  * [OUTPUT]: 分享内容准备态从首帧透明且不可点，保留真实尺寸供点阵测量；动画以 inline opacity 接管，错误解除准备态。
  * [OUTPUT]: 点阵层挂在分享弹窗内部并覆盖内容含 padding，弹窗不播放入退场动画，背景与关闭按钮保持可见；固定视口并裁切外溢，不显示尺寸/定位辅助标记；中性细点复用主题；系统本人头像及个人头像编辑按钮统一圆角方形，复用全局小圆角；聊天本人头像含可点击资料入口并沿用共享消息镜像布局；头像名称菜单首项、姓名按钮沿用全局悬停背景且无编辑图标；五项统计按内容宽度切换五列/上三下二/极窄单列，分隔线内缩并复用全局 token；头像悬停编辑、上下洞察卡片、全屏分享；资料编辑沿用主题控件高度、共用横向行和 Separator。
@@ -15,8 +16,8 @@
 .user-menu-profile strong { font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .user-menu-profile small { color:var(--muted-foreground);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .message-row.user .message-avatar { display:flex;flex:0 0 32px }
-.message-row.user .message-avatar .user-avatar { width:32px;height:32px;border-radius:var(--radius-sm);font-size:12px }
-.message-avatar .user-avatar-trigger { border-radius:var(--radius-sm) }
+.message-row.user .message-avatar .user-avatar { width:32px;height:32px;border-radius:var(--radius-md);font-size:12px }
+.message-avatar .user-avatar-trigger { border-radius:var(--radius-md) }
 .profile-document { container-type:inline-size;min-width:0 }
 .profile-document h3 { font-size:16px;font-weight:600;margin:0 }
 .profile-identity { display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0 0 36px }

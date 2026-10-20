@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 安装不授权限按安装前真实员工配置比较，兼容bobo已有高权限预设，不再假定全员禁用命令。
  * [OUTPUT]: 安装中备份阻断沿统一资源管理错误文案，原取消/复制目录清理及之后真实备份断言保持。
  * [INPUT]: 真实 AppService/SQLite、完整 ZIP、受控 HTTPS/GitHub/商店响应与取消信号。
  * [OUTPUT]: 场景独立 home 隔离本机扫描；真实更新写入断点快照恢复与上游名称/路径变更拒绝；安装取消/备份竞争、实际包与来源、更新确认/回滚、批量检查、使用阻断和删除清理验证。
@@ -49,6 +50,7 @@ async function staged(dataPath: string) { return readdir(join(dataPath, 'skill-s
 
 test('ZIP preview inspects actual files, installs the frozen package, and keeps bindings and favorites empty', async () => {
   const { root, dataPath, api } = await setup(), path = join(root, 'skills.zip')
+  const initialAgents = (await api('snapshot', undefined)).agents
   const files = { 'report-helper/SKILL.md': document(), 'report-helper/assets/sample.bin': Uint8Array.from([0, 255]), 'report-helper/scripts/setup.js': 'throw new Error("MUST NOT EXECUTE")' }
   await writeFile(path, archive(files))
   const scan = await api('scanSkillSource', { kind: 'zip', source: path })
@@ -65,7 +67,7 @@ test('ZIP preview inspects actual files, installs the frozen package, and keeps 
   const snapshot = await api('snapshot', undefined), resource = snapshot.resources[0]
   expect(await readFile(join(resource.path, 'SKILL.md'), 'utf8')).toBe(document())
   expect(await readFile(join(resource.path, 'assets/sample.bin'))).toEqual(Buffer.from([0, 255]))
-  expect(snapshot.agents.every(agent => !agent.skillIds.length && !agent.allowCommands)).toBe(true)
+  expect(snapshot.agents).toEqual(initialAgents)
   expect((await api('getSkillCollections', undefined)).favoriteResourceIds).toEqual([])
   await vi.waitFor(async () => expect(await staged(dataPath)).toEqual([]))
   await expect(api('getSkillPreview', { scanId: scan.id, candidateId: candidate.id })).rejects.toThrow('过期')

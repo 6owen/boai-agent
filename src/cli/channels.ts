@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19应用业务协议：应用业务协议目录/调用/回执接原owner通道，run凭据沿实际员工工具授权。
  * [OUTPUT]: Owner明确渠道发布及发送回执查询接原服务，共用桌面schema；普通send不外发，运行凭据不获发布权。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: Owner原问题查询/显式回答共用桌面schema与事务，运行凭据不获回答权限。
@@ -20,6 +21,7 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { z } from 'zod'
+import { applicationCatalogQuerySchema, applicationRequestSchema, applicationReceiptQuerySchema } from '../shared/domain/application-protocol'
 import { executionPermissionSchema } from '../shared/domain/execution'
 import { inboxQuerySchema, inboxReplySchema } from '../shared/domain/inbox'
 import type { Method, Methods } from '../shared/ipc'
@@ -48,6 +50,9 @@ export function publicChannels(service: CliServicePort, identity: CliServiceIden
   function method<K extends Method>(name: K, input: z.ZodType<Methods[K]['input']>, effect: RpcChannel['effect'] = 'read') {
     channels.set(name, { input, effect, handle: data => service.request(name, data as Methods[K]['input']) })
   }
+  channels.set('application:catalog', { input: applicationCatalogQuerySchema, effect: 'read', handle: input => service.request('getApplicationCatalog', input as never) })
+  channels.set('application:call', { input: applicationRequestSchema, effect: 'write', handle: input => service.request('executeApplicationOperation', input as never) })
+  channels.set('application:receipt', { input: applicationReceiptQuerySchema, effect: 'read', handle: input => service.request('getApplicationReceipt', input as never) })
   read('ping', empty, () => ({ ok: true, protocolVersion: PROTOCOL_VERSION }))
   if (service.runAccess) {
     const access = service.runAccess

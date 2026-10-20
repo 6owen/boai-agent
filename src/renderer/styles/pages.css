@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 活动详情图标复用删除图标的行悬停/键盘聚焦显现规则；Popover打开及触屏时保留入口。
  * [OUTPUT]: 群资料复用原64px拼图头像及文字排版，头像按钮无额外内边距，名称自动保存保持成员入口外观。
  * [OUTPUT]: 身份自动保存不改变资料页操作按钮透明度或悬停外观；分区编辑的可见性优先于全局disabled样式，避免批量闪现。
  * [OUTPUT]: 员工身份纯文本直接编辑复用原contact-profile标题/描述/头像布局，不引入Input高度/留白；空描述显示原数字员工占位。
@@ -257,10 +258,10 @@
 .automation-record-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .automation-record-list { display:flex;flex-direction:column;min-width:0 }
 .automation-record-row[data-slot=button] { width:100%;font-weight:400 }
-.automation-history-row .automation-record-delete { opacity:0;pointer-events:none;transition:opacity .15s }
-.automation-history-row:is(:hover,:focus-within) .automation-record-delete,.automation-history-row .automation-record-delete[aria-expanded=true] { opacity:1;pointer-events:auto }
+.automation-history-row :is(.automation-record-delete,.automation-record-detail) { opacity:0;pointer-events:none;transition:opacity .15s }
+.automation-history-row:is(:hover,:focus-within) :is(.automation-record-delete,.automation-record-detail),.automation-history-row :is(.automation-record-delete,.automation-record-detail)[aria-expanded=true] { opacity:1;pointer-events:auto }
 @media (hover:none) {
-  .automation-history-row .automation-record-delete { opacity:1;pointer-events:auto }
+  .automation-history-row :is(.automation-record-delete,.automation-record-detail) { opacity:1;pointer-events:auto }
 }
 .automation-occurrence-panel { display:flex;flex:1;flex-direction:column;height:100%;min-height:0;min-width:0 }
 /* Base UI hides native scrollbars; reserve its 10px overlay track independently of overflow. */

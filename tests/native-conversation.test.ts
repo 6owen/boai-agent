@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API状态配置进入真实Codex/Claude协议，动态情绪不重建线程，功能开关更新工具才重建。
  * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: Codex/Claude真实stdio知识工具读取、同版本续聊及更新/重启会话资格；无Work，夹具非真实模型。
@@ -31,6 +32,22 @@ const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
 const setup=()=>nativeFixture(runtime,disposals)
+
+it('keeps its native session across emotion changes but refreshes tools when personality features change', async () => {
+ const f = await setup()
+ const read = await f.service.handle('executeApplicationOperation', { operation: 'employees.profile', input: { agentId: f.agent.id } }) as import('../src/shared/domain/application-protocol').ApplicationResult
+ const { agentId, revision, updatedAt, ...config } = read.data as import('../src/shared/domain/agent-profile').AgentProfile
+ expect(await f.service.handle('executeApplicationOperation', { operation: 'employees.configure', input: { agentId, expectedRevision: revision, config: { ...config, features: { ...config.features, emotions: true } } }, requestId: 'state-tools' })).toMatchObject({ status: 'succeeded' })
+ expect((await f.wait(await f.send('普通交流'))).runs.every(run => run.status === 'completed')).toBe(true)
+ expect(await f.service.handle('executeApplicationOperation', { operation: 'employees.updateState', input: { agentId, conversationId: f.chat.id, expectedRevision: 0, change: { action: 'emotion', emotion: { mood: 'curious', valence: 8, energy: 7, reason: '本轮讨论' } } }, requestId: 'new-mood' })).toMatchObject({ status: 'succeeded' })
+ expect((await f.wait(await f.send('继续交流'))).runs.every(run => run.status === 'completed')).toBe(true)
+ const cwd = join(f.root, 'agents', agentId, 'workspace', 'sessions', f.chat.id, 'work')
+ const requests = async () => (await readFile(join(cwd, 'native-thread-requests.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line))
+ expect((await requests()).map(item => item.method)).toEqual(['thread/start', 'thread/resume'])
+ expect(await f.service.handle('executeApplicationOperation', { operation: 'employees.configure', input: { agentId, expectedRevision: 1, config }, requestId: 'disable-state-tools' })).toMatchObject({ status: 'succeeded' })
+ expect((await f.wait(await f.send('按关闭状态后的配置交流'))).runs.every(run => run.status === 'completed')).toBe(true)
+ expect((await requests()).map(item => item.method)).toEqual(['thread/start', 'thread/resume', 'thread/start'])
+})
 
 it('preserves native configuration and explicit cwd when old API directory metadata exists', async () => {
  const f=await setup(), outside=await realpath(await mkdtemp(join(tmpdir(),'boai-native-cwd-')))

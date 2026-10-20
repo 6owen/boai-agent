@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: BootstrapSnapshot区分静态人格与动态状态，保留实际模块/来源hash/配置版本证据。
+ * [OUTPUT]: 2026-10-19应用业务协议：AgentInput增加仅创建使用的initialSoul，持久员工人格仍归原SOUL文件。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
  * [OUTPUT]: 审批可携原生命令身份，目录永久授权不授予后续命令自动执行。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
@@ -130,7 +132,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
 export interface Resource {
   knowledge?: import('./knowledge').KnowledgeContent
   id: string
@@ -352,7 +354,7 @@ export interface DecisionRecord extends ParticipationDecision { sourceDecisionRu
 export interface Contribution { id: string; turnId: string; agentId: string; key: 'main'; purpose: string; status: 'proposed' | 'accepted' | 'running' | 'completed' | 'failed' | 'cancelled' | 'declined'; dependsOn: string[]; resultMessageIds: string[]; artifactIds: string[]; error?: string }
 export interface ConversationEvent { collaborationRequestId?: string; id: string; conversationId: string; turnId: string; type: 'collaboration_start' | 'user_message' | 'agent_message' | 'handoff' | 'dependency_resolved' | 'work_ready' | 'stopped'; work?: WorkIntent; messageId?: string; agentId?: string; recipientAgentIds?: string[]; createdAt: string }
 
-export interface BootstrapSnapshot { instructions: string; hashes: Record<string, string>; configVersion: number; memoryVersion: number; policyVersion: number; sources: string[] }
+export interface BootstrapSnapshot { dynamicInstructions?: string; promptEvidence?: import('./agent-profile').AgentPromptEvidence; instructions: string; hashes: Record<string, string>; configVersion: number; memoryVersion: number; policyVersion: number; sources: string[] }
 export interface AgentFile { name: string; purpose: string; kind: 'source' | 'generated'; path: string; hash: string; status: 'current' | 'modified' | 'missing' | 'invalid'; error?: string }
 export interface AgentFileContent extends AgentFile { content: string }
 export interface AgentHome { environment?: EmployeeEnvironmentStatus; agentId: string; workspacePath: string; sessionPath?: string; memoryNamespace: string; configVersion: number; files: AgentFile[] }

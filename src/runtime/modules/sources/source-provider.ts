@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 2026-10-19 Jina 固定搜索/Reader HTTP 适配接入共用传输，密钥仍在宿主。
  * [OUTPUT]: API本地源逐操作申请/复核目录；托管stdio MCP从启动起使用员工目录策略，原生及本人配置测试保持原路径。
  * [OUTPUT]: DeepSeek专用工具之外保留原通用API request；普通web-read仅暴露两个核准只读工具。
@@ -10,6 +11,8 @@
  * [POS]: Source transport adapter; no employee or configuration authority.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { mcpImages } from './mcp-media'
+import { summarizeMedia } from '../browser/media'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
@@ -208,7 +211,10 @@ export async function openSourceSession(source: DataSource, credential: string, 
       const result = await client.callTool({ name, arguments: args }, undefined, { signal, timeout: SOURCE_TIMEOUT, maxTotalTimeout: SOURCE_TIMEOUT })
       assertCatalog()
       assertWebSearchResult(tools.find(tool => tool.name === name)?.webCapability, result)
-      return redactSourceValue(result, credential)
+      const images = mcpImages(result)
+      if (!images.length) return redactSourceValue(summarizeMedia(result), credential)
+      const safe = redactSourceValue(summarizeMedia(result), credential)
+      return { ...(safe as Record<string, unknown>), content: [{ type: 'text', text: JSON.stringify(safe) }, ...images] }
     }, close: async () => { signal.removeEventListener('abort', abort); await close() } }
   } catch (error) { signal.removeEventListener('abort', abort); await close(); throw error }
 }

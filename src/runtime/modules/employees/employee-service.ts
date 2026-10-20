@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 单独追加技能保留当前运行的冻结技能集合，通过宿主更新兼容版本；移除/替换及其他配置变更仍取消旧运行。
+ * [OUTPUT]: 仅首次创建 Bobo 同事务登记默认技能源绑定标记，既有员工不自动加回技能。
+ * [OUTPUT]: 2026-10-19核心预设允许实际命令/完全访问，显式既有权限保留；完整适配人格仅升级精确旧默认，不覆盖自定义。
+ * [OUTPUT]: 2026-10-19应用业务协议：bobo仅精确旧出厂规则/人格迁移；创建可初始人格，已有编辑保持hash/版本。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: webSearch检索偏好沿员工配置版本保存，不改变执行或模型权限。
  * [OUTPUT]: 员工知识资料绑定核对所属员工，不能借配置保存读取其他员工专属资料。
@@ -17,14 +21,21 @@
  * [OUTPUT]: Claude员工类型可沿原定义保存；首批仅普通员工，核心与群协作的准入独立保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [OUTPUT]: codex-local保留独立身份，交互任务可沿宿主逐次申请命令；已绑定技能/知识沿冻结资源接入，浏览器保持未接入门禁。
+ * [OUTPUT]: Exact shipped persona/scene defaults upgrade through the existing journal; custom or missing sources remain authoritative.
  * [INPUT]: 员工配置、受管工作区、存储与头像合同。
- * [OUTPUT]: Mastra 员工及 bobo 默认具备浏览器能力，旧关闭/缺省字段在启动与 registry 正规化且不额外提升配置版本，ACP 仅正规化为不支持；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后复用配置取消、记忆失效、registry 与工作区同步。
+ * [OUTPUT]: Mastra 员工及 bobo 默认具备浏览器能力，旧关闭/缺省字段在启动与 registry 正规化且不额外提升配置版本，ACP 仅正规化为不支持；配置变更沿原取消/版本边界； 显式单技能绑定在调用者 SQLite 事务内比较员工版本并保存授权；提交后区分追加兼容/其他配置取消，并复用记忆失效、registry 与工作区同步。
  * [OUTPUT]: 新旧库补齐唯一 bobo 核心身份并保留改名/模型选择，拒绝身份伪造、停用、命令和 ACP；已提交员工整批内存安装与完整重载；版本校验的员工保存、独立思考强度与头像持久化和系统文件同步；拒绝无效思考档位、外链或超限头像。
  * [POS]: runtime/modules/employees 的员工定义服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { defaultSkillSeedRecord } from '../resources/bundled-skills'
+import { BOBO_RULES, BOBO_SOUL, LEGACY_SIMPLIFIED_BOBO_SOUL, LEGACY_BOBO_RULES, DEFAULT_EMPLOYEE_SOUL } from '../../../shared/domain/agent-presets'
+import { previousPromptHashes, promptSourceDefaults } from '../../../shared/domain/agent-prompts'
+import { previousBoboPersonaHashes } from '../../../shared/domain/bobo-persona'
+import type { AgentSourceName } from '../../../shared/domain/agent-profile'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../../../shared/domain/model-id'
 import { randomUUID } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
 import { z } from 'zod'
 import type { AgentInput, DigitalAgent, Connection, Resource, MemoryEntry } from '../../../shared/domain'
 import { commandPermissionCollection, canRememberCommands } from './command-permissions'
@@ -46,7 +57,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ webSearch: webSearchPreferenceSchema.optional(), directoryGrants: directoryGrantsSchema.optional(), expectedDirectoryRevision: z.number().int().nonnegative().optional(), executionPermission: z.enum(['read-only','ask','full-access']).optional(), nativeOptions: z.object({ useNativePermissions: z.boolean().optional(), effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ initialSoul: z.string().max(64000).optional(), webSearch: webSearchPreferenceSchema.optional(), directoryGrants: directoryGrantsSchema.optional(), expectedDirectoryRevision: z.number().int().nonnegative().optional(), executionPermission: z.enum(['read-only','ask','full-access']).optional(), nativeOptions: z.object({ useNativePermissions: z.boolean().optional(), effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -56,6 +67,7 @@ interface EmployeeHooks {
   connection(id: string): Connection
   resource(id: string): Resource | undefined
   cancel(id: string, reason: string): Promise<void>
+  skillsAdded?(previous: DigitalAgent, current: DigitalAgent): Promise<void>
   invalidateMemory(id: string, matches: (entry: MemoryEntry) => boolean): Promise<void>
   changed(): void
 }
@@ -93,16 +105,50 @@ export class EmployeeService {
     }
     for (const agent of this.definitions.values()) if (agent.id !== CORE_AGENT_ID && agent.systemRole === 'core') { delete agent.systemRole; agent.configVersion++ }
     const core = this.definitions.get(CORE_AGENT_ID)
-    if (!core) this.definitions.set(CORE_AGENT_ID, {
+    if (!core) {
+      updates.push(defaultSkillSeedRecord())
+      this.definitions.set(CORE_AGENT_ID, {
       id: CORE_AGENT_ID, name: CORE_AGENT_DEFAULT_NAME, systemRole: 'core', role: '系统核心 Agent',
-      instructions: '你是 BoAI 的系统核心 Agent，协助用户理解需求、创建数字员工团队并接续交流。根据明确授权使用应用提供的工具；没有创建回执时不得声称已创建团队。团队默认包含群聊，群名称与成员职责由团队需求决定。普通对话自然回应，不制造任务。',
+      instructions: BOBO_RULES,
       color: '#638ac5', executionBackend: { kind: 'mastra-model' }, connectionId: '', modelId: '',
-      skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: false, active: true, configVersion: 1,
-    })
-    else if (!isCoreAgent(core) || !core.active || core.allowCommands || core.executionBackend?.kind === 'acp-local') {
-      core.systemRole = 'core'; core.active = true; core.allowCommands = false; if (core.executionBackend?.kind === 'acp-local') core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
+      skillIds: [], knowledgeIds: [], allowBrowser: true, allowCommands: true, executionPermission: 'full-access', active: true, configVersion: 1,
+      })
     }
-    for (const agent of this.definitions.values()) { agent.allowBrowser = (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'; await this.homes.initialize(agent); updates.push(record('agents', agent)) }
+    else if (!isCoreAgent(core) || !core.active || core.executionBackend?.kind === 'acp-local') {
+      core.systemRole = 'core'; core.active = true; if (core.executionBackend?.kind === 'acp-local') core.executionBackend = { kind: 'mastra-model' }; core.configVersion++
+    }
+    if (core && core.executionPermission === undefined && (core.executionBackend?.kind ?? 'mastra-model') === 'mastra-model') { core.executionPermission = 'full-access'; core.allowCommands = true; core.configVersion++ }
+    for (const agent of this.definitions.values()) {
+      agent.allowBrowser = (agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
+      await this.homes.initialize(agent)
+      // Upgrade only exact, untouched shipped defaults. Custom persona/rules are authoritative.
+      if (isCoreAgent(agent)) for (const [name, previous, next] of [['AGENTS.md', LEGACY_BOBO_RULES, BOBO_RULES], ['SOUL.md', DEFAULT_EMPLOYEE_SOUL, BOBO_SOUL], ['SOUL.md', LEGACY_SIMPLIFIED_BOBO_SOUL, BOBO_SOUL]] as const) {
+        const file = await this.homes.read(agent, name).catch(() => undefined)
+        if (file?.content === previous) {
+          await this.homes.save(agent, name, next, file.hash)
+          agent.configVersion++
+          if (name === 'AGENTS.md') agent.instructions = next
+          await this.homes.commit(agent)
+        }
+      }
+      for (const [name, next] of Object.entries(promptSourceDefaults)) {
+        const file = await this.homes.read(agent, name)
+        if (file.status !== 'missing' && file.status !== 'invalid' && file.content !== next && previousPromptHashes[name]?.includes(file.hash)) {
+          await this.homes.save(agent, name as AgentSourceName, next, file.hash)
+          agent.configVersion++
+          await this.homes.commit(agent)
+        }
+      }
+      if (isCoreAgent(agent)) {
+        const file = await this.homes.read(agent, 'SOUL.md')
+        if (previousBoboPersonaHashes.some(hash => hash === file.hash)) {
+          await this.homes.save(agent, 'SOUL.md', BOBO_SOUL, file.hash)
+          agent.configVersion++
+          await this.homes.commit(agent)
+        }
+      }
+      updates.push(record('agents', agent))
+    }
     return updates
   }
   private validateResources(ids: string[], kind: Resource['kind']) {
@@ -131,8 +177,15 @@ export class EmployeeService {
     return updated
   }
   async commitSkillBinding(agent: DigitalAgent) {
+    const previous = this.get(agent.id)
+    const { skillIds: beforeSkills, configVersion: beforeVersion, ...before } = previous
+    const { skillIds: afterSkills, configVersion: afterVersion, ...after } = agent
+    // SQLite omits undefined optional fields; compare their persisted representations.
+    const same = (left: unknown, right: unknown) => isDeepStrictEqual(JSON.parse(JSON.stringify(left)), JSON.parse(JSON.stringify(right)))
+    const additive = afterVersion === beforeVersion + 1 && afterSkills.length > beforeSkills.length && beforeSkills.every((id, index) => afterSkills[index] === id) && same(before, after)
     this.install(agent.id, agent)
-    await this.hooks.cancel(agent.id, '员工技能已变更，请重新执行')
+    if (additive && this.hooks.skillsAdded) await this.hooks.skillsAdded(previous, agent)
+    else if (!same(previous, agent)) await this.hooks.cancel(agent.id, '员工技能已变更，请重新执行')
     await this.hooks.invalidateMemory(agent.id, entry => entry.sourceResourceIds.some(id => ![...agent.skillIds, ...agent.knowledgeIds].includes(id)))
     await this.homes.commit(agent)
     this.hooks.changed()
@@ -156,10 +209,11 @@ export class EmployeeService {
   commitDirectoryGrant(agent: DigitalAgent) { this.install(agent.id, agent); this.hooks.changed() }
   async save(input: AgentInput & { systemRole?: 'core' }) {
     const previous = input.id ? this.get(input.id) : undefined
+    if (previous && input.initialSoul !== undefined) fail('已有员工的人格请使用带文件 hash 的保存接口')
     if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
-    if (isCoreAgent(previous) && (!input.active || input.allowCommands || !['mastra-model','codex-local','claude-local','runtime-plugin'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用宿主命令或旧 ACP 任务后端')
+    if (isCoreAgent(previous) && (!input.active || !['mastra-model','codex-local','claude-local','runtime-plugin'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用旧 ACP 任务后端')
     const executionPermission = ['codex-local', 'claude-local'].includes(executionBackend.kind) && input.nativeOptions?.useNativePermissions ? undefined : ['mastra-model', 'codex-local', 'claude-local'].includes(executionBackend.kind) ? input.executionPermission ?? previous?.executionPermission : undefined
     const allowBrowser = executionBackend.kind === 'mastra-model'
     // Preserve inactive API metadata across backend changes; native execution owns its configuration.
@@ -180,10 +234,10 @@ export class EmployeeService {
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
     if (input.knowledgeIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的知识资料，请明确为该员工添加独立资料')
-    const { expectedConfigVersion: _, expectedDirectoryRevision: _directoryRevision, systemRole: _systemRole, ...definition } = input
-    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands: isCoreAgent(previous) ? false : executionPermission ? executionPermission !== 'read-only' : input.allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const { expectedConfigVersion: _, expectedDirectoryRevision: _directoryRevision, systemRole: _systemRole, initialSoul, ...definition } = input
+    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands: executionPermission ? executionPermission !== 'read-only' : input.allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (previous && previous.instructions !== input.instructions) { const source = await this.homes.read(previous, 'AGENTS.md'); await this.homes.save(previous, 'AGENTS.md', input.instructions, source.hash) }
-    if (!previous) await this.homes.initialize(agent)
+    if (!previous) await this.homes.initialize(agent, initialSoul)
     await this.store.write([record('agents', agent)], canRememberCommands(agent) ? [] : [{ collection: commandPermissionCollection, id: agent.id }]); this.install(agent.id, agent); await this.homes.commit(agent)
     if (previous) {
       await this.hooks.cancel(agent.id, '员工配置已变更，请重新执行')
@@ -191,7 +245,7 @@ export class EmployeeService {
     }
     this.hooks.changed(); return clone(agent)
   }
-  async saveFile(input: { agentId: string; name: 'AGENTS.md' | 'SOUL.md'; content: string; expectedHash: string; expectedConfigVersion: number }) {
+  async saveFile(input: { agentId: string; name: AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }) {
     const agent = this.get(input.agentId)
     if (agent.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
     await this.homes.save(agent, input.name, input.content, input.expectedHash)

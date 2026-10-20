@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 脚本工具库/Node位置变化不改变原生供应商配置身份，普通提供方变量仍敏感。
  * [INPUT]: Isolated native configuration files, environment references and read-only source helpers.
  * [OUTPUT]: Change-sensitive provider identity, CLI transport lease independence, bounded files and directory overrides.
  * [POS]: Offline G2a source contract; actual CLI behavior is verified separately.
@@ -19,6 +20,7 @@ test('CLI transport leases do not change native provider identity but provider c
   const baseline = await nativeConfigurationIdentity([], employeeEnvironment(original))
   for (const run of ['first', 'second']) {
     expect(await nativeConfigurationIdentity([], employeeEnvironment(original, { BOAI_CLI_EMPLOYEE_RUN: run }))).toBe(baseline)
+    expect(await nativeConfigurationIdentity([], employeeEnvironment(original, { BOAI_CLI_EMPLOYEE_RUN: run, BOAI_CLI_NODE: `/host/${run}/node`, BOAI_CLI_TOOL_CLIENT: `/host/${run}/employee-tools.mjs` }))).toBe(baseline)
     expect(await nativeConfigurationIdentity([], employeeEnvironment(original, { BOAI_CLI_EMPLOYEE_RUN: run, BOAI_SERVER_URL: `ws://127.0.0.1:${run === 'first' ? 1234 : 4321}`, BOAI_SERVER_TOKEN: `synthetic-${run}` }))).toBe(baseline)
   }
   expect(await nativeConfigurationIdentity([], employeeEnvironment({ ...original, PRIVATE_PROVIDER_TOKEN: 'provider-b' }))).not.toBe(baseline)

@@ -1,4 +1,15 @@
 /*
+ * [OUTPUT]: 私有判断显示全部本人绑定技能和实际任务命令/文件能力，目录元信息不扩权。
+ * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
+ * [OUTPUT]: 反思保存前在原预算内预留无工具事实复核，两阶段已知用量累加，失败不返回草稿；普通行为保持原单调用路径。
+ * [OUTPUT]: 行为输入保留发言人ID/相对身份与笔记引文，宿主来源说明进入独立规则层。
+ * [OUTPUT]: 聊天白名单与步数支持真实员工表情工具。
+ * [OUTPUT]: 开发可选观察器在来源校验前记录候选副本，不能篡改证据或放宽硬拒绝。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 后台旅行可经原只读检索工具循环，继续沿原模型调用上限。
+ * [OUTPUT]: 反思输入保留来源日期、会话、说话人和时间，不混成一个私聊记录。
+ * [OUTPUT]: 共享自我状态工具及独立结构化行为调用，真实工具后续/原始用量和配置调用上限；不发布中间草稿。
+ * [OUTPUT]: 2026-10-19应用业务协议：普通配置聊天允许boai工具，复用有界管理步骤与参数脱敏观察。
  * [OUTPUT]: 普通问答的select_web_search沿原工具循环和预算，实际选择由宿主核对。
  * [OUTPUT]: 普通搜索问答沿原追加模型预算与阶段输出缓冲，不创建文件Work；只允许已装配的源工具。
  * [OUTPUT]: 知识问答允许有预算的多步只读调用；工具步骤文字不冒充最终答复。
@@ -27,8 +38,19 @@
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { behaviorModelContext, needsReflectionReview, reflectionReviewInstructions, reflectionReviewPrompt } from '../../modules/employees/behavior-context'
+import { createSelfieOperations } from '../../modules/media/selfie-tools'
+import { createReactionOperations } from '../../modules/conversations/reaction-tools'
+import { createBoundSkillOperations } from '../../modules/resources/bound-skill-tools'
+import { createMemoryOperations } from '../../modules/memory/memory-tools'
+import { stateToolNames } from '../../modules/agent-state/state-tools'
+import { agentBehaviorResultSchema } from '../../../shared/domain/agent-profile'
+import { createApplicationTools } from '../../modules/application/application-tools'
+import { createWebSearchOperations } from './web-search-tools'
+import { createTool } from '@mastra/core/tools'
 import { hasKnowledge, knowledgeToolNames } from '../../modules/resources/knowledge-tools'
 import { hasChatSourceTools, sourceToolNames } from './source-tools'
+import { applicationToolNames, applicationObservation } from '../../modules/application/application-tools'
 import { catalogObservation } from '../../modules/resources/catalog-commands'
 import { sourceCreationObservation } from '../../modules/sources/source-commands'
 import { groupInterpretationSchema, replyCharacterCount, validateGroupInterpretation } from '../../modules/collaboration/group-coordination'
@@ -96,12 +118,42 @@ export interface MastraEngineOptions {
   runTimeoutMs?: number
   connectionTimeoutMs?: number
   commandTimeoutMs?: number
+  /** Explicit development observer; absent in product runtime, never changes evidence validation. */
+  observeMemoryCandidates?: (value: { runId: string; input: unknown; candidates: MemoryCandidate[] }) => Promise<void>
 }
 
 import { workIntentSchema, modelWorkReportSchema, workReportSchema } from '../../modules/collaboration/work-protocol'
 import { decisionJsonSchema, decisionModelSchema, decisionPromptSchema, memorySchema, parseJson } from '../../modules/employees/phase-protocol'
 export class MastraEngine implements AgentEngine {
   constructor(private readonly options: MastraEngineOptions = {}) {}
+
+  async runBehavior(context: EngineContext, input: { instruction: string; maxModelCalls: number }) {
+    assertApiContext(context)
+    const behaviorContext = behaviorModelContext(context)
+    const reserveReview = Boolean(context.personalityReflection)
+    if (reserveReview && input.maxModelCalls < 2) throw new Error('反思需要生成与事实复核两次调用；当前行为调用上限不足')
+    const instructions = `${context.bootstrap?.instructions ?? context.agent.instructions}\n\n${context.bootstrap?.dynamicInstructions ?? ''}\n\nThis is an explicitly configured employee behavior, not a new message from the owner. Use only supplied context and actual tools. ${input.instruction}\n\n${behaviorContext.instructions}\nReturn exactly one JSON object matching this contract, without Markdown: ${JSON.stringify(z.toJSONSchema(agentBehaviorResultSchema))}. Choose skip when there is nothing useful to do. sourceMessageIds must come from supplied messages. Never report a draft as delivered.`
+    const agent = new Agent({ id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions,
+      tools: Object.fromEntries([...createApplicationTools(context), ...createWebSearchOperations(context)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])) })
+    let calls = 0
+    const usage = new UsageRecorder(), callIds: string[] = []
+    const prepareStep = async () => { context.signal.throwIfAborted(); if (calls++ >= input.maxModelCalls) throw new Error('行为模型调用已达到配置上限'); callIds.push(`behavior:${calls}`); await context.onModelCallStarted?.(`behavior:${calls}`, 'memory') }
+    const output = await agent.stream([{ role: 'user', content: behaviorContext.prompt }], {
+      abortSignal: context.signal, maxSteps: input.maxModelCalls - (reserveReview ? 1 : 0), modelSettings: { maxOutputTokens: 2500 },
+      providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, context.agent.thinkingLevel, 'memory', context.modelCatalog),
+      prepareStep,
+    })
+    const text = await this.consumeText(output, context.signal, context.onUsage, usage, () => callIds.shift(), context.onModelCallUsage)
+    const draft = agentBehaviorResultSchema.parse(parseJson(text))
+    if (!needsReflectionReview(context, draft)) return draft
+    const reviewer = new Agent({ id: context.agent.id + '-reflection-review', name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: `${instructions}\n\n${reflectionReviewInstructions}`, tools: {} })
+    const reviewed = await reviewer.stream([{ role: 'user', content: reflectionReviewPrompt(behaviorContext.prompt, draft) }], {
+      abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens: 2500 },
+      providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, context.agent.thinkingLevel, 'memory', context.modelCatalog),
+      prepareStep,
+    })
+    return agentBehaviorResultSchema.parse(parseJson(await this.consumeText(reviewed, context.signal, context.onUsage, usage, () => callIds.shift(), context.onModelCallUsage)))
+  }
 
   async run(context: EngineContext): Promise<void> {
     assertApiContext(context)
@@ -131,7 +183,7 @@ export class MastraEngine implements AgentEngine {
         let previousFinish: { reason: string | undefined } | undefined
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
-          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
+          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.application || ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.agent.skillIds.length || ctx.recallMemory || ctx.reactions || ctx.personality || ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {
             previousFinish = { reason: event.finishReason }
@@ -178,7 +230,7 @@ export class MastraEngine implements AgentEngine {
       events.set(id, event)
       await ctx.onTool(event)
     }
-    const buffered = task || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
+    const buffered = task || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
     let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     try {
       for await (const chunk of output.fullStream) {
@@ -201,14 +253,14 @@ export class MastraEngine implements AgentEngine {
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
-          if (!task && !((hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          if (!task && !(([...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name
             const skill = skills?.find(item => item.name === name || item.path === name)
             if (skill) activations.set(chunk.payload.toolCallId, skill)
           }
-          await report(chunk.payload.toolCallId, chunk.payload.toolName, 'running', ['manage_skills', 'manage_data_sources'].includes(chunk.payload.toolName) ? catalogObservation(chunk.payload.args) : chunk.payload.toolName === 'create_data_source' ? sourceCreationObservation(chunk.payload.args) : chunk.payload.args)
+          await report(chunk.payload.toolCallId, chunk.payload.toolName, 'running', chunk.payload.toolName === 'boai_call' ? applicationObservation(chunk.payload.args) : ['manage_skills', 'manage_data_sources'].includes(chunk.payload.toolName) ? catalogObservation(chunk.payload.args) : chunk.payload.toolName === 'create_data_source' ? sourceCreationObservation(chunk.payload.args) : chunk.payload.args)
         } else if (chunk.type === 'tool-result') {
           const skill = activations.get(chunk.payload.toolCallId)
           if (skill && !chunk.payload.isError && typeof chunk.payload.result === 'string' && !chunk.payload.result.startsWith('Skill \"')) await ctx.onSkillActivated?.(chunk.payload.toolCallId, { id: skill.id, name: skill.name })
@@ -327,13 +379,14 @@ export class MastraEngine implements AgentEngine {
     const data = {
       task: 'Choose your participation action; do not write the public reply.',
       currentEmployeeId: context.agent.id,
-      currentTaskCapabilities: { browser: context.browserAvailable === true && isBrowserCapableAgent(context.agent) && !context.work?.organization },
+      currentChatCapabilities: { tools: createBoundSkillOperations(context).map(operation => operation.name) },
+      currentTaskCapabilities: { browser: context.browserAvailable === true && isBrowserCapableAgent(context.agent) && !context.work?.organization, files: context.agent.active && !context.work?.organization, commands: context.agent.active && !context.work?.organization && context.agent.allowCommands && context.agent.executionPermission !== 'read-only', executionPermission: context.agent.executionPermission ?? 'legacy-command-approval' },
       originalUserRequestId: source.id,
       ...(context.continuation ? { continuation: context.continuation } : {}),
       originalMentions: source.mentionIds ?? [],
       currentTurn: { id: turn.id ?? null, rootMessageId: source.id, rootSequence: source.sequence, rootCreatedAt: source.createdAt, ownCompletedMessageIds: turn.current.filter(message => message.senderType === 'agent' && message.senderId === context.agent.id).map(message => message.id) },
       participation: context.participation ? { isFirstDecision: context.participation.isFirstDecision, hasRespondedInTurn: context.participation.hasRespondedInTurn, triggerEventType: context.participation.triggerEventType, eventMessageId: context.participation.eventMessageId, sourceEventIds: context.participation.sourceEventIds } : undefined,
-      members: members.map(member => ({ id: member.id, name: member.name, role: member.role, skills: context.resources.filter(resource => member.id === context.agent.id && member.skillIds.includes(resource.id)).slice(0, 20).map(resource => ({ name: resource.name, description: resource.description.slice(0, 240) })) })),
+      members: members.map(member => ({ id: member.id, name: member.name, role: member.role, skills: context.resources.filter(resource => resource.kind === 'skill' && member.id === context.agent.id && member.skillIds.includes(resource.id)).map(resource => ({ name: resource.name, description: resource.description.slice(0, 240) })) })),
       contributions: context.contributions ?? [],
       workItems: context.workItems ?? [],
       // Keep earlier social replies and task instructions visibly outside this turn.
@@ -429,6 +482,7 @@ export class MastraEngine implements AgentEngine {
           continue
         }
         if (!candidates) throw new Error('记忆候选解析未完成')
+      await this.options.observeMemoryCandidates?.(structuredClone({ runId: context.runId, input: data, candidates }))
         // Invalid evidence is a hard rejection, never a protocol repair.
         return extraction.validate(candidates)
       }
@@ -465,13 +519,14 @@ export class MastraEngine implements AgentEngine {
     await context.onModelCallStarted?.(callId, phase, thinking)
   }
 
-  private async consumeText(output: Awaited<ReturnType<Agent['stream']>>, signal: AbortSignal, onUsage?: EngineContext['onUsage'], usage = new UsageRecorder(), callId?: string, onModelCallUsage?: EngineContext['onModelCallUsage']) {
+  private async consumeText(output: Awaited<ReturnType<Agent['stream']>>, signal: AbortSignal, onUsage?: EngineContext['onUsage'], usage = new UsageRecorder(), callId?: string | (() => string | undefined), onModelCallUsage?: EngineContext['onModelCallUsage']) {
     let text = ''
     try {
       for await (const chunk of output.fullStream) {
         if (chunk.type === 'step-finish') {
           const raw = usage.add(chunk.payload.output.usage)
-          if (callId) await onModelCallUsage?.(callId, raw)
+          const actualCallId = typeof callId === 'function' ? callId() : callId
+          if (actualCallId) await onModelCallUsage?.(actualCallId, raw)
           await usage.report(onUsage); check(signal)
         }
         check(signal)

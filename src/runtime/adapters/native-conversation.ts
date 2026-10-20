@@ -1,4 +1,11 @@
 /*
+ * [OUTPUT]: 本机反思共用保存前事实复核并累加两个阶段已返回的用量；第二阶段不提供产品工具，原生配置/实际内部调用数沿本机运行时。
+ * [OUTPUT]: 本机/API行为共用真实说话人ID与笔记引文装配，来源说明不混入用户引用。
+ * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: 原生后台行为共享可用只读检索工具；原生配置保持。
+ * [OUTPUT]: 原生人格反思共享完整来源日期/会话与说话人输入。
+ * [OUTPUT]: 原生连续聊天静态指纹包括能力开关、动态心境只入当轮数据；独立行为不续用公开聊天线程。
+ * [OUTPUT]: 2026-10-19应用业务协议：原生bobo沿同一应用指南与产品工具，目录/回执只读。
  * [OUTPUT]: 独立网页检索工具在 CLI 桥标记只读，实际执行仍核验员工和服务权限。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 明确cwd沿员工目录授权或既有原生权限进入进程，改变cwd使旧会话不可续用；未配置BOAI目录策略不虚称隔离。
@@ -21,8 +28,13 @@
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import type { ModelUsage } from '../../shared/domain'
+import { behaviorModelContext, needsReflectionReview, reflectionReviewInstructions, reflectionReviewPrompt } from '../modules/employees/behavior-context'
 import { hasKnowledge, knowledgeInstructions } from '../modules/resources/knowledge-tools'
 import { searchSelectionInstructions } from '../modules/sources/search-selection'
+import { stateToolInstructions } from '../modules/agent-state/state-tools'
+import { boundSkillInstructions } from '../modules/resources/bound-skill-tools'
+import { applicationInstructions, createApplicationTools } from '../modules/application/application-tools'
 import { catalogManagementInstructions } from '../modules/resources/catalog-commands'
 import { recoverNativeProcesses } from './native-process-guard'
 import type { EngineContext } from '../contracts'
@@ -46,6 +58,32 @@ export abstract class NativeConversationEngine {
   async recover(dataPath: string) { await recoverNativeProcesses(dataPath,this.runtime); return this.sessions.recover(dataPath) }
   protected abstract conversation(context: EngineContext, input: NativeConversationInput): Promise<{ text: string }>
   protected sourceFingerprint(_context: EngineContext): Promise<string | undefined> { return Promise.resolve(undefined) }
+  async runBehavior(context: EngineContext, input: { instruction: string; maxModelCalls: number }) {
+    const { agentBehaviorResultSchema } = await import('../../shared/domain/agent-profile')
+    const { z } = await import('zod')
+    const { parseJson } = await import('../modules/employees/phase-protocol')
+    const source = await this.sourceFingerprint(context)
+    if (source) context = { ...context, nativeSourceFingerprint: source }
+    const { createWebSearchOperations } = await import('./mastra/web-search-tools')
+    const tools = [...createApplicationTools(context), ...createWebSearchOperations(context)].map(tool => ({ name: tool.name, description: tool.description, inputSchema: { ...z.toJSONSchema(tool.schema, { io: 'input' }), type: 'object' }, execute: async (input: unknown) => tool.execute(input) }))
+    const behaviorContext = behaviorModelContext(context)
+    const instructions = `${context.bootstrap?.instructions ?? context.agent.instructions}\n\n${context.bootstrap?.dynamicInstructions ?? ''}\n\nThis is an enabled employee behavior, not an owner message. ${input.instruction}\n\n${behaviorContext.instructions}\nReturn only JSON matching ${JSON.stringify(z.toJSONSchema(agentBehaviorResultSchema))}. Only supplied message IDs are valid evidence. Native configuration and permissions remain in force. Do not act outside the configured behavior. Choose skip when there is no useful update. A draft is not a sent message.`
+    let draftUsage: ModelUsage = {}
+    const draftContext: EngineContext = { ...context, onUsage: async usage => { draftUsage = { ...usage }; await context.onUsage?.(usage) } }
+    const result = await this.conversation(draftContext, { instructions, nativeInstructions: instructions, prompt: behaviorContext.prompt, images: [], tools,
+      cancelProducts: () => {}, onSession: async () => {}, onSubmitted: async () => {} })
+    const draft = agentBehaviorResultSchema.parse(parseJson(result.text))
+    if (!needsReflectionReview(context, draft)) return draft
+    const reviewInstructions = `${instructions}\n\n${reflectionReviewInstructions}`
+    const reviewContext: EngineContext = { ...context, onUsage: async usage => {
+      const cumulative: ModelUsage = { ...draftUsage }
+      for (const field of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (usage[field] !== undefined) cumulative[field] = (draftUsage[field] ?? 0) + usage[field]!
+      await context.onUsage?.(cumulative)
+    } }
+    const reviewed = await this.conversation(reviewContext, { instructions: reviewInstructions, nativeInstructions: reviewInstructions, prompt: reflectionReviewPrompt(behaviorContext.prompt, draft), images: [], tools: [],
+      cancelProducts: () => {}, onSession: async () => {}, onSubmitted: async () => {} })
+    return agentBehaviorResultSchema.parse(parseJson(reviewed.text))
+  }
   async run(context: EngineContext) {
     if (context.workingDirectory) {
       if (!context.runtimeDirectory) throw new Error('当前原生运行不具备目录访问上下文')
@@ -55,7 +93,7 @@ export abstract class NativeConversationEngine {
     }
     const nativeSourceFingerprint = await this.sourceFingerprint(context)
     if (nativeSourceFingerprint) context = { ...context, nativeSourceFingerprint }
-    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
+    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.promptEvidence?.capabilityHash, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
     const fingerprint = fingerprintFor(nativeSourceFingerprint)
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
@@ -64,11 +102,11 @@ export abstract class NativeConversationEngine {
       const published = await context.publishNativeMessage!(content, callId); publicReplies.push(published); return published
     } : undefined }
     const products = createNativeProducts(nativeContext)
-    const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
+    const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['boai_catalog', 'boai_receipt', 'inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
-      const nativeInstructions = [context.manageSkills || context.manageDataSources ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
+      const nativeInstructions = [context.personality ? stateToolInstructions : '', context.application ? applicationInstructions : '', !context.application && (context.manageSkills || context.manageDataSources) ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
         'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
         `Working directory: ${context.runtimeDirectory?.cwd ?? context.workspace?.workPath}. Bound resources (additional to native resources): ${JSON.stringify(context.resources.map(({ id, name, kind, path }) => ({ id, name, kind, path })))}`,
         hasKnowledge(context) ? knowledgeInstructions : '',
@@ -77,11 +115,12 @@ export abstract class NativeConversationEngine {
       ].join('\n\n')
       const instructions = [nativeInstructions,
         'Use publish_artifact to deliver an existing file as a real chat attachment. A successful receipt proves publication. Native file creation alone does not register a BOAI artifact. Dependency files include nativePath for your native read tools; logicalPath is for legacy BOAI tools. Preserve colleague file ownership and cite a delivered dependency artifact ID when reporting its verified result. Use actual employee IDs for BOAI delegation; native subagents are execution resources, not BOAI employees. Ordinary conversation needs no Work or report_work. Work is created only when you explicitly call a product work tool. Never invent tool success or repeat a publication after an unknown receipt.',
+        ...(context.agent.skillIds.length ? [boundSkillInstructions] : []),
         ...(context.nativeBrowserSession ? [`The current BOAI embedded browser is available through ${this.runtime === 'claude' ? 'mcp__boai__browser_tool' : 'browser_tool'}. This tool operates the user-referenced page in the same application and login. External browser skills, shell tools and browser instances cannot address that page. Start with snapshot for actual element refs and screenshot for visual evidence. Read-only access needs no Work; writes claim Work automatically. After an actual write, verify the page result and report_work with that evidence.`] : []),
         ...(context.manageAutomation ? [`For a BOAI employee/group automation request, use ${this.runtime === 'claude' ? 'mcp__boai__manage_automation' : 'manage_automation'} with the actual owner and members. Native cron/scheduling tools do not create BOAI plans or right-panel records. Only a persisted management receipt proves creation.`] : []),
       ].join('\n\n')
       const result = await this.conversation(nativeContext, { instructions, nativeInstructions, threadId, tools: products.tools,
-        prompt: JSON.stringify({ contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
+        prompt: JSON.stringify({ employeeState: context.bootstrap?.dynamicInstructions, contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
         images: context.materialImages?.filter(image => newIds.has(image.messageId)).map(image => image.dataUrl) ?? [],
         cancelProducts: () => productController.abort(new Error('原生插件已退出')),
         onSession: (id, preparedSource) => this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),

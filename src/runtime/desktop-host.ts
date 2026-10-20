@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19应用业务协议：私有同机宿主端口显式转发外观/插件操作，沿原连接生命周期。
  * [OUTPUT]: Completed explicit detach clears host identity/subscriptions before acknowledgement; shutdown cannot drain a closed socket or deliver new calls to an old host.
  * [INPUT]: A private same-profile desktop credential, explicit runtime dispatcher and original browser/secret contracts.
  * [OUTPUT]: Same-machine host calls; old browser leases resolve only after original host drain or identity-bound process-tree exit.
@@ -14,7 +15,7 @@ import type { BrowserHostBridge, BrowserHostMethods } from '../shared/ipc/browse
 import type { AppEvent } from '../shared/ipc'
 import { watchDesktopProcess, type DesktopProcessWatch } from './desktop-process'
 
-type Pending = { type: 'browser-host' | 'secret'; method: string; input: unknown; critical: boolean; resolve(value: unknown): void; reject(error: Error): void }
+type Pending = { type: 'browser-host' | 'secret' | 'application-host'; method: string; input: unknown; critical: boolean; resolve(value: unknown): void; reject(error: Error): void }
 const critical = new Set(['acquire', 'executeSingle', 'drain', 'clearScope', 'disconnect'])
 type Host = { hostId: string; clientId: string; pid: number; watch: DesktopProcessWatch; drained: boolean }
 export class DesktopHostBridge implements BrowserHostBridge {
@@ -142,6 +143,7 @@ export class DesktopHostBridge implements BrowserHostBridge {
     })
   }
   request<K extends keyof BrowserHostMethods>(method: K, input: BrowserHostMethods[K]['input']): Promise<BrowserHostMethods[K]['output']> { return this.call('browser-host', method, input) as Promise<BrowserHostMethods[K]['output']> }
+  application(method: import('../shared/ipc/application-host').ApplicationHostMethod, input: unknown) { return this.call('application-host', method, input) }
   secret(operation: 'get' | 'has' | 'set' | 'delete', key: string, value?: string) { return this.call('secret', operation, { key, ...(value === undefined ? {} : { value }) }) }
   publish(event: AppEvent) { this.server?.publish('app', event) }
   async close() {

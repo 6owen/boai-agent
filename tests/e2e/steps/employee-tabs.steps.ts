@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 人格与行为直接展示配置源文件，文件编辑保持独立Dialog及局部草稿守卫；本批仅维护源码，不运行E2E。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [OUTPUT]: 员工职责定位对齐HEAD已有ARIA名称；保存前配置有效隔离模型来源，六标签尺寸沿现行布局核对，原未保存/键盘/样式断言保持。
@@ -78,26 +79,27 @@ When('切换员工标签时继续编辑或放弃修改', async ({ runtime }) => 
   const role = page.getByRole('textbox', { name: '员工职责', exact: true })
   const original = await role.inputValue()
   await role.fill('尚未保存的职责')
-  await page.getByRole('tab', { name: '系统文件', exact: true }).click()
+  await page.getByRole('tab', { name: '人格与行为', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()
   await expect(page.getByRole('tab', { name: '配置', exact: true, includeHidden: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
   await expect(role).toHaveValue('尚未保存的职责')
-  await page.getByRole('tab', { name: '系统文件', exact: true }).click()
+  await page.getByRole('tab', { name: '人格与行为', exact: true }).click()
   await page.getByRole('button', { name: '退出', exact: true }).click()
-  await expect(page.getByRole('tabpanel', { name: '系统文件', exact: true })).toBeVisible()
+  await expect(page.getByRole('tabpanel', { name: '人格与行为', exact: true })).toBeVisible()
   await expect(page.getByRole('tabpanel')).toHaveCount(1)
   await page.getByRole('tab', { name: '配置', exact: true }).click()
   await expect(role).toHaveValue(original)
 
   // Unsaved system-file drafts must also be unmounted without losing the chosen tab.
-  await page.getByRole('tab', { name: '系统文件', exact: true }).click()
+  await page.getByRole('tab', { name: '人格与行为', exact: true }).click()
   await page.getByRole('button', { name: /SOUL.md/ }).click()
   const content = page.getByRole('textbox', { name: 'SOUL.md 内容', exact: true })
   const savedContent = await content.inputValue()
   await content.fill('这份文件草稿不应该保存')
-  await page.getByRole('tab', { name: '工作区', exact: true }).click()
+  await page.getByRole('button', { name: '关闭配置源文件 SOUL.md', exact: true }).click()
   await page.getByRole('button', { name: '退出', exact: true }).click()
+  await page.getByRole('tab', { name: '工作区', exact: true }).click()
   await expect(page.getByRole('tabpanel', { name: '工作区', exact: true })).toContainText('独立工作区')
   expect((await page.evaluate(() => window.boai.request('readAgentFile', { agentId: 'researcher', name: 'SOUL.md' }))).content).toBe(savedContent)
 })
@@ -150,7 +152,7 @@ Then('会话侧栏使用相同标签样式且深色窄窗口完整显示', async
   await expect(page.locator('html')).toHaveClass(/dark/)
   const panel = page.locator('.detail-panel')
   await expect.poll(() => panel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
-  for (const name of ['配置', '系统文件', '工作区', '记忆', '执行详情', '渠道']) await expect(list.getByRole('tab', { name, exact: true })).toBeInViewport()
+  for (const name of ['配置', '人格与行为', '工作区', '记忆', '执行详情', '渠道']) await expect(list.getByRole('tab', { name, exact: true })).toBeInViewport()
   await page.screenshot({ path: 'test-results/employee-tabs-dark.png', animations: 'disabled' })
   expect(runtime.errors).toEqual([])
 })

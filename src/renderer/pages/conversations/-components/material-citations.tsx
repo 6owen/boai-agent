@@ -1,17 +1,21 @@
 /*
+ * [OUTPUT]: 实际对象链接携消息员工/会话作用域，无法确定员工时不猜测私人引用范围。
  * [OUTPUT]: 已发布知识引用按宿主实际读取身份打开原全局预览；明确重开更新定位，失效不跳到新内容。
+ * [OUTPUT]: 普通网页链接复用MessageLink悬停预览和系统浏览器入口；未核验的本机资料引用仍为文本。
  * [INPUT]: 公开消息或宿主已核对成果正文、各自真实材料来源及当前会话材料回执。
  * [OUTPUT]: 仅为身份/有效授权版本/hash/行范围均可核对的材料引用提供原文定位按钮；同hash显式恢复保留原来源定位，授权变更不继承；其余引用保留纯文本。
  * [POS]: 聊天消息内可信材料来源展示；不根据文件名或模型声明猜测读取权限。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Fragment, type ReactNode } from 'react'
+import { parseReferenceUri } from '@shared/domain/references'
 import { matchKnowledgeCitation, type KnowledgeCitationInput, type KnowledgeReadRef } from '@shared/domain/knowledge'
 import type { ConversationDetail, Message } from '@shared/domain'
 import { isMaterialReadRevisionValid, type ConversationMaterial } from '@shared/domain/materials'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/common/markdown'
 import { materialDisplayName } from './material-draft'
+import { MessageLink } from './message-link'
 
 type MaterialMarkdownProps = { onKnowledgePreview?(target: KnowledgeCitationInput, reference: KnowledgeReadRef, agentId: string): void; detail: ConversationDetail; onPreview(material: ConversationMaterial, line?: number): void } & ({ message: Message; source?: never } | { source: Pick<Message, 'content' | 'materialSources'>; message?: never })
 export function MaterialMarkdown({ message, source, detail, onPreview, onKnowledgePreview }: MaterialMarkdownProps) {
@@ -41,7 +45,7 @@ export function MaterialMarkdown({ message, source, detail, onPreview, onKnowled
       const citation = message?.status === 'completed' && message.senderType === 'agent' ? matchKnowledgeCitation(message.knowledgeSources, href) : undefined
       return citation && message && onKnowledgePreview
         ? <Button variant="link" size="content" className="inline text-inherit" aria-label={`查看知识资料 ${citation.reference.name} 第 ${citation.line} 行`} onClick={() => onKnowledgePreview({ messageId: message.id, referenceIndex: citation.referenceIndex, line: citation.line }, citation.reference, message.senderId)}>{children}</Button>
-        : <span title={href} className="markdown-link">{render(children)}</span>
+        : <MessageLink href={href} referenceScope={href && parseReferenceUri(href) && detail.conversation ? message?.senderType === 'agent' ? { agentId: message.senderId, conversationId: detail.conversation.id } : detail.conversation.agentIds.length === 1 ? { agentId: detail.conversation.agentIds[0]!, conversationId: detail.conversation.id } : undefined : undefined}>{render(children)}</MessageLink>
     },
   }}>{published.content}</Markdown>
 }

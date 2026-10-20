@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-19应用业务协议：外观patch校验复用shared真源，原设置持久化保持。
  * [OUTPUT]: 插件停用只回退有效配色，不覆盖已保存主题选择；显式选择停用配色拒绝。
  * [INPUT]: 外观偏好、图片文件与系统明暗状态。
  * [OUTPUT]: 玻璃/遮罩/0–32px模糊独立校验并持久化；旧配置保持原玻璃、40%遮罩及8px模糊。
@@ -9,18 +10,8 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { z } from 'zod'
+import { appearancePatchSchema as patchSchema } from '../shared/appearance/schema'
 import { appearanceDefaults, applyAppearancePatch, maxBackgroundBlur, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '../shared/appearance'
-const color = z.string().regex(/^#[0-9a-f]{6}$/i).nullable().optional()
-const colors = z.object({ accent: color, background: color, foreground: color }).strict()
-const patchSchema = z.object({
- mode: z.enum(['light','dark','system']).optional(),
- themeIds: z.object({ light: z.string().max(100).optional(), dark: z.string().max(100).optional() }).strict().optional(),
- background: z.object({ imageOpacity: z.number().min(0).max(1).optional(), glassOpacity: z.number().min(0).max(1).nullable().optional(), overlayOpacity: z.number().min(0).max(1).optional(), blurRadius: z.number().int().min(0).max(maxBackgroundBlur).optional() }).strict().optional(),
- fontFamily: z.enum(['system','geist']).optional(),
- zoomFactor: z.number().min(0.75).max(1.5).optional(),
- customColors: z.object({ light: colors.optional(), dark: colors.optional() }).strict().optional(),
-}).strict()
 const validAsset = /^[0-9a-f-]{36}\.(png|jpg|webp)$/
 export function imageFormat(bytes: Buffer): 'png' | 'jpg' | 'webp' { if(bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'png'; if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'jpg'; if(bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP')return 'webp'; throw new Error('请选择 PNG、JPEG 或 WebP 图片。') }
 /** Inspect dimensions before invoking the native decoder, to reject decompression bombs. */

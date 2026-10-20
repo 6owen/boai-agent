@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面/详情隐藏时收起菜单与子菜单Portal并清除展开状态，普通退出动画保持。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: dropdown-menu 基础组件；主菜单/子菜单统一 6px 面板留白、普通/单选/多选/子菜单项统一 12px 横向和 8px 纵向内边距，标签/缩进/勾选标记/分割线同步对齐；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: components/ui 的 dropdown-menu 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -8,12 +9,16 @@ import * as React from "react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import { cn } from "cn"
 import { ChevronRightIcon, CheckIcon } from "@/components/icons"
+import { useFloatingLayerActions, useFloatingLayerActive } from './floating-layer-scope'
 
-function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
-  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+function DropdownMenu({ actionsRef, ...props }: MenuPrimitive.Root.Props) {
+  const actions = useFloatingLayerActions(actionsRef)
+  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} actionsRef={actions} />
 }
 
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
+  const active = useFloatingLayerActive()
+  if (!active) return null
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
@@ -33,6 +38,8 @@ function DropdownMenuContent({
     MenuPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   >) {
+  const active = useFloatingLayerActive()
+  if (!active) return null
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner

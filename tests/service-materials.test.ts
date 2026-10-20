@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 图片工具读取真实已发布成果及其材料父来源，未登记路径/外改拒绝并保留原件。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: Composer固定文件引用在API/原生输入共用来源核验，失效或跨会话引用零受理。
  * [INPUT]: 真实 AppService/SQLite/材料原件、可控 FakeEngine 与原生任务文件工具。
@@ -659,4 +660,42 @@ it('references an employee-delivered file through its fixed managed copy', async
   expect(projected).toContain(JSON.stringify(artifact.id))
   expect(projected).toContain(`"logicalPath":"shared:/artifacts/${basename(artifact.path)}"`)
   expect(projected).not.toContain('nativePath')
+})
+
+it('reads actual published image bytes with inherited material sources and refuses unregistered or changed artifacts', async () => {
+  const { service, engine, root, direct } = await fixture()
+  const { material } = await prepare(service, root, direct, '本次图像处理来源')
+  engine.responseKind = 'task'
+  const invocation = { requestContext: new RequestContext(), observe: noopObserve }
+  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64')
+  let published: ConversationDetail['artifacts'][number] | undefined, read = false, rejected = false
+  engine.handler = async context => {
+    const runtime = await createTaskRuntime(context)
+    try {
+      if (!published) {
+        await writeFile(join(context.workspace!.runPath, 'sample.png'), bytes)
+        await runtime.tools.publish_artifact.execute!({ path: `self:/runs/${context.runId}/sample.png` }, invocation)
+        published = (await detail(service, direct)).artifacts.find(file => file.runId === context.runId)!
+        const output = await runtime.tools.read_image.execute!({ path: `shared:/artifacts/${basename(published.path)}` }, invocation)
+        expect(output).toMatchObject({ image: { mimeType: 'image/png', data: bytes.toString('base64') }, contentHash: published.contentHash })
+        read = true
+        await writeFile(join(context.workspace!.sharedPath, 'artifacts', 'unregistered.png'), bytes)
+        await expect(runtime.tools.read_image.execute!({ path: 'shared:/artifacts/unregistered.png' }, invocation)).rejects.toThrow('not authorized')
+        await context.onDelta('已交付图像。')
+        await context.onWorkOutcome!({ disposition: 'delivered', summary: '已交付图像', evidence: [{ kind: 'artifact', reference: published.id! }] })
+      } else {
+        await expect(runtime.tools.read_image.execute!({ path: `shared:/artifacts/${basename(published.path)}` }, invocation)).rejects.toThrow('not authorized')
+        rejected = true
+        await context.onDelta('来源已改变，未读取。')
+        await context.onWorkOutcome!({ disposition: 'blocked', summary: '原图外改，未读取。' })
+      }
+    } finally { await runtime.dispose() }
+  }
+  await send(service, direct, request(direct, material))
+  expect(read).toBe(true)
+  expect(published?.materialSources).toEqual([expect.objectContaining({ id: material.id })])
+  await writeFile(published!.path, Buffer.concat([bytes, Buffer.from('external edit')]))
+  await send(service, direct, request(direct, undefined, { content: '读取上一张图，不做修改。' }))
+  expect(rejected).toBe(true)
+  expect(await readFile(published!.path)).toEqual(Buffer.concat([bytes, Buffer.from('external edit')]))
 })

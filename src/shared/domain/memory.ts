@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工、会话和消息的稳定身份。
- * [OUTPUT]: 统一记忆及版本化实际来源召回：条目版本、获知授权指纹和宿主输入消息；旧快照保守失效。
+ * [OUTPUT]: 统一记忆及版本化来源召回；宿主日记保留原经历日期和活动身份，创建时间仍为真实写入时间。
  * [POS]: shared/domain/memory.ts；纯跨进程合同，不含存储或模型执行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -43,6 +43,8 @@ export interface MemoryEntry {
   expiresAt?: string
   pinned?: boolean
   supersedes?: string[]
+  /** Host-assigned reflection provenance; absent on ordinary notes and model candidates. */
+  diary?: { date: string; behaviorRunId: string }
 }
 export interface MemoryCursor { createdAt: string; id: string }
 export interface MemoryQuery {

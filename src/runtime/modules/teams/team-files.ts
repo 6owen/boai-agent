@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模块化员工预设冻结包含workspace/prompts目录；团队/组织沿原归属hash和原子发布。
  * [INPUT]: 冻结创建操作的文件子集、宿主生成路径、工作区格式与每文件日志提交回调。
  * [OUTPUT]: 团队与 bobo 组织复用同一归属/hash、写入前内容复核、提交前目录完整性、暂存移动和仅清理本操作未发布文件。
  * [POS]: 团队文件一致性边界；调用者提供宿主生命周期互斥，不声称跨介质事务。
@@ -21,7 +22,7 @@ export function teamFileContents(operation: TeamFileOperation, homes: WorkspaceS
     const root = `agents/${agent.id}`
     for (const [name, content] of Object.entries(homes.initialFiles(agent, operation.createdAt))) files[`${root}/${name}`] = content
     files[`${root}/.team-creation.json`] = owner
-    directories.push(root, ...['workspace', 'state', 'workspace/memory', 'workspace/skills', 'workspace/private', 'workspace/sessions'].map(name => `${root}/${name}`))
+    directories.push(root, ...['workspace', 'state', 'workspace/prompts', 'workspace/memory', 'workspace/skills', 'workspace/private', 'workspace/sessions'].map(name => `${root}/${name}`))
   }
   if (operation.conversationId) { const root = `workspaces/${operation.conversationId}`; directories.push(root); files[`${root}/.team-creation.json`] = owner }
   return { files, directories }

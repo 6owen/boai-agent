@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 自拍保存/新肖像/私聊原图导出复用实际任务字节、独占文件写入和原发布；私人相册由宿主核权。
+ * [OUTPUT]: 生图/编辑用独立模型端口，引用逐项核权，新文件独占写入并沿原成果发布；同运行同路径不重放生成。
+ * [OUTPUT]: 原命令租约的脚本工具库作为精确只读内部输入；批量工具调用保持原运行/目录许可与退出回收。
+ * [OUTPUT]: read_image可一次读取有序多图，总8MiB/最多12张，逐项及返回前复核授权以减少视频工具轮数。
+ * [OUTPUT]: read_image沿原文件目录/成果来源读取实际栅格字节并返回模型图片，文本工具和持久媒体摘要保持。
  * [OUTPUT]: request_directory与本机共用工具合同，原文件队列和审批前现存目录核验保持。
  * [OUTPUT]: 明确业务cwd作为相对文件和命令位置；读写逐次授权，命令目录与操作一次审批，不改变受管存储。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
@@ -28,7 +33,8 @@
  */
 import { prepareEnvironment, assertEnvironmentScope } from '../../modules/workspaces/environment-plan'
 import { modelWorkOutcomeSchema, workDelegationSchema, workWaitSchema } from '../../modules/collaboration/work-protocol'
-import { readdir, stat } from 'node:fs/promises'
+import { readdir, realpath, stat } from 'node:fs/promises'
+import { materialImageMimeType, readMaterialSource } from '../../modules/materials/material-files'
 import path from 'node:path'
 import { createTool } from '@mastra/core/tools'
 import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
@@ -53,9 +59,14 @@ import { assertDirectoryTargetCurrent, type DirectoryTarget } from '../../module
 import { createSourceTools } from './source-tools'
 import { createBrowserTool } from './browser-tool'
 import { createBoboOrganizationTools } from './bobo-tools'
+import { imageToolRequestSchema, type ImageBytes } from '../../modules/media/image-service'
+import { selfieRequestSchema } from '../../modules/media/selfie-service'
 import { FileReadBaselines, fileContentHash, readFilePage, replaceFileText, MAX_FILE_PAGE_CHARACTERS } from '../../modules/workspaces/file-editing'
 const MAX_TOOL_OUTPUT = 48_000
 const MAX_PARAGRAPH_COUNTS = 100
+const MAX_IMAGE_INPUT_BYTES = 8 * 1024 * 1024
+const MAX_IMAGE_INPUT_COUNT = 12
+interface TaskImage { path: string; contentHash: string; sizeBytes: number; image: { data: string; mimeType: string } }
 function fileTextMetrics(content: string) {
   const count = (text: string) => Array.from(text.replace(/\s/gu, '')).length
   const paragraphs = content.split(/\r?\n(?:[ \t]*\r?\n)+/u).filter(part => part.trim())
@@ -99,6 +110,8 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
   const identities: { id: string; name: string; path: string }[] = []
   const artifactIds = new Set<string>()
   const collaborationIds = new Set(ctx.committedCollaborationIds ?? [])
+  const imageCalls = new Map<string, Promise<unknown>>()
+  const attemptedImageTargets = new Set<string>()
   let fileQueue: Promise<unknown> = Promise.resolve(), filesClosing = false
   const fileOperation = <T>(operation: () => Promise<T>): Promise<T> => {
     const actual = fileQueue.then(async () => {
@@ -113,6 +126,34 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     return actual
   }
   const publicationSchema = z.object({ path: z.string(), name: z.string().max(150).optional(), ...(ctx.artifactRevision ? { revisionRequestId: z.literal(ctx.artifactRevision.id).optional() } : {}) }).strict()
+  const readSelfieInput = async (file: string) => {
+    const location = await locationFor(file), target = path.resolve(location.root, location.relative)
+    await verifyLocation(location, 'read')
+    const actual = await ctx.readTaskBytes?.(target) ?? await readMaterialSource(await workspaceTarget(await realpath(location.root), location.relative), signal, ctx.runId)
+    await verifyLocation(location, 'read')
+    const bytes = Buffer.from(actual.bytes), mimeType = materialImageMimeType(bytes)
+    if (bytes.length > MAX_IMAGE_INPUT_BYTES || !mimeType || !['image/png', 'image/jpeg', 'image/webp'].includes(mimeType)) throw new Error('形象参考必须为 PNG/JPEG/WebP，最多 8 MiB')
+    return { bytes, mimeType }
+  }
+  const prepareSelfieOutput = async (file: string, generating: boolean) => {
+    const location = await locationFor(file, true), target = path.resolve(location.root, location.relative)
+    await verifyLocation(location, 'write')
+    if (!/\.(png|jpe?g|webp)$/i.test(file)) throw new Error('请使用 PNG、JPEG 或 WebP 文件名')
+    try { await stat(await workspaceTarget(location.root, location.relative)); throw new Error('输出文件已存在，请使用新文件名') }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+    await authorizeExecution(ctx, { kind: 'file', description: `${generating ? '生成肖像' : '导出形象原图'}并写入 ${file}` })
+    await ctx.beforeEffect?.(); check(signal)
+    if (generating) { if (attemptedImageTargets.has(target)) throw new Error('此文件已有生图尝试，未重复请求提供方'); attemptedImageTargets.add(target) }
+    const outputFormat = /\.webp$/i.test(file) ? 'webp' as const : /\.jpe?g$/i.test(file) ? 'jpeg' as const : undefined
+    return { outputFormat, write: async (image: ImageBytes & { contentHash: string; verify(): Promise<void> }) => {
+      const expected = outputFormat === 'webp' ? 'image/webp' : outputFormat === 'jpeg' ? 'image/jpeg' : 'image/png'
+      if (image.mimeType !== expected) throw new Error('图片实际格式与文件扩展名不同，未写入或自动重试')
+      await image.verify()
+      await writeWorkspaceFile(location.root, location.relative, image.bytes, null, signal, async () => { await verifyLocation(location, 'write'); await image.verify() })
+      await ctx.afterEffect?.()
+      return { path: file, bytes: image.bytes.byteLength, contentHash: image.contentHash, mimeType: image.mimeType, published: false }
+    } }
+  }
   let waiting = !!ctx.pendingWorkWait
   const outcomeSchema = () => modelWorkOutcomeSchema({ organization: !!ctx.work?.organization, waiting, artifactIds: [...artifactIds], collaborationIds: [...collaborationIds] })
   try {
@@ -128,6 +169,73 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
     const tools = {
+      ...(ctx.selfies ? {
+        save_selfie: createTool({ id: 'save_selfie', description: 'Save an ACTUAL user-approved image as your persistent appearance reference. Owner private chat only; do not auto-save a new image or treat your own approval as the user\'s. The host records the current owner message as approval provenance. path is an authorized existing PNG/JPEG/WebP, max 8 MiB. Duplicate bytes are not added again. No external send.', inputSchema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict(), execute: input => fileOperation(async () => {
+          const image = await readSelfieInput(input.path)
+          await authorizeExecution(ctx, { kind: 'configuration', description: '保存用户认可的形象参考' })
+          await ctx.beforeEffect?.(); const result = await ctx.selfies!.save(image, input.label); await ctx.afterEffect?.(); return result
+        }) }),
+        export_selfie: createTool({ id: 'export_selfie', description: 'Copy one saved appearance-reference ORIGINAL into a new task file, only for the owner in your private chat. Does not generate a new portrait or publish it. Use list_selfies for the actual ID/type, then publish_artifact on the saved result. Group/channel export is denied by the host.', inputSchema: z.object({ id: z.string().regex(/^[a-f0-9]{64}$/), path: z.string().min(1) }).strict(), execute: input => fileOperation(async () => {
+          const image = await ctx.selfies!.export(input.id), output = await prepareSelfieOutput(input.path, false)
+          return { ...await output.write(image), original: true }
+        }) }),
+        take_selfie: createTool({ id: 'take_selfie', description: 'Generate a NEW digital-character portrait with your own saved appearance reference, selected privately by the host. Pass every actually established SOUL appearance detail in appearance; without a saved reference or appearance, first ask the owner. prompt describes scene/pose/expression; style defaults photorealistic but respects the user\'s requested style. No automatic album save, no real-world-life claim. path is a NEW image file; publish_artifact is still required. Group chats receive only a fresh result, never an album original.', inputSchema: selfieRequestSchema.extend({ path: z.string().min(1) }).strict(), execute: input => {
+          if (imageCalls.has(input.path)) throw new Error('此输出已有生图尝试，请核对原工具结果；未重复请求')
+          const pending = fileOperation(async () => {
+            const { path: file, ...request } = input, output = await prepareSelfieOutput(file, true)
+            const result = await ctx.selfies!.generate(request, output.outputFormat)
+            return { ...await output.write(result), generated: true, referenceUsed: result.referenceUsed, source: result.source, usage: result.usage }
+          })
+          imageCalls.set(input.path, pending); return pending
+        } }),
+      } : {}),
+      ...(ctx.images ? {
+        inspect_image_generation: createTool({ id: 'inspect_image_generation', description: 'Read the independently configured image provider/model and readiness. Does not generate, test the remote provider, expose credentials or change the chat model.', inputSchema: z.object({}).strict(), execute: async () => { check(signal); return ctx.images!.settings() } }),
+        generate_image: createTool({
+          id: 'generate_image', description: 'Generate ONE image or edit using up to 4 actual reference files with the configured image model. path must be a NEW self:/runs/… or authorized business file. references are original authorized logical/business paths, not URLs. Defaults preserve the configured size; provide size only when requested. Returns actual bytes/hash/source after saving; use publish_artifact to deliver. A provider timeout can have charged remotely: never retry blindly or claim delivery. Each output path is attempted only once in this run. Supported output types PNG/JPEG/WebP; file suffix must match actual result.',
+          inputSchema: imageToolRequestSchema,
+          execute: input => {
+            if (imageCalls.has(input.path)) throw new Error('此输出路径已有生图尝试，请核对原工具结果；未重复请求提供方')
+            const pending = fileOperation(async () => {
+              const { path: file, references: files, ...request } = input
+              const location = await locationFor(file, true), target = path.resolve(location.root, location.relative)
+              await verifyLocation(location, 'write')
+              if (!/\.(png|jpe?g|webp)$/i.test(file)) throw new Error('请使用 PNG、JPEG 或 WebP 文件名')
+              const outputFormat = /\.webp$/i.test(file) ? 'webp' as const : /\.jpe?g$/i.test(file) ? 'jpeg' as const : undefined
+              if (outputFormat === 'jpeg' && request.background === 'transparent') throw new Error('JPEG 不支持透明背景，请使用 PNG 或 WebP')
+              try { await stat(await workspaceTarget(location.root, location.relative)); throw new Error('输出文件已存在，请使用新文件名') }
+              catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+              const images: ImageBytes[] = [], locations: Awaited<ReturnType<typeof locationFor>>[] = []
+              let bytesRead = 0
+              for (const name of files) {
+                const source = await locationFor(name), sourcePath = path.resolve(source.root, source.relative)
+                await verifyLocation(source, 'read')
+                const verified = await ctx.readTaskBytes?.(sourcePath)
+                const actual = verified ?? await readMaterialSource(await workspaceTarget(await realpath(source.root), source.relative), signal, ctx.runId)
+                await verifyLocation(source, 'read')
+                const bytes = Buffer.from(actual.bytes), mimeType = materialImageMimeType(bytes)
+                bytesRead += bytes.length
+                if (!mimeType || !['image/png', 'image/jpeg', 'image/webp'].includes(mimeType) || bytesRead > MAX_IMAGE_INPUT_BYTES) throw new Error('编辑参考必须为 PNG/JPEG/WebP，合计最多 8 MiB')
+                images.push({ bytes, mimeType }); locations.push(source)
+              }
+              await authorizeExecution(ctx, { kind: 'file', description: `生成图片并写入 ${file}` })
+              await ctx.beforeEffect?.(); check(signal)
+              for (const source of locations) await verifyLocation(source, 'read')
+              if (attemptedImageTargets.has(target)) throw new Error('此文件的生图请求已尝试，未重复请求提供方')
+              attemptedImageTargets.add(target)
+              const result = await ctx.images!.generate({ ...request, ...(outputFormat ? { outputFormat } : {}) }, images)
+              check(signal)
+              for (const source of locations) await verifyLocation(source, 'read')
+              const expected = /\.png$/i.test(file) ? 'image/png' : /\.webp$/i.test(file) ? 'image/webp' : 'image/jpeg'
+              if (result.mimeType !== expected) throw new Error(`提供方返回 ${result.mimeType}，与文件扩展名不同；未写入或自动重试`)
+              await writeWorkspaceFile(location.root, location.relative, result.bytes, null, signal, async () => { await verifyLocation(location, 'write'); await ctx.images!.verify(result.source) })
+              await ctx.afterEffect?.()
+              return { path: file, bytes: result.bytes.byteLength, contentHash: result.contentHash, mimeType: result.mimeType, source: result.source, usage: result.usage, published: false }
+            })
+            imageCalls.set(input.path, pending); return pending
+          },
+        }),
+      } : {}),
       ...createSourceTools(ctx),
       ...(directoryRequest ? { request_directory: createTool({
         id: directoryRequest.name, description: directoryRequest.description + ' For a command needing new directories, use execute_command.directories to combine its approvals.',
@@ -168,6 +276,39 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           if (apiContext) fileBaselines.read(target, page)
           return { path: file, ...page, ...(apiContext ? { textMetrics: fileTextMetrics(page.content) } : {}) }
         }),
+      }),
+      read_image: createTool({
+        id: 'read_image',
+        description: (businessPaths ? 'Authorized absolute business files are supported. ' : '') + `Read actual raster images from self:/work/…, self:/runs/…, or an authorized shared:/ artifact. path accepts ONE string or an ordered array of up to ${MAX_IMAGE_INPUT_COUNT} paths: batch video frames/screenshots in one call instead of reading each frame in a separate step. With the default command workspace, ./file.jpg from execute_command means self:/runs/${ctx.runId}/file.jpg here; do not guess another run ID. An explicitly selected business cwd retains its relative-path behavior. Returns actual images to the configured model with individual path/hash/MIME; requires a model that accepts image input. Same current employee/session/source permissions as read_file, checked separately for every file. PNG, JPEG, GIF, WebP, BMP and AVIF recognized from bytes; SVG/HTML are not rendered. At most 8 MiB TOTAL per call: prepare separate smaller previews for larger inputs, preserving originals. No partial batch on error. Does not capture screens or publish files. Never infer images from filenames or claim vision after a provider rejection.`,
+        inputSchema: z.object({ path: z.union([z.string().min(1), z.array(z.string().min(1)).min(1).max(MAX_IMAGE_INPUT_COUNT)]) }).strict(),
+        execute: ({ path: file }) => fileOperation(async () => {
+          const files = Array.isArray(file) ? file : [file], images: TaskImage[] = []
+          const locations: Awaited<ReturnType<typeof locationFor>>[] = []
+          let totalBytes = 0
+          for (const name of files) {
+            const location = await locationFor(name), target = path.resolve(location.root, location.relative)
+            await verifyLocation(location, 'read')
+            const verified = await ctx.readTaskBytes?.(target)
+            const actual = verified ?? await readMaterialSource(await workspaceTarget(await realpath(location.root), location.relative), signal, ctx.runId)
+            if (!verified || location.business) await verifyLocation(location, 'read')
+            check(signal)
+            const bytes = Buffer.from(actual.bytes)
+            totalBytes += bytes.length
+            if (totalBytes > MAX_IMAGE_INPUT_BYTES) throw new Error('图片模型输入每次合计最多 8 MiB，请先生成独立缩略图并保留原件')
+            const mimeType = materialImageMimeType(bytes)
+            if (!mimeType) throw new Error('文件不是可读取的栅格图片；不执行 SVG、HTML 或其他文件内容')
+            images.push({ path: name, contentHash: actual.contentHash, sizeBytes: bytes.length, image: { data: bytes.toString('base64'), mimeType } })
+            locations.push(location)
+          }
+          // A later file may wait on access. Recheck earlier sources before exposing the batch.
+          if (files.length > 1) for (const location of locations) await verifyLocation(location, 'read')
+          check(signal)
+          return Array.isArray(file) ? { images } : images[0]!
+        }),
+        toModelOutput: output => {
+          const result = output as TaskImage | { images: TaskImage[] }, images = 'images' in result ? result.images : [result]
+          return { type: 'content' as const, value: images.flatMap(image => [{ type: 'text' as const, text: JSON.stringify({ path: image.path, contentHash: image.contentHash, sizeBytes: image.sizeBytes, mimeType: image.image.mimeType }) }, { type: 'image-data' as const, data: image.image.data, mediaType: image.image.mimeType }]) }
+        },
       }),
       write_file: createTool({
         id: 'write_file', description: (businessPaths ? 'Absolute business paths are supported: granted read-write directories need no repeated file approval. ' : '') + `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. ${apiContext ? 'An existing file must have been fully read in this execution (all read_file pages) or written by this execution, and must be unchanged. Prefer edit_file for a local change. Returns measured textMetrics for these exact written bytes; check explicit user character limits before publish_artifact, never estimate a count.' : 'Use publish_artifact to share a finished result.'} No shared or system-file writes.`,
@@ -325,12 +466,14 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
             if (!approved) return { approved: false, error: 'User declined command. Do not retry or bypass this refusal.' }
             await restrictedPath([scope.root], scope.runPath)
             if (selectedDirectory) await assertDirectoryTargetCurrent(selectedDirectory)
-            const directories = await employeeCommandScope(ctx.agent, { readOnly: [scope.root, scope.sharedPath, ...skillRoots, ...knowledge.map(resource => resource.path)], readWrite: [scope.runPath] }, ctx.directoryAccess?.temporaryGrants, ctx.directoryAccess?.protectedRoots)
-            await ctx.beforeEffect?.(); check(signal)
-            for (const target of targets ?? []) await ctx.directoryAccess!.verifyTarget(target, signal)
             const cli = await ctx.acquireCliEnvironment?.()
             let result: Awaited<ReturnType<typeof executeCommand>>
-            try { result = await executeCommand(command, commandCwd, signal, commandTimeoutMs, directories, cli?.env) }
+            try {
+              const directories = await employeeCommandScope(ctx.agent, { readOnly: [scope.root, scope.sharedPath, ...skillRoots, ...knowledge.map(resource => resource.path), ...(cli?.env.BOAI_CLI_TOOL_CLIENT ? [cli.env.BOAI_CLI_TOOL_CLIENT] : [])], readWrite: [scope.runPath] }, ctx.directoryAccess?.temporaryGrants, ctx.directoryAccess?.protectedRoots)
+              await ctx.beforeEffect?.(); check(signal)
+              for (const target of targets ?? []) await ctx.directoryAccess!.verifyTarget(target, signal)
+              result = await executeCommand(command, commandCwd, signal, commandTimeoutMs, directories, cli?.env)
+            }
             finally { cli?.release() }
             await ctx.afterEffect?.()
             return { approved: true, ...result }

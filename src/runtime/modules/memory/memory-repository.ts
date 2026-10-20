@@ -1,5 +1,7 @@
 /*
- * [OUTPUT]: 资源派生记忆失效可限定当前员工，旧共享资料解绑不清除其他员工独立有效来源。
+ * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
+ * [OUTPUT]: 召回选择与发布共用忘记屏障，同一被纠正消息的其他条目在输入前过滤。
+ * [OUTPUT]: 宿主反思日记保留来源日/活动身份；相同日记文字按日期去重，真实写入时间与原来源链保持。
  * [INPUT]: SQLite 原子记录事务、统一记忆合同及确定性范围/生命周期策略。
  * [OUTPUT]: 召回同事务精确核对实际条目/获知授权/输入来源，旧快照保守代际门禁；无关清空不取消任务，相关忘记/纠正/范围/到期仍失效。
  * [OUTPUT]: 自动纠正与手工编辑共用多级派生失效，启动只修复旧失效来源投影且保留无关记忆；兼容旧命名空间的员工统一记忆、事务版本/回执、忘记屏障、来源失效和维护。
@@ -30,6 +32,9 @@ export interface ExtractionPolicy {
   messageConversationIds?: Record<string, string[]>
   authorizedContexts?: import('../../../shared/domain').MemoryContextRef[]
   attribution?: string
+  /** Host-selected, versioned note/diary parents permit private reflection without invented message IDs. */
+  reflectionSources?: { id: string; version: number }[]
+  diary?: MemoryEntry['diary']
 }
 export function memoryNamespace(query: Pick<MemoryQuery, 'agentId' | 'scope' | 'conversationId'>) {
   if (!query.agentId || query.agentId.length > 200) throw new Error('无效员工范围')
@@ -115,8 +120,18 @@ export class MemoryRepository {
     const value: MemoryForget = { id: randomUUID(), ownerAgentId: entry.ownerAgentId, sourceMessageIds: [...entry.sourceMessageIds], sourceMemoryIds: [entry.id, ...(entry.sourceMemoryIds ?? [])], fingerprint: hash(entry.content), createdAt: stamp() }
     await tx.put({ collection: 'memoryForgets', id: value.id, value })
   }
+  private blockedBy(forgets: MemoryForget[], agentId: string, messages: string[], memories: string[], content?: string) {
+    return forgets.some(item => item.ownerAgentId === agentId && (item.sourceMessageIds.some(id => messages.includes(id)) || item.sourceMemoryIds.some(id => memories.includes(id)) || !!content && !messages.length && item.fingerprint === hash(content)))
+  }
   private async blocked(tx: RecordTransaction, agentId: string, messages: string[], memories: string[], content?: string) {
-    return (await tx.list<MemoryForget>('memoryForgets')).some(item => item.ownerAgentId === agentId && (item.sourceMessageIds.some(id => messages.includes(id)) || item.sourceMemoryIds.some(id => memories.includes(id)) || !!content && !messages.length && item.fingerprint === hash(content)))
+    return this.blockedBy(await tx.list<MemoryForget>('memoryForgets'), agentId, messages, memories, content)
+  }
+  /** Selection must obey the same barrier as publication, including sibling memories of a corrected source. */
+  recallBlockedIds(agentId: string) {
+    return this.store.transaction(async tx => {
+      const forgets = await tx.list<MemoryForget>('memoryForgets')
+      return new Set((await tx.list<MemoryEntry>('memory')).filter(entry => entry.ownerAgentId === agentId && this.blockedBy(forgets, agentId, entry.origin === 'user' ? [] : entry.sourceMessageIds, entry.sourceMemoryIds ?? [], entry.origin === 'user' ? undefined : entry.content)).map(entry => entry.id))
+    })
   }
   private descendants(entries: MemoryEntry[], roots: string[]) {
     const affected = new Set(roots)
@@ -203,16 +218,19 @@ export class MemoryRepository {
       if (policy && view.invalidationEpoch !== policy.expectedInvalidationEpoch) throw new Error('记忆已变更，旧提取结果不能保存')
       const messages = new Set(validMessageIds), resources = new Set(validResourceIds)
       if (!Array.isArray(candidates) || candidates.length > (policy ? MEMORY_MAX_CANDIDATES : 8)) throw new Error('记忆提取超过条目预算')
-      const entries: MemoryEntry[] = [], seen = new Set(view.entries.filter(entry => memoryStatus(entry) === 'active').map(entry => entry.content))
+      if (policy?.diary && (!/^\d{4}-\d{2}-\d{2}$/.test(policy.diary.date) || !policy.diary.behaviorRunId || candidates.length !== 1 || candidates[0]?.kind !== 'experience')) throw new Error('日记缺少有效的宿主日期或活动来源')
+      const entries: MemoryEntry[] = [], seen = new Set(view.entries.filter(entry => memoryStatus(entry) === 'active' && (!policy?.diary || entry.diary?.date === policy.diary.date)).map(entry => entry.content))
       for (const item of candidates) {
-        if (!item || typeof item.content !== 'string' || !item.content.trim() || item.content.length > MEMORY_MAX_CONTENT || !Array.isArray(item.sourceMessageIds) || !item.sourceMessageIds.length || item.sourceMessageIds.some(id => !messages.has(id)) || (item.sourceResourceIds ?? []).some(id => !resources.has(id))) throw new Error('记忆提取包含无效内容或未授权来源')
+        if (!item || typeof item.content !== 'string' || !item.content.trim() || item.content.length > MEMORY_MAX_CONTENT || !Array.isArray(item.sourceMessageIds) || !item.sourceMessageIds.length && !policy?.reflectionSources?.length || item.sourceMessageIds.some(id => !messages.has(id)) || (item.sourceResourceIds ?? []).some(id => !resources.has(id))) throw new Error('记忆提取包含无效内容或未授权来源')
         const content = item.content.trim()
         const replaced = this.descendants(view.entries, (item.supersedes ?? []).map(target => target.id))
-        const parents = [...new Set([...(policy?.sourceMemoryIds ?? []), ...item.sourceMessageIds.flatMap(id => policy?.messageMemoryIds?.[id] ?? [])])].filter(id => !replaced.has(id))
+        const parents = [...new Set([...(policy?.sourceMemoryIds ?? []), ...(policy?.reflectionSources ?? []).map(source => source.id), ...item.sourceMessageIds.flatMap(id => policy?.messageMemoryIds?.[id] ?? [])])].filter(id => !replaced.has(id))
         const parentEntries: MemoryEntry[] = []
         for (const id of parents) {
           const parent = await tx.get<MemoryEntry>('memory', id)
           if (!parent || parent.ownerAgentId !== query.agentId || memoryStatus(parent) !== 'active') throw new Error('派生记忆来源已失效')
+          const expected = policy?.reflectionSources?.find(source => source.id === id)
+          if (expected && expected.version !== parent.version) throw new Error('反思笔记版本已变化')
           parentEntries.push(parent)
         }
         const sourceMessageIds = [...new Set([...item.sourceMessageIds, ...item.sourceMessageIds.flatMap(id => policy?.messageSourceIds?.[id] ?? []), ...parentEntries.flatMap(entry => entry.sourceMessageIds)])]
@@ -249,7 +267,7 @@ export class MemoryRepository {
           version: 1, createdAt: stamp(), updatedAt: stamp(),
           ...(policy ? { schemaVersion: 2 as const, kind: item.kind ?? 'experience', evidence: item.evidence ?? 'claim', useScope: contextRef && useScope !== 'conversation' ? 'context' as const : useScope,
             contextRef, expiresAt: [item.expiresAt, ...parentEntries.map(entry => entry.expiresAt)].filter((value): value is string => !!value).sort()[0], disclosure: parentEntries.some(entry => entry.disclosure === 'private') ? 'private' : policy.disclosure, attribution: policy.attribution,
-            sourceConversationIds: [...new Set([policy.conversationId, ...item.sourceMessageIds.flatMap(id => policy.messageConversationIds?.[id] ?? []), ...parentEntries.flatMap(sourceConversations)])], sourceMemoryIds: parents, status: 'active' as const, supersedes } : {}),
+            sourceConversationIds: [...new Set([policy.conversationId, ...item.sourceMessageIds.flatMap(id => policy.messageConversationIds?.[id] ?? []), ...parentEntries.flatMap(sourceConversations)])], sourceMemoryIds: parents, status: 'active' as const, supersedes, ...(policy.diary ? { diary: { ...policy.diary } } : {}) } : {}),
         })
       }
       const superseded = entries.filter(entry => entry.status === 'superseded').map(entry => entry.id)

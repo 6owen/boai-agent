@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 表情回应共用输出队列与channelDeliveries原回执，未知和重启均不重发。
+ * [OUTPUT]: 2026-10-19应用业务协议：导出原渠道绑定与动作schema供公共业务协议复用。
  * [OUTPUT]: 绑定变更在原串行边界通知执行来源失效；实时核对原请求者与员工，停用不撤销历史接收者权限。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 明确外发沿固定原来信和绑定版本，普通本地讨论没有回发目标；未发送/未知各保存独立回执。
@@ -26,6 +28,7 @@ export interface ChannelInbound {
 }
 export interface ChannelOutputFile { name: string; mimeType?: string; bytes: Buffer }
 export interface ChannelTransport {
+  react?(source: ChannelMessageSource, emoji: string, active: boolean): Promise<void>
   start(): Promise<{ botUserId?: string; botUserName?: string }>
   stop(): Promise<void>
   connected(): boolean
@@ -47,8 +50,8 @@ interface ChannelHooks {
   changed(): void
 }
 const id = z.string().trim().min(1).max(512)
-const inputSchema = z.object({ id: id.optional(), agentId: id, platform: z.enum(CHANNEL_PLATFORMS), appId: id, robotCode: id.optional(), name: z.string().trim().min(1).max(100), credential: z.string().min(1).max(8000).optional(), allowedUserIds: z.array(id).min(1).max(100), allowedChatIds: z.array(id).max(100), ownerUserId: id.nullable().optional(), expectedRevision: z.number().int().positive().optional(), botUserId: id.optional(), requestId: id }).strict()
-const actionSchema = z.object({ id, expectedRevision: z.number().int().positive() }).strict()
+export const channelBindingInputSchema = z.object({ id: id.optional(), agentId: id, platform: z.enum(CHANNEL_PLATFORMS), appId: id, robotCode: id.optional(), name: z.string().trim().min(1).max(100), credential: z.string().min(1).max(8000).optional(), allowedUserIds: z.array(id).min(1).max(100), allowedChatIds: z.array(id).max(100), ownerUserId: id.nullable().optional(), expectedRevision: z.number().int().positive().optional(), botUserId: id.optional(), requestId: id }).strict()
+export const channelBindingActionSchema = z.object({ id, expectedRevision: z.number().int().positive() }).strict()
 const key = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const time = () => new Date().toISOString()
@@ -113,7 +116,7 @@ export class EmployeeChannels {
     return receipt ? (await this.list(agentId)).find(binding => binding.id === receipt.bindingId) ?? null : null
   }
   async save(input: ChannelBindingInput): Promise<ChannelBindingState> {
-    const value = inputSchema.parse(input)
+    const value = channelBindingInputSchema.parse(input)
     await this.hooks.critical(async () => {
       this.hooks.agent(value.agentId)
       const prior = value.id ? this.bindings.get(value.id) : undefined
@@ -152,7 +155,7 @@ export class EmployeeChannels {
     return (await this.list(value.agentId)).find(binding => binding.id === receipt!.bindingId)!
   }
   async action(input: ChannelBindingAction, operation: 'connect' | 'disconnect' | 'remove') {
-    const value = actionSchema.parse(input)
+    const value = channelBindingActionSchema.parse(input)
     if (this.lifecycle.has(value.id)) throw new Error('渠道连接正在切换，请等待实际退出。')
     const task = (async () => {
       let binding!: StoredBinding
@@ -311,6 +314,37 @@ export class EmployeeChannels {
       }
     })
     this.output = task.catch(() => { this.hooks.changed() })
+  }
+  /** Shares the delivery queue/receipts with messages. Never retries an uncertain platform effect. */
+  async react(agentId: string, message: Message, emoji: string, active: boolean, requestId: string, signal: AbortSignal): Promise<ChannelDelivery & { replayed?: true }> {
+    const source = message.channel!
+    const id = key(['reaction', agentId, requestId])
+    const task = this.output.then(async () => {
+      signal.throwIfAborted()
+      const previous = await this.store.get<ChannelDelivery>('channelDeliveries', id)
+      if (previous) {
+        if (previous.messageId !== message.id || previous.reaction?.emoji !== emoji || previous.reaction.active !== active || previous.bindingId !== source.bindingId) throw new Error('原表情回应请求用于不同内容。')
+        return { ...previous, replayed: true as const }
+      }
+      const binding = this.publicationBinding(source, agentId), transport = this.live.get(binding.id)
+      if (this.closing || !transport?.connected() || !transport.react) throw new Error('此渠道当前不支持表情回应或连接不可用。')
+      const current = await this.store.get<Message>('messages', message.id)
+      const room = await this.store.get<Conversation>('conversations', message.conversationId)
+      if (!current || current.status !== 'completed' || JSON.stringify(current.channel) !== JSON.stringify(source) || !room?.agentIds.includes(agentId) || await this.store.get('conversationCleanup', message.conversationId)) throw new Error('原回应消息已清理或变化。')
+      let delivery: ChannelDelivery = { id, bindingId: binding.id, conversationId: message.conversationId, messageId: message.id, reaction: { emoji, active, agentId, requestId }, status: 'sending', createdAt: time(), updatedAt: time() }
+      await this.store.write([record('channelDeliveries', delivery)])
+      if (signal.aborted || this.closing || this.bindings.get(binding.id)?.revision !== binding.revision || !this.bindings.get(binding.id)?.enabled || !transport.connected()) {
+        delivery = { ...delivery, status: 'failed', detail: '执行已停止或渠道授权变化，未发送表情回应。' }
+      } else {
+        try { await transport.react(source, emoji, active); delivery = { ...delivery, status: 'sent' } }
+        catch { delivery = { ...delivery, status: 'unknown', detail: '平台表情回应未确认；未自动重试。' } }
+      }
+      delivery.updatedAt = time()
+      await this.store.write([record('channelDeliveries', delivery)]); this.hooks.changed()
+      return delivery
+    })
+    this.output = task.catch(() => { this.hooks.changed() })
+    return task
   }
   async deliveries(agentId: string) { const ids = new Set((await this.list(agentId)).map(value => value.id)); return (await this.store.load<ChannelDelivery>('channelDeliveries')).filter(value => ids.has(value.bindingId)).slice(-50).reverse() }
   /** Called inside the existing employee-delete critical section, after its eligibility checks. */

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
+ * [OUTPUT]: 纠正同源条目的召回过滤与显式用户笔记保护。
  * [OUTPUT]: 员工知识解绑仅撤回该员工及其派生来源，其他员工独立的同资料记忆保持。
  * [INPUT]: 真实 SQLite 多连接、MemoryRepository 与范围/生命周期策略。
  * [OUTPUT]: 自动纠正多级派生失效、原来源修复及无关记忆隔离。
@@ -27,6 +29,38 @@ async function fixture() {
 const employee: MemoryQuery = { agentId: 'a', scope: 'employee' }
 const direct: MemoryQuery = { agentId: 'a', scope: 'conversation', conversationId: 'dm' }
 const policy = (requestId: string, expectedInvalidationEpoch = 0): ExtractionPolicy => ({ conversationId: 'dm', useScope: 'employee', disclosure: 'private', requestId, expectedInvalidationEpoch, userMessageIds: ['new'] })
+it('requires versioned host note evidence for message-free reflection and preserves original extraction guards', async () => {
+  const { repository } = await fixture()
+  const saved = await repository.save({ ...employee, expectedEpoch: 0, requestId: 'note', content: '真实笔记', kind: 'experience' })
+  const note = saved.entries[0], candidate = { content: '由笔记产生的反思', sourceMessageIds: [], kind: 'experience' as const }
+  await expect(repository.extract(employee, [candidate], saved.epoch, [], [], policy('ordinary'))).rejects.toThrow('未授权来源')
+  await expect(repository.extract(employee, [candidate], saved.epoch, [], [], { ...policy('stale'), reflectionSources: [{ id: note.id, version: note.version + 1 }] })).rejects.toThrow('版本已变化')
+  await expect(repository.extract(employee, [candidate], saved.epoch, [], [], { ...policy('unknown'), reflectionSources: [{ id: 'missing', version: 1 }] })).rejects.toThrow('来源已失效')
+  const persisted = await repository.extract(employee, [candidate], saved.epoch, [], [], { ...policy('reflection'), reflectionSources: [{ id: note.id, version: note.version }], diary: { date: '2026-10-20', behaviorRunId: 'actual-run' } })
+  const diary = persisted.entries.find(entry => entry.diary)!
+  expect(diary).toMatchObject({ sourceMessageIds: [], sourceMemoryIds: [note.id], origin: 'model', diary: { date: '2026-10-20' } })
+  await repository.delete(employee, note.id, persisted.epoch)
+  expect((await repository.get(employee)).entries.find(entry => entry.id === diary.id)?.status).not.toBe('active')
+})
+
+it('excludes sibling memories of a corrected source before recall while preserving unrelated and explicit user notes', async () => {
+  const { repository } = await fixture()
+  const initial = await repository.extract(employee, [
+    { content: '第一次完整跑通', sourceMessageIds: ['old'], kind: 'experience' },
+    { content: '希望真实记录心情', sourceMessageIds: ['old'], kind: 'long_term' },
+    { content: '无关偏好', sourceMessageIds: ['other'], kind: 'long_term' },
+  ], 0, ['old', 'other'], [], policy('initial'))
+  const prior = initial.entries.find(entry => entry.content === '第一次完整跑通')!
+  const updated = await repository.extract(employee, [{ content: '实际结果有遗漏', sourceMessageIds: ['new'], supersedes: [{ id: prior.id, version: prior.version }], kind: 'long_term' }], initial.epoch, ['new'], [], policy('correction'))
+  const explicit = await repository.save({ ...employee, content: '希望真实记录心情', kind: 'long_term', useScope: 'employee', expectedEpoch: updated.epoch })
+  const blocked = await repository.recallBlockedIds('a')
+  expect(blocked).toContain(prior.id)
+  expect(blocked).toContain(initial.entries.find(entry => entry.content === '希望真实记录心情')!.id)
+  const projected = recallMemory({ view: explicit, request: '心情 结果 偏好', observations: [], messages: new Map(), access: { agentId: 'a', conversationId: 'dm', sourceAllowed: entry => !blocked.has(entry.id), conversationRestricted: () => false } })
+  expect(projected.entries.map(entry => entry.content)).toEqual(expect.arrayContaining(['实际结果有遗漏', '无关偏好', '希望真实记录心情']))
+  expect(projected.entries.find(entry => entry.content === '希望真实记录心情')?.origin).toBe('user')
+  expect(await repository.recallValid(projected)).toBe(true)
+})
 it('records an idempotent policy activation without widening or rewriting legacy records', async () => {
   const { store, repository } = await fixture()
   const old: MemoryEntry = { id: 'legacy', ownerAgentId: 'a', scope: 'conversation', conversationId: 'dm', content: '旧私聊暗号', origin: 'model', version: 1, createdAt: '', updatedAt: '', sourceMessageIds: ['old'], sourceResourceIds: [] }
