@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 类型/UI规则/协议/评分器/冻结集/桌面BDD验证与失败报告，不调用真实供应商。
+# [OUTPUT]: PR及主分支确切提交的离线/视觉验证和固定Required checks；缺报告不放行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -10,23 +10,46 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: offline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   desktop:
-    runs-on: macos-latest
+    name: Engineering and desktop
+    runs-on: macos-15
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: node
+          node-version: '24.16.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint:ui
-      - run: pnpm test
-      - run: pnpm eval:dataset
-      - run: pnpm test:electron
+      - id: install
+        run: pnpm install --frozen-lockfile
+      - id: types
+        run: pnpm typecheck
+      - id: lint
+        run: pnpm lint:ui
+      - id: unit
+        run: pnpm test
+      - id: dataset
+        run: pnpm eval:dataset
+      - id: bdd
+        run: pnpm test:electron
+      - if: always()
+        env:
+          CI_STEP_RESULTS: ${{ toJSON(steps) }}
+          CI_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          CI_PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-result.mjs record .local/ci/engineering.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: engineering
+          path: .local/ci/engineering.json
+          include-hidden-files: true
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -36,3 +59,40 @@ jobs:
             test-results/
             cucumber-report/
           if-no-files-found: ignore
+  ui:
+    name: UI regression
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/ui-regression.mjs check --output .local/ui-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui
+          path: .local/ui-ci/
+          include-hidden-files: true
+          if-no-files-found: error
+  required:
+    name: Required checks
+    if: always()
+    needs: [desktop, ui]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - uses: actions/download-artifact@v4
+        with:
+          path: .local/ci-artifacts
+      - env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/ci-result.mjs gate

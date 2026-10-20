@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "zcode": {
+    "commit": "0a1fc56d279fd1001f78387bd81aec1c26767411",
+    "files": [
+      {
+        "path": "UI_PLUGIN.md",
+        "sha256": "85e5505fceb61f15d419070500f1d40189581c4be2bf646e3fdeae99909be3eb",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "LICENSE",
+        "sha256": "606c36baf38b973227273df12a74930e4b4137280eea835c5cd623aa4553c13b",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "NOTICE.md",
+        "sha256": "6bd5e85b48a192ce100a9e5e0636e3a90d3f6e1ac1c4fe74369e13bd79bb4c45",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "packages/shared/src/mcp-apps/hostContract.ts",
+        "sha256": "de1e1e81ffbf4bf98a7d11bb8cf4bb52e6469a6955f6d7ef487a57aeabcc1f77",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "packages/shared/src/mcp-apps/contract.ts",
+        "sha256": "cff9fc58409e44847caca49b132405343293f37844e487c329ffb39c67d5da99",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "packages/services/src/plugin-ui-bridge/CONTRACT.md",
+        "sha256": "4f60abf0876f83177be041332540e76c340a888f75d51d60c056a566e84ba800",
+        "use": "reference-only; not copied into product"
+      }
+    ]
+  },
+  "plugins": {
+    "commit": "4acdd7ffc325fbdd9c8d934dc3ce03c7c62cb7f6",
+    "checkoutStatus": "verified clean pinned checkout",
+    "observedCommit": "4acdd7ffc325fbdd9c8d934dc3ce03c7c62cb7f6",
+    "workingTreeClean": true,
+    "files": [
+      {
+        "path": "LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "ui-plugins/excalidraw/package.json",
+        "sha256": "26eb2b6641d6c592b986af64574e66f4fbb9749b3198e03c07bf95c928e48835",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "ui-plugins/excalidraw/ui/client.ts",
+        "sha256": "b6850c103395aca319d4b1d314c536a8b165e73edaebfcaafb7937956dd5f225",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "ui-plugins/excalidraw/ui/bridge.ts",
+        "sha256": "9181adf5e5912cf45dd0b300d398f2eac47858404db4a520d12482529bd7eb27",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "ui-plugins/excalidraw/src/adapters/main.ts",
+        "sha256": "ee190afd544710037ddbc45d36b1bf2e44599cafe6c5b05f02ce339467ca604b",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "ui-plugins/excalidraw/scripts/browser-fixture.mjs",
+        "sha256": "a30551a5a2bb174d59a609adb8e2baca36f5c38f766d58bb89c061b9ffdfab5a",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "external_plugins/excalidraw/LICENSE",
+        "sha256": "e5c04526c473c044ed897a169d4185089a36b787944710bef1e74bb7d7d11176",
+        "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "sha256": "1347cae7e0500531f34086c461f4dc0c109804548752a3b53de9eb79fcf93f06",
+        "use": "reference-only; not copied into product"
+      }
+    ],
+    "packageManager": "pnpm@10.33.2 (upstream pin)",
+    "dependencyInstall": "frozen lockfile passed; msw install script ignored",
+    "build": "passed; 24.84 MiB offline UI in 7 resources",
+    "licenseScope": {
+      "repository": "Apache-2.0",
+      "excalidrawPlugin": "MIT (package and external_plugins/excalidraw/LICENSE)",
+      "dependencies": "build generates THIRD_PARTY_NOTICES.txt; not yet reviewed for redistribution"
+    },
+    "smoke": "passed; actual stdio MCP, offline UI resources and native export"
+  },
+  "mapping": {
+    "upstreamDocs": "docs/",
+    "boaiDocs": "ai-docs/",
+    "scope": "Codex developer workflow only; no BOAI embedded canvas"
+  },
+  "codexCompatibility": {
+    "fileRoundTrip": "not-run",
+    "mcpTools": "not-run",
+    "mcpAppsPage": "not-run",
+    "selectionContext": "not-run",
+    "inspectedCli": "codex-cli 0.163.0; local exec/help inspected; current conversation UI bridge not yet verified"
+  },
+  "magpie": {
+    "commit": "d9c6a60d8a0b023f77bdf16d4d896316c67ec7c6",
+    "checkout": "pinned sparse checkout; reference-only",
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "f5bcea666e731c57484a8502ec8d9d7b3695a9a7b3a3236c89e5d3ed9d4b176f",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": "LESSONS.md",
+        "sha256": "b91749953b5303713a6b5496405cb3ebe8017e0cf721ebddfc32b22ae3ce0795",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": "docs/code-standards.md",
+        "sha256": "ab8fd65fa330721b2714e60caba54f4e755851dd6615ce8554927938c967d2aa",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": ".github/workflows/release.yml",
+        "sha256": "d79e5bb4940f1dc9dff06e499506be5b2f4aa10c62bca96deb2a4a13d7d9e3e4",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": ".github/workflows/test.yml",
+        "sha256": "e5c59acc7010fd7396c227d4aeabd01c81f82a09f477af2dd242c9b159811252",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": ".github/workflows/ui-preview.yml",
+        "sha256": "f750140e980fd0e9e1b5fe57a8f409884295a33db6d943fdc85a8da77fe218b9",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": ".github/workflows/docker.yml",
+        "sha256": "6e1c2e07360f93740cb2fcc20b5c8615e69bf87f0554af673f6ca4be87ed9469",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      },
+      {
+        "path": ".github/workflows/privacy-filter.yml",
+        "sha256": "c18fafaff08c143c1c2c7b01fe71152101205a80862c46ea06d05cc20a6f33d7",
+        "mapping": "development controller/CI concepts; no upstream source copied"
+      }
+    ]
+  }
+}

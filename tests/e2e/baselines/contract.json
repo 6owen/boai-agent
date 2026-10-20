@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "height": 900,
+  "threshold": 0,
+  "maxDiffPixels": 0,
+  "masks": [],
+  "cases": [
+    {
+      "id": "chat-light",
+      "scene": "chat",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "chat-dark",
+      "scene": "chat",
+      "mode": "dark",
+      "width": 1280
+    },
+    {
+      "id": "chat-narrow-light",
+      "scene": "chat",
+      "mode": "light",
+      "width": 960
+    },
+    {
+      "id": "chat-narrow-dark",
+      "scene": "chat",
+      "mode": "dark",
+      "width": 960
+    },
+    {
+      "id": "empty-chat-light",
+      "scene": "empty-chat",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "empty-chat-dark",
+      "scene": "empty-chat",
+      "mode": "dark",
+      "width": 1280
+    },
+    {
+      "id": "employee-light",
+      "scene": "employee",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "employee-dark",
+      "scene": "employee",
+      "mode": "dark",
+      "width": 1280
+    },
+    {
+      "id": "settings-light",
+      "scene": "settings",
+      "mode": "light",
+      "width": 1280,
+      "threshold": 0.005,
+      "calibration": "Initial calibration: repeated unchanged rendering differed at five pixels by exactly 1/255 per channel; maxDiffPixels remains 0, no masks."
+    },
+    {
+      "id": "settings-dark",
+      "scene": "settings",
+      "mode": "dark",
+      "width": 1280
+    },
+    {
+      "id": "resources-light",
+      "scene": "resources",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "resources-dark",
+      "scene": "resources",
+      "mode": "dark",
+      "width": 1280,
+      "threshold": 0.005,
+      "calibration": "Initial calibration after animation settling: repeated unchanged search-input gradient differed by exactly 1/255 per channel; maxDiffPixels remains 0, no masks."
+    },
+    {
+      "id": "detail-light",
+      "scene": "detail",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "detail-dark",
+      "scene": "detail",
+      "mode": "dark",
+      "width": 1280
+    },
+    {
+      "id": "preview-light",
+      "scene": "preview",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "preview-dark",
+      "scene": "preview",
+      "mode": "dark",
+      "width": 1280
+    }
+  ]
+}

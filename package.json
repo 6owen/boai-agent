@@ -30,7 +30,10 @@
     "dev:repair": "node scripts/iterate-agent.mjs",
     "eval:build": "node scripts/evaluation-experiment.mjs build",
     "eval:hillclimb": "node scripts/evaluation-experiment.mjs hillclimb",
-    "cli": "node dist/cli/index.mjs"
+    "cli": "node dist/cli/index.mjs",
+    "test:ui": "pnpm build && node scripts/ui-regression.mjs check",
+    "test:ui:candidate": "pnpm build && node scripts/ui-regression.mjs candidate",
+    "test:ui:accept": "node scripts/ui-regression.mjs accept"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
