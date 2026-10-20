@@ -1,96 +1,16 @@
-# [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA离线/视觉门槛；安装实证、完整BDD时间预算和原生崩溃栈留证，失败不放行。
-# [POS]: .github/workflows/tests.yml。
-# [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
-name: Offline tests
+# [INPUT]: 第五轮CI最早的外观/插件失败及固定源码。
+# [OUTPUT]: 只读远程重现与即时错误/trace；不提供Required checks或发布资格。
+# [POS]: 临时诊断分支，禁止合并该替换工作流。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: BDD failure probe
 on:
-  pull_request:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: offline-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 jobs:
-  desktop:
-    name: Engineering and desktop
+  probe:
     runs-on: macos-15
-    # 552串行BDD另加约11分钟模块；仅扩大整个job预算，单测试超时不变。
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-          cache: pnpm
-      - id: install
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
-          pnpm exec electron --version
-      - id: types
-        run: pnpm typecheck
-      - id: lint
-        run: pnpm lint:ui
-      - id: build
-        run: pnpm build
-      - id: unit
-        run: pnpm test --maxWorkers=2
-      - name: Preserve native crash stacks
-        if: failure() && steps.unit.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from shutil import copyfile
-          output = Path('.local/ci/native-crashes')
-          output.mkdir(parents=True, exist_ok=True)
-          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
-          for path in reports[:5]:
-              copyfile(path, output / path.name)
-          print('Native crash stack reports:', min(len(reports), 5))
-          PY
-      - id: dataset
-        run: pnpm eval:dataset
-      - id: bdd
-        run: pnpm test:electron
-      - if: always()
-        env:
-          CI_STEP_RESULTS: ${{ toJSON(steps) }}
-          CI_PR_HEAD: ${{ github.event.pull_request.head.sha }}
-          CI_PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/ci-result.mjs record .local/ci/engineering.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: engineering
-          path: .local/ci/engineering.json
-          include-hidden-files: true
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: desktop-failure-evidence
-          path: |
-            playwright-report/
-            test-results/
-            cucumber-report/
-          if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: native-crash-stacks
-          path: .local/ci/native-crashes/
-          include-hidden-files: true
-          if-no-files-found: ignore
-  ui:
-    name: UI regression
-    runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -105,29 +25,16 @@ jobs:
           node node_modules/electron/install.js
           pnpm exec electron --version
       - run: pnpm build
-      - name: Match baseline system language
-        run: defaults write -g AppleLanguages -array zh-Hans-CN
-      - run: node scripts/ui-regression.mjs check --output .local/ui-ci
+      - run: pnpm test:bddgen
+      - env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .local/bdd-probe/playwright.json
+        run: pnpm exec playwright test --grep '@appearance|@application-plugins' --retries=0 --reporter=line,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui
-          path: .local/ui-ci/
+          name: bdd-probe
+          path: |
+            .local/bdd-probe/
+            test-results/
           include-hidden-files: true
           if-no-files-found: error
-  required:
-    name: Required checks
-    if: always()
-    needs: [desktop, ui]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-      - uses: actions/download-artifact@v4
-        with:
-          path: .local/ci-artifacts
-      - env:
-          CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: node scripts/ci-result.mjs gate
