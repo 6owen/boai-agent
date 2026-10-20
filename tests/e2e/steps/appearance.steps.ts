@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: Craft Scenic选图保持浅色并可切换深色、跨页交互/重启与移除恢复验收；重置先确认，仅替换一次文件选择。
+ * [OUTPUT]: 三组字体字号与开发版 Dock 图标的实际窗口切换/重启/重置；Craft Scenic 选图与原外观回归。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -18,6 +18,7 @@ type Scenario = {
   prepareAppearance?: Awaited<ReturnType<typeof prepareAppearance>>
   resizeAndZoom?: Awaited<ReturnType<typeof resizeAndZoom>>
   customizeAppearance?: Awaited<ReturnType<typeof customizeAppearance>>
+  typography?: { ui: number; content: number; code: number }
 }
 
 export const test = base.extend<{ scenario: Scenario }>({
@@ -113,7 +114,7 @@ async function customizeAppearance(previous: Awaited<ReturnType<typeof resizeAnd
   await page!.getByLabel('搜索设置').fill('')
   await page!.getByRole('button', { name: '浅色', exact: true }).click()
   await selectAppearance(page!, '浅色配色', 'VS Code Plus')
-  await selectAppearance(page!, '字体', '系统默认')
+  await selectAppearance(page!, '界面字体', '系统默认')
   await page!.getByLabel('强调色', { exact: true }).fill('#007acc')
   await page!.getByLabel('背景色', { exact: true }).fill('#f8fafc')
   await page!.getByLabel('前景色', { exact: true }).fill('#101010')
@@ -137,7 +138,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect.poll(zoom).toBeCloseTo(0.9)
   await expectWindowFilled()
   await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('90%')
-  await expect(page!.getByLabel('字体', { exact: true })).toContainText('系统默认')
+  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('系统默认')
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#f8fafc')
   await page!.getByRole('button', { name: '深色', exact: true }).click()
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#212121')
@@ -155,7 +156,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect(page!.getByRole('button', { name: '恢复默认外观' })).toBeEnabled()
   await page!.getByRole('button', { name: '恢复默认外观' }).click()
   await page!.getByRole('button', { name: '确认重置', exact: true }).click()
-  await expect(page!.getByLabel('字体', { exact: true })).toContainText('Geist')
+  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('Geist')
   await page!.evaluate(() => document.fonts.ready)
   expect(await page!.evaluate(() => [...document.fonts].some((font) => font.family === 'Geist' && font.status === 'loaded'))).toBe(true)
   await expect
@@ -178,6 +179,68 @@ Then('字体和自定义配色立即生效', async ({ scenario }) => {
 
 Then('重启恢复外观且原生菜单缩放与重置保持同步', async ({ scenario }) => {
   await verifyAppearanceRestart(scenario.customizeAppearance!)
+})
+
+When('修改三组字体字号和应用图标', async ({ runtime, scenario }) => {
+  await scenario.prepareAppearance!.open()
+  const page = runtime.page
+  await selectAppearance(page, '界面字体', '系统默认')
+  await selectAppearance(page, '内容字体', '系统衬线')
+  await selectAppearance(page, '代码字体', 'Menlo')
+  for (const [name, size] of [['界面', 17], ['内容', 19], ['代码', 16]] as const) {
+    await page.getByRole('spinbutton', { name: `${name}字号（像素）` }).fill(String(size))
+  }
+  await page.getByRole('group', { name: '选择应用图标' }).getByRole('button', { name: '小龙' }).click()
+  scenario.typography = { ui: 17, content: 19, code: 16 }
+})
+
+Then('三组排版独立生效且 Dock 图标切换', async ({ runtime, scenario }) => {
+  const page = runtime.page
+  await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
+    .toMatchObject({ preferences: { typography: {
+      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 19 }, code: { family: 'menlo', sizePx: 16 },
+    }, appIconId: 'avatar-bear' } })
+  const root = await page.locator('html').evaluate(element => {
+    const style = getComputedStyle(element)
+    return {
+      ui: style.getPropertyValue('--text-ui-body').trim(),
+      content: style.getPropertyValue('--text-content-body').trim(),
+      code: style.getPropertyValue('--text-code-body').trim(),
+      uiFamily: style.getPropertyValue('--font-ui-family').trim(),
+      contentFamily: style.getPropertyValue('--font-content-family').trim(),
+      codeFamily: style.getPropertyValue('--font-code-family').trim(),
+    }
+  })
+  expect(root).toMatchObject({ ui: '17px', content: '19px', code: '16px' })
+  expect(root.uiFamily).not.toContain('Geist')
+  expect(root.contentFamily).toContain('Georgia')
+  expect(root.codeFamily).toContain('Menlo')
+  await expect(page.getByText('const bobo = "你好"')).toHaveCSS('font-size', '16px')
+  await expect.poll(() => page.evaluate(() => window.boai.request('getAppIconStatus', undefined)))
+    .toMatchObject({ environment: 'development', requestedId: 'avatar-bear', pending: false,
+      dock: { appliedId: 'avatar-bear', error: null }, installed: { available: false } })
+  expect(scenario.typography).toEqual({ ui: 17, content: 19, code: 16 })
+  expect(runtime.errors).toEqual([])
+})
+
+Then('重启后字体字号和 Dock 图标保持且可重置', async ({ runtime, scenario }) => {
+  await runtime.close()
+  await scenario.prepareAppearance!.launch()
+  await scenario.prepareAppearance!.open()
+  const page = runtime.page
+  await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
+    .toMatchObject({ preferences: { typography: {
+      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 19 }, code: { family: 'menlo', sizePx: 16 },
+    }, appIconId: 'avatar-bear' } })
+  await expect.poll(() => page.evaluate(() => window.boai.request('getAppIconStatus', undefined)))
+    .toMatchObject({ requestedId: 'avatar-bear', pending: false, dock: { appliedId: 'avatar-bear', error: null } })
+  await page.getByRole('button', { name: '重置字体' }).click()
+  await page.getByRole('button', { name: '恢复默认图标' }).click()
+  await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
+    .toMatchObject({ preferences: { typography: {
+      ui: { family: 'geist', sizePx: 13 }, content: { family: 'ui', sizePx: 13 }, code: { family: 'system', sizePx: 13 },
+    }, appIconId: 'avatar-cat' } })
+  expect(runtime.errors).toEqual([])
 })
 
 When('选择本地背景图片启用玻璃换肤', async ({ runtime, scenario }) => {
@@ -254,7 +317,7 @@ Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, sc
   await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   await expect(page.locator('.chat-composer')).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('背景换肤验收：输入框仍可编辑。')
-  await expect(page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('背景换肤验收：输入框仍可编辑。')
+  await expect(page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveText('背景换肤验收：输入框仍可编辑。')
   await runtime.reviewNativeCheckpoint('图片玻璃聊天与全局导航')
 })
 Then('重启仍显示托管背景且移除恢复原主题', async ({ runtime, scenario }) => {
