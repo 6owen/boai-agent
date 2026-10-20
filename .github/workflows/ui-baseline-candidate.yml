@@ -1,5 +1,5 @@
 # [INPUT]: 明确手动触发的受信仓库分支及固定macOS构建。
-# [OUTPUT]: 全场真实行为/布局通过后的隔离候选artifact；不晋升基线、不提供Required checks。
+# [OUTPUT]: 成功候选与失败/取消诊断分开保留；不晋升基线、不提供Required checks。
 # [POS]: 开发侧环境基线采集；无发布/仓库写权限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: UI baseline candidate
@@ -30,7 +30,8 @@ jobs:
           node node_modules/electron/install.js
           pnpm exec electron --version
       - run: pnpm build
-      - run: node scripts/ui-regression.mjs candidate-ci --profile github-macos15-arm64 --output .local/ui-candidate
+      - id: capture
+        run: node scripts/ui-regression.mjs candidate-ci --profile github-macos15-arm64 --output .local/ui-candidate
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -38,3 +39,11 @@ jobs:
           path: .local/ui-candidate/
           include-hidden-files: true
           if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.capture.outcome != 'success'
+        with:
+          name: ui-candidate-failure-evidence
+          path: .local/ui-candidate/
+          include-hidden-files: true
+          if-no-files-found: ignore
