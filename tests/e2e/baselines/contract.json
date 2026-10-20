@@ -65,7 +65,9 @@
       "id": "settings-dark",
       "scene": "settings",
       "mode": "dark",
-      "width": 1280
+      "width": 1280,
+      "threshold": 0.005,
+      "calibration": "Initial calibration: unchanged appearance thumbnail gradients differed at eight raw pixels, maximum channel delta exactly 1/255; maxDiffPixels remains 0, no masks. Raw old/new/diff retained for independent review."
     },
     {
       "id": "resources-light",

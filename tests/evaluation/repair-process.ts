@@ -11,16 +11,16 @@ import { waitForProcessGroupExit } from '../../src/runtime/adapters/mastra/host-
 import { proposalJsonSchema, proposalSchema, REPAIR_LIMITS, type RepairConfig, type RepairProposal } from './repair-contract'
 
 export interface ProcessReceipt { exitCode: number | null; stdout: string; stderr: string; failure?: string; elapsedMs: number }
-export async function repairProcess(input: { command: string; args: string[]; cwd: string; timeoutMs: number; signal: AbortSignal; stdin?: string; codex?: boolean }): Promise<ProcessReceipt> {
+export async function repairProcess(input: { command: string; args: string[]; cwd: string; timeoutMs: number; signal: AbortSignal; stdin?: string; codex?: boolean; managed?: { guard: string; ledger: string } }): Promise<ProcessReceipt> {
   input.signal.throwIfAborted()
   if (process.platform === 'win32') throw new Error('开发迭代的进程组收尾目前仅支持macOS/Linux')
   if (input.timeoutMs <= 0) throw new Error('迭代总期限已到')
   const env: NodeJS.ProcessEnv = { CI: '1', NO_COLOR: '1' }
   for (const name of ['PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', ...(input.codex ? ['CODEX_HOME', 'CODEX_API_KEY', 'OPENAI_API_KEY', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'] : [])]) if (process.env[name]) env[name] = process.env[name]
-  const start = Date.now(), child = spawn(input.command, input.args, { cwd: input.cwd, env, shell: false, detached: true, stdio: ['pipe', 'pipe', 'pipe'] })
+  const start = Date.now(), child = spawn(input.managed?.guard ?? input.command, input.managed ? ['--ledger', input.managed.ledger, input.command, ...input.args] : input.args, { cwd: input.cwd, env, shell: false, detached: true, stdio: ['pipe', 'pipe', 'pipe'] })
   let size = 0, failure: string | undefined
   const stdout: Buffer[] = [], stderr: Buffer[] = []
-  const kill = () => { if (child.pid) { try { process.kill(-child.pid, 'SIGKILL') } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') child.kill('SIGKILL') } } }
+  const kill = () => { if (child.pid) { if (input.managed) { child.kill('SIGTERM'); return }; try { process.kill(-child.pid, 'SIGKILL') } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') child.kill('SIGKILL') } } }
   const stop = (reason: string) => { failure ??= reason; kill() }
   const consume = (list: Buffer[]) => (chunk: Buffer) => { size += chunk.length; if (size <= REPAIR_LIMITS.logBytes) list.push(chunk); else stop('输出超过8MiB；日志不完整，不能接受候选') }
   child.stdout.on('data', consume(stdout)); child.stderr.on('data', consume(stderr))

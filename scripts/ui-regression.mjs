@@ -11,8 +11,9 @@ import { arch, platform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { DatabaseSync } from 'node:sqlite'
 import { verifyBuildIdentity } from './build-identity.mjs'
+import { acquireResourceLock } from './resource-lock.mjs'
+import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -31,13 +32,7 @@ export function assertUiExecutionMode(env) {
 
 // The OS releases a SQLite transaction on actual process death. No stale-file
 // deletion or PID/lease race can admit two GUI runners after a crash.
-export function acquireUiLock(path) {
-  const database = new DatabaseSync(path)
-  try {
-    database.exec('PRAGMA busy_timeout=0; CREATE TABLE IF NOT EXISTS mutex (id INTEGER PRIMARY KEY); BEGIN EXCLUSIVE')
-  } catch (error) { database.close(); throw new Error(`无法领取UI资源锁：${error.message}`) }
-  return () => { try { database.exec('ROLLBACK') } finally { database.close() } }
-}
+export const acquireUiLock = acquireResourceLock
 
 export function validateReport(report, caseIds) {
   const tests = []
@@ -54,11 +49,12 @@ export function validateReport(report, caseIds) {
   return { status: errors.length ? 'failed' : 'passed', cases: caseIds, errors }
 }
 
-export async function sourceIdentity() {
-  const names = git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$)/.test(path) && !/^tests\/e2e\/baselines\/(manifest.json|.*\.png)$/.test(path)).sort()
+export async function sourceIdentity(workspace = root) {
+  const readGit = (...args) => execFileSync('git', args, { cwd: workspace, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).trim()
+  const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(manifest.json|.*\.png)$/.test(path)).sort()
   const digest = createHash('sha256')
-  for (const name of names) { digest.update(name + '\0'); try { digest.update(await readFile(join(root, name))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
-  return { commit: git('rev-parse', 'HEAD'), sourceHash: digest.digest('hex'), dirty: Boolean(git('status', '--porcelain')) }
+  for (const name of names) { digest.update(name + '\0'); try { digest.update(await readFile(join(workspace, name))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
+  return { commit: readGit('rev-parse', 'HEAD'), sourceHash: digest.digest('hex'), dirty: Boolean(readGit('status', '--porcelain')) }
 }
 
 export async function renderEnvironment() {
@@ -79,10 +75,13 @@ export async function renderEnvironment() {
 }
 
 async function runCommand(command, args, env) {
-  const child = spawn(command, args, { cwd: root, env, stdio: 'inherit', detached: process.platform !== 'win32' })
-  const cancel = () => { cancelled = true; try { process.kill(-child.pid, 'SIGINT') } catch {} }
+  // Reuse the product's identity-bound native supervisor. It observes this
+  // owner's death and retains responsibility for the whole spawned tree.
+  const ledger = join(root, '.local/ui-processes', randomUUID())
+  const child = spawn(join(root, 'dist/native/boai-process-guard'), ['--ledger', ledger, command, ...args], { cwd: root, env, stdio: 'inherit' })
+  const cancel = () => { cancelled = true; child.kill('SIGINT') }
   process.once('SIGINT', cancel); process.once('SIGTERM', cancel)
-  try { return await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal })) }) }
+  try { return await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', (code, signal) => resolve({ code, signal })) }) }
   finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel) }
 }
 
@@ -127,6 +126,7 @@ async function main() {
       if (candidate.source.sourceHash !== source.sourceHash || JSON.stringify(candidate.environment) !== JSON.stringify(environment)) throw new Error('候选源码或环境已变化，请重新采集')
       if (JSON.stringify(await verifyBuildIdentity(root)) !== JSON.stringify(candidate.built)) throw new Error('候选构建身份已变化，请重新采集')
       if (result.status !== 'passed' || ids.some(id => !candidate.cases[id])) throw new Error('候选不完整或未通过，禁止晋升')
+      await verifyBaselineReview(directory, ids, baseline, candidate)
       const previous = await json(join(baseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
       if (previous && JSON.stringify(previous.environment) !== JSON.stringify(environment) && ids.length !== contract.cases.length) throw new Error('环境迁移必须审阅全部场景')
       const manifest = previous ?? { version: 1, environment, cases: {} }
@@ -177,6 +177,7 @@ async function main() {
     if (JSON.stringify(await verifyBuildIdentity(root)) !== JSON.stringify(built)) throw new Error('采集期间构建身份变化，候选无效')
     const cases = {}
     for (const id of ids) cases[id] = { sha256: hash(await readFile(join(snapshots, `${id}.png`))), contract: baselineContractHash(contract, id) }
+    await createBaselineReview(directory, ids, baseline)
     await save(join(directory, 'candidate.json'), { ...identity, cases, comparison: comparison.status })
     console.log(`待审阅UI候选：${directory}；旧/新/差异见compare报告，未修改已接受基线。`)
   } finally { releaseLock() }

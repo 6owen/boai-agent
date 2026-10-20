@@ -42,6 +42,15 @@ export async function compareUiBaseline(runtime: Desktop, caseId: string, info: 
     await Promise.all(animations.map(animation => { animation.finish(); return animation.finished.catch(() => {}) }))
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
   })
+  const scene = contract.cases.find(item => item.id === caseId)?.scene
+  if (['chat', 'detail', 'preview'].includes(scene ?? '')) {
+    // Match the baseline's explicit reading position after fonts and panel
+    // resizing settle. Use real input rather than assigning scrollTop.
+    await runtime.page.locator('.messages').hover()
+    await runtime.page.mouse.wheel(0, 100_000)
+    await expect.poll(() => runtime.page.locator('.messages').evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1)
+    await runtime.page.mouse.move(0, 0)
+  }
   await info.attach('UI环境与页面', { body: JSON.stringify({ caseId, environment, actual, browser }), contentType: 'application/json' })
   if (process.env.BOAI_UI_FAULT === 'layout') await runtime.page.addStyleTag({ content: '.chat-header { padding-left: 80px !important; }' })
   const selected = contract.cases.find(item => item.id === caseId) as { threshold?: number } | undefined

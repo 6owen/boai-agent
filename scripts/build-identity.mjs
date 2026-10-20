@@ -10,7 +10,7 @@ import { readFile, readdir, readlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
 export async function buildInputHash(root = process.cwd()) {
-  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'resources', 'scripts/build.mjs', 'scripts/build-*.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'resources', 'scripts/build.mjs', 'scripts/build-*.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
   const digest = createHash('sha256')
   for (const path of paths) { digest.update(path + '\0'); try { digest.update(await readFile(join(root, path))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
   return digest.digest('hex')

@@ -124,16 +124,16 @@
       "acceptedAt": "2026-10-20T08:56:49.758Z"
     },
     "settings-dark": {
-      "sha256": "57a5ba3d0bc8f398735d78244df0a41ca97159a28fa799d15a9a575c95d220bf",
-      "contract": "8033da3bb84a88ffeefbdbc9738e93b1a00d32afdfb00627d3e9f7d5f7e507ad",
+      "sha256": "3e2423154d7b0743655ab41cf7843fe9619b90ff45ee40c6e079dfaf5159647b",
+      "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "11294e08426075a05b54fa9c8c4ce685bcd65ff6",
-        "sourceHash": "94eff7aba043d9bbc12a465c89f721469fb82507306992dab650c0945f5644ca",
+        "commit": "2bec1bc66b6d1ef1e16992795c4a45aa69df01fb",
+        "sourceHash": "95032f1b004ea9395f817a80b98bb36b45867a08b474d3b0be28410de0dc2a16",
         "dirty": true
       },
-      "reason": "初始开发基线：16场真实交互/布局通过，已查看代表画面；独立PR审阅与远程验证待完成。",
-      "candidate": "19797ffc-f229-4269-9f25-f59391bb6e34",
-      "acceptedAt": "2026-10-20T08:45:03.504Z"
+      "reason": "初始渲染校准：同版本外观缩略图8原始像素且最大通道差1/255；逐case阈值0.005、异常像素数0、无mask；旧新原始diff已保留，独立PR审阅待完成",
+      "candidate": "e37a96c5-f84e-4142-9fed-15a48ea59d4e",
+      "acceptedAt": "2026-10-20T09:41:52.766Z"
     },
     "resources-light": {
       "sha256": "221a115cda9a39643459e923a06197611b90ff28fa5a9227ae134435157b7807",

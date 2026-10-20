@@ -11,6 +11,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // @ts-expect-error Plain Node ESM build helper intentionally has no declaration file.
 import { buildInputHash, recordBuildIdentity, verifyBuildIdentity } from '../scripts/build-identity.mjs'
+// @ts-expect-error Plain Node ESM CLI intentionally has no declaration file.
+import { sourceIdentity } from '../scripts/ui-regression.mjs'
 
 let root: string
 beforeEach(async () => {
@@ -37,4 +39,14 @@ it('技能源在构建期间变化不能登记构建完成', async () => {
   const initial = await buildInputHash(root)
   await writeFile(join(root, 'resources/skill.md'), '构建中外改的技能源')
   await expect(recordBuildIdentity(initial, root)).rejects.toThrow(/输入变化/)
+})
+it('Tailwind配置是实际构建和测试输入，外改不能复用旧产物', async () => {
+  await writeFile(join(root, 'tailwind.config.ts'), 'export default { theme: {} }')
+  execFileSync('git', ['add', 'tailwind.config.ts'], { cwd: root })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'], { cwd: root })
+  await recordBuildIdentity(await buildInputHash(root), root)
+  const before = await sourceIdentity(root)
+  await writeFile(join(root, 'tailwind.config.ts'), 'export default { theme: { colors: {} } }')
+  expect((await sourceIdentity(root)).sourceHash).not.toBe(before.sourceHash)
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
 })

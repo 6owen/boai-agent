@@ -23,6 +23,7 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
+  globalSetup: './tests/e2e/support/desktop-resource.ts',
   timeout: 90_000,
   workers: 1,
   // UI snapshots have their own environment-checked runner; the existing BDD suite remains offline behavior coverage.
