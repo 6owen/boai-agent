@@ -31,6 +31,7 @@
     "boai-voice",
     "boai-image-gen",
     "boai-selfie",
-    "boai-twitter-media"
+    "boai-twitter-media",
+    "boai-presentations"
   ]
 }

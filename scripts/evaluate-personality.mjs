@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT真实技能评估冻结原模型/编译/素材worker与hash，实际草稿可运行原版编译；不注入视觉配置。
  * [OUTPUT]: 可显式冻结当前检索服务与偏好，独立凭据只经内存桥传递；搜索请求与模型请求分账。
  * [OUTPUT]: 脚本技能评估冻结实际员工工具库并在隔离AppService开放原员工RPC，不读取本人CLI配置。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
@@ -12,7 +13,7 @@
  */
 import { build } from 'esbuild'
 import { spawn, execFileSync } from 'node:child_process'
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import electron from 'electron'
@@ -66,6 +67,15 @@ for (const directory of ['src/runtime', 'src/shared', 'src/cli']) for (const fil
 }
 for (const path of ['pnpm-lock.yaml', 'tests/evaluation/personality.ts', 'tests/evaluation/host.ts', 'scripts/evaluate-personality.mjs']) settings.hashes[path] = createHash('sha256').update(await readFile(path)).digest('hex')
 const worker = join(output, 'worker.mjs'), host = join(output, 'host.cjs')
+if (settings.caseIds?.some(id => id.startsWith('skill-presentations-'))) {
+  const source = 'src/runtime/modules/presentations/alma'
+  await cp(source, join(output, 'alma'), { recursive: true, filter: path => !path.endsWith('/.folder.md') })
+  for (const entry of await readdir(source, { withFileTypes: true })) if (entry.isFile() && entry.name !== '.folder.md') {
+    const path = join(source, entry.name), bytes = await readFile(path)
+    settings.hashes[path] = createHash('sha256').update(bytes).digest('hex')
+    if (!bytes.equals(await readFile(join(output, 'alma', entry.name)))) throw new Error('PPT评估worker分发内容不一致')
+  }
+}
 if (settings.caseIds?.some(id => id.startsWith('skill-programmatic-'))) {
   settings.toolClientPath = join(output, 'employee-tools.mjs')
   await build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: settings.toolClientPath, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })

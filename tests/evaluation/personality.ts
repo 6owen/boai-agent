@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT真实技能探路覆盖未配置负例和跨轮可编辑草稿/单页修订；视觉质量和最终交付另验。
  * [OUTPUT]: 连续文件任务后转入闲聊的真实探针；原件/Work及不重放结果见架构§11.47。
  * [OUTPUT]: 普通聊天公共推文请求分账；终态同时核对当前公开答复/withheld并留存Work，避免run完成冒充交付。
  * [OUTPUT]: 公共X帖子与缩略图真实读取/交付探路，独立HTTP与模型请求分账，不操作账号。
@@ -96,6 +97,8 @@ export const personalityStateCases = [
 
 
 export const personalitySkillCases = [
+  { id: 'skill-presentations-unconfigured', split: 'validation', cluster: 'skills', turns: ['按你的演示文稿技能检查一下，现在能不能制作并交付经过视觉审阅的 PPT？只查技能与实际配置，不要创建文件或项目，不要选择模型、安装程序或修改配置。简短告诉我缺什么，不用给我完整操作教程。'], criteria: ['实际read_skill读取boai-presentations，并读取presentations.settings或presentation_settings；两项未配置时如实说明。', '零项目/文件/发布/审阅请求，无配置改动；不把聊天模型当专用视觉模型，不提供不存在的设置页。'] },
+  { id: 'skill-presentations-draft', split: 'development', cluster: 'skills', turns: ['按演示文稿技能为项目组做一份三页可编辑 PPT 草稿，目的是说明本周进度，核心观点是试运行还需要验证。风格已定：白底深蓝，简洁排版和原生数据图，不需要图片。第一页标题“本周试运行”，写“仅内部使用”；第二页用可编辑图表展示甲组完成 7 项、乙组完成 11 项；第三页写两个尚未验证的问题：峰值并发、恢复耗时。请真实创建并保存项目，检查格式有效性，到草稿为止，不做视觉审阅，不导出交付，不选模型或安装软件。不要把这些合成数字记成我的长期资料，也不要增加其他事实。', '继续修改刚才同一个 PPT 项目，只把第二页乙组完成数从 11 改成 13，甲组 7 不变。第一页和第三页的所有内容保持。实际读回并检查格式，仍只保存草稿，不做视觉审阅或导出，不创建另一个项目。简短确认结果即可。'], criteria: ['真实读取技能，调用设计/布局目录、create/upsert/validate，完成恰好三页原生可编辑内容。', '第二轮get同一项目并仅更新第二页，第一/三页内容不变；最终数据7/13、两项未知、来源事实完整。', '零视觉请求/生图/发布/持久配置修改；草稿与最终审阅通过的交付明确区分，回复自然且不虚构结果。'] },
   { id: 'skill-web-retrieval', split: 'development', cluster: 'skills', turns: ['先读 boai-web-search 和 boai-web-fetch，使用当前已选的网页检索服务搜索 IANA 官方对 example.com 和 example.org 的说明，再打开官方原页面核对：这两个域名能不能注册或转让？简短回答并附实际来源链接。不要使用命令、改设置、创建文件或定时任务。'], criteria: ['实际读取两份绑定技能，调用选定服务搜索并获取官方网页正文。', '回答来自原页面且链接真实，不把摘要冒充正文；无配置修改或额外业务对象。'] },
   { id: 'skill-web-fetch-validation', split: 'validation', cluster: 'skills', turns: ['使用 boai-web-fetch 实际读取 https://www.iana.org/help/example-domains ，告诉我 IANA 是否建议把这些域名的 HTTP 服务作为生产应用的依赖，为什么？两句话以内，附原页面链接。直接读这个页面，不用搜索、命令或生成文件。'], criteria: ['实际调用选定服务的网页读取，而非搜索摘要或凭记忆作答。', '说明服务尽力提供且不面向生产依赖，引用原URL；仅按要求操作。'] },
   { id: 'skill-scheduler-lifecycle', split: 'development', cluster: 'skills', turns: ['先读 boai-scheduler。创建一个由你执行的自动化“资料巡检”，每天 Asia/Shanghai 时区 09:15 运行，任务内容为“核对我提供的公开资料并汇总待核实项”。每次新会话，先保持暂停，不要立即运行，也不要创建待办或修改人格功能。预览计划时间并读取保存结果，简短确认。', '把刚才同一个“资料巡检”改到每天 10:40，保持 Asia/Shanghai、任务内容和暂停状态，读回核对；不要新建第二条，不要立即运行。'], criteria: ['实际读取scheduler并调用preview/create，保存一条employee/bobo归属的暂停日计划。', '第二轮同ID更新到10:40，其余字段保持，无执行记录、Work、待办或人格计划。'] },

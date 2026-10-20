@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: Current-session project discovery restores durable IDs across turns without filesystem scans or inaccessible source metadata.
  * [INPUT]: Current employee/session workspace, authorized byte readers, original file queue and output writer.
  * [OUTPUT]: Alma presentation tools use durable revisions, source revalidation, dedicated review and approved-only export.
  * [POS]: Shared task tool adapter for API/native/CLI; private project/cache paths never become model file authority.
  * [PROTOCOL]: Update Header and mastra/.folder.md when changed.
  */
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile, rename, rm, lstat, realpath } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile, rename, rm, lstat, realpath } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { z } from 'zod'
 import { createTool } from '@mastra/core/tools'
@@ -106,6 +107,22 @@ export function createPresentationTools(ctx: EngineContext, host: {
   const project = z.object({ presentationId: id }).strict()
   return Object.fromEntries(Object.entries({
     presentation_settings: tool('presentation_settings', 'Inspect dedicated PPT renderer and vision settings; never substitutes the chat model or performs a remote test.', z.object({}).strict(), () => capability.settings()),
+    presentation_list: tool('presentation_list', 'Find existing editable projects in the current employee/conversation. Use this to recover the real presentationId on a later turn, then presentation_get; never scan private project directories. Unavailable source/project entries expose no title or content.', z.object({ offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(50).default(20) }).strict(), async input => {
+      await directory()
+      const files = (await readdir(root)).filter(name => /^project-[a-f0-9-]{36}\.json$/.test(name) && id.safeParse(name.slice(8, -5)).success).sort()
+      const items: { presentationId: string; title: string; revision: number; slideCount: number; updatedAt: string }[] = []
+      let unavailableCount = 0
+      for (const file of files.slice(input.offset, input.offset + input.limit)) {
+        const presentationId = file.slice(8, -5)
+        try {
+          await metadata(presentationId)
+          const current = await projects.get(presentationId)
+          await metadata(presentationId)
+          items.push({ presentationId, title: current.spec.title, revision: current.spec.revision, slideCount: current.spec.slides.length, updatedAt: current.spec.updatedAt })
+        } catch { await verify(); unavailableCount++ }
+      }
+      return { items, unavailableCount, nextOffset: input.offset + input.limit < files.length ? input.offset + input.limit : null }
+    }),
     presentation_list_designs: tool('presentation_list_designs', 'Original Alma design directions. Choose an explicit theme/design contract matching audience and purpose.', z.object({ query: z.string().optional(), limit: z.number().int().min(1).max(20).default(4) }).strict(), async input => listDesigns(input.query, input.limit)),
     presentation_list_layouts: tool('presentation_list_layouts', 'Original slide layouts and exact geometry. Use the returned id as layoutKey; vary adjacent page structures.', z.object({ query: z.string().optional(), role: z.string().optional(), limit: z.number().int().min(1).max(20).default(6), canvas: z.enum(['wide', 'standard']).default('wide') }).strict(), async input => layouts(input)),
     presentation_list_icons: tool('presentation_list_icons', 'Find original editable icon names by meaning.', z.object({ query: z.string(), limit: z.number().int().min(1).max(50).default(12) }).strict(), async input => icons(input.query, input.limit)),

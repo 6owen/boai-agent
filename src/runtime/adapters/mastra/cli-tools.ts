@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: PPT目录/配置/来源提取和核验标为只读，制作/审阅/导出仍使用原工具执行。
+ * [OUTPUT]: PPT项目查询/目录/配置/来源提取和核验标为只读，制作/审阅/导出仍使用原工具执行。
  * [OUTPUT]: 公共推文reader在员工CLI工具目录标为只读，仍复用当前绑定与原运行取消。
  * [OUTPUT]: 相册只读元信息与实际修改继续共用员工工具桥。
  * [OUTPUT]: 独立生图检查为只读；生成仍走原任务工具、授权和真实退出。
@@ -23,7 +23,7 @@ export function mastraCliTools(context: EngineContext, tools: Record<string, unk
     const tool = value as Tool, schema = tool.inputSchema as z.ZodType
     return {
       name, description: tool.description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
-      effect: ['presentation_settings', 'presentation_list_designs', 'presentation_list_layouts', 'presentation_list_icons', 'presentation_inspect_template', 'presentation_extract_material', 'presentation_get', 'presentation_validate', 'read_twitter_post', 'list_selfies', 'inspect_image_generation', 'read_file', 'list_files', 'search_files', 'read_image', 'list_skills', 'read_skill', 'search_memory', 'boai_catalog', 'boai_receipt', 'inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search'].includes(name) ? 'read' : 'write',
+      effect: ['presentation_settings', 'presentation_list', 'presentation_list_designs', 'presentation_list_layouts', 'presentation_list_icons', 'presentation_inspect_template', 'presentation_extract_material', 'presentation_get', 'presentation_validate', 'read_twitter_post', 'list_selfies', 'inspect_image_generation', 'read_file', 'list_files', 'search_files', 'read_image', 'list_skills', 'read_skill', 'search_memory', 'boai_catalog', 'boai_receipt', 'inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search'].includes(name) ? 'read' : 'write',
       execute: async (input, callId) => {
         context.signal.throwIfAborted()
         if (!tool.execute) throw new Error('当前工具没有本机执行入口')

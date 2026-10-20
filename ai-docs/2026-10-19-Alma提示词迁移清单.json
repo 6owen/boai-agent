@@ -16351,14 +16351,15 @@
       "name": "presentations",
       "originalRef": "alma-研究/技能/presentations/SKILL.md",
       "researchCopySha256": "e3cfac408c24e63d27fbf317fe39f8d766753f730df4eb0dd36b3b40d8315862",
-      "dependencyReviewStatus": "employee-tools-and-accounting-integrated-controlled-pipelines-passed",
-      "targetSkill": null,
-      "implementationStatus": "in-progress-employee-tools",
+      "dependencyReviewStatus": "reviewed-partial",
+      "targetSkill": "resources/agent-skills/boai-presentations/SKILL.md",
+      "implementationStatus": "partial-adaptation-bound",
       "verification": [
         "§11.48: typecheck and 3 kernel tests passed; real PPTX revision 3 generated; renderer startup exited 127; employee tools and visual review pending",
         "§11.49: 17 checks/typecheck and real 3-page LibreOffice rendering passed; templates/designs/materials/image imports and dedicated review core ported; actual vision/provider and employee tools pending",
         "§11.50: explicit settings protocol and Chat/Responses/Messages PNG transport implemented; 74 distinct checks/typecheck/build and actual distributed-worker rendering passed; live dev reloaded, employee tools/accounting and real vision quality pending",
-        "§11.51: 13 shared API/native/CLI tools; actual AppService, Codex and Claude protocol pipelines render/review via controlled SDK/export/publish; 256 distinct checks, typecheck/build and live dev reload; 31 bindings unchanged, skill text/binding, real vision quality and lifecycle matrix pending"
+        "§11.51: 13 shared API/native/CLI tools; actual AppService, Codex and Claude protocol pipelines render/review via controlled SDK/export/publish; 256 distinct checks, typecheck/build and live dev reload; 31 bindings unchanged, skill text/binding, real vision quality and lifecycle matrix pending",
+        "§11.52: full original skill workflow adapted/bound as skill32; project discovery fixes real cross-turn ID loss; original32-request batch retains step-limit failure, next22-request batch completes editable same-project revision.33checks/typecheck/build; Bobo73/profile16/32, actual vision remains unconfigured. Verbose reply and transient-task-as-long-term-preference persist; full quality/lifecycle incomplete."
       ]
     },
     {
