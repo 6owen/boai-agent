@@ -1,5 +1,5 @@
 # [INPUT]: BOAI pnpm workspace与Lody固定diff依赖及补丁。
-# [OUTPUT]: 单应用工作区、原生构建白名单及局部diff依赖锁定。
+# [OUTPUT]: 单应用工作区、原生构建白名单及局部依赖锁定；Electron解压使用兼容Node24的yauzl。
 # [POS]: 仓库依赖配置。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 packages:
@@ -12,6 +12,7 @@ patchedDependencies:
   '@pierre/diffs@1.0.10': src/renderer/components/common/lody/pierre-diffs-host.patch
 
 overrides:
+  'extract-zip>yauzl': 3.4.0
   '@extend-ai/react-docx>@tanstack/react-virtual': 3.13.23
   '@extend-ai/react-xlsx>@tanstack/react-virtual': 3.13.23
   '@extend-ai/react-pptx>@tanstack/react-virtual': 3.13.23
