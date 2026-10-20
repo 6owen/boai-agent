@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 快捷命令目录与消息标签展示共用composer-commands，原候选/展开及即时文件/目录操作保持。
  * [OUTPUT]: 会话切换保留输入布局，按scope重置候选/光标/IME状态并将编辑器撤销历史隔离到当前会话。
  * [OUTPUT]: @仅列当前会话员工，$列技能/文件/全局提示词；提示词复制所选正文快照，发送时由原草稿投影展开。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
@@ -16,11 +17,12 @@ import { CLIPBOARD_MATERIAL_FILE_FORMATS, type DesktopApi } from '@shared/ipc'
 import type { ChatDraft } from '../presentation'
 import { draftMentions, insertDraftMention } from '../inline-mentions'
 import { Avatar, errorText } from '@/components/common'
-import { Check, FileText, FolderOpen, Zap, LoaderCircle } from '@/components/icons'
+import { Check, FileText, Zap, LoaderCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ChatComposer } from '@/components/ui/chat-composer'
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover'
 import { MentionInput, type MentionInputHandle } from './mention-input'
+import { composerCommands as commands } from '../composer-commands'
 
 type Menu = 'at' | 'dollar' | 'slash'
 interface Token { kind: Menu; query: string; start: number; end: number }
@@ -29,12 +31,6 @@ function tokenAt(text: string, start: number, end: number): Token | null {
   const match = /(^|\s)([@/$])([^\s@/$]*)$/u.exec(text.slice(0, start))
   return match ? { kind: match[2] === '@' ? 'at' : match[2] === '$' ? 'dollar' : 'slash', query: match[3].toLocaleLowerCase(), start: match.index + match[1].length, end } : null
 }
-const commands = [
-  { id: 'summarize', name: '总结会话', description: '/summarize · 填入草稿后发送', icon: FileText, prompt: '请总结当前会话的关键结论、分歧和下一步建议。' },
-  { id: 'todo', name: '整理待办', description: '/todo · 填入草稿后发送', icon: Check, prompt: '请根据当前会话整理待办事项，列出负责人、交付内容和待确认问题。' },
-  { id: 'files', name: '查看文件', description: '/files · 打开聊天文件', icon: FileText },
-  { id: 'workspace', name: '打开工作目录', description: '/workspace', icon: FolderOpen },
-]
 type Row = { id: string; name: string; description: string; member?: DigitalAgent; resource?: ComposerReference; prompt?: PromptTemplate; file?: ConversationFileItem; command?: typeof commands[number] }
 export interface PromptBarHandle { mention(id: string): void; focus(): void }
 interface Props {

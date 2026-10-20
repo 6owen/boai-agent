@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 消息技能/数据源/文件与命令标签复用输入框Soft Button皮肤，原位行内排版、基线对齐与正常文本选择。
  * [OUTPUT]: 消息网页预览使用transitions-dev/05-menu-dropdown原版CSS与token，250ms进入/150ms退出，保留减少动态效果支持。
  * [OUTPUT]: 单聊/群聊消息头像及可点击资料入口统一使用md圆角。
  * [OUTPUT]: 渠道发送复用composer表面，编辑区自适应容器、操作栏常驻，引用搜索用有界ScrollArea。
@@ -102,6 +103,7 @@
 .chat-panel .message-row.user .message-content[data-toolbar-placement=corner]>.message-tools { left:0;right:auto }
 .chat-panel .message-row:hover .message-tools { opacity:1;pointer-events:auto }
 .chat-panel .message-mention { display:inline;padding:1px 5px;border:0;border-radius:var(--radius-pill);background:var(--primary);color:var(--primary-foreground);font:inherit;white-space:nowrap;cursor:pointer }
+.chat-panel .message-reference-tag { vertical-align:baseline;margin:0 2px;cursor:text;user-select:text;box-decoration-break:clone }
 .chat-panel .message-mentions { margin-right:6px }
 .chat-panel .message-mention+.message-mention { margin-left:4px }
 .chat-panel .message-mentions~p:first-of-type { display:inline }

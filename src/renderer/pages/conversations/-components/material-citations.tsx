@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户消息按固定引用将技能/数据源/文件还原为输入框同款行内标签，/命令同款展示；代码和链接原文保持，不改消息正文或引用权限。
  * [OUTPUT]: 实际对象链接携消息员工/会话作用域，无法确定员工时不猜测私人引用范围。
  * [OUTPUT]: 已发布知识引用按宿主实际读取身份打开原全局预览；明确重开更新定位，失效不跳到新内容。
  * [OUTPUT]: 普通网页链接复用MessageLink悬停预览和系统浏览器入口；未核验的本机资料引用仍为文本。
@@ -16,12 +17,13 @@ import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/common/markdown'
 import { materialDisplayName } from './material-draft'
 import { MessageLink } from './message-link'
+import { MessageReferenceText } from './message-reference-text'
 
 type MaterialMarkdownProps = { onKnowledgePreview?(target: KnowledgeCitationInput, reference: KnowledgeReadRef, agentId: string): void; detail: ConversationDetail; onPreview(material: ConversationMaterial, line?: number): void } & ({ message: Message; source?: never } | { source: Pick<Message, 'content' | 'materialSources'>; message?: never })
 export function MaterialMarkdown({ message, source, detail, onPreview, onKnowledgePreview }: MaterialMarkdownProps) {
   const published = source ?? message
-  const render = (children: ReactNode): ReactNode => {
-    if (Array.isArray(children)) return children.map((child, index) => <Fragment key={index}>{render(child)}</Fragment>)
+  const render = (children: ReactNode, tags = true): ReactNode => {
+    if (Array.isArray(children)) return children.map((child, index) => <Fragment key={index}>{render(child, tags)}</Fragment>)
     if (typeof children !== 'string') return children
     const pattern = /material:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):text-v1:L([1-9]\d*)(?:-L([1-9]\d*))?(?![\w-])/gi
     const parts: ReactNode[] = []; let start = 0
@@ -34,18 +36,22 @@ export function MaterialMarkdown({ message, source, detail, onPreview, onKnowled
       start = index + match[0].length
     }
     if (start < children.length) parts.push(children.slice(start))
-    return parts.length ? parts : children
+    const result = parts.length ? parts : [children]
+    return tags && message?.senderType === 'user' ? result.map((part, index) => typeof part === 'string' ? <MessageReferenceText key={index} references={message.composerReferences}>{part}</MessageReferenceText> : part) : result
   }
   return <Markdown components={{
     p: ({ children }) => <p>{render(children)}</p>, li: ({ children }) => <li>{render(children)}</li>,
     strong: ({ children }) => <strong>{render(children)}</strong>, em: ({ children }) => <em>{render(children)}</em>,
-    code: ({ children, className }) => <code className={className}>{render(children)}</code>,
+    code: ({ children, className }) => <code className={className}>{render(children, false)}</code>,
     td: ({ children }) => <td>{render(children)}</td>, th: ({ children }) => <th>{render(children)}</th>,
+    h1: ({ children }) => <h1>{render(children)}</h1>, h2: ({ children }) => <h2>{render(children)}</h2>, h3: ({ children }) => <h3>{render(children)}</h3>,
+    h4: ({ children }) => <h4>{render(children)}</h4>, h5: ({ children }) => <h5>{render(children)}</h5>, h6: ({ children }) => <h6>{render(children)}</h6>,
+    del: ({ children }) => <del>{render(children)}</del>,
     a: ({ children, href }) => {
       const citation = message?.status === 'completed' && message.senderType === 'agent' ? matchKnowledgeCitation(message.knowledgeSources, href) : undefined
       return citation && message && onKnowledgePreview
         ? <Button variant="link" size="content" className="inline text-inherit" aria-label={`查看知识资料 ${citation.reference.name} 第 ${citation.line} 行`} onClick={() => onKnowledgePreview({ messageId: message.id, referenceIndex: citation.referenceIndex, line: citation.line }, citation.reference, message.senderId)}>{children}</Button>
-        : <MessageLink href={href} referenceScope={href && parseReferenceUri(href) && detail.conversation ? message?.senderType === 'agent' ? { agentId: message.senderId, conversationId: detail.conversation.id } : detail.conversation.agentIds.length === 1 ? { agentId: detail.conversation.agentIds[0]!, conversationId: detail.conversation.id } : undefined : undefined}>{render(children)}</MessageLink>
+        : <MessageLink href={href} referenceScope={href && parseReferenceUri(href) && detail.conversation ? message?.senderType === 'agent' ? { agentId: message.senderId, conversationId: detail.conversation.id } : detail.conversation.agentIds.length === 1 ? { agentId: detail.conversation.agentIds[0]!, conversationId: detail.conversation.id } : undefined : undefined}>{render(children, false)}</MessageLink>
     },
   }}>{published.content}</Markdown>
 }
