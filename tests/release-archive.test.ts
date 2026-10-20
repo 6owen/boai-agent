@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 标准库生成的真实ZIP、隔离目录/链接、CRC损坏和取消；仅空间状态使用显式局部夹具。
- * [OUTPUT]: 保留执行模式的成功解包及越界/别名/链接链/损坏/已有目录负例，个人数据始终保持。
+ * [OUTPUT]: 保留执行模式及一致拼写隐式父目录成功；路径/父前缀别名、总节点放大、链接链/损坏负例保持个人数据。
  * [POS]: 个人产物共用ZIP阶段合同；不启动GUI、模型或安装器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
@@ -68,6 +68,31 @@ it('Unicode归一化别名在任何写入前拒绝', async () => {
   const f = await fixture([...safe, { path: app + '/é', type: 'file', data: 'one', mode: 0o644 }, { path: app + '/e\u0301', type: 'file', data: 'two', mode: 0o644 }])
   await expect(unpackPersonalArchive(f.archive, f.output)).rejects.toThrow('冲突')
   await expect(lstat(f.output)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+it.each([
+  { name: 'explicit-case-parent', paths: ['Contents/other', 'contents/different'] },
+  { name: 'implicit-case-parent', paths: ['Assets/one', 'assets/two'] },
+  { name: 'unicode-parent', paths: ['é/one', 'e\u0301/two'] },
+  { name: 'late-explicit-parent', paths: ['Assets/one', 'assets/'] },
+])('$name目录别名在目录核验阶段拒绝，尚未创建输出', async ({ paths }) => {
+  const f = await fixture([...safe, ...paths.map(path => ({ path: app + '/' + path, type: path.endsWith('/') ? 'directory' : 'file', data: path.endsWith('/') ? '' : 'bytes', mode: 0o755 }))])
+  await expect(inspectPersonalArchive(f.archive)).rejects.toThrow('冲突')
+  await expect(unpackPersonalArchive(f.archive, f.output)).rejects.toThrow('冲突')
+  await expect(lstat(f.output)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(f.sentinel, 'utf8')).toBe('personal bytes stay')
+})
+it('隐式父目录随后以相同拼写显式登记允许，仍保留真实文件与目录权限', async () => {
+  const f = await fixture([...safe, { path: app + '/Assets/nested/file', type: 'file', data: 'nested bytes', mode: 0o644 }, { path: app + '/Assets/', type: 'directory', data: '', mode: 0o755 }])
+  const result = await unpackPersonalArchive(f.archive, f.output)
+  expect(await readFile(join(result.app, 'Assets/nested/file'), 'utf8')).toBe('nested bytes')
+  expect((await lstat(join(result.app, 'Assets'))).mode & 0o777).toBe(0o755)
+})
+it('少量显式条目放大到超限隐式节点时仅目录核验就拒绝，不实际创建大量目录', async () => {
+  const rows = Array.from({ length: 200 }, (_, i) => ({ path: app + '/branch-' + i + '/' + Array(250).fill('a').join('/') + '/file', type: 'file', data: 'x', mode: 0o644 }))
+  const f = await fixture([safe[0]!, ...rows])
+  await expect(inspectPersonalArchive(f.archive)).rejects.toThrow('节点上限')
+  await expect(lstat(f.output)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(f.sentinel, 'utf8')).toBe('personal bytes stay')
 })
 it('链接链词法在内但实际越界时不产生可用应用，也不写外部文件', async () => {
   const f = await fixture([...safe, { path: app + '/B', type: 'link', data: '.', mode: 0o755 }, { path: app + '/C/', type: 'directory', data: '', mode: 0o755 }, { path: app + '/C/link', type: 'link', data: '../B/..', mode: 0o755 }])

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确的个人macOS ZIP及不存在的隔离输出目录；Node24/yauzl锁定版本。
- * [OUTPUT]: 有界目录/CRC/字节核验后解包，普通文件先写、链接后建并核实际边界；不安装或授发布资格。
+ * [OUTPUT]: 显式/隐式路径统一拼写与总节点有界，CRC/字节核验后文件先写、链接后建并核实际边界；不授安装资格。
  * [POS]: 产物冒烟与后续升级共用ZIP阶段；任何失败保留独立现场，不覆盖已有目录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查scripts/.folder.md。
  */
@@ -19,12 +19,18 @@ export const releaseArchiveLimits = Object.freeze({ entries: 50000, archiveBytes
 const key = path => path.normalize('NFD').toLowerCase()
 const inside = path => path === '/' + personalAppName || path.startsWith('/' + personalAppName + '/')
 async function catalog(zip, signal) {
-  const rows = [], seen = new Map(); let bytes = 0
+  const rows = [], seen = new Map(), paths = new Map(); let bytes = 0
   for await (const entry of zip.eachEntry()) {
     signal.throwIfAborted()
     const mode = entry.externalFileAttributes >>> 16, type = mode & 0o170000, name = entry.fileName
     const directory = type === 0o040000, path = directory ? name.slice(0, -1) : name, parts = path.split('/')
     if (!name || Buffer.byteLength(name) > 4096 || /[\u0000-\u001f\u007f\\]/.test(name) || directory !== name.endsWith('/') || parts[0] !== personalAppName || parts.some(part => !part || part === '.' || part === '..') || seen.has(key(path))) throw Error('个人ZIP路径越界、重复或归一化冲突')
+    for (let i = 1; i <= parts.length; i++) {
+      const prefix = parts.slice(0, i).join('/'), normalized = key(prefix)
+      if (paths.has(normalized) && paths.get(normalized) !== prefix) throw Error('个人ZIP父路径归一化冲突')
+      paths.set(normalized, prefix)
+      if (paths.size > releaseArchiveLimits.entries) throw Error('个人ZIP超过显式与隐式总节点上限')
+    }
     if (![0o040000, 0o100000, 0o120000].includes(type) || mode & 0o7000 || entry.generalPurposeBitFlag & 1 || ![0, 8].includes(entry.compressionMethod)) throw Error('个人ZIP包含特殊文件、特殊权限或不支持的内容')
     if (!Number.isSafeInteger(entry.uncompressedSize) || entry.uncompressedSize < 0 || directory && entry.uncompressedSize !== 0 || type === 0o120000 && entry.uncompressedSize > releaseArchiveLimits.linkBytes) throw Error('个人ZIP条目大小不合法')
     bytes += entry.uncompressedSize
