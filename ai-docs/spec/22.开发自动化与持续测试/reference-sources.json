@@ -123,6 +123,15 @@
       "documentId": "keyboard-settings",
       "revision": 5,
       "sha256": "01a84ea23b079e89305c635bdbbcb6d46ce7505d65c72df4b02dcc52d2fb0635"
+    },
+    "developmentUiValidation": {
+      "source": "4331e254fd6ceffc687a839f5230b4bb1c7acef8",
+      "mode": "actual pnpm dev, isolated data and dynamic loopback port",
+      "singlePassScenarios": 8,
+      "launches": 16,
+      "traceCopies": 16,
+      "humanReview": "pending",
+      "boundary": "component evidence only; native Codex edit followed implementation, not one same-order automated design-to-PR task; not main/full CI/release qualification"
     }
   },
   "magpie": {

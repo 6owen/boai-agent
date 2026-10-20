@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 实际pnpm dev新设置页与草图经两轴对照、八场通过；CI18只读通过，完整同序任务/门禁仍待验。
 [OUTPUT]: 原生Codex明确选区局部改图通过并导出revision5新文件，原01保持；v5五场/独立审查/PR4完成，完整CI及pnpm dev仍待验。
 [INPUT]: 第22组08四动作需求及真实编辑器导出。
 [OUTPUT]: 当前可编辑设计、08第4节冻结组合及当前base检查与待验边界；视觉基线仍待采集审阅。
@@ -19,4 +20,4 @@
 
 当前交接修订为[02-codex-roundtrip.excalidraw](./02-codex-roundtrip.excalidraw)，keyboard-settings revision5，SHA256 `01a84ea23b079e89305c635bdbbcb6d46ce7505d65c72df4b02dcc52d2fb0635`。真实Codex0.163通过明确search-row选区，恰好一次以expectedRevision4将其文字改为“Open Search / 全局搜索               ⌘ K”，read_scene回读和实际编辑器显示均核验；完整导出只有目标文字/版本字段变化，其余11元素及坐标保持。原01及对应SVG仍描述初稿，不覆盖。宿主关闭/重启的SDK持久化回读通过，重开GUI因浏览器连接不可用未认证。
 
-v5候选57d3385c已通过原五场真实BDD/工程检查及新独立Codex审查，交付[draft PR4](https://github.com/6owen/boai-agent/pull/4)，目标infra/dev-automation；原v4未知用量不改写。新增两页和两张设置导航的本机/CI基准已分别审阅接受；本机完整18项只读通过，CI18只读重复、完整门禁和实际pnpm dev界面对照仍待验。画板不是实际产品截图基准，也没有用户人工设计批准。
+v5候选57d3385c已通过原五场真实BDD/工程检查及新独立Codex审查，交付[draft PR4](https://github.com/6owen/boai-agent/pull/4)，目标infra/dev-automation；原v4未知用量不改写。新增两页和两张设置导航的本机/CI基准已分别审阅接受；本机完整18项只读通过，CI90d完整18项只读重复和4331隔离pnpm dev八场/开发界面对照已验；新集成SHA完整门禁及同序自动任务仍未完成。画板不是实际产品截图基准，也没有用户人工设计批准。
