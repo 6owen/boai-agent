@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生普通聊天零私有memory阶段；明确来源完整标签、默认遵循本机权限，不再要求旧BOAI命令限制。
+ * [OUTPUT]: Claude连接按现行单一手动入口明确协议与无本机登录；程序核验/唯一配置沿公共支撑，不读取个人扫描结果。
  * [OUTPUT]: 原Claude状态可携带独立来源或模型ID/本机配置换绑目标；旧API场景缺省行为保持，候选值只供原表单拒绝核对，不作为新供应商执行。
  * [OUTPUT]: 本场状态区分离线强制退出与真实群消息更新；真实供应商路径不强制汇报判断。
  * [OUTPUT]: 真实重启区分源码系统钥匙串入口与应用包原入口，沿初次加密配置，不重读凭据或增加模型请求。
@@ -16,6 +18,7 @@ import { join, resolve } from 'node:path'
 import { test as base } from '../support/test'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import { nextMaterialDialog } from '../support/materials'
+import { addNativeConnection, selectNativeEmployee } from '../support/native-connection'
 import { prepareCodexResources } from '../support/codex-resources'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import type { ConversationDetail } from '../../../src/shared/domain'
@@ -135,37 +138,25 @@ Then('重启后Claude图片会话只处理新增文字且不重放附件', async
 
 When('用户在设置核对Claude程序并在通讯录创建员工', async ({ runtime, claudeEmployee: state }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
-  await page.getByRole('button', { name: '扫描本机 Agent', exact: true }).click()
-  await page.getByRole('button', { name: '本机 Claude 使用已安装程序，在员工设置中选择模型 API', exact: true }).click()
-  const connectionDialog = page.getByRole('dialog', { name: '手动添加 Agent', exact: true })
-  await connectionDialog.getByRole('textbox', { name: '启动命令', exact: true }).fill(state.program!)
-  await connectionDialog.getByRole('checkbox', { name: '允许此 Agent 在本机运行', exact: true }).check()
-  await connectionDialog.getByRole('button', { name: '测试', exact: true }).click()
-  await expect(connectionDialog.getByRole('status')).toContainText('程序已核对', { timeout: 30000 })
-  await runtime.reviewCheckpoint('Claude程序核对只证明程序状态')
-  await connectionDialog.getByRole('button', { name: '保存', exact: true }).click()
-  await expect(connectionDialog).toBeHidden()
+  await addNativeConnection(runtime, 'Claude', state.program!, false)
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
   await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '新建', exact: true }).click()
   await page.getByRole('menuitem', { name: '新建员工', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '新建数字员工', exact: true })
   await dialog.getByRole('textbox', { name: '名称', exact: true }).fill('本机 Claude 同事')
   await dialog.getByRole('textbox', { name: '角色', exact: true }).fill('独立聊天与文件交付')
-  await dialog.getByRole('textbox', { name: 'Prompt', exact: true }).fill('用中文简短回复。只完成当前明确请求，文件工作用宿主工具实际写入并正式发布；不需要联网、命令或额外研究。不要将本场临时核对码保存为长期记忆。')
-  await dialog.getByRole('combobox', { name: '运行方式', exact: true }).click()
-  await page.getByRole('option', { name: '本机 Claude', exact: true }).click()
-  await expect(dialog.getByRole('combobox', { name: '本机连接', exact: true })).toContainText('本机 Claude')
-  await dialog.getByRole('combobox', { name: '模型来源', exact: true }).click()
-  await page.getByRole('option', { name: state.connectionName!, exact: true }).click()
+  await dialog.getByRole('textbox', { name: '工作方式', exact: true }).fill('用中文简短回复。只完成当前明确请求，文件工作用宿主工具实际写入并正式发布；不需要联网、命令或额外研究。不要将本场临时核对码保存为长期记忆。')
+  await selectNativeEmployee(page, dialog, '本机 Claude')
+  await dialog.getByRole('combobox', { name: 'Agent 的模型 API', exact: true }).click()
+  const connection = (await page.evaluate(() => window.boai.request('snapshot', undefined))).connections.find(value => value.id === state.connectionId)!
+  await page.getByRole('option', { name: `${state.connectionName}${connection.defaultModel ? ` · ${connection.defaultModel}` : ''}`, exact: true }).click()
   await expect(page.locator('[data-slot="select-content"]:visible')).toHaveCount(0)
   await runtime.reviewCheckpoint('新员工明确选择Claude程序与模型来源')
   await dialog.getByRole('button', { name: '创建员工', exact: true }).click()
   await expect(dialog).toBeHidden()
   const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
   const agent = snapshot.agents.find(value => value.name === '本机 Claude 同事')!
-  expect(agent).toMatchObject({ executionBackend: { kind: 'claude-local' }, connectionId: state.connectionId, allowCommands: false })
+  expect(agent).toMatchObject({ executionBackend: { kind: 'claude-local' }, connectionId: state.connectionId, allowCommands: true, nativeOptions: { useNativePermissions: true } })
   state.employeeId = agent.id; state.conversationId = snapshot.conversations.find(value => value.agentIds.includes(agent.id))!.id
   const detail = await page.evaluate(id => window.boai.request('getConversation', { id }), state.conversationId)
   expect(detail.runs).toEqual([]); expect(detail.workItems).toEqual([])
@@ -179,12 +170,12 @@ Then('该Claude员工在原聊天连续答复并交付真实文件', async ({ ru
     await expect.poll(async () => {
       const d = await read()
       if (d.runs.some(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))) return true
-      return d.runs.filter(run => run.phase === 'execution').length >= count && d.runs.filter(run => run.phase === 'memory').length >= count && d.runs.every(run => run.status === 'completed') && d.turns?.every(turn => ['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted', 'waiting_user'].includes(turn.status))
+      return d.runs.filter(run => run.phase === 'execution').length >= count && d.messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length >= count && d.runs.every(run => run.status === 'completed') && d.turns?.every(turn => ['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted', 'waiting_user'].includes(turn.status))
     }, { timeout: 240000 }).toBe(true)
     const detail = await read()
     expect(detail.runs.filter(run => run.status !== 'completed')).toEqual([])
     expect(detail.runs.filter(run => run.phase === 'execution').length).toBeGreaterThanOrEqual(count)
-    expect(detail.runs.filter(run => run.phase === 'memory').length).toBeGreaterThanOrEqual(count)
+    expect(detail.runs.filter(run => run.phase === 'memory')).toEqual([])
     expect(detail.runs.every(run => run.backend?.kind === 'claude-local')).toBe(true)
     return detail
   }
