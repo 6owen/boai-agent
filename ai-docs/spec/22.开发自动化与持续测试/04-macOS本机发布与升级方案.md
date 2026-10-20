@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 新增共用ZIP目录/CRC/模式/链接/空间阶段，真实c5全展开和深层签名通过；正式编排、main与升级仍未完成。
 [OUTPUT]: c5实际ad-hoc arm64 DMG/ZIP候选及ZIP8/DMG2独立资产流程已验；完整main/正式发布/个人升级仍未通过，实际归03。
 [OUTPUT]: release:build候选先排空旧账本、核实际链接路径；59合同/类型通过，实际打包与发布资格待验。
 [OUTPUT]: 跨次重建仍须相同input/output/Node身份，createdAt只作记录；原CI子报告保持同一原构建，真实重建复验待跑。
@@ -190,3 +191,5 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 配置完整保留原files、asarUnpack、原生助手、协议、图标与现有extraMetadata，只覆盖输出、DMG/ZIP目标、ad-hoc签名、关闭hardened runtime/公证及嵌入明确源码SHA；固定`--publish never`。构建后核对bundle版本/appId、arm64、实际深层签名验证及ad-hoc身份，记录两资产大小/hash和bundle字节/执行模式/内部链接清单；同时核词法与实际realpath，拒绝链接链外逃、特殊文件或源码/dist变化。
 
 终态`built`只表示候选构建，不签发Tag、Release、安装、main CI或产物冒烟资格；59项合同/类型通过后，c5已实际built并分别验证ZIP8场/DMG2场及签名/全部bundle字节，实际和旧失败归03。DMG需配对持有挂载生命周期，不能把会留后台挂载服务的attach当成普通短命进程、返回后立即排空其子树；正式封存/中断恢复入口仍待接。发布还需同SHA main资格、完整升级/回滚等条款。失败/取消保留日志，不覆盖日常应用或个人数据。
+
+共用ZIP阶段位于`release-archive.mjs`：`inspectPersonalArchive`只检查中央目录/元数据，不授文件或链接实际资格；`unpackPersonalArchive`必须使用不存在的隔离输出目录，压缩/展开大小双上限和可取消hash/空间预检后先流式写普通文件、校验CRC/长度/SHA，再创建内部链接并核实际解析边界，保留模式，拒绝路径/归一化别名、特殊文件/权限、链接作为祖先、外逃/环/悬空或输入字节变化。完整展开后仍须另核plist/架构/签名及实际应用行为。当前20合同与最终WIP对真实c5资产展开/签名通过，属于RL04的共用步骤，尚无正式发布/升级事务入口；不是通用安装命令。

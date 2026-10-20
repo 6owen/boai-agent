@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 436完整本地CI因扫描/菜单准备两项failed，18UI全过；候选修正与ZIP共用阶段实际验证通过，待固定审查/新CI，22组03。
 [OUTPUT]: c5个人候选DMG/ZIP已built，ZIP8/DMG2分批资产验证通过；Actions停用、本地新完整CI待复验，尚无正式发布或安装升级。
 [OUTPUT]: 候选版本统一0.2.4、旧进程和链式链接边界已补；09f完整CI因原件时钟误拒failed，修复待复验，未发布或安装。
 [OUTPUT]: 个人候选release:build已接隔离ad-hoc arm64 DMG/ZIP及身份/hash；实际打包和升级仍待验，当前CI由本机执行。

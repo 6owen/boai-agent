@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64。
- * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与身份/签名/hash；仅built，不授发布或安装资格。
+ * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
+ * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与可取消hash/身份/签名；仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -29,13 +29,15 @@ export function personalMacConfiguration(metadata, { output, version, sha }) {
     extraMetadata: { ...metadata.build.extraMetadata, boaiRelease: { version: 1, channel: 'personal-macos-arm64', sha, applicationVersion: version, arch: 'arm64' } },
   }
 }
-export async function releaseFile(path) {
+export async function releaseFile(path, { signal } = {}) {
+  signal?.throwIfAborted()
   const info = await lstat(path)
   if (!info.isFile() || info.isSymbolicLink()) throw new Error('候选资产须为普通文件')
-  const hash = createHash('sha256'); for await (const bytes of createReadStream(path)) hash.update(bytes)
+  const hash = createHash('sha256'); for await (const bytes of createReadStream(path, { signal })) hash.update(bytes)
   return { bytes: info.size, sha256: hash.digest('hex') }
 }
 export async function bundleInventory(directory) {
+  directory = resolve(directory)
   const rootInfo = await lstat(directory)
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) throw new Error('候选bundle根目录须为真实目录')
   const base = directory, canonical = await realpath(directory), files = []

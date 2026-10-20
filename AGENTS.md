@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 436完整CI两项failed/18UI过，SQLite临时sidecar重核和菜单正准备候选已验；真实ZIP共用展开通过，最新22组03，未放行完整目标。
 [OUTPUT]: c5个人候选arm64/ad-hoc DMG+ZIP已built，ZIP8/DMG2分别19启动/135原件通过；旧失败和新完整CI/发布剩余归22组03。
 [OUTPUT]: 09f原始28T1/18UI过，但原件分段计时误拒导致完整failed并真实回传；候选修复/版本0.2.4待复验，22组03。
 [OUTPUT]: 本地CI 6a原始T128/UI18全过，但自测锁/时钟核验导致完整failed且已真实回传failure；修复候选待新完整复验，最新22组03。

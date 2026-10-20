@@ -9,7 +9,7 @@ import { mkdtemp, writeFile, mkdir, symlink, chmod, rm, readdir, copyFile, readF
 import { once } from 'node:events'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, resolve, relative } from 'node:path'
 import { drainPendingProcesses } from '../scripts/development/recovery'
 // @ts-expect-error Node candidate builder has no declaration file.
 import { personalMacConfiguration, assertPersonalBundle, releaseFile, bundleInventory, drainReleaseCandidates } from '../scripts/release-build.mjs'
@@ -85,6 +85,9 @@ it('真实bundle清单绑定字节和执行模式，资源链接必须保留在�
     await mkdir(join(directory, 'Contents')); const binary = join(directory, 'Contents/binary')
     await writeFile(binary, 'actual bytes', { mode: 0o600 }); await symlink('binary', join(directory, 'Contents/current'))
     const before = await bundleInventory(directory), file = await releaseFile(binary)
+    expect(await bundleInventory(relative(process.cwd(), directory))).toEqual(before)
+    const cancelled = new AbortController(); cancelled.abort()
+    await expect(releaseFile(binary, { signal: cancelled.signal })).rejects.toThrow()
     expect(before.find((row: { path: string }) => row.path === 'Contents/current')).toMatchObject({ type: 'link', target: 'binary' })
     await chmod(binary, 0o700); expect(await bundleInventory(directory)).not.toEqual(before); expect(await releaseFile(binary)).toEqual(file)
     await writeFile(binary, 'changed bytes'); expect(await releaseFile(binary)).not.toEqual(file)
