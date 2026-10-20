@@ -113,11 +113,17 @@
     "scope": "Codex developer workflow only; no BOAI embedded canvas"
   },
   "codexCompatibility": {
-    "fileRoundTrip": "actual native editor edit / explicit selection / native export to ai-docs passed; local keyboard draft revision4",
-    "mcpTools": "SDK Streamable HTTP -> native stdio passed; actual Codex CLI attempt timed out at model connection, not certified",
+    "fileRoundTrip": "actual native editor edit and selection; original revision4 preserved; native Codex changed revision5 exported to NEW 02-codex-roundtrip.excalidraw; SDK restart persistence passed, revision5 GUI reopen not certified",
+    "mcpTools": "codex-cli 0.163.0 v3 actual get_editor_context/read_scene/apply_operations/read_scene passed; v1 model timeout unknown and v2 approval refusal/no write retained",
     "mcpAppsPage": "not certified; developer host uses an external native plugin page",
-    "selectionContext": "actual editor reference read through SDK MCP passed; explicit get_editor_context bridge, no automatic prompt injection",
-    "inspectedCli": "codex-cli 0.163.0; local exec/help inspected; current conversation UI bridge not yet verified"
+    "selectionContext": "actual editor explicit search-row reference read by native Codex; expectedRevision4 exactly one update to revision5, independent SDK and actual page verified; no automatic prompt injection",
+    "inspectedCli": "codex-cli 0.163.0; v3 bounded one CLI/500000 known tokens/600000ms, exit0/133946 known tokens/zero shell; current conversation native MCP Apps page not certified",
+    "currentDesign": {
+      "path": "ai-docs/design/keyboard-shortcuts/02-codex-roundtrip.excalidraw",
+      "documentId": "keyboard-settings",
+      "revision": 5,
+      "sha256": "01a84ea23b079e89305c635bdbbcb6d46ce7505d65c72df4b02dcc52d2fb0635"
+    }
   },
   "magpie": {
     "commit": "d9c6a60d8a0b023f77bdf16d4d896316c67ec7c6",

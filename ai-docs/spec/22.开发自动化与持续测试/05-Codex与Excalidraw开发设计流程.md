@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 隔离Codex0.163原生MCP三工具逐项授权后真实选区修改/回读通过，新文件修订5保存；首次超时和第二次审批拒绝保持。
 [INPUT]: 用户明确使用Codex开发BOAI，画板用于仓库开发设计；本地ZCode UI_PLUGIN.md提供流程参考。
 [OUTPUT]: 开发侧原插件/外部页面/HTTP MCP及明确选区桥已接首版；文件往返与当前Codex客户端兼容分别验收，设计图不是产品截图基准。
 [POS]: 第22组开发画板现行合同，替代第19组10的产品内嵌误解；唯一实际进度归03。
@@ -107,12 +108,19 @@ MCP客户端使用本轮打印的URL，例如临时Codex调用配置：
 ```toml
 [mcp_servers.boai_design]
 url = "http://127.0.0.1:本轮端口/session/本轮会话/mcp"
+enabled_tools = ["get_editor_context", "read_scene", "apply_operations"]
+[mcp_servers.boai_design.tools.get_editor_context]
+approval_mode = "approve"
+[mcp_servers.boai_design.tools.read_scene]
+approval_mode = "approve"
+[mcp_servers.boai_design.tools.apply_operations]
+approval_mode = "approve"
 ```
 
-此配置示例不等于当前Codex会话已加载。实际CLI试验通过单次`-c mcp_servers.boai_design.url=...`传入，没有修改全局配置；因模型端连接超时被120秒上限终止，未获得用量/完成回执，不能计为原生Codex联动通过。SDK客户端已通过真实HTTP MCP读取编辑器选区和原版版本保护。
+以上是本次隔离CLI已验证的三工具配置；用单次`-c`参数传入，没有修改全局配置，不表示当前对话已加载该服务器。逐工具approval_mode语义见[Codex官方配置](https://developers.openai.com/codex/config-reference/)。首次120秒模型连接超时/用量未知保持，第二次因未配置工具审批而拒绝且没有修改。第三次在一CLI/50万已知token/10分钟预设内，真实读取编辑器search-row引用，expectedRevision4修改目标文字一次，再回读revision5；exit0且完整用量133946已知token，零shell。独立回读和实际页面确认⌘ K显示正确，原件/消费与未完成边界见03。export_diagram本次由独立SDK显式调用保存新文件，未将其算作这三项原生CLI工具验证。
 
 编辑器里的保存沿原插件SQLite；需`export_diagram`或编辑器导出，文件才进入仓库。首版宿主只允许`ai-docs/design/`内的新文件，拒绝覆盖已有文件和路径符号链接。后续修订使用明确新文件名，并在功能README指向当前交接文件；已有文件受到外改时不会被静默覆盖。原生工具`expectedRevision/operationId`保护插件文档的局部修改。
 
 选区通过编辑器“引用选区/整图”明确提交；Codex调用`get_editor_context`读取`editorConnected/reference/stale/scene/sequence`。断开或版本过期的引用不能称为当前选区。此桥不自动注入聊天输入框，也不承诺Codex原生MCP Apps页面；原宿主的成功提示由开发桥改成准确提示。局部修改结果通过本机事件流返回原编辑器，未保存草稿处理仍沿原插件控制器并另验。
 
-现有画板只是第22组08的初步布局，不代表快捷键产品功能已实现或用户已批准设计。
+现行设计修订为keyboard-shortcuts/02-codex-roundtrip.excalidraw（revision5），原01及SVG保留。原生Codex局部改图、实际页面显示和完整原生文件的无关元素保持已核对；宿主重启后的SDK持久化回读已验，新修订的GUI重开因Chrome连接不可用未认证。快捷键源码/五场测试和draft PR4已另行交付，完整CI、实际pnpm dev对照及人工设计评价仍待完成。

@@ -236,42 +236,58 @@
       "acceptedAt": "2026-10-20T15:05:02.997Z"
     },
     "settings-light": {
-      "sha256": "7e67f805183264656438208c8718b6b6c486e1c83e92dd103beac90ef4177b85",
+      "sha256": "8c579d04bb9422497474970973f6c60caec417ffd759e790b2b45c5a9fd1a1db",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "92f8c5152ddbdc700804be6eb31199d31f84d101",
-        "sourceHash": "5150f046bce9dc6c4d564f3a61a499edb9c569b846ce1f86864df523877db413",
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "sourceHash": "dc54cf6078ba70d4cdf96316c727642c6e42edb370e9850c45efa6677ef2d57c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "e3533d8dcd068f5935b2a09ec29ee0c1e918f594d8fc8ef1a247ecbecc44e206",
-        "outputHash": "089ba1b32b85e116bfdbe9dc699f8a6fa156b6178912d98d3a180bde9180ca78",
+        "inputHash": "6a0a4f9058dbb73892461322a7df4e8a40e057174e7380724961d5d7cf1cd76e",
+        "outputHash": "65c0548f6e934636603ddce9f92af78571b1dabed9e9040f3978e9010a5d34c8",
         "node": "v24.16.0",
-        "createdAt": "2026-10-20T14:43:03.616Z"
+        "createdAt": "2026-10-20T16:11:29.062Z"
       },
-      "reason": "首次固定GitHub macos-15 arm64独立环境：官方artifact与同SHA原件已重核，16场实际通过/零跳过重试，两独立模型逐case审阅已捕获区域无新增遮挡或内容缺失。气泡宽度和窄窗换行不同可接受，不宣称纯字体根因；本机旧PNG保持。旧CI比较为not-run，设置/员工屏外未验，仍待提交后只读复测及完整Required checks，不等于人工批准。",
-      "candidate": "78f794c2-1846-4443-8d61-7acbada492cc",
-      "acceptedAt": "2026-10-20T15:05:02.998Z"
+      "provenance": {
+        "version": 1,
+        "runId": "39455009979",
+        "attempt": 1,
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "artifactId": 12279843315,
+        "digest": "sha256:fba7417c02e1003c1219a902239081b77607ad2bd48cdd7a20a5f38623849f4c"
+      },
+      "reason": "设置新增只读快捷键页；两轴实际审阅官方四项旧新差异，其余14项字节和来源保持",
+      "candidate": "03449cc8-1d4c-474e-ae57-9c57652243ac",
+      "acceptedAt": "2026-10-20T16:37:29.395Z"
     },
     "settings-dark": {
-      "sha256": "375a1d07f30456bf1fff9d69d6463020e8d02bf755d2bf9e74dd8ea9a7ebbdb9",
+      "sha256": "52362e92401c91b2287d684ca11eda5d74d8e6f61656adfbfdf5c319e4fc4d50",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "92f8c5152ddbdc700804be6eb31199d31f84d101",
-        "sourceHash": "5150f046bce9dc6c4d564f3a61a499edb9c569b846ce1f86864df523877db413",
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "sourceHash": "dc54cf6078ba70d4cdf96316c727642c6e42edb370e9850c45efa6677ef2d57c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "e3533d8dcd068f5935b2a09ec29ee0c1e918f594d8fc8ef1a247ecbecc44e206",
-        "outputHash": "089ba1b32b85e116bfdbe9dc699f8a6fa156b6178912d98d3a180bde9180ca78",
+        "inputHash": "6a0a4f9058dbb73892461322a7df4e8a40e057174e7380724961d5d7cf1cd76e",
+        "outputHash": "65c0548f6e934636603ddce9f92af78571b1dabed9e9040f3978e9010a5d34c8",
         "node": "v24.16.0",
-        "createdAt": "2026-10-20T14:43:03.616Z"
+        "createdAt": "2026-10-20T16:11:29.062Z"
       },
-      "reason": "首次固定GitHub macos-15 arm64独立环境：官方artifact与同SHA原件已重核，16场实际通过/零跳过重试，两独立模型逐case审阅已捕获区域无新增遮挡或内容缺失。气泡宽度和窄窗换行不同可接受，不宣称纯字体根因；本机旧PNG保持。旧CI比较为not-run，设置/员工屏外未验，仍待提交后只读复测及完整Required checks，不等于人工批准。",
-      "candidate": "78f794c2-1846-4443-8d61-7acbada492cc",
-      "acceptedAt": "2026-10-20T15:05:02.998Z"
+      "provenance": {
+        "version": 1,
+        "runId": "39455009979",
+        "attempt": 1,
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "artifactId": 12279843315,
+        "digest": "sha256:fba7417c02e1003c1219a902239081b77607ad2bd48cdd7a20a5f38623849f4c"
+      },
+      "reason": "设置新增只读快捷键页；两轴实际审阅官方四项旧新差异，其余14项字节和来源保持",
+      "candidate": "03449cc8-1d4c-474e-ae57-9c57652243ac",
+      "acceptedAt": "2026-10-20T16:37:29.396Z"
     },
     "resources-light": {
       "sha256": "6734999fea542d0511b3f61fa1968f5f781a4eb134e58ffb4ee27fabf0646096",
@@ -386,6 +402,60 @@
       "reason": "首次固定GitHub macos-15 arm64独立环境：官方artifact与同SHA原件已重核，16场实际通过/零跳过重试，两独立模型逐case审阅已捕获区域无新增遮挡或内容缺失。气泡宽度和窄窗换行不同可接受，不宣称纯字体根因；本机旧PNG保持。旧CI比较为not-run，设置/员工屏外未验，仍待提交后只读复测及完整Required checks，不等于人工批准。",
       "candidate": "78f794c2-1846-4443-8d61-7acbada492cc",
       "acceptedAt": "2026-10-20T15:05:03.002Z"
+    },
+    "shortcuts-light": {
+      "sha256": "a6ef1edfb9a667bffadd6fa0bbcf615a230c262f4cd48344de0f7a7b5cd98671",
+      "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
+      "source": {
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "sourceHash": "dc54cf6078ba70d4cdf96316c727642c6e42edb370e9850c45efa6677ef2d57c",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "6a0a4f9058dbb73892461322a7df4e8a40e057174e7380724961d5d7cf1cd76e",
+        "outputHash": "65c0548f6e934636603ddce9f92af78571b1dabed9e9040f3978e9010a5d34c8",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-20T16:11:29.062Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39455009979",
+        "attempt": 1,
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "artifactId": 12279843315,
+        "digest": "sha256:fba7417c02e1003c1219a902239081b77607ad2bd48cdd7a20a5f38623849f4c"
+      },
+      "reason": "设置新增只读快捷键页；两轴实际审阅官方四项旧新差异，其余14项字节和来源保持",
+      "candidate": "03449cc8-1d4c-474e-ae57-9c57652243ac",
+      "acceptedAt": "2026-10-20T16:37:29.396Z"
+    },
+    "shortcuts-dark": {
+      "sha256": "83a371ebdb63c9b26f093a5fd0437e604d9e785b1a45c95f100afe8e3fec228a",
+      "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
+      "source": {
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "sourceHash": "dc54cf6078ba70d4cdf96316c727642c6e42edb370e9850c45efa6677ef2d57c",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "6a0a4f9058dbb73892461322a7df4e8a40e057174e7380724961d5d7cf1cd76e",
+        "outputHash": "65c0548f6e934636603ddce9f92af78571b1dabed9e9040f3978e9010a5d34c8",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-20T16:11:29.062Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39455009979",
+        "attempt": 1,
+        "commit": "e7baf54da0085211f69841d08e02eb6de56f7edd",
+        "artifactId": 12279843315,
+        "digest": "sha256:fba7417c02e1003c1219a902239081b77607ad2bd48cdd7a20a5f38623849f4c"
+      },
+      "reason": "设置新增只读快捷键页；两轴实际审阅官方四项旧新差异，其余14项字节和来源保持",
+      "candidate": "03449cc8-1d4c-474e-ae57-9c57652243ac",
+      "acceptedAt": "2026-10-20T16:37:29.396Z"
     }
   }
 }
