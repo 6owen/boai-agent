@@ -53,7 +53,8 @@ jobs:
           let finished = DispatchSemaphore(value: 0)
           let started = CTFontDescriptorMatchFontDescriptorsWithProgressHandler(descriptors as CFArray, nil) { state, info in
             print("FONT_DOWNLOAD_STATE " + String(state.rawValue))
-            if state == .didFinish || state == .didFail { finished.signal() }
+            if state == .didFailWithError { print("FONT_DOWNLOAD_ERROR " + String(describing: info)) }
+            if state == .didFinish { finished.signal() }
             return true
           }
           if !started || finished.wait(timeout: .now() + 60) == .timedOut { print("FONT_DOWNLOAD_INCOMPLETE"); exit(1) }
