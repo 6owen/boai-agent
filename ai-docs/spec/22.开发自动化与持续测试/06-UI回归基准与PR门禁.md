@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 本机/CI分别固定环境档案；独立受信采集只产候选，官方run/artifact核验后显式接受，普通CI仍只读。
 [INPUT]: 用户明确参考Magpie建立UI基线，后续PR合并持续比较，新增功能扩充基准，破坏原有UI时报错。
 [OUTPUT]: 行为/布局/视觉与受控晋升；Public后main强制Required checks及最新base，完整CI/发布仍待验，进度归03 §5.1。
 [POS]: 第22组UI回归专项合同；与05开发画板分工，唯一实际进度归03。
@@ -127,3 +128,21 @@ flowchart TD
 本地报告含真实结果、源码hash、环境及Playwright旧/新/diff；运行中源码变化、缺报告/场景、skip、重试或中断不能通过。Actions已配置PR和main/master push、固定`Required checks`汇总。Public后已通过GitHub API设置并回读main保护：要求GitHub Actions的`Required checks`成功、分支跟上最新main，管理员同样受约束，禁止强推和删除。远程完整通过、实际合并及发布闭环仍未验收；配置成功不冒充完整CI成功。
 
 完整`pnpm build`登记输入及产物字节身份；只读UI检查开始和结束均核对，源码、技能源或dist字节变化会使结论失效。UI资源由SQLite事务互斥，持有进程死亡后由操作系统释放，不根据过期锁文件或PID猜测抢占。
+
+
+## 8. 明确渲染环境档案与CI候选进口
+
+此前相同major/单字体hash不足以复现两台Mac的渲染；实际字体来源实验及失败保留在03。现增加`local-macos-arm64`（原根目录）和`github-macos15-arm64`（同名子目录）两份显式环境档案，原16场/行为/布局/颜色阈值/最大异常像素/无mask合同共用不变。普通CI必须明确CI档案，缺失、错环境、缺场或字节损坏均失败，无本机PNG回退。新环境指纹包括完整macOS版本/build、三个权重默认及匹配字体的文件hash/家族/版本、系统语言/locale和原Electron/Playwright/Geist等。当前旧manifest没有新profile/指纹，不能静默升级为通过，须重新完整采集审阅。
+
+`ui-baseline-candidate.yml`为独立受信采集通道，无contents写权限、不提供Required checks、不复制到已接受基线。普通PR/自动修复/测试workflow不能使用采集入口。GitHub要求workflow_dispatch定义先存在默认分支，因此首次提供仅`infra/ui-environment-profiles`明确push的引导触发；它也只产隔离artifact，不能使原PR门禁通过。[GitHub官方触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)支持此引导原因。进入默认分支后使用手动dispatch，普通main push仍走只读门禁。
+
+采集全部登记场景，先保留旧比较结果；CI档案尚无manifest时比较明确为not-run，行为/布局必须仍逐项通过，才能输出完整候选。无旧CI图的初始采集不得冒充旧图比较通过，需对全部新图独立审阅。新强指纹的本机首次迁移也需全场审阅，不能覆盖旧失败记录。
+
+```bash
+node scripts/ui-ci-baseline.mjs import --run RUN_ID --output .local/新候选目录
+node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已审阅目录 --cases 全部登记ID逗号列表 --reason '逐项审阅结论与具体环境原因'
+```
+
+进口只接受同仓库/同干净源码SHA的成功独立采集，核对官方artifact唯一身份、来源、未过期状态及SHA256。实际archive先验路径/重复/链接/体积，再解压，核对全部case合同/PNG/hash、实际一次通过报告和构建输入。接受时重新向GitHub核对并下载同一原artifact，与已审阅目录全部字节对照，检查现有CI基线未移动后才复制CI档案；不以本机构建产物冒充CI产物，也不改本机PNG。审阅笔记应放候选目录之外，保持原件。接受、提交后还需再次只读CI比较，完整Required checks及合并SHA验证独立成立；任何候选成功不提供发布资格。
+
+上述入口代码正在独立分支验证；实际下载、逐图接受、重复比较和main合并尚未完成，以03为准。

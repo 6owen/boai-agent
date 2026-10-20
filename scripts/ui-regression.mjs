@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
- * [OUTPUT]: 只读UI回归、旧新差异报告、隔离候选和逐case晋升；缺失/跳过/异常均非通过。
+ * [OUTPUT]: 明确本机/CI环境档案的只读比较、独立手动候选；无跨环境回退，不放宽原像素条件。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -14,6 +14,7 @@ import { createRequire } from 'node:module'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
+import { uiProfile, assertCaptureMode } from './ui-profiles.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -52,24 +53,26 @@ export function validateReport(report, caseIds) {
 
 export async function sourceIdentity(workspace = root) {
   const readGit = (...args) => execFileSync('git', args, { cwd: workspace, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).trim()
-  const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(manifest.json|.*\.png)$/.test(path)).sort()
+  const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(?:.*\/)?(?:manifest\.json|[^/]+\.png)$/.test(path)).sort()
   const digest = createHash('sha256')
   for (const name of names) { digest.update(name + '\0'); try { digest.update(await readFile(join(workspace, name))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
   return { commit: readGit('rev-parse', 'HEAD'), sourceHash: digest.digest('hex'), dirty: Boolean(readGit('status', '--porcelain')) }
 }
 
 export async function renderEnvironment() {
-  if (platform() !== 'darwin') throw new Error('当前UI基线仅适用于macOS；其他平台需独立采集')
-  const query = 'import Foundation; import CoreText; let f = CTFontCreateWithName("PingFang SC" as CFString, 14, nil); let u = CTFontCopyAttribute(f, kCTFontURLAttribute) as? URL; let d: [String: String] = ["postscript": CTFontCopyPostScriptName(f) as String, "path": u?.path ?? ""]; let b = try JSONSerialization.data(withJSONObject: d); print(String(data: b, encoding: .utf8)!)'
-  const chinese = JSON.parse(execFileSync('swift', ['-e', query], { encoding: 'utf8', timeout: 60_000 }))
-  if (!chinese.postscript.startsWith('PingFangSC-') || !chinese.path) throw new Error('CoreText未解析到固定中文字体PingFang SC，不能比较UI基线')
-  const fonts = [hash(await readFile(chinese.path))]
+  if (platform() !== 'darwin' || arch() !== 'arm64') throw new Error('当前UI基线仅适用于macOS arm64；其他平台需独立采集')
+  const matches = JSON.parse(execFileSync('swift', [join(root, 'scripts/ui-environment.swift')], { encoding: 'utf8', timeout: 60_000 }))
+  if (!['PingFangSC-Regular', 'PingFangSC-Medium', 'PingFangSC-Semibold'].every(name => matches.some(font => font.requested === name && font.postscript === name && font.path))) throw new Error('CoreText缺少固定中文字体，不能比较UI基线')
+  const fonts = []
+  for (const font of matches) { const { path, ...description } = font; fonts.push({ ...description, sha256: hash(await readFile(path)) }) }
+  const inventory = [...new Map(fonts.map(font => [JSON.stringify(font), font])).values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
+  const preference = name => { try { return execFileSync('defaults', ['read', '-g', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim() } catch { return '<unset>' } }
   const bundled = await readFile(join(root, 'src/renderer/assets/fonts/Geist.woff2')).catch(async () => {
     const files = git('ls-files', '-z', '*Geist*.woff2').split('\0').filter(Boolean)
     if (files.length !== 1) throw new Error('无法唯一核对Geist字体')
     return readFile(join(root, files[0]))
   })
-  return { platform: platform(), arch: arch(), osMajor: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim().split('.')[0], electron: require('electron/package.json').version, playwright: require('@playwright/test/package.json').version, geist: hash(bundled), pingFang: [...new Set(fonts)].sort(), timezone: 'Asia/Singapore', locale: 'zh-CN', scale: 'css' }
+  return { version: 2, platform: platform(), arch: arch(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), osBuild: execFileSync('sw_vers', ['-buildVersion'], { encoding: 'utf8' }).trim(), electron: require('electron/package.json').version, playwright: require('@playwright/test/package.json').version, geist: hash(bundled), pingFang: inventory, systemLanguages: preference('AppleLanguages'), systemLocale: preference('AppleLocale'), timezone: 'Asia/Singapore', locale: 'zh-CN', scale: 'css' }
 }
 
 async function runCommand(command, args, env) {
@@ -83,11 +86,13 @@ async function runCommand(command, args, env) {
   finally { process.off('SIGINT', cancel); process.off('SIGTERM', cancel) }
 }
 
-async function execute(directory, ids, environment, candidate) {
+async function execute(directory, ids, environment, profile, candidate, remoteCapture = false) {
   await mkdir(directory, { recursive: true })
-  const env = { ...process.env, TZ: environment.timezone, LANG: 'en_US.UTF-8', BOAI_UI_ENVIRONMENT: JSON.stringify(environment), BOAI_UI_RUN_DIR: directory }
+  const env = { ...process.env, TZ: environment.timezone, LANG: 'en_US.UTF-8', BOAI_UI_ENVIRONMENT: JSON.stringify(environment), BOAI_UI_RUN_DIR: directory, BOAI_UI_PROFILE: profile.id }
   delete env.BOAI_UI_CANDIDATE_DIR
+  delete env.BOAI_UI_CAPTURE_MODE
   if (candidate) env.BOAI_UI_CANDIDATE_DIR = candidate
+  if (remoteCapture) env.BOAI_UI_CAPTURE_MODE = 'manual-github'
   const pattern = `界面 (${ids.join('|')}) `
   let exit = { code: null, signal: null }, result
   try {
@@ -102,8 +107,10 @@ async function execute(directory, ids, environment, candidate) {
 async function main() {
   const [command = 'check', ...args] = process.argv.slice(2)
   const options = Object.fromEntries(args.map((arg, index) => arg.startsWith('--') ? [arg.slice(2), args[index + 1]] : []).filter(pair => pair.length))
-  if (!['check', 'candidate', 'accept'].includes(command)) throw new Error('用法：ui-regression.mjs check|candidate|accept [--cases id,id] [--candidate DIR] [--reason TEXT]')
-  if (process.env.CI && command !== 'check') throw new Error('CI禁止候选采集或基线晋升')
+  if (!['check', 'candidate', 'candidate-ci', 'accept'].includes(command)) throw new Error('用法：ui-regression.mjs check|candidate|candidate-ci|accept [--profile ID] [--cases id,id] [--candidate DIR] [--reason TEXT]')
+  assertCaptureMode(command)
+  const profile = uiProfile(root, options.profile)
+  const selectedBaseline = profile.directory
   assertUiExecutionMode(process.env)
   if (options.fault && (process.env.CI || command !== 'check' || !['layout', 'behavior', 'environment'].includes(options.fault))) throw new Error('故障演练仅支持本地check --fault layout|behavior|environment')
   const contract = await json(join(baseline, 'contract.json'))
@@ -123,40 +130,43 @@ async function main() {
       if (!options.candidate || !options.cases || !options.reason) throw new Error('接受必须明确--candidate、--cases及--reason；独立审阅仍由PR执行')
       const directory = resolve(options.candidate), candidate = await json(join(directory, 'candidate.json'))
       const result = await json(join(directory, 'capture/summary.json'))
-      if (candidate.source.sourceHash !== source.sourceHash || JSON.stringify(candidate.environment) !== JSON.stringify(environment)) throw new Error('候选源码或环境已变化，请重新采集')
+      if (candidate.profile !== profile.id || candidate.source.sourceHash !== source.sourceHash || JSON.stringify(candidate.environment) !== JSON.stringify(environment)) throw new Error('候选档案、源码或环境已变化，请重新采集')
       if (JSON.stringify(await verifyBuildIdentity(root)) !== JSON.stringify(candidate.built)) throw new Error('候选构建身份已变化，请重新采集')
       if (result.status !== 'passed' || ids.some(id => !candidate.cases[id])) throw new Error('候选不完整或未通过，禁止晋升')
-      await verifyBaselineReview(directory, ids, baseline, candidate)
-      const previous = await json(join(baseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+      await verifyBaselineReview(directory, ids, selectedBaseline, candidate)
+      const previous = await json(join(selectedBaseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
       if (previous && JSON.stringify(previous.environment) !== JSON.stringify(environment) && ids.length !== contract.cases.length) throw new Error('环境迁移必须审阅全部场景')
       const manifest = previous ?? { version: 1, environment, cases: {} }
+      manifest.profile = profile.id
       manifest.environment = environment
       for (const id of ids) {
         const file = join(directory, 'snapshots', `${id}.png`)
         if (hash(await readFile(file)) !== candidate.cases[id].sha256) throw new Error(`候选图片已变化：${id}`)
       }
       for (const id of ids) {
-        await copyFile(join(directory, 'snapshots', `${id}.png`), join(baseline, `${id}.png`))
+        await mkdir(selectedBaseline, { recursive: true })
+        await copyFile(join(directory, 'snapshots', `${id}.png`), join(selectedBaseline, `${id}.png`))
         manifest.cases[id] = { ...candidate.cases[id], source, reason: options.reason, candidate: candidate.id, acceptedAt: new Date().toISOString() }
       }
-      await save(join(baseline, 'manifest.json'), manifest)
+      await save(join(selectedBaseline, 'manifest.json'), manifest)
       console.log(`已接受${ids.length}项本地候选；提交PR后仍需独立审阅。`)
       return
     }
     const built = await verifyBuildIdentity(root)
-    const identity = { id: randomUUID(), source, built, environment, osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
+    const ci = process.env.GITHUB_ACTIONS === 'true' ? { repository: process.env.GITHUB_REPOSITORY, runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT, sha: process.env.GITHUB_SHA, workflow: process.env.GITHUB_WORKFLOW_REF } : undefined
+    const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
     await save(join(directory, 'run.json'), identity)
     const generated = await runCommand('pnpm', ['test:bddgen'], process.env)
     if (generated.code !== 0) throw new Error('BDD生成失败，未执行UI回归')
     // Initial recording has no old expected images to compare. Keep that gap explicit;
     // the capture still runs every real behavior/layout assertion before writing a candidate.
-    const hasBaseline = await stat(join(baseline, 'manifest.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error })
+    const hasBaseline = await stat(join(selectedBaseline, 'manifest.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error })
     let comparison
-    if (command === 'candidate' && !hasBaseline) {
+    if (['candidate', 'candidate-ci'].includes(command) && !hasBaseline) {
       await mkdir(join(directory, 'compare'))
       comparison = { status: 'not-run', cases: ids, errors: ['首次采集：缺少已接受基线，无旧期望图可比较；不代表比较通过'] }
       await save(join(directory, 'compare/summary.json'), comparison)
-    } else comparison = await execute(join(directory, 'compare'), ids, environment)
+    } else comparison = await execute(join(directory, 'compare'), ids, environment, profile)
     if (cancelled) throw new Error('UI测试已取消，保留原报告；不继续采集或接受基线')
     if (command === 'check') {
       if ((await sourceIdentity()).sourceHash !== source.sourceHash) { comparison.status = 'failed'; comparison.errors.push('执行期间源码变化，结论失效') }
@@ -167,14 +177,14 @@ async function main() {
       return
     }
     const snapshots = join(directory, 'snapshots'); await mkdir(snapshots)
-    const capture = await execute(join(directory, 'capture'), ids, environment, snapshots)
+    const capture = await execute(join(directory, 'capture'), ids, environment, profile, snapshots, command === 'candidate-ci')
     if (cancelled) throw new Error('UI候选采集已取消，禁止晋升')
     if (capture.status !== 'passed') { process.exitCode = 1; console.log(`候选采集失败；报告 ${directory}`); return }
     if ((await sourceIdentity()).sourceHash !== source.sourceHash) throw new Error('采集期间源码变化，候选无效')
     if (JSON.stringify(await verifyBuildIdentity(root)) !== JSON.stringify(built)) throw new Error('采集期间构建身份变化，候选无效')
     const cases = {}
     for (const id of ids) cases[id] = { sha256: hash(await readFile(join(snapshots, `${id}.png`))), contract: baselineContractHash(contract, id) }
-    await createBaselineReview(directory, ids, baseline)
+    await createBaselineReview(directory, ids, selectedBaseline)
     await save(join(directory, 'candidate.json'), { ...identity, cases, comparison: comparison.status })
     console.log(`待审阅UI候选：${directory}；旧/新/差异见compare报告，未修改已接受基线。`)
   } finally { releaseLock() }
