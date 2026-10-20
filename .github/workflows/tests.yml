@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA离线/视觉门槛；桌面取消/失败也保留证据，即时错误日志，缺结果不放行。
+# [OUTPUT]: 同SHA离线/视觉门槛；CI显式独立环境档案且只读，桌面取消/失败也保留证据。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -105,9 +105,7 @@ jobs:
           node node_modules/electron/install.js
           pnpm exec electron --version
       - run: pnpm build
-      - name: Match baseline system language
-        run: defaults write -g AppleLanguages -array zh-Hans-CN
-      - run: node scripts/ui-regression.mjs check --output .local/ui-ci
+      - run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --output .local/ui-ci
       - uses: actions/upload-artifact@v4
         if: always()
         with:

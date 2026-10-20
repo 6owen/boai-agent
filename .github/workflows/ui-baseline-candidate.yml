@@ -1,0 +1,49 @@
+# [INPUT]: 明确手动触发的受信仓库分支及固定macOS构建。
+# [OUTPUT]: 成功候选与失败/取消诊断分开保留；不晋升基线、不提供Required checks。
+# [POS]: 开发侧环境基线采集；无发布/仓库写权限。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: UI baseline candidate
+on:
+  workflow_dispatch:
+  # Bootstrap before this new workflow reaches the protected default branch.
+  # Only an explicit push to this development branch can request a candidate.
+  push:
+    branches: [infra/ui-environment-profiles]
+permissions:
+  contents: read
+concurrency:
+  group: ui-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - run: pnpm build
+      - id: capture
+        run: node scripts/ui-regression.mjs candidate-ci --profile github-macos15-arm64 --output .local/ui-candidate
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ui-candidate-github-macos15-arm64
+          path: .local/ui-candidate/
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.capture.outcome != 'success'
+        with:
+          name: ui-candidate-failure-evidence
+          path: .local/ui-candidate/
+          include-hidden-files: true
+          if-no-files-found: ignore

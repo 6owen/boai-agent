@@ -1,16 +1,19 @@
 /*
  * [INPUT]: 中文业务场景、类型化步骤和 Electron fixture。
- * [OUTPUT]: BDD串行桌面/只读视觉基线与候选报告；CI逐项即时打印错误，禁止自动更新期望图。
+ * [OUTPUT]: BDD串行桌面/明确档案的只读视觉基线；只有独立手动工作流可写隔离候选，普通CI禁写。
  * [POS]: 桌面端到端测试唯一配置。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { defineConfig } from '@playwright/test'
 import { cucumberReporter, defineBddConfig } from 'playwright-bdd'
 import { resolve } from 'node:path'
+// @ts-expect-error Shared plain Node policy has no declaration file.
+import { uiProfile, assertCaptureMode } from './scripts/ui-profiles.mjs'
 
 const uiRun = process.env.BOAI_UI_RUN_DIR
 const candidate = Boolean(process.env.BOAI_UI_CANDIDATE_DIR)
-if (candidate && process.env.CI) throw new Error('CI禁止生成或更新UI基线')
+assertCaptureMode('check')
+const profile = uiRun ? uiProfile(process.cwd(), process.env.BOAI_UI_PROFILE) : null
 
 const testDir = defineBddConfig({
   features: 'tests/e2e/features/**/*.feature',
@@ -30,7 +33,7 @@ export default defineConfig({
   ...(!uiRun ? { grepInvert: /@ui-regression/ } : {}),
   forbidOnly: Boolean(process.env.CI),
   updateSnapshots: candidate ? 'all' : 'none',
-  snapshotPathTemplate: resolve(process.env.BOAI_UI_CANDIDATE_DIR ?? 'tests/e2e/baselines', '{arg}{ext}'),
+  snapshotPathTemplate: resolve(process.env.BOAI_UI_CANDIDATE_DIR ?? profile?.directory ?? 'tests/e2e/baselines', '{arg}{ext}'),
   ...(uiRun ? { outputDir: resolve(uiRun, 'results') } : {}),
   expect: { timeout: 15_000 },
   // Electron contexts are created outside the browser fixture; Desktop records their traces.
