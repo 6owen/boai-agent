@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共用定位辅助核对固定身份/焦点；运行定位限定右侧真实Card，避免虚拟容器同run属性重复；窄窗保持原严格不重叠关系，等待实际布局完成。
  * [OUTPUT]: 定位前消息未获焦点，点击后固定message-target/实际焦点与原审批身份均须成立；关闭预览回原文件标签。
  * [OUTPUT]: 前两核心场景迁到现行文件标签/执行过程与原审批；父子Work/文件/单次授权核验保持，旧任务看板不计覆盖。
  * [OUTPUT]: 等待实际布局达到原16px严格关系后核对；审批沿当前运行命令名称，原父子工作/文件断言保持。
@@ -21,8 +22,20 @@ import { prepareGroupChat, resizeGroupWindow } from '../support/group-chat'
 
 const inputText = (input: Locator) => input.evaluate(element => element instanceof HTMLTextAreaElement ? element.value : Array.from(element.querySelector('p')?.childNodes ?? []).map(node => node instanceof HTMLBRElement ? node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n' : node instanceof HTMLElement && node.matches('[data-mention-id]') ? node.querySelector('.composer-mention-tag')?.textContent ?? '' : node.textContent ?? '').join(''))
 const openFiles = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '文件', exact: true }).click(); await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible() }
-const openExecution = async (page: Page, runId: string) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`[data-execution-run-id="${runId}"]`); const heading = run.getByRole('button', { name: /^(展开|收起)执行：/ }); await expect(heading).toBeVisible(); if (await heading.getAttribute('aria-expanded') === 'false') await heading.click(); await expect(run).toContainText('等待批准'); return run }
+const openExecution = async (page: Page, runId: string) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`.detail-panel [data-slot="card"][data-execution-run-id="${runId}"]`); const heading = run.getByRole('button', { name: /^(展开|收起)执行：/ }); await expect(heading).toBeVisible(); if (await heading.getAttribute('aria-expanded') === 'false') await heading.click(); await expect(run).toContainText('等待批准'); return run }
 const openWorkRecords = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click() }
+
+async function locateApproval(page: Page, execution: Locator, expected: { conversationId: string; runId: string; approvalId: string }) {
+  const target = await page.evaluate(input => window.boai.request('resolveExecutionMessage', input), { conversationId: expected.conversationId, runId: expected.runId })
+  expect(target.conversationId).toBe(expected.conversationId)
+  const message = page.locator(`#message-${target.messageId}`)
+  await expect(message).not.toBeFocused()
+  await execution.getByRole('button', { name: '定位聊天记录', exact: true }).click()
+  await expect(message).toBeFocused()
+  await expect(message).toHaveClass(/message-target/)
+  await expect(message).toBeInViewport()
+  await expect(page.locator(`[data-approval-id="${expected.approvalId}"]`)).toBeVisible()
+}
 
 type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; approvalCwd?: string; directReplyId?: string; directTurnId?: string }
 export const test = base.extend<{ groupDesign: State }>({ groupDesign: async ({}, use) => use({}) })
@@ -129,8 +142,7 @@ Then('明暗与窄窗群聊均可阅读和操作', async ({ runtime, groupDesign
   await page.screenshot({ path: 'test-results/group-chat-narrow.png', scale: 'css', animations: 'disabled' })
   await openFiles(page)
   await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible()
-  const stage = await page.locator('.chat-panel').boundingBox(), panel = await page.locator('.detail-panel').boundingBox()
-  expect(stage!.x + stage!.width).toBeLessThanOrEqual(panel!.x + 1)
+  await expect.poll(async () => { const stage = await page.locator('.chat-panel').boundingBox(), panel = await page.locator('.detail-panel').boundingBox(); return stage!.x + stage!.width - panel!.x }).toBeLessThanOrEqual(1)
   await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
   const narrowName = await page.locator('#message-history-user .message-meta strong').boundingBox(), narrowAction = await page.locator('#message-history-user .reply-action').boundingBox()
   expect(narrowAction!.x + narrowAction!.width).toBeLessThan(narrowName!.x)
@@ -171,15 +183,7 @@ Then('审批显示命令目录且拒绝后没有执行文件', async ({ runtime,
   expect(awaitingWork).toMatchObject({ ownerAgentId: 'reviewer', activeRunId: awaiting.runId, status: 'running' })
   const execution = await openExecution(page, awaiting.runId)
   await expect(execution.getByRole('button', { name: '允许这次执行', exact: true })).toHaveCount(0)
-  const target = await page.evaluate(input => window.boai.request('resolveExecutionMessage', input), { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId })
-  expect(target.conversationId).toBe(groupDesign.fixture!.group.id)
-  const message = page.locator(`#message-${target.messageId}`)
-  await expect(message).not.toBeFocused()
-  await execution.getByRole('button', { name: '定位聊天记录', exact: true }).click()
-  await expect(message).toBeFocused()
-  await expect(message).toHaveClass(/message-target/)
-  await expect(message).toBeInViewport()
-  await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeVisible()
+  await locateApproval(page, execution, { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId, approvalId: awaiting.id })
   expect(groupDesign.fixture!.state.calls).toBe(calls)
   await runtime.reviewData('执行过程定位保持原审批身份', { workId: awaitingWork.id, runId: awaiting.runId, approvalId: awaiting.id, providerRequests: calls, retired: '会话/全局任务看板已退役' })
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
@@ -204,15 +208,7 @@ When('用户再次点名设计师并允许这次执行', async ({ runtime, group
   const work = detail.workItems!.find(work => work.activeRunId === awaiting.runId)!
   expect(work).toMatchObject({ ownerAgentId: 'reviewer', activeRunId: awaiting.runId, status: 'running' })
   const execution = await openExecution(page, awaiting.runId)
-  const target = await page.evaluate(input => window.boai.request('resolveExecutionMessage', input), { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId })
-  expect(target.conversationId).toBe(groupDesign.fixture!.group.id)
-  const message = page.locator(`#message-${target.messageId}`)
-  await expect(message).not.toBeFocused()
-  await execution.getByRole('button', { name: '定位聊天记录', exact: true }).click()
-  await expect(message).toBeFocused()
-  await expect(message).toHaveClass(/message-target/)
-  await expect(message).toBeInViewport()
-  await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeVisible()
+  await locateApproval(page, execution, { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId, approvalId: awaiting.id })
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(approval).toBeInViewport()
   await runtime.reviewCheckpoint('在设计师原消息批准这次命令，旧任务看板不计覆盖')

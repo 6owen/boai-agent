@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 慢回复按当前ExecutionFeed实际流式正文及运行状态核验取消；不再要求过渡正文提前写成持久聊天消息。
  * [OUTPUT]: 私有判断禁工具而普通API聊天沿当前目录，实际零工具/零Work保持；现行定时Dialog/通讯录分区及记忆Dialog替代旧右侧整页。
  * [OUTPUT]: 离线群模型提供当前无工具群语义解释，保持原独立参与/格式修复/取消重启断言。
  * [OUTPUT]: 隔离目录使用实际realpath核验同一目录，保留数据归属和取消重启原断言。
@@ -227,10 +228,10 @@ async function cancelSlowReply(previous: Awaited<ReturnType<typeof verifyConvers
     expectedConfigVersion: agentNow.configVersion,
   })
   const beforeSlow = requests.length
+  await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^方案讨论群/ }).click()
   await send(group.id, 'SLOW_TASK', ['researcher'], 'slow-1')
-  await expect
-    .poll(async () => (await detail(page, group.id)).messages.some((m) => m.status === 'streaming' && m.content.includes('正在回复')))
-    .toBe(true)
+  await expect(page.getByText('正在回复。', { exact: true })).toBeVisible()
+  expect((await detail(page, group.id)).runs.some(run => run.agentId === 'researcher' && run.status === 'running')).toBe(true)
   expect(JSON.stringify(requests.slice(beforeSlow))).toContain('STYLE_MARKER_2026')
   await page.evaluate((id) => window.boai.request('cancelRun', { conversationId: id }), group.id)
   await expect.poll(() => settled(group.id)).toBe(true)

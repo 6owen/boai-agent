@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原会话草稿使用共享messageDraft精确读富文本正文，兼容当前群/单聊编辑器而不降低内容断言。
  * [OUTPUT]: 所有已选详情按指定员工/群名精确核验，保留身份边界，不以通用名称控件可见代替。
  * [OUTPUT]: 身份就地保存；工作方式/群记忆分区验证草稿取消及放弃；旧整页编辑/群名放弃合同退役，单聊复用保持。
  * [OUTPUT]: 通讯录概览已无旧负责工作区域；当前工作方式正文按同一员工原instructions精确核验，配置/单聊复用保持。
@@ -15,6 +16,7 @@ import { createBdd } from 'playwright-bdd'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { test as base } from '../support/test'
+import { messageDraft } from '../support/editor-controls'
 import type { Desktop } from '../support/desktop'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import { contactTagIds } from '../../../src/shared/domain/contact-list'
@@ -166,7 +168,7 @@ async function reuseDirectConversation(previous: Awaited<ReturnType<typeof editC
   await expect(list.getByRole('button', { name: '研究员', exact: true })).toHaveAttribute('aria-current', 'true')
   await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toHaveText('研究员')
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
-  await expect(input).toHaveValue('通讯录往返后保留这份草稿')
+  await expect.poll(() => messageDraft(input)).toBe('通讯录往返后保留这份草稿')
   await expect(search).toHaveCount(0)
   await expect(page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: '搜索会话', exact: true })).toHaveValue('')
