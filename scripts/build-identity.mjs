@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际源码/资源/构建配置和完整dist字节。
- * [OUTPUT]: 构建前后同源核对与可复验的dist身份，拒绝旧构建或构建后外改。
+ * [OUTPUT]: 构建前后同源/全dist哈希核对；跨次构建按输入/输出/Node比身份，记录时间不充当字节差异。
  * [POS]: 构建与开发测试共用的产物身份，不进入产品运行协议。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -42,4 +42,8 @@ export async function verifyBuildIdentity(root = process.cwd()) {
   if (identity.version !== 1 || identity.inputHash !== await buildInputHash(root)) throw new Error('dist与当前源码/资源不匹配，请先运行pnpm build')
   if (identity.outputHash !== await outputHash(join(root, 'dist'))) throw new Error('dist构建字节已变化，请重新构建后测试')
   return identity
+}
+
+export function sameBuildBytes(left, right) {
+  return left?.version === 1 && right?.version === 1 && ['inputHash', 'outputHash', 'node'].every(key => typeof left[key] === 'string' && left[key] === right[key])
 }

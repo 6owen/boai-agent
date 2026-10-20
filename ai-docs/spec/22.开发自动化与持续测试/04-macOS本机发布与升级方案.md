@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 跨次重建仍须相同input/output/Node身份，createdAt只作记录；原CI子报告保持同一原构建，真实重建复验待跑。
 [OUTPUT]: 发布前检迁本机main触发原件/最新状态双读；Tag/打包/升级仍待实施，Actions不提供当前发布资格。
 [OUTPUT]: release:check只读核对稳定版本/buildVersion、同SHA main及最新完整验证；只提供前检，Tag/打包/发布/安装仍未实施。
 [INPUT]: 用户当前macOS无Apple开发者签名、本机开发自用，要求先将Tag/Release/桌面升级落实为文档。
@@ -175,5 +176,7 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 `pnpm release:check --version X.Y.Z --sha 完整SHA --local-ci 原件目录`先核对当前干净源码、package.version/buildVersion，再实际调用本地完整原件verify（工程/T1/全UI、逐场原件与hash、相同源码/构建）。新CI封存repository/branch/runId并从核验器返回；只接受main触发，旧缺触发档案及PR绿均不能代替。随后只读查询远程main与最新BOAI local CI状态，最新项绑定本人、runId及manifest hash，不搜索旧成功。原件再次核验后重读最新状态及main，原件变化、新pending/新成功尝试、分支移动或package变化均拒绝，不访问Actions API。
 
 成功记录及查询回执仅存.local/release-checks，不是可长期复用的发布许可；后续写入入口须在副作用前重新核验。当前仅协议负例/真实CLI夹具通过，尚无新合同的真实main正例，不创建Tag或资产。
+
+跨次构建资格比较version/inputHash/outputHash/Node，createdAt只作记录，不将重新登记时间误作字节变化；verifyBuildIdentity仍重新哈希当前完整dist并核对源码输入。原封存CI中的T1/UI/总结果仍须共同指向同一个原始built对象，不把不同测试构建拼起来。相同源码但实际输出、输入或Node不一致仍拒绝；该能力的当前证据为真实文件正反例，真实完整CI后的同SHA重建复验另记03。
 
 当前版本0.2.2/buildVersion0.2.3不一致，完整main验证也未通过，前检应拒绝。该入口不改版本、不创建Tag、不构建/上传/安装。自动Tag接续、ad-hoc产物/冒烟、安装事务和回滚仍按上文继续实现，实际验证唯一归03。

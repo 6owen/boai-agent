@@ -14,7 +14,7 @@ import { build } from 'esbuild'
 import buildProcessGuard from './build-process-guard.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { sourceIdentity } from './ui-regression.mjs'
-import { verifyBuildIdentity } from './build-identity.mjs'
+import { verifyBuildIdentity, sameBuildBytes } from './build-identity.mjs'
 import { validateGate, verifyDesktopGate } from './ci-result.mjs'
 import { desktopPlanIdentity, desktopReportRows, assertDesktopReport } from './desktop-plan.mjs'
 import { beginLocalCiPublication, localCiRepository } from './local-ci-github.mjs'
@@ -56,7 +56,7 @@ export async function verifyLocalCi(directory) {
 }
 async function verifyLocalCiReports(directory, result) {
   const source = await sourceIdentity(root)
-  if (result.version !== 1 || result.status !== 'passed' || result.errors?.length !== 0 || source.dirty || JSON.stringify(result.source) !== JSON.stringify(source) || JSON.stringify(result.built) !== JSON.stringify(await verifyBuildIdentity(root))) throw new Error('本地CI不是当前干净源码及构建的完整成功')
+  if (result.version !== 1 || result.status !== 'passed' || result.errors?.length !== 0 || source.dirty || JSON.stringify(result.source) !== JSON.stringify(source) || !sameBuildBytes(result.built, await verifyBuildIdentity(root))) throw new Error('本地CI不是当前干净源码及构建的完整成功')
   const identity = desktopPlanIdentity(await readFile(join(root, 'tests/e2e/test-tiers.json'))), contract = await json(join(root, 'tests/e2e/baselines/contract.json')), ids = contract.cases.map(row => row.id)
   const desktop = await json(join(directory, 't1/summary.json')), raw = await json(join(directory, 't1/playwright.json')), ui = await json(join(directory, 'ui/summary.json'))
   validateGate({ desktop: { result: 'success' }, ui: { result: 'success' } }, result.engineering, ui, ids, source.commit, { summary: desktop, report: raw, identity })
