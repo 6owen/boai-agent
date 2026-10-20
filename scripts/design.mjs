@@ -1,6 +1,6 @@
 /*
  * [INPUT]: prepare/serve与明确固定上游目录；默认当前仓库。
- * [OUTPUT]: 本机开发画板准备或前台服务；配置仅写.local/design，不改全局Codex。
+ * [OUTPUT]: 本机开发画板准备/前台服务；资源退出未知保留进程和锁，不改全局Codex。
  * [POS]: 第22组开发侧CLI，完整使用约定见05。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -23,6 +23,13 @@ if (command === 'prepare') {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('无效本机端口')
   const server = await startDesignServer({ root, port })
   console.log(JSON.stringify({ editor: server.editor, mcp: server.mcp, pid: server.pid }, null, 2))
-  const stop = async () => { await server.close(); process.exitCode = 0 }
+  let unknownHold
+  const stop = async () => {
+    try { await server.close(); process.exitCode = 0; clearInterval(unknownHold) }
+    catch (error) {
+      process.stderr.write(`开发画板关闭失败：${error.message}\n`); process.exitCode = 1
+      if (!error.resourcesStopped) unknownHold ??= setInterval(() => {}, 1000)
+    }
+  }
   process.once('SIGINT', stop); process.once('SIGTERM', stop)
 }

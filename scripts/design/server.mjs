@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 经验证的真实Excalidraw stdio服务、独立数据目录及SDK HTTP MCP。
- * [OUTPUT]: 外部开发编辑器/明确选区/模型局部修改；只向ai-docs/design新文件导出。
+ * [OUTPUT]: 外部开发编辑器/明确选区/模型局部修改；限定新文件导出，关闭失败独立收尾并核对进程退出。
  * [POS]: 第22组Codex开发宿主；不进入BOAI软件或员工工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -16,6 +16,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSche
 import { acquireResourceLock } from '../resource-lock.mjs'
 import { verifyUpstream } from './upstream.mjs'
 import { adaptResource, editorHTML, panelHTML } from './browser.mjs'
+import { closeDesignResources } from './lifecycle.mjs'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const contextTool = { name: 'get_editor_context', description: 'Read the explicit selection/diagram reference sent from the external editor. Check editorConnected, document identity and revision; a disconnected or stale reference is not the current selection. Does not inject text into Codex chat.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }
 const result = value => ({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value })
@@ -41,7 +42,15 @@ export async function startDesignServer(options) {
   const directory = join(root, '.local/design'); await mkdir(directory, { recursive: true })
   const release = acquireResourceLock(join(directory, 'server-lock.sqlite'))
   const owner = randomUUID(), prefix = '/session/' + randomUUID(), events = new Set(), sessions = new Set()
-  let client, transport, http, stopping = false, origin, html, persistQueue = Promise.resolve()
+  let client, transport, http, nativePid, closePromise, stopping = false, origin, html, persistQueue = Promise.resolve()
+  const sessionClosures = new Map()
+  const closeSession = server => {
+    if (!sessionClosures.has(server)) {
+      const pending = Promise.resolve().then(() => server.close()).finally(() => { sessions.delete(server); sessionClosures.delete(server) })
+      sessionClosures.set(server, pending)
+    }
+    return sessionClosures.get(server)
+  }
   let state = { bootstrap: { toolInput: null, toolOutput: null, widgetState: null }, active: null, reference: null, sequence: 0 }
   const statePath = join(directory, 'editor-state.json'), infoPath = join(directory, 'server.json')
   const persist = () => {
@@ -49,24 +58,24 @@ export async function startDesignServer(options) {
     const pending = persistQueue.then(() => jsonFile(statePath, snapshot)); persistQueue = pending.catch(() => {})
     return pending
   }
-  const close = async () => {
-    if (stopping) return; stopping = true
-    try {
-      for (const stream of events) stream.end()
-      for (const session of sessions) await session.close()
-      if (http) { http.closeAllConnections(); await new Promise(resolve => http.close(resolve)) }
-      await persistQueue
-      await client?.close(); await transport?.close()
-      const info = JSON.parse(await readFile(infoPath, 'utf8').catch(() => '{}'))
-      if (info.owner === owner) await rm(infoPath, { force: true })
-    } finally { release() }
+  const close = () => {
+    if (closePromise) return closePromise
+    stopping = true
+    closePromise = closeDesignResources({
+      events, sessions: [...sessions].map(server => ({ close: () => closeSession(server) })), http, client, transport, pid: nativePid, persist: persistQueue,
+      removeInfo: async () => {
+        const info = JSON.parse(await readFile(infoPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return '{}'; throw error }))
+        if (info.owner === owner) await rm(infoPath, { force: true })
+      }, release,
+    })
+    return closePromise
   }
   try {
     try { state = JSON.parse(await readFile(statePath, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
     transport = new StdioClientTransport({ command: process.execPath, args: [join(receipt.plugin, 'dist/server.mjs')], cwd: root, env: { ...process.env, ZCODE_WORKSPACE_ROOT: root, ZCODE_WORKSPACE_IDENTITY: root, ZCODE_PLUGIN_DATA: join(directory, 'data') }, stderr: 'pipe' })
     transport.stderr?.on('data', chunk => process.stderr.write(chunk))
     client = new Client({ name: 'boai-developer-editor', version: '1' })
-    await client.connect(transport)
+    try { await client.connect(transport) } finally { nativePid = transport.pid }
     html = await readFile(join(receipt.plugin, 'dist/ui/panel.html'), 'utf8')
     const nativeTools = (await client.listTools()).tools
     const nativeByName = new Map(nativeTools.map(tool => [tool.name, tool]))
@@ -125,6 +134,7 @@ export async function startDesignServer(options) {
     http = createServer(async (request, response) => {
       response.setHeader('Cache-Control', 'no-store'); response.setHeader('Referrer-Policy', 'no-referrer')
       try {
+        if (stopping) return json(response, 503, { error: '开发宿主正在关闭' })
         if (request.headers.host !== new URL(origin).host || (request.headers.origin && request.headers.origin !== origin)) return json(response, 403, { error: '仅允许当前本机同源开发会话' })
         const path = new URL(request.url, origin).pathname
         if (!path.startsWith(prefix + '/')) return json(response, 404, { error: '会话不存在' })
@@ -139,7 +149,7 @@ export async function startDesignServer(options) {
           if (request.method !== 'POST') { response.writeHead(405).end(); return }
           const server = createMCP(), bridge = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
           sessions.add(server)
-          response.once('close', () => { sessions.delete(server); void server.close() })
+          response.once('close', () => { void closeSession(server).catch(error => process.stderr.write(`开发MCP会话关闭失败：${error.message}\n`)) })
           await server.connect(bridge); await bridge.handleRequest(request, response, body); return
         }
         if (request.method === 'GET' && path === prefix + '/') {

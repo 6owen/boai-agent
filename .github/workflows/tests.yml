@@ -105,6 +105,8 @@ jobs:
           node node_modules/electron/install.js
           pnpm exec electron --version
       - run: pnpm build
+      - name: Match baseline system language
+        run: defaults write -g AppleLanguages -array zh-Hans-CN
       - run: node scripts/ui-regression.mjs check --output .local/ui-ci
       - uses: actions/upload-artifact@v4
         if: always()
