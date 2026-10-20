@@ -12,6 +12,7 @@ import { build } from 'esbuild'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { desktopPlanIdentity, desktopReportRows, selectDesktopCases, assertDesktopReport } from './desktop-plan.mjs'
+import { verifyDesktopEvidence } from './desktop-evidence.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const save = (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
@@ -23,7 +24,7 @@ async function main() {
   await mkdir(resolve(directory, '..'), { recursive: true }); await mkdir(directory)
   const controller = new AbortController(), cancel = () => controller.abort()
   process.once('SIGTERM', cancel); process.once('SIGINT', cancel)
-  const summary = { tier, status: 'failed', errors: [], cases: [], startedAt: new Date().toISOString() }
+  const summary = { tier, status: 'failed', errors: [], cases: [], outputDirectory: directory, startedAt: new Date().toISOString() }
   try {
     const bytes = await readFile(join(root, 'tests/e2e/test-tiers.json')), identity = desktopPlanIdentity(bytes)
     const source = await sourceIdentity(root), built = await verifyBuildIdentity(root)
@@ -53,7 +54,11 @@ async function main() {
     if (desktopReportRows(selectedList).length !== selected.length || JSON.stringify(listed) !== JSON.stringify(selected)) throw new Error('实际选择与冻结计划不同')
     // Execute the original BDD bodies. No retries, new timeout, skips or assertion edits.
     await run('execute', ['exec', 'playwright', 'test', ...selectors, '--output', join(directory, 'results'), '--reporter=line,json'], join(directory, 'playwright.json'))
-    assertDesktopReport(JSON.parse(await readFile(join(directory, 'playwright.json'), 'utf8')), selected)
+    const report = JSON.parse(await readFile(join(directory, 'playwright.json'), 'utf8'))
+    assertDesktopReport(report, selected)
+    const evidence = await verifyDesktopEvidence(directory, report, selected)
+    await save(join(directory, 'evidence.json'), evidence)
+    summary.evidenceSha256 = createHash('sha256').update(JSON.stringify(evidence)).digest('hex')
     for (const [file, hash] of Object.entries(generated)) if (createHash('sha256').update(await readFile(join(root, '.features-gen', file + '.spec.js'))).digest('hex') !== hash) throw new Error('执行期间BDD生成文件变化')
     if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(source) || JSON.stringify(await verifyBuildIdentity(root)) !== JSON.stringify(built) || !(await readFile(join(root, 'tests/e2e/test-tiers.json'))).equals(bytes)) throw new Error('执行期间源码、构建或测试计划变化')
     summary.status = 'passed'

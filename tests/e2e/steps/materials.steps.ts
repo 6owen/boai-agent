@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 失败原因沿当前Sonner唯一提示核验，材料失败/禁发/原件及其他草稿保持。
  * [OUTPUT]: 材料预览保留来源身份，解析与材料版号不显示。
  * [OUTPUT]: 源码隐藏行号栏，来源定位核对实际选中正文行。
  * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
@@ -232,7 +233,7 @@ When('用户在私聊核对通用文件并逐项添加坏编码和超限材料',
     await addMaterial(runtime, path)
     const failure = drafts(page).nth(1)
     await expect(failure).toHaveAttribute('data-material-status', 'failed')
-    await expect(failure.getByRole('alert')).toContainText(reason)
+    await expect(page.locator('[data-sonner-toast]').filter({ hasText: reason })).toBeVisible()
     await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled()
     await expect(drafts(page).first()).toHaveAttribute('data-material-status', 'ready')
     expect(await messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('只处理保留的有效材料')

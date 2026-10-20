@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 创建员工使用当前工作方式字段；原API上下文/文件/重启断言保持。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 按当前统一模型控件显式选择已准备的API连接，原连续IM/文件版本/重启断言保持。
  * [INPUT]: 单场中文 Mastra 主线场景、生产 Electron UI/IPC 和实际宿主文件链。
@@ -58,7 +59,7 @@ When('用户从界面创建API员工并在同一私聊连续交流两轮', async
   const dialog = runtime.page.getByRole('dialog', { name: '新建数字员工', exact: true })
   await dialog.getByRole('textbox', { name: '名称', exact: true }).fill(MAINLINE_EMPLOYEE)
   await dialog.getByRole('textbox', { name: '角色', exact: true }).fill(MAINLINE_ROLE)
-  await dialog.getByRole('textbox', { name: 'Prompt', exact: true }).fill(MAINLINE_RULES)
+  await dialog.getByRole('textbox', { name: '工作方式', exact: true }).fill(MAINLINE_RULES)
   await dialog.getByRole('combobox', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('option', { name: `${mainline.fixture!.connection.name} · ${mainline.fixture!.connection.defaultModel}`, exact: true }).click()
   await dialog.getByRole('button', { name: '创建员工', exact: true }).click()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通讯录概览已无旧负责工作区域；当前工作方式正文按同一员工原instructions精确核验，配置/单聊复用保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 会话菜单配置往返通讯录并选中实际员工/群，原草稿、配置保存/放弃与会话复用断言保持。
  * [INPUT]: 通讯录配置/清理/标签管理的中文场景、会话常驻名称输入/检索 Dialog、Electron fixture、隔离 SQLite 旧分类、原生鼠标排序、真实产品 IPC 和工作区文件。
@@ -80,7 +81,7 @@ async function openContacts(runtime: Desktop) {
   await rules.getByRole('button', { name: '关闭工作规则', exact: true }).click()
   await configuration.getByRole('button', { name: '关闭高级配置', exact: true }).click()
   await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
-  await expect(detail.getByRole('region', { name: '员工当前负责工作', exact: true })).toBeVisible()
+  await expect(detail.getByRole('region', { name: '工作方式内容', exact: true })).toHaveText(original.instructions)
   expect((await snapshot()).agents.find(agent => agent.id === 'researcher')).toEqual(original)
   await runtime.reviewCheckpoint('读取规则后返回员工资料概览且配置未改变')
   await expect(page.getByRole('textbox', { name: '消息内容' })).toHaveCount(0)

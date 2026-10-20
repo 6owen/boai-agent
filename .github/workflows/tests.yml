@@ -1,12 +1,9 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA工程/T1固定核心及全部UI门槛；T3旧失败独立保留，缺场/跳过/重试不放行。
+# [OUTPUT]: 仅明确手动启用的云端备用；当前用户额度耗尽，自动验证由本地CI执行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
 on:
-  pull_request:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read

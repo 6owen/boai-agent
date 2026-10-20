@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隔离目录使用实际realpath核验同一目录，保留数据归属和取消重启原断言。
  * [OUTPUT]: 人格与行为直接展示配置源文件，文件编辑保持独立Dialog及局部草稿守卫；本批仅维护源码，不运行E2E。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
@@ -14,6 +15,7 @@ import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { createServer } from 'node:http'
+import { realpath } from 'node:fs/promises'
 
 import { join } from 'node:path'
 import type { ConversationDetail, Snapshot } from '../../../src/shared/domain'
@@ -132,7 +134,7 @@ async function prepareCollaboration(runtime: Desktop) {
   desktop = current.launched
   let page = current.page
   const initial = (await snapshot(page)) as Snapshot
-  expect(initial.dataPath).toBe(join(dataPath, 'v2'))
+  expect(await realpath(initial.dataPath)).toBe(await realpath(join(dataPath, 'v2')))
   const connection = await page.evaluate(
     (port) =>
       window.boai.request('saveConnection', {

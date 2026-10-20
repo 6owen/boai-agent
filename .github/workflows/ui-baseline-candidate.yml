@@ -1,14 +1,10 @@
 # [INPUT]: 明确手动触发的受信仓库分支及固定macOS构建。
-# [OUTPUT]: 成功候选与失败/取消诊断分开保留；不晋升基线、不提供Required checks。
+# [OUTPUT]: 仅手动云端候选；额度耗尽后移除开发分支引导push，原CI档案/失败保持。
 # [POS]: 开发侧环境基线采集；无发布/仓库写权限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: UI baseline candidate
 on:
   workflow_dispatch:
-  # Bootstrap before this new workflow reaches the protected default branch.
-  # Only an explicit push to this development branch can request a candidate.
-  push:
-    branches: [infra/ui-environment-profiles]
 permissions:
   contents: read
 concurrency:

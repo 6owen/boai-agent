@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 创建表单沿当前“工作方式”字段核验原规则保存，员工/群与草稿断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 创建员工与群聊并保持手动列表状态的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 会话菜单入口、创建员工与群聊并保持手动列表状态的真实桌面业务步骤与断言。
@@ -44,7 +45,7 @@ async function createEmployee(previous: Awaited<ReturnType<typeof prepareCreatio
   await expect(employee.getByRole('textbox')).toHaveCount(3)
   await employee.getByRole('textbox', { name: '名称', exact: true }).fill('交互设计师')
   await employee.getByRole('textbox', { name: '角色', exact: true }).fill('打磨交互与界面')
-  const prompt = employee.getByRole('textbox', { name: 'Prompt', exact: true })
+  const prompt = employee.getByRole('textbox', { name: '工作方式', exact: true })
   await prompt.fill('始终先理解用户的目标，再提出具体的设计改进。')
   await expect(prompt).toHaveCSS('outline-style', 'none')
   expect(await prompt.evaluate((el) => getComputedStyle(el).getPropertyValue('--tw-ring-shadow').trim())).toBe('0 0 transparent')

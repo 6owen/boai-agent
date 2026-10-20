@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 等待实际布局达到原16px严格关系后核对；审批沿当前运行命令名称，原父子工作/文件断言保持。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 文件外开通过header操作菜单进入，原真实宿主路径核对保持。
  * [OUTPUT]: 会话和全局任务按真实Work/run/approval身份回到原员工审批卡，原拒绝/双击允许/单次执行和零伪交付断言保持。
@@ -49,8 +50,8 @@ Then('群聊我的发言靠右员工靠左且文件归属明确', async ({ runti
   await expect(page.locator('#message-history-writer .chat-artifact')).toContainText('竞品分析报告.md')
   await expect(page.locator('#message-history-research .chat-artifact')).toContainText('研究要点.md')
   await expect(page.locator('#message-history-user .chat-artifact')).toHaveCount(0)
-  const header = await page.locator('.chat-header').boundingBox(), messages = await page.locator('.messages').boundingBox()
-  expect(header!.y + header!.height - messages!.y).toBe(16)
+  await expect.poll(async () => { const header = await page.locator('.chat-header').boundingBox(), messages = await page.locator('.messages').boundingBox(); return header!.y + header!.height - messages!.y }).toBe(16)
+  const header = await page.locator('.chat-header').boundingBox()
   const firstMessage = await page.locator('#message-history-user').boundingBox()
   expect(firstMessage!.y).toBeGreaterThanOrEqual(header!.y + header!.height)
   await expect(page.locator('.composer-wrap .turn-status')).toHaveCount(0)
@@ -147,7 +148,7 @@ When('用户点名设计师检查排版', async ({ runtime }) => {
 })
 Then('审批显示命令目录且拒绝后没有执行文件', async ({ runtime, groupDesign }) => {
   const page = runtime.page
-  const approval = page.getByRole('region', { name: '设计师 的命令审批' })
+  const approval = page.getByRole('region', { name: '设计师 的运行命令审批', exact: true })
   await expect(approval).toBeVisible()
   await expect(approval).toContainText('printf group-chat-approved > approval-marker.txt')
   await expect(approval).toContainText('工作目录：')
@@ -184,7 +185,7 @@ When('用户再次点名设计师并允许这次执行', async ({ runtime, group
   await page.getByRole('option', { name: '@设计师', exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容' }).pressSequentially('再次检查排版目录')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
-  const approval = page.getByRole('region', { name: '设计师 的命令审批' })
+  const approval = page.getByRole('region', { name: '设计师 的运行命令审批', exact: true })
   await expect(approval).toBeVisible()
   const awaiting = (await page.evaluate(() => window.boai.request('snapshot', undefined))).approvals[0]
   groupDesign.approvalCwd = awaiting.cwd
