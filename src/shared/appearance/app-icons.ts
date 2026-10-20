@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Preset avatar identities and the JSON-typed icon manifest, loadable by Node 24 as well as the renderer build.
- * [OUTPUT]: Stable validated application icon choices shared by settings and host.
+ * [OUTPUT]: Stable validated application icon choices shared by settings and host; native test import carries JSON type.
  * [POS]: Appearance app icon catalog; the binary assets live in resources/app-icons.
  * [PROTOCOL]: Update this Header and the owning .folder.md when this file changes.
  */

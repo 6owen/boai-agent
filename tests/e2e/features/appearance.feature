@@ -1,6 +1,6 @@
 # language: zh-CN
 # [INPUT]: 外观即时生效与原生窗口持久化与隔离的 Electron 环境。
-# [OUTPUT]: 原外观回归与 Craft 图片换肤、重启/取消/失败/移除恢复的真实桌面验收。
+# [OUTPUT]: 三组字体字号与 Dock 图标切换、原外观回归和 Craft 图片换肤的真实桌面验收。
 # [POS]: tests/e2e/features/appearance.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 @electron @appearance
@@ -11,6 +11,12 @@
     当 调整原生窗口大小和界面缩放
     那么 字体和自定义配色立即生效
     那么 重启恢复外观且原生菜单缩放与重置保持同步
+
+  场景: 三组字体字号与开发版 Dock 图标独立保存
+    假如 外观场景在独立桌面启动
+    当 修改三组字体字号和应用图标
+    那么 三组排版独立生效且 Dock 图标切换
+    那么 重启后字体字号和 Dock 图标保持且可重置
 
   场景: Craft图片换肤与原主题恢复
     假如 外观场景在独立桌面启动
