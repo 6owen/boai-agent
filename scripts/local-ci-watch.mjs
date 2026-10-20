@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本人仓库main/同仓库PR快照、专用worktree与本机登录会话。
- * [OUTPUT]: 每个目标SHA一次受管本地CI；核对Git顶层/登记，旧进程未排空不切源码，失败/未知不自动重试。
+ * [OUTPUT]: 每目标SHA一次受管CI；Git顶层/登记/gitdir回链一致，旧进程未排空不切源码，未知不重放。
  * [POS]: 本地CI轮询及可选LaunchAgent；不启动Actions、不合并或发布。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -43,6 +43,8 @@ export async function assertCiWorkerGit(source, directory) {
   const entries = git(source, 'worktree', 'list', '--porcelain', '-z').split('\0\0').map(entry => entry.split('\0'))
   const registered = entries.filter(entry => entry[0] === `worktree ${directory}`)
   if (git(directory, 'rev-parse', '--show-toplevel') !== directory || registered.length !== 1 || !registered[0].includes('detached')) throw new Error('专用worktree顶层或登记身份不匹配')
+  const gitfile = join(directory, '.git'), metadata = await realpath(git(directory, 'rev-parse', '--absolute-git-dir')), info = await lstat(gitfile)
+  if (!info.isFile() || info.isSymbolicLink() || !metadata.startsWith(join(common, 'worktrees') + '/') || (await readFile(join(metadata, 'gitdir'), 'utf8')).trim() !== gitfile) throw new Error('专用worktree实际Git目录或回链不匹配')
 }
 async function tools(directory) {
   const output = await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, write: false, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })

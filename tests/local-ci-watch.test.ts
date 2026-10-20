@@ -39,13 +39,19 @@ it('目录路径、共享Git目录与本人仓库均匹配才接受既有worktre
   expect(() => assertCiWorkerOwner(owner, expected)).not.toThrow()
   for (const patch of [{ version: 2 }, { worker: '/other' }, { common: '/other' }, { repository: 'fork/boai-agent' }]) expect(() => assertCiWorkerOwner({ ...owner, ...patch }, expected)).toThrow('所有权')
 })
-it('worktree删除后重建的普通子目录不能借Git向上发现接管调度器源码', async () => {
+it('worktree删除或.git误指主仓库都不能接管调度器源码', async () => {
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'boai-ci-worker-git-'))), worker = join(directory, '.local/worker')
   const git = (...args: string[]) => execFileSync('git', args, { cwd: directory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
   try {
     git('init', '-b', 'fixture-main'); await writeFile(join(directory, '.gitignore'), '.local/\n'); git('add', '.'); git('-c', 'user.name=CI fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'fixture')
     const head = git('rev-parse', 'HEAD'); git('worktree', 'add', '--detach', worker, head)
     await expect(assertCiWorkerGit(directory, worker)).resolves.toBeUndefined()
+    const gitfile = join(worker, '.git'), original = await readFile(gitfile)
+    try {
+      await writeFile(gitfile, `gitdir: ${join(directory, '.git')}\n`)
+      await expect(assertCiWorkerGit(directory, worker)).rejects.toThrow('worktree')
+      expect(git('branch', '--show-current')).toBe('fixture-main'); expect(git('rev-parse', 'HEAD')).toBe(head)
+    } finally { await writeFile(gitfile, original) }
     git('worktree', 'remove', worker); await mkdir(worker, { recursive: true })
     expect(execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: worker, encoding: 'utf8' }).trim()).toBe(directory)
     await expect(assertCiWorkerGit(directory, worker)).rejects.toThrow('worktree')
