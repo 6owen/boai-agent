@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 身份就地保存；工作方式/群记忆分区验证草稿取消及放弃；旧整页编辑/群名放弃合同退役，单聊复用保持。
  * [OUTPUT]: 通讯录概览已无旧负责工作区域；当前工作方式正文按同一员工原instructions精确核验，配置/单聊复用保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 会话菜单配置往返通讯录并选中实际员工/群，原草稿、配置保存/放弃与会话复用断言保持。
@@ -67,7 +68,7 @@ async function openContacts(runtime: Desktop) {
   await expectFlatContacts(list)
   await expect(people.locator('.conversation-item')).toHaveCount(3)
   await people.getByRole('button', { name: '研究员', exact: true }).click()
-  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toBeVisible()
   const original = (await snapshot()).agents.find(agent => agent.id === 'researcher')!
   await detail.getByRole('button', { name: '高级配置', exact: true }).click()
   const configuration = page.getByRole('dialog', { name: '高级配置', exact: true })
@@ -80,7 +81,7 @@ async function openContacts(runtime: Desktop) {
   await runtime.reviewCheckpoint('通讯录通过人格与行为核读原员工工作规则')
   await rules.getByRole('button', { name: '关闭工作规则', exact: true }).click()
   await configuration.getByRole('button', { name: '关闭高级配置', exact: true }).click()
-  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toBeVisible()
   await expect(detail.getByRole('region', { name: '工作方式内容', exact: true })).toHaveText(original.instructions)
   expect((await snapshot()).agents.find(agent => agent.id === 'researcher')).toEqual(original)
   await runtime.reviewCheckpoint('读取规则后返回员工资料概览且配置未改变')
@@ -103,7 +104,7 @@ async function filterContacts(previous: Awaited<ReturnType<typeof openContacts>>
   await expect(heading).toHaveAttribute('aria-expanded', 'true')
   await list.getByRole('textbox', { name: '搜索通讯录' }).fill('不存在的名字')
   await expect(list).toContainText('没有匹配的联系人')
-  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toBeVisible()
   await list.getByRole('textbox', { name: '搜索通讯录' }).fill('')
   await expect(heading).toHaveAttribute('aria-expanded', 'false')
   await expect(people).toBeHidden()
@@ -114,22 +115,28 @@ async function filterContacts(previous: Awaited<ReturnType<typeof openContacts>>
 
 async function editContactWithGuard(previous: Awaited<ReturnType<typeof filterContacts>>) {
   let { app, page, errors, snapshot, group, nav, contacts, list, detail, groups } = previous
-  // Cancel navigation and save through the editor before switching selection.
-  await detail.getByRole('button', { name: '编辑配置' }).click()
-  await detail.getByRole('textbox', { name: '职责简介' }).fill('核对来源并整理研究结论')
+  const role = detail.getByRole('textbox', { name: '员工职责', exact: true })
+  await role.fill('核对来源并整理研究结论'); await role.press('Enter')
+  await expect.poll(async () => (await snapshot()).agents.find(agent => agent.id === 'researcher')?.role).toBe('核对来源并整理研究结论')
+  const original = (await snapshot()).agents.find(agent => agent.id === 'researcher')!.instructions
+  const revised = original + '\n通讯录草稿守卫验收：逐条核对来源。'
+  await detail.getByRole('button', { name: '编辑工作方式', exact: true }).click()
+  const instructions = detail.getByRole('textbox', { name: '工作方式', exact: true })
+  await instructions.fill(revised)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await groups.getByRole('button', { name: '内容协作群' }).click()
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+    await expect(instructions).toHaveValue(revised)
+    expect((await snapshot()).agents.find(agent => agent.id === 'researcher')!.instructions).toBe(original)
+  }
+  await detail.getByRole('button', { name: '保存', exact: true }).click()
+  await expect.poll(async () => (await snapshot()).agents.find(agent => agent.id === 'researcher')!.instructions).toBe(revised)
   await groups.getByRole('button', { name: '内容协作群' }).click()
-  await expect(page.getByRole('alertdialog')).toBeVisible()
-  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
-  await expect(detail.getByRole('textbox', { name: '职责简介' })).toHaveValue('核对来源并整理研究结论')
-  await groups.getByRole('button', { name: '内容协作群' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
-  await detail.getByRole('button', { name: '保存修改', exact: true }).click()
-  await groups.getByRole('button', { name: '内容协作群' }).click()
-  await expect(detail.getByRole('heading', { name: '内容协作群', exact: true })).toBeVisible()
-  expect((await snapshot()).agents.find((agent) => agent.id === 'researcher')?.role).toBe('核对来源并整理研究结论')
+  await expect(detail.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveText('内容协作群')
   await expect(detail.getByRole('region', { name: '群成员' })).toBeVisible()
   await detail.getByRole('button', { name: '查看 研究员 的资料' }).click()
-  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toBeVisible()
   expect((await snapshot()).conversations).toHaveLength(1)
   return { app, page, errors, snapshot, group, nav, contacts, list, detail, groups }
 }
@@ -156,7 +163,7 @@ async function reuseDirectConversation(previous: Awaited<ReturnType<typeof editC
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await expect(contacts).toHaveAttribute('aria-current', 'page')
   await expect(list.getByRole('button', { name: '研究员', exact: true })).toHaveAttribute('aria-current', 'true')
-  await expect(detail.getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toBeVisible()
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(input).toHaveValue('通讯录往返后保留这份草稿')
   await expect(search).toHaveCount(0)
@@ -175,27 +182,32 @@ async function editGroupWithGuard(previous: Awaited<ReturnType<typeof reuseDirec
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
   await expect(contacts).toHaveAttribute('aria-current', 'page')
   await expect(groups.getByRole('button', { name: '内容协作群', exact: true })).toHaveAttribute('aria-current', 'true')
-  await detail.getByRole('button', { name: '编辑配置' }).click()
-  await detail.getByRole('textbox', { name: '群聊名称' }).fill('研究写作组')
-  await detail.getByRole('button', { name: '保存设置', exact: true }).click()
-  await expect(detail.getByRole('heading', { name: '研究写作组', exact: true })).toBeVisible()
+  const title = detail.getByRole('textbox', { name: '群聊名称', exact: true })
+  await title.fill('研究写作组'); await title.press('Enter')
   await expect(groups.getByRole('button', { name: '研究写作组' })).toBeVisible()
-  expect((await snapshot()).conversations.find((c) => c.id === group.id)?.title).toBe('研究写作组')
-
-  // Discard resets the editor; opening a group must reuse the group and not send content.
-  await detail.getByRole('button', { name: '编辑配置' }).click()
-  await detail.getByRole('textbox', { name: '群聊名称' }).fill('这项修改不保存')
-  await detail.getByRole('button', { name: '返回资料', exact: true }).click()
-  await page.getByRole('button', { name: '退出', exact: true }).click()
+  await expect.poll(async () => (await snapshot()).conversations.find(c => c.id === group.id)?.title).toBe('研究写作组')
+  const before = (await snapshot()).conversations.find(c => c.id === group.id)!
+  // Group title now autosaves. Discard protection belongs to the current settings section.
+  await detail.getByRole('button', { name: '编辑群聊设置', exact: true }).click()
+  const memory = detail.getByRole('combobox', { name: '新交流的记忆范围', exact: true })
+  await memory.click()
+  const changed = before.memoryScope === 'conversation' ? '各员工在相关聊天中使用' : '仅在此聊天使用'
+  await page.getByRole('option', { name: changed, exact: true }).click()
+  await detail.getByRole('button', { name: '取消', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
+  await expect(memory).toContainText(changed)
+  await detail.getByRole('button', { name: '取消', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '退出', exact: true }).click()
+  expect((await snapshot()).conversations.find(c => c.id === group.id)).toEqual(before)
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(input).toBeVisible()
   await expect(page.locator('.conversation-item.selected')).toContainText('研究写作组')
   expect((await snapshot()).conversations).toHaveLength(2)
   await contacts.click()
-  await expect(detail.getByRole('heading', { name: '研究写作组', exact: true })).toBeVisible()
-  await detail.getByRole('button', { name: '编辑配置' }).click()
-  await expect(detail.getByRole('textbox', { name: '群聊名称' })).toHaveValue('研究写作组')
-  await detail.getByRole('button', { name: '返回资料' }).click()
+  await expect(title).toHaveText('研究写作组')
+  await detail.getByRole('button', { name: '编辑群聊设置', exact: true }).click()
+  await expect(memory).toContainText(before.memoryScope === 'conversation' ? '仅在此聊天使用' : '各员工在相关聊天中使用')
+  await detail.getByRole('button', { name: '取消', exact: true }).click()
   return { app, page, errors, contacts, list, detail, groups }
 }
 
@@ -218,7 +230,7 @@ async function verifyContactsLayout(previous: Awaited<ReturnType<typeof editGrou
   await expect(contacts).toHaveAttribute('aria-current', 'page')
   await expectFlatContacts(list)
   await groups.getByRole('button', { name: '研究写作组' }).click()
-  await expect(detail.getByRole('heading', { name: '研究写作组', exact: true })).toBeVisible()
+  await expect(detail.getByRole('textbox', { name: '群聊名称', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 }
 

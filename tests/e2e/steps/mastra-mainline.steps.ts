@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实文件写入逐次允许；固定V1选文修改提交V2，精确标注/原身份/hash/新根与重启零重放保持；旧要求修改入口退役。
  * [OUTPUT]: 创建员工使用当前工作方式字段；原API上下文/文件/重启断言保持。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 按当前统一模型控件显式选择已准备的API连接，原连续IM/文件版本/重启断言保持。
@@ -12,6 +13,7 @@ import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { artifactDetail, artifactOriginal, artifactRecords } from '../support/artifacts'
+import { selectPreviewLine } from '../support/file-preview'
 import { CHAT_AFTER_RESTART, CHAT_ONE, CHAT_TWO, FILE_REQUEST, MAINLINE_EMPLOYEE, MAINLINE_ROLE, MAINLINE_RULES, prepareMastraMainline, publicChatRequests, REPLY_AFTER_RESTART, REPLY_ONE, REPLY_TWO, REVISION_REQUEST, settledMainline } from '../support/mastra-mainline'
 import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
 import type { DigitalAgent, Conversation } from '../../../src/shared/domain'
@@ -24,6 +26,7 @@ interface State {
   v2?: ArtifactVersion
   v1Text?: string
   v2Text?: string
+  revisionContent?: string
   beforeRestart?: Awaited<ReturnType<typeof artifactRecords>>
   callsBeforeRestart?: number
 }
@@ -39,6 +42,14 @@ async function send(runtime: Desktop, content: string) {
 async function openArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await runtime.page.locator(`#message-${artifact.sourceMessageId}`).getByRole('button', { name: `打开 ${artifact.name}`, exact: true }).click()
   await expect(panel(runtime.page, artifact).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
+}
+async function approveReportWrite(runtime: Desktop) {
+  const approval = runtime.page.getByRole('region', { name: `${MAINLINE_EMPLOYEE} 的修改或发布文件审批`, exact: true })
+  await expect(approval).toBeVisible()
+  await expect(approval).toContainText('写入文件 self:/runs/')
+  await expect(approval).toContainText('/report.md')
+  await approval.getByRole('button', { name: '允许这次执行', exact: true }).click()
+  await expect(approval).toHaveCount(0)
 }
 async function reviewArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await runtime.reviewFile(`${artifact.name} · 第 ${artifact.contentVersion} 版`, artifact.path, { required: true, expectedSha256: artifact.contentHash })
@@ -93,6 +104,7 @@ Then('第二轮模型请求包含首轮交流且没有产生文件工作', async
 })
 When('用户在该私聊要求交付第一版文件', async ({ runtime, mainline }) => {
   await send(runtime, FILE_REQUEST)
+  await approveReportWrite(runtime)
   const detail = await settledMainline(runtime, mainline.conversation!.id, 3, 1)
   mainline.v1 = detail.artifacts[0] as ArtifactVersion
   mainline.v1Text = await artifactOriginal(mainline.v1)
@@ -107,16 +119,22 @@ Then('第一版由该员工真实文件工作发布并可从原消息打开', as
   expect(detail.messages.find(message => message.id === v1.sourceMessageId)).toMatchObject({ senderType: 'agent', senderId: mainline.agent!.id, status: 'completed' })
   await openArtifact(runtime, v1)
   await expect(panel(runtime.page, v1)).toContainText('ARTIFACT_V1')
-  await expect(card(runtime.page, v1).getByRole('button', { name: '要求修改', exact: true })).toBeEnabled()
+  await selectPreviewLine(panel(runtime.page, v1))
+  await expect(runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true })).toBeEnabled()
+  await runtime.page.keyboard.press('Escape')
   expect(mainline.fixture!.errors).toEqual([])
   await runtime.reviewCheckpoint('新员工原消息交付真实V1原件')
 })
-When('用户在同一输入框明确修订第一版为第二版', async ({ runtime, mainline }) => {
-  await card(runtime.page, mainline.v1!).getByRole('button', { name: '要求修改', exact: true }).click()
-  await expect(runtime.page.locator('.reply-preview')).toContainText(mainline.v1!.name)
-  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(REVISION_REQUEST)
-  await runtime.reviewCheckpoint('同一输入框明确修订所见第一版')
-  await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
+When('用户在文件预览明确修订第一版为第二版', async ({ runtime, mainline }) => {
+  await selectPreviewLine(panel(runtime.page, mainline.v1!))
+  const selected = await panel(runtime.page, mainline.v1!).locator('[data-file-line="1"] .shiki-line-content').textContent()
+  expect(selected!.trim()).toBe(mainline.v1Text!.split('\n')[0].trim())
+  mainline.revisionContent = `修改位置：第 1 行\n选中的原文（定位参考）：\n${selected!.trim()}\n\n修改要求：\n${REVISION_REQUEST}`
+  await runtime.page.getByRole('textbox', { name: '文件修改要求', exact: true }).fill(REVISION_REQUEST)
+  await runtime.reviewCheckpoint('文件预览明确修订所见第一版')
+  await runtime.page.getByRole('button', { name: '发送文件修改', exact: true }).click()
+  await runtime.page.keyboard.press('Escape')
+  await approveReportWrite(runtime)
   const detail = await settledMainline(runtime, mainline.conversation!.id, 4, 2)
   mainline.v2 = detail.artifacts.find(artifact => artifact.previousArtifactId === mainline.v1!.id) as ArtifactVersion
   expect(mainline.v2).toBeDefined()
@@ -131,14 +149,14 @@ Then('第二版关联原版本且保留第一版原文与交付消息', async ({
   expect(await artifactOriginal(v1)).toBe(mainline.v1Text)
   expect(records.revisions).toHaveLength(1)
   const revision = records.revisions[0], original = records.artifacts.find(artifact => artifact.id === revision.artifactId)!
-  expect(revision).toMatchObject({ id: v2.revisionRequestId, conversationId: mainline.conversation!.id, artifactId: v1.id, logicalArtifactId: v1.logicalArtifactId, contentHash: v1.contentHash, targetAgentId: mainline.agent!.id, content: REVISION_REQUEST, rootWorkId: v2.sourceWorkId })
+  expect(revision).toMatchObject({ id: v2.revisionRequestId, conversationId: mainline.conversation!.id, artifactId: v1.id, logicalArtifactId: v1.logicalArtifactId, contentHash: v1.contentHash, targetAgentId: mainline.agent!.id, content: mainline.revisionContent, rootWorkId: v2.sourceWorkId })
   expect(original).toEqual(v1)
   expect(records.messages.find(message => message.id === original.sourceMessageId)).toMatchObject({ conversationId: mainline.conversation!.id, senderType: 'agent', senderId: mainline.agent!.id, status: 'completed' })
   const originalWork = records.workItems.find(work => work.id === original.sourceWorkId)!
   expect(originalWork.resultMessageIds).toContain(original.sourceMessageId)
   expect(originalWork.artifactIds).toContain(original.id)
   const revisionMessage = records.messages.find(message => message.id === revision.messageId)!
-  expect(revisionMessage).toMatchObject({ conversationId: mainline.conversation!.id, senderType: 'user', senderId: 'user', status: 'completed', content: REVISION_REQUEST, artifactRevisionRequestId: revision.id, mentionIds: [mainline.agent!.id] })
+  expect(revisionMessage).toMatchObject({ conversationId: mainline.conversation!.id, senderType: 'user', senderId: 'user', status: 'completed', content: mainline.revisionContent, artifactRevisionRequestId: revision.id, mentionIds: [mainline.agent!.id] })
   expect(revisionMessage.replyToMessageId).toBeUndefined()
   expect(records.workItems.filter(work => work.conversationId === mainline.conversation!.id)).toHaveLength(2)
   const revisionWork = records.workItems.find(work => work.id === v2.sourceWorkId)!
@@ -147,7 +165,8 @@ Then('第二版关联原版本且保留第一版原文与交付消息', async ({
   expect(revisionWork.parentWorkId).toBeUndefined()
   expect(revisionWork.resultMessageIds).toContain(v2.sourceMessageId)
   expect(records.messages.find(message => message.id === v2.sourceMessageId)).toMatchObject({ conversationId: mainline.conversation!.id, senderType: 'agent', senderId: mainline.agent!.id, runId: v2.runId, status: 'completed' })
-  await expect(panel(runtime.page, v1)).toBeVisible()
+  await expect(panel(runtime.page, v2)).toContainText('ARTIFACT_V2')
+  await openArtifact(runtime, v1)
   await expect(panel(runtime.page, v1)).toContainText('ARTIFACT_V1')
   await expect(card(runtime.page, v1)).toBeVisible()
   await expect(card(runtime.page, v2)).toBeVisible()
@@ -171,7 +190,7 @@ Then('员工历史与两版原件保持且模型和工具没有重放', async ({
   expect(after.workItems).toEqual(before.workItems)
   expect(after.artifacts).toEqual(before.artifacts)
   expect(after.revisions).toEqual(before.revisions)
-  expect(after.messages.filter(message => message.senderType === 'user').map(message => message.content)).toEqual([CHAT_ONE, CHAT_TWO, FILE_REQUEST, REVISION_REQUEST])
+  expect(after.messages.filter(message => message.senderType === 'user').map(message => message.content)).toEqual([CHAT_ONE, CHAT_TWO, FILE_REQUEST, mainline.revisionContent])
   await expect(runtime.page.locator('.messages')).toContainText(REPLY_ONE)
   await expect(runtime.page.locator('.messages')).toContainText(REPLY_TWO)
   for (const artifact of [mainline.v1!, mainline.v2!]) {

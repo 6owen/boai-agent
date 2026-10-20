@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公共目录固定核对27个明确业务域，包含memory.provider；不靠数量掩盖域替换，原拒绝/回执断言保持。
  * [OUTPUT]: 应用目录包含 terminal/preview/workspace/activity 四个新增能力域。
  * [OUTPUT]: PPT 专用配置域纳入实际目录和 schema；配置保存与模型执行分开。
  * [OUTPUT]: 独立selfies相册元信息/删除纳入公共目录，原图保持任务私聊权限。
@@ -547,7 +548,7 @@ it('rejects absent identity, forged core ownership and unknown input before invo
   expect(described.operations).toHaveLength(1)
   expect(described.operations[0].inputSchema).toMatchObject({ type: 'object' })
   const complete = await f.owned.service.handle('getApplicationCatalog', { includeSchemas: true }) as { operations: { name: string; inputSchema: unknown; available: boolean }[] }
-  expect(new Set(complete.operations.map(operation => operation.name.split('.')[0])).size).toBe(26)
+  expect([...new Set(complete.operations.map(operation => operation.name.split('.')[0]))].sort()).toEqual(['activity', 'appearance', 'application', 'automations', 'channels', 'connections', 'employees', 'groups', 'images', 'knowledge', 'memory', 'planning', 'plans', 'plugins', 'presentations', 'preview', 'refs', 'runtimePlugins', 'runtimes', 'selfies', 'sessions', 'skills', 'sources', 'tasks', 'terminal', 'webSearch', 'workspace'])
   expect(complete.operations.find(operation => operation.name === 'plans.set')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.find(operation => operation.name === 'presentations.configure')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.every(operation => !!operation.inputSchema)).toBe(true)

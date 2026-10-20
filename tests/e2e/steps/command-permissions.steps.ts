@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 永久命令授权撤销沿当前模型与权限分区保存请求审批，原授权/撤销/重启/零重放断言保持；旧撤销按钮退役。
  * [OUTPUT]: 按当前“运行命令审批”可访问名称定位实际审批卡，永久允许/撤销和零重放断言保持。
  * [INPUT]: 隔离Electron、真实IPC和原群聊本地模型协议。
  * [OUTPUT]: 真实审批卡记住授权、命令文件、配置版本/重启与通讯录撤销闭环；返回会话后明确选中原群。
@@ -47,9 +48,11 @@ Then('同一员工重启后执行命令不再询问且可以恢复确认', async
   await expect(page.locator('[data-approval-id]')).toHaveCount(0)
   await page.getByRole('button', { name: '通讯录', exact: true }).click()
   await page.locator('.contacts-list').getByRole('button', { name: '设计师', exact: true }).click()
-  await page.getByRole('button', { name: '编辑配置', exact: true }).click()
+  await page.getByRole('button', { name: '编辑模型与权限', exact: true }).click()
   await runtime.reviewNativeCheckpoint('通讯录可恢复逐次确认')
-  await page.getByRole('button', { name: '恢复逐次确认', exact: true }).click()
+  await page.getByRole('combobox', { name: '执行权限', exact: true }).click()
+  await page.getByRole('option', { name: '请求审批', exact: true }).click()
+  await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).commandPermissions).toEqual([])
   await page.getByRole('button', { name: '会话', exact: true }).click()
   await page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: state.fixture!.group.title, exact: true }).click()

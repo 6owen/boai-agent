@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 离线群模型提供当前无工具群语义解释，保持原独立参与/格式修复/取消重启断言。
  * [OUTPUT]: 隔离目录使用实际realpath核验同一目录，保留数据归属和取消重启原断言。
  * [OUTPUT]: 人格与行为直接展示配置源文件，文件编辑保持独立Dialog及局部草稿守卫；本批仅维护源码，不运行E2E。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
@@ -51,7 +52,9 @@ async function prepareCollaboration(runtime: Desktop) {
     const lastUser = [...visible].reverse().find((m: any) => m.role === 'user' && !String(m.content).startsWith('[Conversation background'))
     const text = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content)
     let response = ''
-    if (system.includes('Private participation decision')) {
+    if (system.includes('Private group request interpretation')) {
+      response = JSON.stringify({ mode: 'independent' })
+    } else if (system.includes('Private participation decision')) {
       const payload = JSON.parse(visible.at(-1)?.content ?? '{}')
       const conversation = payload.data.currentTurnMessages
       const trigger = conversation.find((m: any) => m.id === payload.data.currentTurn.rootMessageId)
