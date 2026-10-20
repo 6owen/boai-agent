@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 网页检索独立能力沿全局服务配置保存；业务数据源解绑不重置检索，停用/迟到目录仍验证。
  * [OUTPUT]: 高级配置默认人格与行为，配置源文件/后台记录直接展示，主动交流即时保存；自动化仅展示员工任务；基础配置排除/草稿保护保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
- * [OUTPUT]: 首选检索使用真实Select沿草稿保存；候选授权、失效来源、解绑重置与旧身份编辑保持。
+ * [OUTPUT]: 独立检索使用真实Select沿草稿保存；失效服务可见，业务数据源解绑不重置检索，旧身份编辑保持。
  * [OUTPUT]: 知识配置使用数量入口；独立资料绑定回填新版本并保留未保存工作方式与目录草稿。
  * [OUTPUT]: 验证组合命令多目录审批显示与本次/持久选项，明确持久目录不改变后续命令审批。
  * [OUTPUT]: 新增目录审批三选项、目录选择仅草稿和审批持久版本回填保留其他未保存字段。
@@ -43,6 +44,7 @@ beforeEach(() => {
     if (method === 'getAgentHome') return { agentId: committed.id, configVersion: committed.configVersion, files: [], environment: { skills: committed.skillIds.map(resourceId => ({ resourceId, instructions: 'available' })) } }
     if (method === 'getLaunchProfileStatus') return { status: 'available', profile: { id: 'native', name: '本机 Codex', protocol: 'codex-app-server', verified: { name: 'Codex', version: '1' } } }
     if (['listLaunchProfiles', 'listDataSources', 'listSkillInstallations'].includes(method)) return []
+    if (method === 'getWebSearchSettings') return { revision: 0, default: { mode: 'browser' }, services: [] }
     if (method === 'getSkillCollections') return { revision: 1, favoriteResourceIds: [], groups: [], groupByResourceId: {} }
     if (method === 'executeApplicationOperation') {
       const operation = (input as { operation: string }).operation
@@ -98,52 +100,54 @@ async function fixture(fullPage = false) {
   return { refresh, onMessage, identitySaved, updateSnapshot: () => updateSnapshot() }
 }
 
-test('search preference lists only usable bound candidates and saves with the original employee draft', async () => {
+test('independent search preference lists usable presets and saves without changing business source bindings', async () => {
   const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef'
-  const sources = [{ ...webSourceConfig, id, revision: 1, name: '已绑定搜索', createdAt: '', updatedAt: '', hasCredential: false }, { ...webSourceConfig, id: 'other', revision: 1, name: '未绑定搜索', createdAt: '', updatedAt: '', hasCredential: false }]
-  committed = { ...agent, sourceIds: [id] }
+  const service = { id, revision: 1, provider: 'deepseek', name: 'DeepSeek检索', enabled: true, pluginEnabled: true, hasCredential: true }
+  const services = [service, { ...service, id: 'disabled', name: '停用检索', enabled: false }, { ...service, id: 'legacy', provider: 'tavily', name: '旧检索' }]
+  committed = { ...agent, sourceIds: ['business-source'] }
   const original = request.getMockImplementation()!
-  request.mockImplementation((method, input) => method === 'listDataSources' ? Promise.resolve(sources) : original(method, input))
-  await fixture(); await click('编辑数据源')
-  const select = document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="首选检索方式"]')!
+  request.mockImplementation((method, input) => method === 'getWebSearchSettings' ? Promise.resolve({ revision: 1, default: { mode: 'browser' }, services }) : original(method, input))
+  await fixture(); await click('编辑网页检索')
+  const select = document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="员工网页检索方式"]')!
   await act(async () => select.click())
   const options = [...document.querySelectorAll<HTMLElement>('[role="option"]')]
-  expect(options.map(option => option.textContent)).toEqual(['自动', 'BOAI 浏览器', '已绑定搜索'])
-  await act(async () => { const option = options.find(option => option.textContent === '已绑定搜索')!; option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); option.click() })
+  expect(options.map(option => option.textContent)).toEqual(['跟随全局默认', 'BOAI 浏览器', 'DeepSeek检索', '关闭网页检索'])
+  await act(async () => { const option = options.find(option => option.textContent === 'DeepSeek检索')!; option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); option.click() })
   expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
   await act(async () => button('保存').click())
-  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ expectedConfigVersion: 3, sourceIds: [id], webSearch: { mode: 'source', sourceId: id }, instructions: agent.instructions }))
-  expect(committed.webSearch).toEqual({ mode: 'source', sourceId: id })
-  expect(host.querySelector('[aria-label="数据源列表"]')?.textContent).toContain('首选检索方式已绑定搜索')
+  expect(request).toHaveBeenCalledWith('saveAgent', expect.objectContaining({ expectedConfigVersion: 3, sourceIds: ['business-source'], webSearch: { mode: 'service', serviceId: id }, instructions: agent.instructions }))
+  expect(committed.webSearch).toEqual({ mode: 'service', serviceId: id })
+  expect(host.querySelector('[aria-label="网页检索配置"]')?.textContent).toContain('DeepSeek检索')
 })
 
-test('shows a disabled preferred source and resets it in the same draft when the user removes its binding', async () => {
+test('shows a disabled search service and preserves it when an unrelated business source is removed', async () => {
   const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef', source = { ...webSourceConfig, id, enabled: false, revision: 1, name: '旧搜索', createdAt: '', updatedAt: '', hasCredential: false }
-  committed = { ...agent, sourceIds: [id], webSearch: { mode: 'source', sourceId: id } }
+  const serviceId = '8b3c6b67-463a-4d82-b630-c3c5c1af23ef'
+  committed = { ...agent, sourceIds: [id], webSearch: { mode: 'service', serviceId } }
   const original = request.getMockImplementation()!
-  request.mockImplementation((method, input) => method === 'listDataSources' ? Promise.resolve([source]) : original(method, input))
+  request.mockImplementation((method, input) => method === 'listDataSources' ? Promise.resolve([source]) : method === 'getWebSearchSettings' ? Promise.resolve({ revision: 1, default: { mode: 'browser' }, services: [{ id: serviceId, revision: 1, provider: 'deepseek', name: '独立搜索', enabled: false, pluginEnabled: true, hasCredential: true }] }) : original(method, input))
   await fixture()
-  expect(host.querySelector('[aria-label="数据源列表"]')?.textContent).toContain('旧搜索（已停用）')
+  expect(host.querySelector('[aria-label="网页检索配置"]')?.textContent).toContain('独立搜索（已停用）')
   await click('编辑数据源'); await click('数据源操作 旧搜索')
   await act(async () => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent === '移除')!.click())
   await act(async () => button('确认移除').click())
-  expect(document.querySelector('[role="combobox"][aria-label="首选检索方式"]')?.textContent).toContain('自动')
+  expect(document.querySelector('[aria-label="员工网页检索方式"]')).toBeNull()
   expect(request.mock.calls.some(([method]) => method === 'saveAgent')).toBe(false)
   await act(async () => button('保存').click())
-  expect(committed.webSearch).toEqual({ mode: 'auto' }); expect(committed.sourceIds).toEqual([])
+  expect(committed.webSearch).toEqual({ mode: 'service', serviceId }); expect(committed.sourceIds).toEqual([])
 })
 
 test('refreshes source availability while editing and discards a pending catalog after hiding', async () => {
   const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef', source = { ...webSourceConfig, id, revision: 1, name: '活动搜索', createdAt: '', updatedAt: '', hasCredential: false }
   let pending: ((value: unknown) => void) | undefined
   request.mockImplementation(async method => { if (method === 'listDataSources') return new Promise(resolve => { pending = resolve }); throw new Error('Unexpected request') })
-  const props = { api, ids: [id], onChange() {}, disabled: false, active: true, searchPreference: { mode: 'source' as const, sourceId: id }, onSearchPreferenceChange() {} }
+  const props = { api, ids: [id], onChange() {}, disabled: false, active: true }
   await act(async () => root.render(h(SourcePicker, props)))
   await act(async () => pending!([source]))
   expect(host.textContent).toContain('活动搜索')
   await act(async () => { subscribers.forEach(listener => listener({ type: 'changed' })); await new Promise(resolve => setTimeout(resolve, 150)) })
   await act(async () => pending!([{ ...source, enabled: false }]))
-  expect(host.querySelector('[role="combobox"]')?.textContent).toContain('活动搜索（已停用）')
+  expect(host.querySelector('strong')?.textContent).toBe('活动搜索（已停用）')
   await act(async () => { subscribers.forEach(listener => listener({ type: 'changed' })); await new Promise(resolve => setTimeout(resolve, 150)) })
   await act(async () => root.render(h(SourcePicker, { ...props, active: false })))
   await act(async () => pending!([{ ...source, name: '迟到内容' }]))

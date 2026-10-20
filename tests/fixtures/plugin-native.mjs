@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * [INPUT]: Isolated Pi RPC or ACP stdio protocol requests.
+ * [INPUT]: Isolated Pi RPC or ACP stdio requests; ACP separates instructions and JSON without relying on JSON key order.
  * [OUTPUT]: Deterministic native lifecycle/tool side effects; no model is called.
  * [POS]: Runtime plugin protocol fixture shared by module and Electron tests.
  * [PROTOCOL]: Update fixtures/.folder.md with behavior changes.
@@ -23,7 +23,7 @@ async function tool(name, input, callId = randomUUID()) {
  if(value.error || value.result.isError)throw Error(JSON.stringify(value));return JSON.parse(value.result.content[0].text)
 }
 async function prompt(frame, input) {
- const source = pi ? input : input[0].text.slice(input[0].text.indexOf('{"contextMode"'))
+ const source = pi ? input : input[0].text.slice(input[0].text.lastIndexOf('\n\n') + 2)
  const data = JSON.parse(source), content = data.messages.map(message=>message.content).join('\n')
  await appendFile(join(process.cwd(),'plugin-submissions.jsonl'),JSON.stringify({sessionId:session.id,input:data})+'\n')
  session.messages.push(content);await mkdir(join(sessionPath,'..'),{recursive:true});await writeFile(sessionPath,JSON.stringify(session))

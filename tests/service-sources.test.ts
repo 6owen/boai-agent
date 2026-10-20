@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer来源回归等待实际execution完成，不把已结束的decision误当读取已交付。
  * [OUTPUT]: 同一真实宿主普通问答矩阵覆盖Tavily MCP与DeepSeek POST三档权限，未绑定/私有阶段拒绝且零Work/审批。
  * [OUTPUT]: 三档员工权限下普通搜索经原宿主只读调用、零Work/审批；绑定/私有阶段/普通本地来源不可绕过。
  * [OUTPUT]: 数据源Composer引用核对固定ID/源版本、绑定/启用、核心首发/重复请求与真实双工具桥；选择本身成为来源失效依赖，不授予权限。
@@ -312,7 +313,13 @@ it.each(['researcher', 'bobo'])('keeps selected source identity through message 
   expect(calls).toEqual([])
   const requestId = randomUUID(), accepted = await submit(reference, requestId) as Conversation | import('../src/shared/domain').Message
   const conversationId = direct?.id ?? accepted.id
-  await vi.waitFor(async () => { const view = await service.handle('getConversation', { id: conversationId }) as ConversationDetail; expect(view.runs.some(run => run.status === 'completed')).toBe(true) }, { timeout: 8000 })
+  await vi.waitFor(async () => {
+    if (failure) throw failure
+    const view = await service.handle('getConversation', { id: conversationId }) as ConversationDetail
+    const executions = view.runs.filter(run => run.phase === 'execution')
+    expect(executions).toHaveLength(1); expect(executions[0].status, executions[0].error).toBe('completed')
+    expect(view.turns?.every(turn => turn.status === 'completed')).toBe(true)
+  }, { timeout: 8000 })
   if (failure) throw failure
   expect(context).toBeDefined(); expect(calls).toEqual([selected.id])
   const view = await service.handle('getConversation', { id: conversationId }) as ConversationDetail

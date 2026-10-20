@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 商店元数据/ZIP fixture、真实 AppService/Mastra 工具链与隔离备份目录。
- * [OUTPUT]: 安装不授权、绑定后真实读取/发布、普通阶段隔离及恢复内容/来源/集合/绑定的证据。
+ * [OUTPUT]: 安装保留原员工权限/绑定、明确绑定后真实读取/发布及备份恢复，不假定核心员工初始无权限。
  * [POS]: Skills 管理到业务任务交付的集成验收；网络只使用本地协议服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -32,11 +32,12 @@ it('delivers evidence from a marketplace installation only after binding and pre
   }
   const sourcePath = join(root, 'source'), first = await start(sourcePath), { api } = first
   const scan = await api('scanSkillSource', { kind: 'marketplace', provider: 'clawhub', source: 'fixture/market-reader' })
-  expect((await api('snapshot', undefined)).resources).toEqual([])
+  const beforeInstall = await api('snapshot', undefined)
+  expect(beforeInstall.resources).toEqual([])
   const operation = await api('installSkills', { requestId: 'install', scanId: scan.id, candidateIds: [scan.candidates[0].id], addToFavorites: true })
   await vi.waitFor(async () => expect((await api('getSkillOperation', { id: operation.id })).status).toBe('completed'))
   const initial = await api('snapshot', undefined), resource = initial.resources[0]
-  expect(initial.agents.every(a => !a.skillIds.length && !a.allowCommands)).toBe(true)
+  expect(initial.agents).toEqual(beforeInstall.agents)
   const installed = await api('getSkillDetail', { resourceId: resource.id })
   expect(installed.installation?.source).toMatchObject({ kind: 'marketplace', provider: 'clawhub', providerItemId: 'fixture/market-reader' })
   const connection = await api('saveConnection', { name: 'Fixture', provider: 'openai-compatible', baseUrl: model.url, defaultModel: 'fixture' })

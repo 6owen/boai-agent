@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: PR及主分支确切提交的离线/视觉验证和固定Required checks；缺报告不放行。
+# [OUTPUT]: PR及主分支同SHA离线/视觉验证；显式安装并验证Electron二进制，缺报告不放行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -26,7 +26,12 @@ jobs:
           node-version: '24.16.0'
           cache: pnpm
       - id: install
-        run: pnpm install --frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
       - id: types
         run: pnpm typecheck
       - id: lint
@@ -72,7 +77,12 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
       - run: pnpm build
       - run: node scripts/ui-regression.mjs check --output .local/ui-ci
       - uses: actions/upload-artifact@v4

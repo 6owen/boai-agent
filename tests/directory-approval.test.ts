@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 核心员工现行默认完全权限；显式配置不改变普通员工原审批权限。
+ * [OUTPUT]: API完整/审批权限下的命令关闭跨其他字段保存与重启保持，整体只读不能借命令开关扩权。
  * [OUTPUT]: API群只读并发/命令互斥两种准入保持独立批准；自动化持久许可与备份原件保持。
  * [OUTPUT]: 绑定本地源仍须当前员工目录批准；拒绝/完全访问/只读及审批前零写入沿真实AppService核对。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -70,7 +72,7 @@ async function fixture(permission: DigitalAgent['executionPermission'] = 'ask') 
   const service = await open()
   const connection = await service.handle('saveConnection', { name: 'Isolated fixture', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1/v1', defaultModel: 'fixture' }) as Connection
   let agent = (await snapshot(service)).agents.find(agent => agent.id === 'researcher')!
-  agent = await service.handle('saveAgent', input(agent, { connectionId: connection.id, modelId: 'fixture', executionPermission: permission, directoryGrants: [{ path: a, access: 'read-write' }] })) as DigitalAgent
+  agent = await service.handle('saveAgent', input(agent, { connectionId: connection.id, modelId: 'fixture', executionPermission: permission, allowCommands: permission !== 'read-only', directoryGrants: [{ path: a, access: 'read-write' }] })) as DigitalAgent
   const conversation = await service.handle('createConversation', { kind: 'direct', title: '目录测试', agentIds: [agent.id] }) as Conversation
   let sequence = 0
   const send = (target = service, chat = conversation) => target.handle('sendMessage', { conversationId: chat.id, content: '按明确路径执行验证', requestId: `directory-request-${++sequence}`, mentionIds: [] })
@@ -534,13 +536,28 @@ describe('真实目录审批与文件接续', () => {
     expect((await snapshot(f.service)).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toContainEqual({ path: f.b, access: 'read-only' })
     expect(await readFile(target, 'utf8')).toBe('B')
   })
-  it('核心员工可明确选择完全权限，原默认权限不被自动升级', async () => {
+  it('核心员工默认完全权限，保存配置不升级普通员工原审批权限', async () => {
     const f = await fixture(), core = (await snapshot(f.service)).agents.find(agent => agent.systemRole === 'core')!
-    expect(core.executionPermission).toBeUndefined()
+    expect(core.executionPermission).toBe('full-access'); expect(f.agent.executionPermission).toBe('ask')
     const authorized = await f.service.handle('saveAgent', input(core, { executionPermission: 'full-access', directoryGrants: [{ path: f.a, access: 'read-write' }] })) as DigitalAgent
-    expect(authorized.executionPermission).toBe('full-access'); expect(authorized.allowCommands).toBe(false)
+    expect(authorized.executionPermission).toBe('full-access'); expect(authorized.allowCommands).toBe(core.allowCommands)
     const { executionPermission: _permission, ...otherDraft } = input(authorized, { role: '常用工作助手' })
     expect((await f.service.handle('saveAgent', otherDraft) as DigitalAgent).executionPermission).toBe('full-access')
+    expect((await snapshot(f.service)).agents.find(agent => agent.id === f.agent.id)?.executionPermission).toBe('ask')
+  })
+  it.each([['bobo', 'ask'], ['bobo', 'full-access'], ['researcher', 'ask'], ['researcher', 'full-access']] as const)('API员工%s在%s权限下关闭命令，改名及重启均不能自动重新启用', async (agentId, permission) => {
+    const f = await fixture(), agent = (await snapshot(f.service)).agents.find(value => value.id === agentId)!
+    const disabled = await f.service.handle('saveAgent', input(agent, { executionPermission: permission, allowCommands: false })) as DigitalAgent
+    expect(disabled.executionPermission).toBe(permission); expect(disabled.allowCommands).toBe(false)
+    const renamed = await f.service.handle('saveAgent', input(disabled, { name: '只修改姓名' })) as DigitalAgent
+    expect(renamed.allowCommands).toBe(false); expect(renamed.executionPermission).toBe(permission)
+    await f.service.close(); const restarted = await f.open()
+    expect((await snapshot(restarted)).agents.find(value => value.id === agentId)).toMatchObject({ name: '只修改姓名', executionPermission: permission, allowCommands: false })
+  })
+  it('API整体只读不能通过单独启用命令扩大权限', async () => {
+    const f = await fixture('read-only')
+    const saved = await f.service.handle('saveAgent', input(f.agent, { allowCommands: true })) as DigitalAgent
+    expect(saved.executionPermission).toBe('read-only'); expect(saved.allowCommands).toBe(false)
   })
   it.skipIf(process.platform !== 'darwin')('明确申请的临时目录许可交给真实命令进程，其他运行不继承', async () => {
     const f = await fixture(), outputs: string[] = []

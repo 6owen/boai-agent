@@ -16,124 +16,124 @@
   },
   "cases": {
     "chat-light": {
-      "sha256": "cc0dba0e1a1c1d4b02eed9c0205616d7cf994fdaffdce284f392de356c4a9103",
+      "sha256": "a7c3b4795d4af4ecfc92bf5d21d315337a651a048ed5b18e6700327bde7beb15",
       "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.194Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.252Z"
     },
     "chat-dark": {
-      "sha256": "c14b9f43bd27492662a60b96f6344ffd4a3e9d925b309d60511c68c2042fc82e",
+      "sha256": "4ab8487df83725d21f66c2ed16436d43d07a388bff40d8bfd3efa0b08c1edc0e",
       "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.194Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.253Z"
     },
     "chat-narrow-light": {
-      "sha256": "7ccc0dc6823b329c8c72d9bfa4c4078ed2c4f13987b3984aa1b87c4c2973f49d",
+      "sha256": "54c7266f2050211622569ab2f5244e544ca19136e0414b25ca1c0495d44c0959",
       "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.195Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.253Z"
     },
     "chat-narrow-dark": {
-      "sha256": "353c3982707005b6ff53a458275c81d776184dbdcc8f30e1b54635470e9632d0",
+      "sha256": "68673a831f779a20f1f0666c8742645955a93911f2451f97d349fa25c1fe4835",
       "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.195Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.254Z"
     },
     "empty-chat-light": {
-      "sha256": "204c20cb4a0e79679fe785504fbdcd4633e1c4310d6ec2c100e43d838559ccea",
+      "sha256": "e31f942df0cdb12522b5374c4ab7e2d369cdaa71fe83481f04d61fddba37c270",
       "contract": "f67798d98d951bdd62d80d92b3dc15a990979d199ae7d9dc12fb23b96e6aa8b1",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.196Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.254Z"
     },
     "empty-chat-dark": {
-      "sha256": "98accd2d10a99bc25028338b0048b39a15137b9bf421e08d2626c2339e60c730",
+      "sha256": "68c7981328eea9dab4d76b71dde810f501cd25532075388b5505842201c2729b",
       "contract": "1e107ae51b50bcc971e6a819554efb7d2a16d556d4acd98f39b181915dcec271",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.196Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.255Z"
     },
     "employee-light": {
-      "sha256": "c0b78f10388a7dc5a32e06990427756754a75c200f607a654480d1d5c53375c7",
+      "sha256": "0f0e200ec256b15bad023fc111e7afae89e2314a9f3e74ca2a138df01deaba2d",
       "contract": "9286a4ad99bd5f3fe889741a179bbf448ad462ccbd09835fcc687d45c5398c50",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.196Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.255Z"
     },
     "employee-dark": {
-      "sha256": "c70ab96a35868ef68fc38acd445625d1d963d3e224bd9a6ba5cd563b3ba38554",
+      "sha256": "0e9375ad2ba4bc808d3e7692dbd12417acdb402aeb27c97cad285a85c9760cdd",
       "contract": "73c07b7518d80b70b225322c29dffb5f353d119f6e651eff4ed83b1e3b5837b2",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.196Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.255Z"
     },
     "settings-light": {
-      "sha256": "b57a139a94b1a9aaec8742a3ff6b32c2d7de9a9ef00ea08c16eddd5cd6fdab7f",
+      "sha256": "37d1efae4171bfa45a39a494c4b6f5737b43c0a188d72fa195317231af03d3f1",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.197Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.256Z"
     },
     "settings-dark": {
-      "sha256": "6f13ce0572f92ffbea9174f20bc290bb260126f24ca05f02824659268f1dddec",
+      "sha256": "c5d9ad99cc604a4b82f0c146e83a11c1ad773043a81921c5c73b8d3aed7adfda",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.197Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.256Z"
     },
     "resources-light": {
       "sha256": "9fd394fd971ba096cb61ee597f4723f6d49980290e5ad4ca9594a01f7441e3eb",
@@ -160,52 +160,52 @@
       "acceptedAt": "2026-10-20T10:36:54.197Z"
     },
     "detail-light": {
-      "sha256": "a5510cabfd44707defad98bb554836fc51d4fe6b5d6dd158ca541e4a3c27f3ea",
+      "sha256": "17104121753a9101de2abe1ca58cf2f02d842f3e88c527efec68883016960baa",
       "contract": "6be6641275a5227b7ed45e5216e887a80e49414ef933c97c8fccf47e41540478",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.198Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.257Z"
     },
     "detail-dark": {
-      "sha256": "a0020e4ad0d431e81125668436b39d9e3a5f9912c19c5d5e41914a5410e244dc",
+      "sha256": "50037c600442cf294abb30e323f6ce7ec4cff1cd1b40f766f8e4ce19b7626d96",
       "contract": "b94c00c459787ce967bdb732c72dab242f86b0a461685263e0993bae83a1825f",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.198Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.257Z"
     },
     "preview-light": {
-      "sha256": "c6c8a1c0a61d946f5d196c4dcf3a4f6560a2297dd2e713df4fde91cb4667468d",
+      "sha256": "5c7e27af611ad709376e7d57e7810b30c5309c56a8aae47a217b97506516999c",
       "contract": "92cf7c356cf53ace610af0abe3983a01955331e076593c2a9c4454df51e6d55c",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.199Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.258Z"
     },
     "preview-dark": {
-      "sha256": "2754bc58243fe04314aa7a5b9f4ceb5d46169b302d2861290c9663ec74b8334c",
+      "sha256": "33b0da4b98f2cca2f29954c995acac2b3e914480dc4121920ff9f3c56d4a2ba5",
       "contract": "fb5b0028ec61dcce694beff6122b0e86a1153edd9259064b1b151d874dfdc6eb",
       "source": {
-        "commit": "a48422e4a53f8b02d9bf1dae1482bc21177a0e20",
-        "sourceHash": "544dc0fdd603ca2d2be0ec52ca7251a82be0722901e340094ef356d84bcefb52",
+        "commit": "3b081192541f5708bad07e8d6be7534757350765",
+        "sourceHash": "4b11a75a5a60c9c5abcc7a5266d6a3a7e991c78a69b841091891da2c5d4c06e7",
         "dirty": true
       },
-      "reason": "实际CoreText字体身份纠正后的本地初始环境迁移；独立模型逐对审阅16对旧新图及代表diff未见实质退化，候选16项只读比较通过。原比较失败、显著像素差异及精确成因未证实均保留；远程CI及人工PR批准另行验收。",
-      "candidate": "69e91c97-dc50-40f6-8840-7806455f78b5",
-      "acceptedAt": "2026-10-20T10:36:54.199Z"
+      "reason": "适配用户main d93698b9集中字体/字号及外观分区；独立模型逐对审阅未见已捕获区域退化，候选16项只读比较通过且PNG保持。仅接受14项实际变化，资源2项不变。设置下方代码字体/预览/图标未入镜、Dock效果未验；旧比较失败/旧新diff保留，人工PR批准另行验收。",
+      "candidate": "99c4fdb2-4ce5-4662-9071-240922169c4e",
+      "acceptedAt": "2026-10-20T11:02:12.258Z"
     }
   }
 }

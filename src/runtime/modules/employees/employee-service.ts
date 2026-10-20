@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API命令开关独立保存；整体只读始终禁命令，原生权限映射保持，不因改名重新启用已关闭命令。
  * [OUTPUT]: 单独追加技能保留当前运行的冻结技能集合，通过宿主更新兼容版本；移除/替换及其他配置变更仍取消旧运行。
  * [OUTPUT]: 仅首次创建 Bobo 同事务登记默认技能源绑定标记，既有员工不自动加回技能。
  * [OUTPUT]: 2026-10-19核心预设允许实际命令/完全访问，显式既有权限保留；完整适配人格仅升级精确旧默认，不覆盖自定义。
@@ -235,7 +236,8 @@ export class EmployeeService {
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
     if (input.knowledgeIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的知识资料，请明确为该员工添加独立资料')
     const { expectedConfigVersion: _, expectedDirectoryRevision: _directoryRevision, systemRole: _systemRole, initialSoul, ...definition } = input
-    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands: executionPermission ? executionPermission !== 'read-only' : input.allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const allowCommands = executionBackend.kind === 'mastra-model' ? input.allowCommands && executionPermission !== 'read-only' : executionPermission ? executionPermission !== 'read-only' : input.allowCommands
+    const agent: DigitalAgent = { ...previous, ...definition, ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (previous && previous.instructions !== input.instructions) { const source = await this.homes.read(previous, 'AGENTS.md'); await this.homes.save(previous, 'AGENTS.md', input.instructions, source.hash) }
     if (!previous) await this.homes.initialize(agent, initialSoul)
     await this.store.write([record('agents', agent)], canRememberCommands(agent) ? [] : [{ collection: commandPermissionCollection, id: agent.id }]); this.install(agent.id, agent); await this.homes.commit(agent)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道搜索使用员工独立webSearch service及原可用范围，业务数据源为空仍能检索且不外借其他员工服务。
  * [OUTPUT]: 回应来源、未知不重试、旧回执不覆盖新状态与BOAI续聊不外发。
  * [OUTPUT]: 渠道私聊/群沿当前API员工目录批准，另一员工授权不外借，临时许可不跨来源续聊。
  * [OUTPUT]: CLI公开RPC/独立产物沿原渠道事务续聊与明确发送；旧hash/撤权拒绝、未知结果与重启不重放。
@@ -39,6 +40,7 @@ import { isChannelConversation, mainConversations, sortedConversations } from '.
 import { createKnowledgeOperations } from '../src/runtime/modules/resources/knowledge-tools'
 import type { Resource } from '../src/shared/domain'
 import type { DataSource } from '../src/shared/domain/sources'
+import type { WebSearchServiceConfig } from '../src/shared/domain/web-search'
 import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { RequestContext } from '@mastra/core/request-context'
@@ -154,23 +156,23 @@ describe('employee channel business connection', () => {
     const server = await webSearchServer()
     try {
       const f = await fixture()
-      const source = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: webSourceConfig }) as DataSource
-      const other = await f.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config: { ...webSourceConfig, name: 'Other employee search' } }) as DataSource
+      const source = await f.service.handle('saveWebSearchService', { id: randomUUID(), expectedRevision: 0, provider: 'tavily', name: 'Employee search', enabled: true, credential: 'fixture-search-secret' }) as WebSearchServiceConfig
+      const other = await f.service.handle('saveWebSearchService', { id: randomUUID(), expectedRevision: 0, provider: 'tavily', name: 'Other employee search', enabled: true, credential: 'fixture-search-secret' }) as WebSearchServiceConfig
       for (const id of ['writer', 'researcher']) {
         const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, directoryRevision, systemRole: _s, creationSource: _c, ...agent } = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === id)!
         const own = id === 'writer' ? source : other
-        await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [own.id], webSearch: { mode: 'source', sourceId: own.id } })
+        await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [], webSearch: { mode: 'service', serviceId: own.id, allowedServiceIds: [own.id] } })
       }
       let error: unknown
       f.engine.handler = async ctx => {
         try {
-          expect(ctx.agent.id).toBe('writer'); expect(ctx.dataSources?.map(source => source.id)).toEqual([source.id])
-          await expect(ctx.inspectDataSource!(other.id)).rejects.toThrow('权限')
-          const catalog = await ctx.inspectDataSource!(source.id)
+          expect(ctx.agent.id).toBe('writer'); expect(ctx.webSearchServices?.map(source => source.id)).toEqual([source.id]); expect(ctx.dataSources).toEqual([])
+          await expect(ctx.inspectWebSearch!(other.id)).rejects.toThrow('未启用')
+          const catalog = await ctx.inspectWebSearch!(source.id)
           expect(JSON.stringify(catalog)).toContain('tavily_search')
-          const search = await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_search', arguments: { query: 'public Orion launch schedule' } })
+          const search = await ctx.callWebSearch!({ sourceId: source.id, tool: 'tavily_search', arguments: { query: 'public Orion launch schedule' } })
           expect(JSON.stringify(search)).toContain(resultUrl)
-          const body = await ctx.callDataSource!({ sourceId: source.id, tool: 'tavily_extract', arguments: { urls: [resultUrl] } })
+          const body = await ctx.callWebSearch!({ sourceId: source.id, tool: 'tavily_extract', arguments: { urls: [resultUrl] } })
           expect(JSON.stringify(body)).toContain(pageText); expect(ctx.work).toBeUndefined()
           await ctx.onDelta(pageText + ' ' + resultUrl)
         } catch (failure) { error = failure; throw failure }

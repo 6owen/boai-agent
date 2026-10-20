@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Built native guard, actual shell/HTTP listener and isolated workspace directories.
- * [OUTPUT]: Persistent PTY, cursor/exit, subprocess cleanup and static/development preview checks.
+ * [OUTPUT]: Real PTY exit/cleanup; explicit file/foreground readiness replaces timing assumptions without relaxing exit deadlines.
  * [POS]: Real local process integration; no Electron E2E or external model calls.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -36,9 +36,10 @@ it('resizes the same shell and returns a running command without silently retryi
   f.terminal.resize(session.id, 81, 23)
   const size = await f.terminal.exec(session.id, 'stty size')
   expect(size.output).toContain('23 81')
-  const pending = await f.terminal.exec(session.id, 'sleep 1; echo done-once', 100)
+  const pending = await f.terminal.exec(session.id, 'while [ ! -f release-command ]; do sleep 0.01; done; echo done-once', 100)
   expect(pending.status).toBe('running')
   await expect(f.terminal.exec(session.id, 'echo duplicate')).rejects.toThrow('仍在运行')
+  await writeFile(join(f.root, 'release-command'), 'release once')
   await expect.poll(() => f.terminal.execution(session.id)?.status).toBe('exited')
   expect(f.terminal.execution(session.id)?.output.match(/done-once/g)).toHaveLength(1)
 })
@@ -53,7 +54,8 @@ it('waits for background descendants to exit before acknowledging terminal kill'
 })
 it('interrupts a foreground command and accepts the next exec after the real shell prompt returns', async () => {
   const f = await fixture(), session = await f.terminal.create(f.scope, f.root)
-  expect((await f.terminal.exec(session.id, 'sleep 120', 100)).status).toBe('running')
+  expect((await f.terminal.exec(session.id, 'printf foreground-ready; sleep 120', 100)).status).toBe('running')
+  await expect.poll(() => f.terminal.execution(session.id)?.output).toContain('foreground-ready')
   await f.terminal.write(session.id, '\u0003')
   await expect.poll(() => f.terminal.execution(session.id)?.status).toBe('exited')
   expect(f.terminal.execution(session.id)?.exitCode).toBe(130)

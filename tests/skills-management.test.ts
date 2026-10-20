@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 真实 AppService/SQLite、受管技能目录和隔离文件 fixture。
+ * [INPUT]: 真实 AppService/SQLite、受管技能目录、原员工配置快照和隔离文件 fixture。
  * [OUTPUT]: 分组/技能前后顺序及跨组事务与重启、失败无部分写入； 批量中途失败保留成功项、删除技能清理来源记忆、无技能目录/过大文件拒绝、目标竞争/ACP 拒绝、集合持久化与授权分离验证。
  * [POS]: Skills 本地管理模块与服务集成回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -46,6 +46,7 @@ test('full YAML preserves multiline descriptions but declarations never grant to
 })
 test('preview does not install; batch retains valid results and exposes invalid skills without touching sources', async () => {
   const { root, api } = await setup(), library = join(root, 'library')
+  const agentsBefore = (await api('snapshot', undefined)).agents
   const original = await skill(library)
   await skill(library, 'invalid', 'Invalid_Name')
   const scan = await api('scanSkillSource', { source: library })
@@ -59,7 +60,7 @@ test('preview does not install; batch retains valid results and exposes invalid 
   await expect(api('installSkills', { ...input, addToFavorites: false })).rejects.toThrow('requestId')
   const snapshot = await api('snapshot', undefined)
   expect(snapshot.resources).toHaveLength(1)
-  expect(snapshot.agents.every(agent => !agent.skillIds.length && !agent.allowCommands)).toBe(true)
+  expect(snapshot.agents).toEqual(agentsBefore)
   expect((await inspectResourceTree(original)).hash).toBe(before.hash)
   expect((await api('getSkillDetail', { resourceId: snapshot.resources[0].id })).content).toContain('Follow the approved task.')
 })

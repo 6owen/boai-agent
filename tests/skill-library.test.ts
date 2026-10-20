@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 旧库格式 fixture、真实 SQLite/受管副本、便携 ZIP 与禁止网络/模型执行的服务。
- * [OUTPUT]: 离线恢复、静态来源/校验、冲突/集合幂等、完整导出往返、冻结内容和发布失败边界验证。
+ * [OUTPUT]: 离线恢复、来源/校验及导出往返；导入前后全部员工权限和原绑定保持，包括预置核心员工。
  * [POS]: Skills K4 技能库迁移集成回归。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -56,6 +56,7 @@ async function archive(root: string, files = fixture(), filename = 'old-library.
 
 test('legacy library restores the package offline, statically maps GitHub sources and never grants permissions', async () => {
   const { root, api, network, model } = await setup(), path = await archive(root)
+  const agentsBefore = (await api('snapshot', undefined)).agents
   const scan = await api('scanSkillSource', { source: path, kind: 'zip' })
   expect(scan.library).toEqual({ name: manifest.name, groups: [], favoriteCount: 0 })
   expect(scan.warnings?.join()).toContain('未保存收藏分组')
@@ -68,7 +69,7 @@ test('legacy library restores the package offline, statically maps GitHub source
   const snapshot = await api('snapshot', undefined), resource = snapshot.resources.find(value => value.name === 'remote-reader')!
   expect(await readFile(join(resource.path, 'references/example.md'), 'utf8')).toBe('Saved reference from an older version')
   expect(await readFile(join(resource.path, 'assets/example.bin'))).toEqual(Buffer.from([0, 255, 42]))
-  expect(snapshot.agents.every(agent => !agent.skillIds.length && !agent.allowCommands)).toBe(true)
+  expect(snapshot.agents).toEqual(agentsBefore)
   expect((await api('getSkillCollections', undefined)).favoriteResourceIds).toEqual([])
   expect(network).not.toHaveBeenCalled(); expect(model).not.toHaveBeenCalled()
 })
