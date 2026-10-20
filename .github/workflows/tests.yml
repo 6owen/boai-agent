@@ -26,6 +26,27 @@ jobs:
           pnpm exec electron --version
       - run: pnpm build
       - run: defaults write -g AppleLanguages -array zh-Hans-CN
+      - name: Install pinned font bytes from Apple's own asset CDN
+        run: |
+          python3 - <<'PYFONT'
+          from pathlib import Path
+          import urllib.request, zipfile, io, hashlib
+          url = 'https://updates.cdn-apple.com/2024/mobileassets/062-14283/992898D8-65BC-436B-B9F9-EB2D576A24BC/com_apple_MobileAsset_Font7/3419f2a427639ad8c8e139149a287865a90fa17e.zip'
+          with urllib.request.urlopen(url, timeout=120) as response:
+              archive = zipfile.ZipFile(io.BytesIO(response.read()))
+          names = [name for name in archive.namelist() if name == 'AssetData/PingFang.ttc' or name.endswith('/AssetData/PingFang.ttc')]
+          if len(names) != 1:
+              raise RuntimeError('Apple asset does not contain exactly one PingFang font')
+          font = archive.read(names[0])
+          digest = hashlib.sha256(font).hexdigest()
+          if digest != '6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7':
+              raise RuntimeError('Font bytes differ from the local baseline source')
+          destination = Path.home() / 'Library/Fonts/BOAI-CI-PingFang.ttc'
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_bytes(font)
+          print('PINNED_FONT', destination, len(font), digest)
+          PYFONT
+          swift -e 'import Foundation; import CoreText; let u = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Fonts/BOAI-CI-PingFang.ttc"); var e: Unmanaged<CFError>?; let ok = CTFontManagerRegisterFontsForURL(u as CFURL, .persistent, &e); print("FONT_REGISTER", ok, String(describing: e?.takeRetainedValue()))'
       - name: Enumerate and request system-managed font
         run: |
           cat > /tmp/boai-font-source.swift <<'SWIFT'
