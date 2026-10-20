@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际SQLite共享/独占事务、隔离profile及Node/Electron子进程。
- * [OUTPUT]: 多应用/维护互斥、缺目录别名/悬空链接/整条控制路径/文件系统根、裸v2及真实GC/死亡释放。
+ * [OUTPUT]: 多应用/维护互斥、持久升级意图与恢复、缺目录别名/控制路径边界及真实GC/死亡释放。
  * [POS]: 个人升级准入合同；不是应用升级或完整数据回滚验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -12,6 +12,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
 import { createRequire } from 'node:module'
 import { DatabaseSync } from 'node:sqlite'
+import { randomUUID } from 'node:crypto'
 import { build } from 'esbuild'
 import { acquireProfileAccess, acquireRuntimeProfileAccess, ProfileAccessBusyError } from '../src/runtime/profile-access'
 
@@ -27,6 +28,7 @@ beforeAll(async () => {
     process.on('message',kind=>{
       if(kind==='forget'){lease=undefined;global.gc();global.gc();process.send({kind:'forgot'})}
       if(kind==='release'){lease.release();process.send({kind:'released'})}
+      if(typeof kind==='string'&&kind.startsWith('begin:')){const intent=lease.beginMaintenance(kind.slice(6));process.send({kind:'begun',intent})}
     });
     process.on('disconnect',()=>process.exit(0));setInterval(()=>{},1000);
   `, resolveDir: process.cwd() }, bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: helper })
@@ -73,6 +75,68 @@ test('admission does not create a missing profile while maintenance owns its sta
   expect(() => access(profile)).toThrow(ProfileAccessBusyError)
   await expect(readFile(profile)).rejects.toMatchObject({ code: 'ENOENT' })
   lease.assertHeld()
+})
+
+test('unfinished upgrade survives lease release and protects a temporarily missing profile until explicit recovery', async () => {
+  const { root, profile } = await fixture(); await mkdir(profile); await writeFile(join(profile, 'original'), 'credential-and-data-fixture')
+  const maintenance = access(profile, 'maintenance'), id = randomUUID(), intent = maintenance.beginMaintenance(id)
+  expect(intent).toEqual({ version: 1, id, startedAt: expect.any(String) })
+  await rename(profile, join(root, 'backup')); maintenance.release()
+  expect(() => access(profile)).toThrow('尚未恢复')
+  await expect(lstat(profile)).rejects.toMatchObject({ code: 'ENOENT' })
+  const recovery = access(profile, 'maintenance')
+  expect(recovery.maintenanceIntent()).toEqual(intent)
+  expect(recovery.beginMaintenance(id)).toEqual(intent)
+  expect(() => recovery.beginMaintenance(randomUUID())).toThrow('其他')
+  expect(() => recovery.finishMaintenance(randomUUID())).toThrow('不匹配')
+  expect(() => access(profile)).toThrow(ProfileAccessBusyError)
+  await rename(join(root, 'backup'), profile); recovery.finishMaintenance(id)
+  expect(() => recovery.assertHeld()).toThrow('已结束')
+  access(profile).assertHeld()
+  expect(await readFile(join(profile, 'original'), 'utf8')).toBe('credential-and-data-fixture')
+})
+
+test('ordinary application access cannot create or clear upgrade intent, and invalid ids do not change control bytes', async () => {
+  const { profile } = await fixture(), application = access(profile), before = await readFile(application.file)
+  expect(() => application.beginMaintenance(randomUUID())).toThrow('维护模式')
+  expect(() => application.finishMaintenance(randomUUID())).toThrow('维护模式')
+  expect(await readFile(application.file)).toEqual(before); application.release()
+  const maintenance = access(profile, 'maintenance')
+  expect(() => maintenance.beginMaintenance('')).toThrow('事务ID')
+  expect(() => maintenance.beginMaintenance('not-a-uuid')).toThrow('事务ID')
+  expect(() => maintenance.finishMaintenance(randomUUID())).toThrow('不匹配')
+  expect(maintenance.maintenanceIntent()).toBeUndefined()
+  expect(await readFile(maintenance.file)).toEqual(before)
+})
+
+test('upgrade intent uses a durable v2 marker and explicit completion restores v1 admission at final release', async () => {
+  const { profile } = await fixture(), maintenance = access(profile, 'maintenance'), id = randomUUID()
+  maintenance.beginMaintenance(id); maintenance.release()
+  const readVersion = () => { const database = new DatabaseSync(maintenance.file, { readOnly: true }); try { return database.prepare('SELECT version FROM identity').get()?.version } finally { database.close() } }
+  expect(readVersion()).toBe(2)
+  const recovery = access(profile, 'maintenance'); recovery.finishMaintenance(id)
+  expect(readVersion()).toBe(1)
+  access(profile).assertHeld()
+})
+
+test.each(['future', 'missing', 'id', 'timestamp', 'oversized', 'inconsistent'])('invalid %s upgrade record refuses application and maintenance without resetting bytes', async kind => {
+  const { profile } = await fixture(), original = access(profile, 'maintenance'); original.beginMaintenance(randomUUID()); original.release()
+  const database = new DatabaseSync(original.file)
+  try {
+    if (kind === 'missing') database.exec('DELETE FROM maintenance')
+    else if (kind === 'inconsistent') database.exec('UPDATE identity SET version=1')
+    else {
+      const record = JSON.parse(database.prepare('SELECT intent FROM maintenance').get()!.intent as string)
+      if (kind === 'future') record.version = 2
+      if (kind === 'id') record.id = 'not-a-uuid'
+      if (kind === 'timestamp') record.startedAt = 'tomorrow'
+      database.prepare('UPDATE maintenance SET intent=?').run(kind === 'oversized' ? 'x'.repeat(2049) : JSON.stringify(record))
+    }
+  } finally { database.close() }
+  const before = await readFile(original.file)
+  expect(() => access(profile)).toThrow()
+  expect(() => access(profile, 'maintenance')).toThrow()
+  expect(await readFile(original.file)).toEqual(before)
 })
 
 test('aliases share authority and replacing profile contents does not replace the maintenance lock', async () => {
@@ -165,7 +229,7 @@ test.each(['future', 'identity', 'wal', 'empty'])('unsupported %s control bytes 
   else {
     const database = new DatabaseSync(original.file)
     try {
-      if (kind === 'future') database.exec('UPDATE identity SET version=2')
+      if (kind === 'future') database.exec('UPDATE identity SET version=3')
       if (kind === 'identity') database.exec("UPDATE identity SET profile='/another-profile'")
       if (kind === 'wal') database.exec('PRAGMA journal_mode=WAL')
     } finally { database.close() }
@@ -218,5 +282,22 @@ for (const [name, executable] of [['Node', process.execPath], ['Electron Node', 
     expect(() => access(profile)).toThrow(ProfileAccessBusyError)
     running.process.kill('SIGKILL'); await running.ended
     access(profile).assertHeld()
+  })
+  test(`${name}: committed upgrade intent stays locked, survives actual SIGKILL and requires the original recovery id`, async () => {
+    const { root, profile } = await fixture(); await mkdir(profile); await writeFile(join(profile, 'original'), 'original-private-fixture')
+    const running = await child(profile, 'maintenance', executable), id = randomUUID()
+    const begun = message(running.process, 'begun'); running.process.send('begin:' + id); const recorded = await begun
+    expect(recorded.intent).toMatchObject({ version: 1, id })
+    expect(() => access(profile)).toThrow(ProfileAccessBusyError)
+    expect(() => access(profile, 'maintenance')).toThrow(ProfileAccessBusyError)
+    await rename(profile, join(root, 'backup'))
+    running.process.kill('SIGKILL'); await running.ended
+    expect(() => access(profile)).toThrow('尚未恢复')
+    await expect(lstat(profile)).rejects.toMatchObject({ code: 'ENOENT' })
+    const recovery = access(profile, 'maintenance'); expect(recovery.maintenanceIntent()).toEqual(recorded.intent)
+    expect(() => recovery.finishMaintenance(randomUUID())).toThrow('不匹配')
+    await rename(join(root, 'backup'), profile); recovery.finishMaintenance(id)
+    access(profile).assertHeld()
+    expect(await readFile(join(profile, 'original'), 'utf8')).toBe('original-private-fixture')
   })
 }

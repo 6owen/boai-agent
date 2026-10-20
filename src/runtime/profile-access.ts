@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确profile根目录、应用共享访问或升级维护模式，以及Node内置SQLite。
- * [OUTPUT]: profile外持久锁及本卷别名身份；拒绝悬空链接/整条控制路径/文件系统根，应用并用、维护独占。
+ * [OUTPUT]: profile外共享/维护准入及持久升级意图；提交不释放维护连接锁，中断后拒绝新旧协议应用初始化。
  * [POS]: 桌面/独立服务/个人升级的写入准入；不替代runtime owner或实际进程退出证明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -16,6 +16,26 @@ export class ProfileAccessBusyError extends Error {
     super(mode === 'application' ? '此数据配置正在维护，请在升级完成后重新打开' : '此数据配置仍有程序或独立服务使用，请等待实际退出后再维护')
     this.name = 'ProfileAccessBusyError'
   }
+}
+export class ProfileMaintenancePendingError extends ProfileAccessBusyError {
+  constructor() {
+    super('application')
+    this.message = '此数据配置有尚未恢复的升级事务，请先完成升级恢复'
+    this.name = 'ProfileMaintenancePendingError'
+  }
+}
+export interface ProfileMaintenanceIntent { version: 1; id: string; startedAt: string }
+const validMaintenanceId = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+function readMaintenance(database: DatabaseSync, version: number): ProfileMaintenanceIntent | undefined {
+  const table = database.prepare("SELECT type FROM sqlite_schema WHERE name='maintenance'").get()
+  if (!table) { if (version === 2) throw Error('升级事务记录缺失，不能初始化数据'); return }
+  if (table.type !== 'table') throw Error('升级事务记录格式不受支持')
+  const rows = database.prepare('SELECT id,intent FROM maintenance LIMIT 2').all()
+  if (!rows.length) { if (version === 2) throw Error('升级事务记录缺失，不能初始化数据'); return }
+  if (rows.length !== 1 || rows[0].id !== 1 || typeof rows[0].intent !== 'string' || rows[0].intent.length > 2048) throw Error('升级事务记录格式不受支持')
+  const record = JSON.parse(rows[0].intent)
+  if (version !== 2 || !record || Object.keys(record).sort().join(',') !== 'id,startedAt,version' || record.version !== 1 || !validMaintenanceId(record.id) || typeof record.startedAt !== 'string' || !Number.isFinite(Date.parse(record.startedAt)) || new Date(record.startedAt).toISOString() !== record.startedAt) throw Error('升级事务身份或版本不符，原记录保持')
+  return { version: 1, id: record.id, startedAt: record.startedAt }
 }
 
 // Keep failed/unknown shutdowns locked even if their caller loses its handle or GC runs.
@@ -86,21 +106,31 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
   const original = privatePath(file, false)
   if (original.size > 1024 * 1024) throw Error('数据维护锁内容过大，原文件保持')
   const database = new DatabaseSync(file, { readOnly: mode === 'application' })
-  let released = false
+  let released = false, faulted = false, transactionOpen = false, accessVersion = 1
   const assertHeld = () => {
     // Node 22.13 has no isTransaction getter; BEGIN/read below still establish the real lock.
-    if (released || database.isTransaction === false) throw Error('数据维护访问已结束')
+    // Maintenance EXCLUSIVE locking mode retains the kernel lock across durable COMMITs.
+    if (released || faulted || mode === 'application' && (!transactionOpen || database.isTransaction === false)) throw Error('数据维护访问已结束或结果未知')
+    if (mode === 'maintenance' && database.prepare('PRAGMA locking_mode').get()?.locking_mode !== 'exclusive') throw Error('数据维护连接锁未保持')
     const currentParent = privatePath(directory, true), currentScope = privatePath(scopeDirectory, true), current = privatePath(file, false)
     if (currentParent.dev !== parent.dev || currentParent.ino !== parent.ino || currentScope.dev !== scope.dev || currentScope.ino !== scope.ino || current.dev !== original.dev || current.ino !== original.ino) throw Error('数据维护锁路径身份已改变，不能继续写入')
   }
   try {
     database.exec('PRAGMA busy_timeout=0')
     if (database.prepare('PRAGMA journal_mode').get()?.journal_mode !== 'delete') throw Error('数据维护锁格式不受支持，原文件保持')
+    if (mode === 'maintenance') {
+      database.exec('PRAGMA synchronous=FULL')
+      if (database.prepare('PRAGMA locking_mode=EXCLUSIVE').get()?.locking_mode !== 'exclusive') throw Error('数据维护连接锁不受支持')
+    }
     database.exec(mode === 'maintenance' ? 'BEGIN EXCLUSIVE' : 'BEGIN')
+    transactionOpen = true
     const rows = database.prepare('SELECT id,version,profile FROM identity').all()
-    if (rows.length !== 1 || rows[0].id !== 1 || rows[0].version !== 1 || typeof rows[0].profile !== 'string' || !isAbsolute(rows[0].profile) || dirname(rows[0].profile) !== dirname(profileRoot)) throw Error('数据维护锁身份或版本不符，原文件保持')
+    if (rows.length !== 1 || rows[0].id !== 1 || rows[0].version !== 1 && rows[0].version !== 2 || typeof rows[0].profile !== 'string' || !isAbsolute(rows[0].profile) || dirname(rows[0].profile) !== dirname(profileRoot)) throw Error('数据维护锁身份或版本不符，原文件保持')
     const recordedScope = privatePath(join(directory, basename(rows[0].profile)), true)
     if (recordedScope.dev !== scope.dev || recordedScope.ino !== scope.ino) throw Error('数据维护锁身份或版本不符，原文件保持')
+    accessVersion = rows[0].version === 2 ? 2 : 1
+    const intent = readMaintenance(database, accessVersion)
+    if (mode === 'application' && intent) throw new ProfileMaintenancePendingError()
     assertHeld(); active.add(database)
   } catch (error) {
     database.close()
@@ -108,11 +138,44 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
     if (code !== undefined && [5, 6].includes(code & 0xff)) throw new ProfileAccessBusyError(mode)
     throw error
   }
-  return { profileRoot, file, assertHeld, release() {
+  const release = () => {
     if (released) return
-    try { database.exec('ROLLBACK') }
+    try { if (transactionOpen) database.exec('ROLLBACK') }
     finally { database.close(); active.delete(database); released = true }
-  } }
+  }
+  const requireMaintenance = () => { assertHeld(); if (mode !== 'maintenance') throw Error('仅维护模式可以修改升级事务') }
+  const commitMaintenance = (write: () => void) => {
+    try {
+      if (!transactionOpen) { database.exec('BEGIN EXCLUSIVE'); transactionOpen = true }
+      write(); database.exec('COMMIT'); transactionOpen = false
+      assertHeld()
+    } catch (error) { faulted = true; throw error }
+  }
+  return { profileRoot, file, assertHeld, release,
+    maintenanceIntent() { assertHeld(); return readMaintenance(database, accessVersion) },
+    beginMaintenance(id: string) {
+      requireMaintenance()
+      if (!validMaintenanceId(id)) throw Error('升级事务ID必须为小写UUID')
+      const current = readMaintenance(database, accessVersion)
+      if (current) { if (current.id !== id) throw Error('此配置仍有其他升级事务，请先恢复原事务'); return current }
+      const intent: ProfileMaintenanceIntent = { version: 1, id, startedAt: new Date().toISOString() }
+      commitMaintenance(() => {
+        database.exec('CREATE TABLE IF NOT EXISTS maintenance (id INTEGER PRIMARY KEY CHECK(id=1), intent TEXT NOT NULL)')
+        database.prepare('INSERT INTO maintenance VALUES (1,?)').run(JSON.stringify(intent))
+        database.exec('UPDATE identity SET version=2 WHERE id=1')
+      })
+      accessVersion = 2
+      return intent
+    },
+    // Call only after the installer has verified a consistent app/data pair. This ends the lease.
+    finishMaintenance(id: string) {
+      requireMaintenance()
+      if (!validMaintenanceId(id) || readMaintenance(database, accessVersion)?.id !== id) throw Error('升级事务ID不匹配，不能清除原事务')
+      commitMaintenance(() => { database.exec('DELETE FROM maintenance; UPDATE identity SET version=1 WHERE id=1') })
+      accessVersion = 1
+      release()
+    },
+  }
 }
 
 /** Parent first: standard desktop maintenance must reject startup before any v2 writes. */
