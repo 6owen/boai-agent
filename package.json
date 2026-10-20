@@ -42,7 +42,8 @@
     "release:check": "node scripts/release-check.mjs",
     "test:t1": "pnpm build && node scripts/test-desktop.mjs t1",
     "test:t3": "pnpm build && node scripts/test-desktop.mjs t3",
-    "ci:local": "node scripts/local-ci.mjs run"
+    "ci:local": "node scripts/local-ci.mjs run",
+    "ci:watch": "node scripts/local-ci-watch.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",

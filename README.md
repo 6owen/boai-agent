@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 7257本地工程/3917模块/T128/UI18完整成功且GitHub确认；main门禁改BOAI local CI，其余保护保持；自动轮询候选与四目标剩余归22组03。
 [OUTPUT]: 本地CI 6a原始T128/UI18全过，但自测锁/时钟核验导致完整failed且已真实回传failure；修复候选待新完整复验，最新22组03。
 [OUTPUT]: 用户额度耗尽后Actions已停用读回；CI迁本机，9c本机18UI全过但T1仍失败、完整门禁未放行；最新22组03。
 [OUTPUT]: 用户Actions额度耗尽后改ci:local工程/T128/UI18、完整原件及可选GitHub状态回传；完整结果和保护切换待验。
