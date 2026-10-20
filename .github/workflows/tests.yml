@@ -26,6 +26,8 @@ jobs:
           pnpm exec electron --version
       - run: pnpm build
       - run: defaults write -g AppleLanguages -array zh-Hans-CN
+      - run: defaults write -g AppleLocale zh_CN
+      - run: swift -e 'import Foundation; print("SYSTEM_LOCALE", Locale.current.identifier)'
       - name: Install pinned font bytes from Apple's own asset CDN
         run: |
           python3 - <<'PYFONT'
