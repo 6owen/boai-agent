@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 资料页基础分区共用编辑入口与单分区编辑状态，标题右侧小尺寸按钮仅悬停或键盘聚焦时显示。
  * [OUTPUT]: 员工表单分区支持标题说明Tooltip与右侧操作；没有内容时不渲染空Card。
  * [INPUT]: 员工或员工组的资料字段与受控编辑内容。
@@ -37,6 +38,6 @@ export function ContactProfileRow({ icon, title, children }: { icon: ReactNode; 
 
 export function EmployeeFormSection({ title, hint, actions, children }: { title: string; hint?: string; actions?: ReactNode; children?: ReactNode }) {
   return <ContactProfileSection title={title} hint={hint} actions={actions}>
-    {children && <Card className="contact-profile-card employee-form-card gap-0 rounded-lg bg-muted p-0 [&_[data-slot=field-label]]:text-[12px] [&_[data-slot=input]]:h-[32px] [&_[data-slot=input]]:text-[12px] [&_[data-slot=select-trigger]]:h-[32px] [&_[data-slot=select-trigger]]:text-[12px] [&_.connection-model-actions_button]:h-[24px] [&_.connection-model-actions_.app-icon]:size-[12px]"><div className="connection-fields employee-form-fields soft-divide-y">{children}</div></Card>}
+    {children && <Card className="contact-profile-card employee-form-card gap-0 rounded-lg bg-muted p-0 [&_[data-slot=field-label]]:text-[length:var(--text-ui-secondary)] [&_[data-slot=input]]:h-[32px] [&_[data-slot=input]]:text-[length:var(--text-ui-secondary)] [&_[data-slot=select-trigger]]:h-[32px] [&_[data-slot=select-trigger]]:text-[length:var(--text-ui-secondary)] [&_.connection-model-actions_button]:h-[24px] [&_.connection-model-actions_.app-icon]:size-[12px]"><div className="connection-fields employee-form-fields soft-divide-y">{children}</div></Card>}
   </ContactProfileSection>
 }

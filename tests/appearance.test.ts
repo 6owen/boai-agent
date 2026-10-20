@@ -10,7 +10,7 @@ import { mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppearanceStore } from '../src/main/appearance'
-import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur } from '../src/shared/appearance'
+import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId } from '../src/shared/appearance'
 const roots:string[]=[]
 afterEach(async()=>{await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-appearance-'));roots.push(root);let dark=false;const store=new AppearanceStore(root,()=>dark,()=>{},()=>({width:1,height:1}));await store.init();return {root,store,dark:()=>{dark=true;store.systemChanged()}}}
@@ -26,21 +26,21 @@ it('keeps mode-specific colors, font and scale across restart and resets them to
   await store.update({customColors:{light:{foreground:'#101010'}}},1)
   const reopened = new AppearanceStore(root,()=>false,()=>{},()=>({width:1,height:1}))
   await reopened.init()
-  expect(reopened.snapshot().preferences).toMatchObject({fontFamily:'system',zoomFactor:0.9,customColors:{light:{accent:'#007acc',background:'#ffffff',foreground:'#101010'},dark:{foreground:'#eeeeee',accent:null}}})
+  expect(reopened.snapshot().preferences).toMatchObject({typography:{ui:{family:'system'}},zoomFactor:0.9,customColors:{light:{accent:'#007acc',background:'#ffffff',foreground:'#101010'},dark:{foreground:'#eeeeee',accent:null}}})
   await reopened.update({customColors:{light:{accent:null}}},2)
   expect(reopened.snapshot().preferences.customColors.light).toEqual({accent:null,background:'#ffffff',foreground:'#101010'})
   await reopened.reset()
-  expect(reopened.snapshot().preferences).toMatchObject({fontFamily:'geist',zoomFactor:1,customColors:{light:{accent:null,background:null,foreground:null}}})
+  expect(reopened.snapshot().preferences).toMatchObject({typography:{ui:{family:'geist'}},zoomFactor:1,customColors:{light:{accent:null,background:null,foreground:null}}})
 })
 it.each([undefined, 0.28])('adds safe defaults to old settings with glassOpacity=%s and rejects invalid inputs', async glassOpacity => {
   const {root,store} = await setup()
   const old = {...store.snapshot().preferences} as Record<string,unknown>
-  delete old.fontFamily; delete old.zoomFactor; delete old.customColors
+  old.schemaVersion = 1; old.fontFamily = 'system'; delete old.typography; delete old.appIconId; delete old.zoomFactor; delete old.customColors
   old.background = { assetId: null, imageOpacity: 0.2, glassOpacity }
   await writeFile(join(root,'settings.json'),JSON.stringify({revision:4,preferences:old}))
   const reopened = new AppearanceStore(root,()=>false,()=>{},()=>({width:1,height:1}))
   await reopened.init()
-  expect(reopened.snapshot()).toMatchObject({revision:4,preferences:{fontFamily:'geist',zoomFactor:1,background:{imageOpacity:0.2,glassOpacity:glassOpacity ?? null,overlayOpacity:0.4,blurRadius:8}}})
+  expect(reopened.snapshot()).toMatchObject({revision:4,preferences:{schemaVersion:2,typography:{ui:{family:'system',sizePx:typographyControls.ui.defaultSize}},appIconId:defaultAppIconId,zoomFactor:1,background:{imageOpacity:0.2,glassOpacity:glassOpacity ?? null,overlayOpacity:0.4,blurRadius:8}}})
   for (const patch of [{zoomFactor:0.1},{zoomFactor:4},{fontFamily:'remote-font'},{customColors:{light:{accent:'url(https://example.com)'}}}]) {
     await expect(reopened.update(patch as never,4)).rejects.toThrow()
   }
@@ -51,6 +51,41 @@ it('merges rapid color edits without losing other fields or the other mode', () 
   expect(mergeAppearancePatch({background:{imageOpacity:0.2,glassOpacity:0.55}},{background:{glassOpacity:0}})).toEqual({background:{imageOpacity:0.2,glassOpacity:0}})
   expect(mergeAppearancePatch({background:{glassOpacity:0.28,overlayOpacity:0.4}},{background:{overlayOpacity:0}})).toEqual({background:{glassOpacity:0.28,overlayOpacity:0}})
   expect(mergeAppearancePatch({background:{glassOpacity:0.28,overlayOpacity:0.18}},{background:{blurRadius:0}})).toEqual({background:{glassOpacity:0.28,overlayOpacity:0.18,blurRadius:0}})
+  expect(mergeAppearancePatch({typography:{ui:{sizePx:16},content:{family:'serif'}}},{typography:{ui:{family:'system'},code:{sizePx:18}}})).toEqual({typography:{ui:{sizePx:16,family:'system'},content:{family:'serif'},code:{sizePx:18}}})
+})
+
+it('persists independent typography and app icon choices, rejects invalid sizes and icon IDs', async () => {
+  const { root, store } = await setup()
+  const saved = await store.update({ typography: { ui: { sizePx: 16 }, content: { family: 'serif', sizePx: 18 }, code: { family: 'menlo', sizePx: 15 } }, appIconId: 'avatar-mint-ring' }, 0)
+  expect(resolveTypography(saved.preferences.typography).sizes['--text-content-body']).toBe('18px')
+  await store.update({ typography: { ui: { family: 'system' } } }, saved.revision)
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot().preferences).toMatchObject({ typography: { ui: { family: 'system', sizePx: 16 }, content: { family: 'serif', sizePx: 18 }, code: { family: 'menlo', sizePx: 15 } }, appIconId: 'avatar-mint-ring' })
+  const before = reopened.snapshot()
+  for (const patch of [{ typography: { ui: { sizePx: typographyControls.ui.min - 1 } } }, { typography: { code: { sizePx: 12.5 } } }, { appIconId: 'avatar-unknown' }, { fontFamily: 'geist', typography: { ui: { family: 'system' } } }]) {
+    await expect(reopened.update(patch as never, before.revision)).rejects.toThrow()
+  }
+  expect(reopened.snapshot()).toEqual(before)
+})
+
+it('keeps valid appearance fields when one saved font group or icon ID is corrupt', async () => {
+  const { root, store } = await setup()
+  const preferences = store.snapshot().preferences
+  preferences.mode = 'dark'
+  preferences.typography.ui.sizePx = 17
+  preferences.typography.content.family = 'serif'
+  preferences.typography.content.sizePx = 20
+  ;(preferences.typography.code as { family: string; sizePx: number }).sizePx = 200
+  ;(preferences as { appIconId: string }).appIconId = 'missing'
+  await writeFile(join(root, 'settings.json'), JSON.stringify({ revision: 8, preferences }))
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ revision: 8, resolvedMode: 'dark', preferences: {
+    typography: { ui: { sizePx: 17 }, content: { family: 'serif', sizePx: 20 }, code: { sizePx: typographyControls.code.defaultSize } },
+    appIconId: defaultAppIconId,
+  } })
+  expect(reopened.snapshot().diagnostic).toContain('图标')
 })
 
 it('keeps glass, overlay and disabled blur through image replacement, restart and backup until reset', async () => {

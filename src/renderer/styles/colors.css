@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: shared/appearance 提供的语义颜色与显示模式。
  * [OUTPUT]: 13px 字体基准、6owen Soft 连续圆角/高光/阴影与全局水平/垂直分割细线、32px 紧凑 composer 圆角；input/composer 仅保留 control 的内侧细边缘/高光，Button/Card 保留外侧阴影；shadcn 语义别名；图片图层迁至 craft-scenic。
  * [POS]: Renderer 视觉基础；页面和控件共用这些 token。
@@ -7,7 +8,7 @@
 @font-face { font-family:Geist;src:url('../assets/Geist.woff2') format('woff2');font-weight:100 900;font-display:swap }
 :root {
   font-family:var(--font-ui-family,Geist,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif);
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.5;
   font-synthesis:none;
   text-rendering:optimizeLegibility;

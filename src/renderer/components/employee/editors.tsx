@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 工作区目录添加/按需申请与载入操作放在分区标题右侧，目录分区取消/保存使用ghost/sm；原草稿和版本检查保持。
  * [OUTPUT]: 网页检索分区仅选择员工检索方式，标题说明指向全局检索设置，不显示服务配置或授权列表。
  * [OUTPUT]: 核心员工可通过共用执行权限字段保存命令能力，不再强制关闭。
@@ -247,7 +248,7 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
           baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), ...authorization })
           setForm(current => ({ ...current, ...authorization }))
         }}>载入已批准目录，保留其他草稿</Button>}{inlineActions}</div>}>{content}</EmployeeFormSection>} /> : <EmployeeFormSection title="目录访问"><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></EmployeeFormSection>)}
-      {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
+      {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] md:text-[length:var(--text-ui-secondary)]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
       </fieldset>
       {(form.executionBackend?.kind!=='acp-local')&&<>{visible('skills') && <EmployeeFormSection title="技能" actions={<div className="flex flex-wrap items-center gap-2">{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} resources={availableResources} skillIds={form.skillIds} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} onChange={ids => set('skillIds', ids)} /> : <Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button>}{inlineActions}</div>}>
         {form.skillIds.length > 0 && <div className="field full">
@@ -275,8 +276,8 @@ export function GroupEditor(props: GroupEditorProps) {
   const canAutomate = group && !group.channel && (!group.purpose || group.purpose === 'personal') && props.onConversation
   if (!sidebar && !canAutomate) return <GroupConfiguration {...props} />
   const menu = <TabsList className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined} aria-label="群聊详情分类">
-    <TabsTrigger value="profile" aria-label={sidebar ? '基础配置' : '配置'} disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[12px]' : undefined}>{sidebar && <Settings size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{sidebar ? '基础配置' : '配置'}</span></TabsTrigger>
-    {canAutomate && <TabsTrigger value="automations" aria-label="自动化" disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[12px]' : undefined}>{sidebar && <CalendarClock size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>自动化</span></TabsTrigger>}
+    <TabsTrigger value="profile" aria-label={sidebar ? '基础配置' : '配置'} disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)]' : undefined}>{sidebar && <Settings size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{sidebar ? '基础配置' : '配置'}</span></TabsTrigger>
+    {canAutomate && <TabsTrigger value="automations" aria-label="自动化" disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)]' : undefined}>{sidebar && <CalendarClock size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>自动化</span></TabsTrigger>}
   </TabsList>
   const configuration = <GroupConfiguration {...props} onBusyChange={configurationBusyChanged} />
   const panels = <>

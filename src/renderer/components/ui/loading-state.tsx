@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Beautiful UI loading-state.json / foundation.json（2026-10-16）与宿主真实开始时间、活动状态。
  * [OUTPUT]: 紧凑浅色3×3像素波/环绕、12px常规shimmer标签/11px计时并居中对齐；隐藏停表，无模拟进度。
  * [POS]: 共享LoadingState展示原语，颜色沿BOAI主题；上游 https://www.beautifului.dev/r/loading-state.json。
@@ -34,7 +35,7 @@ export function LoadingState({ label = '正在处理', variant = 'Drive', starte
       {delays.map((delay, index) => <span key={index} className={`execution-loader-pixel size-[2.5px] bg-muted-foreground/65 ${round ? 'rounded-full' : 'rounded-[0.5px]'}`}
         style={{ opacity: delay === null ? 0.07 : 0.15, animation: delay === null ? 'none' : `execution-pixel-on ${duration}ms ease-in-out ${delay}ms infinite` }} />)}
     </span>
-    <span role="status" className="execution-state-label min-w-0 truncate text-[12px] font-normal text-muted-foreground">{label}</span>
-    {Number.isFinite(start) && <span aria-hidden="true" className="shrink-0 font-mono text-[11px] text-muted-foreground/70 tabular-nums">{elapsed}</span>}
+    <span role="status" className="execution-state-label min-w-0 truncate text-[length:var(--text-ui-secondary)] font-normal text-muted-foreground">{label}</span>
+    {Number.isFinite(start) && <span aria-hidden="true" className="shrink-0 font-mono text-[length:var(--text-ui-caption)] text-muted-foreground/70 tabular-nums">{elapsed}</span>}
   </div>
 }

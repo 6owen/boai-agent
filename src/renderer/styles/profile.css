@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 本人聊天消息头像及资料入口使用md圆角，与员工消息头像一致。
  * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
  * [OUTPUT]: 分享内容准备态从首帧透明且不可点，保留真实尺寸供点阵测量；动画以 inline opacity 接管，错误解除准备态。
@@ -9,27 +10,27 @@
 .user-avatar { border-radius:var(--radius-sm);background:var(--accent);color:var(--foreground);flex-shrink:0;font-weight:600 }
 .user-avatar img { width:100%;height:100%;object-fit:cover;border-radius:inherit }
 .avatar-picker-trigger:has(>.user-avatar),.avatar-picker-trigger>.user-avatar { border-radius:var(--radius-sm) }
-.rail-item>.user-avatar { width:28px;height:28px;font-size:11px }
+.rail-item>.user-avatar { width:28px;height:28px;font-size:var(--text-ui-caption) }
 .user-menu-profile { gap:12px;min-height:52px }
 .user-menu-profile>.user-avatar { width:32px;height:32px }
 .user-menu-profile>span:last-child { display:grid;gap:2px;min-width:0 }
 .user-menu-profile strong { font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
-.user-menu-profile small { color:var(--muted-foreground);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.user-menu-profile small { color:var(--muted-foreground);font-size:var(--text-ui-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .message-row.user .message-avatar { display:flex;flex:0 0 32px }
-.message-row.user .message-avatar .user-avatar { width:32px;height:32px;border-radius:var(--radius-md);font-size:12px }
+.message-row.user .message-avatar .user-avatar { width:32px;height:32px;border-radius:var(--radius-md);font-size:var(--text-ui-secondary) }
 .message-avatar .user-avatar-trigger { border-radius:var(--radius-md) }
 .profile-document { container-type:inline-size;min-width:0 }
-.profile-document h3 { font-size:16px;font-weight:600;margin:0 }
+.profile-document h3 { font-size:var(--text-ui-heading);font-weight:600;margin:0 }
 .profile-identity { display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0 0 36px }
-.profile-identity .avatar-picker-trigger>.avatar { width:88px;height:88px;font-size:28px }
-.profile-identity h1 { font-size:24px;font-weight:600;margin:8px 0 0;max-width:100%;overflow-wrap:anywhere }
+.profile-identity .avatar-picker-trigger>.avatar { width:88px;height:88px;font-size:var(--text-ui-hero) }
+.profile-identity h1 { font-size:var(--text-ui-display);font-weight:600;margin:8px 0 0;max-width:100%;overflow-wrap:anywhere }
 .profile-name-edit { display:block;max-width:100%;padding:4px 12px;overflow-wrap:anywhere }
 .profile-identity p { color:var(--muted-foreground);margin:0;overflow-wrap:anywhere;max-width:100% }
 .profile-metrics { margin-bottom:32px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden }
 .profile-metrics>div { position:relative;min-width:0;padding:16px 10px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px;overflow-wrap:anywhere }
 .profile-metrics>div+div::before { content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;box-shadow:var(--shadow-divider-vertical);pointer-events:none }
-.profile-metrics strong { font-size:14px;font-weight:600 }
-.profile-metrics span { font-size:11px;color:var(--muted-foreground) }
+.profile-metrics strong { font-size:var(--text-ui-emphasis);font-weight:600 }
+.profile-metrics span { font-size:var(--text-ui-caption);color:var(--muted-foreground) }
 .profile-section-title { display:flex;align-items:center;gap:4px }
 .profile-section-title button { color:var(--muted-foreground) }
 .profile-identity .avatar-edit-badge { opacity:0;transition:opacity .15s }
@@ -39,7 +40,7 @@
 .profile-heatmap-scroll { overflow-x:auto;max-width:100%;padding:8px 2px }
 .profile-heatmap,.profile-months { display:grid;grid-template-columns:repeat(var(--weeks),minmax(12px,1fr));gap:3px;min-width:calc(var(--weeks) * 15px - 3px) }
 .profile-heatmap { grid-template-rows:repeat(7,12px);grid-auto-flow:column }
-.profile-day { position:relative;min-width:12px!important;min-height:12px!important;width:100%;height:12px!important;padding:0!important;border-radius:3px!important;background:var(--muted)!important;box-shadow:none!important;font-size:9px;line-height:12px }
+.profile-day { position:relative;min-width:12px!important;min-height:12px!important;width:100%;height:12px!important;padding:0!important;border-radius:3px!important;background:var(--muted)!important;box-shadow:none!important;font-size:var(--text-ui-micro);line-height:var(--leading-ui-body) }
 .profile-day::before { content:'';position:absolute;inset:0;background:var(--primary);border-radius:inherit }
 .profile-day span { position:relative;z-index:1 }
 [data-level='-1']::before,[data-level='0']::before { display:none }
@@ -50,7 +51,7 @@
 [data-level='4']::before { opacity:1 }
 .profile-day[data-level='4'] { color:var(--primary-foreground) }
 .profile-day:focus-visible { box-shadow:0 0 0 2px var(--foreground)!important;z-index:2 }
-.profile-months { margin-top:6px;font-size:10px;color:var(--muted-foreground) }
+.profile-months { margin-top:6px;font-size:var(--text-ui-tiny);color:var(--muted-foreground) }
 .profile-months>span { white-space:nowrap }
 .profile-chart { width:100%;height:220px;min-width:0;aspect-ratio:auto }
 .profile-insights { display:flex;flex-direction:column;gap:28px;margin-top:32px }
@@ -68,7 +69,7 @@
 .profile-editor .connection-fields .connection-setting-row { padding-block:10px }
 .profile-editor .connection-setting-row>[data-slot=field-label],.profile-editor .connection-setting-label { min-height:var(--control-height) }
 .profile-editor-avatar { display:flex;justify-content:center }
-.profile-editor-avatar .avatar { width:64px;height:64px;font-size:22px }
+.profile-editor-avatar .avatar { width:64px;height:64px;font-size:var(--text-ui-pageTitle) }
 @container (max-width:600px) {
   .profile-metrics { grid-template-columns:repeat(6,minmax(0,1fr)) }
   .profile-metrics>div { grid-column:span 2 }

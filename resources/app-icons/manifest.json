@@ -1,0 +1,26 @@
+{
+  "defaultId": "avatar-cat",
+  "icons": [
+    { "id": "avatar-owl", "avatarId": "owl", "file": "rat.webp" },
+    { "id": "avatar-fox", "avatarId": "fox", "file": "ox.webp" },
+    { "id": "avatar-cat", "avatarId": "cat", "file": "tiger.webp" },
+    { "id": "avatar-rabbit", "avatarId": "rabbit", "file": "rabbit.webp" },
+    { "id": "avatar-bear", "avatarId": "bear", "file": "dragon.webp" },
+    { "id": "avatar-panda", "avatarId": "panda", "file": "snake.webp" },
+    { "id": "avatar-koala", "avatarId": "koala", "file": "horse.webp" },
+    { "id": "avatar-frog", "avatarId": "frog", "file": "goat.webp" },
+    { "id": "avatar-penguin", "avatarId": "penguin", "file": "monkey.webp" },
+    { "id": "avatar-hamster", "avatarId": "hamster", "file": "rooster.webp" },
+    { "id": "avatar-dog", "avatarId": "dog", "file": "dog.webp" },
+    { "id": "avatar-robot", "avatarId": "robot", "file": "pig.webp" },
+    { "id": "avatar-mint-cap", "avatarId": "mint-cap", "file": "mint-cap.webp" },
+    { "id": "avatar-coral-headphones", "avatarId": "coral-headphones", "file": "coral-headphones.webp" },
+    { "id": "avatar-purple-star", "avatarId": "purple-star", "file": "purple-star.webp" },
+    { "id": "avatar-yellow-square", "avatarId": "yellow-square", "file": "yellow-square.webp" },
+    { "id": "avatar-blue-moon", "avatarId": "blue-moon", "file": "blue-moon.webp" },
+    { "id": "avatar-red-mushroom", "avatarId": "red-mushroom", "file": "red-mushroom.webp" },
+    { "id": "avatar-mint-ring", "avatarId": "mint-ring", "file": "mint-ring.webp" },
+    { "id": "avatar-pink-beret", "avatarId": "pink-beret", "file": "pink-beret.webp" },
+    { "id": "avatar-purple-scarf", "avatarId": "purple-scarf", "file": "purple-scarf.webp" }
+  ]
+}

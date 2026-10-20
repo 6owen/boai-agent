@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 导入作用域化Beautiful UI SelectionActions原版token，避免覆盖全局主题。
  * [INPUT]: Tailwind v4、shadcn 动画/状态工具类、Iconify 与现有语义变量。
  * [OUTPUT]: Soft 圆角/字号/阴影映射与隔离旧控件的 Preflight 兼容基线，不附加 outline 颜色。
@@ -26,7 +27,9 @@
 
 @theme inline {
  --font-sans:var(--font-ui-family);
- --text-xs:11px;--text-sm:13px;--text-base:14px;
+ --font-mono:var(--font-code-family);
+ --text-xs:var(--text-ui-caption);--text-sm:var(--text-ui-body);--text-base:var(--text-ui-emphasis);
+ --text-lg:var(--text-ui-heading);--text-xl:var(--text-ui-title);--text-2xl:var(--text-ui-display);--text-3xl:var(--text-ui-hero);
  --radius-sm:calc(var(--radius) * .5);--radius-md:calc(var(--radius) * .75);--radius-lg:var(--radius);--radius-xl:var(--radius-card);--radius-2xl:calc(var(--radius) * 1.5);--radius-3xl:calc(var(--radius) * 2);--radius-4xl:var(--radius-composer);
  --shadow-xs:var(--shadow-small);--shadow-sm:var(--shadow-card);--shadow-md:var(--shadow-popover);--shadow-lg:var(--shadow-popover);--shadow-xl:var(--shadow-popover);
  --color-chart-1:var(--chart-1);--color-chart-2:var(--chart-2);--color-chart-3:var(--chart-3);--color-chart-4:var(--chart-4);--color-chart-5:var(--chart-5);

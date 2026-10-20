@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 2026-10-19应用业务协议：外观patch校验复用shared真源，原设置持久化保持。
  * [OUTPUT]: 插件停用只回退有效配色，不覆盖已保存主题选择；显式选择停用配色拒绝。
  * [INPUT]: 外观偏好、图片文件与系统明暗状态。
@@ -35,10 +36,27 @@ export class AppearanceStore {
   await mkdir(join(this.root,'assets'),{recursive:true})
   try {
    const saved=JSON.parse(await readFile(join(this.root,'settings.json'),'utf8'))
-   if(saved.preferences?.schemaVersion>1) { this.readOnly=true; this.diagnostic='此外观配置来自更新版本，已保留原文件；当前使用默认外观。'; return }
+   if(saved.preferences?.schemaVersion>2) { this.readOnly=true; this.diagnostic='此外观配置来自更新版本，已保留原文件；当前使用默认外观。'; return }
    const p=saved.preferences
-   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity, ...p.background.glassOpacity!==undefined?{glassOpacity:p.background.glassOpacity}:{}, ...p.background.overlayOpacity!==undefined?{overlayOpacity:p.background.overlayOpacity}:{}, ...p.background.blurRadius!==undefined?{blurRadius:p.background.blurRadius}:{}}, ...p.fontFamily!==undefined?{fontFamily:p.fontFamily}:{}, ...p.zoomFactor!==undefined?{zoomFactor:p.zoomFactor}:{}, ...p.customColors!==undefined?{customColors:p.customColors}:{} })
+   const normalized=patchSchema.parse({ mode:p.mode, themeIds:p.themeIds, background:{imageOpacity:p.background.imageOpacity, ...p.background.glassOpacity!==undefined?{glassOpacity:p.background.glassOpacity}:{}, ...p.background.overlayOpacity!==undefined?{overlayOpacity:p.background.overlayOpacity}:{}, ...p.background.blurRadius!==undefined?{blurRadius:p.background.blurRadius}:{}}, ...p.zoomFactor!==undefined?{zoomFactor:p.zoomFactor}:{}, ...p.customColors!==undefined?{customColors:p.customColors}:{} })
    this.preferences=applyAppearancePatch(this.preferences,normalized)
+   if(p.typography!==undefined) {
+    if(!p.typography || typeof p.typography!=='object' || Array.isArray(p.typography)) this.diagnostic='字体配置无效，已使用默认字体。'
+    else for(const group of ['ui','content','code'] as const) if(p.typography[group]!==undefined) {
+     const result=patchSchema.safeParse({typography:{[group]:p.typography[group]}})
+     if(result.success)this.preferences=applyAppearancePatch(this.preferences,result.data)
+     else this.diagnostic='部分字体配置无效，已分别使用默认值。'
+    }
+   } else if(p.fontFamily!==undefined) {
+    const result=patchSchema.safeParse({fontFamily:p.fontFamily})
+    if(result.success)this.preferences=applyAppearancePatch(this.preferences,result.data)
+    else this.diagnostic='界面字体配置无效，已使用默认字体。'
+   }
+   if(p.appIconId!==undefined) {
+    const result=patchSchema.safeParse({appIconId:p.appIconId})
+    if(result.success)this.preferences=applyAppearancePatch(this.preferences,result.data)
+    else this.diagnostic='应用图标配置无效，已使用默认图标。'
+   }
    this.preferences.background.assetId=typeof p.background.assetId==='string'&&validAsset.test(p.background.assetId)?p.background.assetId:null
    this.revision=Number.isSafeInteger(saved.revision)&&saved.revision>=0?saved.revision:0
    for(const mode of ['light','dark'] as const) if(this.preferences.themeIds[mode]!==resolveTheme(mode,this.preferences.themeIds[mode]).id){this.preferences.themeIds[mode]=`boai-${mode}`;this.diagnostic='未知主题已回退为 BoAI 默认主题。'}
@@ -55,7 +73,7 @@ export class AppearanceStore {
   await writeFile(tmp,JSON.stringify({revision,preferences},null,2),{mode:0o600});await rename(tmp,join(this.root,'settings.json'))
   this.preferences=preferences;this.revision=revision;this.sequence++;this.diagnostic=undefined;const result=this.snapshot();this.changed(result);return this.snapshot()
  }
- update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch),p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode]) { const requested=resolveTheme(mode,value.themeIds[mode]);if(resolveTheme(mode,requested.id,this.disabledPlugins()).id!==requested.id)throw new Error('此主题插件已停用，请先启用。');p.themeIds[mode]=requested.id };return this.commit(p,revision) }) }
+ update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch);if(value.fontFamily&&value.typography?.ui?.family&&value.fontFamily!==value.typography.ui.family)throw new Error('界面字体设置冲突');const p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode]) { const requested=resolveTheme(mode,value.themeIds[mode]);if(resolveTheme(mode,requested.id,this.disabledPlugins()).id!==requested.id)throw new Error('此主题插件已停用，请先启用。');p.themeIds[mode]=requested.id };return this.commit(p,revision) }) }
  import(path:string) { return this.serialize(async()=>{ if((await stat(path)).size>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const bytes=await readFile(path);if(bytes.length>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const format=imageFormat(bytes);imageDimensions(bytes,format);const size=await this.decode(bytes);if(!size.width||!size.height||size.width>8192||size.height>8192||size.width*size.height>32000000)throw new Error('图片尺寸无效或超过 8192 边长 / 3200 万像素。');const assetId=`${randomUUID()}.${format}`;await writeFile(join(this.root,'assets',assetId),bytes,{mode:0o600});return this.commit({...this.preferences,background:{...this.preferences.background,assetId}},this.revision) }) }
  remove() { return this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId:null}},this.revision)) }
  reset() { return this.serialize(()=>this.commit(structuredClone(appearanceDefaults),this.revision)) }

@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 全局 Soft token、Prompt Bar 的真实成员标签、原子编辑节点与命令列表。
  * [OUTPUT]: composer 标签外层与内层 Soft Button 分离，原生光标在背景外侧按文字高度绘制；整个标签不拆行，光标占位图片保持零尺寸行内节点；同宽候选浮层，复用共享主题。
  * [POS]: global.css 加载的会话输入增强样式，不替换原有 composer 表面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 .mention-editor { min-width:0;width:100% }
-.chat-composer .mention-editor-input { position:relative;min-height:44px;max-height:240px;overflow-y:auto;padding:1px 4px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:26px;caret-color:var(--foreground);cursor:text }
+.chat-composer .mention-editor-input { position:relative;min-height:44px;max-height:240px;overflow-y:auto;padding:1px 4px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-content-family);font-size:var(--text-content-body);line-height:1.6;caret-color:var(--foreground);cursor:text }
 .mention-editor-input p { margin:0 }
 /* ProseMirror's caret separator must not inherit Preflight's block image layout. */
 .mention-editor-input img.ProseMirror-separator { display:inline;width:0;height:0;border:0;margin:0 }
@@ -14,14 +15,14 @@
 .mention-editor-input .composer-mention-tag { vertical-align:baseline;margin:0 2px;cursor:text;user-select:all;box-decoration-break:clone }
 .mention-editor-input .composer-mention-node.ProseMirror-selectednode .composer-mention-tag { background-color:var(--selection);color:var(--foreground) }
 .prompt-bar-menu { width:var(--anchor-width);max-width:calc(100vw - 24px);padding:8px;gap:6px }
-.prompt-bar-menu [data-slot=popover-title] { padding:4px 8px;font-size:12px;font-weight:500;color:var(--muted-foreground) }
+.prompt-bar-menu [data-slot=popover-title] { padding:4px 8px;font-size:var(--text-ui-secondary);font-weight:500;color:var(--muted-foreground) }
 .prompt-bar-options { display:flex;flex-direction:column;gap:2px;max-height:min(280px,40vh);overflow-y:auto }
 .prompt-bar-options [role=option] { justify-content:flex-start;gap:10px;padding:8px;text-align:left;white-space:normal;min-height:44px;border-radius:8px }
 .prompt-bar-options [aria-selected=true] { background:var(--accent) }
 .prompt-bar-options .avatar { width:28px;height:28px;flex:none }
 .prompt-bar-options .app-icon { flex:none }
 .prompt-bar-option-copy { flex:1;min-width:0;display:flex;flex-direction:column;gap:2px }
-.prompt-bar-option-copy strong { font-weight:500;font-size:13px }
-.prompt-bar-option-copy small { font-size:11px;color:var(--muted-foreground);overflow-wrap:anywhere }
-.prompt-bar-options>p { padding:12px 8px;margin:0;color:var(--muted-foreground);font-size:12px }
-.prompt-bar-hint { margin:0;border-top:1px solid var(--border);padding:8px 8px 2px;color:var(--muted-foreground);font-size:11px }
+.prompt-bar-option-copy strong { font-weight:500;font-size:var(--text-ui-body) }
+.prompt-bar-option-copy small { font-size:var(--text-ui-caption);color:var(--muted-foreground);overflow-wrap:anywhere }
+.prompt-bar-options>p { padding:12px 8px;margin:0;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
+.prompt-bar-hint { margin:0;border-top:1px solid var(--border);padding:8px 8px 2px;color:var(--muted-foreground);font-size:var(--text-ui-caption) }

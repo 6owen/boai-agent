@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 发起群聊恢复纯成员选择，不展示群名称输入；群名由已选成员姓名生成，原公共创建回执保持。
  * [OUTPUT]: 新建员工恢复原头像/姓名/职责、常显模型与权限和工作方式；不添加高级折叠或人格输入，模型由用户明确选择，公共创建回执保持。
  * [OUTPUT]: 群创建与成员编辑复用双栏GroupMemberSelection，原创建回执和草稿守卫保持。
@@ -96,7 +97,7 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
             <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || unresolved || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
             {form.executionBackend.kind === 'mastra-model' && <AgentPermissionField value={form.executionPermission} onChange={executionPermission => setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' }))} disabled={busy || uploading || unresolved || Boolean(created.current)} />}
           </EmployeeFormSection>
-          <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" id="create-agent-instructions" className="py-1.5 text-[12px] leading-[18px] md:text-[12px]" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
+          <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" id="create-agent-instructions" className="py-1.5 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] md:text-[length:var(--text-ui-secondary)]" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
         </fieldset>
         <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}{unresolved ? '核对创建结果' : '创建员工'}</Button></footer>
       </form>

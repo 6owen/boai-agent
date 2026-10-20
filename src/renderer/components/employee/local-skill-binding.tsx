@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 员工草稿技能ID/资源、真实安装来源、本机技能目录与收藏、共用技能行及冻结绑定回执。
  * [OUTPUT]: 双栏按安装身份回显绑定，右侧复用群聊普通行和独立关闭按钮；已有项移除/重选更新配置草稿，不重复绑定，选择器无详情操作。
  * [OUTPUT]: 不插入成功/未决状态提示DOM；错误沿Sonner，原请求核对/重试操作独立保留。
@@ -166,7 +167,7 @@ export function LocalSkillBinding({ api, agent, resources, skillIds, scope, acti
         <div className="grid min-h-0 min-w-0 grid-cols-1 gap-5 sm:grid-cols-2">
           <LocalSkillPicker api={api} selectedIds={new Set([...boundLocalIds, ...newSkills.map(skill => skill.id)])} boundIds={boundLocalIds} onSelect={toggle} disabled={locked} />
           <section className="flex min-h-0 min-w-0 flex-col gap-3" aria-label="已选技能">
-            <DialogHeader><div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle className="text-[13px] font-normal text-muted-foreground">选择技能</DialogTitle><span className="text-[12px] text-muted-foreground">已选择 {existingSkills.length + newSkills.length} 个技能</span></div></DialogHeader>
+            <DialogHeader><div className="flex flex-wrap items-center justify-between gap-2"><DialogTitle className="text-[length:var(--text-ui-body)] font-normal text-muted-foreground">选择技能</DialogTitle><span className="text-[length:var(--text-ui-secondary)] text-muted-foreground">已选择 {existingSkills.length + newSkills.length} 个技能</span></div></DialogHeader>
             <ScrollArea className="h-[160px] min-h-0 w-full min-w-0 sm:h-0 sm:flex-1" contentProps={{ className: 'flex flex-col' }}>
               {existingSkills.map(skill => <SelectedSkillRow key={skill.id} name={skill.name} description={skill.description} bound disabled={locked} onRemove={() => onChange(skillIds.filter(id => id !== skill.id))} />)}
               {newSkills.map(skill => <SelectedSkillRow key={skill.id} name={skill.name} description={skill.description} source={skill.pluginName ?? (skill.source === 'global' ? '' : skill.sourceLabel)} disabled={locked} onRemove={() => toggle(skill)} />)}
@@ -215,11 +216,11 @@ function LocalSkillPicker({ api, selectedIds, boundIds, onSelect, disabled }: {
   const clearFilter = () => { setFilter(null); input.current?.focus() }
   return <div className="flex min-h-0 min-w-0 max-w-full flex-col gap-2">
     <InputGroup aria-label="技能搜索">
-      <InputGroupAddon>{selected ? <Badge variant="secondary" className="h-6 gap-1 rounded-md px-2 text-[12px] font-normal"><selected.icon />{selected.label}<Button type="button" variant="ghost" size="icon-xs" className="size-4" aria-label="清除技能来源筛选" disabled={disabled} onClick={clearFilter}><X /></Button></Badge> : <Search />}</InputGroupAddon>
+      <InputGroupAddon>{selected ? <Badge variant="secondary" className="h-6 gap-1 rounded-md px-2 text-[length:var(--text-ui-secondary)] font-normal"><selected.icon />{selected.label}<Button type="button" variant="ghost" size="icon-xs" className="size-4" aria-label="清除技能来源筛选" disabled={disabled} onClick={clearFilter}><X /></Button></Badge> : <Search />}</InputGroupAddon>
       <InputGroupInput ref={input} aria-label="搜索本机技能" placeholder="搜索技能" maxLength={200} disabled={disabled} value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Backspace' && !query && filter) { event.preventDefault(); clearFilter() } }} />
       <InputGroupAddon align="inline-end"><InputGroupButton size="icon-xs" aria-label="重新扫描本机技能" disabled={loading || disabled} onClick={() => { void reload(true); void collection.reload() }}><RefreshCw /></InputGroupButton></InputGroupAddon>
     </InputGroup>
-    <div className="flex gap-1" role="group" aria-label="技能来源筛选">{filters.map(item => <Button type="button" key={item.value} variant="ghost" size="sm" className="h-7 px-2 text-[12px] font-normal text-primary" aria-label={`筛选${item.label}技能`} aria-pressed={filter === item.value} disabled={disabled} onClick={() => { setFilter(item.value); input.current?.focus() }}>{item.label}</Button>)}</div>
+    <div className="flex gap-1" role="group" aria-label="技能来源筛选">{filters.map(item => <Button type="button" key={item.value} variant="ghost" size="sm" className="h-7 px-2 text-[length:var(--text-ui-secondary)] font-normal text-primary" aria-label={`筛选${item.label}技能`} aria-pressed={filter === item.value} disabled={disabled} onClick={() => { setFilter(item.value); input.current?.focus() }}>{item.label}</Button>)}</div>
     {error && <Banner>{error}</Banner>}{collection.error && <Banner>{collection.error}</Banner>}
     <ScrollArea className="h-[200px] w-full min-w-0 sm:h-[340px]" viewportProps={{ className: 'scroll-fade-t scroll-fade-6' }}>
       <div className="conversation-list skills-browser-list m-0 p-0" role="navigation" aria-label="可选择的技能">

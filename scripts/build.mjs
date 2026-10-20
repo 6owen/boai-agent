@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
+ * [OUTPUT]: 2026-10-20构建并分发预置应用图标和macOS本机图标辅助程序。
  * [OUTPUT]: 构建真实 PTY 与 macOS 本地桌面 OCR 辅助程序；构建不采集桌面。
  * [OUTPUT]: 分发 PPT 原版 worker 与相对依赖至 runtime/alma，桌面/独立服务共用。
  * [OUTPUT]: 分发可选本地Qwen语音安装器/固定清单；模型与venv不随包分发。
@@ -19,6 +20,7 @@
 import { buildRuntimePlugins } from './build-runtime-plugins.mjs'
 import buildDesktopActivity from './build-desktop-activity.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
+import buildAppIcon from './build-app-icon.mjs'
 import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { build } from 'esbuild'
@@ -28,6 +30,7 @@ import { buildInputHash, recordBuildIdentity } from './build-identity.mjs'
 export async function buildHost() {
   await buildProcessGuard()
   await buildDesktopActivity()
+  await buildAppIcon()
   await Promise.all([
     buildRuntimePlugins(),
     build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, sourcemap: true }),
@@ -39,6 +42,9 @@ export async function buildHost() {
     build({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
   await cp('src/runtime/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
+  await mkdir('dist/main/app-icons', { recursive: true })
+  const appIconManifest = JSON.parse(await readFile('resources/app-icons/manifest.json', 'utf8'))
+  for (const icon of appIconManifest.icons) await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
   const skillManifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
   await Promise.all(skillManifest.skills.map(name => readFile(`resources/agent-skills/${name}/SKILL.md`, 'utf8')))
   await rm('dist/agent-skills', { recursive: true, force: true })

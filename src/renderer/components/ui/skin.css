@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 群成员头像区取消底部分割线，与后续群聊设置独立分区保持一致。
  * [OUTPUT]: 员工头像选择按钮及头像使用全局md圆角，取消全圆裁切，新建/编辑共用。
  * [OUTPUT]: Composer 模型按钮悬停和菜单展开使用主题 selection 背景，增强触发器反馈，禁用时不生效。
@@ -21,7 +22,7 @@
   outline:none;
   transition:background-color .2s,box-shadow .2s,transform .2s,color .2s;
 }
-.soft-button:not(.soft-button-content), .appearance-color { font-size:13px;font-weight:500 }
+.soft-button:not(.soft-button-content), .appearance-color { font-size:var(--text-ui-body);font-weight:500 }
 .soft-button:not(:disabled):not([aria-disabled=true]) { cursor:pointer }
 .soft-button:disabled, .soft-button[aria-disabled=true] { cursor:not-allowed;opacity:.5 }
 .soft-button-primary {
@@ -104,13 +105,13 @@
   border:0 !important;
   border-radius:var(--radius-card) !important;
   box-shadow:var(--shadow-control) !important;
-  font-size:12px !important;
+  font-size:var(--text-ui-secondary) !important;
   padding:12px 14px !important;
   gap:12px !important;
 }
 .app-toast[data-sonner-toast] [data-content] { order:1;flex:1 1 0 !important;min-width:0;overflow-wrap:anywhere;gap:2px !important }
-.app-toast[data-sonner-toast] [data-title] { font-size:12px !important;font-weight:500 !important;line-height:1.4 !important }
-.app-toast[data-sonner-toast] [data-description] { color:var(--muted-foreground) !important;font-size:11px !important;line-height:1.4 !important }
+.app-toast[data-sonner-toast] [data-title] { font-size:var(--text-ui-secondary) !important;font-weight:500 !important;line-height:1.4 !important }
+.app-toast[data-sonner-toast] [data-description] { color:var(--muted-foreground) !important;font-size:var(--text-ui-caption) !important;line-height:1.4 !important }
 .app-toast[data-type=error] { --toast-status-color:var(--destructive);--toast-icon-background:var(--destructive-background) }
 .app-toast[data-type=success] { --toast-status-color:var(--success);--toast-icon-background:var(--success-background) }
 .app-toast[data-type=warning] { --toast-status-color:var(--warning);--toast-icon-background:var(--warning-background) }
@@ -179,8 +180,8 @@
 .chat-composer-select>span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .chat-composer-select[data-kind=model]:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--selection) }
 .chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
-.chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:13px;line-height:1.4;overflow-wrap:anywhere }
-.chat-composer-option>small { font-size:11px;line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
+.chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:var(--text-ui-body);line-height:1.4;overflow-wrap:anywhere }
+.chat-composer-option>small { font-size:var(--text-ui-caption);line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
 .chat-composer-select[data-permission=full],.chat-composer-menu [data-permission=full] { --accent-foreground:var(--warning);color:var(--warning) }
 .chat-composer-menu [data-permission=full] .chat-composer-option>small { color:var(--warning) }
 @supports not (corner-shape:squircle) {
@@ -207,9 +208,9 @@
 .soft-tabs-list[data-variant=window] > .detail-tab { z-index:1 }
 .soft-tabs-list[data-variant=window] .soft-tabs-trigger { flex:1;min-width:0;justify-content:flex-start;border-radius:9px;background:none;box-shadow:none;color:inherit }
 .soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
-.detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550 }
+.detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-body);font-weight:550 }
 .global-toolbar .detail-tab [data-slot=button] { width:24px;height:24px;flex-shrink:0 }
-.detail-tab .dirty-label { flex-shrink:0;font-size:18px;line-height:1 }
+.detail-tab .dirty-label { flex-shrink:0;font-size:var(--text-ui-title);line-height:1 }
 .detail-panel[hidden],.detail-content[hidden] { display:none }
 
 /* Group selection shares the conversation list's row metrics and surface. */
@@ -229,8 +230,8 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .avatar-preset { display:flex;justify-content:center;align-items:center;padding:6px;min-width:0;border-radius:var(--radius-control) }
 .avatar-preset>.avatar { width:42px;height:42px;border-radius:12px }
 .employee-avatar-field { display:flex;align-items:center;gap:16px }
-.creation-selection-heading { display:flex;align-items:center;min-height:32px;color:var(--muted-foreground);font-size:12px }
-.creation-selection-empty { display:flex;height:100%;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted-foreground);font-size:12px }
+.creation-selection-heading { display:flex;align-items:center;min-height:32px;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
+.creation-selection-empty { display:flex;height:100%;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
 .creation-selection-empty .app-icon { width:28px;height:28px }
 
 /* Member mosaics use the same images as individual contacts at every size. */
@@ -240,7 +241,7 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
 .drag-list-row { position:relative }
 .drag-list-dragging { opacity:.35 }
-.conversation-section-heading { display:flex;align-items:center;justify-content:flex-start;gap:5px;width:100%;text-align:left;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:12px }
+.conversation-section-heading { display:flex;align-items:center;justify-content:flex-start;gap:5px;width:100%;text-align:left;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
 .conversation-section-heading[aria-expanded]:not(:disabled):not([aria-disabled=true]) { background:transparent }
 .conversation-section-heading>.app-icon { width:12px !important;height:12px !important;opacity:.75;transition:transform .2s ease,opacity .2s ease }
 .conversation-section-heading:is(:hover,:focus-visible)>.app-icon { opacity:1 }
@@ -263,7 +264,7 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 [data-slot=accordion-content] { height:var(--accordion-panel-height) }
 [data-slot=collapsible-content]:is([data-starting-style],[data-ending-style]),[data-slot=accordion-content]:is([data-starting-style],[data-ending-style]) { height:0;opacity:0 }
 details>summary { width:100%;cursor:pointer }
-details>summary::marker { font-size:12px }
+details>summary::marker { font-size:var(--text-ui-secondary) }
 @supports (interpolate-size:allow-keywords) {
   details::details-content { interpolate-size:allow-keywords;block-size:0;overflow:clip;transition:block-size .22s ease,content-visibility .22s allow-discrete }
   details[open]::details-content { block-size:auto }
@@ -291,7 +292,7 @@ details>summary::marker { font-size:12px }
 .group-member { position:relative;min-width:0 }
 .group-member-profile { display:flex;flex-direction:column;align-items:center;gap:6px;width:60px;padding:5px 3px;min-width:0 }
 .group-member-profile>.avatar,.group-member-profile>.group-avatar,.group-member-add-icon { width:40px;height:40px;border-radius:11px }
-.group-member-profile>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted-foreground) }
+.group-member-profile>span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-caption);color:var(--muted-foreground) }
 .group-member-add-icon { display:flex;align-items:center;justify-content:center;border:1px dashed var(--border);color:var(--muted-foreground) }
 .group-member-add-icon>.app-icon { width:22px;height:22px }
 .group-member-remove[data-slot=button] { position:absolute;top:0;right:4px;padding:0;border-radius:50%;opacity:0;background:var(--destructive);color:var(--primary-foreground);box-shadow:none }

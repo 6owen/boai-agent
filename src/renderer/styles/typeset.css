@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Markdown 内容和共享文字、代码背景 token。
  * [OUTPUT]: 聊天正文、标题、列表、代码块和表格排版。
  * [POS]: global.css 加载的 Markdown 阅读层。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+.markdown { font-family:var(--font-content-family);font-size:var(--text-content-body) }
 .markdown>:first-child {
   margin-top:0
 }
@@ -14,7 +16,7 @@
   margin-bottom:12px
 }
 .markdown h1,.markdown h2,.markdown h3 {
-  font-size:18px;
+  font-size:var(--text-content-heading2);
   line-height:1.5;
   margin:24px 0 12px;
   font-weight:600
@@ -27,11 +29,11 @@
   margin-bottom:5px
 }
 .markdown code {
-  font-size:13px;
+  font-size:var(--text-code-body);
   background:var(--code-background);
   padding:2px 5px;
   border-radius:4px;
-  font-family:"SFMono-Regular",Consolas,monospace
+  font-family:var(--font-code-family)
 }
 .markdown pre {
   max-width:100%;
@@ -40,7 +42,9 @@
   padding:13px 15px;
   border:1px solid var(--border);
   border-radius:var(--radius-card);
-  line-height:1.65
+  line-height:1.65;
+  font-family:var(--font-code-family);
+  font-size:var(--text-code-body)
 }
 .markdown pre code {
   padding:0;
@@ -51,7 +55,7 @@
   display:block;
   overflow:auto;
   border-collapse:collapse;
-  font-size:13px;
+  font-size:var(--text-content-body);
   margin:12px 0
 }
 .markdown th,.markdown td {

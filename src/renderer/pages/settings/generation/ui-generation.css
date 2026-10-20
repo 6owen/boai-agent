@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: transitions-ui-generation skill 原版资源与真实 DOM。
  * [OUTPUT]: 点阵骨架绘制与渐显；保留上游运行逻辑、时序和减少动态效果分支。
  * [POS]: 个人资料使用的 transitions.dev 原版资源，仅增加仓库 Header。
@@ -14,7 +15,7 @@
   --gen-text: #0d0d0d;              /* panel headings */
   --gen-muted: #8b8b8b;             /* panel copy */
   --gen-dot: 2.1px;                 /* dot size on the traced lines */
-  --gen-font: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --gen-font: var(--font-code-family);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --gen-line: #6f6f6f; --gen-strong: #a3a3a3; --gen-ink: rgba(245, 245, 245, 0.3); --gen-surface: #181818; --gen-text: #f2f2f2; --gen-muted: #8f8f8f; }
@@ -36,12 +37,12 @@
 .t-gen-handle { fill: var(--gen-surface); stroke: var(--gen-strong); stroke-width: 1; }
 .t-gen-reticle { fill: none; stroke: var(--gen-strong); stroke-width: 1.2; stroke-linecap: round; }
 .t-gen-glow-stop { stop-color: var(--gen-line); }
-.t-gen-label { font-family: var(--gen-font); font-size: 9px; fill: var(--gen-line); letter-spacing: 0.02em; }
-.t-gen-label--small { font-size: 7.5px; fill: var(--gen-strong); }
-.t-gen-label--tag { font-size: 7.5px; fill: var(--gen-strong); letter-spacing: 0.05em; text-transform: uppercase; }
+.t-gen-label { font-family: var(--gen-font); font-size: var(--text-ui-micro); fill: var(--gen-line); letter-spacing: 0.02em; }
+.t-gen-label--small { font-size: var(--text-ui-previewMicro); fill: var(--gen-strong); }
+.t-gen-label--tag { font-size: var(--text-ui-previewMicro); fill: var(--gen-strong); letter-spacing: 0.05em; text-transform: uppercase; }
 
 /* skeleton-texts: the agent log (left), the motion CSS being written (right), the step line (under) */
-.t-gen-panel { position: absolute; top: 0; font-family: var(--gen-font); font-size: 7.5px; line-height: 11px; color: var(--gen-muted);
+.t-gen-panel { position: absolute; top: 0; font-family: var(--gen-font); font-size: var(--text-ui-previewMicro); line-height:var(--leading-ui-body); color: var(--gen-muted);
   letter-spacing: 0.03em; white-space: pre; overflow: hidden; opacity: 0; }
 .t-gen-panel--log { text-align: right; }
 .t-gen-panel--below { top: calc(100% + 56px); left: 0; right: 0; text-align: center; }
@@ -54,7 +55,7 @@
 .t-gen-panel .is-selector { color: var(--gen-text); opacity: 0.75; }
 .t-gen-steps { position: absolute; left: 50%; top: calc(100% + 28px); height: 18px; }
 .t-gen-step { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; opacity: 0;
-  font-family: var(--gen-font); font-size: 11px; line-height: 18px; color: var(--gen-muted); }
+  font-family: var(--gen-font); font-size: var(--text-ui-caption); line-height:var(--leading-ui-body); color: var(--gen-muted); }
 .t-gen-step i { width: 6px; height: 6px; border-radius: 50%; background: var(--gen-line); animation: t-gen-pulse 560ms ease-in-out infinite alternate; }
 .t-gen-step.is-done i { animation: none; }
 @keyframes t-gen-pulse { from { transform: scale(0.6); } to { transform: scale(1); } }

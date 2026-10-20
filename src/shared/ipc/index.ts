@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 私有桌面活动采集合同与侧栏终端/预览定位事件。
  * [OUTPUT]: 全局提示词目录列表与版本化保存/删除，沿现有桌面IPC。
  * [OUTPUT]: 员工源文件保存扩展到已登记的八个场景模块，沿原hash及configVersion核验。
@@ -75,7 +76,7 @@ import type { AutomationDraftRequest, AutomationDraftResult, AutomationBudgetRen
 import type { LaunchProfile, LaunchProfileInput, LaunchProfileStatus } from '../domain/backends'
 import type { ConversationListChange } from '../domain/conversation-list'
 import type { ContactListAction, ContactListPreferences } from '../domain/contact-list'
-import type { AppearanceSnapshot, AppearancePatch } from '../appearance'
+import type { AppearanceSnapshot, AppearancePatch, AppIconStatus } from '../appearance'
 import type { DesktopPatch, DesktopSettings } from './desktop'
 import type { CliInstallation } from './cli-installation'
 import type { PluginEnableInput, PluginSettingsSnapshot } from '../plugins/types'
@@ -96,6 +97,7 @@ export type AppEvent =
   | { type: 'desktop:changed'; settings: DesktopSettings }
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
+  | { type: 'app-icon:changed'; status: AppIconStatus }
   | { type: 'automation:notice' }
   | { type: 'automation:navigate' }
   | { type: 'focus-conversation'; conversationId: string; messageId?: string }
@@ -278,6 +280,8 @@ export interface Methods {
   sendExternalTask: { input: { conversationId: string; content: string; requestId: string }; output: Message }
   getExternalTaskReceipt: { input: { conversationId: string; requestId: string }; output: Message | null }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
+  getAppIconStatus: { input: undefined; output: AppIconStatus }
+  retryAppIcon: { input: undefined; output: AppIconStatus }
   getDesktopSettings: { input: undefined; output: DesktopSettings }
   getCliInstallation: { input: undefined; output: CliInstallation }
   installCli: { input: { expectedRevision: string }; output: CliInstallation | null }

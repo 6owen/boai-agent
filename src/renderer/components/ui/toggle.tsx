@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: toggle 基础组件及其可组合的样式/变体。
  * [POS]: components/ui 的 toggle 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -19,7 +20,7 @@ const toggleVariants = cva(
       size: {
         default:
           "h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_:is(svg,.app-icon):not([class*='size-'])]:size-3.5",
+        sm: "h-7 min-w-7 rounded-[min(var(--radius-md),12px)] px-2.5 text-[length:var(--text-ui-caption)] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_:is(svg,.app-icon):not([class*='size-'])]:size-3.5",
         lg: "h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
       },
     },
