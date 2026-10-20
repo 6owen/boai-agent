@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 互斥/路径/返工/PR及真实SIGKILL；检查点自身/历史证据、预算资格与工作树/索引外改拒绝，未知不重放。
+ * [OUTPUT]: 互斥/返工/PR及文件/回执锚定窗口真实SIGKILL；重命名源路径与回执/历史/预算/索引外改拒绝。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -186,7 +186,7 @@ it('PR创建期间base推进后保持待核对，不能签发交付成功', asyn
   expect(result.state.phase).toBe('pr-pending'); expect(result.state.reason).toContain('交付期间base已变化')
 })
 
-it.each(['worktree', 'checks', 'develop', 'review'])('%s完整回执保存后中断，显式接续不重复已完成模型或检查', async interruptedKind => {
+it.each(['worktree', 'checks', 'develop', 'review'].flatMap(kind => ['anchor', 'receipt'].map(point => ({ kind, point }))))('$kind的$point保存后中断，显式接续不重复已完成模型或检查', async interruption => {
   const input = task('checkpoint-fixture'), calls: string[] = []
   input.checks[0].args = ['-e', "const fs=require('node:fs');fs.mkdirSync('test-results',{recursive:true});fs.appendFileSync('test-results/count','check\\n');if(fs.readFileSync('answer.txt','utf8')!=='fixed')process.exit(1)"]
   const agent = async (kind: 'develop' | 'review') => {
@@ -195,7 +195,7 @@ it.each(['worktree', 'checks', 'develop', 'review'])('%s完整回执保存后中
   }
   let interrupted = false
   const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => {
-    if (!interrupted && kind === interruptedKind && point === 'receipt') { interrupted = true; throw new Error('模拟owner在完成回执后退出') }
+    if (!interrupted && kind === interruption.kind && point === interruption.point) { interrupted = true; throw new Error('模拟owner在回执保存窗口退出') }
   } })
   expect(first.state.phase).toBe('needs-reconciliation')
   const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
@@ -237,7 +237,7 @@ it('恢复发现第三种文件内容时不覆盖外改，也不重新请求模�
 it('检查点原始回执被改写后拒绝接续，不把旧通过结论用于新内容', async () => {
   const input = task('changed-receipt-fixture'); let calls = 0
   const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
-  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind) => { if (kind === 'develop') throw new Error('interrupted after receipt') } })
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (kind === 'develop' && point === 'receipt') throw new Error('interrupted after receipt') } })
   await writeFile(join(first.state.pending!.directory, 'result.json'), '{}')
   const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
   expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('原始文件/日志已变化'); expect(calls).toBe(1)
@@ -252,7 +252,7 @@ it('缺少完整模型回执时显式resume仍然不重放，恢复也不能续�
   expect(calls).toBe(1); expect(result.state.deadline).toBe(deadline); expect(result.state.usageComplete).toBe(false)
 })
 
-it('真实owner被SIGKILL后从部分文件继续，原模型回执和唯一候选提交保持', async () => {
+it.each(['file', 'anchor'] as const)('真实owner在apply的%s窗口被SIGKILL后接续，模型回执和唯一候选提交保持', async point => {
   const { build } = await import('esbuild')
   const { spawn } = await import('node:child_process')
   const { once } = await import('node:events')
@@ -270,7 +270,7 @@ it('真实owner被SIGKILL后从部分文件继续，原模型回执和唯一候�
     const task = JSON.parse(await readFile(config, 'utf8'));
     await runDevelopmentTask(repository, task, undefined, { guard,
       agent: async kind => { await appendFile(calls, kind+'\\n'); return {value:kind==='develop'?{summary:'kill proof',edits:[{path:'answer.txt',beforeSha256:digest('old'),content:'fixed'},{path:'feature.txt',beforeSha256:null,content:'new feature'}]}:{approved:true,findings:[],summary:'review'},usage:{totalTokens:10}} },
-      checkpointFault: async (kind, point) => { if(kind==='apply'&&point==='file'){await writeFile(marker,'partial-file');process.kill(process.pid,'SIGKILL')} }
+      checkpointFault: async (kind, point) => { if(kind==='apply'&&point===${JSON.stringify(point)}){await writeFile(marker,point);process.kill(process.pid,'SIGKILL')} }
     });
   `
   try {
@@ -278,10 +278,16 @@ it('真实owner被SIGKILL后从部分文件继续，原模型回执和唯一候�
     const child = spawn(process.execPath, [entry, repository, config, guard, calls, marker], { stdio: 'ignore' })
     const [exitCode, signal] = await once(child, 'exit')
     expect(exitCode).toBeNull(); expect(signal).toBe('SIGKILL')
-    expect(await readFile(marker, 'utf8')).toBe('partial-file')
+    expect(await readFile(marker, 'utf8')).toBe(point)
     const state = taskStatus(repository, input.taskId).state as { worktree: string }
     expect(await readFile(join(state.worktree, 'answer.txt'), 'utf8')).toBe('fixed')
-    await expect(readFile(join(state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    if (point === 'file') await expect(readFile(join(state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    else {
+      expect(await readFile(join(state.worktree, 'feature.txt'), 'utf8')).toBe('new feature')
+      expect(git(state.worktree, 'rev-parse', 'HEAD')).not.toBe(base)
+      const pending = (taskStatus(repository, input.taskId).state as { pending: { directory: string } }).pending
+      await expect(readFile(join(pending.directory, 'checkpoint.json'))).rejects.toMatchObject({ code: 'ENOENT' })
+    }
     const result = await runDevelopmentTask(repository, input, undefined, { guard, resume: true, agent: async kind => {
       const { appendFile } = await import('node:fs/promises'); await appendFile(calls, kind + '\n')
       return { value: { approved: true, findings: [], summary: 'fresh fixture reviewer' }, usage: { totalTokens: 10 } }
@@ -291,6 +297,32 @@ it('真实owner被SIGKILL后从部分文件继续，原模型回执和唯一候�
     expect(git(result.state.worktree, 'rev-list', '--count', `${base}..HEAD`)).toBe('1')
     expect(await readFile(join(repository, 'answer.txt'), 'utf8')).toBe('old')
   } finally { await rm(tools, { recursive: true, force: true }) }
+})
+it('范围外文件重命名为允许新增的文件也不能随恢复提交，保留原索引和HEAD', async () => {
+  const { applyJournal } = await import('../scripts/development/recovery')
+  git(repository, 'mv', 'answer.txt', 'feature.txt')
+  const index = git(repository, 'ls-files', '--stage')
+  expect(git(repository, 'diff', '--cached', '--name-only', base)).toBe('feature.txt')
+  await expect(applyJournal(repository, base, [{ path: 'feature.txt', before: null, after: Buffer.from('old').toString('base64'), executable: false }], new AbortController().signal)).rejects.toThrow('范围外修改或暂存改动')
+  expect(git(repository, 'ls-files', '--stage')).toBe(index)
+  expect(git(repository, 'rev-parse', 'HEAD')).toBe(base)
+  expect(await readFile(join(repository, 'feature.txt'), 'utf8')).toBe('old')
+  await expect(readFile(join(repository, 'answer.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+})
+it.each(['bytes', 'deadline'])('完成标记缺失时，锚定回执的%s被改写仍不能补写或继续', async field => {
+  const input = task('anchor-corruption-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (kind === 'develop' && point === 'anchor') throw new Error('anchored before completion marker') } })
+  const claim = claimTask(repository, input)
+  try {
+    if (field === 'bytes') claim.state.pending!.checkpointBytes += 'changed bytes'
+    else claim.state.deadline! += 100000
+    claim.save()
+  } finally { claim.release() }
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toMatch(/检查点自身hash不匹配|期限、预算或资格已变化/)
+  expect(calls).toBe(1); expect(git(first.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+  await expect(readFile(join(first.state.pending!.directory, 'checkpoint.json'))).rejects.toMatchObject({ code: 'ENOENT' })
 })
 it('兼容控制器迁移必须明确原hash并核对原字节，保留迁移记录', async () => {
   const { acceptController, WORKFLOW_VERSION } = await import('../scripts/development/recovery')
@@ -326,7 +358,7 @@ it('完整回执可只读恢复，但已过最初绝对期限不能继续请求�
   const { vi } = await import('vitest')
   const input = task('deadline-resume-fixture'); let calls = 0
   const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
-  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt completed') } })
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (kind === 'develop' && point === 'receipt') throw new Error('receipt completed') } })
   const deadline = first.state.deadline!
   const now = vi.spyOn(Date, 'now').mockReturnValue(deadline + 1)
   try {
@@ -340,7 +372,7 @@ it('完整回执可只读恢复，但已过最初绝对期限不能继续请求�
 it.each(['next', 'stateHash'])('完成检查点自身的%s被改写不能取得新资格', async field => {
   const input = task('checkpoint-bytes-fixture'); let calls = 0
   const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
-  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt saved') } })
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (kind === 'develop' && point === 'receipt') throw new Error('receipt saved') } })
   const path = join(first.state.pending!.directory, 'checkpoint.json'), receipt = JSON.parse(await readFile(path, 'utf8'))
   receipt[field] = field === 'next' ? 'done' : 'f'.repeat(64); await writeFile(path, JSON.stringify(receipt))
   const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
@@ -350,7 +382,7 @@ it.each(['next', 'stateHash'])('完成检查点自身的%s被改写不能取得�
 it.each(['deadline', 'codexCalls', 'knownTokens', 'checks', 'review'])('恢复原状态的%s与完成回执不一致时拒绝继续', async field => {
   const input = task('checkpoint-state-fixture'); let calls = 0
   const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
-  await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt saved') } })
+  await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (kind === 'develop' && point === 'receipt') throw new Error('receipt saved') } })
   const claim = claimTask(repository, input)
   try {
     if (field === 'deadline') claim.state.deadline! += 100000

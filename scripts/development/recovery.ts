@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 任务独占锁内的阶段、原始文件/日志与精确补丁，以及原生进程监督账本。
- * [OUTPUT]: 状态锚定的完成回执/历史原件、兼容迁移与工作树/索引部分补丁核对；未知模型不重放。
+ * [OUTPUT]: 状态锚定的回执字节/历史原件、断点补写与重命名双方范围核对；未知模型不重放。
  * [POS]: 开发控制器本地恢复，不改变BOAI运行时或远程交付规则。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -34,9 +34,9 @@ const appendCheckpoint = (state: TaskState, id: string, kind: string, sha256: st
   if (existing && (existing.kind !== kind || existing.sha256 !== sha256)) throw new Error('完成回执与原历史登记冲突')
   if (!existing) state.checkpoints.push({ id, kind, sha256 })
 }
-async function verifyReceipt(claim: Claim, id: string, kind: string, sha256: string) {
+async function verifyReceipt(claim: Claim, id: string, kind: string, sha256: string, anchoredBytes?: Buffer) {
   if (!/^[a-z0-9-]+$/.test(id)) throw new Error('恢复步骤身份不匹配')
-  const directory = join(claim.directory, id), bytes = await readFile(join(directory, 'checkpoint.json'))
+  const directory = join(claim.directory, id), bytes = anchoredBytes ?? await readFile(join(directory, 'checkpoint.json'))
   if (digest(bytes) !== sha256) throw new Error('完成检查点自身hash不匹配，拒绝旧结论')
   const receipt = JSON.parse(bytes.toString('utf8'))
   if (receipt.version !== WORKFLOW_VERSION || receipt.id !== id || receipt.kind !== kind || receipt.taskHash !== claim.state.taskHash || receipt.base !== claim.state.base || !cursors.includes(receipt.next)) throw new Error('恢复检查点身份或格式不匹配')
@@ -46,12 +46,13 @@ async function verifyReceipt(claim: Claim, id: string, kind: string, sha256: str
 export async function verifyCheckpointReceipts(claim: Claim) {
   for (const receipt of claim.state.checkpoints ?? []) await verifyReceipt(claim, receipt.id, receipt.kind, receipt.sha256)
 }
-export async function checkpoint(claim: Claim, next: Cursor, beforeSave?: () => Promise<void>) {
+export async function checkpoint(claim: Claim, next: Cursor, beforeSave?: () => Promise<void>, afterAnchor?: () => Promise<void>) {
   const { state } = claim
   if (!state.pending) throw new Error('缺少当前恢复步骤')
   const receipt = { version: WORKFLOW_VERSION, id: state.pending.id, kind: state.pending.kind, taskHash: state.taskHash, base: state.base, stateHash: digest(projection(state)), next, executor: { node: process.version, platform: process.platform, arch: process.arch, codex: state.environment?.codex, controllerHash: state.controllerHash }, files: await evidenceFiles(state.pending.directory) }
   const bytes = JSON.stringify(receipt, null, 2) + '\n'
-  state.pending.checkpointHash = digest(bytes); claim.save() // 先锚定完整回执及当前预算/资格，再写完成标记。
+  state.pending.checkpointHash = digest(bytes); state.pending.checkpointBytes = bytes; claim.save() // 原字节同状态锚定，完成标记未写也能只读核验后补写。
+  await afterAnchor?.()
   await writeFile(join(state.pending.directory, 'checkpoint.json'), bytes, { flag: 'wx', mode: 0o600 })
   await beforeSave?.()
   appendCheckpoint(state, state.pending.id, state.pending.kind, state.pending.checkpointHash)
@@ -62,9 +63,16 @@ export async function recoverCheckpoint(claim: Claim) {
   if (!pending) return false
   if (join(claim.directory, pending.id) !== pending.directory || !/^[a-z0-9-]+$/.test(pending.id)) throw new Error('待恢复步骤目录与原任务不匹配')
   if (!pending.checkpointHash) return false
-  let receipt
-  try { receipt = await verifyReceipt(claim, pending.id, pending.kind, pending.checkpointHash) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error }
+  let bytes: Buffer, missing = false
+  try { bytes = await readFile(join(pending.directory, 'checkpoint.json')) }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    if (!pending.checkpointBytes) return false
+    bytes = Buffer.from(pending.checkpointBytes); missing = true
+  }
+  const receipt = await verifyReceipt(claim, pending.id, pending.kind, pending.checkpointHash, bytes)
   if (receipt.stateHash !== digest(projection(state))) throw new Error('恢复状态的期限、预算或资格已变化，拒绝接续')
+  if (missing) await writeFile(join(pending.directory, 'checkpoint.json'), bytes, { flag: 'wx', mode: 0o600 })
   appendCheckpoint(state, pending.id, pending.kind, pending.checkpointHash)
   state.cursor = receipt.next; delete state.pending; delete state.reason; claim.save()
   return true
@@ -99,8 +107,8 @@ const bytesAt = async (path: string) => readFile(path).catch(error => { if (erro
 export async function applyJournal(worktree: string, beforeHead: string, changes: FileChange[], signal: AbortSignal, afterFile?: () => Promise<void>) {
   signal.throwIfAborted()
   const head = git(worktree, 'rev-parse', 'HEAD')
-  const changed = git(worktree, 'diff', '--name-only', '-z', beforeHead).split('\0').filter(Boolean)
-  const staged = git(worktree, 'diff', '--cached', '--name-only', '-z', beforeHead).split('\0').filter(Boolean)
+  const changed = git(worktree, 'diff', '--no-renames', '--name-only', '-z', beforeHead).split('\0').filter(Boolean)
+  const staged = git(worktree, 'diff', '--cached', '--no-renames', '--name-only', '-z', beforeHead).split('\0').filter(Boolean)
   const untracked = git(worktree, 'ls-files', '--others', '--exclude-standard', '-z').split('\0').filter(Boolean)
   if ([...changed, ...staged, ...untracked].some(path => !changes.some(change => change.path === path))) throw new Error('补丁恢复发现范围外修改或暂存改动，拒绝继续')
   if (head !== beforeHead) {

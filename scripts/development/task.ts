@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结任务、原仓库Git公共目录和实际进程身份。
- * [OUTPUT]: 唯一领取及冻结任务；保存流程版本/游标、绝对期限和恢复原件身份，不复用变化的输入。
+ * [OUTPUT]: 唯一领取及冻结任务；保存流程/期限及回执原字节锚点，不复用变化的输入。
  * [POS]: 开发控制器持久合同；不接BOAI产品任务/员工状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -32,7 +32,7 @@ export type Task = z.infer<typeof taskSchema>
 export interface TaskState {
   version: 1; taskHash: string; phase: string; base: string; worktree: string; branch: string;
   attempt: number; codexCalls: number; knownTokens: number; usageComplete: boolean;
-  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean; journalHash?: string; checkpointHash?: string }; reason?: string;
+  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean; journalHash?: string; checkpointHash?: string; checkpointBytes?: string }; reason?: string;
   lease?: { owner: string; pid: number; hostname: string; expiresAt: string };
   baseline?: unknown; checks?: unknown; review?: unknown;
   delivery?: { head: string; base: string; url?: string; number?: number };

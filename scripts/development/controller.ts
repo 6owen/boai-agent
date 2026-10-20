@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
- * [OUTPUT]: 固定检查/独立审查/返工；状态锚定回执与历史原件、工作树/索引核验，恢复不续期或重放未知操作。
+ * [OUTPUT]: 固定检查/独立审查/返工；回执原字节锚定与中断补写、历史/索引核验，不续期或重放未知操作。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -20,7 +20,7 @@ interface Dependencies {
   guard?: string;
   resume?: boolean;
   previousController?: string;
-  checkpointFault?(kind: string, point: 'receipt' | 'file' | 'commit'): Promise<void>;
+  checkpointFault?(kind: string, point: 'anchor' | 'receipt' | 'file' | 'commit'): Promise<void>;
 }
 const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'))
 const save = (file: string, value: unknown) => writeFile(file, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' })
@@ -91,7 +91,7 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
     state.pending = { id: name, kind, directory: output, started: false }; claim.save()
     await mkdir(output); return output
   }
-  const finish = (next: Cursor) => checkpoint(claim, next, () => dependencies.checkpointFault?.(state.pending!.kind, 'receipt') ?? Promise.resolve())
+  const finish = (next: Cursor) => checkpoint(claim, next, () => dependencies.checkpointFault?.(state.pending!.kind, 'receipt') ?? Promise.resolve(), () => dependencies.checkpointFault?.(state.pending!.kind, 'anchor') ?? Promise.resolve())
   const executeChecks = async (name: string, checks = task.checks) => {
     const output = await begin('checks', name), results = []
     const head = git(state.worktree, 'rev-parse', 'HEAD')
