@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前干净提交、锁定依赖、固定工程/T1/全部本机UI合同。
- * [OUTPUT]: 本机完整CI、受管串行及原件封存；manifest原字节锚定，核验后变化拒绝，不接云端旁路。
+ * [OUTPUT]: 本机完整CI/串行封存；核验原manifest及封存触发分支/runId供发布前检，不接云端旁路。
  * [POS]: 本机CI唯一入口；真实供应商/基线接受/发布及安装不在此执行。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -17,7 +17,7 @@ import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { validateGate, verifyDesktopGate } from './ci-result.mjs'
 import { desktopPlanIdentity, desktopReportRows, assertDesktopReport } from './desktop-plan.mjs'
-import { beginLocalCiPublication } from './local-ci-github.mjs'
+import { beginLocalCiPublication, localCiRepository } from './local-ci-github.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
@@ -65,7 +65,7 @@ async function verifyLocalCiReports(directory, result) {
   const uiRaw = await json(join(directory, 'ui/compare/playwright.json')), rows = desktopReportRows(uiRaw)
   const uiSelected = ids.map(id => { const matches = rows.filter(row => row.titles.at(-1).includes(`界面 ${id} `)); if (matches.length !== 1) throw new Error('UI原报告缺场或重复'); return { ...matches[0], id } })
   assertDesktopReport(uiRaw, uiSelected)
-  return { sha: source.commit, sourceHash: source.sourceHash, t1: identity.ids.length, ui: ids.length }
+  return { sha: source.commit, sourceHash: source.sourceHash, t1: identity.ids.length, ui: ids.length, trigger: result.trigger ?? null }
 }
 async function run(branch) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw new Error('本地CI须使用已登记的macOS arm64/Node24.16.0')
@@ -75,7 +75,7 @@ async function run(branch) {
   process.once('SIGTERM', cancel); process.once('SIGINT', cancel)
   const runId = randomUUID(), directory = join(root, '.local/ci-local', runId)
   let publish, publicationFailed = false
-  const result = { version: 1, status: 'failed', errors: [], startedAt: new Date().toISOString(), engineering: { selected: ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd'], outcomes: {}, status: 'failed' } }
+  const result = { version: 1, trigger: { repository: localCiRepository, branch: branch ?? null, runId }, status: 'failed', errors: [], startedAt: new Date().toISOString(), engineering: { selected: ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd'], outcomes: {}, status: 'failed' } }
   try {
     await mkdir(directory, { recursive: true })
     result.source = await sourceIdentity(root)

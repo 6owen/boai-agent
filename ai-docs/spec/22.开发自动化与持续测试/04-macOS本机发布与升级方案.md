@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 发布前检迁本机main触发原件/最新状态双读；Tag/打包/升级仍待实施，Actions不提供当前发布资格。
 [OUTPUT]: release:check只读核对稳定版本/buildVersion、同SHA main及最新完整验证；只提供前检，Tag/打包/发布/安装仍未实施。
 [INPUT]: 用户当前macOS无Apple开发者签名、本机开发自用，要求先将Tag/Release/桌面升级落实为文档。
 [OUTPUT]: 本机自用发布路线、electron-builder v26候选配置、自动Tag接续、产物演练与本机升级回滚；发布独立于开发画板，尚未实施。
@@ -48,7 +49,7 @@ flowchart LR
 | 打包命令 | `dist:mac`是`pnpm build && electron-builder --mac dmg`，CLI明确只选择DMG |
 | 产物目录 | `build.directories.output=release`；保留现有files、asarUnpack、原生文件及协议配置 |
 | 更新器 | package依赖未接`electron-updater`，Main未发现`autoUpdater/checkForUpdates/quitAndInstall`接线 |
-| CI | 现有Offline tests针对PR、main/master push和手动触发；没有本轮拟定的Tag发布工作流 |
+| CI | 用户已改本机执行，Actions停用；同仓库PR轮询已完整通过，main现有旧提交尚无新入口；无已接通Tag发布入口 |
 | 数据 | `src/main/main.ts`设置app名称，支持`BOAI_DATA_DIR`覆盖userData，业务数据位于userData下`v2` |
 
 这些是本次读源码与安装依赖类型得到的事实，不是运行通过或发布成绩。后续统一修改时重新核对实际版本和工作树，不覆盖其他开发中的依赖/构建变更。
@@ -86,29 +87,20 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 
 ## 4. 版本、Tag与Release门槛
 
+用户切本地CI后，以下编排在本机执行，GitHub只保存Tag/Release与提交状态；当前不依赖Actions事件或分钟额度。正式发布仍必须取得远程main同SHA的完整本地资格。
+
 1. 选定待发布提交；版本更新单独形成可追溯提交，`vX.Y.Z`必须与该提交的`package.json.version`一致。buildVersion建立单调且可解释的规则，初版可与发布版本一致，后续无需强制两者永远相同。
-2. Tag固定到该提交并推送后，发布流程检出Tag的确切SHA。本机创建未推送的Tag不会触发远程Actions；由Actions自动创建Tag时，按下述编排显式接续，不能假定所有Tag推送都会触发另一个工作流。
-3. 对同一SHA运行必需检查，或验证可复用的同版本检查身份。不能仅因为另一个main提交绿过就发布。现有测试workflow不监听Tag，实施时补可复用验证入口或在Tag流程中显式执行。
-4. 在匹配架构的macOS runner构建、解包并执行产物冒烟；核对版本、原生模块、窗口、运行服务、文件与CLI入口及退出。源码`pnpm dev`通过不能代替产物通过。
+2. 本机发布入口接受明确版本/SHA/本地原件，前检通过后创建或核对该提交的Tag并显式接续；推送Tag本身不启动已停用的Actions。
+3. 对同一SHA核对封存的main触发身份、完整原件与GitHub最新状态，不能复用其他SHA或用旧成功遮盖新pending/新尝试。
+4. 在匹配架构的本机macOS构建、解包并执行产物冒烟；核对版本、原生模块、窗口、运行服务、文件与CLI入口及退出。源码`pnpm dev`通过不能代替产物通过。
 5. 校验成功后发布固定版本资产与说明。初次可先形成draft，所有必需资产和结果齐备后再转正式Release；正式可下载集合不暴露半成品。
 6. 同一Tag重复触发先核对已有Release、资产和hash，不静默覆盖不同内容。失败保留结果；取消/未知发布先查询远程状态，不重复创建或重发同一副作用。
 
 自动创建Tag纳入实施范围：发布入口接受明确的版本与目标SHA，版本提交先进入仓库并满足既定交付条件，入口校验版本后创建或核对同名Tag。初版可手动启动这个入口，由程序完成后续发布；以后版本PR合并可调用同一入口，不默认每次普通提交都发一个版本。
 
-如果入口使用`GITHUB_TOKEN`创建并推送Tag，该push不会自动启动另一个Tag workflow。推荐在同一发布编排中通过后续job或`workflow_call`接续测试、构建和发布；若采用显式`workflow_dispatch`，必须传递并再次核对版本与SHA。用户本地推送Tag也进入同一套校验逻辑。不要把“Tag已创建但发布没有运行”当作完成。[GitHub工作流触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)
+本机通过当前本人gh授权处理Tag/Release，发布编排须显式接续。只读测试入口不创建Tag、资产或Release；后续写入入口在每次副作用前重新核验版本/SHA/最新资格并保留未知写入核对记录。未来若明确恢复云端，再独立接workflow_call等方式；当前不增加Tag自动工作流，不自动启用仓库Actions。
 
-拟新增工作流的触发片段如下，不是已存在或可以独立运行的完整workflow：
-
-```yaml
-on:
-  push:
-    tags: ['v*']
-  workflow_dispatch:
-```
-
-全局权限只读；只有创建Tag及发布资产的job按需设置`contents: write`并使用该次`GITHUB_TOKEN`，显式dispatch时另外核对所需权限。测试与构建保持只读；版本更新不形成提交循环，不把发布权限给执行外部PR代码的job。
-
-发布前与实际本机升级分别验收：候选资产可先留在Actions产物或draft中，用隔离安装目录/数据完成启动、旧版升级和失败恢复演练，核对hash后发布同一份资产，不重新打包替换已验字节。正式Release存在后，本机升级入口再下载、校验并更新实际目标，记录个人数据与权限结果。首次发行没有历史正式包时，如实标记该场景未覆盖，可用明确标识的测试旧包验证机制；不能宣称已验证真实历史版本升级。发布成功与个人安装成功各自有终态，避免将“先从正式Release升级成功”设为该Release的发布前置条件。
+发布前与实际本机升级分别验收：候选资产先留在本机隔离目录或draft中，用隔离安装目录/数据完成启动、旧版升级和失败恢复演练，核对hash后发布同一份资产，不重新打包替换已验字节。正式Release存在后，本机升级入口再下载、校验并更新实际目标，记录个人数据与权限结果。首次发行没有历史正式包时，如实标记该场景未覆盖，可用明确标识的测试旧包验证机制；不能宣称已验证真实历史版本升级。发布成功与个人安装成功各自有终态，避免将“先从正式Release升级成功”设为该Release的发布前置条件。
 
 | Release资产 | 用途 |
 | --- | --- |
@@ -157,8 +149,8 @@ on:
 | 位置 | 后续修改 |
 | --- | --- |
 | `package.json`与必要锁文件 | 版本规则、个人构建配置、DMG/ZIP命令；正式路线需要时才增加更新依赖 |
-| `.github/workflows/` | Tag校验、同SHA测试、匹配架构构建、产物冒烟和发布job；新文件需更新目录地图 |
-| `scripts/` | 独立的本机安装/升级入口与事务恢复；本文件所述入口均尚未存在 |
+| `.github/workflows/` | 保留停用的手动云端备份，不新增当前Tag自动事件 |
+| `scripts/` | 已接只读release-check；继续本机Tag/构建/资产/安装事务和恢复入口 |
 | `src/main/`及原退出/CLI服务 | 复用实际退出、数据身份和启动核对；未来标准更新器单独接线 |
 | 本组02/03 | 更新测试分类与真实发布/升级结果，状态只有03维护 |
 
@@ -180,6 +172,8 @@ on:
 
 ## 9. 当前只读发布前检入口
 
-`pnpm release:check --version X.Y.Z --sha 完整SHA`先核对本地干净源码、package.version及buildVersion，再只读查询6owen/boai-agent的远程main和相同SHA的最新main推送验证，要求固定Offline tests及唯一成功Required checks。候选采集或PR绿不能代替main验证；读完同时核对run详情和最后一次最新列表的id/SHA/attempt/成功终态，再核对main和原package字节，变化即拒绝。成功记录只保存在.local/release-checks，不是可长期复用的发布许可；后续写入入口须在副作用前重新核验。
+`pnpm release:check --version X.Y.Z --sha 完整SHA --local-ci 原件目录`先核对当前干净源码、package.version/buildVersion，再实际调用本地完整原件verify（工程/T1/全UI、逐场原件与hash、相同源码/构建）。新CI封存repository/branch/runId并从核验器返回；只接受main触发，旧缺触发档案及PR绿均不能代替。随后只读查询远程main与最新BOAI local CI状态，最新项绑定本人、runId及manifest hash，不搜索旧成功。原件再次核验后重读最新状态及main，原件变化、新pending/新成功尝试、分支移动或package变化均拒绝，不访问Actions API。
+
+成功记录及查询回执仅存.local/release-checks，不是可长期复用的发布许可；后续写入入口须在副作用前重新核验。当前仅协议负例/真实CLI夹具通过，尚无新合同的真实main正例，不创建Tag或资产。
 
 当前版本0.2.2/buildVersion0.2.3不一致，完整main验证也未通过，前检应拒绝。该入口不改版本、不创建Tag、不构建/上传/安装。自动Tag接续、ad-hoc产物/冒烟、安装事务和回滚仍按上文继续实现，实际验证唯一归03。
