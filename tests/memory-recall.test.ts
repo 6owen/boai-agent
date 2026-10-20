@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Saved-memory budget priority is tested against raw dialogue crowding, unrelated facts and pinning/growth priorities.
  * [OUTPUT]: 用户/模型/导入记忆展示不伪造事件时间或亲历身份，素材日期与保存时间分开；原正文/引用和预算保持。
  * [INPUT]: 统一记忆策略、获知回执和合成来源/中文请求。
  * [OUTPUT]: 员工隔离与有界证据预算、实际获知授权指纹/父条目版本；硬范围、期限与来源撤权不能从raw证据逃逸。
@@ -89,4 +90,27 @@ test('memory provenance labels never turn save times or record ownership into ev
   const linked = memoryText(entry('quoted', { attribution: '实际发言者', sourceMessageIds: ['real-message'], sourceMemoryIds: ['derived-parent'] }))
   expect(linked).toContain('引用消息 real-message；父记忆 derived-parent')
   expect(memoryText(entry('legacy', { origin: undefined as unknown as MemoryEntry['origin'] }))).toContain('记录方式未知')
+})
+
+
+test('related saved facts fit before higher-overlap raw questions within the unchanged budget', () => {
+  const saved = [entry('learning', { kind: 'long_term', content: '学习习惯是先动手尝试再看解释' }), entry('language', { kind: 'long_term', content: '技术资料先看中文，有疑问才对照英文' })]
+  const source = raw()
+  source.messages.get('m')!.content = '我平时学习新东西、看技术资料的习惯是什么，中文还是英文？'
+  const budget = saved.reduce((sum, value) => sum + memoryTokenEstimate(memoryText(value)), 0)
+  const result = recall(saved, {}, '学习新东西和技术资料的习惯是什么？中文还是英文？', { ...source, tokenBudget: budget })
+  expect(result.entries.map(value => value.id).sort()).toEqual(['language', 'learning'])
+  expect(result.recall!.tokenEstimate).toBeLessThanOrEqual(budget)
+  expect(result.recall!.versions.map(value => value.id).sort()).toEqual(['language', 'learning'])
+  expect(result.recall!.observationIds).toEqual([])
+})
+
+test('unrelated saved facts never displace relevant raw evidence; pinned and growth selection remain first', () => {
+  const source = raw(), unrelated = entry('identity', { kind: 'long_term', content: '独立插画师，专注绘本' })
+  const onlyRaw = recall([], {}, '海报提纲', source)
+  const budget = onlyRaw.recall!.tokenEstimate
+  expect(recall([unrelated], {}, '海报提纲', { ...source, tokenBudget: budget }).entries.map(value => value.id)).toEqual(onlyRaw.entries.map(value => value.id))
+  const related = entry('related', { kind: 'long_term', content: '海报提纲使用清晰标题' }), pinned = entry('pinned', { pinned: true, content: '必须保留的明确设置' }), growth = entry('growth', { content: '已获准的成长来源' })
+  const result = recall([related, pinned, growth], {}, '海报提纲', { ...source, preferredIds: ['growth'] })
+  expect(result.entries.slice(0, 3).map(value => value.id)).toEqual(['pinned', 'growth', 'related'])
 })

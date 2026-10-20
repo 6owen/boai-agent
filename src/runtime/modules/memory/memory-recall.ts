@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Relevant saved memory precedes raw observed dialogue within the same budget; pinning, growth and source gates retain priority.
  * [INPUT]: SQLite 员工记忆/获知回执、宿主来源授权、已发布消息及当前请求。
  * [OUTPUT]: 有界召回携带实际来源版本；成长依赖仅在原授权与预算内优先召回，管理列表不进入模型。
  * [POS]: runtime/modules/memory/memory-recall.ts；不调用模型或读取其他员工目录。
@@ -54,9 +55,9 @@ export function recallMemory(input: MemoryRecallInput): MemoryView {
     }
   }
   const preferred = new Set(input.preferredIds ?? [])
-  const ranked = [...eligible, ...raw].map(entry => ({ entry, relevance: memoryRelevance(entry.content, input.request) }))
+  const ranked = [...eligible, ...raw].map(entry => { const relevance = memoryRelevance(entry.content, input.request); return { entry, relevance, relatedSaved: relevance > 0 && !observationIds.has(entry.id) } })
     .filter(({ entry, relevance }) => preferred.has(entry.id) || relevance > 0 || entry.pinned || entry.kind === 'long_term' || entry.scope === 'profile' || entry.kind === 'temporary' && entry.contextRef?.id === access.conversationId)
-    .sort((a, b) => Number(!!b.entry.pinned) - Number(!!a.entry.pinned) || Number(preferred.has(b.entry.id)) - Number(preferred.has(a.entry.id)) || b.relevance - a.relevance || Number(b.entry.kind === 'long_term') - Number(a.entry.kind === 'long_term') || b.entry.createdAt.localeCompare(a.entry.createdAt) || b.entry.id.localeCompare(a.entry.id))
+    .sort((a, b) => Number(!!b.entry.pinned) - Number(!!a.entry.pinned) || Number(preferred.has(b.entry.id)) - Number(preferred.has(a.entry.id)) || Number(b.relatedSaved) - Number(a.relatedSaved) || b.relevance - a.relevance || Number(b.entry.kind === 'long_term') - Number(a.entry.kind === 'long_term') || b.entry.createdAt.localeCompare(a.entry.createdAt) || b.entry.id.localeCompare(a.entry.id))
   const selected: MemoryEntry[] = [], seen = new Set<string>(), selectedObservations = new Set<string>()
   let tokenEstimate = 0
   for (const { entry } of ranked) {

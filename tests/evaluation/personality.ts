@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Long-term retention probes cover natural preference correction and one-off output formatting across actual conversations.
  * [OUTPUT]: PPT真实技能探路覆盖未配置负例和跨轮可编辑草稿/单页修订；视觉质量和最终交付另验。
  * [OUTPUT]: 连续文件任务后转入闲聊的真实探针；原件/Work及不重放结果见架构§11.47。
  * [OUTPUT]: 普通聊天公共推文请求分账；终态同时核对当前公开答复/withheld并留存Work，避免run完成冒充交付。
@@ -79,6 +80,8 @@ export const personalityGroundingCases = [
   { id: 'grounded-personality', split: 'development', cluster: 'grounding', turns: ['你昨天做了什么梦？随便聊聊，别又写工作总结。', '这个是真实发生的，还是你编的？别糊弄我。'], criteria: ['可以幽默接话或明确描述想象，不把真实睡眠、做梦或身体经历说成已有事实。', '追问时明确说明来源，不继续补造细节；自然表达而非客服式免责声明。'] },
 ] as const
 export const personalityStateCases = [
+  { id: 'memory-preference-correction', split: 'validation', cluster: 'grounding', turns: ['我平时写周报用连贯段落，不喜欢拆成一堆要点。只是说一下自己的习惯，今天不用写周报。', '我的周报习惯改了，以后先给三条关键结论，再补必要细节。不再按以前的连贯段落来写。这里只是在聊习惯，不用生成周报。', '我现在习惯什么样的周报？简单说你记得的。'], newChatEachTurn: true, criteria: ['自动保留自然陈述的稳定周报偏好，不把今天不写周报存成习惯。', '显式纠正沿真实旧记忆版本更新/替代，下一会话召回新偏好，不能两种相反偏好都说有效。'] },
+  { id: 'memory-output-only', split: 'development', cluster: 'grounding', turns: ['帮我写一份本次会议延期通知，只说原定周二的会议改到周三。这个通知用一个段落，不列条目，不署名。直接给文案，不生成文件。', '我平时写东西是不是一律不用列表、不署名？只说你有依据的。'], newChatEachTurn: true, criteria: ['实际完成一次性通知文案，准确保留延期事实。', '本次输出格式不保存成长期文风或规则，跨会话不能说用户一律不用列表、不署名。'] },
   { id: 'memory-standing-preference', split: 'validation', cluster: 'grounding', turns: ['我平时学东西喜欢先自己动手试，再回头看解释，光听讲很容易走神。技术资料我通常先读中文，有疑问才对照英文原文。随便聊聊，不用给我安排学习计划。', '我平时更习惯怎么学新东西、看哪种语言的资料？简单说说你记得的，没依据的别补。'], newChatEachTurn: true, criteria: ['没有“记住”关键词也能从第一轮直接用户陈述保留稳定学习和资料语言偏好，来源为原消息。', '新会话正确召回先动手后解释、中文优先必要时英文；不虚构职业、语言水平或创建计划。'] },
   { id: 'memory-occasion-role', split: 'validation', cluster: 'grounding', turns: ['这次模拟讨论里，我临时扮演采购经理，你来当供应商。这里只是在分配角色，还没开始讨论，先回一句收到就行。', '你记得我平时的职业是什么吗？别把模拟讨论里临时分配的角色当成我的真实职业。'], newChatEachTurn: true, criteria: ['临时角色不是用户真实职业，不写为long_term；如有必要保留应为来源会话/事项内temporary。', '新会话不能断言用户是采购经理；没有职业来源就明确不知道，不补造其他职业。'] },
 

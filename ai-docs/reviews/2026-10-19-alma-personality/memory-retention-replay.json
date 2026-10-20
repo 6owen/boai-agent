@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "baseCommit": "6566a1e7",
+  "phase": "memory-retention-candidates-rejected",
+  "newRemoteModelRequests": 27,
+  "cumulativeRemoteModelRequests": 1419,
+  "batches": [
+    {
+      "kind": "exact-historical-private-memory-stage-replay",
+      "directory": ".local/memory-retention-reason",
+      "requests": 24,
+      "repetitions": 3,
+      "differentInputs": 4,
+      "result": "No observed retention improvement; original failure did not recur in either arm. Candidate not adopted.",
+      "transport": {
+        "http200": 24,
+        "complete": 24
+      },
+      "preparationFailure": "Historical non-PPT records omitted URL; first 2 completed calls retained. Same recorded connection verified; supplied endpoint metadata only, resumed remaining 22 against shared 24-request ledger. No completed input replayed."
+    },
+    {
+      "kind": "independent-retention-review-of-real-candidates",
+      "directory": ".local/memory-review-candidate/.local/review-probe",
+      "requests": 3,
+      "maxRequests": 9,
+      "result": "Stopped at first unexpected selection: rejects original PPT overgeneralization, preserves two standing preferences, rejects scoped temporary role. Candidate not adopted.",
+      "transport": {
+        "http200": 3,
+        "complete": 3
+      }
+    }
+  ],
+  "originalFailure": {
+    "database": ".local/personality-evaluation/ppt-skill-discovery-1792471306039/data/boai.sqlite",
+    "id": "eff50e84-2971-4224-8048-3d84bc997888",
+    "kind": "long_term",
+    "evidence": "preference",
+    "status": "active",
+    "dailyData": false
+  },
+  "productionChanged": false,
+  "skillBindings": 32,
+  "profileRevision": 16,
+  "agentConfigVersion": 73,
+  "limits": [
+    "Exact request/candidate replay is not a full AppService task rerun or persistence proof for either proposal.",
+    "No calibrated judge or human labels, no unseen test or reliability conclusion.",
+    "3 repetitions per fixture do not prove the original sporadic failure resolved.",
+    "Second candidate was evaluated without production integration; rejected before budget/cancellation/native/API lifecycle checks.",
+    "No E2E, builds, visual review or new live agent binding."
+  ],
+  "sourceSha256": {
+    "src/runtime/modules/employees/phase-instructions.ts": "8de861d25891485d29210bd897fb6696b724f9fd73c7fa6a33e362a30d0ab948",
+    "src/runtime/modules/employees/phase-protocol.ts": "b70910cc67b7fc22d54076729686a9ce68b8a85ba603efa0f729cb12dc09b3b6",
+    "src/runtime/modules/employees/memory-extraction.ts": "2e71e56f536dbd254de57d771a53a699a7d366f60ac1dd35541bac5cd1a2a06c",
+    "src/runtime/adapters/mastra/engine.ts": "42bcf0ceb0a9b033e4d2bc437548ff448e9d20daa2fb5989d47479920298288a",
+    "src/runtime/adapters/native-employee.ts": "4ddf65c116b286cb2c4d0297ab19362f22c6f43494a426a173b2d45fa823f4da"
+  },
+  "sha256": {
+    ".local/memory-retention-reason/plan.json": "378f4e4590848df2270dcb6dc2f420a7f4aa3740eb871f335c87e43064202716",
+    ".local/memory-retention-reason/fixtures.json": "b50ea722388917b22f2801f5be56471657dfc1a7728a20cdd7ae7b471f3757c0",
+    ".local/memory-retention-reason/gate.txt": "6aff2f8d5761dc9c3341b4112f425fba5c8d5554ca6477402e987f2494eaab7b",
+    ".local/memory-retention-reason/preparation-correction.json": "51c45ced170796e159ef5ddacc297dc322359a8029eb85d32c1e901427b7d1e9",
+    ".local/memory-retention-reason/run/result.json": "687639f9bf5f35a51df00bdd51c336166071cac1578eb8de33c14f517846f5fa",
+    ".local/memory-retention-reason/run/request-budget.json": "6a3d568b1fa3cdd59eeb9584b1234f557e1490e30bc00bbd05ef6d4b6069fa61",
+    ".local/memory-retention-reason/run/initial-result.json": "e12d1acc3ef8d7b13bbe7ec11082be6420089b0f693c3158e80b004a87a7e413",
+    ".local/memory-retention-reason/run/initial-failure.json": "b3fade0e4c382a630496bba0b3fd9926152abfb1df8906e72609b6e360eb9136",
+    ".local/memory-retention-reason/run/settings.json": "e193fb7d9338d0ac33483b13452894d6470af296328e6754d7a5ee8449ddd57d",
+    ".local/memory-retention-reason/worker.mjs": "3ac0c499a78b93dc7cb87d706dee7058fa0c1015b8e4585edff609e4935ac98b",
+    ".local/memory-review-candidate/.local/review-probe/plan.json": "19cacb1f255153872f6bf5d0ef28abf148faee90350b05211f316f6435b22d74",
+    ".local/memory-review-candidate/.local/review-probe/fixtures.json": "e03882dd1901c15fae4859a89f25a497e21badee613986804edf0c8b377a63aa",
+    ".local/memory-review-candidate/.local/review-probe/result.json": "416b3aec9e48f2e77d8a7a6fa9d417fd1b115f98b92a2cd0b94c11ae3c6492c9",
+    ".local/memory-review-candidate/.local/review-probe/failure.json": "c625bb52bbe73765dd3e70d14daf4838c5ad6a94382827028bf68df0515e942b",
+    ".local/memory-review-candidate/.local/review-probe/request-budget.json": "7665b5966db16385b0b6d8cfd3df40c2ee37b7106a60d142f6fe8cc474320ff2",
+    ".local/memory-review-candidate/.local/review-probe/worker.mjs": "fa576512df6cc2fec2fa4c3cfe0900fa3f39155e0ab98584a32101cacda7e4bf",
+    ".local/memory-review-candidate/src/runtime/modules/employees/memory-review.ts": "2f898e7f07b00648c1287d92c05d77b2f39c146c1dd969fa77e33b507ca23a13",
+    ".local/personality-evaluation/ppt-skill-discovery-1792471306039/data/boai.sqlite": "a92adb5d792613b674425f4124943909e8be247044b955db01a171c24a18ef7d",
+    ".local/memory-retention-reason/live-health.json": "398478c0f9cc90c89165ffd9693d2b96908c06919781b64e08eeeffaec53eda8",
+    ".local/memory-retention-reason/live-agent.json": "e11eb30b7886bce40159c5d7b284c909a902ac2a50101b17abffb5dd0070ac58",
+    ".local/memory-retention-reason/live-profile.json": "25d90d8cd4ed7484a4617d5e35fe8626075da72a702e74f6b2d69bf20ebfb558"
+  },
+  "remaining": [
+    "Task constraints generalized into long-term memory; original stored error remains a valid failure.",
+    "Verbose replies, fabricated life/dream claims and virtual-state confusion.",
+    "32 partial-adaptation-bound skills need remaining validation; 8 skills not started.",
+    "371 prompt candidates / 206 model-input fields / 40 skills and Alma-like personality remain the full goal."
+  ],
+  "live": {
+    "health": {
+      "service": "ready",
+      "storage": "ready",
+      "browserAvailable": true,
+      "credentialProvider": "desktop-vault"
+    },
+    "agentConfigVersion": 73,
+    "profileRevision": 16,
+    "boundSkillCount": 32
+  }
+}
