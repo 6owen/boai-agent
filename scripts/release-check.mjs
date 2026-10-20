@@ -37,9 +37,9 @@ async function main() {
   // Reject local/version mismatches before any remote request.
   if (current.sha !== sha || current.dirty || metadata.version !== version || metadata.build?.buildVersion !== version) throw new Error('源码不干净、SHA或版本/buildVersion不符；没有执行远程发布操作')
   const mainSha = api('git/ref/heads/main').object.sha
-  const runs = api(`actions/workflows/tests.yml/runs?event=push&branch=main&head_sha=${sha}&per_page=100`).workflow_runs
+  const latestRun = () => api(`actions/workflows/tests.yml/runs?event=push&branch=main&head_sha=${sha}&per_page=100`).workflow_runs.filter(value => value.head_sha === sha).sort((a, b) => b.id - a.id)[0]
   // Never choose an older green run to conceal the latest failed/pending run.
-  const latest = [...runs].filter(run => run.head_sha === sha).sort((a, b) => b.id - a.id)[0]
+  const latest = latestRun()
   if (!latest) throw new Error('该main提交没有完整验证记录')
   const run = api(`actions/runs/${latest.id}`)
   const jobs = api(`actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`)
@@ -48,7 +48,7 @@ async function main() {
   // Re-read main and latest attempt after the remote calls; the release caller must
   // repeat this check immediately before a later write, not treat this as a lease.
   const finalRun = api(`actions/runs/${run.id}`)
-  const finalLatest = api(`actions/workflows/tests.yml/runs?event=push&branch=main&head_sha=${sha}&per_page=100`).workflow_runs.filter(value => value.head_sha === sha).sort((a, b) => b.id - a.id)[0]
+  const finalLatest = latestRun()
   const sameSuccessfulAttempt = value => value?.id === run.id && value.head_sha === sha && value.run_attempt === run.run_attempt && value.status === 'completed' && value.conclusion === 'success'
   if (api('git/ref/heads/main').object.sha !== sha || !sameSuccessfulAttempt(finalLatest) || !sameSuccessfulAttempt(finalRun) || git('rev-parse', 'HEAD') !== sha || git('status', '--porcelain') || !bytes.equals(await readFile(join(root, 'package.json')))) throw new Error('前检期间版本、main或测试尝试已变化，请重新核对')
   const directory = join(root, '.local/release-checks', randomUUID()); await mkdir(directory, { recursive: true })
